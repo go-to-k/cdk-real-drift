@@ -1,0 +1,28 @@
+{
+  "name": "cdkdrift",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Detect when real AWS resources drift from your CDK/CloudFormation IaC - including UNDECLARED properties that cdk drift / CloudFormation drift never see. No AWS Config required.",
+  "type": "module",
+  "bin": {
+    "cdkdrift": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "node --experimental-strip-types src/cli.ts"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudcontrol": "^3.0.0",
+    "@aws-sdk/client-cloudformation": "^3.0.0"
+  },
+  "devDependencies": {
+    "tsdown": "^0.12.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  }
+}
