@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isTrivialEmpty, isAllAwsTags, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
+import { isTrivialEmpty, isAllAwsTags, KNOWN_DEFAULTS, stripAwsTagsDeep } from '../src/normalize/noise.js';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
 import { parseSchema } from '../src/schema/schema-strip.js';
 
@@ -29,6 +29,12 @@ describe('noise suppressors', () => {
 
   it('IAM Role known defaults present', () => {
     expect(KNOWN_DEFAULTS['AWS::IAM::Role'].MaxSessionDuration).toBe(3600);
+  });
+
+  it('stripAwsTagsDeep removes aws:* tags (list + map), keeps the rest', () => {
+    expect(stripAwsTagsDeep([{ Key: 'aws:cloudformation:stack-name', Value: 'S' }, { Key: 'aws-cdk:x', Value: 'y' }]))
+      .toEqual([{ Key: 'aws-cdk:x', Value: 'y' }]);
+    expect(stripAwsTagsDeep({ Tags: { 'aws:cf': '1', Team: 'a' } })).toEqual({ Tags: { Team: 'a' } });
   });
 });
 

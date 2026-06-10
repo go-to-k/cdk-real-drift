@@ -12,9 +12,22 @@ describe('calculateResourceDrift', () => {
     expect(d).toEqual([{ path: 'V.Status', stateValue: 'Enabled', awsValue: 'Suspended' }]);
   });
 
-  it('reports whole-array drift on a single parent path', () => {
+  it('reports whole-array drift on a single parent path (length change)', () => {
     const d = calculateResourceDrift({ L: ['a'] }, { L: ['a', 'b'] });
     expect(d).toEqual([{ path: 'L', stateValue: ['a'], awsValue: ['a', 'b'] }]);
+  });
+
+  it('same-length array of objects: AWS-enriched element is NOT drift (subset)', () => {
+    const d = calculateResourceDrift(
+      { Enc: [{ SSE: { Alg: 'AES256' } }] },
+      { Enc: [{ BucketKeyEnabled: false, SSE: { Alg: 'AES256' } }] },
+    );
+    expect(d).toEqual([]);
+  });
+
+  it('same-length array of objects: a CHANGED declared sub-value IS drift', () => {
+    const d = calculateResourceDrift({ Enc: [{ SSE: { Alg: 'AES256' } }] }, { Enc: [{ SSE: { Alg: 'aws:kms' } }] });
+    expect(d).toEqual([{ path: 'Enc.0.SSE.Alg', stateValue: 'AES256', awsValue: 'aws:kms' }]);
   });
 
   it('declared key absent in aws surfaces as drift with undefined actual', () => {

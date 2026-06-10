@@ -10,7 +10,7 @@ import type { Finding, SchemaInfo, DesiredResource } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { UNRESOLVED, hasUnresolved } from '../normalize/intrinsic-resolver.js';
-import { KNOWN_DEFAULTS, isTrivialEmpty, isAllAwsTags } from '../normalize/noise.js';
+import { KNOWN_DEFAULTS, isTrivialEmpty, isAllAwsTags, stripAwsTagsDeep } from '../normalize/noise.js';
 import { normalizePoliciesDeep } from '../normalize/policy-canonical.js';
 
 export function classifyResource(
@@ -24,8 +24,8 @@ export function classifyResource(
   // strip AWS-managed fields + read-only schema props (noise) from the live model
   const stripped = stripCcApiAwsManagedFields(liveRaw);
   for (const k of schema.readOnly) delete stripped[k];
-  // canonicalize policy documents on both sides so semantically-equal policies match
-  const live = normalizePoliciesDeep(stripped) as Record<string, unknown>;
+  // drop AWS-managed aws:* tag elements, then canonicalize policy docs (both sides)
+  const live = normalizePoliciesDeep(stripAwsTagsDeep(stripped)) as Record<string, unknown>;
   const declared = normalizePoliciesDeep(declaredIn) as Record<string, unknown>;
 
   // declared drift (A3: declared key absent in live = read gap, not drift)

@@ -32,11 +32,21 @@ function isIgnoredPath(path: string, ignorePaths: readonly string[]): boolean {
 function diffAt(path: string, sv: unknown, av: unknown, out: PropertyDrift[], ignorePaths: readonly string[]): void {
   if (deepEqual(sv, av)) return;
   if (isPlainObject(sv) && isPlainObject(av) && !Array.isArray(sv) && !Array.isArray(av)) {
+    // Subset semantics: only walk keys present in the desired (state) side, so
+    // AWS-added keys the template never set are not reported as drift.
     for (const key of Object.keys(sv)) {
       const childPath = `${path}.${key}`;
       if (isIgnoredPath(childPath, ignorePaths)) continue;
       diffAt(childPath, sv[key], (av as Record<string, unknown>)[key], out, ignorePaths);
     }
+    return;
+  }
+  // Same-length arrays of objects: compare element-wise with the same subset
+  // semantics, so AWS enriching a declared array element with extra sub-fields
+  // (e.g. S3 BucketEncryption.BucketKeyEnabled) is not false drift. A length
+  // change is a genuine drift and falls through to the push below.
+  if (Array.isArray(sv) && Array.isArray(av) && sv.length === av.length && sv.every(isPlainObject) && av.every(isPlainObject)) {
+    for (let i = 0; i < sv.length; i++) diffAt(`${path}.${i}`, sv[i], av[i], out, ignorePaths);
     return;
   }
   out.push({ path, stateValue: sv, awsValue: av });
