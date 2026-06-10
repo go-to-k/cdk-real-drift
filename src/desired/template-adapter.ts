@@ -79,6 +79,10 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
   const ctx = buildResolverContext(template, stackParams, physIds, region, accountId, stackName, stackId);
 
   const resources: DesiredResource[] = [];
+  // Roles whose inline Policies are managed by a SIBLING AWS::IAM::Policy resource
+  // (the CDK pattern). Their live Policies would otherwise show as undeclared.
+  const rolesWithSiblingPolicy = collectRolesWithSiblingPolicies(template.Resources ?? {});
+
   for (const [logicalId, res] of Object.entries((template.Resources ?? {}) as Record<string, any>)) {
     if (res.Type === 'AWS::CDK::Metadata') continue;
     resources.push({
@@ -86,7 +90,20 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
       resourceType: res.Type as string,
       physicalId: physIds[logicalId],
       declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
+      siblingManaged: res.Type === 'AWS::IAM::Role' && rolesWithSiblingPolicy.has(logicalId),
     });
   }
   return { stackName, region, accountId, resources, rawTemplate };
+}
+
+function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {
+  const roles = new Set<string>();
+  for (const res of Object.values(resources)) {
+    if (res?.Type !== 'AWS::IAM::Policy') continue;
+    for (const r of (res.Properties?.Roles ?? []) as unknown[]) {
+      const ref = r && typeof r === 'object' ? (r as Record<string, unknown>).Ref : undefined;
+      if (typeof ref === 'string') roles.add(ref);
+    }
+  }
+  return roles;
 }

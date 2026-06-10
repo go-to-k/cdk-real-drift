@@ -58,6 +58,8 @@ export function classifyResource(
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v)) continue;
+    // inline Policies managed by a sibling AWS::IAM::Policy are not role drift
+    if (resource.siblingManaged && k === 'Policies') continue;
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 

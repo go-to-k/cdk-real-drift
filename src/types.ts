@@ -33,4 +33,5 @@ export interface DesiredResource {
   resourceType: string;
   physicalId?: string;
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
+  siblingManaged?: boolean; // an IAM Role whose inline Policies are managed by a sibling AWS::IAM::Policy
 }
