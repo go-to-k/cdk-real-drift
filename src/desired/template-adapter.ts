@@ -3,14 +3,14 @@
 //   → intrinsic-resolve each resource's declared properties.
 // Slice scope: JSON templates (CDK app output). YAML support is a follow-up.
 import {
-  GetTemplateCommand,
+  type CloudFormationClient,
   DescribeStackResourcesCommand,
   DescribeStacksCommand,
-  type CloudFormationClient,
-} from '@aws-sdk/client-cloudformation';
-import type { DesiredResource, ResolverContext } from '../types.js';
-import { resolveProperties } from '../normalize/intrinsic-resolver.js';
-import { parseCfnTemplate } from './yaml-cfn.js';
+  GetTemplateCommand,
+} from "@aws-sdk/client-cloudformation";
+import { resolveProperties } from "../normalize/intrinsic-resolver.js";
+import type { DesiredResource, ResolverContext } from "../types.js";
+import { parseCfnTemplate } from "./yaml-cfn.js";
 
 export interface Desired {
   stackName: string;
@@ -36,18 +36,18 @@ export function buildResolverContext(
 ): ResolverContext {
   const params: Record<string, string> = {};
   for (const [k, def] of Object.entries((template.Parameters ?? {}) as Record<string, { Default?: unknown }>)) {
-    if (def && 'Default' in def) params[k] = String(def.Default);
+    if (def && "Default" in def) params[k] = String(def.Default);
   }
   Object.assign(params, stackParams); // deployed values win over template defaults
   return {
     params,
     pseudo: {
-      'AWS::Region': region,
-      'AWS::AccountId': accountId,
-      'AWS::Partition': 'aws',
-      'AWS::URLSuffix': 'amazonaws.com',
-      'AWS::StackName': stackName,
-      'AWS::StackId': stackId,
+      "AWS::Region": region,
+      "AWS::AccountId": accountId,
+      "AWS::Partition": "aws",
+      "AWS::URLSuffix": "amazonaws.com",
+      "AWS::StackName": stackName,
+      "AWS::StackId": stackId,
     },
     conditions: template.Conditions ?? {},
     physIds,
@@ -61,11 +61,11 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
     client.send(new DescribeStackResourcesCommand({ StackName: stackName })),
     client.send(new DescribeStacksCommand({ StackName: stackName })),
   ]);
-  const rawTemplate = tmplRes.TemplateBody ?? '{}';
+  const rawTemplate = tmplRes.TemplateBody ?? "{}";
   const template = parseTemplateBody(rawTemplate) as Record<string, any>;
   const stack = stkRes.Stacks?.[0];
-  const stackId = stack?.StackId ?? '';
-  const accountId = stackId.split(':')[4] ?? '';
+  const stackId = stack?.StackId ?? "";
+  const accountId = stackId.split(":")[4] ?? "";
 
   const physIds: Record<string, string> = {};
   const typeOf: Record<string, string> = {};
@@ -74,7 +74,7 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
     if (r.LogicalResourceId && r.ResourceType) typeOf[r.LogicalResourceId] = r.ResourceType;
   }
   const stackParams: Record<string, string> = {};
-  for (const p of stack?.Parameters ?? []) if (p.ParameterKey) stackParams[p.ParameterKey] = p.ParameterValue ?? '';
+  for (const p of stack?.Parameters ?? []) if (p.ParameterKey) stackParams[p.ParameterKey] = p.ParameterValue ?? "";
 
   const ctx = buildResolverContext(template, stackParams, physIds, region, accountId, stackName, stackId);
 
@@ -84,13 +84,13 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
   const rolesWithSiblingPolicy = collectRolesWithSiblingPolicies(template.Resources ?? {});
 
   for (const [logicalId, res] of Object.entries((template.Resources ?? {}) as Record<string, any>)) {
-    if (res.Type === 'AWS::CDK::Metadata') continue;
+    if (res.Type === "AWS::CDK::Metadata") continue;
     resources.push({
       logicalId,
       resourceType: res.Type as string,
       physicalId: physIds[logicalId],
       declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
-      siblingManaged: res.Type === 'AWS::IAM::Role' && rolesWithSiblingPolicy.has(logicalId),
+      siblingManaged: res.Type === "AWS::IAM::Role" && rolesWithSiblingPolicy.has(logicalId),
     });
   }
   return { stackName, region, accountId, resources, rawTemplate };
@@ -99,10 +99,10 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
 function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {
   const roles = new Set<string>();
   for (const res of Object.values(resources)) {
-    if (res?.Type !== 'AWS::IAM::Policy') continue;
+    if (res?.Type !== "AWS::IAM::Policy") continue;
     for (const r of (res.Properties?.Roles ?? []) as unknown[]) {
-      const ref = r && typeof r === 'object' ? (r as Record<string, unknown>).Ref : undefined;
-      if (typeof ref === 'string') roles.add(ref);
+      const ref = r && typeof r === "object" ? (r as Record<string, unknown>).Ref : undefined;
+      if (typeof ref === "string") roles.add(ref);
     }
   }
   return roles;

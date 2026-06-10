@@ -3,15 +3,38 @@
   "version": "0.0.0",
   "private": true,
   "description": "Detect when real AWS resources drift from your CDK/CloudFormation IaC - including UNDECLARED properties that cdk drift / CloudFormation drift never see. No AWS Config required.",
+  "license": "MIT",
+  "author": "go-to-k",
+  "keywords": [
+    "cdk",
+    "cloudformation",
+    "drift",
+    "aws",
+    "iac",
+    "undeclared"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/go-to-k/cdk-real-drift.git"
+  },
   "type": "module",
   "bin": {
     "cdkrd": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dev": "node --experimental-strip-types src/cli.ts"
+    "lint": "biome check src tests",
+    "lint:fix": "biome check --write src tests",
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -28,6 +51,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
     "@types/node": "^25.9.2",
     "tsdown": "^0.12.9",
     "typescript": "^5.9.3",

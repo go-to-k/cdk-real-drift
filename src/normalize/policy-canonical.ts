@@ -6,11 +6,11 @@
 // scalar/array unify + sort for Action/Resource/Principal; sort statements.
 
 function isObj(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
+  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 function isPolicyDoc(v: unknown): v is Record<string, unknown> {
-  return isObj(v) && 'Statement' in v;
+  return isObj(v) && "Statement" in v;
 }
 
 /** Parse a (possibly URL-encoded) JSON string into a policy doc, or null. */
@@ -49,7 +49,7 @@ function sortKeys(o: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-const ARRAYISH_KEYS = new Set(['Action', 'NotAction', 'Resource', 'NotResource']);
+const ARRAYISH_KEYS = new Set(["Action", "NotAction", "Resource", "NotResource"]);
 
 function canonicalizeStatement(s: unknown): unknown {
   if (!isObj(s)) return s;
@@ -57,7 +57,7 @@ function canonicalizeStatement(s: unknown): unknown {
   for (const k of Object.keys(s).sort()) {
     const v = s[k];
     if (ARRAYISH_KEYS.has(k)) out[k] = toSortedArray(v);
-    else if (k === 'Principal' || k === 'NotPrincipal') out[k] = canonicalizePrincipal(v);
+    else if (k === "Principal" || k === "NotPrincipal") out[k] = canonicalizePrincipal(v);
     else out[k] = v;
   }
   return out;
@@ -76,7 +76,7 @@ function canonicalizePrincipal(v: unknown): unknown {
 
 // IAM treats a bare account id and its root ARN as equivalent principals.
 function normalizeAccountPrincipal(v: unknown): unknown {
-  if (typeof v === 'string') {
+  if (typeof v === "string") {
     const m = /^arn:aws[a-z-]*:iam::(\d{12}):root$/.exec(v);
     if (m) return m[1];
   }
@@ -99,7 +99,7 @@ export function canonicalizePolicy(doc: Record<string, unknown>): Record<string,
 function canonicalizeJsonText(s: string): string {
   try {
     const parsed = JSON.parse(s);
-    if (parsed && typeof parsed === 'object') return JSON.stringify(sortDeep(parsed));
+    if (parsed && typeof parsed === "object") return JSON.stringify(sortDeep(parsed));
   } catch {
     /* not JSON */
   }
@@ -107,7 +107,7 @@ function canonicalizeJsonText(s: string): string {
 }
 function sortDeep(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortDeep);
-  if (v && typeof v === 'object') {
+  if (v && typeof v === "object") {
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(v as Record<string, unknown>).sort()) out[k] = sortDeep((v as Record<string, unknown>)[k]);
     return out;
@@ -120,7 +120,7 @@ function sortDeep(v: unknown): unknown {
  * embedded JSON-text strings with a canonical (sorted, minified) form.
  */
 export function normalizePoliciesDeep(v: unknown): unknown {
-  if (typeof v === 'string') {
+  if (typeof v === "string") {
     const p = parsePolicyString(v);
     if (p) return canonicalizePolicy(p);
     return canonicalizeJsonText(v);

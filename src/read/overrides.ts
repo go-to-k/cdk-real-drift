@@ -5,12 +5,20 @@
 // id, because CFn assigns these policy-attachment resources physical ids that
 // differ from the underlying target. Returns CFn-shaped properties for the
 // classifier; undefined when the target can't be resolved/read (→ skipped).
-import { IAMClient, GetPolicyCommand, GetPolicyVersionCommand, GetRolePolicyCommand, GetGroupPolicyCommand, GetUserPolicyCommand } from '@aws-sdk/client-iam';
-import { S3Client, GetBucketPolicyCommand } from '@aws-sdk/client-s3';
-import { SNSClient, GetTopicAttributesCommand } from '@aws-sdk/client-sns';
-import { SQSClient, GetQueueAttributesCommand } from '@aws-sdk/client-sqs';
-import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
-import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+
+import { BudgetsClient, DescribeBudgetCommand } from "@aws-sdk/client-budgets";
+import {
+  GetGroupPolicyCommand,
+  GetPolicyCommand,
+  GetPolicyVersionCommand,
+  GetRolePolicyCommand,
+  GetUserPolicyCommand,
+  IAMClient,
+} from "@aws-sdk/client-iam";
+import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from "@aws-sdk/client-lambda";
+import { GetBucketPolicyCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetTopicAttributesCommand, SNSClient } from "@aws-sdk/client-sns";
+import { GetQueueAttributesCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 export interface OverrideCtx {
   physicalId: string;
@@ -20,16 +28,26 @@ export interface OverrideCtx {
 }
 export type OverrideReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
 
-const str = (v: unknown): string | undefined => (typeof v === 'string' && v.length > 0 ? v : undefined);
+const str = (v: unknown): string | undefined => (typeof v === "string" && v.length > 0 ? v : undefined);
 const firstStr = (v: unknown): string | undefined => (Array.isArray(v) ? str(v[0]) : str(v));
 function parsePolicy(s: string | undefined): unknown {
   if (!s) return undefined;
   for (const c of [s, safeDecode(s)]) {
-    try { return JSON.parse(c); } catch { /* keep trying */ }
+    try {
+      return JSON.parse(c);
+    } catch {
+      /* keep trying */
+    }
   }
   return s;
 }
-function safeDecode(s: string): string { try { return decodeURIComponent(s); } catch { return s; } }
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
 
 const readS3BucketPolicy: OverrideReader = async ({ declared, region }) => {
   const bucket = str(declared.Bucket);
@@ -51,7 +69,7 @@ const readSqsQueuePolicy: OverrideReader = async ({ declared, region }) => {
   const queue = firstStr(declared.Queues);
   if (!queue) return undefined;
   const c = new SQSClient({ region });
-  const r = await c.send(new GetQueueAttributesCommand({ QueueUrl: queue, AttributeNames: ['Policy'] }));
+  const r = await c.send(new GetQueueAttributesCommand({ QueueUrl: queue, AttributeNames: ["Policy"] }));
   return { Queues: declared.Queues, PolicyDocument: parsePolicy(r.Attributes?.Policy) };
 };
 
@@ -67,12 +85,16 @@ const readIamPolicy: OverrideReader = async ({ declared, region }) => {
   else if (user) doc = (await c.send(new GetUserPolicyCommand({ UserName: user, PolicyName: name }))).PolicyDocument;
   else if (group) doc = (await c.send(new GetGroupPolicyCommand({ GroupName: group, PolicyName: name }))).PolicyDocument;
   else return undefined;
-  return { PolicyName: name, PolicyDocument: parsePolicy(doc), ...(role ? { Roles: declared.Roles } : user ? { Users: declared.Users } : { Groups: declared.Groups }) };
+  return {
+    PolicyName: name,
+    PolicyDocument: parsePolicy(doc),
+    ...(role ? { Roles: declared.Roles } : user ? { Users: declared.Users } : { Groups: declared.Groups }),
+  };
 };
 
 const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
   // CFn physical id for a managed policy IS its ARN.
-  if (!physicalId.startsWith('arn:')) return undefined;
+  if (!physicalId.startsWith("arn:")) return undefined;
   const c = new IAMClient({ region });
   const p = (await c.send(new GetPolicyCommand({ PolicyArn: physicalId }))).Policy;
   if (!p) return undefined;
@@ -85,11 +107,17 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
   if (!fn) return undefined;
   const c = new LambdaClient({ region });
   let policy: unknown;
-  try { policy = parsePolicy((await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy); } catch { return undefined; }
+  try {
+    policy = parsePolicy((await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy);
+  } catch {
+    return undefined;
+  }
   const stmts = (policy as { Statement?: Array<Record<string, unknown>> })?.Statement ?? [];
   // best-effort match by Action + Principal against the declared permission
   const want = { action: str(declared.Action), principal: str(declared.Principal) };
-  const m = stmts.find((s) => (!want.action || s.Action === want.action) && (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal))));
+  const m = stmts.find(
+    (s) => (!want.action || s.Action === want.action) && (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal))),
+  );
   if (!m) return undefined;
   return { FunctionName: fn, Action: m.Action, Principal: declared.Principal };
 };
@@ -106,11 +134,11 @@ const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
 };
 
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
-  'AWS::S3::BucketPolicy': readS3BucketPolicy,
-  'AWS::SNS::TopicPolicy': readSnsTopicPolicy,
-  'AWS::SQS::QueuePolicy': readSqsQueuePolicy,
-  'AWS::IAM::Policy': readIamPolicy,
-  'AWS::IAM::ManagedPolicy': readIamManagedPolicy,
-  'AWS::Lambda::Permission': readLambdaPermission,
-  'AWS::Budgets::Budget': readBudget,
+  "AWS::S3::BucketPolicy": readS3BucketPolicy,
+  "AWS::SNS::TopicPolicy": readSnsTopicPolicy,
+  "AWS::SQS::QueuePolicy": readSqsQueuePolicy,
+  "AWS::IAM::Policy": readIamPolicy,
+  "AWS::IAM::ManagedPolicy": readIamManagedPolicy,
+  "AWS::Lambda::Permission": readLambdaPermission,
+  "AWS::Budgets::Budget": readBudget,
 };

@@ -1,13 +1,14 @@
 // `cdkrd accept <stack>` (alias of init) — write the current undeclared state
 // into the baseline FILE. Writes ONLY the git-committed baseline; no AWS writes.
-import { parseCommonArgs } from '../cli-args.js';
-import { gatherFindings } from './gather.js';
-import { buildAccepted, writeBaseline, hashTemplate } from '../baseline/baseline-file.js';
+
+import { buildAccepted, hashTemplate, writeBaseline } from "../baseline/baseline-file.js";
+import { parseCommonArgs } from "../cli-args.js";
+import { gatherFindings } from "./gather.js";
 
 export async function runAccept(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (!a.stackName) {
-    console.error('usage: cdkrd accept <stack> [--region r]');
+    console.error("usage: cdkrd accept <stack> [--region r]");
     return 2;
   }
   const { desired, findings } = await gatherFindings(a.stackName, a.region);
@@ -21,6 +22,6 @@ export async function runAccept(args: string[]): Promise<number> {
     accepted,
   });
   console.log(`baseline written: ${path} (${accepted.length} undeclared value(s) blessed)`);
-  console.log('commit this file so drift is detected against it going forward.');
+  console.log("commit this file so drift is detected against it going forward.");
   return 0;
 }

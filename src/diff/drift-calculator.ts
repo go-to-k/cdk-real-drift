@@ -56,7 +56,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === null || b === null || a === undefined || b === undefined) return a === b;
   if (typeof a !== typeof b) return false;
-  if (typeof a !== 'object') return false;
+  if (typeof a !== "object") return false;
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
     return a.every((v, i) => deepEqual(v, b[i]));
@@ -67,12 +67,12 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   const bk = Object.keys(bo);
   if (ak.length !== bk.length) return false;
   for (const key of ak) {
-    if (!Object.prototype.hasOwnProperty.call(bo, key)) return false;
+    if (!Object.hasOwn(bo, key)) return false;
     if (!deepEqual(ao[key], bo[key])) return false;
   }
   return true;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }

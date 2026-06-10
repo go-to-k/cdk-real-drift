@@ -3,11 +3,12 @@
 // source of truth — declared desired comes live from GetTemplate). `check`
 // reports an undeclared finding only when it differs from / is absent in the
 // baseline; with no baseline, every non-default undeclared value is shown.
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { dirname } from 'node:path';
-import type { Finding } from '../types.js';
-import { deepEqual } from '../diff/drift-calculator.js';
+
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { deepEqual } from "../diff/drift-calculator.js";
+import type { Finding } from "../types.js";
 
 export interface AcceptedEntry {
   logicalId: string;
@@ -30,14 +31,14 @@ export function baselinePath(stackName: string, region: string): string {
 }
 
 export function hashTemplate(rawTemplate: string): string {
-  return 'sha256:' + createHash('sha256').update(rawTemplate).digest('hex');
+  return "sha256:" + createHash("sha256").update(rawTemplate).digest("hex");
 }
 
 export async function loadBaseline(stackName: string, region: string): Promise<BaselineFile | undefined> {
   try {
-    return JSON.parse(await readFile(baselinePath(stackName, region), 'utf8')) as BaselineFile;
+    return JSON.parse(await readFile(baselinePath(stackName, region), "utf8")) as BaselineFile;
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw e;
   }
 }
@@ -45,14 +46,14 @@ export async function loadBaseline(stackName: string, region: string): Promise<B
 export async function writeBaseline(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.region);
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(b, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
+  await writeFile(p, JSON.stringify(b, null, 2) + "\n", "utf8"); // pretty + stable for clean PR diffs
   return p;
 }
 
 /** Build the blessed-undeclared set from a check run's findings. */
 export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
   return findings
-    .filter((f) => f.tier === 'undeclared')
+    .filter((f) => f.tier === "undeclared")
     .map((f) => ({ logicalId: f.logicalId, resourceType: f.resourceType, path: f.path, value: f.actual }));
 }
 
@@ -65,7 +66,7 @@ export function applyBaseline(findings: Finding[], baseline: BaselineFile | unde
   if (!baseline) return findings;
   const blessed = baseline.accepted;
   return findings.filter((f) => {
-    if (f.tier !== 'undeclared') return true;
+    if (f.tier !== "undeclared") return true;
     const match = blessed.find((a) => a.logicalId === f.logicalId && a.path === f.path && deepEqual(a.value, f.actual));
     return match === undefined;
   });
