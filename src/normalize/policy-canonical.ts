@@ -65,10 +65,22 @@ function canonicalizeStatement(s: unknown): unknown {
 function canonicalizePrincipal(v: unknown): unknown {
   if (isObj(v)) {
     const out: Record<string, unknown> = {};
-    for (const k of Object.keys(v).sort()) out[k] = toSortedArray(v[k]);
+    for (const k of Object.keys(v).sort()) {
+      const arr = (Array.isArray(v[k]) ? v[k] : [v[k]]) as unknown[];
+      out[k] = arr.map(normalizeAccountPrincipal).sort(byJson);
+    }
     return out;
   }
   return v; // "*" or a scalar
+}
+
+// IAM treats a bare account id and its root ARN as equivalent principals.
+function normalizeAccountPrincipal(v: unknown): unknown {
+  if (typeof v === 'string') {
+    const m = /^arn:aws[a-z-]*:iam::(\d{12}):root$/.exec(v);
+    if (m) return m[1];
+  }
+  return v;
 }
 
 export function canonicalizePolicy(doc: Record<string, unknown>): Record<string, unknown> {
@@ -79,11 +91,36 @@ export function canonicalizePolicy(doc: Record<string, unknown>): Record<string,
   };
 }
 
-/** Walk a value, replacing every policy-document subtree with its canonical form. */
+// Canonicalize an embedded JSON string (e.g. ECR LifecyclePolicyText) so that
+// pretty-printed vs minified vs key-reordered forms compare equal.
+function canonicalizeJsonText(s: string): string {
+  try {
+    const parsed = JSON.parse(s);
+    if (parsed && typeof parsed === 'object') return JSON.stringify(sortDeep(parsed));
+  } catch {
+    /* not JSON */
+  }
+  return s;
+}
+function sortDeep(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortDeep);
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(v as Record<string, unknown>).sort()) out[k] = sortDeep((v as Record<string, unknown>)[k]);
+    return out;
+  }
+  return v;
+}
+
+/**
+ * Walk a value, replacing policy-document subtrees with their canonical form and
+ * embedded JSON-text strings with a canonical (sorted, minified) form.
+ */
 export function normalizePoliciesDeep(v: unknown): unknown {
   if (typeof v === 'string') {
     const p = parsePolicyString(v);
-    return p ? canonicalizePolicy(p) : v;
+    if (p) return canonicalizePolicy(p);
+    return canonicalizeJsonText(v);
   }
   if (Array.isArray(v)) return v.map(normalizePoliciesDeep);
   if (isPolicyDoc(v)) return canonicalizePolicy(v);

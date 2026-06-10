@@ -10,6 +10,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import type { DesiredResource, ResolverContext } from '../types.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
+import { parseCfnTemplate } from './yaml-cfn.js';
 
 export interface Desired {
   stackName: string;
@@ -18,12 +19,9 @@ export interface Desired {
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
 }
 
-export class YamlTemplateUnsupportedError extends Error {}
-
+/** Parse a deployed template body (JSON or CFn-flavored YAML). */
 export function parseTemplateBody(body: string): Record<string, unknown> {
-  const trimmed = body.trimStart();
-  if (trimmed.startsWith('{')) return JSON.parse(body) as Record<string, unknown>;
-  throw new YamlTemplateUnsupportedError('template is YAML; slice supports JSON templates (CDK app output)');
+  return parseCfnTemplate(body);
 }
 
 export function buildResolverContext(

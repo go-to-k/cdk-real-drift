@@ -21,6 +21,12 @@ describe('noise suppressors', () => {
     expect(isAllAwsTags('nope')).toBe(false);
   });
 
+  it('isAllAwsTags: map shape (SSM) where every key is aws:*', () => {
+    expect(isAllAwsTags({ 'aws:cloudformation:stack-name': 'S', 'aws:cloudformation:logical-id': 'X' })).toBe(true);
+    expect(isAllAwsTags({ 'aws:x': '1', Team: 'a' })).toBe(false);
+    expect(isAllAwsTags({})).toBe(false);
+  });
+
   it('IAM Role known defaults present', () => {
     expect(KNOWN_DEFAULTS['AWS::IAM::Role'].MaxSessionDuration).toBe(3600);
   });

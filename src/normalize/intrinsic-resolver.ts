@@ -26,30 +26,40 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         return evalCondition(cond, ctx) ? resolve(t, ctx) : resolve(f, ctx);
       }
       case 'Fn::Join': {
-        const [delim, list] = v as [string, unknown[]];
-        const parts = (resolve(list, ctx) as unknown[]).filter((p) => p !== NOVALUE);
+        if (!Array.isArray(v)) return UNRESOLVED;
+        const [delim, list] = v as [string, unknown];
+        const resolved = resolve(list, ctx);
+        if (!Array.isArray(resolved)) return UNRESOLVED;
+        const parts = resolved.filter((p) => p !== NOVALUE);
         if (parts.some((p) => p === UNRESOLVED)) return UNRESOLVED;
         return parts.join(delim);
       }
       case 'Fn::Select': {
-        const [idx, list] = v as [number, unknown[]];
-        return (resolve(list, ctx) as unknown[])[Number(idx)];
+        if (!Array.isArray(v)) return UNRESOLVED;
+        const [idx, list] = v as [number, unknown];
+        const arr = resolve(list, ctx);
+        if (!Array.isArray(arr)) return UNRESOLVED;
+        return arr[Number(idx)];
       }
       case 'Fn::GetAtt':
         return UNRESOLVED;
       case 'Fn::Equals': {
-        const [a, b] = (v as unknown[]).map((x) => resolve(x, ctx));
+        if (!Array.isArray(v)) return false;
+        const [a, b] = v.map((x) => resolve(x, ctx));
         return a === b;
       }
       case 'Fn::And':
-        return (v as unknown[]).every((c) => truthyCond(c, ctx));
+        return Array.isArray(v) && v.every((c) => truthyCond(c, ctx));
       case 'Fn::Or':
-        return (v as unknown[]).some((c) => truthyCond(c, ctx));
+        return Array.isArray(v) && v.some((c) => truthyCond(c, ctx));
       case 'Fn::Not':
-        return !truthyCond((v as unknown[])[0], ctx);
+        return Array.isArray(v) ? !truthyCond(v[0], ctx) : false;
       case 'Condition':
         return evalCondition(String(v), ctx);
       default:
+        // Any intrinsic we don't fully resolve → UNRESOLVED, so the declared
+        // path is skipped (never reported as false drift).
+        if (k.startsWith('Fn::')) return UNRESOLVED;
         break;
     }
   }

@@ -14,13 +14,18 @@ export function isTrivialEmpty(v: unknown): boolean {
   return false;
 }
 
-// A2: a {Key,Value}[] tag list whose every element is an AWS-managed (aws:*) tag.
+// A2: AWS-managed (aws:*) tags only. Handles BOTH the {Key,Value}[] list shape
+// (most types) AND the key->value map shape (e.g. AWS::SSM::Parameter.Tags).
 export function isAllAwsTags(v: unknown): boolean {
-  return (
-    Array.isArray(v) &&
-    v.length > 0 &&
-    v.every(
-      (t) => t && typeof t === 'object' && typeof (t as { Key?: unknown }).Key === 'string' && ((t as { Key: string }).Key).startsWith('aws:'),
-    )
-  );
+  if (Array.isArray(v)) {
+    return (
+      v.length > 0 &&
+      v.every((t) => t && typeof t === 'object' && typeof (t as { Key?: unknown }).Key === 'string' && (t as { Key: string }).Key.startsWith('aws:'))
+    );
+  }
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v as Record<string, unknown>);
+    return keys.length > 0 && keys.every((k) => k.startsWith('aws:'));
+  }
+  return false;
 }

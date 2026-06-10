@@ -30,4 +30,16 @@ describe('policy canonicalization', () => {
   it('leaves a plain non-policy string untouched', () => {
     expect(normalizePoliciesDeep('just a string')).toBe('just a string');
   });
+
+  it('treats account id and its root ARN as equal principals', () => {
+    const a = canonicalizePolicy({ Statement: [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: '123456789012' } }] });
+    const b = canonicalizePolicy({ Statement: [{ Effect: 'Allow', Action: 'sts:AssumeRole', Principal: { AWS: 'arn:aws:iam::123456789012:root' } }] });
+    expect(deepEqual(a, b)).toBe(true);
+  });
+
+  it('canonicalizes embedded JSON-text strings (pretty vs minified)', () => {
+    const pretty = '{\n  "rules": [ { "a": 1, "b": 2 } ]\n}';
+    const mini = '{"rules":[{"b":2,"a":1}]}';
+    expect(normalizePoliciesDeep(pretty)).toBe(normalizePoliciesDeep(mini));
+  });
 });
