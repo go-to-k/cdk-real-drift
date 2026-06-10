@@ -52,7 +52,8 @@ describe('parseSchema', () => {
       writeOnlyProperties: ['/properties/AccessControl'],
       properties: { Path: { default: '/' }, Name: {} },
     }));
-    expect([...info.readOnly]).toEqual(['Arn', 'Lifecycle']);
+    expect([...info.readOnly]).toEqual(['Arn']); // nested path NOT promoted to top-level
+    expect(info.readOnlyPaths).toContain('Lifecycle.Rules.*.X');
     expect([...info.writeOnly]).toEqual(['AccessControl']);
     expect(info.defaults).toEqual({ Path: '/' });
   });

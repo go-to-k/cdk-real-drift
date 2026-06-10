@@ -12,6 +12,7 @@ import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { UNRESOLVED, hasUnresolved } from '../normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULTS, isTrivialEmpty, isAllAwsTags, stripAwsTagsDeep } from '../normalize/noise.js';
 import { normalizePoliciesDeep } from '../normalize/policy-canonical.js';
+import { deepStripPaths } from '../normalize/path-strip.js';
 
 export function classifyResource(
   resource: DesiredResource,
@@ -21,12 +22,15 @@ export function classifyResource(
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
 
-  // strip AWS-managed fields + read-only schema props (noise) from the live model
-  const stripped = stripCcApiAwsManagedFields(liveRaw);
-  for (const k of schema.readOnly) delete stripped[k];
-  // drop AWS-managed aws:* tag elements, then canonicalize policy docs (both sides)
-  const live = normalizePoliciesDeep(stripAwsTagsDeep(stripped)) as Record<string, unknown>;
+  // strip AWS-managed fields + drop aws:* tag elements + canonicalize policy docs
+  const live = normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))) as Record<string, unknown>;
   const declared = normalizePoliciesDeep(declaredIn) as Record<string, unknown>;
+  // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
+  // live); writeOnly cannot be read back (strip from BOTH sides so it is never
+  // compared, at top level or nested).
+  deepStripPaths(live, schema.readOnlyPaths);
+  deepStripPaths(live, schema.writeOnlyPaths);
+  deepStripPaths(declared, schema.writeOnlyPaths);
 
   // declared drift (A3: declared key absent in live = read gap, not drift)
   for (const [k, v] of Object.entries(declared)) {

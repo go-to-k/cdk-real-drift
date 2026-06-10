@@ -13,8 +13,10 @@ export interface Finding {
 }
 
 export interface SchemaInfo {
-  readOnly: Set<string>; // top-level property names that are read-only (strip as noise)
-  writeOnly: Set<string>; // top-level property names not readable back (skip)
+  readOnly: Set<string>; // top-level read-only names (fast checks)
+  writeOnly: Set<string>; // top-level write-only names (fast checks)
+  readOnlyPaths: string[]; // full dotted paths incl '*' wildcard (strip from live, any depth)
+  writeOnlyPaths: string[]; // full dotted paths incl '*' wildcard (skip from compare, any depth)
   defaults: Record<string, unknown>; // top-level schema `default` values
 }
 

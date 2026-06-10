@@ -12,6 +12,8 @@ describe('classifyResource (the heart)', () => {
   const schema: SchemaInfo = {
     readOnly: new Set(['Arn', 'RoleId']),
     writeOnly: new Set(['AssumeRolePolicyDocument']),
+    readOnlyPaths: ['Arn', 'RoleId'],
+    writeOnlyPaths: ['AssumeRolePolicyDocument'],
     defaults: {},
   };
   const resource: DesiredResource = {
