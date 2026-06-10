@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to cdk-realdrift. Pre-release; private until first public launch.
+All notable changes to cdk-real-drift. Pre-release; private until first public launch.
 
 ## [Unreleased] — detect-only MVP
 

@@ -1,4 +1,4 @@
-# cdk-realdrift (private, pre-release) — command: `cdkrd`
+# cdk-real-drift (private, pre-release) — command: `cdkrd`
 
 > Detect when real AWS resources drift from your CDK/CloudFormation IaC —
 > **including properties you never declared**, the gap that `cdk drift`,
@@ -12,7 +12,7 @@
 `cdk drift` / CloudFormation drift only compare properties that appear in your
 template. If someone changes a setting you never declared (bucket
 `OwnershipControls`, an undeclared SG rule, encryption toggled off), it is
-invisible to those tools. cdk-realdrift reads the **full** live resource state and
+invisible to those tools. cdk-real-drift reads the **full** live resource state and
 shows the divergence — declared and undeclared alike.
 
 It does NOT do `cdk diff`'s job (code-vs-template). It is purely a drift tool:

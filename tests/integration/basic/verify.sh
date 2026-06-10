@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cdk-realdrift basic integration test (real AWS).
+# cdk-real-drift basic integration test (real AWS).
 #   deploy fixture -> accept (baseline) -> check CLEAN -> inject undeclared drift
 #   -> check DETECTS it -> destroy. A cleanup trap destroys + removes the baseline
 #   even on failure, so a failed run leaves no orphan resources.
@@ -23,7 +23,7 @@ trap cleanup EXIT
 
 fail() { echo "INTEG FAIL: $*"; exit 1; }
 
-echo "=== build cdk-realdrift ==="
+echo "=== build cdk-real-drift ==="
 (cd "$ROOT" && npm run build) || fail "build"
 
 echo "=== deploy fixture ==="
@@ -44,9 +44,9 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "inject drift"
 
 echo "=== check should DETECT the undeclared drift ==="
-$CLI check "$STACK" --region "$REGION" | tee /tmp/cdk-realdrift-integ.out
+$CLI check "$STACK" --region "$REGION" | tee /tmp/cdk-real-drift-integ.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
-grep -q "AccelerateConfiguration" /tmp/cdk-realdrift-integ.out || fail "AccelerateConfiguration not reported"
+grep -q "AccelerateConfiguration" /tmp/cdk-real-drift-integ.out || fail "AccelerateConfiguration not reported"
 
 echo "INTEG PASS"

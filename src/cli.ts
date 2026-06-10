@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// cdk-realdrift CLI entry. Dispatches: check | accept | init.
+// cdk-real-drift CLI entry. Dispatches: check | accept | init.
 // Detect-only — no command writes to AWS (accept/init write only the baseline FILE).
 import { runCheck } from './commands/check.js';
 import { runAccept } from './commands/accept.js';

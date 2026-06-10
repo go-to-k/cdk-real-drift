@@ -1,5 +1,5 @@
 {
-  "name": "cdk-realdrift",
+  "name": "cdk-real-drift",
   "version": "0.0.0",
   "private": true,
   "description": "Detect when real AWS resources drift from your CDK/CloudFormation IaC - including UNDECLARED properties that cdk drift / CloudFormation drift never see. No AWS Config required.",

@@ -1,7 +1,7 @@
 // CloudFormation-aware YAML parser (parse-only). Copied/trimmed from cdkd
 // src/cli/yaml-cfn.ts — preserves CFn shorthand tags (!Ref/!GetAtt/!Sub/...) by
 // resolving each to its long-form object ({Ref:...} / {Fn::Foo:...}) so the rest
-// of cdk-realdrift reads one canonical (JSON-equivalent) representation.
+// of cdk-real-drift reads one canonical (JSON-equivalent) representation.
 import { parse as yamlParse } from 'yaml';
 import type { CollectionTag, ScalarTag, YAMLMap, YAMLSeq } from 'yaml';
 
