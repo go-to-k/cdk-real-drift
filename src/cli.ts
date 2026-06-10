@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // cdkdrift CLI entry. Dispatches: check | accept | init.
-// Detect-only MVP — no command writes to AWS (accept writes only the baseline FILE).
+// Detect-only — no command writes to AWS (accept/init write only the baseline FILE).
 import { runCheck } from './commands/check.js';
+import { runAccept } from './commands/accept.js';
 
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
@@ -9,12 +10,10 @@ async function main(argv: string[]): Promise<number> {
     case 'check':
       return runCheck(rest);
     case 'accept':
-    case 'init':
-      // TODO(phase2): baseline write commands
-      console.error(`'${cmd}' not implemented yet`);
-      return 2;
+    case 'init': // init is accept's first-run alias
+      return runAccept(rest);
     default:
-      console.error('usage: cdkdrift <check|accept|init> <stack> [--region r] [--pre-deploy] [--fail-on tier] [--json]');
+      console.error('usage: cdkdrift <check|accept|init> <stack> [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]');
       return 2;
   }
 }

@@ -1,5 +1,5 @@
-// Tiered, CI-greppable report. Plain text. No TUI/panes.
-// Exit: 0 clean / 1 drift. (--fail-on tier selection is a follow-up.)
+// Tiered, CI-greppable report. Plain text or --json. No TUI/panes.
+// Exit: 0 clean / 1 drift. --fail-on selects which tiers count as failure.
 import type { Finding, Tier } from '../types.js';
 
 const TIER_TITLES: Record<Tier, string> = {
@@ -10,7 +10,13 @@ const TIER_TITLES: Record<Tier, string> = {
   skipped: 'SKIPPED (CC API unsupported / no physical id)',
 };
 const ORDER: Tier[] = ['declared', 'undeclared', 'readGap', 'unresolved', 'skipped'];
-const DRIFT_TIERS: Tier[] = ['declared', 'undeclared'];
+
+export type FailOn = 'declared' | 'undeclared';
+export interface ReportOptions {
+  json?: boolean;
+  failOn?: FailOn; // default 'undeclared' (declared + undeclared both fail)
+  log?: (s: string) => void;
+}
 
 export function formatFinding(f: Finding): string {
   let s = `${f.path ? `${f.logicalId}.${f.path}` : f.logicalId} (${f.resourceType})`;
@@ -20,7 +26,20 @@ export function formatFinding(f: Finding): string {
   return s;
 }
 
-export function report(findings: Finding[], header: string, log: (s: string) => void = console.log): number {
+function failTiers(failOn: FailOn): Tier[] {
+  return failOn === 'declared' ? ['declared'] : ['declared', 'undeclared'];
+}
+
+export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {
+  const log = opts.log ?? console.log;
+  const fail = failTiers(opts.failOn ?? 'undeclared');
+  const drifted = findings.filter((f) => fail.includes(f.tier)).length;
+
+  if (opts.json) {
+    log(JSON.stringify({ stack: header, drifted, findings }, null, 2));
+    return drifted === 0 ? 0 : 1;
+  }
+
   const byTier = (t: Tier) => findings.filter((f) => f.tier === t);
   log(`\n=== cdkdrift check: ${header} ===`);
   for (const tier of ORDER) {
@@ -28,12 +47,10 @@ export function report(findings: Finding[], header: string, log: (s: string) => 
     log(`\n[${TIER_TITLES[tier]}] ${items.length}`);
     for (const f of items) log('  ' + formatFinding(f));
   }
-  const drifted = DRIFT_TIERS.reduce((n, t) => n + byTier(t).length, 0);
   const counts = ORDER.map((t) => `${t}=${byTier(t).length}`).join(' ');
-  log(`\nresult: ${drifted === 0 ? 'CLEAN' : `${drifted} drift(s)`} (${counts})`);
+  log(`\nresult: ${drifted === 0 ? 'CLEAN' : `${drifted} drift(s)`} (${counts}; fail-on=${opts.failOn ?? 'undeclared'})`);
   return drifted === 0 ? 0 : 1;
 }
-
 function j(v: unknown): string {
   const s = JSON.stringify(v);
   return s && s.length > 200 ? s.slice(0, 200) + '…' : s;

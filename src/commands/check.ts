@@ -1,41 +1,22 @@
-// `cdkdrift check <stack> [--region r]` — read-only drift check.
-//   loadDesired → per resource: readLive (CC) + getSchemaInfo → classify → report.
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
-import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
-import type { Finding } from '../types.js';
-import { loadDesired } from '../desired/template-adapter.js';
-import { readLive } from '../read/router.js';
-import { getSchemaInfo } from '../schema/schema-strip.js';
-import { classifyResource } from '../diff/classify.js';
+// `cdkdrift check <stack> [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]`
+// Read-only. Reports drift; undeclared findings are filtered against the baseline
+// file (if present) so a blessed stack reports CLEAN.
+import { parseCommonArgs } from '../cli-args.js';
+import { gatherFindings } from './gather.js';
+import { loadBaseline, applyBaseline } from '../baseline/baseline-file.js';
 import { report } from '../report/report.js';
 
 export async function runCheck(args: string[]): Promise<number> {
-  const stackName = args.find((a) => !a.startsWith('-'));
-  const regionIdx = args.indexOf('--region');
-  const region = regionIdx >= 0 ? args[regionIdx + 1] : process.env.AWS_REGION ?? 'us-east-1';
-  if (!stackName) {
-    console.error('usage: cdkdrift check <stack> [--region r]');
+  const a = parseCommonArgs(args);
+  if (!a.stackName) {
+    console.error('usage: cdkdrift check <stack> [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]');
     return 2;
   }
-  const cfn = new CloudFormationClient({ region });
-  const cc = new CloudControlClient({ region });
-
-  const desired = await loadDesired(cfn, stackName, region);
-  const findings: Finding[] = [];
-
-  for (const r of desired.resources) {
-    if (!r.physicalId) {
-      findings.push({ tier: 'skipped', logicalId: r.logicalId, resourceType: r.resourceType, path: '', note: 'no physical id' });
-      continue;
-    }
-    const read = await readLive(cc, r.resourceType, r.physicalId);
-    if (read.skippedReason || !read.live) {
-      findings.push({ tier: 'skipped', logicalId: r.logicalId, resourceType: r.resourceType, path: '', note: read.skippedReason });
-      continue;
-    }
-    const schema = await getSchemaInfo(cfn, r.resourceType);
-    findings.push(...classifyResource(r, read.live, schema));
+  const { findings } = await gatherFindings(a.stackName, a.region);
+  const baseline = a.noBaseline ? undefined : await loadBaseline(a.stackName, a.region);
+  const filtered = applyBaseline(findings, baseline);
+  if (!a.json && !baseline) {
+    console.error('note: no baseline file — showing all non-default undeclared state. Run `cdkdrift accept` to bless the current state.');
   }
-
-  return report(findings, `${stackName} (${region})`);
+  return report(filtered, `${a.stackName} (${a.region})`, { json: a.json, failOn: a.failOn });
 }

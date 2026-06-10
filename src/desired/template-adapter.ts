@@ -15,6 +15,7 @@ export interface Desired {
   stackName: string;
   region: string;
   resources: DesiredResource[];
+  rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
 }
 
 export class YamlTemplateUnsupportedError extends Error {}
@@ -61,7 +62,8 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
     client.send(new DescribeStackResourcesCommand({ StackName: stackName })),
     client.send(new DescribeStacksCommand({ StackName: stackName })),
   ]);
-  const template = parseTemplateBody(tmplRes.TemplateBody ?? '{}') as Record<string, any>;
+  const rawTemplate = tmplRes.TemplateBody ?? '{}';
+  const template = parseTemplateBody(rawTemplate) as Record<string, any>;
   const stack = stkRes.Stacks?.[0];
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';
@@ -87,5 +89,5 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
       declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
     });
   }
-  return { stackName, region, resources };
+  return { stackName, region, resources, rawTemplate };
 }
