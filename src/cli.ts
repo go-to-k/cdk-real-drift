@@ -1,11 +1,51 @@
 #!/usr/bin/env node
-import { runAccept } from "./commands/accept.js";
-// cdk-real-drift CLI entry. Dispatches: check | accept | init.
+// cdk-real-drift CLI entry. Dispatches: check | accept | init (+ help/version).
 // Detect-only — no command writes to AWS (accept/init write only the baseline FILE).
+import { readFileSync } from "node:fs";
+import { runAccept } from "./commands/accept.js";
 import { runCheck } from "./commands/check.js";
+
+const HELP = `cdkrd — drift detection for AWS CDK/CloudFormation, including UNDECLARED
+properties that 'cdk drift' / CloudFormation drift never see. No AWS Config needed.
+
+USAGE
+  cdkrd check  <stack>... | --all   detect drift (read-only)
+  cdkrd accept <stack>... | --all   bless current state into the baseline file
+  cdkrd init   <stack>              first-time baseline (alias of accept)
+
+OPTIONS
+  --region <r>                AWS region (default: $AWS_REGION or us-east-1)
+  --json                      machine-readable output
+  --fail-on declared|undeclared   which tier sets exit 1 (default: undeclared = both)
+  --no-baseline               ignore the baseline; show all non-default undeclared state
+  --all                       all deployed stacks in the region
+  --yes, -y                   skip the baseline-overwrite notice (accept)
+  --help, -h    --version, -v
+
+EXIT CODES
+  0 = clean   1 = drift detected   2 = error
+
+The baseline lives at .cdkrd/<stack>.<region>.json — commit it; review its diff in PRs.`;
+
+function version(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
 
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
+  if (cmd === undefined || cmd === "-h" || cmd === "--help" || cmd === "help") {
+    console.log(HELP);
+    return 0;
+  }
+  if (cmd === "--version" || cmd === "-v") {
+    console.log(version());
+    return 0;
+  }
   switch (cmd) {
     case "check":
       return runCheck(rest);
@@ -13,7 +53,8 @@ async function main(argv: string[]): Promise<number> {
     case "init": // init is accept's first-run alias
       return runAccept(rest);
     default:
-      console.error("usage: cdkrd <check|accept|init> <stack> [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]");
+      console.error(`unknown command: ${cmd}\n`);
+      console.error(HELP);
       return 2;
   }
 }

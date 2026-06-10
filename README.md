@@ -1,81 +1,123 @@
-# cdk-real-drift (private, pre-release) — command: `cdkrd`
+# cdk-real-drift (`cdkrd`)
 
-> Detect when real AWS resources drift from your CDK/CloudFormation IaC —
-> **including properties you never declared**, the gap that `cdk drift`,
-> CloudFormation drift detection, driftctl, and `terraform plan` all miss.
+> Detect when your **real** AWS resources drift from your CDK / CloudFormation IaC —
+> **including properties you never declared**: the gap that `cdk drift`,
+> CloudFormation drift detection, `driftctl`, and `terraform plan` all miss.
 > **No AWS Config required.**
 
-**Status:** experimental, private until first public launch. Not production-ready.
+**Status:** pre-release / experimental. Not yet published. Detect-only (never writes to AWS).
 
 ## Why
 
-`cdk drift` / CloudFormation drift only compare properties that appear in your
-template. If someone changes a setting you never declared (bucket
-`OwnershipControls`, an undeclared SG rule, encryption toggled off), it is
-invisible to those tools. cdk-real-drift reads the **full** live resource state and
-shows the divergence — declared and undeclared alike.
+`cdk drift` and CloudFormation drift detection only compare properties that appear
+in your template. If someone changes a setting you never declared — a bucket's
+`OwnershipControls`, a role's `PermissionsBoundary`, encryption toggled off, an
+extra inline policy — it is **invisible** to those tools.
 
-It does NOT do `cdk diff`'s job (code-vs-template). It is purely a drift tool:
+`cdkrd` reads the **full** live resource state and reports the divergence —
+declared and undeclared alike — against a baseline you bless and commit to git.
+
+It does NOT reimplement `cdk diff` (code-vs-template). It is purely a drift tool:
 **reality vs intent.**
 
-## Commands (MVP, detect-only — no AWS writes)
+## Install / build
 
-| command | does |
-|---|---|
-| `cdkrd check <stack>`  | compare live AWS state vs template (declared) + baseline (undeclared); exit 0/1/2 |
-| `cdkrd accept <stack>` | snapshot current state into the baseline FILE (git-committed) |
-| `cdkrd init <stack>`   | first-time baseline creation |
-
-Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless).
+```bash
+npm install && npm run build      # produces dist/cli.js (bin: cdkrd)
+node dist/cli.js --help
+```
 
 ## Quick start
 
 ```bash
-npm install && npm run build
-
-# first time: bless the current real state as the baseline (writes a git file only)
+# 1) bless the current real state as the baseline (writes a git file only, no AWS writes)
 node dist/cli.js accept MyStack --region us-east-1
 
-# later / in CI: detect drift since the baseline
+# 2) later / in CI: detect drift since the baseline
 node dist/cli.js check MyStack --region us-east-1
-#   exit 0 = clean, 1 = drift, 2 = error
-#   --json                       machine-readable output
-#   --fail-on declared|undeclared   which tier fails CI (default: undeclared = both)
-#   --no-baseline                show all non-default undeclared state (ignore baseline)
 ```
 
-The baseline lives at `.cdkrd/<stack>.<region>.json` — commit it; a PR that
-changes it is a visible, reviewable change to "what real state we accept".
+Example output when someone enabled S3 transfer acceleration out-of-band — a change
+CloudFormation drift would never surface:
 
-## Known limitations (MVP)
+```
+=== cdkrd check: MyStack (us-east-1) ===
 
-- **Declared-property comparison uses a minimal intrinsic resolver.** Complex
-  `Fn::If` / account-principal IAM trust policies (e.g. the CDK bootstrap stack)
-  can show false declared-drift. The differentiator — undeclared detection — is
-  unaffected. (Planned: swap in cdkd's full resolver.)
-- **AWS enriches some declared structures** with sub-fields it didn't ask for
-  (e.g. S3 `BucketEncryption.BucketKeyEnabled`); these can surface as declared
-  drift until per-type sub-field normalization lands.
-- **Schema-based read-only/write-only stripping is top-level only** (nested-path
-  stripping is a follow-up).
-- **Cloud Control API only** for reads — types CC can't read (e.g.
-  `AWS::SNS::TopicPolicy`, `AWS::Budgets::Budget`) are reported as `skipped`, not
-  checked. SDK-override reads are a follow-up.
-- **Sibling-managed inline resources** (a separate `AWS::IAM::Policy` attaching to
-  a role) can surface as undeclared on the role.
-- `Fn::GetAtt`-bearing declared values are reported as `unresolved` (skipped, not
-  drift).
+[DECLARED DRIFT] 0
+[UNDECLARED DRIFT (the differentiator)] 1
+  Data.AccelerateConfiguration (AWS::S3::Bucket) = {"AccelerationStatus":"Enabled"}
+[READ GAP ...] 0
+[UNRESOLVED ...] 0
+[SKIPPED ...] 0
+
+result: 1 drift(s) (declared=0 undeclared=1 readGap=0 unresolved=0 skipped=0; fail-on=undeclared)
+```
+
+Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless). The
+baseline lives at `.cdkrd/<stack>.<region>.json` — commit it; a PR that changes it
+is a visible, reviewable change to "what real state we accept".
+
+## Commands & options
+
+| command | does |
+|---|---|
+| `cdkrd check <stack>... \| --all`  | compare live state vs template (declared) + baseline (undeclared) |
+| `cdkrd accept <stack>... \| --all` | snapshot current undeclared state into the baseline file |
+| `cdkrd init <stack>`               | first-time baseline (alias of `accept`) |
+
+| option | meaning |
+|---|---|
+| `--region <r>` | AWS region (default `$AWS_REGION` or `us-east-1`) |
+| `--json` | machine-readable output |
+| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both) |
+| `--no-baseline` | ignore baseline; show all non-default undeclared state |
+| `--all` | every deployed stack in the region |
+| `--yes`/`-y` | skip the baseline-overwrite notice |
+
+**Exit codes:** `0` clean · `1` drift detected · `2` error. Use in CI:
+
+```yaml
+- run: node dist/cli.js check MyStack --region us-east-1   # fails the job on drift
+```
 
 ## How it stays low-noise
 
-- Read source: Cloud Control API (auto-follows new types) → SDK override for
-  gaps → skip+log.
-- Noise auto-stripped from the CloudFormation **resource schema**
-  (`describe-type` → `readOnlyProperties` / `writeOnlyProperties`, at nested
-  paths too).
-- A few reusable normalizers (intrinsic resolution, policy-doc canonicalization,
-  `aws:*` tags, scalar defaults).
-- Baseline is a git-committed JSON file (`.cdkrd/<stack>.<region>.json`) —
-  zero extra infra, PR-diffable.
+- **Read source:** Cloud Control API (auto-follows new types) → **SDK overrides** for
+  common types Cloud Control can't read → skip + log.
+- **Schema-driven noise strip:** read-only / write-only properties are removed using
+  the CloudFormation resource schema (`describe-type`), at nested paths too.
+- **Reusable normalizers:** IAM-style policy canonicalization (Version / scalar-vs-array
+  / statement order / account-id↔root-ARN), embedded JSON-text, `aws:*` tags
+  (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`).
+- **Fail-closed resolver:** anything not confidently resolvable (e.g. `Fn::GetAtt`,
+  a condition over an unknown) is reported as `unresolved` (skipped) — **never** a
+  fabricated value that would show as false drift.
 
-See [DESIGN.md](DESIGN.md) for the full architecture and rationale.
+### CC-gap types read via SDK overrides
+
+`AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
+`AWS::IAM::Policy`, `AWS::IAM::ManagedPolicy`, `AWS::Lambda::Permission`,
+`AWS::Budgets::Budget`. Other Cloud-Control-unreadable types are reported as
+`skipped` (never silently dropped).
+
+## Known limitations
+
+- Declared comparison uses a focused intrinsic resolver; exotic templates may show
+  some declared properties as `unresolved` (skipped, not false drift — by design).
+- Cloud Control API only for reads beyond the SDK overrides above; unreadable types
+  are `skipped`.
+- `clobber` / `--pre-deploy` (flag a drift your next deploy would overwrite) is on
+  the roadmap; it requires synthesizing the app and is intentionally not in the
+  detect-only MVP.
+
+## Develop
+
+```bash
+npm test            # vitest unit tests
+npm run typecheck   # tsc --noEmit
+npm run lint        # biome
+```
+
+Integration tests (real AWS, self-cleaning) live under `tests/integration/` — see
+[tests/integration/README.md](tests/integration/README.md). Architecture +
+rationale: [DESIGN.md](DESIGN.md).

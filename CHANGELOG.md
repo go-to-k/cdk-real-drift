@@ -4,7 +4,27 @@ All notable changes to cdk-real-drift. Pre-release; private until first public l
 
 ## [Unreleased] — detect-only MVP
 
-### Added
+### Added (community-readiness pass)
+
+- **SDK overrides** for common Cloud-Control-unreadable types: `AWS::S3::BucketPolicy`,
+  `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`,
+  `AWS::IAM::ManagedPolicy`, `AWS::Lambda::Permission`, `AWS::Budgets::Budget`
+  (read off resolved declared properties; unit-tested with aws-sdk-client-mock).
+- **Fail-closed resolver**: CommaDelimitedList / `List<>` params resolve to arrays;
+  `Fn::If` / `Fn::Equals` / `Fn::And` / `Fn::Or` / `Fn::Not` / conditions return
+  `unresolved` when not cleanly evaluable instead of guessing a branch — prevents
+  fabricated values surfacing as false declared drift.
+- **Nested-path schema strip** (read-only / write-only at any depth incl `*`).
+- **Sibling IAM inline-policy suppression** (a role's live `Policies` managed by a
+  separate `AWS::IAM::Policy` is no longer false-undeclared).
+- **Multi-stack**: positional `<stack>...` and `--all`; worst exit code across stacks.
+- **removed-undeclared detection**: a blessed value that disappears is reported.
+- `--help` / `-h`, `--version` / `-v`; `accept` baseline-overwrite notice / `--yes`.
+- Friendly top-level errors (no creds / stack-not-found / access-denied).
+- LICENSE (MIT), GitHub Actions CI, biome lint/format, npm publish config.
+- Test coverage: 71 unit tests; 3 real-AWS integ fixtures (S3 / IAM / Lambda).
+
+### Added (initial MVP)
 
 - `check` command — compares live AWS resource state against the deployed
   CloudFormation template (declared) and the baseline file (undeclared), and
