@@ -1,7 +1,13 @@
 // List deployed CloudFormation stack names in a region (for `--all`).
 import { CloudFormationClient, ListStacksCommand, type StackStatus } from "@aws-sdk/client-cloudformation";
 
-const ACTIVE: StackStatus[] = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE", "IMPORT_COMPLETE", "IMPORT_ROLLBACK_COMPLETE"];
+const ACTIVE: StackStatus[] = [
+  "CREATE_COMPLETE",
+  "UPDATE_COMPLETE",
+  "UPDATE_ROLLBACK_COMPLETE",
+  "IMPORT_COMPLETE",
+  "IMPORT_ROLLBACK_COMPLETE",
+];
 
 export async function listAllStacks(region: string): Promise<string[]> {
   const cfn = new CloudFormationClient({ region });

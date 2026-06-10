@@ -21,11 +21,12 @@ export interface SchemaInfo {
 }
 
 export interface ResolverContext {
-  params: Record<string, string>;
+  params: Record<string, string | string[]>; // CommaDelimitedList / List<> params resolve to arrays
+
   pseudo: Record<string, string>;
   conditions: Record<string, unknown>;
   physIds: Record<string, string>; // logicalId -> physicalId
-  condCache: Map<string, boolean>;
+  condCache: Map<string, unknown>; // true | false | UNRESOLVED (fail-closed)
 }
 
 export interface DesiredResource {

@@ -22,8 +22,13 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
       case "Fn::Sub":
         return resolveSub(v, ctx);
       case "Fn::If": {
+        if (!Array.isArray(v)) return UNRESOLVED;
         const [cond, t, f] = v as [string, unknown, unknown];
-        return evalCondition(cond, ctx) ? resolve(t, ctx) : resolve(f, ctx);
+        const c = evalCondition(String(cond), ctx);
+        // Fail-closed: if the condition can't be cleanly evaluated, do NOT guess a
+        // branch (a wrong branch silently produces false drift) — mark unresolved.
+        if (c === UNRESOLVED) return UNRESOLVED;
+        return c ? resolve(t, ctx) : resolve(f, ctx);
       }
       case "Fn::Join": {
         if (!Array.isArray(v)) return UNRESOLVED;
@@ -44,16 +49,28 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
       case "Fn::GetAtt":
         return UNRESOLVED;
       case "Fn::Equals": {
-        if (!Array.isArray(v)) return false;
+        if (!Array.isArray(v)) return UNRESOLVED;
         const [a, b] = v.map((x) => resolve(x, ctx));
-        return a === b;
+        if (a === UNRESOLVED || b === UNRESOLVED) return UNRESOLVED; // fail-closed
+        return scalarEqual(a, b);
       }
-      case "Fn::And":
-        return Array.isArray(v) && v.every((c) => truthyCond(c, ctx));
-      case "Fn::Or":
-        return Array.isArray(v) && v.some((c) => truthyCond(c, ctx));
-      case "Fn::Not":
-        return Array.isArray(v) ? !truthyCond(v[0], ctx) : false;
+      case "Fn::And": {
+        if (!Array.isArray(v)) return UNRESOLVED;
+        const rs = v.map((c) => condVal(c, ctx));
+        if (rs.some((r) => r === UNRESOLVED)) return UNRESOLVED;
+        return rs.every((r) => r === true);
+      }
+      case "Fn::Or": {
+        if (!Array.isArray(v)) return UNRESOLVED;
+        const rs = v.map((c) => condVal(c, ctx));
+        if (rs.some((r) => r === UNRESOLVED)) return UNRESOLVED;
+        return rs.some((r) => r === true);
+      }
+      case "Fn::Not": {
+        if (!Array.isArray(v)) return UNRESOLVED;
+        const r = condVal(v[0], ctx);
+        return r === UNRESOLVED ? UNRESOLVED : !r;
+      }
       case "Condition":
         return evalCondition(String(v), ctx);
       default:
@@ -68,18 +85,29 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
   return out;
 }
 
-function truthyCond(node: unknown, ctx: ResolverContext): boolean {
-  if (node && typeof node === "object" && "Condition" in (node as object)) {
-    return evalCondition(String((node as Record<string, unknown>)["Condition"]), ctx);
-  }
-  return resolve(node, ctx) === true;
+function scalarEqual(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b);
+  return a === b;
 }
 
-export function evalCondition(name: string, ctx: ResolverContext): boolean {
-  if (ctx.condCache.has(name)) return ctx.condCache.get(name)!;
-  const result = resolve(ctx.conditions[name], ctx) === true;
-  ctx.condCache.set(name, result);
-  return result;
+// Evaluate a condition operand to true | false | UNRESOLVED (fail-closed).
+function condVal(node: unknown, ctx: ResolverContext): boolean | typeof UNRESOLVED {
+  if (node && typeof node === "object" && "Condition" in (node as object)) {
+    const r = evalCondition(String((node as Record<string, unknown>)["Condition"]), ctx);
+    return r === UNRESOLVED ? UNRESOLVED : r === true;
+  }
+  const r = resolve(node, ctx);
+  if (r === true) return true;
+  if (r === false) return false;
+  return UNRESOLVED;
+}
+
+export function evalCondition(name: string, ctx: ResolverContext): boolean | typeof UNRESOLVED {
+  if (ctx.condCache.has(name)) return ctx.condCache.get(name) as boolean | typeof UNRESOLVED;
+  const r = resolve(ctx.conditions[name], ctx);
+  const val = r === true ? true : r === false ? false : UNRESOLVED;
+  ctx.condCache.set(name, val);
+  return val;
 }
 
 export function resolveRef(name: string, ctx: ResolverContext): unknown {
