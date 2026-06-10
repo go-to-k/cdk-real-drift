@@ -25,7 +25,8 @@ describe('policy canonicalization', () => {
   it('normalizePoliciesDeep replaces nested policy docs, leaves non-policy data', () => {
     const out = normalizePoliciesDeep({ Policies: [{ PolicyName: 'p', PolicyDocument: { Statement: [{ Action: 'x', Effect: 'Allow' }] } }], Other: 5 }) as any;
     expect(out.Other).toBe(5);
-    expect(out.Policies[0].PolicyDocument.Version).toBe('2012-10-17');
+    // policy doc was canonicalized (Action scalar -> sorted array), non-policy data untouched
+    expect(out.Policies[0].PolicyDocument.Statement[0].Action).toEqual(['x']);
   });
 
   it('leaves a plain non-policy string untouched', () => {
