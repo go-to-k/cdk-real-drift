@@ -15,6 +15,7 @@ import { parseCfnTemplate } from './yaml-cfn.js';
 export interface Desired {
   stackName: string;
   region: string;
+  accountId: string;
   resources: DesiredResource[];
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
 }
@@ -87,5 +88,5 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
       declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
     });
   }
-  return { stackName, region, resources, rawTemplate };
+  return { stackName, region, accountId, resources, rawTemplate };
 }

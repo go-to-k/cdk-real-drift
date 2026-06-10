@@ -3,10 +3,11 @@ import { canonicalizePolicy, normalizePoliciesDeep } from '../src/normalize/poli
 import { deepEqual } from '../src/diff/drift-calculator.js';
 
 describe('policy canonicalization', () => {
-  it('fills default Version and unifies scalar vs array Action', () => {
-    const a = canonicalizePolicy({ Statement: [{ Effect: 'Allow', Action: 's3:Get' }] });
+  it('unifies scalar vs array Action; does not fabricate Version when absent', () => {
+    const a = canonicalizePolicy({ Version: '2012-10-17', Statement: [{ Effect: 'Allow', Action: 's3:Get' }] });
     const b = canonicalizePolicy({ Version: '2012-10-17', Statement: [{ Action: ['s3:Get'], Effect: 'Allow' }] });
     expect(deepEqual(a, b)).toBe(true);
+    expect(canonicalizePolicy({ Statement: [] })).not.toHaveProperty('Version');
   });
 
   it('is order-independent across statements and within Action arrays', () => {

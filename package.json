@@ -17,8 +17,14 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-budgets": "^3.1065.0",
     "@aws-sdk/client-cloudcontrol": "^3.1065.0",
     "@aws-sdk/client-cloudformation": "^3.1065.0",
+    "@aws-sdk/client-iam": "^3.1065.0",
+    "@aws-sdk/client-lambda": "^3.1065.0",
+    "@aws-sdk/client-s3": "^3.1065.0",
+    "@aws-sdk/client-sns": "^3.1065.0",
+    "@aws-sdk/client-sqs": "^3.1065.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

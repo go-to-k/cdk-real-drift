@@ -24,7 +24,7 @@ export async function gatherFindings(stackName: string, region: string): Promise
       findings.push({ tier: 'skipped', logicalId: r.logicalId, resourceType: r.resourceType, path: '', note: 'no physical id' });
       continue;
     }
-    const read = await readLive(cc, r.resourceType, r.physicalId);
+    const read = await readLive(cc, r, region, desired.accountId);
     if (read.skippedReason || !read.live) {
       findings.push({ tier: 'skipped', logicalId: r.logicalId, resourceType: r.resourceType, path: '', note: read.skippedReason });
       continue;

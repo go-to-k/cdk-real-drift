@@ -85,10 +85,13 @@ function normalizeAccountPrincipal(v: unknown): unknown {
 
 export function canonicalizePolicy(doc: Record<string, unknown>): Record<string, unknown> {
   const statements = Array.isArray(doc.Statement) ? doc.Statement : [doc.Statement];
-  return {
-    Version: doc.Version ?? '2012-10-17',
-    Statement: statements.map(canonicalizeStatement).sort(byJson),
-  };
+  const out: Record<string, unknown> = { Statement: statements.map(canonicalizeStatement).sort(byJson) };
+  // Keep Version only if present. Filling a default would create a false
+  // declared-drift when the template omits Version but AWS stored a literal
+  // (e.g. legacy "2008-10-17"); under subset comparison an absent declared
+  // Version simply isn't compared, which is the correct outcome.
+  if (doc.Version !== undefined) out.Version = doc.Version;
+  return out;
 }
 
 // Canonicalize an embedded JSON string (e.g. ECR LifecyclePolicyText) so that
