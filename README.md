@@ -28,6 +28,44 @@ It does NOT do `cdk diff`'s job (code-vs-template). It is purely a drift tool:
 
 Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless).
 
+## Quick start
+
+```bash
+npm install && npm run build
+
+# first time: bless the current real state as the baseline (writes a git file only)
+node dist/cli.js accept MyStack --region us-east-1
+
+# later / in CI: detect drift since the baseline
+node dist/cli.js check MyStack --region us-east-1
+#   exit 0 = clean, 1 = drift, 2 = error
+#   --json                       machine-readable output
+#   --fail-on declared|undeclared   which tier fails CI (default: undeclared = both)
+#   --no-baseline                show all non-default undeclared state (ignore baseline)
+```
+
+The baseline lives at `.cdkdrift/<stack>.<region>.json` — commit it; a PR that
+changes it is a visible, reviewable change to "what real state we accept".
+
+## Known limitations (MVP)
+
+- **Declared-property comparison uses a minimal intrinsic resolver.** Complex
+  `Fn::If` / account-principal IAM trust policies (e.g. the CDK bootstrap stack)
+  can show false declared-drift. The differentiator — undeclared detection — is
+  unaffected. (Planned: swap in cdkd's full resolver.)
+- **AWS enriches some declared structures** with sub-fields it didn't ask for
+  (e.g. S3 `BucketEncryption.BucketKeyEnabled`); these can surface as declared
+  drift until per-type sub-field normalization lands.
+- **Schema-based read-only/write-only stripping is top-level only** (nested-path
+  stripping is a follow-up).
+- **Cloud Control API only** for reads — types CC can't read (e.g.
+  `AWS::SNS::TopicPolicy`, `AWS::Budgets::Budget`) are reported as `skipped`, not
+  checked. SDK-override reads are a follow-up.
+- **Sibling-managed inline resources** (a separate `AWS::IAM::Policy` attaching to
+  a role) can surface as undeclared on the role.
+- `Fn::GetAtt`-bearing declared values are reported as `unresolved` (skipped, not
+  drift).
+
 ## How it stays low-noise
 
 - Read source: Cloud Control API (auto-follows new types) → SDK override for
