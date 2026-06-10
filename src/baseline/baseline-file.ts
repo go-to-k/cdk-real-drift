@@ -58,16 +58,35 @@ export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
 }
 
 /**
- * Suppress undeclared findings that exactly match a blessed baseline entry.
- * Undeclared findings with a changed value, or a new path, survive (= real drift).
+ * Reconcile undeclared findings against the blessed baseline:
+ *  - an undeclared finding matching a blessed entry (same value) is suppressed;
+ *  - a changed value / new path survives (= real drift);
+ *  - a blessed entry with NO corresponding current undeclared value is reported as
+ *    a removal (drift in the other direction — something blessed disappeared).
  * Non-undeclared findings pass through untouched.
  */
 export function applyBaseline(findings: Finding[], baseline: BaselineFile | undefined): Finding[] {
   if (!baseline) return findings;
   const blessed = baseline.accepted;
-  return findings.filter((f) => {
+  const kept = findings.filter((f) => {
     if (f.tier !== "undeclared") return true;
     const match = blessed.find((a) => a.logicalId === f.logicalId && a.path === f.path && deepEqual(a.value, f.actual));
     return match === undefined;
   });
+  // removed: blessed entries whose path is no longer present in any current undeclared finding
+  const currentPaths = new Set(findings.filter((f) => f.tier === "undeclared").map((f) => `${f.logicalId}.${f.path}`));
+  for (const a of blessed) {
+    if (!currentPaths.has(`${a.logicalId}.${a.path}`)) {
+      kept.push({
+        tier: "undeclared",
+        logicalId: a.logicalId,
+        resourceType: a.resourceType,
+        path: a.path,
+        desired: a.value,
+        actual: undefined,
+        note: "blessed value removed since accept",
+      });
+    }
+  }
+  return kept;
 }

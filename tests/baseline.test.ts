@@ -45,6 +45,13 @@ describe("baseline", () => {
     expect(applyBaseline([undeclared("A", "P", 1)], undefined)).toHaveLength(1);
   });
 
+  it("reports a blessed value that was removed since accept", () => {
+    const b = baseline([{ logicalId: "A", resourceType: "AWS::X::Y", path: "P", value: ["x"] }]);
+    const out = applyBaseline([], b); // nothing undeclared now
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: "undeclared", path: "P", note: "blessed value removed since accept" });
+  });
+
   it("hashTemplate is stable + prefixed", () => {
     expect(hashTemplate("{}")).toBe(hashTemplate("{}"));
     expect(hashTemplate("{}")).toMatch(/^sha256:[0-9a-f]{64}$/);
