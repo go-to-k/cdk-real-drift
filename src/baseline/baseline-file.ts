@@ -1,4 +1,4 @@
-// Git-committed baseline file: .cdkdrift/<stack>.<region>.json
+// Git-committed baseline file: .cdkrd/<stack>.<region>.json
 // Stores the BLESSED undeclared property values (the only thing with no other
 // source of truth — declared desired comes live from GetTemplate). `check`
 // reports an undeclared finding only when it differs from / is absent in the
@@ -26,7 +26,7 @@ export interface BaselineFile {
 }
 
 export function baselinePath(stackName: string, region: string): string {
-  return `.cdkdrift/${stackName}.${region}.json`;
+  return `.cdkrd/${stackName}.${region}.json`;
 }
 
 export function hashTemplate(rawTemplate: string): string {

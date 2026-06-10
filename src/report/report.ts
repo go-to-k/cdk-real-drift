@@ -41,7 +41,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
 
   const byTier = (t: Tier) => findings.filter((f) => f.tier === t);
-  log(`\n=== cdkdrift check: ${header} ===`);
+  log(`\n=== cdkrd check: ${header} ===`);
   for (const tier of ORDER) {
     const items = byTier(tier);
     log(`\n[${TIER_TITLES[tier]}] ${items.length}`);

@@ -1,8 +1,8 @@
 {
-  "name": "cdkdrift-integ-basic",
+  "name": "cdk-realdrift-integ-basic",
   "private": true,
   "version": "0.0.0",
-  "description": "Fixture CDK app for the cdkdrift basic integration test. Run via verify.sh.",
+  "description": "Fixture CDK app for the cdk-realdrift basic integration test. Run via verify.sh.",
   "devDependencies": {
     "aws-cdk": "^2.0.0",
     "aws-cdk-lib": "^2.0.0",

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to cdkdrift. Pre-release; private until first public launch.
+All notable changes to cdk-realdrift. Pre-release; private until first public launch.
 
 ## [Unreleased] — detect-only MVP
 
@@ -11,7 +11,7 @@ All notable changes to cdkdrift. Pre-release; private until first public launch.
   reports drift in tiers: `declared`, `undeclared` (the differentiator),
   `readGap`, `unresolved`, `skipped`. Exit 0 clean / 1 drift / 2 error.
 - `accept` / `init` commands — write the current undeclared state to the
-  git-committed baseline file (`.cdkdrift/<stack>.<region>.json`). No AWS writes.
+  git-committed baseline file (`.cdkrd/<stack>.<region>.json`). No AWS writes.
 - `--json`, `--fail-on declared|undeclared`, `--region`, `--no-baseline` flags.
 - Reads via Cloud Control API `GetResource`; full-state including undeclared
   properties. Read-only/write-only noise stripped from the CloudFormation

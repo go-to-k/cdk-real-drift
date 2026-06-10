@@ -1,4 +1,4 @@
-// Minimal CDK app for the cdkdrift basic integration test.
+// Minimal CDK app for the cdk-realdrift basic integration test.
 // One versioned S3 bucket (CC-API readable, undeclared-property-rich).
 import { App, Stack, RemovalPolicy } from 'aws-cdk-lib';
 import { Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';

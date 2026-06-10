@@ -1,4 +1,4 @@
-# cdkdrift (working name — private, pre-release)
+# cdk-realdrift (private, pre-release) — command: `cdkrd`
 
 > Detect when real AWS resources drift from your CDK/CloudFormation IaC —
 > **including properties you never declared**, the gap that `cdk drift`,
@@ -12,7 +12,7 @@
 `cdk drift` / CloudFormation drift only compare properties that appear in your
 template. If someone changes a setting you never declared (bucket
 `OwnershipControls`, an undeclared SG rule, encryption toggled off), it is
-invisible to those tools. cdkdrift reads the **full** live resource state and
+invisible to those tools. cdk-realdrift reads the **full** live resource state and
 shows the divergence — declared and undeclared alike.
 
 It does NOT do `cdk diff`'s job (code-vs-template). It is purely a drift tool:
@@ -22,9 +22,9 @@ It does NOT do `cdk diff`'s job (code-vs-template). It is purely a drift tool:
 
 | command | does |
 |---|---|
-| `cdkdrift check <stack>`  | compare live AWS state vs template (declared) + baseline (undeclared); exit 0/1/2 |
-| `cdkdrift accept <stack>` | snapshot current state into the baseline FILE (git-committed) |
-| `cdkdrift init <stack>`   | first-time baseline creation |
+| `cdkrd check <stack>`  | compare live AWS state vs template (declared) + baseline (undeclared); exit 0/1/2 |
+| `cdkrd accept <stack>` | snapshot current state into the baseline FILE (git-committed) |
+| `cdkrd init <stack>`   | first-time baseline creation |
 
 Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless).
 
@@ -44,7 +44,7 @@ node dist/cli.js check MyStack --region us-east-1
 #   --no-baseline                show all non-default undeclared state (ignore baseline)
 ```
 
-The baseline lives at `.cdkdrift/<stack>.<region>.json` — commit it; a PR that
+The baseline lives at `.cdkrd/<stack>.<region>.json` — commit it; a PR that
 changes it is a visible, reviewable change to "what real state we accept".
 
 ## Known limitations (MVP)
@@ -75,7 +75,7 @@ changes it is a visible, reviewable change to "what real state we accept".
   paths too).
 - A few reusable normalizers (intrinsic resolution, policy-doc canonicalization,
   `aws:*` tags, scalar defaults).
-- Baseline is a git-committed JSON file (`.cdkdrift/<stack>.<region>.json`) —
+- Baseline is a git-committed JSON file (`.cdkrd/<stack>.<region>.json`) —
   zero extra infra, PR-diffable.
 
 See [DESIGN.md](DESIGN.md) for the full architecture and rationale.

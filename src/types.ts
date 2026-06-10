@@ -1,4 +1,4 @@
-// Shared types for cdkdrift.
+// Shared types for cdk-realdrift.
 
 export type Tier = 'declared' | 'undeclared' | 'readGap' | 'unresolved' | 'skipped';
 

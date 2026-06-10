@@ -329,7 +329,7 @@ async function main(): Promise<number> {
 
   // report
   const line = (s: string) => console.log('  ' + s);
-  console.log(`\n=== cdkdrift check: ${stackName} (${region}) ===`);
+  console.log(`\n=== cdkrd check: ${stackName} (${region}) ===`);
   section('CLOBBER', []); // pre-deploy only — not in this slice
   section('DECLARED DRIFT', tiers.declared);
   section('UNDECLARED DRIFT (the differentiator)', tiers.undeclared);
