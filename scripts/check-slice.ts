@@ -221,6 +221,24 @@ async function getSchema(type: string) {
   }
 }
 
+// ---------- noise normalizers (slice fixes A1-A4) ----------
+// A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
+const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
+  'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+};
+// A1: trivially-empty/off values AWS returns for unset features (suppress as undeclared).
+function isTrivialEmpty(v: unknown): boolean {
+  if (v === false || v === '') return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (v && typeof v === 'object') return Object.keys(v).length === 0;
+  return false;
+}
+// A2: a {Key,Value}[] tag list whose every element is an AWS-managed (aws:*) tag.
+function isAllAwsTags(v: unknown): boolean {
+  return Array.isArray(v) && v.length > 0 &&
+    v.every((t) => t && typeof t === 'object' && typeof (t as any).Key === 'string' && (t as any).Key.startsWith('aws:'));
+}
+
 // ---------- main ----------
 function parseTemplateBody(body: string): any {
   try { return JSON.parse(body); } catch { /* YAML */ }
@@ -257,7 +275,7 @@ async function main(): Promise<number> {
     condCache: new Map(),
   };
 
-  const tiers = { declared: [] as string[], undeclared: [] as string[], skipped: [] as string[], unresolved: [] as string[] };
+  const tiers = { declared: [] as string[], undeclared: [] as string[], skipped: [] as string[], unresolved: [] as string[], readGap: [] as string[] };
 
   for (const [logicalId, res] of Object.entries(template.Resources ?? {}) as [string, any][]) {
     const type = res.Type as string;
@@ -284,23 +302,27 @@ async function main(): Promise<number> {
     const declaredRaw = (res.Properties ?? {}) as Record<string, unknown>;
     const declared = pruneNoValue(resolve(declaredRaw, ctx)) as Record<string, unknown>;
 
-    // declared drift: only compare declared keys that fully resolved & aren't writeOnly
-    const declaredComparable: Record<string, unknown> = {};
+    // declared drift: compare each fully-resolved, non-writeOnly declared key.
+    // A3: a declared key absent from the live read is a CC-API read gap, NOT drift.
     for (const [k, v] of Object.entries(declared)) {
       if (schema.writeOnly.has(k)) continue;
       if (hasUnresolved(v)) { tiers.unresolved.push(`${logicalId}.${k} (${type})`); continue; }
-      declaredComparable[k] = v;
-    }
-    for (const d of calculateResourceDrift(declaredComparable, live)) {
-      tiers.declared.push(`${logicalId}.${d.path} (${type})\n      desired=${j(d.stateValue)}\n      actual =${j(d.awsValue)}`);
+      if (!(k in live)) { tiers.readGap.push(`${logicalId}.${k} (${type}) — declared but not returned by live read`); continue; }
+      for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
+        tiers.declared.push(`${logicalId}.${d.path} (${type})\n      desired=${j(d.stateValue)}\n      actual =${j(d.awsValue)}`);
+      }
     }
 
-    // undeclared: live keys not declared, minus writeOnly, minus schema-default matches, minus aws:* tags
+    // undeclared: live keys not declared, after subtracting noise (A1/A2/A4 + identity).
+    const knownDef = KNOWN_DEFAULTS[type] ?? {};
     for (const [k, v] of Object.entries(live)) {
       if (k in declared) continue;
       if (schema.writeOnly.has(k)) continue;
-      if (k in schema.defaults && deepEqual(v, schema.defaults[k])) continue;
-      if (k === 'Tags' && Array.isArray(v) && v.every((t: any) => typeof t?.Key === 'string' && t.Key.startsWith('aws:'))) continue;
+      if (k in schema.defaults && deepEqual(v, schema.defaults[k])) continue; // schema default
+      if (k in knownDef && deepEqual(v, knownDef[k])) continue;               // A4 known default
+      if (isAllAwsTags(v)) continue;                                          // A2 aws:* tags (any key)
+      if (v === physId) continue;                                             // identity == physical id
+      if (isTrivialEmpty(v)) continue;                                        // A1 trivial empty/off
       tiers.undeclared.push(`${logicalId}.${k} (${type}) = ${j(v)}`);
     }
   }
@@ -311,10 +333,11 @@ async function main(): Promise<number> {
   section('CLOBBER', []); // pre-deploy only — not in this slice
   section('DECLARED DRIFT', tiers.declared);
   section('UNDECLARED DRIFT (the differentiator)', tiers.undeclared);
+  section('READ GAP (declared but not returned by live read — not drift)', tiers.readGap);
   section('UNRESOLVED (declared paths needing GetAtt — skipped, not drift)', tiers.unresolved);
   section('SKIPPED (CC API unsupported / no phys id)', tiers.skipped);
   const drifted = tiers.declared.length + tiers.undeclared.length;
-  console.log(`\nresult: ${drifted === 0 ? 'CLEAN' : drifted + ' drift(s)'} (declared=${tiers.declared.length} undeclared=${tiers.undeclared.length} unresolved=${tiers.unresolved.length} skipped=${tiers.skipped.length})`);
+  console.log(`\nresult: ${drifted === 0 ? 'CLEAN' : drifted + ' drift(s)'} (declared=${tiers.declared.length} undeclared=${tiers.undeclared.length} readGap=${tiers.readGap.length} unresolved=${tiers.unresolved.length} skipped=${tiers.skipped.length})`);
   return drifted === 0 ? 0 : 1;
 
   function section(title: string, items: string[]) {
