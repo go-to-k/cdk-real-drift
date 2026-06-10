@@ -96,7 +96,7 @@ export async function loadDesired(client: CloudFormationClient, stackName: strin
   return { stackName, region, accountId, resources, rawTemplate };
 }
 
-function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {
+export function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {
   const roles = new Set<string>();
   for (const res of Object.values(resources)) {
     if (res?.Type !== "AWS::IAM::Policy") continue;
