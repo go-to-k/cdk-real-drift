@@ -1,26 +1,17 @@
-// Read source router (per resource TYPE):
-//   CC API GetResource (default, auto-follows new types)
-//   → SDK override readCurrentState (only CC-gap types from the deny list)
-//   → skip + log (neither can read).
-//
-// Returns full live property model per resource; declared/undeclared labeling
-// happens LATER (not here — that is a template-comparison concern).
-//
-// COPY from cdkd: provisioning/cloud-control-provider.ts readCurrentState,
-//   analyzer/drift-cc-api-deny-list.ts, a few provider readCurrentState (s3/iam/lambda).
+// Read source router. Slice scope: Cloud Control API GetResource only.
+// (SDK-override readCurrentState for CC-gap types is a later slice.)
+import { GetResourceCommand, type CloudControlClient } from '@aws-sdk/client-cloudcontrol';
 
 export interface ReadResult {
-  logicalId: string;
-  resourceType: string;
-  physicalId: string;
-  live?: Record<string, unknown>; // undefined when skipped
-  skippedReason?: string;
+  live?: Record<string, unknown>; // CC API GetResource model (un-stripped)
+  skippedReason?: string; // set when the resource could not be read
 }
 
-export async function readStack(
-  _resources: ReadonlyArray<{ logicalId: string; resourceType: string; physicalId: string }>,
-  _region: string,
-): Promise<ReadResult[]> {
-  // TODO(phase2): CC API default → SDK override → skip+log
-  throw new Error('not implemented');
+export async function readLive(client: CloudControlClient, resourceType: string, identifier: string): Promise<ReadResult> {
+  try {
+    const g = await client.send(new GetResourceCommand({ TypeName: resourceType, Identifier: identifier }));
+    return { live: JSON.parse(g.ResourceDescription?.Properties ?? '{}') };
+  } catch (e) {
+    return { skippedReason: `CC API: ${(e as Error).name}` };
+  }
 }

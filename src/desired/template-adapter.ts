@@ -1,20 +1,15 @@
-// NEW. Builds the "declared desired" view of a deployed stack:
-//   GetTemplate            → the deployed CloudFormation template
-//   DescribeStackResources → logicalId → physicalId map (+ resourceType)
-//   intrinsic resolution   → resolve Ref/GetAtt/Sub/If against live phys-ids
-//
-// This is the key retarget vs cdkd: cdkd resolves from its OWN state; here the
-// desired comes live from the deployed template + the live stack's phys-id map.
-//
-// COPY from cdkd: deployment/intrinsic-function-resolver.ts (feed phys-ids into
-//   ResolverContext.resources; conditions from the template's Conditions block).
-
-export interface DesiredResource {
-  logicalId: string;
-  resourceType: string;
-  physicalId: string;
-  declared: Record<string, unknown>; // resolved declared properties (intrinsics evaluated)
-}
+// Builds the "declared desired" view of a deployed stack:
+//   GetTemplate + DescribeStackResources (phys-id map) + DescribeStacks (params)
+//   → intrinsic-resolve each resource's declared properties.
+// Slice scope: JSON templates (CDK app output). YAML support is a follow-up.
+import {
+  GetTemplateCommand,
+  DescribeStackResourcesCommand,
+  DescribeStacksCommand,
+  type CloudFormationClient,
+} from '@aws-sdk/client-cloudformation';
+import type { DesiredResource, ResolverContext } from '../types.js';
+import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 
 export interface Desired {
   stackName: string;
@@ -22,9 +17,75 @@ export interface Desired {
   resources: DesiredResource[];
 }
 
-export async function loadDesired(_stack: string, _region: string): Promise<Desired> {
-  // TODO(phase2): GetTemplate + DescribeStackResources + resolve.
-  //   IMPORTANT: scope declared-prop extraction to each logical id
-  //   (Phase 1 lesson: an unscoped grab cross-contaminates and yields false drift).
-  throw new Error('not implemented');
+export class YamlTemplateUnsupportedError extends Error {}
+
+export function parseTemplateBody(body: string): Record<string, unknown> {
+  const trimmed = body.trimStart();
+  if (trimmed.startsWith('{')) return JSON.parse(body) as Record<string, unknown>;
+  throw new YamlTemplateUnsupportedError('template is YAML; slice supports JSON templates (CDK app output)');
+}
+
+export function buildResolverContext(
+  template: Record<string, any>,
+  stackParams: Record<string, string>,
+  physIds: Record<string, string>,
+  region: string,
+  accountId: string,
+  stackName: string,
+  stackId: string,
+): ResolverContext {
+  const params: Record<string, string> = {};
+  for (const [k, def] of Object.entries((template.Parameters ?? {}) as Record<string, { Default?: unknown }>)) {
+    if (def && 'Default' in def) params[k] = String(def.Default);
+  }
+  Object.assign(params, stackParams); // deployed values win over template defaults
+  return {
+    params,
+    pseudo: {
+      'AWS::Region': region,
+      'AWS::AccountId': accountId,
+      'AWS::Partition': 'aws',
+      'AWS::URLSuffix': 'amazonaws.com',
+      'AWS::StackName': stackName,
+      'AWS::StackId': stackId,
+    },
+    conditions: template.Conditions ?? {},
+    physIds,
+    condCache: new Map(),
+  };
+}
+
+export async function loadDesired(client: CloudFormationClient, stackName: string, region: string): Promise<Desired> {
+  const [tmplRes, resRes, stkRes] = await Promise.all([
+    client.send(new GetTemplateCommand({ StackName: stackName })),
+    client.send(new DescribeStackResourcesCommand({ StackName: stackName })),
+    client.send(new DescribeStacksCommand({ StackName: stackName })),
+  ]);
+  const template = parseTemplateBody(tmplRes.TemplateBody ?? '{}') as Record<string, any>;
+  const stack = stkRes.Stacks?.[0];
+  const stackId = stack?.StackId ?? '';
+  const accountId = stackId.split(':')[4] ?? '';
+
+  const physIds: Record<string, string> = {};
+  const typeOf: Record<string, string> = {};
+  for (const r of resRes.StackResources ?? []) {
+    if (r.LogicalResourceId && r.PhysicalResourceId) physIds[r.LogicalResourceId] = r.PhysicalResourceId;
+    if (r.LogicalResourceId && r.ResourceType) typeOf[r.LogicalResourceId] = r.ResourceType;
+  }
+  const stackParams: Record<string, string> = {};
+  for (const p of stack?.Parameters ?? []) if (p.ParameterKey) stackParams[p.ParameterKey] = p.ParameterValue ?? '';
+
+  const ctx = buildResolverContext(template, stackParams, physIds, region, accountId, stackName, stackId);
+
+  const resources: DesiredResource[] = [];
+  for (const [logicalId, res] of Object.entries((template.Resources ?? {}) as Record<string, any>)) {
+    if (res.Type === 'AWS::CDK::Metadata') continue;
+    resources.push({
+      logicalId,
+      resourceType: res.Type as string,
+      physicalId: physIds[logicalId],
+      declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
+    });
+  }
+  return { stackName, region, resources };
 }
