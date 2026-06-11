@@ -225,7 +225,7 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                  |
 | `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
-| `--verbose` / `-v`               | (check) expand the informational tiers (`readGap` / `unresolved` / `skipped`) from the `info:` summary line to full lists     |
+| `--verbose` / `-v`               | (check) expand the informational tiers (`readGap` / `unresolved` / `skipped` / `ignored`) from the `info:` summary line to full lists |
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
 | `--all`                          | every deployed stack in the region                                                                                            |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
@@ -244,12 +244,34 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   changes without rubber-stamping the rest.
 - **`check` with no baseline yet** offers to bless the current state on the spot.
 
+### Ignoring externally-managed properties
+
+Some properties are _legitimately_ rewritten by another system — Application Auto
+Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity. A
+blessed value snapshot would re-flag every move. List those paths in a
+git-committed `.cdkrd/config.json` instead:
+
+```jsonc
+{
+  "ignore": [
+    "*.DesiredCount", // any stack, any logical id
+    "Prod*:Fn*.ReservedConcurrentExecutions" // only stacks matching Prod*
+  ]
+}
+```
+
+Rules glob (`*` / `?`) against `<logicalId>.<path>`; a parent rule covers child
+paths. Matching findings move to the informational `ignored` tier — still visible
+on the `info:` line and under `--verbose`, never exit-affecting, and excluded from
+`revert` plans and `accept`. A **deleted resource is never ignorable**.
+
 ## Output
 
 Drift tiers (`deleted` / `declared` / `undeclared`) are always printed in full —
-they are the point. Informational tiers (`readGap` / `unresolved` / `skipped`) fold
-into a one-line `info:` footer with per-reason counts; `--verbose` expands them.
-Zero-count tiers are omitted. Greppable: `^result:` is the verdict, `^info:` the rest.
+they are the point. Informational tiers (`readGap` / `unresolved` / `skipped` /
+`ignored`) fold into a one-line `info:` footer with per-reason counts; `--verbose`
+expands them. Zero-count tiers are omitted. Greppable: `^result:` is the verdict,
+`^info:` the rest.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -266,7 +288,7 @@ result: 1 drift(s) (declared=1)
 
 `--json` emits `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`.
 Each finding has a stable shape: `tier` (`deleted` | `declared` | `undeclared` |
-`readGap` | `unresolved` | `skipped`), `logicalId`, `resourceType`, `path`,
+`readGap` | `unresolved` | `skipped` | `ignored`), `logicalId`, `resourceType`, `path`,
 `desired`, `actual`, `note`, `physicalId`, `constructPath`. It always carries every
 finding regardless of `--verbose`. After publication this shape is treated as a
 backward-compatible API.
@@ -317,6 +339,12 @@ out of band is reported via baseline removal-detection.
 **Why does the reverted value not match my template character-for-character?**
 Revert writes the canonical (structurally compared) form. It is semantically
 identical; ordering and scalar-vs-array may differ.
+
+**A property keeps drifting because an autoscaler manages it — do I have to
+re-accept forever?**
+No — list it in `.cdkrd/config.json`
+(see [Ignoring externally-managed properties](#ignoring-externally-managed-properties)).
+It moves to the informational `ignored` tier: visible, never exit-affecting.
 
 **Is it safe to run in CI / on production accounts?**
 `check` and `accept` make read-only AWS calls (plus a local baseline file write for
