@@ -187,7 +187,9 @@ checked.
 - **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
 - **revert/** — the write path (section 7): **plan.ts**, **apply.ts** (CC UpdateResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
-- **report/report.ts** — tiered text + JSON + exit code. **aws-errors.ts** — `isStackNotDeployed` etc. **types.ts** — shared types.
+- **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
+  TTY-only semantic colors (R43). **aws-errors.ts** — `isStackNotDeployed` etc.
+  **types.ts** — shared types.
 
 ## 5. Intrinsic resolver (fail-closed + live-attr GetAtt)
 
@@ -505,6 +507,13 @@ so the two never duplicate); `^result:` stays greppable, but the formal
 machine-readable contract is `--json` (the `info:` footer may span lines). `--json`
 is unaffected — it always carries every finding. A `Custom::*` resource is `skipped`
 without any API call (note: `custom resource — no cloud-side model to read`).
+**Color (R43):** output is colorized via semantic helpers
+([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
+yellow undeclared tier, dim informational footers — ONLY when stdout is a real
+TTY and `NO_COLOR` is unset. Piped / CI / `--json` output is byte-identical
+plain text (the helpers are the identity), so the greppable invariant holds;
+`FORCE_COLOR` is deliberately ignored. The pure formatters (`formatFinding`'s
+ids, `formatPlan`) stay plain; styling happens at the printing edge.
 
 A declared **top-level write-only** property (e.g. an IAM Role's
 `AssumeRolePolicyDocument`) is surfaced as a `readGap` (note: `write-only — cannot
