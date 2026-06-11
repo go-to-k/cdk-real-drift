@@ -1,4 +1,4 @@
-// `cdkrd revert [<stack>...] [--all] [--app ...] [--region r] [--profile p]
+// `cdkrd revert [<stack>...] [--app ...] [--region r] [--profile p]
 //              [--dry-run] [--yes]`
 // The ONLY AWS-mutating command. Reverts drift to its desired value:
 //   declared   -> deployed-template value
@@ -30,14 +30,16 @@ export async function runRevert(args: string[]): Promise<number> {
     return 2;
   }
 
-  const stacks = await resolveStacks(a);
-  if (stacks.length === 0) {
-    console.error(
-      'usage: cdkrd revert <stack>... | --all | (CDK app dir / --app) [--region r] [--profile p] [--dry-run] [--yes]'
-    );
-    if (a.all && !a.region)
-      console.error('  (--all needs a region: pass --region or set AWS_REGION)');
+  let stacks;
+  try {
+    stacks = await resolveStacks(a);
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
     return 2;
+  }
+  if (stacks.length === 0) {
+    console.error('note: the CDK app defines no stacks — nothing to revert');
+    return 0;
   }
 
   let worst = 0;

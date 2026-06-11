@@ -11,12 +11,15 @@ const HELP = `cdkrd — drift detection + revert for AWS CDK/CloudFormation, inc
 UNDECLARED properties that 'cdk drift' / CloudFormation drift never see. No AWS Config.
 
 USAGE
-  cdkrd check  [<stack>...] [--all]   detect drift (read-only)
-  cdkrd accept [<stack>...] [--all]   bless current state into the baseline file
-  cdkrd revert [<stack>...] [--all]   write the desired value back to AWS (confirms)
+  cdkrd check  [<stack>...]   detect drift (read-only)
+  cdkrd accept [<stack>...]   bless current state into the baseline file
+  cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
-  With no stack and no --all, the CDK app is synthesized (--app / cdk.json) and
-  every stack it defines is targeted.
+  cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
+  pre-synthesized cdk.out) to discover stacks. With no stack argument, every
+  stack the app defines is targeted; a <stack> arg (exact or a *?-glob) selects
+  among them. The drift comparison itself reads each stack's DEPLOYED template +
+  live state from AWS.
 
 OPTIONS
   --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
@@ -32,7 +35,6 @@ OPTIONS
                               (not just changes since accept)
   --pre-deploy                (check) compare live state vs the LOCAL synth template
                               — the declared drift your next deploy would overwrite
-  --all                       all deployed stacks in the region
   --dry-run                   (revert) print the plan; make no changes
   --remove-unblessed          (revert) on a stack with NO baseline, REMOVE undeclared
                               drift (default: refuse — run \`cdkrd accept\` first)

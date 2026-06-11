@@ -31,7 +31,6 @@ describe('parseCommonArgs', () => {
     try {
       const a = parseCommonArgs(['S']);
       expect(a.failOn).toBe('undeclared');
-      expect(a.all).toBe(false);
       expect(a.yes).toBe(false);
       expect(a.showAll).toBe(false);
       expect(a.region).toBeUndefined(); // no silent us-east-1 default
@@ -41,8 +40,7 @@ describe('parseCommonArgs', () => {
     }
   });
 
-  it('recognizes --all, --show-all, --yes/-y, --pre-deploy', () => {
-    expect(parseCommonArgs(['--all']).all).toBe(true);
+  it('recognizes --show-all, --yes/-y, --pre-deploy', () => {
     expect(parseCommonArgs(['S', '--show-all']).showAll).toBe(true);
     expect(parseCommonArgs(['S', '-y']).yes).toBe(true);
     expect(parseCommonArgs(['S', '--yes']).yes).toBe(true);

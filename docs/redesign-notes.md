@@ -66,9 +66,15 @@ authentically a CDK tool — and earn the name — we synth the CDK app with
   to `$CDK_APP` then `cdk.json`'s `"app"`.
 
 Synth is the convenience/power layer; the drift COMPARISON itself is unchanged
-(declared vs the DEPLOYED template, undeclared vs baseline). Explicit
-`cdkrd check <stack>` with no app still works synth-free (CI / cron / fleet), with
-construct paths from the deployed template's `aws:cdk:path` Metadata when present.
+(declared vs the DEPLOYED template, undeclared vs baseline).
+
+**Update (R33):** cdkrd is now **CDK-only** — every run resolves the app (synth or a
+pre-synthesized `cdk.out`) and operates only on the stacks the app defines. The
+earlier "explicit `cdkrd check <stack>` with no app works synth-free" mode and
+`--all` (CloudFormation `ListStacks` region scan) were removed: a no-app /
+arbitrary-deployed-stack path is no longer supported. The COMPARISON is still
+deployed-template vs live (synth only decides scope + construct-path labels), so the
+core thesis is unchanged.
 
 ## Kept (re-validated, not changing)
 

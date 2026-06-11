@@ -1,4 +1,4 @@
-// `cdkrd check [<stack>...] [--all] [--region r] [--profile p] [--app ...] [-c k=v]
+// `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
 //             [--json] [--fail-on declared|undeclared] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
@@ -49,14 +49,16 @@ export async function runCheck(args: string[]): Promise<number> {
     return 2;
   }
 
-  const stacks = await resolveStacks(a);
-  if (stacks.length === 0) {
-    console.error(
-      'usage: cdkrd check <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--profile p] [--json] [--fail-on declared|undeclared] [--show-all]'
-    );
-    if (a.all && !a.region)
-      console.error('  (--all needs a region: pass --region or set AWS_REGION)');
+  let stacks;
+  try {
+    stacks = await resolveStacks(a);
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
     return 2;
+  }
+  if (stacks.length === 0) {
+    console.error('note: the CDK app defines no stacks — nothing to check');
+    return 0;
   }
 
   // --pre-deploy: synth the local app once and use each stack's synth template as

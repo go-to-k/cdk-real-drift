@@ -4,7 +4,7 @@
 > launch. This document is the single self-contained map of the whole tool: what it
 > is, every moving part, the design decisions and their rationale, the current
 > state, and the open questions worth challenging. It is accurate to the code after
-> the design-review fix pass (R1–R32 applied; 250 unit tests green, build clean).
+> the design-review fix pass (R1–R33 applied; 252 unit tests green, build clean).
 > Companion docs:
 > [DESIGN.md](../DESIGN.md) (terse design), [redesign-notes.md](redesign-notes.md)
 > (pre-publication decisions), [README.md](../README.md) (end-user).
@@ -25,9 +25,11 @@ to them. `cdkrd` reads the **full** live resource model and reports the divergen
 - **Reality vs intent**, not code vs template. It deliberately does NOT reimplement
   `cdk diff` (which is code-vs-deployed-template). It is a drift tool.
 - **No AWS Config dependency** (Config is off in many accounts; cost + setup).
-- **CDK-native**: it synthesizes the app via `@aws-cdk/toolkit-lib` for stack
-  discovery + construct-path display, but the drift _comparison_ is
-  CloudFormation-generic and runs synth-free by stack name (CI / cron / fleet).
+- **CDK-only**: it always resolves the CDK app (synth via `@aws-cdk/toolkit-lib`, or
+  a pre-synthesized `cdk.out`) to discover which stacks exist + label by construct
+  path. The drift _comparison_ itself is CloudFormation-generic — it reads each
+  stack's deployed template + live state from AWS — but cdkrd operates only on stacks
+  the app defines (there is no arbitrary-deployed-stack-by-name mode; R33).
 
 ## 1a. The core thesis & the bets to validate (read this first)
 
@@ -111,8 +113,8 @@ default — resolves via SDK chain, errors if absent), `--profile`, `--app <cmd|
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
 `--json`, `--fail-on declared|undeclared`, `--show-all` (inventory mode: ignore
 baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
-`--all` (every deployed stack in region), `--dry-run` (revert preview),
-`--yes/-y`. Stack args support globs: `cdkrd check 'Dev*'`.
+`--dry-run` (revert preview), `--yes/-y`. With no stack arg, every stack the app
+defines is targeted; a stack arg selects by exact name or glob (`cdkrd check 'Dev*'`).
 
 Exit codes: `0` clean · `1` drift detected · `2` error.
 
@@ -122,7 +124,7 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 [src/commands/gather.ts](../src/commands/gather.ts).
 
 ```
-1. resolve stacks        resolve-stacks.ts: explicit names | globs | --all | synth-discover
+1. resolve stacks        resolve-stacks.ts: synth-discover the app → all | exact names | globs
 2. desired (declared)    template-adapter.ts: GetTemplate + DescribeStackResources
                          (phys-id map) + DescribeStacks (params) → intrinsic resolution
                          (--pre-deploy: LOCAL synth template replaces GetTemplate)
@@ -159,12 +161,11 @@ checked.
 - **commands/**
   - **check.ts / accept.ts / revert.ts** — the three verbs.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
-  - **resolve-stacks.ts** — turn args into `{stackName, region}[]` (exact / glob / `--all` / synth-discovery).
+  - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).
 - **desired/** — the "intent" side
   - **template-adapter.ts** — `loadDesired()`: deployed (or `--pre-deploy` synth) template + phys-ids + params → resolved `DesiredResource[]`. Builds `ResolverContext`.
   - **yaml-cfn.ts** — CFn-flavored YAML/JSON template parser.
-  - **list-stacks.ts** — `--all` deployed-stack enumeration.
 - **read/** — the "reality" side
   - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource; classifies skip reasons.
   - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters).
@@ -478,10 +479,12 @@ report meaningfully per path).
 
 [src/synth/](../src/synth/) wraps `@aws-cdk/toolkit-lib` (same dep as cdk-local):
 `synthApp()` returns per-stack `{stackName, region, template}`; `discoverStacks()`
-feeds stack auto-discovery. Used for: (a) no-arg / glob stack discovery, (b)
-construct-path display, (c) `--pre-deploy` (the synth template becomes the declared
-source so `check` shows the declared drift the next `cdk deploy` would overwrite).
-The drift comparison itself is unchanged and still works synth-free by stack name.
+feeds stack resolution. Used for: (a) stack resolution — cdkrd is CDK-only, so EVERY
+invocation discovers the app's stacks (all / exact-name / glob all select among them;
+R33), (b) construct-path display, (c) `--pre-deploy` (the synth template becomes the
+declared source so `check` shows the declared drift the next `cdk deploy` would
+overwrite). The drift comparison itself still reads each stack's deployed template +
+live state from AWS — the app only decides which stacks are in scope.
 
 ## 11. Reuse from cdkd + the cross-repo relationship
 
@@ -499,7 +502,7 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 
 ## 12. Testing & evidence
 
-- **250 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
+- **252 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
   `aws-sdk-client-mock`. Coverage spans resolver (incl. GetAtt-via-live-attrs +
   fail-closed), all normalizers, classify (incl. the dogfood regression pairs),
   baseline, revert plan + apply-ops + writers + the interactive abort→exit mapping

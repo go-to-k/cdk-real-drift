@@ -45,18 +45,19 @@ credentials via the standard SDK chain (env vars, `--profile`, SSO).
 
 ### Selecting stacks
 
-| invocation                         | what is checked                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `cdkrd check`                      | every stack the CDK app defines — multi-stack apps are all checked, each in its own `env.region` |
-| `cdkrd check 'Dev*'`               | glob, matched against the app's stack names (needs the app for discovery)                        |
-| `cdkrd check MyStack --region <r>` | exact name — **no synth at all**; works on any deployed CloudFormation stack, CDK or not         |
-| `cdkrd check --all --region <r>`   | every deployed stack in the region                                                               |
+| invocation            | what is checked                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| `cdkrd check`         | every stack the CDK app defines — multi-stack apps are all checked, each in its own `env.region` |
+| `cdkrd check 'Dev*'`  | glob, matched against the app's stack names                                                      |
+| `cdkrd check MyStack` | one stack, selected by name from the app                                                         |
 
-Synth is **optional**: it only powers stack auto-discovery, globs, and
-construct-path labels — the drift comparison itself never needs it. When you are
-not inside the app directory (or the app needs a special command), point at it
-with `--app`: a command (`--app "node bin/app.js"`) or a pre-synthesized assembly
-(`--app cdk.out`); defaults to `cdk.json`'s `"app"`, or `$CDKRD_APP`.
+`cdkrd` is **CDK-only**: it always resolves your CDK app to discover which stacks
+exist (and to label findings by construct path). The app comes from `cdk.json` when
+you run in the project directory, or from `--app`: a command
+(`--app "node bin/app.js"`) or a pre-synthesized assembly (`--app cdk.out` — read,
+not executed); `$CDKRD_APP` also works. The drift comparison itself still reads each
+stack's **deployed** template + live state from AWS (reality vs intent) — synth only
+tells cdkrd which stacks to look at.
 
 **Multi-account tip:** the account id is part of the baseline filename, so the same
 stack deployed to several accounts (`env: { account: PERSONAL || SHARED }`) gets one
@@ -159,9 +160,9 @@ mirror it:
 - Anything not confidently comparable is reported honestly as informational
   (`readGap` / `unresolved` / `skipped`) — **never** guessed, so no false drift.
 
-In a CDK app directory it synthesizes (via `@aws-cdk/toolkit-lib`) to auto-discover
-your stacks and label findings by **construct path**. It also works on any deployed
-CloudFormation stack by name, no synth needed.
+It synthesizes the CDK app (via `@aws-cdk/toolkit-lib`, or reads a pre-synthesized
+`cdk.out`) to discover your stacks and label findings by **construct path**; the
+comparison then reads each stack's deployed template + live state from AWS.
 
 Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -174,8 +175,7 @@ them. If you scope tighter, the calls are:
 <summary>Minimal read permissions (check / accept)</summary>
 
 - `cloudformation:GetTemplate`, `ListStackResources`, `DescribeStacks`,
-  `DescribeType`; `ListExports` (only for templates using `Fn::ImportValue`);
-  `ListStacks` (only with `--all`)
+  `DescribeType`; `ListExports` (only for templates using `Fn::ImportValue`)
 - `cloudcontrol:GetResource` — Cloud Control invokes each type's own read handler,
   so it needs that type's read permissions (this is why `ReadOnlyAccess` is the
   simple answer)
@@ -201,13 +201,13 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 
 ## Commands & options
 
-| command                             | does                                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| `cdkrd check [<stack>...] [--all]`  | compare live state vs template (declared) + baseline (undeclared)      |
-| `cdkrd accept [<stack>...] [--all]` | snapshot current undeclared state into the baseline file               |
-| `cdkrd revert [<stack>...] [--all]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
+| command                     | does                                                                   |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
+| `cdkrd accept [<stack>...]` | snapshot current undeclared state into the baseline file               |
+| `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
-- Stack selection (no args / glob / exact name / `--all`):
+- Stack selection (no args = all app stacks / glob / exact name):
   see [Selecting stacks](#selecting-stacks).
 - **Exit codes:** `0` clean · `1` drift · `2` error — so `check` drops straight into
   CI:
@@ -216,21 +216,20 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 - run: npx cdkrd check MyStack --region us-east-1 # fails the job on drift
 ```
 
-| option                           | meaning                                                                                                                       |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |
-| `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                               |
-| `--app <cmd\|cdk.out>`           | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
-| `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                    |
-| `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
-| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                  |
-| `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
+| option                           | meaning                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                        |
+| `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                                       |
+| `--app <cmd\|cdk.out>`           | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths         |
+| `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                            |
+| `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                                  |
+| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                          |
+| `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                              |
 | `--verbose` / `-v`               | (check) expand the informational tiers (`readGap` / `unresolved` / `skipped` / `ignored`) from the `info:` summary line to full lists |
-| `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
-| `--all`                          | every deployed stack in the region                                                                                            |
-| `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
-| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
-| `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                 |
+| `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite                 |
+| `--dry-run`                      | (revert) print the plan; make no changes                                                                                              |
+| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                                  |
+| `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                         |
 
 ### Interactive flows (TTY only — CI is never prompted)
 
@@ -251,16 +250,19 @@ Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity. A
 blessed value snapshot would re-flag every move. List those paths in a
 git-committed `.cdkrd/config.json` instead:
 
-```jsonc
+```json
 {
-  "ignore": [
-    "*.DesiredCount", // any stack, any logical id
-    "Prod*:Fn*.ReservedConcurrentExecutions" // only stacks matching Prod*
-  ]
+  "ignore": ["*.DesiredCount", "Prod*:Fn*.ReservedConcurrentExecutions"]
 }
 ```
 
-Rules glob (`*` / `?`) against `<logicalId>.<path>`; a parent rule covers child
+`"*.DesiredCount"` ignores that property on any stack / logical id;
+`"Prod*:Fn*.ReservedConcurrentExecutions"` is stack-scoped (`<stack glob>:<pattern>`)
+to stacks matching `Prod*`. (`.cdkrd/config.json` is strict JSON — no comments or
+trailing commas.)
+
+Rules glob (`*` / `?`) against either `<logicalId>.<path>` or the friendly
+`<constructPath>.<path>` (e.g. `MyStack/ApiRole.Policies`); a parent rule covers child
 paths. Matching findings move to the informational `ignored` tier — still visible
 on the `info:` line and under `--verbose`, never exit-affecting, and excluded from
 `revert` plans and `accept`. A **deleted resource is never ignorable**.

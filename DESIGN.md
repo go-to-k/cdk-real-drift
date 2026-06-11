@@ -36,9 +36,11 @@ un-deployed code edits would show as false "drift".
 6. report + exit code (0 clean / 1 drift / 2 error) + --fail-on <tier>
 ```
 
-Core `check` is **synth-free** (runs anywhere by stack name → cron/fleet). Synth
-only loads in `--pre-deploy` for clobber badges. Output is plain text + JSON
-(CI-greppable; no TUI/panes).
+cdkrd is **CDK-only**: every run resolves the CDK app (synth, or a pre-synthesized
+`cdk.out`) to discover which stacks to check. The drift comparison still reads each
+stack's deployed template + live state from AWS — synth only decides scope + labels
+construct paths (and, in `--pre-deploy`, becomes the declared source). Output is plain
+text + JSON (CI-greppable; no TUI/panes).
 
 ## Subtractive noise model
 

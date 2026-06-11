@@ -4,7 +4,7 @@ import type { FailOn } from './report/report.js';
 const VALUE_FLAGS = new Set(['--region', '--profile', '--fail-on', '--app', '-c', '--context']);
 
 export interface CommonArgs {
-  stackNames: string[]; // positional stack names (may be empty: --all or synth-discovery)
+  stackNames: string[]; // positional stack names (may be empty → all stacks the CDK app defines)
   region: string | undefined; // resolved region (no silent default — caller errors if absent)
   profile: string | undefined; // AWS profile (--profile or $AWS_PROFILE)
   app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
@@ -12,7 +12,6 @@ export interface CommonArgs {
   json: boolean;
   failOn: FailOn;
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
-  all: boolean; // every deployed stack in the region
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
   removeUnblessed: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
@@ -55,7 +54,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     json: has('--json'),
     failOn: get('--fail-on') === 'declared' ? 'declared' : 'undeclared',
     showAll: has('--show-all'),
-    all: has('--all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
     removeUnblessed: has('--remove-unblessed'),

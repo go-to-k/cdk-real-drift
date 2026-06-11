@@ -1,4 +1,4 @@
-// `cdkrd accept [<stack>...] [--all] [--app ...] [--region r] [--profile p] [--yes]`
+// `cdkrd accept [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
 // git-committed baselines; no AWS writes. The per-stack bless flow lives in
 // stack-actions.ts (shared with check's interactive prompt, R28).
@@ -21,14 +21,16 @@ export async function runAccept(args: string[]): Promise<number> {
     return 2;
   }
 
-  const stacks = await resolveStacks(a);
-  if (stacks.length === 0) {
-    console.error(
-      'usage: cdkrd accept <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--profile p] [--yes]'
-    );
-    if (a.all && !a.region)
-      console.error('  (--all needs a region: pass --region or set AWS_REGION)');
+  let stacks;
+  try {
+    stacks = await resolveStacks(a);
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
     return 2;
+  }
+  if (stacks.length === 0) {
+    console.error('note: the CDK app defines no stacks — nothing to accept');
+    return 0;
   }
 
   let worst = 0;
