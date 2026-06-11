@@ -231,7 +231,13 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
    _different account or region_ is reported as genuine drift; empty-segment ARNs
    (e.g. S3) stay suffix-only.
 4. **managed-default KMS alias** — `alias/aws/rds` declared vs resolved key ARN. Fix:
-   `isManagedKmsAliasMatch` (only collapses `alias/aws/*`, not custom aliases).
+   `isManagedKmsAliasMatch` (only collapses `alias/aws/*`, not custom aliases). When
+   the stack declares any `alias/aws/*`, `gather` prefetches the account's
+   alias→target-key map (KMS `ListAliases`, per-region cached) and the match becomes
+   **strict**: the live key must be the alias's managed key, so a customer-managed key
+   swapped in out of band (a security-relevant change) IS reported as drift. Without
+   `kms:ListAliases` it falls back to the shape-based collapse (noise, never a false
+   positive).
 
 > Classes 1 & 3 are a latent risk in any AWS-snapshot diff; they were also
 > back-ported to **cdkd** (PR #802, merged) since cdkd's `drift-calculator` shared

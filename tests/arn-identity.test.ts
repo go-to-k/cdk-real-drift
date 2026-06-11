@@ -62,4 +62,18 @@ describe('isManagedKmsAliasMatch (managed-default KMS alias <-> key ARN)', () =>
       false
     );
   });
+
+  describe('strict resolution via aliasTargets (R9)', () => {
+    const targets = { 'alias/aws/rds': '9ee8feba-ae18-445a-bcab-306f7748fb6c' };
+    it('suppresses when the live key IS the alias managed key', () => {
+      expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn, targets)).toBe(true);
+    });
+    it('reports drift when a DIFFERENT (customer-managed) key was swapped in', () => {
+      const custom = 'arn:aws:kms:us-east-1:111122223333:key/00000000-1111-2222-3333-444444444444';
+      expect(isManagedKmsAliasMatch('alias/aws/rds', custom, targets)).toBe(false);
+    });
+    it('falls back to shape-based suppression when the alias is unresolved (no perms)', () => {
+      expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn, {})).toBe(true);
+    });
+  });
 });

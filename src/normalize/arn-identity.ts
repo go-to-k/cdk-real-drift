@@ -36,16 +36,35 @@ export function isArnNameMatch(
 
 // AWS-managed default KMS keys are declared by their well-known alias
 // (`alias/aws/rds`, `alias/aws/secretsmanager`, ...) but AWS resolves + returns
-// the concrete key ARN, which a string diff flags as drift. Treat a declared
-// `alias/aws/*` against a live KMS key ARN as equal: a custom key would be
-// declared as a custom alias or key id/ARN, never `alias/aws/<service>`, so this
-// only collapses the managed-default case and never hides a real custom-key drift.
+// the concrete key ARN, which a string diff flags as drift.
+//
+// When `aliasTargets` (alias name -> target key id, from KMS ListAliases) is
+// provided AND the declared alias is in it, this does a STRICT comparison: the live
+// key ARN must resolve to that same managed key, else it is reported as real drift —
+// so a customer-managed key swapped in out of band (a security-relevant change the
+// shape-only check would hide) IS caught. When the alias can't be resolved (no
+// `aliasTargets`, or missing kms:ListAliases), it falls back to the conservative
+// shape-based match (any `alias/aws/*` vs any key ARN = equal): biased toward noise,
+// never a false positive.
 const KMS_KEY_ARN_RE = /^arn:aws[a-z-]*:kms:[^:]*:\d*:key\//;
-export function isManagedKmsAliasMatch(desired: unknown, actual: unknown): boolean {
-  return (
-    typeof desired === 'string' &&
-    typeof actual === 'string' &&
-    desired.startsWith('alias/aws/') &&
-    KMS_KEY_ARN_RE.test(actual)
-  );
+const keyIdOf = (s: string): string => s.slice(s.lastIndexOf('/') + 1);
+export function isManagedKmsAliasMatch(
+  desired: unknown,
+  actual: unknown,
+  aliasTargets?: Record<string, string>
+): boolean {
+  if (
+    typeof desired !== 'string' ||
+    typeof actual !== 'string' ||
+    !desired.startsWith('alias/aws/') ||
+    !KMS_KEY_ARN_RE.test(actual)
+  )
+    return false;
+  const target = aliasTargets?.[desired];
+  if (target) {
+    // strict: suppress only when the live key IS the alias's managed key
+    return keyIdOf(actual) === keyIdOf(target);
+  }
+  // unresolved alias → conservative shape-based suppression (today's behavior)
+  return true;
 }

@@ -29,6 +29,9 @@ importers:
       '@aws-sdk/client-iam':
         specifier: ^3.1065.0
         version: 3.1066.0
+      '@aws-sdk/client-kms':
+        specifier: ^3.1066.0
+        version: 3.1066.0
       '@aws-sdk/client-lambda':
         specifier: ^3.1065.0
         version: 3.1066.0

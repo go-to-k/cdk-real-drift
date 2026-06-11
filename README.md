@@ -120,7 +120,11 @@ suspicious one. With `--yes` or a non-TTY (CI), it blesses all with no prompt.
   the CloudFormation resource schema (`describe-type`), at nested paths too.
 - **Reusable normalizers:** IAM-style policy canonicalization (Version / scalar-vs-array
   / statement order / account-id↔root-ARN), embedded JSON-text, `aws:*` tags
-  (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`).
+  (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`), name↔ARN +
+  managed-default KMS alias (`alias/aws/*`) collapse. For the KMS case, if the
+  optional `kms:ListAliases` permission is granted, the alias is resolved strictly so
+  a customer-managed key swapped in out of band is reported as real drift; without it,
+  the conservative shape-based collapse is used.
 - **Fail-closed resolver:** anything not confidently resolvable (e.g. `Fn::GetAtt`,
   a condition over an unknown) is reported as `unresolved` (skipped) — **never** a
   fabricated value that would show as false drift.

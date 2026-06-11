@@ -25,7 +25,11 @@ export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
   schema: SchemaInfo,
-  opts: { accountId?: string; region?: string } = {}
+  opts: {
+    accountId?: string;
+    region?: string;
+    kmsAliasTargets?: Record<string, string>; // alias/aws/* -> target key id, for strict KMS match
+  } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
@@ -85,7 +89,7 @@ export function classifyResource(
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN
       if (isArnNameMatch(d.stateValue, d.awsValue, opts)) continue;
-      if (isManagedKmsAliasMatch(d.stateValue, d.awsValue)) continue;
+      if (isManagedKmsAliasMatch(d.stateValue, d.awsValue, opts.kmsAliasTargets)) continue;
       findings.push({
         tier: 'declared',
         logicalId,

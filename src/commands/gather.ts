@@ -5,6 +5,7 @@ import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
+import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../read/kms-aliases.js';
 import { readLive } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
 import type { Finding, SchemaInfo } from '../types.js';
@@ -50,6 +51,15 @@ export async function gatherFindings(
   };
   await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
 
+  // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
+  // fetch alias -> target key id once so classify can tell a managed-default key from
+  // a customer-managed key swapped in out of band. Missing kms:ListAliases -> {} (the
+  // classifier falls back to the conservative shape-based match).
+  const kmsAliasTargets = desired.resources.some((r) => usesManagedKmsAlias(r.declared))
+    ? await fetchManagedAliasTargets(region)
+    : {};
+  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
+
   // Pass 2: re-resolve declared with liveAttrs populated, then classify.
   for (const r of desired.resources) {
     if (!r.physicalId) {
@@ -90,7 +100,7 @@ export async function gatherFindings(
     if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
     const schema = await getSchemaInfo(cfn, r.resourceType);
     schemas.set(r.resourceType, schema);
-    findings.push(...classifyResource(r, read.live, schema));
+    findings.push(...classifyResource(r, read.live, schema, classifyOpts));
   }
   return { desired, findings, schemas };
 }
