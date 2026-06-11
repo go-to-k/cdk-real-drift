@@ -53,6 +53,26 @@ export async function writeBaseline(b: BaselineFile): Promise<string> {
   return p;
 }
 
+/** Write a baseline for a stack from a check run's findings + raw template.
+ *  Shared by `accept` and `check`'s first-run interactive offer. */
+export async function blessStack(
+  stackName: string,
+  region: string,
+  findings: Finding[],
+  rawTemplate: string
+): Promise<{ path: string; count: number }> {
+  const accepted = buildAccepted(findings);
+  const path = await writeBaseline({
+    schemaVersion: 1,
+    stackName,
+    region,
+    capturedAt: new Date().toISOString(),
+    templateHash: hashTemplate(rawTemplate),
+    accepted,
+  });
+  return { path, count: accepted.length };
+}
+
 /** Build the blessed-undeclared set from a check run's findings. */
 export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
   return findings

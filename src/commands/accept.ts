@@ -2,12 +2,7 @@
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
 // git-committed baselines; no AWS writes.
 import { isStackNotDeployed } from '../aws-errors.js';
-import {
-  buildAccepted,
-  hashTemplate,
-  loadBaseline,
-  writeBaseline,
-} from '../baseline/baseline-file.js';
+import { blessStack, loadBaseline } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
@@ -40,16 +35,8 @@ export async function runAccept(args: string[]): Promise<number> {
         );
       }
       const { desired, findings } = await gatherFindings(stackName, region);
-      const accepted = buildAccepted(findings);
-      const path = await writeBaseline({
-        schemaVersion: 1,
-        stackName,
-        region,
-        capturedAt: new Date().toISOString(),
-        templateHash: hashTemplate(desired.rawTemplate),
-        accepted,
-      });
-      console.log(`baseline written: ${path} (${accepted.length} undeclared value(s) blessed)`);
+      const { path, count } = await blessStack(stackName, region, findings, desired.rawTemplate);
+      console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — nothing to bless`);

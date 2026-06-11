@@ -3,8 +3,9 @@
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
+import { confirm, isCancel } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
-import { applyBaseline, loadBaseline } from '../baseline/baseline-file.js';
+import { applyBaseline, blessStack, loadBaseline } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { report } from '../report/report.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -32,8 +33,19 @@ export async function runCheck(args: string[]): Promise<number> {
       continue;
     }
     try {
-      const { findings } = await gatherFindings(stackName, region);
-      const baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
+      const { findings, desired } = await gatherFindings(stackName, region);
+      let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
+      // first run: no baseline yet → offer to bless interactively (TTY only)
+      if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
+        const ok = await confirm({
+          message: `${stackName}: no baseline yet. Bless the current state now?`,
+        });
+        if (!isCancel(ok) && ok) {
+          const { count } = await blessStack(stackName, region, findings, desired.rawTemplate);
+          console.error(`baseline written (${count} undeclared value(s) blessed) — commit it.`);
+          baseline = await loadBaseline(stackName, region);
+        }
+      }
       if (!a.json && !baseline && !a.showAll) {
         console.error(
           `note: ${stackName}: no baseline — showing all undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
