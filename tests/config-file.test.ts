@@ -86,6 +86,35 @@ describe('applyIgnores', () => {
     expect(f?.tier).toBe('ignored');
   });
 
+  it('matches the friendly constructPath too (CDK stacks; same id cdk-local targets)', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ApiRole1234ABCD',
+      constructPath: 'MyStack/ApiRole',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    // a rule written against the human-friendly path matches via constructPath…
+    expect(applyIgnores([f], 'MyStack', cfg(['MyStack/ApiRole.Policies']))[0]?.tier).toBe(
+      'ignored'
+    );
+    expect(applyIgnores([f], 'MyStack', cfg(['*/ApiRole.Policies']))[0]?.tier).toBe('ignored');
+    // …and the logicalId still works for the same finding (both targets are tried)
+    expect(applyIgnores([f], 'MyStack', cfg(['ApiRole*.Policies']))[0]?.tier).toBe('ignored');
+  });
+
+  it('logicalId rule still matches when constructPath is absent (non-CDK stack)', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ApiRole',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    expect(applyIgnores([f], 'RawCfnStack', cfg(['ApiRole.Policies']))[0]?.tier).toBe('ignored');
+  });
+
   it('stack-scoped rule applies only to matching stack names', () => {
     const rule = cfg(['Prod*:*.DesiredCount']);
     expect(applyIgnores([declared('Svc', 'DesiredCount')], 'ProdApi', rule)[0]?.tier).toBe(

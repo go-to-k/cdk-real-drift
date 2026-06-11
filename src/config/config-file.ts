@@ -100,13 +100,16 @@ function pathMatches(pattern: string, target: string): boolean {
  * not silence a resource deletion); readGap/unresolved/skipped are already
  * informational and left untouched. Pure: no IO.
  *
- * Matches against `<logicalId>.<path>`, NOT the (friendlier) constructPath: the
- * logicalId is the CloudFormation template's resource key, so it is ALWAYS present on
- * every finding for every stack. constructPath comes only from optional
- * `aws:cdk:path` Metadata — absent on non-CDK stacks (cdkrd checks any deployed
- * stack, CDK or not) and disableable even on CDK stacks — so an ignore rule keyed on
- * it would silently stop matching. A persistent rule needs the always-present key;
- * constructPath stays display-only.
+ * A rule matches against EITHER `<logicalId>.<path>` OR (when present)
+ * `<constructPath>.<path>`, so both styles work:
+ *   - logicalId (`ApiRole1234ABCD.Policies`) is the CloudFormation template's resource
+ *     key — ALWAYS present, so a rule keyed on it works on ANY stack, CDK or not.
+ *     This is what makes ignore rules usable on non-CDK / raw-CloudFormation stacks.
+ *   - constructPath (`MyStack/ApiRole.Policies`) is the human-friendly path, the same
+ *     id `cdk-local` uses for targeting. It comes from optional `aws:cdk:path`
+ *     Metadata (absent on non-CDK stacks, disableable on CDK ones), so it is offered
+ *     as an ADDITIONAL match target, never the only one — a rule written against it
+ *     keeps working on CDK stacks while logicalId covers everything else.
  */
 export function applyIgnores(
   findings: Finding[],
@@ -117,11 +120,12 @@ export function applyIgnores(
   const rules = config.ignore.map(parseIgnoreRule);
   return findings.map((f) => {
     if (f.tier !== 'declared' && f.tier !== 'undeclared') return f;
-    const target = `${f.logicalId}.${f.path}`;
+    const targets = [`${f.logicalId}.${f.path}`];
+    if (f.constructPath) targets.push(`${f.constructPath}.${f.path}`);
     const hit = rules.find(
       (r) =>
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&
-        pathMatches(r.idPathPattern, target)
+        targets.some((t) => pathMatches(r.idPathPattern, t))
     );
     if (!hit) return f;
     return { ...f, tier: 'ignored', note: `ignored by config rule "${hit.raw}"` };
