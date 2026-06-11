@@ -43,8 +43,6 @@ result: 1 drift(s) (undeclared=1)
 | **Revert** undeclared drift                                         |   ✅    |                ❌                 |
 | **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
 
-No AWS Config, no recorders — nothing to enable or pay for per-resource.
-
 ## Quick start
 
 _Not yet on npm — coming with the first public release._
