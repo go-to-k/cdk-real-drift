@@ -55,29 +55,58 @@ export function parseCommonArgs(args: string[]): CommonArgs {
       stackNames.push(a);
       continue;
     }
-    if (VALUE_FLAGS.has(a)) {
-      const v = args[i + 1];
-      // a following token that is itself a flag is NOT a value (catches `--region --json`)
-      if (v === undefined || v.startsWith('-')) {
-        throw new Error(`option "${a}" requires a value — see cdkrd --help`);
-      }
-      if (a === '-c' || a === '--context') {
-        const eq = v.indexOf('=');
-        if (eq <= 0) {
-          throw new Error(`option "${a}" expects key=value, got "${v}" — see cdkrd --help`);
+    // Accept `--flag=value` (and `-a=value`) like the cdk CLI / yargs do. Split on
+    // the FIRST '=' only so `--context=env=prod` keeps the value "env=prod" whole.
+    const eq = a.indexOf('=');
+    const flag = eq > 0 ? a.slice(0, eq) : a;
+    const inlineValue = eq > 0 ? a.slice(eq + 1) : undefined;
+
+    if (VALUE_FLAGS.has(flag)) {
+      let v: string;
+      if (inlineValue !== undefined) {
+        // `--app=` with nothing after the '=' is still a missing value
+        if (inlineValue === '') {
+          throw new Error(`option "${flag}" requires a value — see cdkrd --help`);
         }
-        context[v.slice(0, eq)] = v.slice(eq + 1);
+        v = inlineValue;
       } else {
-        values[a === '-a' ? '--app' : a] = v;
+        const next = args[i + 1];
+        // a following token that is itself a flag is NOT a value (catches `--region --json`)
+        if (next === undefined || next.startsWith('-')) {
+          throw new Error(`option "${flag}" requires a value — see cdkrd --help`);
+        }
+        v = next;
+        i++; // consume the value
       }
-      i++; // consume the value
+      if (flag === '-c' || flag === '--context') {
+        const kvEq = v.indexOf('=');
+        if (kvEq <= 0) {
+          throw new Error(`option "${flag}" expects key=value, got "${v}" — see cdkrd --help`);
+        }
+        context[v.slice(0, kvEq)] = v.slice(kvEq + 1);
+      } else {
+        values[flag === '-a' ? '--app' : flag] = v;
+      }
       continue;
     }
-    if (BOOLEAN_FLAGS.has(a)) {
-      found.add(a);
+    if (BOOLEAN_FLAGS.has(flag)) {
+      // a boolean flag takes no value: `--json=true` is a mistake, not a stack name
+      if (inlineValue !== undefined) {
+        throw new Error(`option "${flag}" does not take a value — see cdkrd --help`);
+      }
+      found.add(flag);
       continue;
     }
     throw new Error(`unknown option "${a}" — see cdkrd --help`);
+  }
+
+  // Validate enumerated values during parse so a typo (`--fail-on declarred`) is a
+  // loud error, not a silent fall-through to the `undeclared` default.
+  const failOnRaw = values['--fail-on'];
+  if (failOnRaw !== undefined && failOnRaw !== 'declared' && failOnRaw !== 'undeclared') {
+    throw new Error(
+      `--fail-on expects "declared" or "undeclared", got "${failOnRaw}" — see cdkrd --help`
+    );
   }
 
   const has = (flag: string): boolean => found.has(flag);
@@ -89,7 +118,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     // -a/--app > CDKRD_APP env (cdk.json "app" fallback resolved in the synth layer)
     app: values['--app'] ?? process.env.CDKRD_APP,
     json: has('--json'),
-    failOn: values['--fail-on'] === 'declared' ? 'declared' : 'undeclared',
+    failOn: failOnRaw === 'declared' ? 'declared' : 'undeclared',
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),

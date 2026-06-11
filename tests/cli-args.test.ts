@@ -90,4 +90,39 @@ describe('parseCommonArgs', () => {
     expect(() => parseCommonArgs(['-c', 'noequals'])).toThrow(/expects key=value/);
     expect(() => parseCommonArgs(['--context', '=v'])).toThrow(/expects key=value/);
   });
+
+  it('validates --fail-on, rejecting typos instead of falling back to undeclared (R41)', () => {
+    expect(parseCommonArgs(['S', '--fail-on', 'declared']).failOn).toBe('declared');
+    expect(parseCommonArgs(['S', '--fail-on', 'undeclared']).failOn).toBe('undeclared');
+    expect(() => parseCommonArgs(['S', '--fail-on', 'declarred'])).toThrow(
+      /--fail-on expects "declared" or "undeclared", got "declarred"/
+    );
+    expect(() => parseCommonArgs(['S', '--fail-on', 'deleted'])).toThrow(/--fail-on expects/);
+  });
+
+  it('accepts --flag=value form, equal to the space form (R41)', () => {
+    expect(parseCommonArgs(['--app=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
+    expect(parseCommonArgs(['-a=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
+    expect(parseCommonArgs(['MyStack', '--region=eu-west-1']).region).toBe('eu-west-1');
+    expect(parseCommonArgs(['MyStack', '--region=eu-west-1']).stackNames).toEqual(['MyStack']);
+    expect(parseCommonArgs(['--fail-on=declared']).failOn).toBe('declared');
+  });
+
+  it('splits --context=key=value on the first = only (R41)', () => {
+    expect(parseCommonArgs(['--context=env=prod']).context).toEqual({ env: 'prod' });
+    // and the value may itself contain more '='
+    expect(parseCommonArgs(['-c=token=a=b']).context).toEqual({ token: 'a=b' });
+  });
+
+  it('errors on --flag= with an empty inline value (R41)', () => {
+    expect(() => parseCommonArgs(['--app='])).toThrow(/option "--app" requires a value/);
+    expect(() => parseCommonArgs(['--region='])).toThrow(/option "--region" requires a value/);
+  });
+
+  it('rejects a value attached to a boolean flag, e.g. --json=true (R41)', () => {
+    expect(() => parseCommonArgs(['--json=true'])).toThrow(/option "--json" does not take a value/);
+    expect(() => parseCommonArgs(['--dry-run=1'])).toThrow(
+      /option "--dry-run" does not take a value/
+    );
+  });
 });
