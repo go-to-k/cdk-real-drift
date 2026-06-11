@@ -14,6 +14,7 @@ export interface CommonArgs {
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
   all: boolean; // every deployed stack in the region
   yes: boolean;
+  preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
 }
 
 export function parseCommonArgs(args: string[]): CommonArgs {
@@ -54,5 +55,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     showAll: has('--show-all'),
     all: has('--all'),
     yes: has('--yes') || has('-y'),
+    preDeploy: has('--pre-deploy'),
   };
 }

@@ -8,6 +8,8 @@ import { isStackNotDeployed } from '../aws-errors.js';
 import { applyBaseline, blessStack, loadBaseline } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { report } from '../report/report.js';
+import { resolveApp } from '../synth/resolve-app.js';
+import { synthApp } from '../synth/synth.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 
@@ -25,6 +27,25 @@ export async function runCheck(args: string[]): Promise<number> {
     return 2;
   }
 
+  // --pre-deploy: synth the local app once and use each stack's synth template as
+  // the declared source, so check reports the declared drift the next deploy would
+  // overwrite (clobber) rather than comparing against the already-deployed template.
+  let synthTemplates: Map<string, Record<string, unknown>> | undefined;
+  if (a.preDeploy) {
+    const app = resolveApp(a.app);
+    if (!app) {
+      console.error('error: --pre-deploy needs a CDK app (--app or a cdk.json in the cwd)');
+      return 2;
+    }
+    const synthed = await synthApp(app, {
+      region: a.region,
+      profile: a.profile,
+      context: a.context,
+    });
+    synthTemplates = new Map(synthed.map((s) => [s.stackName, s.template]));
+    console.error('(--pre-deploy) comparing live state against the LOCAL synth template');
+  }
+
   let worst = 0;
   for (const { stackName, region } of stacks) {
     if (!region) {
@@ -33,7 +54,15 @@ export async function runCheck(args: string[]): Promise<number> {
       continue;
     }
     try {
-      const { findings, desired } = await gatherFindings(stackName, region);
+      if (synthTemplates && !synthTemplates.has(stackName)) {
+        console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
+        continue;
+      }
+      const { findings, desired } = await gatherFindings(
+        stackName,
+        region,
+        synthTemplates?.get(stackName)
+      );
       let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
       // first run: no baseline yet → offer to bless interactively (TTY only)
       if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {

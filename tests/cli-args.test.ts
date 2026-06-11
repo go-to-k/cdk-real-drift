@@ -41,10 +41,12 @@ describe('parseCommonArgs', () => {
     }
   });
 
-  it('recognizes --all, --show-all, --yes/-y', () => {
+  it('recognizes --all, --show-all, --yes/-y, --pre-deploy', () => {
     expect(parseCommonArgs(['--all']).all).toBe(true);
     expect(parseCommonArgs(['S', '--show-all']).showAll).toBe(true);
     expect(parseCommonArgs(['S', '-y']).yes).toBe(true);
     expect(parseCommonArgs(['S', '--yes']).yes).toBe(true);
+    expect(parseCommonArgs(['S', '--pre-deploy']).preDeploy).toBe(true);
+    expect(parseCommonArgs(['S']).preDeploy).toBe(false);
   });
 });

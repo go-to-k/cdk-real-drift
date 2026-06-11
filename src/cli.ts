@@ -30,6 +30,8 @@ OPTIONS
   --fail-on declared|undeclared   which tier sets exit 1 (default: undeclared = both)
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since accept)
+  --pre-deploy                (check) compare live state vs the LOCAL synth template
+                              — the declared drift your next deploy would overwrite
   --all                       all deployed stacks in the region
   --dry-run                   (revert) print the plan; make no changes
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)

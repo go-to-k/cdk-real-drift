@@ -73,15 +73,25 @@ export function buildResolverContext(
 export async function loadDesired(
   client: CloudFormationClient,
   stackName: string,
-  region: string
+  region: string,
+  // when provided (--pre-deploy), this LOCAL synth template is the declared source
+  // instead of the deployed GetTemplate; physIds + params still come from the live stack
+  templateOverride?: Record<string, unknown>
 ): Promise<Desired> {
   const [tmplRes, resRes, stkRes] = await Promise.all([
-    client.send(new GetTemplateCommand({ StackName: stackName })),
+    templateOverride
+      ? Promise.resolve({ TemplateBody: undefined })
+      : client.send(new GetTemplateCommand({ StackName: stackName })),
     client.send(new DescribeStackResourcesCommand({ StackName: stackName })),
     client.send(new DescribeStacksCommand({ StackName: stackName })),
   ]);
-  const rawTemplate = tmplRes.TemplateBody ?? '{}';
-  const template = parseTemplateBody(rawTemplate) as Record<string, any>;
+  const template = (templateOverride ?? parseTemplateBody(tmplRes.TemplateBody ?? '{}')) as Record<
+    string,
+    any
+  >;
+  const rawTemplate = templateOverride
+    ? JSON.stringify(templateOverride)
+    : (tmplRes.TemplateBody ?? '{}');
   const stack = stkRes.Stacks?.[0];
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';

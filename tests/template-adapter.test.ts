@@ -1,7 +1,15 @@
+import {
+  CloudFormationClient,
+  DescribeStackResourcesCommand,
+  DescribeStacksCommand,
+  GetTemplateCommand,
+} from '@aws-sdk/client-cloudformation';
+import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
   buildResolverContext,
   collectRolesWithSiblingPolicies,
+  loadDesired,
   parseTemplateBody,
 } from '../src/desired/template-adapter.js';
 
@@ -52,5 +60,40 @@ describe('parseTemplateBody', () => {
   it('parses JSON and YAML bodies', () => {
     expect(parseTemplateBody('{"Resources":{}}')).toEqual({ Resources: {} });
     expect(parseTemplateBody('Resources: {}')).toEqual({ Resources: {} });
+  });
+});
+
+describe('loadDesired templateOverride (--pre-deploy)', () => {
+  it('uses the override template as the declared source and skips GetTemplate', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          LogicalResourceId: 'Bucket',
+          PhysicalResourceId: 'b-phys',
+          ResourceType: 'AWS::S3::Bucket',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        { StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x', Parameters: [] },
+      ],
+    });
+
+    const synthTemplate = {
+      Resources: { Bucket: { Type: 'AWS::S3::Bucket', Properties: { BucketName: 'from-synth' } } },
+    };
+    const desired = await loadDesired(
+      cfn as unknown as CloudFormationClient,
+      'S',
+      'us-east-1',
+      synthTemplate
+    );
+    expect(desired.resources).toHaveLength(1);
+    expect(desired.resources[0]!.declared).toEqual({ BucketName: 'from-synth' });
+    expect(desired.resources[0]!.physicalId).toBe('b-phys'); // physId still from live stack
+    expect(desired.accountId).toBe('111122223333');
   });
 });

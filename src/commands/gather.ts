@@ -14,11 +14,18 @@ export interface GatherResult {
   findings: Finding[];
 }
 
-export async function gatherFindings(stackName: string, region: string): Promise<GatherResult> {
+export async function gatherFindings(
+  stackName: string,
+  region: string,
+  // --pre-deploy: use the LOCAL synth template as the declared source instead of
+  // the deployed template, so check reports the declared drift the next deploy
+  // would overwrite. physIds + live reads still come from the deployed stack.
+  templateOverride?: Record<string, unknown>
+): Promise<GatherResult> {
   const cfn = new CloudFormationClient({ region });
   const cc = new CloudControlClient({ region });
 
-  const desired = await loadDesired(cfn, stackName, region);
+  const desired = await loadDesired(cfn, stackName, region, templateOverride);
   const findings: Finding[] = [];
 
   // Pass 1: read every resource's live model first, so Fn::GetAtt in any

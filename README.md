@@ -86,6 +86,7 @@ every stack it defines is targeted. A stack argument containing `*` or `?` is a 
 | `--json`                         | machine-readable output                                                                                                       |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)                                                                          |
 | `--show-all`                     | inventory mode: show ALL current undeclared state                                                                             |
+| `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would overwrite                  |
 | `--all`                          | every deployed stack in the region                                                                                            |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
 | `--yes`/`-y`                     | skip confirmation (revert) / baseline-overwrite notice (accept)                                                               |
@@ -137,8 +138,10 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   model keyed by StatementId, not a settable document; `AWS::Budgets::Budget` —
   `UpdateBudget` needs a full NewBudget the reader can't reconstruct) are reported as
   `not revertable`.
-- `clobber` / `--pre-deploy` (flag a drift your next deploy would overwrite) is on
-  the roadmap.
+- `check --pre-deploy` compares live state against the LOCAL synth template (not the
+  deployed one), surfacing the declared drift your next `cdk deploy` would silently
+  overwrite. New resources in the synth that aren't deployed yet show as `skipped`
+  (no physical id); resources removed from code are simply not compared.
 
 ## Develop
 
