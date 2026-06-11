@@ -104,13 +104,13 @@ result: 1 drift(s) (undeclared=1)
 
 …and you accept or revert it right there ([see above](#quick-start)).
 
-| Capability                               | `cdkrd` | `cdk drift` / CFn drift detection |
-| ---------------------------------------- | :-----: | :-------------------------------: |
-| Drift on **declared** properties         |   ✅    |                ✅                 |
-| Drift on **undeclared** properties       |   ✅    |                ❌                 |
-| Out-of-band **deletion**                 |   ✅    |                ✅                 |
-| **Revert** drift from the CLI            |   ✅    |                ❌                 |
-| Git-reviewable "accepted state" baseline |   ✅    |                ❌                 |
+| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
+| ------------------------------------------------------------------- | :-----: | :-------------------------------: |
+| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
+| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
+| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
+| **Revert** undeclared drift                                         |   ✅    |                ❌                 |
+| **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
 
 A resource that was **deleted out of band** is the most blatant drift there is. It
 is reported in the `deleted` tier and always sets exit 1, regardless of `--fail-on`:
@@ -342,6 +342,19 @@ backward-compatible API.
   `deleted` — identifying the exact statement would need its `StatementId`.
 
 ## FAQ
+
+**How is this different from `cdk deploy --revert-drift`?**
+Two axes. **Coverage:** `--revert-drift` (aws-cdk ≥ v2.1110.0) is built on
+CloudFormation drift detection, so like `cdk drift` it only sees properties in your
+template — undeclared drift (an inline policy or `OwnershipControls` nobody wrote)
+is invisible to it, and is exactly what `cdkrd` exists to catch. **Mechanism:**
+`--revert-drift` reverts as part of a `cdk deploy` and reconciles to the **synth**
+template, so any pending local code changes ship in the same operation. `cdkrd
+revert` is drift-only and per-finding: it reverts to the **deployed** template /
+baseline (never your un-deployed code), touches just the divergence, and previews
+with `--dry-run`. Use `--revert-drift` to fold a declared-drift fix into a release;
+use `cdkrd` to find and undo out-of-band change — declared _or_ undeclared —
+without deploying.
 
 **Why a committed baseline file — isn't the CloudFormation schema enough?**
 A stateless schema comparison gives each property only two modes: report forever
