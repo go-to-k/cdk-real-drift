@@ -1,17 +1,22 @@
 #!/usr/bin/env node
-// cdk-real-drift CLI entry. Dispatches: check | accept | init (+ help/version).
-// Detect-only — no command writes to AWS (accept/init write only the baseline FILE).
+// cdk-real-drift CLI entry. Dispatches: check | accept | revert (+ help/version).
+// check/accept never write to AWS (accept writes only the baseline FILE);
+// revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
 import { runAccept } from './commands/accept.js';
 import { runCheck } from './commands/check.js';
+import { runRevert } from './commands/revert.js';
 
-const HELP = `cdkrd — drift detection for AWS CDK/CloudFormation, including UNDECLARED
-properties that 'cdk drift' / CloudFormation drift never see. No AWS Config needed.
+const HELP = `cdkrd — drift detection + revert for AWS CDK/CloudFormation, including
+UNDECLARED properties that 'cdk drift' / CloudFormation drift never see. No AWS Config.
 
 USAGE
-  cdkrd check  <stack>... | --all   detect drift (read-only)
-  cdkrd accept <stack>... | --all   bless current state into the baseline file
-  cdkrd init   <stack>              first-time baseline (alias of accept)
+  cdkrd check  [<stack>...] [--all]   detect drift (read-only)
+  cdkrd accept [<stack>...] [--all]   bless current state into the baseline file
+  cdkrd revert [<stack>...] [--all]   write the desired value back to AWS (confirms)
+
+  With no stack and no --all, the CDK app is synthesized (--app / cdk.json) and
+  every stack it defines is targeted.
 
 OPTIONS
   --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
@@ -26,7 +31,8 @@ OPTIONS
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since accept)
   --all                       all deployed stacks in the region
-  --yes, -y                   skip the baseline-overwrite notice (accept)
+  --dry-run                   (revert) print the plan; make no changes
+  --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
   --help, -h    --version, -v
 
 EXIT CODES
@@ -57,8 +63,9 @@ async function main(argv: string[]): Promise<number> {
     case 'check':
       return runCheck(rest);
     case 'accept':
-    case 'init': // init is accept's first-run alias
       return runAccept(rest);
+    case 'revert':
+      return runRevert(rest);
     default:
       console.error(`unknown command: ${cmd}\n`);
       console.error(HELP);

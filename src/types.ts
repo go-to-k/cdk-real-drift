@@ -5,6 +5,7 @@ export type Tier = 'declared' | 'undeclared' | 'readGap' | 'unresolved' | 'skipp
 export interface Finding {
   tier: Tier;
   logicalId: string;
+  physicalId?: string | undefined; // for revert (CC UpdateResource Identifier)
   constructPath?: string | undefined; // CDK construct path (from aws:cdk:path); display only
   resourceType: string;
   path: string;

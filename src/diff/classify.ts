@@ -84,7 +84,12 @@ export function classifyResource(
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
-  // attach the CDK construct path (display only) when this resource has one
+  // attach physicalId (for revert) + construct path (display) onto every finding
   const cp = resource.constructPath;
-  return cp ? findings.map((f) => ({ ...f, constructPath: cp })) : findings;
+  const pid = resource.physicalId;
+  return findings.map((f) => ({
+    ...f,
+    ...(pid !== undefined && { physicalId: pid }),
+    ...(cp !== undefined && { constructPath: cp }),
+  }));
 }
