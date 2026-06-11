@@ -126,8 +126,11 @@ every stack it defines is targeted.
   Reverting an undeclared _addition_ that was never blessed is done by removal —
   which is not possible for toggle-style properties (e.g. S3 transfer acceleration
   has no "absent" state, only Enabled/Suspended); such props are reported and left.
-  SDK-override CC-gap types (`AWS::S3::BucketPolicy`, etc.) are listed as
-  `not revertable` for now.
+  Cloud-Control-unwritable policy-document types (`AWS::S3::BucketPolicy`,
+  `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`) revert via a
+  type-specific SDK writer (read current model -> apply ops -> SDK `Put*`). Other
+  CC-gap types without a writer yet (`AWS::IAM::ManagedPolicy`,
+  `AWS::Lambda::Permission`, `AWS::Budgets::Budget`) are reported as `not revertable`.
 - `clobber` / `--pre-deploy` (flag a drift your next deploy would overwrite) is on
   the roadmap.
 
