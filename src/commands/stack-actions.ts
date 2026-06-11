@@ -13,6 +13,7 @@ import {
   declaredKeysByLogical,
   loadBaseline,
   selectAccepted,
+  splitAcceptedByBaseline,
 } from '../baseline/baseline-file.js';
 import { applyIgnores, type CdkrdConfig } from '../config/config-file.js';
 import { applyRevertItem } from '../revert/apply.js';
@@ -52,21 +53,25 @@ export interface AcceptResult {
 
 /**
  * Bless the current undeclared state into the baseline file. In an interactive run
- * (no --yes) the user picks WHICH undeclared values to bless (selective accept, R14);
- * an empty selection is confirmed first (R19). Non-interactively (--no-interactive or
- * non-TTY/CI), the multiselect is a required DECISION: with undeclared values present
- * and no --yes, accept refuses (exit 2) instead of blessing all (R38). When there is
- * nothing to decide (no undeclared values) the baseline is written regardless. (Same
- * flow whether reached via `cdkrd accept` or check's interactive prompt — neither
- * re-gathers.)
+ * (no --yes) the user picks WHICH undeclared values to bless (selective accept, R14).
+ * When an existing baseline is present the multiselect shows only the DELTA from it
+ * (new/changed); already-blessed unchanged values are auto-kept and surfaced with a
+ * note (R39). An empty FINAL set is confirmed first (R19). Non-interactively
+ * (--no-interactive or non-TTY/CI), the multiselect is a required DECISION: with
+ * undeclared values present and no --yes, accept refuses (exit 2) instead of blessing
+ * all (R38). When there is nothing to decide (no undeclared values) the baseline is
+ * written regardless. (Same flow whether reached via `cdkrd accept` or check's
+ * interactive prompt — neither re-gathers.)
  */
 export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
   const { stackName, region, desired, findings, yes, interactive } = p;
-  if (!yes && (await loadBaseline(stackName, desired.accountId, region)))
+  const existing = await loadBaseline(stackName, desired.accountId, region);
+  if (!yes && existing)
     console.error(
       `note: ${stackName}: overwriting existing baseline (it is git-tracked; review the diff). Pass --yes to silence.`
     );
   let accepted = buildAccepted(findings);
+  let refreshedOnly = false; // true when only unchanged values remained (no delta to decide)
   if (!yes && accepted.length > 0) {
     // A decision is required (which undeclared values to bless). Non-interactively
     // we refuse rather than implicitly bless ALL of them (R38).
@@ -76,30 +81,45 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
       );
       return { wrote: false, refused: true };
     }
-    const picked = await multiselect({
-      message: `${stackName}: select undeclared value(s) to bless (unselected stay reported)`,
-      options: accepted.map((e) => ({ value: acceptedKey(e), label: `${e.logicalId}.${e.path}` })),
-      initialValues: accepted.map((e) => acceptedKey(e)), // default = all selected
-      required: false,
-    });
-    if (isCancel(picked)) {
-      console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
-      return { wrote: false, refused: false };
-    }
-    // Empty selection writes an EMPTY baseline, which CREATES the file and lifts R2's
-    // no-baseline revert guard — `revert` would then plan REMOVAL of all undeclared
-    // drift. Confirm that consequence explicitly before writing (R19).
-    if (picked.length === 0) {
-      const proceed = await confirm({
-        message: `${stackName}: bless nothing? This writes an EMPTY baseline — \`cdkrd revert\` will then plan REMOVAL of ALL undeclared drift on this stack.`,
-        initialValue: false,
+    // Only make the human decide on the DELTA from the existing baseline: already-blessed
+    // unchanged values are auto-kept (re-confirming a 50-item snapshot every time is wrong,
+    // R39). With no baseline the split returns everything as `changed` (the true first bless).
+    const { unchanged, changed } = splitAcceptedByBaseline(accepted, existing);
+    if (unchanged.length > 0)
+      console.error(
+        `note: ${stackName}: keeping ${unchanged.length} already-blessed unchanged value(s)`
+      );
+    if (changed.length === 0) {
+      // Nothing new to decide — just refresh the baseline (re-snapshot the unchanged set).
+      accepted = unchanged;
+      refreshedOnly = true;
+    } else {
+      const picked = await multiselect({
+        message: `${stackName}: select undeclared value(s) to bless (unselected stay reported)`,
+        options: changed.map((e) => ({ value: acceptedKey(e), label: `${e.logicalId}.${e.path}` })),
+        initialValues: changed.map((e) => acceptedKey(e)), // default = all selected
+        required: false,
       });
-      if (isCancel(proceed) || !proceed) {
+      if (isCancel(picked)) {
         console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
         return { wrote: false, refused: false };
       }
+      const selectedChanged = selectAccepted(findings, new Set(picked));
+      accepted = [...unchanged, ...selectedChanged]; // auto-kept unchanged + the user's picks
+      // The FINAL written set being empty (no unchanged + nothing picked) writes an EMPTY
+      // baseline, which CREATES the file and lifts R2's no-baseline revert guard — `revert`
+      // would then plan REMOVAL of all undeclared drift. Confirm that consequence (R19).
+      if (accepted.length === 0) {
+        const proceed = await confirm({
+          message: `${stackName}: bless nothing? This writes an EMPTY baseline — \`cdkrd revert\` will then plan REMOVAL of ALL undeclared drift on this stack.`,
+          initialValue: false,
+        });
+        if (isCancel(proceed) || !proceed) {
+          console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
+          return { wrote: false, refused: false };
+        }
+      }
     }
-    accepted = selectAccepted(findings, new Set(picked));
   }
   const { path, count } = await blessStack(
     stackName,
@@ -109,7 +129,11 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
     desired.rawTemplate,
     accepted
   );
-  console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
+  if (refreshedOnly)
+    console.log(
+      `${stackName}: nothing new to bless — baseline refreshed (${count} unchanged value(s))`
+    );
+  else console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
   return { wrote: true, refused: false };
 }
 

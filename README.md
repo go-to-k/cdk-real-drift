@@ -237,11 +237,17 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   exactly the same code as the standalone commands. Skipped under `--json`,
   `--show-all`, and `--pre-deploy`. Aborting the Revert confirmation keeps the
   exit code at 1 (nothing was written — the drift still stands).
-- **`accept`** shows a multiselect of the undeclared values, all pre-selected.
-  Deselect a suspicious one and it stays reported by `check` — bless the intentional
-  changes without rubber-stamping the rest. Non-interactively (CI / non-TTY /
-  `--no-interactive`) this selection can't be made, so `accept` refuses with exit 2
-  unless `--yes` is passed to bless **all** undeclared values.
+- **`accept`** shows a multiselect of only the **delta** from the existing
+  baseline (new + changed undeclared values), all pre-selected. Values already
+  blessed and unchanged are auto-kept (you never re-confirm a 50-item snapshot
+  after changing one thing) and surfaced with a
+  `keeping N already-blessed unchanged value(s)` note. Deselect a suspicious one
+  and it stays reported by `check` — bless the intentional changes without
+  rubber-stamping the rest. With no baseline yet, the full set is shown (the true
+  first bless); when nothing is new, the baseline is just refreshed.
+  Non-interactively (CI / non-TTY / `--no-interactive`) this selection can't be
+  made, so `accept` refuses with exit 2 unless `--yes` is passed to bless **all**
+  undeclared values.
 - **`check` with no baseline yet** offers to bless the current state on the spot.
 
 Flag combinations: `--no-interactive` alone = the read side completes but write

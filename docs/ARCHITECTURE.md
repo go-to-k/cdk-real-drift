@@ -391,6 +391,12 @@ field only warns and is stamped on the next `accept`.
 > `<stack>.<region>.json` files are local dogfood artifacts. They are simply not found
 > under the new path (→ "no baseline", run `accept`); delete them after re-accepting.
 
+When a baseline already exists, the interactive `accept` multiselect shows only the
+**delta** from it (`splitAcceptedByBaseline`) — new/changed undeclared values, where
+"unchanged" reuses the same `blessedValueMatches` predicate as `applyBaseline`
+(R6 — canonicalized compare); already-blessed unchanged values are auto-kept (noted,
+not re-confirmed) and a delta of zero just refreshes the file (R39).
+
 Committing it makes "what real state we accept" a visible, reviewable PR change.
 With revert it is also the _source of the undeclared target value_, so it is
 structural, not optional. `check` filters undeclared findings against it

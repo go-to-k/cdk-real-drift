@@ -11,6 +11,7 @@ import {
   checkBaselineAccount,
   hashTemplate,
   selectAccepted,
+  splitAcceptedByBaseline,
   warnTemplateHashDrift,
   writeBaseline,
 } from '../src/baseline/baseline-file.js';
@@ -82,6 +83,83 @@ describe('baseline', () => {
     it('all selected -> equals buildAccepted output', () => {
       const all = new Set(buildAccepted(findings).map(acceptedKey));
       expect(selectAccepted(findings, all)).toEqual(buildAccepted(findings));
+    });
+  });
+
+  describe('splitAcceptedByBaseline (delta-only accept, R39)', () => {
+    const accepted = [
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }, // unchanged
+      { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' }, // changed value
+      { logicalId: 'C', resourceType: 'AWS::X::Y', path: 'R', value: 1 }, // new path
+    ];
+
+    it('3-way buckets unchanged / changed-value / new-path correctly', () => {
+      const b = baseline([
+        { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
+        { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'old-val' },
+        // C.R absent from baseline => new
+      ]);
+      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
+      expect(unchanged).toEqual([
+        { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
+      ]);
+      expect(changed).toEqual([
+        { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' },
+        { logicalId: 'C', resourceType: 'AWS::X::Y', path: 'R', value: 1 },
+      ]);
+    });
+
+    it('R6 regression: a baseline value in an OLDER canonical form is still unchanged', () => {
+      // blessed under an OLDER rule set: IAM policy Action stored as a scalar; the current
+      // canonical value (from buildAccepted) is the sorted-array form. canonicalizeForCompare
+      // folds them together, so this must bucket as unchanged (not changed).
+      const b = baseline([
+        {
+          logicalId: 'A',
+          resourceType: 'AWS::IAM::Role',
+          path: 'AssumeRolePolicyDocument',
+          value: { Statement: [{ Effect: 'Allow', Action: 's3:Get' }] }, // scalar Action
+        },
+      ]);
+      const current = [
+        {
+          logicalId: 'A',
+          resourceType: 'AWS::IAM::Role',
+          path: 'AssumeRolePolicyDocument',
+          value: { Statement: [{ Effect: 'Allow', Action: ['s3:Get'] }] }, // canonical array
+        },
+      ];
+      const { unchanged, changed } = splitAcceptedByBaseline(current, b);
+      expect(unchanged).toHaveLength(1);
+      expect(changed).toHaveLength(0);
+    });
+
+    it('no baseline -> everything is changed (the true first bless)', () => {
+      const { unchanged, changed } = splitAcceptedByBaseline(accepted, undefined);
+      expect(unchanged).toEqual([]);
+      expect(changed).toEqual(accepted);
+    });
+
+    it('no new/changed -> changed empty, all unchanged (the refresh path)', () => {
+      const b = baseline(accepted.map((e) => ({ ...e })));
+      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
+      expect(unchanged).toEqual(accepted);
+      expect(changed).toEqual([]);
+    });
+
+    it('final written set = unchanged + selected (an unselected new entry is excluded)', () => {
+      // emulate acceptStack's composition: auto-kept unchanged + user-picked changed.
+      const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
+      // user selects only B.Q (the changed value), leaves the new C.R unselected
+      const selected = changed.filter((e) => e.logicalId === 'B');
+      const written = [...unchanged, ...selected];
+      expect(written).toEqual([
+        { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
+        { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' },
+      ]);
+      // the unselected new path C.R is NOT blessed
+      expect(written.some((e) => e.logicalId === 'C')).toBe(false);
     });
   });
 
