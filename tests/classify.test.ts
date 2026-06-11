@@ -21,8 +21,10 @@ describe('classifyResource (the heart)', () => {
   const schema: SchemaInfo = {
     readOnly: new Set(['Arn', 'RoleId']),
     writeOnly: new Set(['AssumeRolePolicyDocument']),
+    createOnly: new Set(),
     readOnlyPaths: ['Arn', 'RoleId'],
     writeOnlyPaths: ['AssumeRolePolicyDocument'],
+    createOnlyPaths: [],
     defaults: {},
   };
   const resource: DesiredResource = {
@@ -73,8 +75,10 @@ describe('classifyResource regressions (dogfood false-positive classes)', () => 
   const bare: SchemaInfo = {
     readOnly: new Set(),
     writeOnly: new Set(),
+    createOnly: new Set(),
     readOnlyPaths: [],
     writeOnlyPaths: [],
+    createOnlyPaths: [],
     defaults: {},
   };
   const res = (declared: Record<string, unknown>): DesiredResource => ({

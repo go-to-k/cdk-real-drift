@@ -17,8 +17,10 @@ export interface Finding {
 export interface SchemaInfo {
   readOnly: Set<string>; // top-level read-only names (fast checks)
   writeOnly: Set<string>; // top-level write-only names (fast checks)
+  createOnly: Set<string>; // top-level create-only names (changing them needs replacement)
   readOnlyPaths: string[]; // full dotted paths incl '*' wildcard (strip from live, any depth)
   writeOnlyPaths: string[]; // full dotted paths incl '*' wildcard (skip from compare, any depth)
+  createOnlyPaths: string[]; // full dotted paths incl '*' wildcard (revert is impossible — replacement)
   defaults: Record<string, unknown>; // top-level schema `default` values
 }
 

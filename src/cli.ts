@@ -34,6 +34,8 @@ OPTIONS
                               — the declared drift your next deploy would overwrite
   --all                       all deployed stacks in the region
   --dry-run                   (revert) print the plan; make no changes
+  --remove-unblessed          (revert) on a stack with NO baseline, REMOVE undeclared
+                              drift (default: refuse — run \`cdkrd accept\` first)
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
   --help, -h    --version, -v
 

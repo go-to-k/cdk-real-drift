@@ -15,6 +15,7 @@ export interface CommonArgs {
   all: boolean; // every deployed stack in the region
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
+  removeUnblessed: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
 }
 
 export function parseCommonArgs(args: string[]): CommonArgs {
@@ -56,5 +57,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     all: has('--all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
+    removeUnblessed: has('--remove-unblessed'),
   };
 }

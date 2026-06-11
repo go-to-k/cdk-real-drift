@@ -35,7 +35,13 @@ export async function runAccept(args: string[]): Promise<number> {
         );
       }
       const { desired, findings } = await gatherFindings(stackName, region);
-      const { path, count } = await blessStack(stackName, region, findings, desired.rawTemplate);
+      const { path, count } = await blessStack(
+        stackName,
+        region,
+        desired.accountId,
+        findings,
+        desired.rawTemplate
+      );
       console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
     } catch (e) {
       if (isStackNotDeployed(e)) {

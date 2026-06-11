@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { buildRevertPlan, toPatchDocument } from '../src/revert/plan.js';
-import type { Finding } from '../src/types.js';
+import type { Finding, SchemaInfo } from '../src/types.js';
+
+const schemaWithCreateOnly = (type: string, ...names: string[]): Map<string, SchemaInfo> =>
+  new Map([
+    [
+      type,
+      {
+        readOnly: new Set<string>(),
+        writeOnly: new Set<string>(),
+        createOnly: new Set(names),
+        readOnlyPaths: [],
+        writeOnlyPaths: [],
+        createOnlyPaths: names,
+        defaults: {},
+      },
+    ],
+  ]);
 
 const F = (over: Partial<Finding>): Finding => ({
   tier: 'declared',
@@ -16,6 +32,7 @@ const baseline = (accepted: BaselineFile['accepted']): BaselineFile => ({
   schemaVersion: 1,
   stackName: 's',
   region: 'r',
+  accountId: '111122223333',
   capturedAt: '',
   templateHash: '',
   accepted,
@@ -62,6 +79,27 @@ describe('buildRevertPlan', () => {
     const plan = buildRevertPlan([f], baseline([]));
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
     expect(plan.items[0]!.ops[0]).not.toHaveProperty('value');
+  });
+
+  it('undeclared drift with NO baseline -> notRevertable (refuse destructive bulk remove)', () => {
+    const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('no baseline');
+  });
+
+  it('--remove-unblessed re-enables the remove op on a no-baseline stack', () => {
+    const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
+    const plan = buildRevertPlan([f], undefined, { removeUnblessed: true });
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
+  });
+
+  it('declared drift is still revertable with no baseline (template is its source)', () => {
+    const f = F({ tier: 'declared', desired: 'Enabled', actual: 'Suspended' });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.notRevertable).toHaveLength(0);
   });
 
   it('removed-undeclared (blessed value gone) -> re-add the blessed value', () => {
@@ -140,6 +178,34 @@ describe('buildRevertPlan', () => {
     expect(plan.items).toHaveLength(0);
     expect(plan.notRevertable).toHaveLength(2);
     for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
+  });
+
+  it('create-only declared drift -> notRevertable (needs replacement, not a patch)', () => {
+    const plan = buildRevertPlan(
+      [F({ tier: 'declared', path: 'BucketName', desired: 'a', actual: 'b' })],
+      undefined,
+      { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('create-only');
+  });
+
+  it('a nested path under a create-only top-level segment is still blocked', () => {
+    const plan = buildRevertPlan(
+      [F({ tier: 'declared', path: 'BucketName.Sub', desired: 'a', actual: 'b' })],
+      undefined,
+      { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
+    );
+    expect(plan.notRevertable[0]!.reason).toContain('create-only');
+  });
+
+  it('non-create-only declared drift still plans an op when a schema is present', () => {
+    const plan = buildRevertPlan(
+      [F({ tier: 'declared', path: 'VersioningConfiguration.Status', desired: 'Enabled' })],
+      undefined,
+      { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
+    );
+    expect(plan.items).toHaveLength(1);
   });
 
   it('deleted finding -> notRevertable (recreate via cdk deploy), never a patch op', () => {

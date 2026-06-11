@@ -7,11 +7,12 @@ import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { readLive } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
-import type { Finding } from '../types.js';
+import type { Finding, SchemaInfo } from '../types.js';
 
 export interface GatherResult {
   desired: Desired;
   findings: Finding[];
+  schemas: Map<string, SchemaInfo>; // resourceType -> schema (so revert can honor createOnly)
 }
 
 export async function gatherFindings(
@@ -27,6 +28,7 @@ export async function gatherFindings(
 
   const desired = await loadDesired(cfn, stackName, region, templateOverride);
   const findings: Finding[] = [];
+  const schemas = new Map<string, SchemaInfo>();
 
   // Pass 1: read every resource's live model first, so Fn::GetAtt in any
   // resource's declared props can be resolved against the referenced resource's
@@ -78,7 +80,8 @@ export async function gatherFindings(
     // in place so downstream consumers (revert / accept) see the resolved view.
     if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
     const schema = await getSchemaInfo(cfn, r.resourceType);
+    schemas.set(r.resourceType, schema);
     findings.push(...classifyResource(r, read.live, schema));
   }
-  return { desired, findings };
+  return { desired, findings, schemas };
 }

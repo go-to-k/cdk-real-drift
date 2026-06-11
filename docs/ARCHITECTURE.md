@@ -229,6 +229,13 @@ current → target), asks for confirmation (`@clack`; `--yes` skips; non-TTY ref
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an un-blessed out-of-band _addition_ reverts by REMOVAL).
+- **No-baseline safety guard**: on a stack that has never been `accept`ed, undeclared
+  drift is reported as `notRevertable` (`no baseline — run cdkrd accept first, or
+pass --remove-unblessed`) rather than removed. The subtractive noise model's
+  failure mode in `check` is "the report is noisy"; the un-guarded revert mirror of
+  that would be **destructive** (a bulk REMOVE of every undeclared value that slipped
+  through subtraction). `--remove-unblessed` opts back into removal. Declared drift is
+  always revertable (the template is its source, independent of any baseline).
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).
@@ -242,8 +249,11 @@ current → target), asks for confirmation (`@clack`; `--yes` skips; non-TTY ref
   `AWS::Lambda::Permission` (add/remove statement model keyed by StatementId, not a
   settable document), `AWS::Budgets::Budget` (`UpdateBudget` needs a full NewBudget
   the reader can't reconstruct), a `deleted` resource (`deleted — recreate via cdk
-deploy`: a patch can't recreate a resource), plus any `readGap` / `unresolved` /
-  `skipped` finding. KMS keys need no SDK writer — they revert via the generic CC path.
+deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
+  `createOnlyProperties` / `conditionalCreateOnlyProperties` field needs a resource
+  replacement, which an in-place `UpdateResource` can't do — caught from the schema
+  at plan time, not at apply time), plus any `readGap` / `unresolved` / `skipped`
+  finding. KMS keys need no SDK writer — they revert via the generic CC path.
 - **Known limitation**: toggle-style props with no "absent" state (e.g. S3 transfer
   acceleration is only Enabled/Suspended) can't be reverted by removal.
 
@@ -254,9 +264,17 @@ deploy`: a patch can't recreate a resource), plus any `readGap` / `unresolved` /
 
 ```jsonc
 { "schemaVersion": 1, "stackName": "...", "region": "...",
+  "accountId": "<aws account the baseline was captured in>",
   "capturedAt": "<iso>", "templateHash": "<hash of deployed template>",
   "accepted": [ { "logicalId", "resourceType", "path", "value" }, ... ] }
 ```
+
+`accountId` is a **per-account guard**: the same stack name deployed to dev + prod
+must not share one baseline (comparing prod's real state against dev's blessed state
+is false drift — or worse, hides real drift). `check` / `revert` refuse (exit 2) when
+the loaded baseline's `accountId` differs from the account being queried. A
+pre-release file with no `accountId` only warns and is stamped on the next `accept`
+(the filename stays `<stack>.<region>.json`; the field, not the path, is the guard).
 
 Committing it makes "what real state we accept" a visible, reviewable PR change.
 With revert it is also the _source of the undeclared target value_, so it is

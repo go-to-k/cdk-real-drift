@@ -5,7 +5,12 @@
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
 import { confirm, isCancel } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
-import { applyBaseline, blessStack, loadBaseline } from '../baseline/baseline-file.js';
+import {
+  applyBaseline,
+  blessStack,
+  checkBaselineAccount,
+  loadBaseline,
+} from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { report } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
@@ -64,13 +69,21 @@ export async function runCheck(args: string[]): Promise<number> {
         synthTemplates?.get(stackName)
       );
       let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
+      // per-account guard: a baseline captured in a different account is wrong here
+      if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       // first run: no baseline yet → offer to bless interactively (TTY only)
       if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
         const ok = await confirm({
           message: `${stackName}: no baseline yet. Bless the current state now?`,
         });
         if (!isCancel(ok) && ok) {
-          const { count } = await blessStack(stackName, region, findings, desired.rawTemplate);
+          const { count } = await blessStack(
+            stackName,
+            region,
+            desired.accountId,
+            findings,
+            desired.rawTemplate
+          );
           console.error(`baseline written (${count} undeclared value(s) blessed) — commit it.`);
           baseline = await loadBaseline(stackName, region);
         }

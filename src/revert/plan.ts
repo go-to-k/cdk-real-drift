@@ -7,7 +7,7 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
-import type { Finding } from '../types.js';
+import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_WRITERS } from './writers.js';
 
 export interface PatchOp {
@@ -51,13 +51,33 @@ function toPointer(dotted: string): string {
 
 const DRIFT_TIERS = new Set(['declared', 'undeclared']);
 
+export interface RevertOptions {
+  // (revert) when no baseline file exists, undeclared drift is removed only if this
+  // is set. Without it, undeclared drift on an un-blessed stack is reported as
+  // notRevertable (a bulk REMOVE of every undeclared value that slipped through
+  // noise subtraction would be destructive — fail-safe instead).
+  removeUnblessed?: boolean;
+  // resourceType -> schema, so create-only property drift is reported as
+  // notRevertable up front (an in-place patch would fail at apply time).
+  schemas?: Map<string, SchemaInfo>;
+}
+
+// the first dotted segment of a finding path ("A.B.0" -> "A"), used to test the
+// top-level create-only set.
+function topSegment(path: string): string {
+  return path.split('.')[0] ?? path;
+}
+
 export function buildRevertPlan(
   findings: Finding[],
-  baseline: BaselineFile | undefined
+  baseline: BaselineFile | undefined,
+  opts: RevertOptions = {}
 ): RevertPlan {
   const itemsByLogical = new Map<string, RevertItem>();
   const notRevertable: NotRevertable[] = [];
   const blessed = baseline?.accepted ?? [];
+  // "the stack has never been `accept`ed" — undeclared removal is gated on this.
+  const noBaseline = baseline === undefined;
 
   for (const f of findings) {
     const displayId = f.constructPath ?? f.logicalId;
@@ -89,6 +109,34 @@ export function buildRevertPlan(
         resourceType: f.resourceType,
         path: f.path,
         reason: 'type not revertable yet',
+      });
+      continue;
+    }
+    // create-only property: an in-place UpdateResource patch would be rejected (the
+    // change needs a replacement) — report it now instead of failing at apply time.
+    if (opts.schemas?.get(f.resourceType)?.createOnly.has(topSegment(f.path))) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'create-only property — change requires resource replacement',
+      });
+      continue;
+    }
+    // un-blessed undeclared drift: a no-baseline stack would otherwise REMOVE every
+    // such value (the subtractive model's failure mode is "check is noisy", but the
+    // revert mirror of that is destructive). Refuse unless --remove-unblessed.
+    if (
+      f.tier === 'undeclared' &&
+      noBaseline &&
+      !opts.removeUnblessed &&
+      !(f.actual === undefined && f.desired !== undefined) // a removed-blessed re-add can't occur without a baseline, but be explicit
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'no baseline — run `cdkrd accept` first, or pass --remove-unblessed',
       });
       continue;
     }

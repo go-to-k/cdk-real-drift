@@ -21,6 +21,7 @@ export interface BaselineFile {
   schemaVersion: 1;
   stackName: string;
   region: string;
+  accountId: string; // the AWS account the baseline was captured in (per-account guard)
   capturedAt: string;
   templateHash: string;
   accepted: AcceptedEntry[];
@@ -58,6 +59,7 @@ export async function writeBaseline(b: BaselineFile): Promise<string> {
 export async function blessStack(
   stackName: string,
   region: string,
+  accountId: string,
   findings: Finding[],
   rawTemplate: string
 ): Promise<{ path: string; count: number }> {
@@ -66,11 +68,40 @@ export async function blessStack(
     schemaVersion: 1,
     stackName,
     region,
+    accountId,
     capturedAt: new Date().toISOString(),
     templateHash: hashTemplate(rawTemplate),
     accepted,
   });
   return { path, count: accepted.length };
+}
+
+/**
+ * Per-account guard. A baseline is account-specific: the same stack name deployed
+ * to dev + prod must not share one baseline (prod's real state compared against
+ * dev's baseline = false drift, or worse, real drift hidden). On a mismatch this
+ * throws (caller surfaces exit 2). A pre-release file with no accountId only warns;
+ * the next `accept` stamps it.
+ */
+export function checkBaselineAccount(
+  baseline: BaselineFile,
+  currentAccountId: string,
+  stackName: string,
+  warn: (s: string) => void = console.error
+): void {
+  if (!baseline.accountId) {
+    warn(
+      `note: ${stackName}: baseline has no accountId (older file) — it will be stamped on the next \`cdkrd accept\`.`
+    );
+    return;
+  }
+  if (currentAccountId && baseline.accountId !== currentAccountId) {
+    throw new Error(
+      `baseline was captured in account ${baseline.accountId}, but the current account is ${currentAccountId}. ` +
+        'Baselines are per-account — run `cdkrd accept` in this account (its own baseline file), ' +
+        'or check out the baseline from the matching account.'
+    );
+  }
 }
 
 /** Build the blessed-undeclared set from a check run's findings. */

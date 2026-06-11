@@ -3,6 +3,7 @@ import {
   applyBaseline,
   type BaselineFile,
   buildAccepted,
+  checkBaselineAccount,
   hashTemplate,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
@@ -15,11 +16,12 @@ const undeclared = (logicalId: string, path: string, value: unknown): Finding =>
   actual: value,
 });
 
-function baseline(accepted: BaselineFile['accepted']): BaselineFile {
+function baseline(accepted: BaselineFile['accepted'], accountId = '111122223333'): BaselineFile {
   return {
     schemaVersion: 1,
     stackName: 's',
     region: 'r',
+    accountId,
     capturedAt: '',
     templateHash: '',
     accepted,
@@ -80,5 +82,26 @@ describe('baseline', () => {
   it('hashTemplate is stable + prefixed', () => {
     expect(hashTemplate('{}')).toBe(hashTemplate('{}'));
     expect(hashTemplate('{}')).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  describe('checkBaselineAccount (per-account guard)', () => {
+    it('passes when the account matches', () => {
+      expect(() => checkBaselineAccount(baseline([]), '111122223333', 's')).not.toThrow();
+    });
+
+    it('throws on an account mismatch (dev baseline vs prod account)', () => {
+      expect(() => checkBaselineAccount(baseline([], '111122223333'), '999988887777', 's')).toThrow(
+        /account 111122223333.*current account is 999988887777/s
+      );
+    });
+
+    it('only warns (does not throw) for an older baseline with no accountId', () => {
+      const warnings: string[] = [];
+      const old = { ...baseline([]), accountId: '' };
+      expect(() =>
+        checkBaselineAccount(old, '999988887777', 's', (m) => warnings.push(m))
+      ).not.toThrow();
+      expect(warnings[0]).toContain('no accountId');
+    });
   });
 });

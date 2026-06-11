@@ -131,4 +131,16 @@ describe('parseSchema', () => {
     expect([...info.writeOnly]).toEqual(['AccessControl']);
     expect(info.defaults).toEqual({ Path: '/' });
   });
+
+  it('parses createOnly + conditionalCreateOnly (both = needs replacement)', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        createOnlyProperties: ['/properties/BucketName', '/properties/Nested/Key'],
+        conditionalCreateOnlyProperties: ['/properties/AvailabilityZone'],
+      })
+    );
+    expect([...info.createOnly].sort()).toEqual(['AvailabilityZone', 'BucketName']);
+    expect(info.createOnlyPaths).toContain('Nested.Key');
+    expect(info.createOnlyPaths).toContain('AvailabilityZone');
+  });
 });

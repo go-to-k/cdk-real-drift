@@ -8,8 +8,10 @@ const cache = new Map<string, SchemaInfo>();
 const EMPTY: SchemaInfo = {
   readOnly: new Set(),
   writeOnly: new Set(),
+  createOnly: new Set(),
   readOnlyPaths: [],
   writeOnlyPaths: [],
+  createOnlyPaths: [],
   defaults: {},
 };
 
@@ -45,12 +47,20 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   const schema = JSON.parse(schemaJson) as {
     readOnlyProperties?: string[];
     writeOnlyProperties?: string[];
+    createOnlyProperties?: string[];
+    conditionalCreateOnlyProperties?: string[];
     properties?: Record<string, { default?: unknown }>;
   };
   const dotted = (arr: string[] | undefined): string[] => (arr ?? []).map(pointerToDotted);
   const topLevel = (paths: string[]): Set<string> => new Set(paths.filter((p) => !p.includes('.')));
   const readOnlyPaths = dotted(schema.readOnlyProperties);
   const writeOnlyPaths = dotted(schema.writeOnlyProperties);
+  // createOnly + conditionalCreateOnly both mean "you cannot change this in place"
+  // (a full / conditional replacement is required) — treat both as not-revertable.
+  const createOnlyPaths = [
+    ...dotted(schema.createOnlyProperties),
+    ...dotted(schema.conditionalCreateOnlyProperties),
+  ];
   const defaults: Record<string, unknown> = {};
   for (const [k, def] of Object.entries(schema.properties ?? {})) {
     if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
@@ -58,8 +68,10 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
+    createOnly: topLevel(createOnlyPaths),
     readOnlyPaths,
     writeOnlyPaths,
+    createOnlyPaths,
     defaults,
   };
 }

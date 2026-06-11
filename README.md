@@ -95,6 +95,7 @@ every stack it defines is targeted. A stack argument containing `*` or `?` is a 
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would overwrite                  |
 | `--all`                          | every deployed stack in the region                                                                                            |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
+| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — `accept` first)                              |
 | `--yes`/`-y`                     | skip confirmation (revert) / baseline-overwrite notice (accept)                                                               |
 
 **Exit codes:** `0` clean · `1` drift detected · `2` error. Use in CI:
@@ -132,9 +133,13 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   are `skipped`.
 - **revert** writes via Cloud Control `UpdateResource`. It restores declared drift
   to the deployed-template value and undeclared drift to the blessed baseline value.
-  Reverting an undeclared _addition_ that was never blessed is done by removal —
-  which is not possible for toggle-style properties (e.g. S3 transfer acceleration
-  has no "absent" state, only Enabled/Suspended); such props are reported and left.
+  On a stack with **no baseline yet**, undeclared drift is reported as `not revertable`
+  (run `cdkrd accept` first) rather than removed — a bulk removal of every undeclared
+  value would be destructive; pass `--remove-unblessed` to opt in. Declared drift is
+  always revertable (the template is its source). Reverting an undeclared _addition_
+  that was blessed-then-changed is done by removal — which is not possible for
+  toggle-style properties (e.g. S3 transfer acceleration has no "absent" state, only
+  Enabled/Suspended); such props are reported and left.
   Cloud-Control-unwritable types revert via a type-specific SDK writer (read current
   model -> apply ops -> SDK write): the policy-document types (`AWS::S3::BucketPolicy`,
   `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`) and

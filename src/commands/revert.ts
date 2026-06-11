@@ -8,7 +8,12 @@
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
 import { confirm, isCancel } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
-import { applyBaseline, type BaselineFile, loadBaseline } from '../baseline/baseline-file.js';
+import {
+  applyBaseline,
+  type BaselineFile,
+  checkBaselineAccount,
+  loadBaseline,
+} from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { applyRevertItem } from '../revert/apply.js';
 import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
@@ -59,8 +64,12 @@ export async function runRevert(args: string[]): Promise<number> {
     try {
       const baseline: BaselineFile | undefined = await loadBaseline(stackName, region);
       const gathered = await gatherFindings(stackName, region);
+      if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
       const drifted = applyBaseline(gathered.findings, baseline);
-      const plan = buildRevertPlan(drifted, baseline);
+      const plan = buildRevertPlan(drifted, baseline, {
+        removeUnblessed: a.removeUnblessed,
+        schemas: gathered.schemas,
+      });
 
       if (plan.items.length === 0 && plan.notRevertable.length === 0) {
         console.log(`${stackName} (${region}): no drift to revert.`);
