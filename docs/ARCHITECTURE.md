@@ -144,8 +144,9 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
 5. classify (tier)       deleted | declared | undeclared | readGap | unresolved | skipped
 6. baseline filter       applyBaseline(): undeclared findings already blessed → drop
-7. report + exit code    report.ts: drift tiers in full + 1-line info: footer (--verbose
-                         expands); --json carries all findings; worst exit across stacks
+7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
+                         1 bullet/tier when 2+; --verbose expands); --json carries
+                         all findings; worst exit across stacks
 ```
 
 The two-pass structure (PR "resolve Fn::GetAtt against live attributes") is what
@@ -473,12 +474,19 @@ Ignored findings drop out of the revert plan and the accept bless-set automatica
 (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
 (inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
 the ignored entries. A CLI to manage rules (`cdkrd ignore <pattern>`) is a future
-open question (§13) — v1 is hand-edited. **Default text layout (R25):** the three DRIFT tiers print in
-full; the three INFORMATIONAL tiers are folded into a single `info:` footer line
-(per-tier counts + a reason breakdown, e.g. `skipped=24 (custom resource 12, override
-target unresolved 12)`); `--verbose` expands them to full lists; 0-count tiers are
-never printed. The `result:` line carries the verdict + non-zero drift counts only
-(the informational breakdown lives on `info:`, so the two never duplicate). `--json`
+open question (§13) — v1 is hand-edited. **Default text layout (R25, spacing R37):**
+the three DRIFT tiers print in full; the INFORMATIONAL tiers are folded into an
+`info:` footer (per-tier counts + a reason breakdown, e.g. `skipped=24 (custom
+resource 12, override target unresolved 12)`) — a single line when one tier is
+present, one bullet line per tier (with a single `--verbose` hint) when 2+;
+`--verbose` expands them to full lists; 0-count tiers are never printed. No blank
+line precedes the header or the `result:` line, so a CLEAN stack with one
+informational tier is exactly 3 lines; blank lines remain between the header and
+the drift sections (grouping), and the check loop puts one blank line between
+consecutive stack reports in a multi-stack run. The `result:` line carries the
+verdict + non-zero drift counts only (the informational breakdown lives on `info:`,
+so the two never duplicate); `^result:` stays greppable, but the formal
+machine-readable contract is `--json` (the `info:` footer may span lines). `--json`
 is unaffected — it always carries every finding. A `Custom::*` resource is `skipped`
 without any API call (note: `custom resource — no cloud-side model to read`).
 

@@ -28,7 +28,6 @@ When drift is found, `check` prompts inline — no separate command needed:
 
 [UNDECLARED DRIFT (the differentiator)] 1
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
-
 result: 1 drift(s) (undeclared=1)
 
 ApiStack: drift found — what do you want to do?
@@ -96,10 +95,10 @@ same change shows up:
 
 ```console
 $ npx cdkrd check ApiStack
+=== cdkrd check: ApiStack (us-east-1) ===
 
 [UNDECLARED DRIFT (the differentiator)] 1
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access","PolicyDocument":{"Statement":[{"Action":["s3:*"],"Effect":"Allow","Resource":["*"]}]}}]
-
 result: 1 drift(s) (undeclared=1)
 ```
 
@@ -121,7 +120,6 @@ is reported in the `deleted` tier and always sets exit 1, regardless of `--fail-
 
 [DELETED (resource deleted out of band — always drift)] 1
   ApiStack/EventsQueue (AWS::SQS::Queue) — resource deleted out of band
-
 result: 1 drift(s) (deleted=1)
 ```
 
@@ -220,7 +218,7 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                  |
 | `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
-| `--verbose` / `-v`               | (check) expand informational tiers from the `info:` line / (revert) the per-reason NOT-revertable summary — to full lists     |
+| `--verbose` / `-v`               | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists   |
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
 | `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
@@ -262,16 +260,20 @@ trailing commas.)
 Rules glob (`*` / `?`) against either `<logicalId>.<path>` or the friendly
 `<constructPath>.<path>` (e.g. `MyStack/ApiRole.Policies`); a parent rule covers child
 paths. Matching findings move to the informational `ignored` tier — still visible
-on the `info:` line and under `--verbose`, never exit-affecting, and excluded from
+in the `info:` footer and under `--verbose`, never exit-affecting, and excluded from
 `revert` plans and `accept`. A **deleted resource is never ignorable**.
 
 ## Output
 
 Drift tiers (`deleted` / `declared` / `undeclared`) are always printed in full —
 they are the point. Informational tiers (`readGap` / `unresolved` / `skipped` /
-`ignored`) fold into a one-line `info:` footer with per-reason counts; `--verbose`
-expands them. Zero-count tiers are omitted. Greppable: `^result:` is the verdict,
-`^info:` the rest.
+`ignored`) fold into an `info:` footer with per-reason counts — a single line when
+one tier is present, one bullet line per tier when there are several; `--verbose`
+expands them to full lists. Zero-count tiers are omitted. A CLEAN stack with one
+informational tier is exactly three lines (header / `result:` / `info:`); in a
+multi-stack run, consecutive stack reports are separated by a single blank line.
+Greppable: `^result:` is the verdict; for machine consumption the formal contract
+is `--json` (the `info:` footer may span multiple lines).
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -280,8 +282,11 @@ expands them. Zero-count tiers are omitted. Greppable: `^result:` is the verdict
   ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"
-
 result: 1 drift(s) (declared=1)
+info:
+  - readGap=1 (write-only 1)
+  - skipped=2 (custom resource 2)
+  run with --verbose for the list
 ```
 
 ### JSON output contract

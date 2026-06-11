@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { report } from '../src/report/report.js';
+import { report, stackSeparator } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -88,7 +88,7 @@ describe('report', () => {
     it('result: line lists only non-zero DRIFT counts; CLEAN prints just CLEAN', () => {
       expect(
         run([reason('skipped', 'custom resource — no cloud-side model to read')]).text
-      ).toContain('\nresult: CLEAN');
+      ).toMatch(/^result: CLEAN$/m);
       // the old full (deleted=0 declared=0 ...) enumeration is gone
       expect(run([F('undeclared')]).text).not.toContain('deleted=0');
       expect(run([F('undeclared')]).text).toMatch(/result: 1 drift\(s\) \(undeclared=1\)/);
@@ -99,7 +99,17 @@ describe('report', () => {
       expect(run([F('declared')], { failOn: 'declared' }).text).toContain('(fail-on=declared)');
     });
 
-    it('folds informational tiers into a single info: line with a reason breakdown', () => {
+    it('folds a single informational tier into a one-line info: footer', () => {
+      const { text } = run([
+        reason('skipped', 'custom resource — no cloud-side model to read', 'Custom::Foo'),
+      ]);
+      expect(text).not.toContain('[SKIPPED');
+      expect(text).toContain(
+        'info: skipped=1 (custom resource 1) — run with --verbose for the list'
+      );
+    });
+
+    it('expands 2+ informational tiers to one bullet per tier with ONE --verbose hint (R37)', () => {
       const findings: Finding[] = [
         reason('readGap', 'write-only — cannot be read back'),
         reason('skipped', 'custom resource — no cloud-side model to read', 'Custom::Foo'),
@@ -112,9 +122,15 @@ describe('report', () => {
       const { text } = run(findings);
       expect(text).not.toContain('[SKIPPED');
       expect(text).not.toContain('[READ GAP');
-      expect(text).toMatch(/info: .*readGap=1 \(write-only 1\)/);
-      expect(text).toMatch(/skipped=2 \(.*custom resource 1.*override target unresolved 1.*\)/);
-      expect(text).toContain('--verbose');
+      const lines = text.split('\n');
+      const infoIdx = lines.indexOf('info:');
+      expect(infoIdx).toBeGreaterThan(-1);
+      expect(lines[infoIdx + 1]).toBe('  - readGap=1 (write-only 1)');
+      expect(lines[infoIdx + 2]).toMatch(
+        /^ {2}- skipped=2 \(.*custom resource 1.*override target unresolved 1.*\)$/
+      );
+      expect(lines[infoIdx + 3]).toBe('  run with --verbose for the list');
+      expect(text.match(/--verbose/g)).toHaveLength(1);
     });
 
     it('result: appears ABOVE the info: footer', () => {
@@ -162,7 +178,7 @@ describe('report', () => {
     it('ignored is informational — folds into info: and never sets exit 1', () => {
       const { code, text } = run([ignored('*.DesiredCount')]);
       expect(code).toBe(0);
-      expect(text).toContain('\nresult: CLEAN');
+      expect(text).toMatch(/^result: CLEAN$/m);
       expect(text).toMatch(/info: ignored=1 \("\*\.DesiredCount" 1\)/);
       expect(text).not.toContain('[IGNORED');
     });
@@ -171,6 +187,51 @@ describe('report', () => {
       const { text } = run([ignored('*.DesiredCount')], { verbose: true });
       expect(text).toContain('[IGNORED');
       expect(text).not.toContain('info:');
+    });
+  });
+
+  describe('R37 spacing', () => {
+    const skipped: Finding = {
+      tier: 'skipped',
+      logicalId: 'L',
+      resourceType: 'Custom::Foo',
+      path: '',
+      note: 'custom resource — no cloud-side model to read',
+    };
+
+    it('CLEAN with one informational tier is exactly 3 lines: header/result/info, no blanks', () => {
+      const { text } = run([skipped]);
+      expect(text.split('\n')).toEqual([
+        '=== cdkrd check: stack (us-east-1) ===',
+        'result: CLEAN',
+        'info: skipped=1 (custom resource 1) — run with --verbose for the list',
+      ]);
+    });
+
+    it('drift keeps a blank line after the header but none before result:', () => {
+      const lines = run([F('declared')]).text.split('\n');
+      expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
+      expect(lines[1]).toBe(''); // blank between header and the drift section (grouping)
+      expect(lines[2]).toBe('[DECLARED DRIFT] 1');
+      const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
+      expect(lines[resultIdx - 1]).not.toBe(''); // result follows the section directly
+    });
+
+    it('multi-stack: ONE blank line between consecutive reports, none before the first', () => {
+      const out: string[] = [];
+      const log = (s: string) => out.push(s);
+      const separate = stackSeparator(log);
+      separate();
+      report([], 'StackA (ap-northeast-1)', { log });
+      separate();
+      report([], 'StackB (us-east-1)', { log });
+      expect(out.join('\n').split('\n')).toEqual([
+        '=== cdkrd check: StackA (ap-northeast-1) ===',
+        'result: CLEAN',
+        '',
+        '=== cdkrd check: StackB (us-east-1) ===',
+        'result: CLEAN',
+      ]);
     });
   });
 });

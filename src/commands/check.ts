@@ -15,7 +15,7 @@ import {
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
-import { exitCode, report } from '../report/report.js';
+import { exitCode, report, stackSeparator } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { Finding } from '../types.js';
@@ -81,6 +81,9 @@ export async function runCheck(args: string[]): Promise<number> {
   }
 
   let worst = 0;
+  // R37: one blank line between consecutive stack reports (text mode only) — done
+  // here at the call site so a single-stack run never gets a stray leading blank.
+  const separate = stackSeparator();
   for (const { stackName, region } of stacks) {
     if (!region) {
       console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
@@ -110,6 +113,7 @@ export async function runCheck(args: string[]): Promise<number> {
           console.error(
             `note: ${stackName}: --pre-deploy reports declared drift only (undeclared tiers are evaluated against the deployed template — run check without --pre-deploy)`
           );
+        if (!a.json) separate();
         worst = Math.max(
           worst,
           report(applyIgnores(declaredOnly, stackName, config), `${stackName} (${region})`, {
@@ -160,6 +164,7 @@ export async function runCheck(args: string[]): Promise<number> {
         stackName,
         config
       );
+      if (!a.json) separate();
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
