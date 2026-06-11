@@ -5,7 +5,8 @@
 > CloudFormation drift detection, `driftctl`, and `terraform plan` all miss.
 > **No AWS Config required.**
 
-**Status:** pre-release / experimental. Not yet published. Detect-only (never writes to AWS).
+**Status:** pre-release / experimental. Not yet published. `check` / `accept` never
+write to AWS; `revert` is the one AWS-mutating command (always confirms first).
 
 ## Why
 
@@ -15,10 +16,15 @@ in your template. If someone changes a setting you never declared — a bucket's
 extra inline policy — it is **invisible** to those tools.
 
 `cdkrd` reads the **full** live resource state and reports the divergence —
-declared and undeclared alike — against a baseline you bless and commit to git.
+declared and undeclared alike — against a baseline you bless and commit to git,
+and can **revert** it back to the desired value.
 
-It does NOT reimplement `cdk diff` (code-vs-template). It is purely a drift tool:
-**reality vs intent.**
+It does NOT reimplement `cdk diff` (code-vs-template). It is a drift tool:
+**reality vs intent** — find it, accept it, or revert it.
+
+Run it in a CDK app and it synthesizes (via `@aws-cdk/toolkit-lib`) to auto-discover
+your stacks and show findings by **construct path**; it also works on any deployed
+CloudFormation stack by name (no synth needed).
 
 ## Install / build
 
@@ -61,21 +67,27 @@ is a visible, reviewable change to "what real state we accept".
 
 ## Commands & options
 
-| command                            | does                                                              |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| `cdkrd check <stack>... \| --all`  | compare live state vs template (declared) + baseline (undeclared) |
-| `cdkrd accept <stack>... \| --all` | snapshot current undeclared state into the baseline file          |
-| `cdkrd init <stack>`               | first-time baseline (alias of `accept`)                           |
+| command                             | does                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| `cdkrd check [<stack>...] [--all]`  | compare live state vs template (declared) + baseline (undeclared)      |
+| `cdkrd accept [<stack>...] [--all]` | snapshot current undeclared state into the baseline file               |
+| `cdkrd revert [<stack>...] [--all]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
+
+With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`) and
+every stack it defines is targeted.
 
 | option                           | meaning                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`)                                                                         |
+| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |
+| `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                               |
 | `--app <cmd\|cdk.out>`           | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
+| `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                    |
 | `--json`                         | machine-readable output                                                                                                       |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)                                                                          |
 | `--show-all`                     | inventory mode: show ALL current undeclared state                                                                             |
 | `--all`                          | every deployed stack in the region                                                                                            |
-| `--yes`/`-y`                     | skip the baseline-overwrite notice                                                                                            |
+| `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
+| `--yes`/`-y`                     | skip confirmation (revert) / baseline-overwrite notice (accept)                                                               |
 
 **Exit codes:** `0` clean · `1` drift detected · `2` error. Use in CI:
 
