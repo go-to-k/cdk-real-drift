@@ -72,7 +72,7 @@ construct paths from the deployed template's `aws:cdk:path` Metadata when presen
 
 ## Kept (re-validated, not changing)
 
-- Baseline = git-committed `.cdkrd/<stack>.<region>.json`. With revert it is the
+- Baseline = git-committed `.cdkrd/<stack>.<accountId>.<region>.json`. With revert it is the
   _source of the undeclared target value_, so it is structural, not optional.
 - The drift detection itself never calls CloudFormation's drift API and never
   _requires_ synth — synth only adds discovery / construct paths / clobber.

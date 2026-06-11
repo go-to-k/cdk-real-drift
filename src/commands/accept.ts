@@ -36,12 +36,14 @@ export async function runAccept(args: string[]): Promise<number> {
       continue;
     }
     try {
-      if (!a.yes && (await loadBaseline(stackName, region))) {
+      // gather FIRST: the baseline filename embeds the accountId, which only the
+      // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
+      const { desired, findings } = await gatherFindings(stackName, region);
+      if (!a.yes && (await loadBaseline(stackName, desired.accountId, region))) {
         console.error(
           `note: ${stackName}: overwriting existing baseline (it is git-tracked; review the diff). Pass --yes to silence.`
         );
       }
-      const { desired, findings } = await gatherFindings(stackName, region);
       // Selective accept: in a TTY without --yes, let the user pick WHICH undeclared
       // values to bless (default = all selected; Enter = same as today). Non-TTY / --yes
       // bless ALL (CI-compatible). Unselected ones stay unblessed → still reported by check.

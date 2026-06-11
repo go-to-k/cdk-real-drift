@@ -42,7 +42,7 @@ OPTIONS
 EXIT CODES
   0 = clean   1 = drift detected   2 = error
 
-The baseline lives at .cdkrd/<stack>.<region>.json — commit it; review its diff in PRs.`;
+The baseline lives at .cdkrd/<stack>.<accountId>.<region>.json — commit it; review its diff in PRs.`;
 
 function version(): string {
   try {

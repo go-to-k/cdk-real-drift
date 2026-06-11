@@ -98,7 +98,9 @@ export async function runCheck(args: string[]): Promise<number> {
         continue;
       }
 
-      let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
+      let baseline = a.showAll
+        ? undefined
+        : await loadBaseline(stackName, desired.accountId, region);
       // per-account guard: a baseline captured in a different account is wrong here
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
@@ -117,7 +119,7 @@ export async function runCheck(args: string[]): Promise<number> {
             desired.rawTemplate
           );
           console.error(`baseline written (${count} undeclared value(s) blessed) — commit it.`);
-          baseline = await loadBaseline(stackName, region);
+          baseline = await loadBaseline(stackName, desired.accountId, region);
         }
       }
       if (!a.json && !baseline && !a.showAll) {

@@ -150,7 +150,7 @@ live ARN instead of falling to `unresolved` — see section 5.
 - **diff/**
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
-- **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<region>.json`), `applyBaseline`, `blessStack`.
+- **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `blessStack`.
 - **revert/** — the write path (section 7): **plan.ts**, **apply.ts** (CC UpdateResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **aws-errors.ts** — `isStackNotDeployed` etc. **types.ts** — shared types.
@@ -319,7 +319,7 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
 ## 8. Baseline model
 
 `accept` snapshots the current undeclared state into a **git-committed** file
-`.cdkrd/<stack>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
+`.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
 
 ```jsonc
 { "schemaVersion": 1, "stackName": "...", "region": "...",
@@ -328,12 +328,21 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   "accepted": [ { "logicalId", "resourceType", "path", "value" }, ... ] }
 ```
 
-`accountId` is a **per-account guard**: the same stack name deployed to dev + prod
-must not share one baseline (comparing prod's real state against dev's blessed state
-is false drift — or worse, hides real drift). `check` / `revert` refuse (exit 2) when
-the loaded baseline's `accountId` differs from the account being queried. A
-pre-release file with no `accountId` only warns and is stamped on the next `accept`
-(the filename stays `<stack>.<region>.json`; the field, not the path, is the guard).
+`accountId` is in the **filename**, not just a field (R21): the same stack name
+deployed to dev + prod (the very common `env: { account: PERSONAL || SHARED }` CDK
+pattern) gets one baseline file PER account, so they never collide and a
+personal-account run is not blocked by a committed shared-account baseline. Because
+the filename embeds the accountId — which only a gather (`DescribeStackResources`)
+resolves — `loadBaseline` is called AFTER the desired model is built (check was
+already gather-then-load; revert + accept's overwrite-check were reordered to match).
+The `accountId` FIELD remains as a **secondary guard** (`checkBaselineAccount`):
+a correctly-named file always matches, so it now only catches a file hand-copied or
+renamed to the wrong account's path (exit 2). A pre-release file with no `accountId`
+field only warns and is stamped on the next `accept`.
+
+> No legacy-path fallback: cdkrd is pre-release (unpublished), so the only old-style
+> `<stack>.<region>.json` files are local dogfood artifacts. They are simply not found
+> under the new path (→ "no baseline", run `accept`); delete them after re-accepting.
 
 Committing it makes "what real state we accept" a visible, reviewable PR change.
 With revert it is also the _source of the undeclared target value_, so it is

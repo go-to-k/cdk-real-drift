@@ -20,7 +20,7 @@ un-deployed code edits would show as false "drift".
 ## check pipeline
 
 ```
-1. baseline file load            .cdkrd/<stack>.<region>.json
+1. baseline file load            .cdkrd/<stack>.<accountId>.<region>.json
 2. desired (declared):           GetTemplate + DescribeStackResources (phys-id map)
                                  → intrinsic resolution
 3. live full state per resource: CC API GetResource (default)

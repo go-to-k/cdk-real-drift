@@ -63,8 +63,14 @@ export async function runRevert(args: string[]): Promise<number> {
       continue;
     }
     try {
-      const baseline: BaselineFile | undefined = await loadBaseline(stackName, region);
+      // gather FIRST: the baseline filename embeds the accountId, which only the
+      // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       const gathered = await gatherFindings(stackName, region);
+      const baseline: BaselineFile | undefined = await loadBaseline(
+        stackName,
+        gathered.desired.accountId,
+        region
+      );
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
       const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
       const drifted = applyBaseline(gathered.findings, baseline, {

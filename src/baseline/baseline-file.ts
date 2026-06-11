@@ -1,8 +1,15 @@
-// Git-committed baseline file: .cdkrd/<stack>.<region>.json
+// Git-committed baseline file: .cdkrd/<stack>.<accountId>.<region>.json
 // Stores the BLESSED undeclared property values (the only thing with no other
 // source of truth — declared desired comes live from GetTemplate). `check`
 // reports an undeclared finding only when it differs from / is absent in the
 // baseline; with no baseline, every non-default undeclared value is shown.
+//
+// The accountId is in the FILENAME (not just a field) so the same stack name
+// deployed to multiple accounts (the common `env: { account: PERSONAL || SHARED }`
+// CDK pattern) gets one baseline file PER account — they never collide, and a
+// personal-account run is not blocked by the shared-account baseline. The accountId
+// is only known after a gather (DescribeStackResources), so `loadBaseline` must be
+// called after the desired model is resolved.
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -28,8 +35,8 @@ export interface BaselineFile {
   accepted: AcceptedEntry[];
 }
 
-export function baselinePath(stackName: string, region: string): string {
-  return `.cdkrd/${stackName}.${region}.json`;
+export function baselinePath(stackName: string, accountId: string, region: string): string {
+  return `.cdkrd/${stackName}.${accountId}.${region}.json`;
 }
 
 export function hashTemplate(rawTemplate: string): string {
@@ -38,10 +45,13 @@ export function hashTemplate(rawTemplate: string): string {
 
 export async function loadBaseline(
   stackName: string,
+  accountId: string,
   region: string
 ): Promise<BaselineFile | undefined> {
   try {
-    return JSON.parse(await readFile(baselinePath(stackName, region), 'utf8')) as BaselineFile;
+    return JSON.parse(
+      await readFile(baselinePath(stackName, accountId, region), 'utf8')
+    ) as BaselineFile;
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw e;
@@ -49,7 +59,7 @@ export async function loadBaseline(
 }
 
 export async function writeBaseline(b: BaselineFile): Promise<string> {
-  const p = baselinePath(b.stackName, b.region);
+  const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
   await writeFile(p, JSON.stringify(b, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
   return p;
@@ -80,11 +90,12 @@ export async function blessStack(
 }
 
 /**
- * Per-account guard. A baseline is account-specific: the same stack name deployed
- * to dev + prod must not share one baseline (prod's real state compared against
- * dev's baseline = false drift, or worse, real drift hidden). On a mismatch this
- * throws (caller surfaces exit 2). A pre-release file with no accountId only warns;
- * the next `accept` stamps it.
+ * Per-account guard (secondary defense). The baseline filename now embeds the
+ * accountId, so a correctly-named file always matches; this guard catches a file
+ * that was hand-copied or renamed to the wrong account's path (its `accountId`
+ * field would then disagree with the filename it was loaded from). On a mismatch
+ * this throws (caller surfaces exit 2). A pre-release file with no accountId field
+ * only warns; the next `accept` stamps it.
  */
 export function checkBaselineAccount(
   baseline: BaselineFile,
@@ -100,9 +111,9 @@ export function checkBaselineAccount(
   }
   if (currentAccountId && baseline.accountId !== currentAccountId) {
     throw new Error(
-      `baseline was captured in account ${baseline.accountId}, but the current account is ${currentAccountId}. ` +
-        'Baselines are per-account — run `cdkrd accept` in this account (its own baseline file), ' +
-        'or check out the baseline from the matching account.'
+      `baseline file for ${stackName} was captured in account ${baseline.accountId}, but the current account is ${currentAccountId} ` +
+        '(the file was likely copied or renamed to the wrong account path). Baselines are per-account — ' +
+        "run `cdkrd accept` to write this account's own baseline file, or restore the correct file from git."
     );
   }
 }

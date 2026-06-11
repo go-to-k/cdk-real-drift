@@ -68,8 +68,12 @@ A resource the template still declares but that has been deleted out of band
 there is. It is reported as `not revertable` (recreate it with `cdk deploy`).
 
 Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless). The
-baseline lives at `.cdkrd/<stack>.<region>.json` — commit it; a PR that changes it
-is a visible, reviewable change to "what real state we accept".
+baseline lives at `.cdkrd/<stack>.<accountId>.<region>.json` — commit it; a PR that changes it
+is a visible, reviewable change to "what real state we accept". The account id is in
+the filename, so the same stack deployed to several accounts (e.g.
+`env: { account: PERSONAL || SHARED }`) gets one baseline per account and they never
+collide. Commit the shared-environment baselines; per-developer ones can be committed
+or `.gitignore`d (e.g. `.cdkrd/*.<personal-account>.*.json`) — decide as a team.
 
 ## Commands & options
 

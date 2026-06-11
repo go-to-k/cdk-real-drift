@@ -3,6 +3,7 @@ import {
   acceptedKey,
   applyBaseline,
   type BaselineFile,
+  baselinePath,
   buildAccepted,
   checkBaselineAccount,
   hashTemplate,
@@ -32,6 +33,20 @@ function baseline(accepted: BaselineFile['accepted'], accountId = '111122223333'
 }
 
 describe('baseline', () => {
+  describe('baselinePath (per-account filename, R21)', () => {
+    it('embeds stack, accountId, and region', () => {
+      expect(baselinePath('MyStack', '123456789012', 'ap-northeast-1')).toBe(
+        '.cdkrd/MyStack.123456789012.ap-northeast-1.json'
+      );
+    });
+
+    it('same stack + region in two accounts -> distinct paths (coexistence)', () => {
+      const shared = baselinePath('MyStack', '123456789012', 'ap-northeast-1');
+      const personal = baselinePath('MyStack', '999988887777', 'ap-northeast-1');
+      expect(shared).not.toBe(personal);
+    });
+  });
+
   it('buildAccepted captures only undeclared findings', () => {
     const findings: Finding[] = [
       undeclared('A', 'P', [1]),

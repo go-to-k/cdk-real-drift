@@ -45,7 +45,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 
 - **Pre-release / experimental.** Private until Phase 4; not yet published, no
   GitHub remote yet (developed solo on `main`).
-- Baseline files live at `.cdkrd/<stack>.<region>.json` — git-committed. A PR (once
+- Baseline files live at `.cdkrd/<stack>.<accountId>.<region>.json` — git-committed. A PR (once
   there is a remote) that changes a baseline is a visible, reviewable change to
   "what real state we accept".
 
@@ -99,7 +99,7 @@ detail:
 - `schema/` — CloudFormation resource-schema strip (readOnly/writeOnly props).
 - `synth/` — CDK app synthesis (`@aws-cdk/toolkit-lib`) for stack discovery +
   construct-path display.
-- `baseline/` — the `.cdkrd/<stack>.<region>.json` baseline file I/O.
+- `baseline/` — the `.cdkrd/<stack>.<accountId>.<region>.json` baseline file I/O.
 - `report/` — text + JSON output rendering.
 
 ## Workflow Rules
