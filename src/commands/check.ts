@@ -17,8 +17,16 @@ import { parseCommonArgs } from '../cli-args.js';
 import { report } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
+import type { Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
+
+// --pre-deploy reports declared-side drift the next deploy would clobber; the
+// undeclared tier is meaningless against a synth (not deployed) declared set, so
+// it is excluded. Exported (pure) so the contract is unit-tested.
+export function preDeployFindings(findings: Finding[]): Finding[] {
+  return findings.filter((f) => f.tier !== 'undeclared');
+}
 
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
@@ -70,11 +78,31 @@ export async function runCheck(args: string[]): Promise<number> {
         region,
         synthTemplates?.get(stackName)
       );
+
+      // --pre-deploy: the declared set comes from the LOCAL synth template, so the
+      // ONLY meaningful signal is declared drift the next deploy would clobber. The
+      // undeclared tier is "live minus declared" — with a synth declared set its
+      // meaning silently shifts, so we drop it and do NOT touch the baseline at all
+      // (no bless offer, no baseline load — which would also wrongly hash the synth
+      // template). See ARCHITECTURE §13-2.
+      if (a.preDeploy) {
+        const declaredOnly = preDeployFindings(findings);
+        if (!a.json)
+          console.error(
+            `note: ${stackName}: --pre-deploy reports declared drift only (undeclared tiers are evaluated against the deployed template — run check without --pre-deploy)`
+          );
+        worst = Math.max(
+          worst,
+          report(declaredOnly, `${stackName} (${region})`, { json: a.json, failOn: a.failOn })
+        );
+        continue;
+      }
+
       let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
       // per-account guard: a baseline captured in a different account is wrong here
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
-      // stale-baseline warning (skip in pre-deploy: synth template legitimately differs)
-      if (baseline && !a.preDeploy) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
+      // stale-baseline warning (pre-deploy already returned above, so always safe here)
+      if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
       // first run: no baseline yet → offer to bless interactively (TTY only)
       if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
         const ok = await confirm({

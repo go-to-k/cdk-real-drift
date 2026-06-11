@@ -416,11 +416,15 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    warnings (`Record<string, any>` in the template adapter) + `toThrow`-message vitest
    warnings — config sets `no-explicit-any` to `warn`, not `error`. _Open question for
    review: tighten these to errors before launch, or accept as warnings?_
-2. **`--pre-deploy` undeclared semantics**: in pre-deploy mode the undeclared tier
-   still compares against the baseline, but the _declared set_ comes from synth
-   (which may add/remove props vs deployed). The primary signal is declared drift;
-   undeclared-in-pre-deploy semantics are first-cut. **Open question**: should
-   `--pre-deploy` restrict to declared, or define undeclared precisely?
+2. **`--pre-deploy` semantics (RESOLVED)**: pre-deploy now reports **declared-side
+   tiers only** (declared / deleted / readGap / unresolved / skipped) and excludes
+   undeclared entirely — the undeclared tier is "live minus declared", so with a
+   _synth_ declared set its meaning silently shifts (a prop deleted from code would
+   appear as undeclared). It also does NOT touch the baseline (no bless offer, no
+   hash check against the synth template). The question "what undeclared state do we
+   accept" is only meaningful against the deployed template, so it is answered by a
+   normal `check`. pre-deploy answers exactly one question: what declared drift would
+   the next `cdk deploy` clobber?
 3. **`unresolved` residual (narrowed)**: the resolver now also handles `Fn::FindInMap`
    / `Fn::Split` / `Fn::ImportValue` / out-of-range `Fn::Select` / the `${!Literal}`
    Sub escape — all deterministically and fail-closed (answer to the original open

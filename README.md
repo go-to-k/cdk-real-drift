@@ -167,8 +167,11 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   `not revertable`.
 - `check --pre-deploy` compares live state against the LOCAL synth template (not the
   deployed one), surfacing the declared drift your next `cdk deploy` would silently
-  overwrite. New resources in the synth that aren't deployed yet show as `skipped`
-  (no physical id); resources removed from code are simply not compared.
+  overwrite. It reports **declared-side tiers only** (undeclared is excluded — that
+  tier is only meaningful against the deployed template) and does not touch the
+  baseline (no bless offer / no stale-hash warning). New resources in the synth that
+  aren't deployed yet show as `skipped` (no physical id); resources removed from code
+  are simply not compared.
 - Undeclared values that are `false` / empty (`''` / `[]` / `{}`) are suppressed as
   noise (AWS returns an "off/empty" value for nearly every unset option). The
   trade-off: `--show-all` (inventory) does NOT list an explicitly-OFF feature. A
