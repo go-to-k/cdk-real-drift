@@ -53,16 +53,15 @@ describe('AWS::EC2::EIP SDK override', () => {
     expect(call.args[0].input).toEqual({ PublicIps: ['52.0.0.2'] });
   });
 
-  it('returns {} when no addresses are returned (read gap, not crash)', async () => {
+  it('returns undefined when no addresses are returned (not resolvable -> skipped)', async () => {
     ec2.on(DescribeAddressesCommand).resolves({ Addresses: [] });
-    expect(await SDK_OVERRIDES['AWS::EC2::EIP'](ctx('eipalloc-missing'))).toEqual({});
+    expect(await SDK_OVERRIDES['AWS::EC2::EIP'](ctx('eipalloc-missing'))).toBeUndefined();
   });
 
-  it('returns {} when DescribeAddresses throws NotFound', async () => {
-    ec2
-      .on(DescribeAddressesCommand)
-      .rejects(Object.assign(new Error('not found'), { name: 'InvalidAllocationID.NotFound' }));
-    expect(await SDK_OVERRIDES['AWS::EC2::EIP'](ctx('eipalloc-gone'))).toEqual({});
+  it('propagates the NotFound error (router maps it to deleted, not a silent {})', async () => {
+    const err = Object.assign(new Error('not found'), { name: 'InvalidAllocationID.NotFound' });
+    ec2.on(DescribeAddressesCommand).rejects(err);
+    await expect(SDK_OVERRIDES['AWS::EC2::EIP'](ctx('eipalloc-gone'))).rejects.toThrow('not found');
   });
 
   it('omits Tags when AWS returns none', async () => {

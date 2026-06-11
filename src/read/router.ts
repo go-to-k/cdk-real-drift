@@ -2,12 +2,14 @@
 //   SDK override (for common types Cloud Control API can't read) → CC API
 //   GetResource → skip + log. Declared/undeclared labeling happens later.
 import { type CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
+import { isResourceNotFoundError } from '../aws-errors.js';
 import type { DesiredResource } from '../types.js';
 import { SDK_OVERRIDES } from './overrides.js';
 
 export interface ReadResult {
   live?: Record<string, unknown>; // un-stripped property model
   skippedReason?: string;
+  deleted?: boolean; // the resource was deleted out of band (read returned not-found)
 }
 
 export async function readLive(
@@ -25,6 +27,7 @@ export async function readLive(
         ? { live }
         : { skippedReason: 'SDK override: target not resolvable from template' };
     } catch (e) {
+      if (isResourceNotFoundError(e)) return { deleted: true };
       return { skippedReason: `SDK override (${resourceType}): ${(e as Error).name}` };
     }
   }
@@ -34,6 +37,7 @@ export async function readLive(
     );
     return { live: JSON.parse(g.ResourceDescription?.Properties ?? '{}') };
   } catch (e) {
+    if (isResourceNotFoundError(e)) return { deleted: true };
     return { skippedReason: `CC API: ${(e as Error).name}` };
   }
 }

@@ -61,6 +61,17 @@ export function buildRevertPlan(
 
   for (const f of findings) {
     const displayId = f.constructPath ?? f.logicalId;
+    if (f.tier === 'deleted') {
+      // a resource deleted out of band cannot be patched back — it must be
+      // recreated by re-deploying the stack.
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'deleted — recreate via cdk deploy',
+      });
+      continue;
+    }
     if (!DRIFT_TIERS.has(f.tier)) continue; // only declared/undeclared are drift to revert
     if (!f.physicalId) {
       notRevertable.push({

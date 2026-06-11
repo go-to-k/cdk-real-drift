@@ -52,6 +52,18 @@ export async function gatherFindings(
       continue;
     }
     const read = reads.get(r.logicalId);
+    if (read?.deleted) {
+      findings.push({
+        tier: 'deleted',
+        logicalId: r.logicalId,
+        physicalId: r.physicalId,
+        constructPath: r.constructPath,
+        resourceType: r.resourceType,
+        path: '',
+        note: 'resource deleted out of band',
+      });
+      continue;
+    }
     if (!read || read.skippedReason || !read.live) {
       findings.push({
         tier: 'skipped',

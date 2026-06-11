@@ -111,11 +111,11 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                          (phys-id map) + DescribeStacks (params) → intrinsic resolution
                          (--pre-deploy: LOCAL synth template replaces GetTemplate)
 3. live full state       read/router.ts: SDK override (gap types) FIRST, else
-                         CC API GetResource; unreadable → skipped+logged
+                         CC API GetResource; not-found → deleted; unreadable → skipped
    --- PASS 1: read ALL resources first, populate ResolverContext.liveAttrs ---
    --- PASS 2: re-resolve declared (GetAtt now resolvable) + classify ---
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
-5. classify (tier)       declared | undeclared | readGap | unresolved | skipped
+5. classify (tier)       deleted | declared | undeclared | readGap | unresolved | skipped
 6. baseline filter       applyBaseline(): undeclared findings already blessed → drop
 7. report + exit code    report.ts: tiered text or --json; worst exit across stacks
 ```
@@ -241,8 +241,9 @@ current → target), asks for confirmation (`@clack`; `--yes` skips; non-TTY ref
 - **Not revertable (reported honestly, never silently skipped)**:
   `AWS::Lambda::Permission` (add/remove statement model keyed by StatementId, not a
   settable document), `AWS::Budgets::Budget` (`UpdateBudget` needs a full NewBudget
-  the reader can't reconstruct), plus any `readGap` / `unresolved` / `skipped`
-  finding. KMS keys need no SDK writer — they revert via the generic CC path.
+  the reader can't reconstruct), a `deleted` resource (`deleted — recreate via cdk
+deploy`: a patch can't recreate a resource), plus any `readGap` / `unresolved` /
+  `skipped` finding. KMS keys need no SDK writer — they revert via the generic CC path.
 - **Known limitation**: toggle-style props with no "absent" state (e.g. S3 transfer
   acceleration is only Enabled/Suspended) can't be reverted by removal.
 
@@ -266,15 +267,27 @@ structural, not optional. `check` filters undeclared findings against it
 
 | tier         | meaning                                                             | exit-affecting |
 | ------------ | ------------------------------------------------------------------- | -------------- |
+| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)  | yes (always)   |
 | `declared`   | a declared property whose live value differs from the template      | yes (always)   |
 | `undeclared` | a live property not in the template, after noise subtraction        | yes (default)  |
 | `readGap`    | a declared property the live read can't return (CC can't read back) | no             |
 | `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped) | no             |
 | `skipped`    | resource unreadable (CC unsupported / no physical id)               | no             |
 
-`--fail-on declared` makes only `declared` set exit 1; default `undeclared` = both.
-`readGap` / `unresolved` / `skipped` are informational — surfaced, never silently
-dropped, but never false drift.
+`deleted` is the most blatant drift — a resource the template still declares no
+longer exists in AWS (released/deleted via the console, another tool, etc.). The
+live read returns a not-found error (`ResourceNotFoundException` from Cloud
+Control; `NoSuchBucket` / `QueueDoesNotExist` / `NoSuchEntity` / `InvalidAllocationID.NotFound` /
+… from the SDK overrides), which the router maps to `deleted`. It **always** sets
+exit 1 regardless of `--fail-on` (CloudFormation's own drift detection reports
+DELETED too — a drift tool that returned exit 0 on a deleted resource would be
+defective). It is reported as `not revertable` (reason: `deleted — recreate via
+cdk deploy`) — a patch cannot recreate a resource.
+
+`--fail-on declared` makes only `deleted` + `declared` set exit 1; default
+`undeclared` = all three of `deleted` / `declared` / `undeclared`. `readGap` /
+`unresolved` / `skipped` are informational — surfaced, never silently dropped, but
+never false drift.
 
 ## 10. Synth integration
 

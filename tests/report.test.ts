@@ -31,6 +31,16 @@ describe('report', () => {
     expect(run([F('declared')], { failOn: 'declared' }).code).toBe(1);
   });
 
+  it('deleted is ALWAYS exit 1, regardless of --fail-on', () => {
+    expect(run([F('deleted')]).code).toBe(1);
+    expect(run([F('deleted')], { failOn: 'declared' }).code).toBe(1);
+  });
+
+  it('deleted appears as its own tier section in text output', () => {
+    const { text } = run([F('deleted', '')]);
+    expect(text).toContain('DELETED');
+  });
+
   it('json mode emits parseable JSON with findings + drifted count', () => {
     const { code, text } = run([F('undeclared'), F('skipped')], { json: true });
     const parsed = JSON.parse(text);

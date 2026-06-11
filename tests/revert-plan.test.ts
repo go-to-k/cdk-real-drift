@@ -142,6 +142,16 @@ describe('buildRevertPlan', () => {
     for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
   });
 
+  it('deleted finding -> notRevertable (recreate via cdk deploy), never a patch op', () => {
+    const plan = buildRevertPlan(
+      [F({ tier: 'deleted', path: '', desired: undefined, actual: undefined })],
+      undefined
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('deleted');
+  });
+
   it('groups multiple ops on the same resource + serializes a valid patch document', () => {
     const plan = buildRevertPlan(
       [

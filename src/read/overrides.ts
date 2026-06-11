@@ -124,12 +124,12 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
   const fn = str(declared.FunctionName);
   if (!fn) return undefined;
   const c = new LambdaClient({ region });
-  let policy: unknown;
-  try {
-    policy = parsePolicy((await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy);
-  } catch {
-    return undefined;
-  }
+  // GetPolicy throws ResourceNotFoundException when the function has NO resource
+  // policy at all — i.e. the permission was deleted out of band. Let it propagate
+  // so the router maps it to `deleted` rather than swallowing it as skipped.
+  const policy = parsePolicy(
+    (await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy
+  );
   const stmts = (policy as { Statement?: Array<Record<string, unknown>> })?.Statement ?? [];
   // best-effort match by Action + Principal against the declared permission
   const want = { action: str(declared.Action), principal: str(declared.Principal) };
@@ -161,16 +161,12 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   if (!id) return undefined;
   const c = new EC2Client({ region });
   const input = id.startsWith('eipalloc-') ? { AllocationIds: [id] } : { PublicIps: [id] };
-  let addr;
-  try {
-    const r = await c.send(new DescribeAddressesCommand(input));
-    addr = r.Addresses?.[0];
-  } catch {
-    // Not-found surfaces as InvalidAddress.NotFound / InvalidAllocationID.NotFound
-    // → treat as a read gap rather than a crash.
-    return {};
-  }
-  if (!addr) return {};
+  // Not-found surfaces as InvalidAddress.NotFound / InvalidAllocationID.NotFound;
+  // let it propagate so the router maps it to `deleted` (the EIP was released out
+  // of band) instead of being silently swallowed as an empty model.
+  const r = await c.send(new DescribeAddressesCommand(input));
+  const addr = r.Addresses?.[0];
+  if (!addr) return undefined;
   const tags = Array.isArray(addr.Tags)
     ? addr.Tags.filter((t) => str(t.Key) !== undefined).map((t) => ({
         Key: t.Key as string,

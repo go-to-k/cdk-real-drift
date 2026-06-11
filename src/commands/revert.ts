@@ -18,7 +18,8 @@ import { gatherFindings } from './gather.js';
 import { resolveStacks } from './resolve-stacks.js';
 
 const driftCount = (findings: Finding[]): number =>
-  findings.filter((f) => f.tier === 'declared' || f.tier === 'undeclared').length;
+  findings.filter((f) => f.tier === 'deleted' || f.tier === 'declared' || f.tier === 'undeclared')
+    .length;
 
 function printPlan(stackName: string, region: string, plan: RevertPlan): void {
   console.log(`\n=== cdkrd revert: ${stackName} (${region}) ===`);

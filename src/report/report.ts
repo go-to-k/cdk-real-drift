@@ -3,13 +3,14 @@
 import type { Finding, Tier } from '../types.js';
 
 const TIER_TITLES: Record<Tier, string> = {
+  deleted: 'DELETED (resource deleted out of band — always drift)',
   declared: 'DECLARED DRIFT',
   undeclared: 'UNDECLARED DRIFT (the differentiator)',
   readGap: 'READ GAP (declared but not returned by live read — not drift)',
   unresolved: 'UNRESOLVED (declared paths needing GetAtt — skipped, not drift)',
   skipped: 'SKIPPED (CC API unsupported / no physical id)',
 };
-const ORDER: Tier[] = ['declared', 'undeclared', 'readGap', 'unresolved', 'skipped'];
+const ORDER: Tier[] = ['deleted', 'declared', 'undeclared', 'readGap', 'unresolved', 'skipped'];
 
 export type FailOn = 'declared' | 'undeclared';
 export interface ReportOptions {
@@ -28,8 +29,9 @@ export function formatFinding(f: Finding): string {
   return s;
 }
 
+// `deleted` is ALWAYS a failure (the most blatant drift), independent of --fail-on.
 function failTiers(failOn: FailOn): Tier[] {
-  return failOn === 'declared' ? ['declared'] : ['declared', 'undeclared'];
+  return failOn === 'declared' ? ['deleted', 'declared'] : ['deleted', 'declared', 'undeclared'];
 }
 
 export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {

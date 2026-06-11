@@ -22,7 +22,8 @@ jobs:
       - run: vp run test
       - run: vp run build
 
-      # Issue #402 diagnostics: if a forks worker crashed ("Worker exited
+      # go-to-k/cdk-local#402 diagnostics (upstream Vite+ forks-pool crash, NOT a
+      # cdk-real-drift issue): if a forks worker crashed ("Worker exited
       # unexpectedly"), Node's --report-on-fatalerror / --report-uncaught-exception
       # (armed in vite.config.ts) wrote a report.*.json with the native + JS
       # stack and open libuv handles. Dump any report to the log on failure so

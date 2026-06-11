@@ -51,6 +51,7 @@ CloudFormation drift would never surface:
 ```
 === cdkrd check: MyStack (us-east-1) ===
 
+[DELETED ...] 0
 [DECLARED DRIFT] 0
 [UNDECLARED DRIFT (the differentiator)] 1
   Data.AccelerateConfiguration (AWS::S3::Bucket) = {"AccelerationStatus":"Enabled"}
@@ -58,8 +59,13 @@ CloudFormation drift would never surface:
 [UNRESOLVED ...] 0
 [SKIPPED ...] 0
 
-result: 1 drift(s) (declared=0 undeclared=1 readGap=0 unresolved=0 skipped=0; fail-on=undeclared)
+result: 1 drift(s) (deleted=0 declared=0 undeclared=1 readGap=0 unresolved=0 skipped=0; fail-on=undeclared)
 ```
+
+A resource the template still declares but that has been deleted out of band
+(released via the console, another tool, …) is reported in the `deleted` tier and
+**always** sets exit 1, regardless of `--fail-on` — it is the most blatant drift
+there is. It is reported as `not revertable` (recreate it with `cdk deploy`).
 
 Run `check` before `cdk deploy` (catch drift), `accept` after (re-bless). The
 baseline lives at `.cdkrd/<stack>.<region>.json` — commit it; a PR that changes it
