@@ -130,7 +130,9 @@ removal of all undeclared drift (declining leaves the baseline unchanged). With
 - **Reusable normalizers:** IAM-style policy canonicalization (Version / scalar-vs-array
   / statement order / account-id↔root-ARN), embedded JSON-text, `aws:*` tags
   (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`), unordered
-  resource-id / ARN / HTTP-method sets (e.g. CloudFront `AllowedMethods`), name↔ARN
+  resource-id / ARN / HTTP-method sets (e.g. CloudFront `AllowedMethods`) and
+  identity-keyed object arrays (tags by `Key`, CloudFront `Origins` by `Id`),
+  stringly-typed scalars (`true` vs `"true"`), name↔ARN
   collapse (bidirectional — the bare name may be on either side, e.g.
   `AWS::Lambda::Url.TargetFunctionArn` declares the ARN but reads back the name) +
   managed-default KMS alias (`alias/aws/*`) collapse. For the KMS case, if the

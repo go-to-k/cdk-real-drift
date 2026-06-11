@@ -219,8 +219,11 @@ vpc-lambda / sns-sqs / rds / iam / s3-cloudfront / ecs-fargate / appsync / a mix
 stack) and fixed, each with paired regression tests asserting _noise suppressed_ AND
 _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts)):
 
-1. **Tag-list order** — CFn `Tags` (`{Key,Value}[]`) are unordered sets; positional
-   diff flagged every CDK-tagged resource. Fix: `canonicalizeTagListsDeep` (sort by Key).
+1. **Identity-keyed object-array order** — CFn `Tags` (`{Key,Value}[]`) AND CloudFront
+   `DistributionConfig.Origins` (`{Id,...}[]`) are unordered sets; a positional diff
+   flagged every CDK-tagged resource (and every field of every swapped origin on a
+   multi-origin distribution). Fix: `canonicalizeTagListsDeep` sorts arrays whose every
+   element is an object with a string identity field (`Key` preferred, else `Id`).
 2. **resource-id/ARN/HTTP-method array order** — `SubnetIds` / `SecurityGroupIds` and
    HTTP-method enum sets (CloudFront `AllowedMethods` / `CachedMethods`) are unordered;
    positional diff flagged them. Fix: `canonicalizeIdArraysDeep` (sort arrays whose

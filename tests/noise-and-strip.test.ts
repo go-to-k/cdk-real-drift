@@ -55,6 +55,32 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('canonicalizeTagListsDeep: sorts Id-keyed object arrays (CloudFront Origins)', () => {
+    // a multi-origin distribution returns Origins in a different order than declared;
+    // sorting by Id makes the reordered-but-equal set compare equal (no false drift).
+    const declared = {
+      Origins: [
+        { Id: 'Origin1', DomainName: 'a.lambda-url.aws', OriginAccessControlId: 'E36' },
+        { Id: 'Origin2', DomainName: 'b.lambda-url.aws', OriginAccessControlId: 'ELD' },
+      ],
+    };
+    const live = {
+      Origins: [
+        { Id: 'Origin2', DomainName: 'b.lambda-url.aws', OriginAccessControlId: 'ELD' },
+        { Id: 'Origin1', DomainName: 'a.lambda-url.aws', OriginAccessControlId: 'E36' },
+      ],
+    };
+    expect(canonicalizeTagListsDeep(declared)).toEqual(canonicalizeTagListsDeep(live));
+    // a genuine change to one origin (same Id, different DomainName) still differs
+    const changed = {
+      Origins: [
+        { Id: 'Origin2', DomainName: 'CHANGED.aws', OriginAccessControlId: 'ELD' },
+        { Id: 'Origin1', DomainName: 'a.lambda-url.aws', OriginAccessControlId: 'E36' },
+      ],
+    };
+    expect(canonicalizeTagListsDeep(declared)).not.toEqual(canonicalizeTagListsDeep(changed));
+  });
+
   it('canonicalizeIdArraysDeep: sorts resource-id/ARN arrays (SubnetIds) but not plain scalars', () => {
     const a = canonicalizeIdArraysDeep({ SubnetIds: ['subnet-0fb5ef44', 'subnet-0daf2ccb'] });
     const b = canonicalizeIdArraysDeep({ SubnetIds: ['subnet-0daf2ccb', 'subnet-0fb5ef44'] });

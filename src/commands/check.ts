@@ -108,7 +108,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // first run: no baseline yet → offer to bless interactively (TTY only)
       if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
         const ok = await confirm({
-          message: `${stackName}: no baseline yet. Bless the current state now?`,
+          message: `${stackName}: no baseline yet — bless the current UNDECLARED state as the baseline? (declared drift, i.e. reality vs the deployed template, is reported either way)`,
         });
         if (!isCancel(ok) && ok) {
           const { count } = await blessStack(

@@ -35,29 +35,36 @@ export function stripAwsTagsDeep(v: unknown): unknown {
   return v;
 }
 
-// CFn tag lists ({Key,Value}[]) are UNORDERED sets: CDK declares them in one
+// CFn arrays of IDENTITY-KEYED objects are UNORDERED sets: CDK declares them in one
 // order, AWS returns them in another, so a positional diff reports false drift on
-// every tagged resource (subnets being the worst offender). Canonicalize any
-// array whose every element is an object with a string `Key` by sorting on Key
-// (JSON tiebreak for stability). Applied to BOTH sides before the diff, so a
-// reordered-but-equal tag set compares equal. Recurses so nested tag bags
-// (LaunchTemplate TagSpecifications etc.) are covered too.
-// ASSUMPTION: any array whose every element is an object with a string `Key` field
-// is treated as an unordered set and sorted by Key. This can match non-tag shapes
-// (e.g. SSM MaintenanceWindow Targets, which also use {Key,Values}), but no such
-// Key-shaped AWS property is known to be order-significant, so sorting is safe.
+// every element. Two cases share this shape:
+//   - tag lists ({Key,Value}[]) — keyed by `Key` (subnets are the worst offender);
+//   - CloudFront DistributionConfig.Origins ({Id,DomainName,...}[]) — keyed by `Id`
+//     (a multi-origin distribution returns the origins in a different order, which
+//     otherwise reports a false drift on EVERY field of every swapped origin).
+// Canonicalize any array whose every element is an object carrying a string identity
+// field (`Key` preferred, else `Id`) by sorting on that field (JSON tiebreak for
+// stability). Applied to BOTH sides before the diff, so a reordered-but-equal set
+// compares equal; a genuine change to one element still differs after the sort.
+// Recurses so nested bags (LaunchTemplate TagSpecifications, Origins, ...) are covered.
+// ASSUMPTION: no `Key`- or `Id`-keyed AWS array is known to be order-significant, so
+// sorting is safe (same conservative bet as the scalar id-array canonicalizer).
+const IDENTITY_FIELDS = ['Key', 'Id'] as const;
+function identityField(arr: unknown[]): string | undefined {
+  return IDENTITY_FIELDS.find((f) =>
+    arr.every(
+      (t) => t && typeof t === 'object' && typeof (t as Record<string, unknown>)[f] === 'string'
+    )
+  );
+}
 export function canonicalizeTagListsDeep(v: unknown): unknown {
   if (Array.isArray(v)) {
     const mapped = v.map(canonicalizeTagListsDeep);
-    const allKeyed =
-      mapped.length > 0 &&
-      mapped.every(
-        (t) => t && typeof t === 'object' && typeof (t as { Key?: unknown }).Key === 'string'
-      );
-    if (allKeyed) {
+    const idf = mapped.length > 0 ? identityField(mapped) : undefined;
+    if (idf) {
       return [...mapped].sort((a, b) => {
-        const ka = (a as { Key: string }).Key;
-        const kb = (b as { Key: string }).Key;
+        const ka = String((a as Record<string, unknown>)[idf]); // identityField verified string
+        const kb = String((b as Record<string, unknown>)[idf]);
         if (ka !== kb) return ka < kb ? -1 : 1;
         return JSON.stringify(a) < JSON.stringify(b) ? -1 : 1;
       });
