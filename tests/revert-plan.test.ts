@@ -79,12 +79,12 @@ describe('buildRevertPlan', () => {
     });
   });
 
-  it('non-drift tiers are skipped; SDK-override types + no-physid are not revertable', () => {
+  it('non-drift tiers skipped; writer-less CC-gap type + no-physid not revertable', () => {
     const plan = buildRevertPlan(
       [
         F({ tier: 'readGap' }),
         F({ tier: 'unresolved' }),
-        F({ tier: 'declared', resourceType: 'AWS::S3::BucketPolicy', desired: {} }), // SDK-override
+        F({ tier: 'declared', resourceType: 'AWS::Budgets::Budget', desired: {} }), // CC-gap, no SDK writer
         F({ tier: 'declared', physicalId: undefined, desired: 'x' }),
       ],
       undefined
@@ -94,6 +94,22 @@ describe('buildRevertPlan', () => {
       expect.stringContaining('not revertable'),
       expect.stringContaining('no physical id'),
     ]);
+  });
+
+  it('a CC-gap type WITH an SDK writer (BucketPolicy) is revertable via kind=sdk', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::S3::BucketPolicy',
+          path: 'PolicyDocument',
+          desired: { Version: '2012-10-17' },
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
   });
 
   it('groups multiple ops on the same resource + serializes a valid patch document', () => {

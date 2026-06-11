@@ -8,6 +8,7 @@
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding } from '../types.js';
+import { SDK_WRITERS } from './writers.js';
 
 export interface PatchOp {
   op: 'add' | 'remove';
@@ -21,6 +22,7 @@ export interface RevertItem {
   displayId: string; // construct path or logical id
   resourceType: string;
   physicalId: string;
+  kind: 'cc' | 'sdk'; // cc = Cloud Control UpdateResource; sdk = type-specific SDK writer
   ops: PatchOp[];
 }
 
@@ -69,15 +71,17 @@ export function buildRevertPlan(
       });
       continue;
     }
-    if (SDK_OVERRIDES[f.resourceType]) {
+    // CC-gap types are revertable only when we have a type-specific SDK writer
+    if (SDK_OVERRIDES[f.resourceType] && !SDK_WRITERS[f.resourceType]) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
         path: f.path,
-        reason: 'type not revertable yet (no Cloud Control update)',
+        reason: 'type not revertable yet',
       });
       continue;
     }
+    const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] ? 'sdk' : 'cc';
 
     const op = revertOp(f, blessed);
     const item =
@@ -87,6 +91,7 @@ export function buildRevertPlan(
         displayId,
         resourceType: f.resourceType,
         physicalId: f.physicalId,
+        kind,
         ops: [],
       } as RevertItem);
     item.ops.push(op);

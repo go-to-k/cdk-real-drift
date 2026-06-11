@@ -12,6 +12,7 @@ import { applyBaseline, type BaselineFile, loadBaseline } from '../baseline/base
 import { parseCommonArgs } from '../cli-args.js';
 import { applyRevertItem } from '../revert/apply.js';
 import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
+import { SDK_WRITERS } from '../revert/writers.js';
 import type { Finding } from '../types.js';
 import { gatherFindings } from './gather.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -56,7 +57,8 @@ export async function runRevert(args: string[]): Promise<number> {
     }
     try {
       const baseline: BaselineFile | undefined = await loadBaseline(stackName, region);
-      const drifted = applyBaseline((await gatherFindings(stackName, region)).findings, baseline);
+      const gathered = await gatherFindings(stackName, region);
+      const drifted = applyBaseline(gathered.findings, baseline);
       const plan = buildRevertPlan(drifted, baseline);
 
       if (plan.items.length === 0 && plan.notRevertable.length === 0) {
@@ -91,8 +93,28 @@ export async function runRevert(args: string[]): Promise<number> {
       }
 
       const cc = new CloudControlClient({ region });
+      const byLogical = new Map(gathered.desired.resources.map((res) => [res.logicalId, res]));
       for (const item of plan.items) {
-        const r = await applyRevertItem(cc, item);
+        let r: { ok: boolean; error?: string };
+        if (item.kind === 'sdk') {
+          const res = byLogical.get(item.logicalId);
+          try {
+            await SDK_WRITERS[item.resourceType]!(
+              {
+                physicalId: item.physicalId,
+                declared: res?.declared ?? {},
+                region,
+                accountId: gathered.desired.accountId,
+              },
+              item.ops
+            );
+            r = { ok: true };
+          } catch (e) {
+            r = { ok: false, error: (e as Error).message };
+          }
+        } else {
+          r = await applyRevertItem(cc, item);
+        }
         console.log(
           r.ok ? `  reverted: ${item.displayId}` : `  FAILED: ${item.displayId} — ${r.error}`
         );
