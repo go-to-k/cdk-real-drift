@@ -23,6 +23,9 @@ importers:
       '@aws-sdk/client-cloudformation':
         specifier: ^3.1065.0
         version: 3.1066.0
+      '@aws-sdk/client-ec2':
+        specifier: ^3.1066.0
+        version: 3.1066.0
       '@aws-sdk/client-iam':
         specifier: ^3.1065.0
         version: 3.1066.0
@@ -173,7 +176,7 @@ packages:
     resolution: {integrity: sha512-AXfN/lGotSQwu6HNcEsIASo7kWXZ5HYWvfOmSNKDsEqC4OashTp8alTmaz+F7TC2L083SFv5RdB+qU3Vs1kZqw==, tarball: https://registry.npmjs.org/@aws-crypto/sha256-browser/-/sha256-browser-5.2.0.tgz}
 
   '@aws-crypto/sha256-js@5.2.0':
-    resolution: {integrity: sha512-FFQQyu7edu4ufvIZ+OadFpHHOt+eSTBaYaki44c+akjg7qZg9oOQeLlk77F6tSYqjDAFClrHJk9tMf0HdVyOvA==, tarball: https://registry.npmjs.org/@aws-crypto/sha256-js/-/sha256-js-5.2.0.tgz}
+    resolution: {integrity: sha512-FFQQyu7edu4ufvIZ+OadFpHHOt+eSTBaYaki44c+akjg7qZg9oOQeLlk77F6tSYqjDAFClrHJk9tMf0HdVyOvA==}
     engines: {node: '>=16.0.0'}
 
   '@aws-crypto/supports-web-crypto@5.2.0':

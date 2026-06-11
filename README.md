@@ -74,7 +74,8 @@ is a visible, reviewable change to "what real state we accept".
 | `cdkrd revert [<stack>...] [--all]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
 With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`) and
-every stack it defines is targeted.
+every stack it defines is targeted. A stack argument containing `*` or `?` is a glob
+(e.g. `cdkrd check 'Dev*'`) — matched against the synth-discovered stack names.
 
 | option                           | meaning                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -112,8 +113,9 @@ every stack it defines is targeted.
 
 `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
 `AWS::IAM::Policy`, `AWS::IAM::ManagedPolicy`, `AWS::Lambda::Permission`,
-`AWS::Budgets::Budget`. Other Cloud-Control-unreadable types are reported as
-`skipped` (never silently dropped).
+`AWS::Budgets::Budget`, `AWS::EC2::EIP` (CC `GetResource` throws
+`ValidationException`; read via EC2 `DescribeAddresses`). Other
+Cloud-Control-unreadable types are reported as `skipped` (never silently dropped).
 
 ## Known limitations
 
@@ -126,11 +128,15 @@ every stack it defines is targeted.
   Reverting an undeclared _addition_ that was never blessed is done by removal —
   which is not possible for toggle-style properties (e.g. S3 transfer acceleration
   has no "absent" state, only Enabled/Suspended); such props are reported and left.
-  Cloud-Control-unwritable policy-document types (`AWS::S3::BucketPolicy`,
-  `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`) revert via a
-  type-specific SDK writer (read current model -> apply ops -> SDK `Put*`). Other
-  CC-gap types without a writer yet (`AWS::IAM::ManagedPolicy`,
-  `AWS::Lambda::Permission`, `AWS::Budgets::Budget`) are reported as `not revertable`.
+  Cloud-Control-unwritable types revert via a type-specific SDK writer (read current
+  model -> apply ops -> SDK write): the policy-document types (`AWS::S3::BucketPolicy`,
+  `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`) and
+  `AWS::IAM::ManagedPolicy` (revert the default version's document via
+  `CreatePolicyVersion`, pruning the oldest version when the 5-version cap is hit).
+  CC-gap types without a writer (`AWS::Lambda::Permission` — an add/remove statement
+  model keyed by StatementId, not a settable document; `AWS::Budgets::Budget` —
+  `UpdateBudget` needs a full NewBudget the reader can't reconstruct) are reported as
+  `not revertable`.
 - `clobber` / `--pre-deploy` (flag a drift your next deploy would overwrite) is on
   the roadmap.
 

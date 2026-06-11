@@ -7,6 +7,7 @@
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+import { DescribeAddressesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import {
   GetGroupPolicyCommand,
   GetPolicyCommand,
@@ -152,6 +153,40 @@ const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
   return { Budget: { BudgetName: b.BudgetName, BudgetType: b.BudgetType, TimeUnit: b.TimeUnit } };
 };
 
+// AWS::EC2::EIP — Cloud Control API GetResource throws ValidationException for
+// this type, so read it via EC2 DescribeAddresses. The CFn physical id is the
+// allocation id (eipalloc-...) for VPC EIPs, or the public IP for classic EIPs.
+const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new EC2Client({ region });
+  const input = id.startsWith('eipalloc-') ? { AllocationIds: [id] } : { PublicIps: [id] };
+  let addr;
+  try {
+    const r = await c.send(new DescribeAddressesCommand(input));
+    addr = r.Addresses?.[0];
+  } catch {
+    // Not-found surfaces as InvalidAddress.NotFound / InvalidAllocationID.NotFound
+    // → treat as a read gap rather than a crash.
+    return {};
+  }
+  if (!addr) return {};
+  const tags = Array.isArray(addr.Tags)
+    ? addr.Tags.filter((t) => str(t.Key) !== undefined).map((t) => ({
+        Key: t.Key as string,
+        Value: t.Value ?? '',
+      }))
+    : undefined;
+  const model: Record<string, unknown> = {};
+  if (str(addr.Domain)) model.Domain = addr.Domain;
+  if (str(addr.NetworkBorderGroup)) model.NetworkBorderGroup = addr.NetworkBorderGroup;
+  if (str(addr.PublicIp)) model.PublicIp = addr.PublicIp;
+  if (str(addr.InstanceId)) model.InstanceId = addr.InstanceId;
+  if (str(addr.NetworkInterfaceId)) model.NetworkInterfaceId = addr.NetworkInterfaceId;
+  if (tags && tags.length > 0) model.Tags = tags;
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,
@@ -160,4 +195,5 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::IAM::ManagedPolicy': readIamManagedPolicy,
   'AWS::Lambda::Permission': readLambdaPermission,
   'AWS::Budgets::Budget': readBudget,
+  'AWS::EC2::EIP': readEc2Eip,
 };

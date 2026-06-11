@@ -9,16 +9,30 @@
 #               (set by /check and /verify-pr).
 #   docs      — README / DESIGN / docs consistency with src
 #               (set by /check-docs and /verify-pr).
-#   verify-pr — full PR-readiness checklist; AND of check + docs.
-#   pr-review — `/review-pr` reviewer-dispatch verification (sha-bound).
-#   integ     — real-AWS verification (deploy/check/inject-drift/destroy) with
-#               zero orphan resources. 14d TTL — AWS-side wire-format + Cloud
-#               Control behavior drift over time even when the repo doesn't.
+#   verify-pr — pre-release readiness checklist; AND of check + docs.
+#               (set by /verify-pr.) cdkrd is solo + local-only with no GitHub
+#               remote, so this is a pre-RELEASE gate, not a PR gate.
+#
+# The check / docs / verify-pr gates each have a companion skill under
+# .claude/skills/ that SETS their marker (/check, /check-docs, /verify-pr). Those
+# three are the wanted, satisfiable gates for this solo repo.
+#
+# INERT gates (kept for layout parity with the sibling repos, but with NO
+# companion skill in cdkrd — do NOT wire a commit/merge hook to either until a
+# companion skill is ported, or it would become unsatisfiable and brick the flow):
+#   pr-review — `/review-pr` reviewer-dispatch verification (sha-bound). N/A:
+#               cdkrd has no GitHub remote / PR review flow. No companion skill.
+#   integ     — read-only real-AWS verification (gather/check/inject-drift). cdkrd
+#               is READ-ONLY against AWS (no deploy/destroy, no schema migration),
+#               so cdkd's destroy / broad / local / schema-migration integ gates
+#               are deliberately ABSENT here — only this single read-only gate
+#               remains, and it has no companion /run-integ skill yet. 14d TTL
+#               (AWS-side wire-format + Cloud Control behavior drift over time).
 #
 # NOTE: the commit/PR-blocking ENFORCEMENT (the .claude hooks that call markgate)
-# is intentionally not installed yet — it depends on the companion skills
-# (/check, /verify-pr, /run-integ) and a PR workflow. CI (.github/workflows/ci.yml)
-# enforces typecheck/lint/build/test on every push + PR in the meantime.
+# is intentionally not installed yet. CI (.github/workflows/ci.yml) enforces
+# typecheck/lint/build/test on every push in the meantime. When hooks are added,
+# wire them ONLY to check / docs / verify-pr (the gates with companion skills).
 
 gates:
   check:

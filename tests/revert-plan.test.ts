@@ -112,6 +112,36 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.kind).toBe('sdk');
   });
 
+  it('IAM ManagedPolicy now has an SDK writer -> revertable via kind=sdk', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          physicalId: 'arn:aws:iam::123456789012:policy/p',
+          path: 'PolicyDocument',
+          desired: { Version: '2012-10-17' },
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+  });
+
+  it('Lambda Permission + Budgets Budget stay not-revertable (no SDK writer)', () => {
+    const plan = buildRevertPlan(
+      [
+        F({ tier: 'declared', resourceType: 'AWS::Lambda::Permission', desired: {} }),
+        F({ tier: 'declared', resourceType: 'AWS::Budgets::Budget', desired: {} }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(2);
+    for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
+  });
+
   it('groups multiple ops on the same resource + serializes a valid patch document', () => {
     const plan = buildRevertPlan(
       [
