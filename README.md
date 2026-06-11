@@ -109,9 +109,15 @@ is a visible, reviewable change to "what real state we accept".
   some declared properties as `unresolved` (skipped, not false drift — by design).
 - Cloud Control API only for reads beyond the SDK overrides above; unreadable types
   are `skipped`.
+- **revert** writes via Cloud Control `UpdateResource`. It restores declared drift
+  to the deployed-template value and undeclared drift to the blessed baseline value.
+  Reverting an undeclared _addition_ that was never blessed is done by removal —
+  which is not possible for toggle-style properties (e.g. S3 transfer acceleration
+  has no "absent" state, only Enabled/Suspended); such props are reported and left.
+  SDK-override CC-gap types (`AWS::S3::BucketPolicy`, etc.) are listed as
+  `not revertable` for now.
 - `clobber` / `--pre-deploy` (flag a drift your next deploy would overwrite) is on
-  the roadmap; it requires synthesizing the app and is intentionally not in the
-  detect-only MVP.
+  the roadmap.
 
 ## Develop
 

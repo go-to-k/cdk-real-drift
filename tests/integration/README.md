@@ -23,3 +23,17 @@ One versioned S3 bucket. Asserts:
 2. After enabling transfer acceleration out-of-band (an **undeclared** change CFn
    drift would not catch), `check` reports drift (exit 1) and names
    `AccelerateConfiguration`.
+
+## iam / lambda
+
+IAM Role (inject a permissions boundary → undeclared drift) and a Node Lambda
+(inject reserved concurrency → undeclared drift); each asserts detect + clean destroy.
+
+## revert
+
+A versioned S3 bucket. Enables acceleration, `accept`s (baseline blesses it), then
+injects a DECLARED drift (versioning suspended) + an UNDECLARED drift (acceleration
+suspended from its blessed Enabled), asserts `check` detects both, runs
+`cdkrd revert --yes`, and asserts `check` is CLEAN and AWS itself converged
+(versioning Enabled = template, acceleration Enabled = blessed). Proves the
+Cloud Control `UpdateResource` write path end-to-end.

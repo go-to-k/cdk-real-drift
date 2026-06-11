@@ -1,0 +1,7 @@
+{
+  "name": "cdk-real-drift-integ-revert",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" }
+}
