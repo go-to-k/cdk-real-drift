@@ -1,8 +1,7 @@
 # cdk-real-drift (`cdkrd`)
 
 Drift detection for AWS CDK — including the **undeclared properties `cdk drift`
-can't see** (an inline policy added in the console, encryption toggled off, a
-changed bucket setting). Detect it, accept it, or revert it.
+can't see**. Detect it, accept it, or revert it.
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
