@@ -7,6 +7,7 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
+import { isArnNameMatch } from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
@@ -63,6 +64,8 @@ export function classifyResource(
       continue;
     }
     for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
+      // a bare name declared for a field AWS returns as the full ARN is not drift
+      if (isArnNameMatch(d.stateValue, d.awsValue)) continue;
       findings.push({
         tier: 'declared',
         logicalId,
