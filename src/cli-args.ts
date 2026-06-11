@@ -25,6 +25,7 @@ const BOOLEAN_FLAGS = new Set([
   '--remove-unblessed',
   '--verbose',
   '-v',
+  '--no-interactive',
 ]);
 
 export interface CommonArgs {
@@ -40,6 +41,17 @@ export interface CommonArgs {
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
   removeUnblessed: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
+  noInteractive: boolean; // suppress all prompts; required-decision prompts then error instead of prompting
+}
+
+/**
+ * Whether prompts may be shown: only in a real TTY AND when --no-interactive was not
+ * passed. The single source of truth — command code threads this in rather than reading
+ * `process.stdin.isTTY` directly. Optional prompts skip when false; required-decision
+ * prompts error (exit 2) when false.
+ */
+export function isInteractive(a: CommonArgs): boolean {
+  return Boolean(process.stdin.isTTY) && !a.noInteractive;
 }
 
 export function parseCommonArgs(args: string[]): CommonArgs {
@@ -124,5 +136,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     preDeploy: has('--pre-deploy'),
     removeUnblessed: has('--remove-unblessed'),
     verbose: has('--verbose') || has('-v'),
+    noInteractive: has('--no-interactive'),
   };
 }
