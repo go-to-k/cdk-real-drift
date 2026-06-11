@@ -138,6 +138,11 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
       (!want.action || s.Action === want.action) &&
       (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal)))
   );
+  // No match while the policy itself exists = the specific statement was removed out
+  // of band (but other statements remain). Return undefined → router maps it to
+  // `skipped` (target not resolvable), NOT `deleted`: safely asserting THIS statement
+  // is gone needs its StatementId, which the best-effort Action+Principal match lacks.
+  // A wholly-deleted resource policy throws ResourceNotFoundException above → `deleted`.
   if (!m) return undefined;
   // Return the MATCHED statement's REAL fields — never echo the declared template
   // (an echoed Principal makes a Principal drift structurally undetectable).

@@ -1,7 +1,7 @@
 // `cdkrd accept [<stack>...] [--all] [--app ...] [--region r] [--profile p] [--yes]`
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
 // git-committed baselines; no AWS writes.
-import { isCancel, multiselect } from '@clack/prompts';
+import { confirm, isCancel, multiselect } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   acceptedKey,
@@ -59,6 +59,20 @@ export async function runAccept(args: string[]): Promise<number> {
         if (isCancel(picked)) {
           console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
           continue;
+        }
+        // Empty selection writes an EMPTY baseline, which CREATES the baseline file
+        // and thereby removes R2's no-baseline `revert` guard — `revert` would then
+        // plan REMOVAL of every undeclared value. That consequence does not match the
+        // "bless nothing" intent, so confirm it explicitly before writing.
+        if (picked.length === 0) {
+          const proceed = await confirm({
+            message: `${stackName}: bless nothing? This writes an EMPTY baseline — \`cdkrd revert\` will then plan REMOVAL of ALL undeclared drift on this stack.`,
+            initialValue: false,
+          });
+          if (isCancel(proceed) || !proceed) {
+            console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
+            continue;
+          }
         }
         accepted = selectAccepted(findings, new Set(picked));
       }
