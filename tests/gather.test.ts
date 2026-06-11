@@ -9,7 +9,9 @@ import {
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
-import { gatherFindings } from '../src/commands/gather.js';
+import { type GatherResult, gatherFindings, regatherTouched } from '../src/commands/gather.js';
+import type { Desired } from '../src/desired/template-adapter.js';
+import type { Finding, ResolverContext, SchemaInfo } from '../src/types.js';
 
 // Build N AWS::SQS::Queue resources whose declared props match the live read, so the
 // only differences are ordering-sensitive iteration (no real drift noise).
@@ -73,6 +75,114 @@ describe('gatherFindings pass-1 worker pool', () => {
     expect(completionOrder).not.toEqual(ids);
     // ...yet findings stay in deterministic desired.resources order
     expect(findings.map((f) => f.logicalId)).toEqual(ids);
+  });
+});
+
+describe('regatherTouched (R44 — scoped post-revert convergence re-gather)', () => {
+  const EMPTY_SCHEMA: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const ctx = (): ResolverContext => ({
+    params: {},
+    pseudo: {},
+    conditions: {},
+    physIds: {},
+    liveAttrs: {},
+    mappings: {},
+    exports: {},
+    condCache: new Map(),
+  });
+  const queue = (id: string): Desired['resources'][number] => ({
+    logicalId: id,
+    resourceType: 'AWS::SQS::Queue',
+    physicalId: `${id}-phys`,
+    declared: { QueueName: `${id}-q` },
+  });
+  const gathered = (findings: Finding[]): GatherResult => ({
+    desired: {
+      stackName: 'S',
+      region: 'us-east-1',
+      accountId: '111122223333',
+      resources: [queue('A'), queue('B')],
+      rawTemplate: '{}',
+      ctx: ctx(),
+    },
+    findings,
+    schemas: new Map([['AWS::SQS::Queue', EMPTY_SCHEMA]]),
+  });
+  const aFinding = (): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'A',
+    resourceType: 'AWS::SQS::Queue',
+    path: 'DelaySeconds',
+    physicalId: 'A-phys',
+    actual: 30,
+  });
+  const bFinding = (): Finding => ({
+    tier: 'declared',
+    logicalId: 'B',
+    resourceType: 'AWS::SQS::Queue',
+    path: 'QueueName',
+    physicalId: 'B-phys',
+    desired: 'B-q',
+    actual: 'B-LIVE',
+  });
+
+  it('re-reads ONLY the touched resources and carries untouched findings forward verbatim', async () => {
+    const cc = mockClient(CloudControlClient);
+    // B converged (live == declared); A would still read as drifted if it were read
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'B-phys',
+        Properties: JSON.stringify({ QueueName: 'B-q' }),
+      },
+    });
+
+    const g = gathered([aFinding(), bFinding()]);
+    const post = await regatherTouched(g, new Set(['B']), 'us-east-1');
+
+    // exactly one read, and it was B — A was never re-read
+    const calls = cc.commandCalls(GetResourceCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input.Identifier).toBe('B-phys');
+    // A's pre-revert finding survives untouched; B is now clean (no fresh finding)
+    expect(post).toEqual([aFinding()]);
+  });
+
+  it('a still-drifted touched resource yields a fresh drift finding', async () => {
+    const cc = mockClient(CloudControlClient);
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'B-phys',
+        Properties: JSON.stringify({ QueueName: 'B-STILL-LIVE' }),
+      },
+    });
+
+    const post = await regatherTouched(gathered([bFinding()]), new Set(['B']), 'us-east-1');
+    expect(post).toHaveLength(1);
+    expect(post[0]).toMatchObject({
+      tier: 'declared',
+      logicalId: 'B',
+      path: 'QueueName',
+      actual: 'B-STILL-LIVE',
+    });
+  });
+
+  it('a touched resource deleted mid-revert surfaces as deleted', async () => {
+    const cc = mockClient(CloudControlClient);
+    const notFound = new Error('gone');
+    notFound.name = 'ResourceNotFoundException';
+    cc.on(GetResourceCommand).rejects(notFound);
+
+    const post = await regatherTouched(gathered([bFinding()]), new Set(['B']), 'us-east-1');
+    expect(post).toHaveLength(1);
+    expect(post[0]).toMatchObject({ tier: 'deleted', logicalId: 'B' });
   });
 });
 

@@ -319,10 +319,20 @@ see [redesign-notes.md](redesign-notes.md).)
 always in full — per finding: path, current → target; NOT-revertable findings folded
 to one line per reason, `--verbose` for the full list — R35), asks for confirmation
 (`@clack`; `--yes` skips; non-TTY refuses; `--dry-run` previews), applies, then
-**re-checks for convergence**. Exit semantics: no drift at all → `no drift to
-revert.` + exit 0; drift exists but **nothing is revertable** → `nothing
-revertable — N drift(s) remain.` + exit 1 (drift-remains semantics, not a usage
-error — R35).
+**re-checks for convergence**. The convergence re-check is **scoped to the
+resources the revert touched** (R44, `regatherTouched` in
+[gather.ts](../src/commands/gather.ts)): only the plan's resources are re-read
+and re-classified; every other resource's findings carry forward from the
+pre-revert gather. The template can't have changed (revert writes live state,
+not CFn), and a full re-gather made `revert` hang silently for
+whole-stack-read time after the last `reverted:` line — it could even blame
+unrelated mid-revert drift on the revert. A `verifying convergence (re-reading
+N resource(s))...` line attributes the wait, and if a touched resource still
+reads as drifted, ONE re-read after a short delay guards against SDK-writer
+eventual consistency (the slow full re-gather used to grant that propagation
+time by accident). Exit semantics: no drift at all → `no drift to revert.` +
+exit 0; drift exists but **nothing is revertable** → `nothing revertable — N
+drift(s) remain.` + exit 1 (drift-remains semantics, not a usage error — R35).
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an un-blessed out-of-band _addition_ reverts by REMOVAL).
