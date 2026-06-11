@@ -58,10 +58,28 @@ export async function loadBaseline(
   }
 }
 
+/** Deterministic order for `accepted` entries: lexicographic by (logicalId, path).
+ *  The single point where order is imposed — read/compare logic is order-independent,
+ *  so this only affects the bytes on disk. Without it the entries inherit findings
+ *  order (= template Resources order), so a pure CDK refactor that reorders construct
+ *  definitions would produce a whole-file reordering diff on the next `accept` even
+ *  though no accepted VALUE changed — breaking "the baseline PR diff = a review of the
+ *  real state we accept". A non-locale comparator keeps it byte-stable across machines. */
+function sortAccepted(accepted: AcceptedEntry[]): AcceptedEntry[] {
+  return [...accepted].sort(
+    (a, b) =>
+      (a.logicalId < b.logicalId ? -1 : a.logicalId > b.logicalId ? 1 : 0) ||
+      (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+  );
+}
+
 export async function writeBaseline(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(b, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
+  // sort at the write point (not per entry-generation path) so every caller — accept,
+  // selective accept, check's first-run offer — lands the same deterministic order.
+  const stable: BaselineFile = { ...b, accepted: sortAccepted(b.accepted) };
+  await writeFile(p, JSON.stringify(stable, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
   return p;
 }
 

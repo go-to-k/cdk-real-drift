@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vite-plus/test';
 import {
   acceptedKey,
@@ -9,6 +12,7 @@ import {
   hashTemplate,
   selectAccepted,
   warnTemplateHashDrift,
+  writeBaseline,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
 
@@ -157,6 +161,54 @@ describe('baseline', () => {
     const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ note: 'blessed value removed since accept' });
+  });
+
+  describe('writeBaseline (deterministic order, R40)', () => {
+    // capturedAt is fixed so the only variable across writes is the accepted order.
+    const entry = (logicalId: string, path: string): BaselineFile['accepted'][number] => ({
+      logicalId,
+      resourceType: 'AWS::X::Y',
+      path,
+      value: [logicalId, path],
+    });
+    const withOrder = (accepted: BaselineFile['accepted']): BaselineFile => ({
+      ...baseline(accepted),
+      capturedAt: '2026-06-12T00:00:00.000Z',
+    });
+
+    async function writeInTmp(b: BaselineFile): Promise<string> {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const p = await writeBaseline(b);
+        return await readFile(p, 'utf8');
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
+    }
+
+    it('same entries in different order -> byte-identical file', async () => {
+      const orderA = [entry('B', 'q'), entry('A', 'p'), entry('A', 'a')];
+      const orderB = [entry('A', 'a'), entry('B', 'q'), entry('A', 'p')];
+      const a = await writeInTmp(withOrder(orderA));
+      const b = await writeInTmp(withOrder(orderB));
+      expect(a).toBe(b);
+    });
+
+    it('writes accepted sorted lexicographically by (logicalId, path)', async () => {
+      const out = await writeInTmp(withOrder([entry('B', 'q'), entry('A', 'p'), entry('A', 'a')]));
+      const parsed = JSON.parse(out) as BaselineFile;
+      expect(parsed.accepted.map((e) => `${e.logicalId}.${e.path}`)).toEqual(['A.a', 'A.p', 'B.q']);
+    });
+
+    it('does not mutate the caller-supplied accepted array', async () => {
+      const accepted = [entry('B', 'q'), entry('A', 'p')];
+      const snapshot = accepted.map((e) => e.logicalId);
+      await writeInTmp(withOrder(accepted));
+      expect(accepted.map((e) => e.logicalId)).toEqual(snapshot);
+    });
   });
 
   describe('warnTemplateHashDrift', () => {
