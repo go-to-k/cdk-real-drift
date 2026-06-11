@@ -25,6 +25,27 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
   it('does not match a name that is a non-final ARN segment (qualifier present)', () => {
     expect(isArnNameMatch('MyFn', `${fnArn}:PROD`)).toBe(false);
   });
+
+  // R10: account/region scoping — a same-named resource in a DIFFERENT account or
+  // region is genuine drift, not a name<->ARN echo.
+  describe('with account/region scoping', () => {
+    const opts = { accountId: '111122223333', region: 'us-east-1' };
+    it('suppresses when account + region both match (regression)', () => {
+      expect(isArnNameMatch('MyFn', fnArn, opts)).toBe(true);
+    });
+    it('reports drift when the ARN account differs', () => {
+      const other = 'arn:aws:lambda:us-east-1:999999999999:function:MyFn';
+      expect(isArnNameMatch('MyFn', other, opts)).toBe(false);
+    });
+    it('reports drift when the ARN region differs', () => {
+      const other = 'arn:aws:lambda:eu-west-1:111122223333:function:MyFn';
+      expect(isArnNameMatch('MyFn', other, opts)).toBe(false);
+    });
+    it('stays suffix-only for an empty-segment ARN (S3-style)', () => {
+      // arn:aws:s3:::my-bucket — region + account segments are empty
+      expect(isArnNameMatch('my-bucket', 'arn:aws:s3:::my-bucket', opts)).toBe(true);
+    });
+  });
 });
 
 describe('isManagedKmsAliasMatch (managed-default KMS alias <-> key ARN)', () => {

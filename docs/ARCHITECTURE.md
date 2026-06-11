@@ -213,7 +213,11 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
 3. **name ↔ ARN** — CDK declares a bare name (Lambda EventSourceMapping/Permission
    `FunctionName`, ECS `Service.Cluster`), AWS returns the full ARN. Fix:
    `isArnNameMatch` (value-shape: actual is ARN, desired non-ARN, ARN's final
-   `:`/`/` segment == desired; never hides drift to a _different_ name).
+   `:`/`/` segment == desired; never hides drift to a _different_ name). When the
+   stack's account + region are known they are also required to match the ARN's
+   region/account segments (when non-empty), so a same-named resource swapped to a
+   _different account or region_ is reported as genuine drift; empty-segment ARNs
+   (e.g. S3) stay suffix-only.
 4. **managed-default KMS alias** — `alias/aws/rds` declared vs resolved key ARN. Fix:
    `isManagedKmsAliasMatch` (only collapses `alias/aws/*`, not custom aliases).
 
@@ -338,6 +342,12 @@ cdk deploy`) — a patch cannot recreate a resource.
 `undeclared` = all three of `deleted` / `declared` / `undeclared`. `readGap` /
 `unresolved` / `skipped` are informational — surfaced, never silently dropped, but
 never false drift.
+
+A declared **top-level write-only** property (e.g. an IAM Role's
+`AssumeRolePolicyDocument`) is surfaced as a `readGap` (note: `write-only — cannot
+be read back`) rather than silently dropped — honoring the "never silently dropped"
+invariant. Nested write-only path stripping stays silent on purpose (too granular to
+report meaningfully per path).
 
 ## 10. Synth integration
 

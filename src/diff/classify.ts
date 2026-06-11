@@ -24,7 +24,8 @@ import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
-  schema: SchemaInfo
+  schema: SchemaInfo,
+  opts: { accountId?: string; region?: string } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
@@ -37,6 +38,22 @@ export function classifyResource(
     stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
   ) as Record<string, unknown>;
   const declared = canonicalizeForCompare(declaredIn) as Record<string, unknown>;
+  // R11: a declared TOP-LEVEL write-only key is about to be stripped from `declared`
+  // (below). Surface it as ONE readGap finding FIRST so it is never silently dropped
+  // — the informational tier exists precisely for "declared but unreadable" props.
+  // Only top-level keys get this treatment; nested write-only path stripping stays
+  // silent on purpose (too granular to report meaningfully per-path).
+  for (const k of Object.keys(declared)) {
+    if (schema.writeOnly.has(k)) {
+      findings.push({
+        tier: 'readGap',
+        logicalId,
+        resourceType,
+        path: k,
+        note: 'write-only — cannot be read back',
+      });
+    }
+  }
   // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
   // live); writeOnly cannot be read back (strip from BOTH sides so it is never
   // compared, at top level or nested).
@@ -44,9 +61,11 @@ export function classifyResource(
   deepStripPaths(live, schema.writeOnlyPaths);
   deepStripPaths(declared, schema.writeOnlyPaths);
 
-  // declared drift (A3: declared key absent in live = read gap, not drift)
+  // declared drift (A3: declared key absent in live = read gap, not drift).
+  // NOTE: no `schema.writeOnly.has(k)` guard here — a top-level write-only key was
+  // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
+  // so it cannot reach this loop (the old guard was dead code for top-level keys).
   for (const [k, v] of Object.entries(declared)) {
-    if (schema.writeOnly.has(k)) continue;
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
       continue;
@@ -62,9 +81,10 @@ export function classifyResource(
       continue;
     }
     for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
-      // a bare name declared for a field AWS returns as the full ARN is not drift;
-      // likewise an AWS-managed-default KMS alias vs its resolved key ARN
-      if (isArnNameMatch(d.stateValue, d.awsValue)) continue;
+      // a bare name declared for a field AWS returns as the full ARN is not drift
+      // (account/region-scoped when opts are provided); likewise an AWS-managed-default
+      // KMS alias vs its resolved key ARN
+      if (isArnNameMatch(d.stateValue, d.awsValue, opts)) continue;
       if (isManagedKmsAliasMatch(d.stateValue, d.awsValue)) continue;
       findings.push({
         tier: 'declared',
@@ -81,7 +101,9 @@ export function classifyResource(
   const knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
   for (const [k, v] of Object.entries(live)) {
     if (k in declared) continue;
-    if (schema.writeOnly.has(k)) continue;
+    // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
+    // already stripped from `live` by writeOnlyPaths above, so it cannot reach here
+    // (the old guard was dead code for top-level keys).
     if (k in schema.defaults && deepEqual(v, schema.defaults[k])) continue;
     if (k in knownDef && deepEqual(v, knownDef[k])) continue;
     if (isAllAwsTags(v)) continue;

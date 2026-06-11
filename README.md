@@ -126,7 +126,9 @@ suspicious one. With `--yes` or a non-TTY (CI), it blesses all with no prompt.
 ### CC-gap types read via SDK overrides
 
 `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
-`AWS::IAM::Policy`, `AWS::IAM::ManagedPolicy`, `AWS::Lambda::Permission`,
+`AWS::IAM::Policy`, `AWS::IAM::ManagedPolicy`, `AWS::Lambda::Permission` (reports the
+matched statement's REAL Principal / SourceArn / SourceAccount, so a Principal/source
+drift is detectable — it does not echo the declared template),
 `AWS::Budgets::Budget`, `AWS::EC2::EIP` (CC `GetResource` throws
 `ValidationException`; read via EC2 `DescribeAddresses`). Other
 Cloud-Control-unreadable types are reported as `skipped` (never silently dropped).

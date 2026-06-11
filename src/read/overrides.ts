@@ -139,8 +139,36 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
       (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal)))
   );
   if (!m) return undefined;
-  return { FunctionName: fn, Action: m.Action, Principal: declared.Principal };
+  // Return the MATCHED statement's REAL fields — never echo the declared template
+  // (an echoed Principal makes a Principal drift structurally undetectable).
+  // Normalize the statement Principal to CFn shape: {Service:"x"}/{AWS:"x"} -> "x",
+  // a plain string stays as-is.
+  const cond = m.Condition as
+    | { ArnLike?: Record<string, unknown>; StringEquals?: Record<string, unknown> }
+    | undefined;
+  const sourceArn = str(cond?.ArnLike?.['AWS:SourceArn']);
+  const sourceAccount = str(cond?.StringEquals?.['AWS:SourceAccount']);
+  return {
+    FunctionName: fn,
+    Action: m.Action,
+    Principal: normalizeLambdaPrincipal(m.Principal),
+    // omit SourceArn/SourceAccount when absent (→ readGap, honest; never fabricate)
+    ...(sourceArn !== undefined && { SourceArn: sourceArn }),
+    ...(sourceAccount !== undefined && { SourceAccount: sourceAccount }),
+  };
 };
+
+// Lambda resource-policy Principal -> CFn Principal shape. AWS stores it as
+// {Service:"x"} or {AWS:"x"}; CFn declares the bare string. A plain string (or
+// anything else) is returned unchanged.
+function normalizeLambdaPrincipal(p: unknown): unknown {
+  if (p && typeof p === 'object') {
+    const o = p as Record<string, unknown>;
+    if (typeof o.Service === 'string') return o.Service;
+    if (typeof o.AWS === 'string') return o.AWS;
+  }
+  return p;
+}
 
 const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
   const budget = declared.Budget as Record<string, unknown> | undefined;

@@ -57,7 +57,9 @@ describe('classifyResource (the heart)', () => {
     const t = tiers(classifyResource(resource, liveRaw, schema));
     expect(t.declared).toEqual(['ManagedPolicyArns']);
     expect(t.undeclared).toEqual(['GuardrailPolicies']); // only the real signal survives noise subtraction
-    expect(t.readGap).toEqual(['MissingFromLive']);
+    // R11: a declared write-only key (AssumeRolePolicyDocument) is now surfaced as a
+    // readGap instead of being silently dropped, alongside the absent-from-live key.
+    expect(t.readGap).toEqual(['AssumeRolePolicyDocument', 'MissingFromLive']);
     expect(t.unresolved).toEqual(['ComputedArn']);
   });
 
@@ -65,6 +67,69 @@ describe('classifyResource (the heart)', () => {
     const drift = classifyResource(resource, liveRaw, schema).find((f) => f.tier === 'declared')!;
     expect(drift.desired).toEqual(['arnA']);
     expect(drift.actual).toEqual(['arnB']);
+  });
+
+  // R11: a declared top-level write-only key surfaces as exactly one readGap finding
+  // and is NEVER compared as declared/undeclared drift.
+  it('write-only declared key -> exactly one readGap (write-only note), never compared', () => {
+    const findings = classifyResource(resource, liveRaw, schema);
+    const writeOnlyGaps = findings.filter(
+      (f) => f.tier === 'readGap' && f.path === 'AssumeRolePolicyDocument'
+    );
+    expect(writeOnlyGaps).toHaveLength(1);
+    expect(writeOnlyGaps[0].note).toContain('write-only');
+    // never leaks into declared/undeclared tiers
+    expect(
+      findings.some(
+        (f) =>
+          f.path === 'AssumeRolePolicyDocument' &&
+          (f.tier === 'declared' || f.tier === 'undeclared')
+      )
+    ).toBe(false);
+  });
+});
+
+// R10: classifyResource threads optional { accountId, region } into isArnNameMatch.
+describe('classifyResource account/region-scoped ARN identity (R10)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res: DesiredResource = {
+    logicalId: 'Fn',
+    resourceType: 'AWS::Lambda::Function',
+    physicalId: 'p',
+    declared: { FunctionName: 'MyFn' },
+  };
+  const declaredPaths = (
+    live: Record<string, unknown>,
+    opts?: { accountId?: string; region?: string }
+  ) =>
+    classifyResource(res, live, bare, opts)
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  const opts = { accountId: '111122223333', region: 'us-east-1' };
+  it('same account+region ARN is suppressed (regression)', () => {
+    const live = { FunctionName: 'arn:aws:lambda:us-east-1:111122223333:function:MyFn' };
+    expect(declaredPaths(live, opts)).toEqual([]);
+  });
+  it('different account ARN is reported as drift', () => {
+    const live = { FunctionName: 'arn:aws:lambda:us-east-1:999999999999:function:MyFn' };
+    expect(declaredPaths(live, opts)).toEqual(['FunctionName']);
+  });
+  it('different region ARN is reported as drift', () => {
+    const live = { FunctionName: 'arn:aws:lambda:eu-west-1:111122223333:function:MyFn' };
+    expect(declaredPaths(live, opts)).toEqual(['FunctionName']);
+  });
+  it('without opts, behavior is unchanged (suffix-only suppression)', () => {
+    const live = { FunctionName: 'arn:aws:lambda:eu-west-1:999999999999:function:MyFn' };
+    expect(declaredPaths(live)).toEqual([]);
   });
 });
 

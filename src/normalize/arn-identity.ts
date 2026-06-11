@@ -10,11 +10,28 @@
 // ':' or '/'). A bare name in such a field resolves to that one resource in the
 // stack's own account+region, whose ARN ends with `:<name>` — so this never hides a
 // real drift to a DIFFERENT name (the suffix must match exactly).
-export function isArnNameMatch(desired: unknown, actual: unknown): boolean {
+//
+// When the stack's accountId/region are supplied, ALSO require the ARN's region
+// (index 3) and account (index 4) segments to match the stack's — a same-named
+// resource in a DIFFERENT account/region is genuine drift, not a name<->ARN echo.
+// Some ARN partitions leave region/account empty (S3: `arn:aws:s3:::bucket/name`);
+// for those empty segments we skip the check and stay suffix-only.
+export function isArnNameMatch(
+  desired: unknown,
+  actual: unknown,
+  opts?: { accountId?: string; region?: string }
+): boolean {
   if (typeof desired !== 'string' || typeof actual !== 'string') return false;
   if (desired.length === 0 || !actual.startsWith('arn:') || desired.startsWith('arn:'))
     return false;
-  return actual.endsWith(`:${desired}`) || actual.endsWith(`/${desired}`);
+  if (!(actual.endsWith(`:${desired}`) || actual.endsWith(`/${desired}`))) return false;
+  // arn:partition:service:region:account:resource — segments 3 (region) + 4 (account)
+  const seg = actual.split(':');
+  const arnRegion = seg[3] ?? '';
+  const arnAccount = seg[4] ?? '';
+  if (opts?.region && arnRegion && arnRegion !== opts.region) return false;
+  if (opts?.accountId && arnAccount && arnAccount !== opts.accountId) return false;
+  return true;
 }
 
 // AWS-managed default KMS keys are declared by their well-known alias

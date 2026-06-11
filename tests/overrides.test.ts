@@ -96,6 +96,114 @@ describe('SDK overrides', () => {
     expect(out).toMatchObject({ FunctionName: 'f', Action: 'lambda:InvokeFunction' });
   });
 
+  // R12: return the matched statement's REAL fields, never echo the declared template.
+  it('Lambda Permission: returns the REAL statement Principal, not the declared echo', async () => {
+    // declared Principal is stale ("old.amazonaws.com"); AWS actually has events
+    const fnPolicy = JSON.stringify({
+      Statement: [
+        {
+          Action: 'lambda:InvokeFunction',
+          Principal: { Service: 'events.amazonaws.com' },
+        },
+      ],
+    });
+    lambda.on(LambdaGetPolicyCommand).resolves({ Policy: fnPolicy });
+    const out = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      // matcher uses Action only (declared Principal won't substring-match the live one)
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+    );
+    // real value surfaces so a Principal drift is detectable
+    expect(out).toMatchObject({ Principal: 'events.amazonaws.com' });
+  });
+
+  it('Lambda Permission: normalizes {AWS:x} and plain-string principals', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [{ Action: 'lambda:InvokeFunction', Principal: { AWS: '123456789012' } }],
+      }),
+    });
+    expect(
+      await SDK_OVERRIDES['AWS::Lambda::Permission'](
+        ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+      )
+    ).toMatchObject({ Principal: '123456789012' });
+
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [{ Action: 'lambda:InvokeFunction', Principal: '*' }],
+      }),
+    });
+    expect(
+      await SDK_OVERRIDES['AWS::Lambda::Permission'](
+        ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+      )
+    ).toMatchObject({ Principal: '*' });
+  });
+
+  it('Lambda Permission: extracts SourceArn/SourceAccount from Condition; omits when absent', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          {
+            Action: 'lambda:InvokeFunction',
+            Principal: { Service: 's3.amazonaws.com' },
+            Condition: {
+              ArnLike: { 'AWS:SourceArn': 'arn:aws:s3:::my-bucket' },
+              StringEquals: { 'AWS:SourceAccount': '111122223333' },
+            },
+          },
+        ],
+      }),
+    });
+    const out = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+    );
+    expect(out).toEqual({
+      FunctionName: 'f',
+      Action: 'lambda:InvokeFunction',
+      Principal: 's3.amazonaws.com',
+      SourceArn: 'arn:aws:s3:::my-bucket',
+      SourceAccount: '111122223333',
+    });
+
+    // no Condition -> SourceArn/SourceAccount omitted (honest readGap, never fabricated)
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          { Action: 'lambda:InvokeFunction', Principal: { Service: 's3.amazonaws.com' } },
+        ],
+      }),
+    });
+    const out2 = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+    );
+    expect(out2).not.toHaveProperty('SourceArn');
+    expect(out2).not.toHaveProperty('SourceAccount');
+  });
+
+  it('Lambda Permission: GetPolicy ResourceNotFoundException propagates (R1 intact)', async () => {
+    const err = Object.assign(new Error('no policy'), { name: 'ResourceNotFoundException' });
+    lambda.on(LambdaGetPolicyCommand).rejects(err);
+    await expect(
+      SDK_OVERRIDES['AWS::Lambda::Permission'](ctx({ FunctionName: 'f', Action: 'a' }))
+    ).rejects.toThrow('no policy');
+  });
+
+  it('Lambda Permission: undefined when no statement matches (best-effort)', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          { Action: 'lambda:InvokeFunction', Principal: { Service: 's3.amazonaws.com' } },
+        ],
+      }),
+    });
+    expect(
+      await SDK_OVERRIDES['AWS::Lambda::Permission'](
+        ctx({ FunctionName: 'f', Action: 'lambda:Nonexistent' })
+      )
+    ).toBeUndefined();
+  });
+
   it('Budgets: reads the budget by name + account', async () => {
     budgets
       .on(DescribeBudgetCommand)
