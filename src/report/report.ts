@@ -2,10 +2,14 @@
 // Exit: 0 clean / 1 drift. --fail-on selects which tiers count as failure.
 //
 // Default layout is deliberately terse (a 40-resource CLEAN stack was 30+ lines):
-//   header -> DRIFT tier sections (full detail) -> result: -> info: (1-line footer)
-// DRIFT tiers (deleted/declared/undeclared) are ALWAYS shown in full — they are the
-// point. INFORMATIONAL tiers (readGap/unresolved/skipped) are folded into a single
-// `info:` summary line (counts + reason breakdown); `--verbose` expands them to full
+//   header -> DRIFT tier sections (full detail) -> result: -> info: footer
+// No blank line before the header or the result: line (R37) — a CLEAN stack with
+// one informational tier is exactly 3 lines. Blank lines remain BETWEEN the header
+// and drift sections, and between sections (visual grouping). DRIFT tiers
+// (deleted/declared/undeclared) are ALWAYS shown in full — they are the point.
+// INFORMATIONAL tiers (readGap/unresolved/skipped) are folded into the `info:`
+// footer (counts + reason breakdown): one line when a single tier is present, a
+// one-line-per-tier bullet list when 2+ (R37); `--verbose` expands them to full
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
 import type { Finding, Tier } from '../types.js';
@@ -96,33 +100,50 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     for (const f of items) log('  ' + formatFinding(f));
   };
 
-  log(`\n=== cdkrd check: ${header} ===`);
+  log(`=== cdkrd check: ${header} ===`);
   // DRIFT tiers: always full detail (the point of the tool)
   for (const tier of DRIFT_TIERS) section(tier);
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
   // informational breakdown lives on the `info:` line, so the two never duplicate);
   // CLEAN prints just `CLEAN`. `fail-on` is noted only when non-default (it changes
-  // the verdict). grep contract: `^result:` for the verdict, `^info:` for the rest.
+  // the verdict). `^result:` stays greppable for the verdict; the formal
+  // machine-readable contract is `--json` (the info: footer may span lines).
   const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
   const failNote = (opts.failOn ?? 'undeclared') === 'declared' ? ' (fail-on=declared)' : '';
   const verdict = drifted === 0 ? 'CLEAN' : `${drifted} drift(s) (${driftCounts})`;
-  log(`\nresult: ${verdict}${failNote}`);
+  log(`result: ${verdict}${failNote}`);
   // INFORMATIONAL tiers: footer below result — full sections under --verbose, else a
-  // single folded summary line (counts + reason breakdown).
+  // folded summary (counts + reason breakdown): one `info: ...` line for a single
+  // tier, a one-line-per-tier bullet list (with ONE --verbose hint) for 2+ (R37).
   if (opts.verbose) {
     for (const tier of INFO_TIERS) section(tier);
   } else {
-    const summary = INFO_TIERS.map((t) => {
+    const summaries = INFO_TIERS.map((t) => {
       const items = byTier(t);
       return items.length ? `${t}=${items.length} (${groupReasons(items)})` : null;
-    })
-      .filter((s): s is string => s !== null)
-      .join(' · ');
-    if (summary) log(`info: ${summary} — run with --verbose for the list`);
+    }).filter((s): s is string => s !== null);
+    if (summaries.length === 1) {
+      log(`info: ${summaries[0]} — run with --verbose for the list`);
+    } else if (summaries.length > 1) {
+      log('info:');
+      for (const s of summaries) log(`  - ${s}`);
+      log('  run with --verbose for the list');
+    }
   }
   return drifted === 0 ? 0 : 1;
+}
+
+// R37: multi-stack runs print ONE blank line between consecutive stack reports —
+// never before the first (so a single-stack run has no stray leading blank). Lives
+// at the check-loop call site, not inside report(); exported pure for unit tests.
+export function stackSeparator(log: (s: string) => void = console.log): () => void {
+  let first = true;
+  return () => {
+    if (first) first = false;
+    else log('');
+  };
 }
 function j(v: unknown): string {
   const s = JSON.stringify(v);
