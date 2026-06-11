@@ -7,7 +7,17 @@
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+import {
+  CloudWatchLogsClient,
+  DescribeMetricFiltersCommand,
+} from '@aws-sdk/client-cloudwatch-logs';
 import { DescribeAddressesCommand, EC2Client } from '@aws-sdk/client-ec2';
+import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import {
+  ListResourceRecordSetsCommand,
+  type RRType,
+  Route53Client,
+} from '@aws-sdk/client-route-53';
 import {
   GetGroupPolicyCommand,
   GetPolicyCommand,
@@ -217,6 +227,129 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   return model;
 };
 
+// Align a live DNS value's trailing dot to the declared value's style, so AWS's
+// always-trailing-dot form ("x.cloudfront.net.") is not false drift against a
+// declared value without the dot (a GetAtt-resolved DomainName has no dot). Real
+// drift to a different name still differs.
+const alignTrailingDot = (live: string | undefined, declared: unknown): string | undefined => {
+  if (live === undefined) return undefined;
+  const declHasDot = typeof declared === 'string' && declared.endsWith('.');
+  return declHasDot ? (live.endsWith('.') ? live : `${live}.`) : live.replace(/\.$/, '');
+};
+
+// AWS::Route53::RecordSet — CC API GetResource throws UnsupportedActionException.
+// Read via Route53 ListResourceRecordSets (the CFn physical id is
+// `<HostedZoneId>_<Name>_<Type>`; declared values are preferred, id is the fallback).
+const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, region }) => {
+  const parts = physicalId.split('_');
+  const hasIdParts = parts.length >= 3;
+  const hostedZoneId = str(declared.HostedZoneId) ?? (hasIdParts ? parts[0] : undefined);
+  const name = str(declared.Name) ?? (hasIdParts ? parts[1] : undefined);
+  const type = str(declared.Type) ?? (hasIdParts ? parts[parts.length - 1] : undefined);
+  if (!hostedZoneId || !name || !type) return undefined;
+  const c = new Route53Client({ region, ...READ_RETRY });
+  const r = await c.send(
+    new ListResourceRecordSetsCommand({
+      HostedZoneId: hostedZoneId,
+      StartRecordName: name,
+      StartRecordType: type as RRType,
+      MaxItems: 1,
+    })
+  );
+  const canon = (s: string): string => s.replace(/\.$/, '').toLowerCase();
+  const rec = r.ResourceRecordSets?.find(
+    (x) => x.Type === type && x.Name && canon(x.Name) === canon(name)
+  );
+  if (!rec) return undefined;
+  const model: Record<string, unknown> = {
+    Name: alignTrailingDot(rec.Name, declared.Name),
+    Type: rec.Type,
+    HostedZoneId: hostedZoneId,
+  };
+  if (rec.TTL !== undefined) model.TTL = String(rec.TTL); // CFn TTL is a string
+  const records = rec.ResourceRecords?.map((rr) => rr.Value).filter((v): v is string => !!v);
+  if (records && records.length > 0) model.ResourceRecords = records;
+  if (rec.AliasTarget) {
+    const declAlias = declared.AliasTarget as Record<string, unknown> | undefined;
+    model.AliasTarget = {
+      DNSName: alignTrailingDot(rec.AliasTarget.DNSName, declAlias?.DNSName),
+      HostedZoneId: rec.AliasTarget.HostedZoneId,
+      EvaluateTargetHealth: rec.AliasTarget.EvaluateTargetHealth ?? false,
+    };
+  }
+  return model;
+};
+
+// AWS::Glue::Table — CC API GetResource throws UnsupportedActionException. Read via
+// Glue GetTable. Maps the live Table back to the CFn `{ CatalogId?, DatabaseName,
+// TableInput }` shape, returning ONLY the TableInput sub-fields CFn models —
+// AWS-managed fields (CreateTime / UpdateTime / CreatedBy / VersionId /
+// IsRegisteredWithLakeFormation / DatabaseName / CatalogId inside Table) are dropped
+// as they are not declarable and would be pure noise.
+const readGlueTable: OverrideReader = async ({ physicalId, declared, region }) => {
+  const idParts = physicalId.split('|');
+  const dbName = str(declared.DatabaseName) ?? (idParts.length >= 2 ? idParts[0] : undefined);
+  const tableInput = declared.TableInput as Record<string, unknown> | undefined;
+  const name =
+    str(tableInput?.Name) ?? (idParts.length >= 2 ? idParts[idParts.length - 1] : undefined);
+  if (!dbName || !name) return undefined;
+  const catalogId = str(declared.CatalogId);
+  const c = new GlueClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new GetTableCommand({
+      DatabaseName: dbName,
+      Name: name,
+      ...(catalogId && { CatalogId: catalogId }),
+    })
+  );
+  const t = r.Table;
+  if (!t) return undefined;
+  const ti: Record<string, unknown> = { Name: t.Name };
+  const copy = <K extends keyof typeof t>(k: K, as: string): void => {
+    if (t[k] !== undefined) ti[as] = t[k];
+  };
+  copy('Description', 'Description');
+  copy('Owner', 'Owner');
+  copy('Retention', 'Retention');
+  copy('TableType', 'TableType');
+  copy('Parameters', 'Parameters');
+  copy('PartitionKeys', 'PartitionKeys');
+  copy('StorageDescriptor', 'StorageDescriptor');
+  copy('ViewOriginalText', 'ViewOriginalText');
+  copy('ViewExpandedText', 'ViewExpandedText');
+  const model: Record<string, unknown> = { DatabaseName: dbName, TableInput: ti };
+  if (catalogId) model.CatalogId = catalogId;
+  return model;
+};
+
+// AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
+// CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
+// the log group comes from the declared (GetAtt-resolved) LogGroupName.
+const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }) => {
+  const logGroup = str(declared.LogGroupName);
+  const filterName = str(physicalId) ?? str(declared.FilterName);
+  if (!logGroup || !filterName) return undefined;
+  const c = new CloudWatchLogsClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeMetricFiltersCommand({ logGroupName: logGroup, filterNamePrefix: filterName })
+  );
+  const mf = r.metricFilters?.find((m) => m.filterName === filterName);
+  if (!mf) return undefined;
+  return {
+    LogGroupName: logGroup,
+    FilterName: filterName,
+    FilterPattern: mf.filterPattern ?? '',
+    MetricTransformations: (mf.metricTransformations ?? []).map((t) => ({
+      MetricName: t.metricName,
+      MetricNamespace: t.metricNamespace,
+      MetricValue: t.metricValue,
+      ...(t.defaultValue !== undefined && { DefaultValue: t.defaultValue }),
+      ...(t.unit !== undefined && { Unit: t.unit }),
+      ...(t.dimensions !== undefined && { Dimensions: t.dimensions }),
+    })),
+  };
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,
@@ -226,4 +359,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Lambda::Permission': readLambdaPermission,
   'AWS::Budgets::Budget': readBudget,
   'AWS::EC2::EIP': readEc2Eip,
+  'AWS::Route53::RecordSet': readRoute53RecordSet,
+  'AWS::Glue::Table': readGlueTable,
+  'AWS::Logs::MetricFilter': readMetricFilter,
 };

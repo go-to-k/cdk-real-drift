@@ -114,6 +114,21 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
   return v;
 }
 
+// CFn has many "stringly-typed" fields: Glue Table `Parameters` is a
+// `Map<String,String>`, ports/sizes are declared as `"5432"`, booleans come back as
+// `"true"`. CDK sometimes emits the typed JSON form (boolean `true`, number `5432`)
+// while AWS returns the string (`"true"` / `"5432"`) — a positional diff then reports
+// false drift. Treat a primitive and its EXACT `String()` form as equal. Scalars only
+// (never collapses objects/arrays); a genuine value change (`true` vs `"false"`,
+// `5` vs `"6"`) still differs, so real drift is preserved.
+export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
+  const prim = (v: unknown): v is boolean | number =>
+    typeof v === 'boolean' || typeof v === 'number';
+  if (prim(a) && typeof b === 'string') return String(a) === b;
+  if (prim(b) && typeof a === 'string') return String(b) === a;
+  return false;
+}
+
 // A1: trivially-empty/off values AWS returns for unset features.
 export function isTrivialEmpty(v: unknown): boolean {
   if (v === false || v === '') return true;

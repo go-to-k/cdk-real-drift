@@ -140,7 +140,7 @@ live ARN instead of falling to `unresolved` — see section 5.
   - **list-stacks.ts** — `--all` deployed-stack enumeration.
 - **read/** — the "reality" side
   - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource; classifies skip reasons.
-  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses).
+  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
   - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**.
@@ -209,6 +209,7 @@ all live changes
   − schema defaults + known defaults  → suppressed
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
+  − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)
   − sibling AWS::IAM::Policy on a role → suppressed
   = undeclared residual                → the unique signal
 ```

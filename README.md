@@ -148,7 +148,12 @@ removal of all undeclared drift (declining leaves the baseline unchanged). With
 matched statement's REAL Principal / SourceArn / SourceAccount, so a Principal/source
 drift is detectable — it does not echo the declared template),
 `AWS::Budgets::Budget`, `AWS::EC2::EIP` (CC `GetResource` throws
-`ValidationException`; read via EC2 `DescribeAddresses`). Other
+`ValidationException`; read via EC2 `DescribeAddresses`),
+`AWS::Route53::RecordSet` (read via `ListResourceRecordSets`; trailing-dot aligned to
+the declared form so `x.cloudfront.net.` is not false drift),
+`AWS::Glue::Table` (read via `GetTable`, mapped to the CFn `TableInput` shape with
+AWS-managed fields dropped), `AWS::Logs::MetricFilter` (read via
+`DescribeMetricFilters`). Other
 Cloud-Control-unreadable types are reported as `skipped` (never silently dropped).
 
 ## Known limitations

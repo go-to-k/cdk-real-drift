@@ -12,6 +12,7 @@ import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   isAllAwsTags,
+  isStringlyEqualScalar,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
@@ -90,6 +91,9 @@ export function classifyResource(
       // KMS alias vs its resolved key ARN
       if (isArnNameMatch(d.stateValue, d.awsValue, opts)) continue;
       if (isManagedKmsAliasMatch(d.stateValue, d.awsValue, opts.kmsAliasTargets)) continue;
+      // CFn stringly-typed scalar (Glue Parameters Map<String,String>, "5432" ports):
+      // declared `true`/`5432` vs AWS `"true"`/`"5432"` is not drift.
+      if (isStringlyEqualScalar(d.stateValue, d.awsValue)) continue;
       findings.push({
         tier: 'declared',
         logicalId,

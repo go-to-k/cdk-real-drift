@@ -1,10 +1,16 @@
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import {
+  CloudWatchLogsClient,
+  DescribeMetricFiltersCommand,
+} from '@aws-sdk/client-cloudwatch-logs';
+import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import {
   GetPolicyCommand,
   GetPolicyVersionCommand,
   GetRolePolicyCommand,
   IAMClient,
 } from '@aws-sdk/client-iam';
+import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
@@ -19,6 +25,9 @@ const sqs = mockClient(SQSClient);
 const iam = mockClient(IAMClient);
 const lambda = mockClient(LambdaClient);
 const budgets = mockClient(BudgetsClient);
+const route53 = mockClient(Route53Client);
+const glue = mockClient(GlueClient);
+const logs = mockClient(CloudWatchLogsClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -30,7 +39,7 @@ const POLICY =
   '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:Get","Resource":"*"}]}';
 
 beforeEach(() => {
-  for (const m of [s3, sns, sqs, iam, lambda, budgets]) m.reset();
+  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs]) m.reset();
 });
 
 describe('SDK overrides', () => {
@@ -213,5 +222,137 @@ describe('SDK overrides', () => {
   });
   it('Budgets: undefined without a budget name', async () => {
     expect(await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: {} }))).toBeUndefined();
+  });
+
+  describe('Route53 RecordSet', () => {
+    it('reads an alias record + aligns the trailing dot to the declared style', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          {
+            Name: 'app.example.com.',
+            Type: 'A',
+            AliasTarget: {
+              DNSName: 'd123.cloudfront.net.', // AWS always has the trailing dot
+              HostedZoneId: 'Z2FDTNDATAQYW2',
+              EvaluateTargetHealth: false,
+            },
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx(
+          {
+            HostedZoneId: 'Z123',
+            Name: 'app.example.com.',
+            Type: 'A',
+            AliasTarget: { DNSName: 'd123.cloudfront.net' }, // declared (GetAtt) has NO dot
+          },
+          'Z123_app.example.com._A'
+        )
+      );
+      // the alias DNSName trailing dot is aligned to the declared (dot-less) form
+      expect(out).toEqual({
+        Name: 'app.example.com.',
+        Type: 'A',
+        HostedZoneId: 'Z123',
+        AliasTarget: {
+          DNSName: 'd123.cloudfront.net',
+          HostedZoneId: 'Z2FDTNDATAQYW2',
+          EvaluateTargetHealth: false,
+        },
+      });
+    });
+
+    it('reads a plain record (TTL as string + ResourceRecords)', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          { Name: 'x.example.com.', Type: 'TXT', TTL: 300, ResourceRecords: [{ Value: '"hi"' }] },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'x.example.com.', Type: 'TXT' })
+      );
+      expect(out).toMatchObject({ Type: 'TXT', TTL: '300', ResourceRecords: ['"hi"'] });
+    });
+
+    it('undefined when no record matches (-> stays skipped, no false drift)', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [{ Name: 'other.example.com.', Type: 'A' }],
+      });
+      expect(
+        await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+          ctx({ HostedZoneId: 'Z1', Name: 'app.example.com.', Type: 'A' })
+        )
+      ).toBeUndefined();
+    });
+  });
+
+  describe('Glue Table', () => {
+    it('maps the live Table to the CFn TableInput shape, dropping AWS-managed fields', async () => {
+      glue.on(GetTableCommand).resolves({
+        Table: {
+          Name: 't',
+          TableType: 'EXTERNAL_TABLE',
+          Parameters: { classification: 'json' },
+          StorageDescriptor: { Location: 's3://b/p' },
+          // AWS-managed noise that must NOT appear in the model:
+          CreateTime: new Date(0),
+          CreatedBy: 'arn:aws:iam::1:user/x',
+          DatabaseName: 'db',
+          VersionId: '1',
+          IsRegisteredWithLakeFormation: false,
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::Glue::Table'](
+        ctx({ DatabaseName: 'db', TableInput: { Name: 't' } }, 'db|t')
+      );
+      expect(out).toEqual({
+        DatabaseName: 'db',
+        TableInput: {
+          Name: 't',
+          TableType: 'EXTERNAL_TABLE',
+          Parameters: { classification: 'json' },
+          StorageDescriptor: { Location: 's3://b/p' },
+        },
+      });
+    });
+
+    it('undefined when database/table cannot be resolved', async () => {
+      expect(await SDK_OVERRIDES['AWS::Glue::Table'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('Logs MetricFilter', () => {
+    it('maps camelCase SDK fields to the CFn PascalCase shape', async () => {
+      logs.on(DescribeMetricFiltersCommand).resolves({
+        metricFilters: [
+          {
+            filterName: 'errs',
+            filterPattern: '?ERROR ?Error',
+            metricTransformations: [
+              { metricName: 'Errors', metricNamespace: 'App', metricValue: '1', defaultValue: 0 },
+            ],
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/aws/lambda/fn' }, 'errs')
+      );
+      expect(out).toEqual({
+        LogGroupName: '/aws/lambda/fn',
+        FilterName: 'errs',
+        FilterPattern: '?ERROR ?Error',
+        MetricTransformations: [
+          { MetricName: 'Errors', MetricNamespace: 'App', MetricValue: '1', DefaultValue: 0 },
+        ],
+      });
+    });
+
+    it('undefined when the named filter is absent (-> stays skipped)', async () => {
+      logs.on(DescribeMetricFiltersCommand).resolves({ metricFilters: [] });
+      expect(
+        await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'missing'))
+      ).toBeUndefined();
+    });
   });
 });

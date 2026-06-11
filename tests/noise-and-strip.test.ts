@@ -84,6 +84,19 @@ describe('noise suppressors', () => {
     expect(canonicalizeIdArraysDeep(['GET', 'CUSTOM'])).toEqual(['GET', 'CUSTOM']);
   });
 
+  it('isStringlyEqualScalar: a primitive equals its String() form, real drift kept', async () => {
+    const { isStringlyEqualScalar } = await import('../src/normalize/noise.js');
+    expect(isStringlyEqualScalar(true, 'true')).toBe(true);
+    expect(isStringlyEqualScalar('true', true)).toBe(true);
+    expect(isStringlyEqualScalar(5432, '5432')).toBe(true);
+    // real drift is preserved
+    expect(isStringlyEqualScalar(true, 'false')).toBe(false);
+    expect(isStringlyEqualScalar(5, '6')).toBe(false);
+    // never collapses two strings or objects
+    expect(isStringlyEqualScalar('true', 'true')).toBe(false);
+    expect(isStringlyEqualScalar({ a: 1 }, '[object Object]')).toBe(false);
+  });
+
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {
     expect(isAllAwsTags([{ Key: 'aws:cloudformation:stack-id', Value: 'x' }])).toBe(true);
     expect(
