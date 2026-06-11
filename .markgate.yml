@@ -24,20 +24,20 @@ gates:
   check:
     hash: files
     include:
-      - "src/**"
-      - "tests/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "tsconfig*.json"
-      - "vite.config.ts"
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig*.json'
+      - 'vite.config.ts'
 
   docs:
     hash: files
     include:
-      - "src/**"
-      - "docs/**"
-      - "README.md"
-      - "DESIGN.md"
+      - 'src/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'DESIGN.md'
 
   verify-pr:
     requires: [check, docs]
@@ -45,11 +45,11 @@ gates:
   pr-review:
     hash: files
     include:
-      - ".markgate-pr-review-sha"
+      - '.markgate-pr-review-sha'
 
   integ:
     hash: files
     ttl: 14d
     include:
-      - "src/**"
-      - "tests/integration/**"
+      - 'src/**'
+      - 'tests/integration/**'

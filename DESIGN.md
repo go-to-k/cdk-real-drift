@@ -26,11 +26,13 @@ un-deployed code edits would show as false "drift".
 3. live full state per resource: CC API GetResource (default)
                                  → SDK override (gap types) → skip+log
 4. normalize / subtract noise:
-     - schema strip   (describe-type readOnly/writeOnly, nested paths)
+     - schema strip   (describe-type readOnly/writeOnly, nested paths incl '*')
      - cc-api strip   (timestamps, revision ids, ...)
-     - policy canonical (Version-fill, Action singularize, sort)
-     - aws:* tags, scalar schema-defaults
-5. classify (tag):  declared | undeclared | (--pre-deploy) clobber
+     - policy canonical (Action/Resource/Principal scalar-vs-array unify, statement
+       sort, account-id<->root-ARN; Version kept only when declared — never fabricated)
+     - aws:* tags (list + map), scalar schema-defaults + per-type known-defaults
+     - sibling AWS::IAM::Policy suppression on a role's live Policies
+5. classify (tag):  declared | undeclared | readGap | unresolved | skipped
 6. report + exit code (0 clean / 1 drift / 2 error) + --fail-on <tier>
 ```
 
@@ -61,7 +63,7 @@ COPY (low coupling, verified):
 - `analyzer/drift-calculator.ts` — `calculateResourceDrift(state, aws, {ignorePaths, unionWalkObjects})`, pure
 - `analyzer/cc-api-strip.ts` — `stripCcApiAwsManagedFields`, pure
 - `analyzer/drift-cc-api-deny-list.ts` — `CC_API_FALLBACK_DENY_LIST`, data
-- `deployment/intrinsic-function-resolver.ts` — `IntrinsicFunctionResolver` (`resolveValue` / `resolveCondition`); feed live phys-ids into `ResolverContext.resources`; S3StateBackend/ExportIndexStore optional
+- (NOT copied) `deployment/intrinsic-function-resolver.ts` — we wrote our OWN focused, fail-closed resolver (`src/normalize/intrinsic-resolver.ts`) instead; swapping in cdkd's full resolver is a later candidate
 - `provisioning/cloud-control-provider.ts` readCurrentState — CC GetResource wrapper
 - a FEW SDK-override readCurrentState (s3 / iam-role / lambda) — ONLY for CC-gap types
 - `types/resource.ts` + `types/state.ts`; `utils/logger` + `utils/aws-clients` (optional)
@@ -69,13 +71,15 @@ COPY (low coupling, verified):
 NEW (cdkd does NOT have these):
 
 - **schema-strip** — `describe-type` readOnly/writeOnly → strip set (cdkd hand-codes per-provider instead; this is our differentiator: less per-type code)
-- **policy canonicalizer** — Version-fill / Action singularize / statement sort (cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives)
+- **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON
 - **report** — tiered text + JSON
 
-## Roadmap (private until Phase 3)
+## Roadmap (private until Phase 4)
 
-- Phase 2: build MVP here (private repo). No publish.
-- Phase 3: dogfood broadly on varied real stacks; tune ignore/normalizers.
+- Phase 2: build MVP here (private repo). DONE.
+- Phase 3 (current): dogfood broadly on varied real stacks; tune normalizers;
+  land revert. See [redesign-notes.md](redesign-notes.md) for the check/accept/
+  revert model adopted before publication.
 - Phase 4: publish + blog announce (the single public launch).

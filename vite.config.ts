@@ -23,6 +23,15 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Arm Node's diagnostic report on the forks workers so a fatal/uncaught
+    // crash writes report.*.json (dumped by .github/workflows/ci.yml on
+    // failure). No overhead on a clean run. Mirrors cdk-local.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        execArgv: ['--report-on-fatalerror', '--report-uncaught-exception'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
