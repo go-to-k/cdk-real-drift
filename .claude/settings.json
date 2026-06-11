@@ -1,0 +1,19 @@
+{
+  "//": "PreToolUse hooks for cdk-real-drift. Only the check-gate is wired: cdkrd is a solo, local-only repo with no GitHub remote yet, so branch-protection / verify-pr-merge / pr-review / integ-* gates are deferred until Phase 4 (when the repo gets a remote). check-gate blocks `git commit` unless both the `check` and `docs` markgate markers are fresh.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-gate.sh",
+            "if": "Bash(git commit*) or Bash(git -C * commit*)",
+            "timeout": 10,
+            "statusMessage": "Checking /check + /check-docs markers..."
+          }
+        ]
+      }
+    ]
+  }
+}
