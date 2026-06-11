@@ -5,6 +5,7 @@ export type Tier = 'declared' | 'undeclared' | 'readGap' | 'unresolved' | 'skipp
 export interface Finding {
   tier: Tier;
   logicalId: string;
+  constructPath?: string | undefined; // CDK construct path (from aws:cdk:path); display only
   resourceType: string;
   path: string;
   desired?: unknown;
@@ -33,6 +34,7 @@ export interface DesiredResource {
   logicalId: string;
   resourceType: string;
   physicalId?: string | undefined;
+  constructPath?: string | undefined; // CDK construct path from aws:cdk:path Metadata (display only)
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
   siblingManaged?: boolean; // an IAM Role whose inline Policies are managed by a sibling AWS::IAM::Policy
 }

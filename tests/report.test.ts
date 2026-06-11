@@ -44,4 +44,18 @@ describe('report', () => {
     expect(text).toContain('UNDECLARED DRIFT');
     expect(text).toContain('result:');
   });
+
+  it('shows the CDK construct path instead of the logical id when present', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Bucket83908E77',
+      constructPath: 'MyStack/Bucket',
+      resourceType: 'AWS::S3::Bucket',
+      path: 'AbacStatus',
+      actual: 'Disabled',
+    };
+    const { text } = run([f]);
+    expect(text).toContain('MyStack/Bucket.AbacStatus');
+    expect(text).not.toContain('Bucket83908E77');
+  });
 });

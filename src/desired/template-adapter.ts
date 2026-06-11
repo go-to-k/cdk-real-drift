@@ -114,15 +114,23 @@ export async function loadDesired(
     (template.Resources ?? {}) as Record<string, any>
   )) {
     if (res.Type === 'AWS::CDK::Metadata') continue;
+    const cdkPath = res.Metadata?.['aws:cdk:path'];
     resources.push({
       logicalId,
       resourceType: res.Type as string,
       physicalId: physIds[logicalId],
+      constructPath: typeof cdkPath === 'string' ? prettyConstructPath(cdkPath) : undefined,
       declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
       siblingManaged: res.Type === 'AWS::IAM::Role' && rolesWithSiblingPolicy.has(logicalId),
     });
   }
   return { stackName, region, accountId, resources, rawTemplate };
+}
+
+// CDK construct paths end in "/Resource" for the L1 node; drop it for readability
+// (e.g. "MyStack/Bucket/Resource" -> "MyStack/Bucket").
+function prettyConstructPath(p: string): string {
+  return p.endsWith('/Resource') ? p.slice(0, -'/Resource'.length) : p;
 }
 
 export function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {

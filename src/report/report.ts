@@ -19,7 +19,9 @@ export interface ReportOptions {
 }
 
 export function formatFinding(f: Finding): string {
-  let s = `${f.path ? `${f.logicalId}.${f.path}` : f.logicalId} (${f.resourceType})`;
+  // prefer the CDK construct path for the human-facing id; fall back to logical id
+  const id = f.constructPath ?? f.logicalId;
+  let s = `${f.path ? `${id}.${f.path}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared') s += `\n      desired=${j(f.desired)}\n      actual =${j(f.actual)}`;
   else if (f.tier === 'undeclared') s += ` = ${j(f.actual)}`;
