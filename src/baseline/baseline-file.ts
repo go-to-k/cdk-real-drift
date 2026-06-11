@@ -56,15 +56,17 @@ export async function writeBaseline(b: BaselineFile): Promise<string> {
 }
 
 /** Write a baseline for a stack from a check run's findings + raw template.
- *  Shared by `accept` and `check`'s first-run interactive offer. */
+ *  Shared by `accept` and `check`'s first-run interactive offer. Pass `accepted`
+ *  to bless a pre-filtered subset (selective accept); omit it to bless ALL
+ *  undeclared findings (the default — same as `buildAccepted(findings)`). */
 export async function blessStack(
   stackName: string,
   region: string,
   accountId: string,
   findings: Finding[],
-  rawTemplate: string
+  rawTemplate: string,
+  accepted: AcceptedEntry[] = buildAccepted(findings)
 ): Promise<{ path: string; count: number }> {
-  const accepted = buildAccepted(findings);
   const path = await writeBaseline({
     schemaVersion: 1,
     stackName,
@@ -115,6 +117,18 @@ export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
       path: f.path,
       value: f.actual,
     }));
+}
+
+/** Stable key uniquely identifying an undeclared finding / accepted entry, for
+ *  selective accept (the multiselect maps its picks to these keys). */
+export function acceptedKey(e: { logicalId: string; path: string }): string {
+  return `${e.logicalId}::${e.path}`;
+}
+
+/** Selective accept: build the blessed set from only the findings whose key is in
+ *  `selectedKeys`. Empty set -> []; all keys -> equals buildAccepted(findings). */
+export function selectAccepted(findings: Finding[], selectedKeys: Set<string>): AcceptedEntry[] {
+  return buildAccepted(findings).filter((e) => selectedKeys.has(acceptedKey(e)));
 }
 
 export interface ApplyBaselineOptions {

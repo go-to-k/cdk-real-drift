@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  acceptedKey,
   applyBaseline,
   type BaselineFile,
   buildAccepted,
   checkBaselineAccount,
   hashTemplate,
+  selectAccepted,
   warnTemplateHashDrift,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
@@ -39,6 +41,29 @@ describe('baseline', () => {
     expect(buildAccepted(findings)).toEqual([
       { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: [1] },
     ]);
+  });
+
+  describe('selectAccepted (selective accept)', () => {
+    const findings: Finding[] = [
+      undeclared('A', 'P', [1]),
+      undeclared('B', 'Q', 'x'),
+      { tier: 'declared', logicalId: 'C', resourceType: 'T', path: 'R', desired: 1, actual: 2 },
+    ];
+
+    it('returns only the entries whose key is in the selected set', () => {
+      expect(
+        selectAccepted(findings, new Set([acceptedKey({ logicalId: 'B', path: 'Q' })]))
+      ).toEqual([{ logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'x' }]);
+    });
+
+    it('empty selection -> []', () => {
+      expect(selectAccepted(findings, new Set())).toEqual([]);
+    });
+
+    it('all selected -> equals buildAccepted output', () => {
+      const all = new Set(buildAccepted(findings).map(acceptedKey));
+      expect(selectAccepted(findings, all)).toEqual(buildAccepted(findings));
+    });
   });
 
   it('applyBaseline suppresses a blessed undeclared value (-> CLEAN)', () => {

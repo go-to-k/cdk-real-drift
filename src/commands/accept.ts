@@ -1,8 +1,15 @@
 // `cdkrd accept [<stack>...] [--all] [--app ...] [--region r] [--profile p] [--yes]`
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
 // git-committed baselines; no AWS writes.
+import { isCancel, multiselect } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
-import { blessStack, loadBaseline } from '../baseline/baseline-file.js';
+import {
+  acceptedKey,
+  blessStack,
+  buildAccepted,
+  loadBaseline,
+  selectAccepted,
+} from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
@@ -35,12 +42,33 @@ export async function runAccept(args: string[]): Promise<number> {
         );
       }
       const { desired, findings } = await gatherFindings(stackName, region);
+      // Selective accept: in a TTY without --yes, let the user pick WHICH undeclared
+      // values to bless (default = all selected; Enter = same as today). Non-TTY / --yes
+      // bless ALL (CI-compatible). Unselected ones stay unblessed → still reported by check.
+      let accepted = buildAccepted(findings);
+      if (!a.yes && process.stdin.isTTY && accepted.length > 0) {
+        const picked = await multiselect({
+          message: `${stackName}: select undeclared value(s) to bless (unselected stay reported)`,
+          options: accepted.map((e) => ({
+            value: acceptedKey(e),
+            label: `${e.logicalId}.${e.path}`,
+          })),
+          initialValues: accepted.map((e) => acceptedKey(e)), // default = all selected
+          required: false,
+        });
+        if (isCancel(picked)) {
+          console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
+          continue;
+        }
+        accepted = selectAccepted(findings, new Set(picked));
+      }
       const { path, count } = await blessStack(
         stackName,
         region,
         desired.accountId,
         findings,
-        desired.rawTemplate
+        desired.rawTemplate,
+        accepted
       );
       console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
     } catch (e) {

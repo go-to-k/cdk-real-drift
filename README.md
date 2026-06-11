@@ -83,6 +83,12 @@ With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`) 
 every stack it defines is targeted. A stack argument containing `*` or `?` is a glob
 (e.g. `cdkrd check 'Dev*'`) — matched against the synth-discovered stack names.
 
+In an interactive terminal, `cdkrd accept` prompts with a multiselect of the
+undeclared values — all pre-selected, so pressing Enter blesses everything (the
+default). Deselect any value to leave it unblessed (it keeps being reported by
+`check`), so you can bless the intentional changes without rubber-stamping a
+suspicious one. With `--yes` or a non-TTY (CI), it blesses all with no prompt.
+
 | option                           | meaning                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |
