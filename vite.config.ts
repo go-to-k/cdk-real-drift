@@ -1,0 +1,124 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite-plus';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as {
+  version: string;
+};
+const sourceOnlyIgnorePatterns = ['**/*', '!src', '!src/**'];
+
+export default defineConfig({
+  staged: {
+    '*': 'vp check --fix',
+  },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
+  },
+
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/**',
+        'dist/**',
+        '**/*.config.ts',
+        '**/*.d.ts',
+        'tests/**',
+        'vite.config.ts',
+      ],
+    },
+    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    exclude: ['node_modules', 'dist', 'tests/integration/**'],
+  },
+
+  lint: {
+    env: {
+      node: true,
+      es2022: true,
+      vitest: true,
+    },
+    plugins: ['typescript', 'promise', 'vitest', 'eslint'],
+    ignorePatterns: [...sourceOnlyIgnorePatterns, '!tests', '!tests/**', 'tests/integration/**'],
+    options: {
+      typeAware: true,
+      typeCheck: true,
+    },
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      'no-console': 'off',
+    },
+  },
+
+  fmt: {
+    semi: true,
+    trailingComma: 'es5',
+    singleQuote: true,
+    printWidth: 100,
+    tabWidth: 2,
+    useTabs: false,
+    arrowParens: 'always',
+    endOfLine: 'lf',
+    sortPackageJson: false,
+    ignorePatterns: ['tests/integration/**'],
+  },
+
+  pack: {
+    entry: {
+      cli: 'src/cli.ts',
+    },
+    outDir: 'dist',
+    platform: 'node',
+    target: 'node20',
+    format: 'esm',
+    fixedExtension: false,
+    dts: false,
+    sourcemap: true,
+    minify: false,
+    define: {
+      __CDKRD_VERSION__: JSON.stringify(pkg.version),
+    },
+    deps: {
+      neverBundle: [/^@aws-sdk\//, 'yaml'],
+    },
+  },
+
+  run: {
+    cache: {
+      tasks: true,
+    },
+    tasks: {
+      build: { command: 'vp pack', cache: false },
+      dev: { command: 'vp pack --watch', cache: false },
+      check: { command: 'vp check' },
+      test: { command: 'vp test run' },
+      'test:watch': { command: 'vp test watch', cache: false },
+      'test:coverage': { command: 'vp test run --coverage', cache: false },
+      lint: { command: 'vp lint' },
+      'lint:fix': { command: 'vp lint --fix', cache: false },
+      format: { command: 'vp fmt', cache: false },
+      'format:check': { command: 'vp fmt --check' },
+      typecheck: { command: 'tsgo --project tsconfig.json --noEmit' },
+      verify: { command: 'vp run check && vp run test && vp run build' },
+      'runtime:smoke': {
+        command: 'node dist/cli.js --version',
+        dependsOn: ['build'],
+        cache: false,
+      },
+    },
+  },
+});

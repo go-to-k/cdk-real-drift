@@ -122,12 +122,21 @@ function resolveSub(v: unknown, ctx: Ctx): unknown {
   const out = tmpl.replace(/\$\{([^}]+)\}/g, (_m, ref: string) => {
     if (ref in vars) {
       const r = resolve(vars[ref], ctx);
-      if (r === UNRESOLVED) { unresolved = true; return ''; }
+      if (r === UNRESOLVED) {
+        unresolved = true;
+        return '';
+      }
       return String(r);
     }
-    if (ref.includes('.')) { unresolved = true; return ''; } // GetAtt form
+    if (ref.includes('.')) {
+      unresolved = true;
+      return '';
+    } // GetAtt form
     const r = resolveRef(ref, ctx);
-    if (r === UNRESOLVED || r === NOVALUE) { unresolved = true; return ''; }
+    if (r === UNRESOLVED || r === NOVALUE) {
+      unresolved = true;
+      return '';
+    }
     return String(r);
   });
   return unresolved ? UNRESOLVED : out;
@@ -155,8 +164,15 @@ function pruneNoValue(v: unknown): unknown {
 }
 
 // ---------- drift compare (copied from cdkd src/analyzer/drift-calculator.ts) ----------
-interface PropertyDrift { path: string; stateValue: unknown; awsValue: unknown; }
-function calculateResourceDrift(stateProps: Record<string, unknown>, awsProps: Record<string, unknown>): PropertyDrift[] {
+interface PropertyDrift {
+  path: string;
+  stateValue: unknown;
+  awsValue: unknown;
+}
+function calculateResourceDrift(
+  stateProps: Record<string, unknown>,
+  awsProps: Record<string, unknown>
+): PropertyDrift[] {
   const drifts: PropertyDrift[] = [];
   for (const key of Object.keys(stateProps)) diffAt(key, stateProps[key], awsProps[key], drifts);
   return drifts;
@@ -164,7 +180,8 @@ function calculateResourceDrift(stateProps: Record<string, unknown>, awsProps: R
 function diffAt(path: string, sv: unknown, av: unknown, out: PropertyDrift[]): void {
   if (deepEqual(sv, av)) return;
   if (isObj(sv) && isObj(av) && !Array.isArray(sv) && !Array.isArray(av)) {
-    for (const key of Object.keys(sv)) diffAt(`${path}.${key}`, sv[key], (av as Record<string, unknown>)[key], out);
+    for (const key of Object.keys(sv))
+      diffAt(`${path}.${key}`, sv[key], (av as Record<string, unknown>)[key], out);
     return;
   }
   out.push({ path, stateValue: sv, awsValue: av });
@@ -177,39 +194,79 @@ function deepEqual(a: unknown, b: unknown): boolean {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
     return a.every((v, i) => deepEqual(v, b[i]));
   }
-  const ao = a as Record<string, unknown>, bo = b as Record<string, unknown>;
-  const ak = Object.keys(ao), bk = Object.keys(bo);
+  const ao = a as Record<string, unknown>,
+    bo = b as Record<string, unknown>;
+  const ak = Object.keys(ao),
+    bk = Object.keys(bo);
   if (ak.length !== bk.length) return false;
   return ak.every((k) => Object.prototype.hasOwnProperty.call(bo, k) && deepEqual(ao[k], bo[k]));
 }
-function isObj(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null; }
+function isObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
 
 // ---------- cc-api strip (copied from cdkd src/analyzer/cc-api-strip.ts) ----------
-const ALWAYS_STRIPPED = new Set(['CreationDate','CreationTime','CreatedTime','CreatedDate','CreatedAt','LastModifiedDate','LastModifiedTime','LastModified','LastUpdatedTime','LastUpdatedDate','UpdatedAt','OwnerId','OwnerAccountId','CreatedBy','OwnerArn','RevisionId','LastUpdateStatus','LastUpdateStatusReason','LastUpdateStatusReasonCode','StackId','PhysicalResourceId','LogicalResourceId']);
+const ALWAYS_STRIPPED = new Set([
+  'CreationDate',
+  'CreationTime',
+  'CreatedTime',
+  'CreatedDate',
+  'CreatedAt',
+  'LastModifiedDate',
+  'LastModifiedTime',
+  'LastModified',
+  'LastUpdatedTime',
+  'LastUpdatedDate',
+  'UpdatedAt',
+  'OwnerId',
+  'OwnerAccountId',
+  'CreatedBy',
+  'OwnerArn',
+  'RevisionId',
+  'LastUpdateStatus',
+  'LastUpdateStatusReason',
+  'LastUpdateStatusReasonCode',
+  'StackId',
+  'PhysicalResourceId',
+  'LogicalResourceId',
+]);
 function stripManaged(v: unknown): unknown {
   if (v == null) return v;
   if (Array.isArray(v)) return v.map(stripManaged);
   if (typeof v === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, c] of Object.entries(v)) { if (ALWAYS_STRIPPED.has(k)) continue; out[k] = stripManaged(c); }
+    for (const [k, c] of Object.entries(v)) {
+      if (ALWAYS_STRIPPED.has(k)) continue;
+      out[k] = stripManaged(c);
+    }
     return out;
   }
   return v;
 }
 
 // ---------- schema (describe-type → readOnly/writeOnly top-level + defaults) ----------
-const schemaCache = new Map<string, { readOnly: Set<string>; writeOnly: Set<string>; defaults: Record<string, unknown> }>();
+const schemaCache = new Map<
+  string,
+  { readOnly: Set<string>; writeOnly: Set<string>; defaults: Record<string, unknown> }
+>();
 async function getSchema(type: string) {
   if (schemaCache.has(type)) return schemaCache.get(type)!;
-  const empty = { readOnly: new Set<string>(), writeOnly: new Set<string>(), defaults: {} as Record<string, unknown> };
+  const empty = {
+    readOnly: new Set<string>(),
+    writeOnly: new Set<string>(),
+    defaults: {} as Record<string, unknown>,
+  };
   try {
     const r = await cfn.send(new DescribeTypeCommand({ Type: 'RESOURCE', TypeName: type }));
     const schema = JSON.parse(r.Schema ?? '{}');
-    const top = (arr: string[] | undefined) => new Set((arr ?? []).map((p) => p.replace('/properties/', '').split('/')[0]));
+    const top = (arr: string[] | undefined) =>
+      new Set((arr ?? []).map((p) => p.replace('/properties/', '').split('/')[0]));
     const readOnly = top(schema.readOnlyProperties);
     const writeOnly = top(schema.writeOnlyProperties);
     const defaults: Record<string, unknown> = {};
-    for (const [k, def] of Object.entries((schema.properties ?? {}) as Record<string, { default?: unknown }>)) {
+    for (const [k, def] of Object.entries(
+      (schema.properties ?? {}) as Record<string, { default?: unknown }>
+    )) {
       if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
     }
     const info = { readOnly, writeOnly, defaults };
@@ -235,16 +292,31 @@ function isTrivialEmpty(v: unknown): boolean {
 }
 // A2: a {Key,Value}[] tag list whose every element is an AWS-managed (aws:*) tag.
 function isAllAwsTags(v: unknown): boolean {
-  return Array.isArray(v) && v.length > 0 &&
-    v.every((t) => t && typeof t === 'object' && typeof (t as any).Key === 'string' && (t as any).Key.startsWith('aws:'));
+  return (
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.every(
+      (t) =>
+        t &&
+        typeof t === 'object' &&
+        typeof (t as any).Key === 'string' &&
+        (t as any).Key.startsWith('aws:')
+    )
+  );
 }
 
 // ---------- main ----------
 function parseTemplateBody(body: string): any {
-  try { return JSON.parse(body); } catch { /* YAML */ }
+  try {
+    return JSON.parse(body);
+  } catch {
+    /* YAML */
+  }
   // minimal: we only need Resources/Conditions/Parameters keys; for YAML stacks
   // fall back to a tolerant line walk is overkill — CDK app stacks are JSON.
-  throw new Error('template is YAML; slice supports JSON templates (CDK app output). Use a JSON-template stack.');
+  throw new Error(
+    'template is YAML; slice supports JSON templates (CDK app output). Use a JSON-template stack.'
+  );
 }
 
 async function main(): Promise<number> {
@@ -259,29 +331,49 @@ async function main(): Promise<number> {
   const physIds: Record<string, string> = {};
   const typeOf: Record<string, string> = {};
   for (const r of resRes.StackResources ?? []) {
-    if (r.LogicalResourceId && r.PhysicalResourceId) physIds[r.LogicalResourceId] = r.PhysicalResourceId;
+    if (r.LogicalResourceId && r.PhysicalResourceId)
+      physIds[r.LogicalResourceId] = r.PhysicalResourceId;
     if (r.LogicalResourceId && r.ResourceType) typeOf[r.LogicalResourceId] = r.ResourceType;
   }
   const params: Record<string, string> = {};
-  for (const p of template.Parameters ? Object.entries(template.Parameters) as [string, { Default?: unknown }][] : []) {
+  for (const p of template.Parameters
+    ? (Object.entries(template.Parameters) as [string, { Default?: unknown }][])
+    : []) {
     if (p[1] && 'Default' in p[1]) params[p[0]] = String(p[1].Default);
   }
-  for (const p of stack?.Parameters ?? []) if (p.ParameterKey) params[p.ParameterKey] = p.ParameterValue ?? '';
+  for (const p of stack?.Parameters ?? [])
+    if (p.ParameterKey) params[p.ParameterKey] = p.ParameterValue ?? '';
   const ctx: Ctx = {
     params,
-    pseudo: { 'AWS::Region': region, 'AWS::AccountId': accountId, 'AWS::Partition': 'aws', 'AWS::URLSuffix': 'amazonaws.com', 'AWS::StackName': stackName, 'AWS::StackId': stack?.StackId ?? '' },
+    pseudo: {
+      'AWS::Region': region,
+      'AWS::AccountId': accountId,
+      'AWS::Partition': 'aws',
+      'AWS::URLSuffix': 'amazonaws.com',
+      'AWS::StackName': stackName,
+      'AWS::StackId': stack?.StackId ?? '',
+    },
     conditions: template.Conditions ?? {},
     physIds,
     condCache: new Map(),
   };
 
-  const tiers = { declared: [] as string[], undeclared: [] as string[], skipped: [] as string[], unresolved: [] as string[], readGap: [] as string[] };
+  const tiers = {
+    declared: [] as string[],
+    undeclared: [] as string[],
+    skipped: [] as string[],
+    unresolved: [] as string[],
+    readGap: [] as string[],
+  };
 
   for (const [logicalId, res] of Object.entries(template.Resources ?? {}) as [string, any][]) {
     const type = res.Type as string;
     if (type === 'AWS::CDK::Metadata') continue;
     const physId = physIds[logicalId];
-    if (!physId) { tiers.skipped.push(`${logicalId} (${type}) — no physical id`); continue; }
+    if (!physId) {
+      tiers.skipped.push(`${logicalId} (${type}) — no physical id`);
+      continue;
+    }
 
     // live read via CC API
     let live: Record<string, unknown>;
@@ -306,10 +398,18 @@ async function main(): Promise<number> {
     // A3: a declared key absent from the live read is a CC-API read gap, NOT drift.
     for (const [k, v] of Object.entries(declared)) {
       if (schema.writeOnly.has(k)) continue;
-      if (hasUnresolved(v)) { tiers.unresolved.push(`${logicalId}.${k} (${type})`); continue; }
-      if (!(k in live)) { tiers.readGap.push(`${logicalId}.${k} (${type}) — declared but not returned by live read`); continue; }
+      if (hasUnresolved(v)) {
+        tiers.unresolved.push(`${logicalId}.${k} (${type})`);
+        continue;
+      }
+      if (!(k in live)) {
+        tiers.readGap.push(`${logicalId}.${k} (${type}) — declared but not returned by live read`);
+        continue;
+      }
       for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
-        tiers.declared.push(`${logicalId}.${d.path} (${type})\n      desired=${j(d.stateValue)}\n      actual =${j(d.awsValue)}`);
+        tiers.declared.push(
+          `${logicalId}.${d.path} (${type})\n      desired=${j(d.stateValue)}\n      actual =${j(d.awsValue)}`
+        );
       }
     }
 
@@ -319,10 +419,10 @@ async function main(): Promise<number> {
       if (k in declared) continue;
       if (schema.writeOnly.has(k)) continue;
       if (k in schema.defaults && deepEqual(v, schema.defaults[k])) continue; // schema default
-      if (k in knownDef && deepEqual(v, knownDef[k])) continue;               // A4 known default
-      if (isAllAwsTags(v)) continue;                                          // A2 aws:* tags (any key)
-      if (v === physId) continue;                                             // identity == physical id
-      if (isTrivialEmpty(v)) continue;                                        // A1 trivial empty/off
+      if (k in knownDef && deepEqual(v, knownDef[k])) continue; // A4 known default
+      if (isAllAwsTags(v)) continue; // A2 aws:* tags (any key)
+      if (v === physId) continue; // identity == physical id
+      if (isTrivialEmpty(v)) continue; // A1 trivial empty/off
       tiers.undeclared.push(`${logicalId}.${k} (${type}) = ${j(v)}`);
     }
   }
@@ -337,7 +437,9 @@ async function main(): Promise<number> {
   section('UNRESOLVED (declared paths needing GetAtt — skipped, not drift)', tiers.unresolved);
   section('SKIPPED (CC API unsupported / no phys id)', tiers.skipped);
   const drifted = tiers.declared.length + tiers.undeclared.length;
-  console.log(`\nresult: ${drifted === 0 ? 'CLEAN' : drifted + ' drift(s)'} (declared=${tiers.declared.length} undeclared=${tiers.undeclared.length} readGap=${tiers.readGap.length} unresolved=${tiers.unresolved.length} skipped=${tiers.skipped.length})`);
+  console.log(
+    `\nresult: ${drifted === 0 ? 'CLEAN' : drifted + ' drift(s)'} (declared=${tiers.declared.length} undeclared=${tiers.undeclared.length} readGap=${tiers.readGap.length} unresolved=${tiers.unresolved.length} skipped=${tiers.skipped.length})`
+  );
   return drifted === 0 ? 0 : 1;
 
   function section(title: string, items: string[]) {
@@ -345,6 +447,14 @@ async function main(): Promise<number> {
     for (const it of items) line(it);
   }
 }
-function j(v: unknown): string { const s = JSON.stringify(v); return s && s.length > 200 ? s.slice(0, 200) + '…' : s; }
+function j(v: unknown): string {
+  const s = JSON.stringify(v);
+  return s && s.length > 200 ? s.slice(0, 200) + '…' : s;
+}
 
-main().then((c) => process.exit(c)).catch((e) => { console.error(e); process.exit(2); });
+main()
+  .then((c) => process.exit(c))
+  .catch((e) => {
+    console.error(e);
+    process.exit(2);
+  });

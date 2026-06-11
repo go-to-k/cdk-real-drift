@@ -1,7 +1,7 @@
 // Tiny shared CLI arg parser (no dependency).
-import type { FailOn } from "./report/report.js";
+import type { FailOn } from './report/report.js';
 
-const VALUE_FLAGS = new Set(["--region", "--fail-on"]);
+const VALUE_FLAGS = new Set(['--region', '--fail-on']);
 
 export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty when --all)
@@ -24,7 +24,8 @@ export function parseCommonArgs(args: string[]): CommonArgs {
   const stackNames: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a.startsWith("-")) {
+    if (a === undefined) continue;
+    if (a.startsWith('-')) {
       if (VALUE_FLAGS.has(a)) i++; // skip its value
       continue;
     }
@@ -33,11 +34,11 @@ export function parseCommonArgs(args: string[]): CommonArgs {
 
   return {
     stackNames,
-    region: get("--region") ?? process.env.AWS_REGION ?? "us-east-1",
-    json: has("--json"),
-    failOn: get("--fail-on") === "declared" ? "declared" : "undeclared",
-    noBaseline: has("--no-baseline"),
-    all: has("--all"),
-    yes: has("--yes") || has("-y"),
+    region: get('--region') ?? process.env.AWS_REGION ?? 'us-east-1',
+    json: has('--json'),
+    failOn: get('--fail-on') === 'declared' ? 'declared' : 'undeclared',
+    noBaseline: has('--no-baseline'),
+    all: has('--all'),
+    yes: has('--yes') || has('-y'),
   };
 }

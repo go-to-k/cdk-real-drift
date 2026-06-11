@@ -25,7 +25,7 @@ trap cleanup EXIT
 fail() { echo "INTEG FAIL: $*"; exit 1; }
 
 echo "=== build cdk-real-drift ==="
-(cd "$ROOT" && npm run build) || fail "build"
+(cd "$ROOT" && vp run build) || fail "build"
 
 echo "=== deploy fixture ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"

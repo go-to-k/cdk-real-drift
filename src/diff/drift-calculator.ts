@@ -11,7 +11,7 @@ export interface PropertyDrift {
 export function calculateResourceDrift(
   stateProperties: Record<string, unknown>,
   awsProperties: Record<string, unknown>,
-  options?: { ignorePaths?: readonly string[] },
+  options?: { ignorePaths?: readonly string[] }
 ): PropertyDrift[] {
   const drifts: PropertyDrift[] = [];
   const ignore = options?.ignorePaths ?? [];
@@ -29,7 +29,13 @@ function isIgnoredPath(path: string, ignorePaths: readonly string[]): boolean {
   return false;
 }
 
-function diffAt(path: string, sv: unknown, av: unknown, out: PropertyDrift[], ignorePaths: readonly string[]): void {
+function diffAt(
+  path: string,
+  sv: unknown,
+  av: unknown,
+  out: PropertyDrift[],
+  ignorePaths: readonly string[]
+): void {
   if (deepEqual(sv, av)) return;
   if (isPlainObject(sv) && isPlainObject(av) && !Array.isArray(sv) && !Array.isArray(av)) {
     // Subset semantics: only walk keys present in the desired (state) side, so
@@ -45,7 +51,13 @@ function diffAt(path: string, sv: unknown, av: unknown, out: PropertyDrift[], ig
   // semantics, so AWS enriching a declared array element with extra sub-fields
   // (e.g. S3 BucketEncryption.BucketKeyEnabled) is not false drift. A length
   // change is a genuine drift and falls through to the push below.
-  if (Array.isArray(sv) && Array.isArray(av) && sv.length === av.length && sv.every(isPlainObject) && av.every(isPlainObject)) {
+  if (
+    Array.isArray(sv) &&
+    Array.isArray(av) &&
+    sv.length === av.length &&
+    sv.every(isPlainObject) &&
+    av.every(isPlainObject)
+  ) {
     for (let i = 0; i < sv.length; i++) diffAt(`${path}.${i}`, sv[i], av[i], out, ignorePaths);
     return;
   }
@@ -56,7 +68,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === null || b === null || a === undefined || b === undefined) return a === b;
   if (typeof a !== typeof b) return false;
-  if (typeof a !== "object") return false;
+  if (typeof a !== 'object') return false;
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
     return a.every((v, i) => deepEqual(v, b[i]));
@@ -74,5 +86,5 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }

@@ -3,25 +3,25 @@
 // Fn::GetAtt resolves to UNRESOLVED (needs live attributes) so callers skip that
 // path rather than report false drift. AWS::NoValue resolves to NOVALUE so callers
 // can prune it. (Will be swapped for cdkd's full IntrinsicFunctionResolver later.)
-import type { ResolverContext } from "../types.js";
+import type { ResolverContext } from '../types.js';
 
-export const UNRESOLVED = Symbol("unresolved");
-export const NOVALUE = Symbol("novalue");
+export const UNRESOLVED = Symbol('unresolved');
+export const NOVALUE = Symbol('novalue');
 
 export function resolve(node: unknown, ctx: ResolverContext): unknown {
   if (Array.isArray(node)) return node.map((n) => resolve(n, ctx));
-  if (node === null || typeof node !== "object") return node;
+  if (node === null || typeof node !== 'object') return node;
   const obj = node as Record<string, unknown>;
   const keys = Object.keys(obj);
   if (keys.length === 1) {
-    const k = keys[0];
+    const k = keys[0]!;
     const v = obj[k];
     switch (k) {
-      case "Ref":
+      case 'Ref':
         return resolveRef(String(v), ctx);
-      case "Fn::Sub":
+      case 'Fn::Sub':
         return resolveSub(v, ctx);
-      case "Fn::If": {
+      case 'Fn::If': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [cond, t, f] = v as [string, unknown, unknown];
         const c = evalCondition(String(cond), ctx);
@@ -30,7 +30,7 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         if (c === UNRESOLVED) return UNRESOLVED;
         return c ? resolve(t, ctx) : resolve(f, ctx);
       }
-      case "Fn::Join": {
+      case 'Fn::Join': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [delim, list] = v as [string, unknown];
         const resolved = resolve(list, ctx);
@@ -39,44 +39,44 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         if (parts.some((p) => p === UNRESOLVED)) return UNRESOLVED;
         return parts.join(delim);
       }
-      case "Fn::Select": {
+      case 'Fn::Select': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [idx, list] = v as [number, unknown];
         const arr = resolve(list, ctx);
         if (!Array.isArray(arr)) return UNRESOLVED;
         return arr[Number(idx)];
       }
-      case "Fn::GetAtt":
+      case 'Fn::GetAtt':
         return UNRESOLVED;
-      case "Fn::Equals": {
+      case 'Fn::Equals': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [a, b] = v.map((x) => resolve(x, ctx));
         if (a === UNRESOLVED || b === UNRESOLVED) return UNRESOLVED; // fail-closed
         return scalarEqual(a, b);
       }
-      case "Fn::And": {
+      case 'Fn::And': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const rs = v.map((c) => condVal(c, ctx));
         if (rs.some((r) => r === UNRESOLVED)) return UNRESOLVED;
         return rs.every((r) => r === true);
       }
-      case "Fn::Or": {
+      case 'Fn::Or': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const rs = v.map((c) => condVal(c, ctx));
         if (rs.some((r) => r === UNRESOLVED)) return UNRESOLVED;
         return rs.some((r) => r === true);
       }
-      case "Fn::Not": {
+      case 'Fn::Not': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const r = condVal(v[0], ctx);
         return r === UNRESOLVED ? UNRESOLVED : !r;
       }
-      case "Condition":
+      case 'Condition':
         return evalCondition(String(v), ctx);
       default:
         // Any intrinsic we don't fully resolve → UNRESOLVED, so the declared
         // path is skipped (never reported as false drift).
-        if (k.startsWith("Fn::")) return UNRESOLVED;
+        if (k.startsWith('Fn::')) return UNRESOLVED;
         break;
     }
   }
@@ -92,8 +92,8 @@ function scalarEqual(a: unknown, b: unknown): boolean {
 
 // Evaluate a condition operand to true | false | UNRESOLVED (fail-closed).
 function condVal(node: unknown, ctx: ResolverContext): boolean | typeof UNRESOLVED {
-  if (node && typeof node === "object" && "Condition" in (node as object)) {
-    const r = evalCondition(String((node as Record<string, unknown>)["Condition"]), ctx);
+  if (node && typeof node === 'object' && 'Condition' in (node as object)) {
+    const r = evalCondition(String((node as Record<string, unknown>)['Condition']), ctx);
     return r === UNRESOLVED ? UNRESOLVED : r === true;
   }
   const r = resolve(node, ctx);
@@ -112,7 +112,7 @@ export function evalCondition(name: string, ctx: ResolverContext): boolean | typ
 
 export function resolveRef(name: string, ctx: ResolverContext): unknown {
   if (name in ctx.pseudo) return ctx.pseudo[name];
-  if (name === "AWS::NoValue") return NOVALUE;
+  if (name === 'AWS::NoValue') return NOVALUE;
   if (name in ctx.params) return ctx.params[name];
   if (name in ctx.physIds) return ctx.physIds[name];
   return UNRESOLVED;
@@ -121,7 +121,7 @@ export function resolveRef(name: string, ctx: ResolverContext): unknown {
 export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
   let tmpl: string;
   let vars: Record<string, unknown> = {};
-  if (typeof v === "string") tmpl = v;
+  if (typeof v === 'string') tmpl = v;
   else {
     const arr = v as [string, Record<string, unknown>];
     tmpl = arr[0];
@@ -133,18 +133,18 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
       const r = resolve(vars[ref], ctx);
       if (r === UNRESOLVED) {
         unresolved = true;
-        return "";
+        return '';
       }
       return String(r);
     }
-    if (ref.includes(".")) {
+    if (ref.includes('.')) {
       unresolved = true;
-      return "";
+      return '';
     } // GetAtt form
     const r = resolveRef(ref, ctx);
     if (r === UNRESOLVED || r === NOVALUE) {
       unresolved = true;
-      return "";
+      return '';
     }
     return String(r);
   });
@@ -154,13 +154,13 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
 export function hasUnresolved(v: unknown): boolean {
   if (v === UNRESOLVED) return true;
   if (Array.isArray(v)) return v.some(hasUnresolved);
-  if (v && typeof v === "object") return Object.values(v).some(hasUnresolved);
+  if (v && typeof v === 'object') return Object.values(v).some(hasUnresolved);
   return false;
 }
 
 export function pruneNoValue(v: unknown): unknown {
   if (Array.isArray(v)) return v.filter((x) => x !== NOVALUE).map(pruneNoValue);
-  if (v && typeof v === "object") {
+  if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v)) {
       if (val === NOVALUE) continue;
@@ -172,6 +172,9 @@ export function pruneNoValue(v: unknown): unknown {
 }
 
 /** resolve + prune NoValue, returning a property bag ready for classification. */
-export function resolveProperties(props: Record<string, unknown>, ctx: ResolverContext): Record<string, unknown> {
+export function resolveProperties(
+  props: Record<string, unknown>,
+  ctx: ResolverContext
+): Record<string, unknown> {
   return pruneNoValue(resolve(props, ctx)) as Record<string, unknown>;
 }

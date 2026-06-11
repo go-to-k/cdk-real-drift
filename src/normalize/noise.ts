@@ -3,7 +3,7 @@
 
 // A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
-  "AWS::IAM::Role": { MaxSessionDuration: 3600, Path: "/", Description: "" },
+  'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
 };
 
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
@@ -17,17 +17,17 @@ export function stripAwsTagsDeep(v: unknown): unknown {
         (t) =>
           !(
             t &&
-            typeof t === "object" &&
-            typeof (t as { Key?: unknown }).Key === "string" &&
-            (t as { Key: string }).Key.startsWith("aws:")
-          ),
+            typeof t === 'object' &&
+            typeof (t as { Key?: unknown }).Key === 'string' &&
+            (t as { Key: string }).Key.startsWith('aws:')
+          )
       )
       .map(stripAwsTagsDeep);
   }
-  if (v && typeof v === "object") {
+  if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-      if (k.startsWith("aws:")) continue;
+      if (k.startsWith('aws:')) continue;
       out[k] = stripAwsTagsDeep(val);
     }
     return out;
@@ -37,9 +37,9 @@ export function stripAwsTagsDeep(v: unknown): unknown {
 
 // A1: trivially-empty/off values AWS returns for unset features.
 export function isTrivialEmpty(v: unknown): boolean {
-  if (v === false || v === "") return true;
+  if (v === false || v === '') return true;
   if (Array.isArray(v)) return v.length === 0;
-  if (v && typeof v === "object") return Object.keys(v).length === 0;
+  if (v && typeof v === 'object') return Object.keys(v).length === 0;
   return false;
 }
 
@@ -51,13 +51,16 @@ export function isAllAwsTags(v: unknown): boolean {
       v.length > 0 &&
       v.every(
         (t) =>
-          t && typeof t === "object" && typeof (t as { Key?: unknown }).Key === "string" && (t as { Key: string }).Key.startsWith("aws:"),
+          t &&
+          typeof t === 'object' &&
+          typeof (t as { Key?: unknown }).Key === 'string' &&
+          (t as { Key: string }).Key.startsWith('aws:')
       )
     );
   }
-  if (v && typeof v === "object") {
+  if (v && typeof v === 'object') {
     const keys = Object.keys(v as Record<string, unknown>);
-    return keys.length > 0 && keys.every((k) => k.startsWith("aws:"));
+    return keys.length > 0 && keys.every((k) => k.startsWith('aws:'));
   }
   return false;
 }

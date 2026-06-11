@@ -1,6 +1,64 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
-cdk.out/
-.cdkdrift/
-*.log
+*.tsbuildinfo
+
+# Testing
+coverage/
+.vitest/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# CDK
+cdk.out/
+.cdk.staging/
+
+# cdk-real-drift local dogfood baselines (the .cdkrd dir is the USER's to commit;
+# ignored only inside this repo's own scratch dirs)
+/tmp-dogfood/
+
+# Temporary files
+*.tmp
+.cache/
+cdk.context.json
+
+# Claude Code runtime state
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# markgate pr-review sentinel
+.markgate-pr-review-sha
+
+# cdkd-parity tracking-issue sentinel (per-worktree; written by /check-cdkd-parity)
+.cdkd-parity-issue
+
+# Worktree-local scratch files for git commit -F / gh --body-file payloads
+.commit-msg*.txt
+.commit-msg*.md
+.pr-body*.md
+.pr-body*.txt
+.gh-body*.md
+.gh-body*.txt
+
+# Node diagnostic reports (issue #402, --report-on-fatalerror)
+report.*.json

@@ -8,11 +8,11 @@ A CDK-ecosystem drift detector. Superset of `cdk drift`: it also sees
 
 ## What `check` compares (three "desired" sources)
 
-| source | used for |
-|---|---|
-| deployed CloudFormation template (`GetTemplate`) | declared-property drift |
-| baseline snapshot file (last `accept`) | undeclared-property drift |
-| code synth (`--pre-deploy` only) | clobber annotation (optional) |
+| source                                           | used for                      |
+| ------------------------------------------------ | ----------------------------- |
+| deployed CloudFormation template (`GetTemplate`) | declared-property drift       |
+| baseline snapshot file (last `accept`)           | undeclared-property drift     |
+| code synth (`--pre-deploy` only)                 | clobber annotation (optional) |
 
 Declared drift compares against the **deployed** template (not code synth) — else
 un-deployed code edits would show as false "drift".

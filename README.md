@@ -23,9 +23,11 @@ It does NOT reimplement `cdk diff` (code-vs-template). It is purely a drift tool
 ## Install / build
 
 ```bash
-npm install && npm run build      # produces dist/cli.js (bin: cdkrd)
+pnpm install && vp run build      # produces dist/cli.js (bin: cdkrd)
 node dist/cli.js --help
 ```
+
+Built with [Vite+](https://vite.plus) (`vp`) — same toolchain as `cdk-local`.
 
 ## Quick start
 
@@ -59,25 +61,25 @@ is a visible, reviewable change to "what real state we accept".
 
 ## Commands & options
 
-| command | does |
-|---|---|
+| command                            | does                                                              |
+| ---------------------------------- | ----------------------------------------------------------------- |
 | `cdkrd check <stack>... \| --all`  | compare live state vs template (declared) + baseline (undeclared) |
-| `cdkrd accept <stack>... \| --all` | snapshot current undeclared state into the baseline file |
-| `cdkrd init <stack>`               | first-time baseline (alias of `accept`) |
+| `cdkrd accept <stack>... \| --all` | snapshot current undeclared state into the baseline file          |
+| `cdkrd init <stack>`               | first-time baseline (alias of `accept`)                           |
 
-| option | meaning |
-|---|---|
-| `--region <r>` | AWS region (default `$AWS_REGION` or `us-east-1`) |
-| `--json` | machine-readable output |
-| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both) |
-| `--no-baseline` | ignore baseline; show all non-default undeclared state |
-| `--all` | every deployed stack in the region |
-| `--yes`/`-y` | skip the baseline-overwrite notice |
+| option                           | meaning                                                |
+| -------------------------------- | ------------------------------------------------------ |
+| `--region <r>`                   | AWS region (default `$AWS_REGION` or `us-east-1`)      |
+| `--json`                         | machine-readable output                                |
+| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)   |
+| `--no-baseline`                  | ignore baseline; show all non-default undeclared state |
+| `--all`                          | every deployed stack in the region                     |
+| `--yes`/`-y`                     | skip the baseline-overwrite notice                     |
 
 **Exit codes:** `0` clean · `1` drift detected · `2` error. Use in CI:
 
 ```yaml
-- run: node dist/cli.js check MyStack --region us-east-1   # fails the job on drift
+- run: node dist/cli.js check MyStack --region us-east-1 # fails the job on drift
 ```
 
 ## How it stays low-noise
@@ -113,9 +115,10 @@ is a visible, reviewable change to "what real state we accept".
 ## Develop
 
 ```bash
-npm test            # vitest unit tests
-npm run typecheck   # tsc --noEmit
-npm run lint        # biome
+vp run test         # unit tests (vitest under Vite+)
+vp run typecheck    # tsgo --noEmit
+vp run check        # lint + format (oxc); `vp check --fix` to autofix
+vp run build        # bundle to dist/ (tsdown)
 ```
 
 Integration tests (real AWS, self-cleaning) live under `tests/integration/` — see

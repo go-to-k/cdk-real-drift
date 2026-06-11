@@ -1,12 +1,12 @@
 // Shared read+classify pipeline used by both `check` and `accept`.
 
-import { CloudControlClient } from "@aws-sdk/client-cloudcontrol";
-import { CloudFormationClient } from "@aws-sdk/client-cloudformation";
-import { type Desired, loadDesired } from "../desired/template-adapter.js";
-import { classifyResource } from "../diff/classify.js";
-import { readLive } from "../read/router.js";
-import { getSchemaInfo } from "../schema/schema-strip.js";
-import type { Finding } from "../types.js";
+import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
+import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import { type Desired, loadDesired } from '../desired/template-adapter.js';
+import { classifyResource } from '../diff/classify.js';
+import { readLive } from '../read/router.js';
+import { getSchemaInfo } from '../schema/schema-strip.js';
+import type { Finding } from '../types.js';
 
 export interface GatherResult {
   desired: Desired;
@@ -22,12 +22,24 @@ export async function gatherFindings(stackName: string, region: string): Promise
 
   for (const r of desired.resources) {
     if (!r.physicalId) {
-      findings.push({ tier: "skipped", logicalId: r.logicalId, resourceType: r.resourceType, path: "", note: "no physical id" });
+      findings.push({
+        tier: 'skipped',
+        logicalId: r.logicalId,
+        resourceType: r.resourceType,
+        path: '',
+        note: 'no physical id',
+      });
       continue;
     }
     const read = await readLive(cc, r, region, desired.accountId);
     if (read.skippedReason || !read.live) {
-      findings.push({ tier: "skipped", logicalId: r.logicalId, resourceType: r.resourceType, path: "", note: read.skippedReason });
+      findings.push({
+        tier: 'skipped',
+        logicalId: r.logicalId,
+        resourceType: r.resourceType,
+        path: '',
+        note: read.skippedReason ?? 'not readable',
+      });
       continue;
     }
     const schema = await getSchemaInfo(cfn, r.resourceType);

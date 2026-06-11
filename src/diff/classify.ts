@@ -7,20 +7,31 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
-import { stripCcApiAwsManagedFields } from "../normalize/cc-api-strip.js";
-import { hasUnresolved, UNRESOLVED } from "../normalize/intrinsic-resolver.js";
-import { isAllAwsTags, isTrivialEmpty, KNOWN_DEFAULTS, stripAwsTagsDeep } from "../normalize/noise.js";
-import { deepStripPaths } from "../normalize/path-strip.js";
-import { normalizePoliciesDeep } from "../normalize/policy-canonical.js";
-import type { DesiredResource, Finding, SchemaInfo } from "../types.js";
-import { calculateResourceDrift, deepEqual } from "./drift-calculator.js";
+import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
+import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
+import {
+  isAllAwsTags,
+  isTrivialEmpty,
+  KNOWN_DEFAULTS,
+  stripAwsTagsDeep,
+} from '../normalize/noise.js';
+import { deepStripPaths } from '../normalize/path-strip.js';
+import { normalizePoliciesDeep } from '../normalize/policy-canonical.js';
+import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
+import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
-export function classifyResource(resource: DesiredResource, liveRaw: Record<string, unknown>, schema: SchemaInfo): Finding[] {
+export function classifyResource(
+  resource: DesiredResource,
+  liveRaw: Record<string, unknown>,
+  schema: SchemaInfo
+): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
 
   // strip AWS-managed fields + drop aws:* tag elements + canonicalize policy docs
-  const live = normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))) as Record<string, unknown>;
+  const live = normalizePoliciesDeep(
+    stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
+  ) as Record<string, unknown>;
   const declared = normalizePoliciesDeep(declaredIn) as Record<string, unknown>;
   // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
   // live); writeOnly cannot be read back (strip from BOTH sides so it is never
@@ -33,15 +44,28 @@ export function classifyResource(resource: DesiredResource, liveRaw: Record<stri
   for (const [k, v] of Object.entries(declared)) {
     if (schema.writeOnly.has(k)) continue;
     if (v === UNRESOLVED || hasUnresolved(v)) {
-      findings.push({ tier: "unresolved", logicalId, resourceType, path: k });
+      findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
       continue;
     }
     if (!(k in live)) {
-      findings.push({ tier: "readGap", logicalId, resourceType, path: k, note: "declared but not returned by live read" });
+      findings.push({
+        tier: 'readGap',
+        logicalId,
+        resourceType,
+        path: k,
+        note: 'declared but not returned by live read',
+      });
       continue;
     }
     for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
-      findings.push({ tier: "declared", logicalId, resourceType, path: d.path, desired: d.stateValue, actual: d.awsValue });
+      findings.push({
+        tier: 'declared',
+        logicalId,
+        resourceType,
+        path: d.path,
+        desired: d.stateValue,
+        actual: d.awsValue,
+      });
     }
   }
 
@@ -56,8 +80,8 @@ export function classifyResource(resource: DesiredResource, liveRaw: Record<stri
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v)) continue;
     // inline Policies managed by a sibling AWS::IAM::Policy are not role drift
-    if (resource.siblingManaged && k === "Policies") continue;
-    findings.push({ tier: "undeclared", logicalId, resourceType, path: k, actual: v });
+    if (resource.siblingManaged && k === 'Policies') continue;
+    findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
   return findings;

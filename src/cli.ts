@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // cdk-real-drift CLI entry. Dispatches: check | accept | init (+ help/version).
 // Detect-only — no command writes to AWS (accept/init write only the baseline FILE).
-import { readFileSync } from "node:fs";
-import { runAccept } from "./commands/accept.js";
-import { runCheck } from "./commands/check.js";
+import { readFileSync } from 'node:fs';
+import { runAccept } from './commands/accept.js';
+import { runCheck } from './commands/check.js';
 
 const HELP = `cdkrd — drift detection for AWS CDK/CloudFormation, including UNDECLARED
 properties that 'cdk drift' / CloudFormation drift never see. No AWS Config needed.
@@ -29,28 +29,28 @@ The baseline lives at .cdkrd/<stack>.<region>.json — commit it; review its dif
 
 function version(): string {
   try {
-    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-    return pkg.version ?? "0.0.0";
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    return pkg.version ?? '0.0.0';
   } catch {
-    return "0.0.0";
+    return '0.0.0';
   }
 }
 
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
-  if (cmd === undefined || cmd === "-h" || cmd === "--help" || cmd === "help") {
+  if (cmd === undefined || cmd === '-h' || cmd === '--help' || cmd === 'help') {
     console.log(HELP);
     return 0;
   }
-  if (cmd === "--version" || cmd === "-v") {
+  if (cmd === '--version' || cmd === '-v') {
     console.log(version());
     return 0;
   }
   switch (cmd) {
-    case "check":
+    case 'check':
       return runCheck(rest);
-    case "accept":
-    case "init": // init is accept's first-run alias
+    case 'accept':
+    case 'init': // init is accept's first-run alias
       return runAccept(rest);
     default:
       console.error(`unknown command: ${cmd}\n`);
@@ -64,9 +64,13 @@ main(process.argv.slice(2))
   .catch((e: unknown) => {
     const msg = (e as { message?: string })?.message ?? String(e);
     if (/credential|could not load cred|security token/i.test(msg)) {
-      console.error("error: no AWS credentials available. Configure them (aws configure / AWS_PROFILE / env vars) and retry.");
+      console.error(
+        'error: no AWS credentials available. Configure them (aws configure / AWS_PROFILE / env vars) and retry.'
+      );
     } else if (/stack/i.test(msg) && /(does not exist|ValidationError)/i.test(msg)) {
-      console.error("error: stack not found in this account/region. Check the stack name and --region.");
+      console.error(
+        'error: stack not found in this account/region. Check the stack name and --region.'
+      );
     } else if (/AccessDenied|not authorized/i.test(msg)) {
       console.error(`error: access denied — ${msg}`);
     } else {

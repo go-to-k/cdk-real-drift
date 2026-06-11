@@ -1,41 +1,42 @@
 {
   "name": "cdk-real-drift",
   "version": "0.0.0",
-  "private": true,
   "description": "Detect when real AWS resources drift from your CDK/CloudFormation IaC - including UNDECLARED properties that cdk drift / CloudFormation drift never see. No AWS Config required.",
-  "license": "MIT",
-  "author": "go-to-k",
-  "keywords": [
-    "cdk",
-    "cloudformation",
-    "drift",
-    "aws",
-    "iac",
-    "undeclared"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/go-to-k/cdk-real-drift.git"
-  },
-  "type": "module",
   "bin": {
     "cdkrd": "dist/cli.js"
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
+    "LICENSE"
   ],
-  "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "lint": "biome check src tests",
-    "lint:fix": "biome check --write src tests",
-    "dev": "node --experimental-strip-types src/cli.ts",
-    "prepublishOnly": "npm run build && npm test"
+  "publishConfig": {
+    "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/go-to-k/cdk-real-drift.git"
+  },
+  "homepage": "https://github.com/go-to-k/cdk-real-drift",
+  "bugs": {
+    "url": "https://github.com/go-to-k/cdk-real-drift/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@10.15.1",
+  "keywords": [
+    "cdk",
+    "cloudformation",
+    "drift",
+    "aws",
+    "iac",
+    "undeclared",
+    "developer-tools"
+  ],
+  "author": {
+    "name": "go-to-k",
+    "url": "https://github.com/go-to-k"
+  },
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -51,11 +52,17 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "@types/node": "^25.9.2",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.0",
+    "@semantic-release/npm": "^13.0.0",
+    "@types/node": "^20.19.0",
+    "@typescript/native-preview": "7.0.0-dev.20260511.1",
     "aws-sdk-client-mock": "^4.1.0",
-    "tsdown": "^0.12.9",
-    "typescript": "^5.9.3",
-    "vitest": "^2.1.9"
+    "semantic-release": "^25.0.0",
+    "tsdown": "^0.22.0",
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.1.20"
   }
 }

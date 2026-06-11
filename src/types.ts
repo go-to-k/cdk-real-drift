@@ -1,6 +1,6 @@
 // Shared types for cdk-real-drift.
 
-export type Tier = "declared" | "undeclared" | "readGap" | "unresolved" | "skipped";
+export type Tier = 'declared' | 'undeclared' | 'readGap' | 'unresolved' | 'skipped';
 
 export interface Finding {
   tier: Tier;
@@ -32,7 +32,7 @@ export interface ResolverContext {
 export interface DesiredResource {
   logicalId: string;
   resourceType: string;
-  physicalId?: string;
+  physicalId?: string | undefined;
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
   siblingManaged?: boolean; // an IAM Role whose inline Policies are managed by a sibling AWS::IAM::Policy
 }
