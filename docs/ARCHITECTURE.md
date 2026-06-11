@@ -4,7 +4,7 @@
 > launch. This document is the single self-contained map of the whole tool: what it
 > is, every moving part, the design decisions and their rationale, the current
 > state, and the open questions worth challenging. It is accurate to the code after
-> the design-review fix pass (R1–R17 applied; 189 unit tests green, build clean).
+> the design-review fix pass (R1–R30 applied; 230 unit tests green, build clean).
 > Companion docs:
 > [DESIGN.md](../DESIGN.md) (terse design), [redesign-notes.md](redesign-notes.md)
 > (pre-publication decisions), [README.md](../README.md) (end-user).
@@ -458,10 +458,11 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 
 ## 12. Testing & evidence
 
-- **189 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
+- **230 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
   `aws-sdk-client-mock`. Coverage spans resolver (incl. GetAtt-via-live-attrs +
-  fail-closed), all normalizers, classify (incl. the 4 dogfood regression pairs),
-  baseline, revert plan + apply-ops + writers, overrides incl. EIP, glob, cli-args,
+  fail-closed), all normalizers, classify (incl. the dogfood regression pairs),
+  baseline, revert plan + apply-ops + writers + the interactive abort→exit mapping
+  (`resolveInteractiveRevertExit`, R30), overrides incl. EIP, glob, cli-args,
   template-adapter incl. `--pre-deploy` override, report.
 - **Integration fixtures** under `tests/integration/{basic,iam,lambda,revert}` (real
   CDK apps + `verify.sh`). The revert integ proves deploy → accept → out-of-band

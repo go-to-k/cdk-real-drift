@@ -38,6 +38,11 @@ cdk.out/
 # ignored only inside this repo's own scratch dirs)
 /tmp-dogfood/
 
+# Temporary README-example generator: `vp check`/README-gen drops this self-deleting
+# test in tests/; it is explicitly "Not committed" but is easy to sweep up via
+# `git add -A`. Ignore it so it can never be accidentally committed.
+tests/__readme_gen.test.ts
+
 # Temporary files
 *.tmp
 .cache/
