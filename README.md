@@ -87,7 +87,10 @@ In an interactive terminal, `cdkrd accept` prompts with a multiselect of the
 undeclared values — all pre-selected, so pressing Enter blesses everything (the
 default). Deselect any value to leave it unblessed (it keeps being reported by
 `check`), so you can bless the intentional changes without rubber-stamping a
-suspicious one. With `--yes` or a non-TTY (CI), it blesses all with no prompt.
+suspicious one. Deselecting _everything_ asks for an explicit confirmation first —
+an empty baseline still creates the baseline file, which makes `revert` plan
+removal of all undeclared drift (declining leaves the baseline unchanged). With
+`--yes` or a non-TTY (CI), it blesses all with no prompt.
 
 | option                           | meaning                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -165,6 +168,13 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   model keyed by StatementId, not a settable document; `AWS::Budgets::Budget` —
   `UpdateBudget` needs a full NewBudget the reader can't reconstruct) are reported as
   `not revertable`.
+- **Lambda Permission detection limit:** if the function's resource policy still
+  exists but only the _specific_ declared statement was removed out of band, the
+  reader cannot find a match and reports the permission as `skipped`
+  (`target not resolvable from template`) — not `deleted`. Safely asserting the
+  statement is gone would need its `StatementId`, which the best-effort
+  Action + Principal match does not have, so cdkrd does not claim `deleted` here.
+  When the _whole_ resource policy is gone, it is reported as `deleted` (R1).
 - `check --pre-deploy` compares live state against the LOCAL synth template (not the
   deployed one), surfacing the declared drift your next `cdk deploy` would silently
   overwrite. It reports **declared-side tiers only** (undeclared is excluded — that

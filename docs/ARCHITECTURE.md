@@ -393,7 +393,7 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 
 ## 12. Testing & evidence
 
-- **125 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
+- **189 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
   `aws-sdk-client-mock`. Coverage spans resolver (incl. GetAtt-via-live-attrs +
   fail-closed), all normalizers, classify (incl. the 4 dogfood regression pairs),
   baseline, revert plan + apply-ops + writers, overrides incl. EIP, glob, cli-args,
