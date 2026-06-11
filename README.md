@@ -1,8 +1,8 @@
 # cdk-real-drift (`cdkrd`)
 
-> Drift detection for AWS CDK / CloudFormation that sees what other tools can't:
-> **changes to properties you never declared in your template.**
-> Detect it, accept it, or revert it — no AWS Config required.
+**Drift detection for AWS CDK / CloudFormation that sees what other tools can't:
+changes to properties you never declared in your template.
+Detect it, accept it, or revert it — no AWS Config required.**
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
@@ -13,22 +13,68 @@
 **Status:** pre-release. `check` and `accept` never write to AWS.
 `revert` is the only mutating command, and it always shows a plan and confirms first.
 
-## The problem
+## Quick start
 
-Someone opens the console and attaches an extra inline policy to one of your roles:
+_Not yet on npm — coming with the first public release._
+
+```bash
+npm install -D cdk-real-drift     # in your CDK project
+
+# 1) In a CDK app dir: checks EVERY stack the app defines (multi-stack included)
+npx cdkrd check
+
+# 2) Bless the undeclared values that are fine (interactive multiselect)
+npx cdkrd accept
+
+# 3) From now on, check is CLEAN until something really changes
+npx cdkrd check
+```
+
+```console
+=== cdkrd check: MyStack (us-east-1) ===
+
+result: CLEAN
+info: readGap=1 (write-only 1) · skipped=2 (custom resource 2) — run with --verbose for the list
+```
+
+**Declared drift is detected from the very first `check`** — the deployed template
+is the reference, no setup needed. For undeclared properties, the first `check`
+shows the full picture and offers to bless it on the spot; from then on, `check`
+reports exactly what changed since you blessed. Requirements: Node.js >= 20, AWS
+credentials via the standard SDK chain (env vars, `--profile`, SSO).
+
+### Selecting stacks
+
+| invocation                         | what is checked                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `cdkrd check`                      | every stack the CDK app defines — multi-stack apps are all checked, each in its own `env.region` |
+| `cdkrd check 'Dev*'`               | glob, matched against the app's stack names (needs the app for discovery)                        |
+| `cdkrd check MyStack --region <r>` | exact name — **no synth at all**; works on any deployed CloudFormation stack, CDK or not         |
+| `cdkrd check --all --region <r>`   | every deployed stack in the region                                                               |
+
+Synth is **optional**: it only powers stack auto-discovery, globs, and
+construct-path labels — the drift comparison itself never needs it. When you are
+not inside the app directory (or the app needs a special command), point at it
+with `--app`: a command (`--app "node bin/app.js"`) or a pre-synthesized assembly
+(`--app cdk.out`); defaults to `cdk.json`'s `"app"`, or `$CDKRD_APP`.
+
+**Multi-account tip:** the account id is part of the baseline filename, so the same
+stack deployed to several accounts (`env: { account: PERSONAL || SHARED }`) gets one
+baseline per account — they never collide. Commit the shared-environment baselines;
+gitignore personal ones if you prefer (e.g. `.cdkrd/*.<personal-account>.*.json`).
+
+## What `cdk drift` can't see
+
+Someone attaches an extra inline policy to one of your roles from the console.
+CloudFormation drift detection only compares properties that **appear in your
+template**, so:
 
 ```bash
 $ npx cdk drift ApiStack
 ✨  Number of resources with drift: 0
 ```
 
-Nothing. CloudFormation drift detection — and every tool built on it — only compares
-properties that **appear in your template**. An inline policy you never declared, a
-`PermissionsBoundary`, a bucket's `OwnershipControls`, encryption toggled off: all
-invisible. The most dangerous drift hides in the properties you never wrote down.
-
-`cdkrd` reads the **full** live model of every resource and subtracts what is
-explainable, so the same change looks like this:
+`cdkrd` reads the **full** live model and subtracts what is explainable:
 
 <!-- demo GIF (record on publish): cdk drift (clean) -> console change -> cdkrd check finds it -> revert -->
 
@@ -49,23 +95,42 @@ ApiStack: drift found — what do you want to do?
     Revert — write the desired values back to AWS
 ```
 
-Pick **Revert** and the policy is removed; pick **Accept** and the value is recorded
-in a git-committed baseline so it never shows up again — until it changes.
+Choosing **Revert** shows the plan, confirms, applies, and re-checks convergence:
 
-## How it compares
+```console
+=== cdkrd revert: ApiStack (us-east-1) ===
 
-| Capability                               | `cdkrd` | `cdk drift` / CFn drift detection | `driftctl`¹ | AWS Config |
-| ---------------------------------------- | :-----: | :-------------------------------: | :---------: | :--------: |
-| Drift on **declared** properties         |   ✅    |                ✅                 |     ✅      |    ⚠️²     |
-| Drift on **undeclared** properties       |   ✅    |                ❌                 |     ❌      |    ⚠️²     |
-| Out-of-band **deletion**                 |   ✅    |                ✅                 |     ✅      |     ✅     |
-| **Revert** drift from the CLI            |   ✅    |                ❌                 |     ❌      |     ❌     |
-| Git-reviewable "accepted state" baseline |   ✅    |                ❌                 |     ❌      |     ❌     |
-| No extra AWS service to enable / pay for |   ✅    |                ✅                 |     ✅      |     ❌     |
+  ApiStack/ApiRole (AWS::IAM::Role)
+    - Policies -> remove (undeclared, not in baseline)
 
-¹ Terraform ecosystem (not CDK/CFn); in maintenance mode.
-² Config records configuration changes, but has no notion of your IaC intent — it
-cannot tell you "this differs from my template/baseline" out of the box.
+Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
+  reverted: ApiStack/ApiRole
+ApiStack: CLEAN after revert.
+```
+
+Choosing **Accept** instead opens the same multiselect as `cdkrd accept`: bless the
+values that are intentional and they are recorded in a git-committed baseline, so
+they never show up again — until they change.
+
+| Capability                               | `cdkrd` | `cdk drift` / CFn drift detection |
+| ---------------------------------------- | :-----: | :-------------------------------: |
+| Drift on **declared** properties         |   ✅    |                ✅                 |
+| Drift on **undeclared** properties       |   ✅    |                ❌                 |
+| Out-of-band **deletion**                 |   ✅    |                ✅                 |
+| **Revert** drift from the CLI            |   ✅    |                ❌                 |
+| Git-reviewable "accepted state" baseline |   ✅    |                ❌                 |
+
+A resource that was **deleted out of band** is the most blatant drift there is. It
+is reported in the `deleted` tier and always sets exit 1, regardless of `--fail-on`:
+
+```console
+=== cdkrd check: ApiStack (us-east-1) ===
+
+[DELETED (resource deleted out of band — always drift)] 1
+  ApiStack/EventsQueue (AWS::SQS::Queue) — resource deleted out of band
+
+result: 1 drift(s) (deleted=1)
+```
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`. Undeployed code changes never show up as drift
@@ -99,58 +164,6 @@ your stacks and label findings by **construct path**. It also works on any deplo
 CloudFormation stack by name, no synth needed.
 
 Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Install
-
-> Not yet on npm — coming with the first public release.
-
-```bash
-npm install -D cdk-real-drift     # in your CDK project
-npx cdkrd check                   # synthesizes the app, checks every stack
-```
-
-Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
-(env vars, `--profile`, SSO).
-
-## Quick start
-
-```bash
-# 1) See everything: declared drift + the full undeclared picture
-npx cdkrd check MyStack --region us-east-1
-
-# 2) Bless the undeclared values that are fine (interactive multiselect)
-npx cdkrd accept MyStack --region us-east-1
-
-# 3) From now on, check is CLEAN until something really changes
-npx cdkrd check MyStack --region us-east-1
-```
-
-```console
-=== cdkrd check: MyStack (us-east-1) ===
-
-result: CLEAN
-info: readGap=1 (write-only 1) · skipped=2 (custom resource 2) — run with --verbose for the list
-```
-
-On the first `check` (no baseline yet, interactive terminal), `cdkrd` offers to
-bless the current state right away — so the realistic first run is just `check`.
-
-A resource that was **deleted out of band** is the most blatant drift there is. It is
-reported in the `deleted` tier and always sets exit 1, regardless of `--fail-on`:
-
-```console
-=== cdkrd check: ApiStack (us-east-1) ===
-
-[DELETED (resource deleted out of band — always drift)] 1
-  ApiStack/EventsQueue (AWS::SQS::Queue) — resource deleted out of band
-
-result: 1 drift(s) (deleted=1)
-```
-
-**Multi-account tip:** the account id is part of the baseline filename, so the same
-stack deployed to several accounts (`env: { account: PERSONAL || SHARED }`) gets one
-baseline per account — they never collide. Commit the shared-environment baselines;
-gitignore personal ones if you prefer (e.g. `.cdkrd/*.<personal-account>.*.json`).
 
 ## IAM permissions
 
@@ -194,10 +207,8 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | `cdkrd accept [<stack>...] [--all]` | snapshot current undeclared state into the baseline file               |
 | `cdkrd revert [<stack>...] [--all]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
-- With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`)
-  and every stack it defines is targeted.
-- A stack argument containing `*` or `?` is a glob (`cdkrd check 'Dev*'`), matched
-  against the synth-discovered stack names.
+- Stack selection (no args / glob / exact name / `--all`):
+  see [Selecting stacks](#selecting-stacks).
 - **Exit codes:** `0` clean · `1` drift · `2` error — so `check` drops straight into
   CI:
 
@@ -281,6 +292,14 @@ backward-compatible API.
   `deleted` — identifying the exact statement would need its `StatementId`.
 
 ## FAQ
+
+**Why a committed baseline file — isn't the CloudFormation schema enough?**
+A stateless schema comparison gives each property only two modes: report forever
+(noise) or ignore forever (blind). The baseline adds the third one drift detection
+actually needs: _this value is OK — alarm only when it changes_. Example:
+account-level "EBS encryption by default" makes every volume `Encrypted: true`
+while the schema default is `false` — report-forever is permanent noise, ignoring
+it hides a real disable, the baseline pins `true` and alarms only on `false`.
 
 **How can `cdkrd` catch a change to a property that is in neither my template nor
 the baseline?**

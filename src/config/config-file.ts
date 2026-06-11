@@ -98,9 +98,15 @@ function pathMatches(pattern: string, target: string): boolean {
  * tier (informational) — they are SURFACED, never silently dropped, preserving the
  * "everything is reported" invariant. `deleted` is never ignorable (a path rule must
  * not silence a resource deletion); readGap/unresolved/skipped are already
- * informational and left untouched. Pure: no IO. Matches against `<logicalId>.<path>`
- * because the logicalId is template-derived and stable, whereas constructPath is
- * absent on a no-synth run.
+ * informational and left untouched. Pure: no IO.
+ *
+ * Matches against `<logicalId>.<path>`, NOT the (friendlier) constructPath: the
+ * logicalId is the CloudFormation template's resource key, so it is ALWAYS present on
+ * every finding for every stack. constructPath comes only from optional
+ * `aws:cdk:path` Metadata — absent on non-CDK stacks (cdkrd checks any deployed
+ * stack, CDK or not) and disableable even on CDK stacks — so an ignore rule keyed on
+ * it would silently stop matching. A persistent rule needs the always-present key;
+ * constructPath stays display-only.
  */
 export function applyIgnores(
   findings: Finding[],

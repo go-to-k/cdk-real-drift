@@ -446,9 +446,11 @@ is a pure function applied right after `applyBaseline` everywhere (check / rever
 accept / the interactive flow), so the tier is uniform across commands. It re-tags
 matching `declared` / `undeclared` findings to `ignored` (never `deleted` — a path
 rule must not silence a resource deletion; the already-informational tiers are left
-alone). Patterns glob (`*` / `?`) against `<logicalId>.<path>` — the logicalId is
-template-derived and stable, whereas `constructPath` is absent on a no-synth run — and
-a parent-segment rule (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
+alone). Patterns glob (`*` / `?`) against `<logicalId>.<path>` — the logicalId is the
+CloudFormation template's resource key, always present on every finding, whereas
+`constructPath` comes only from optional `aws:cdk:path` Metadata (absent on non-CDK
+stacks, disableable on CDK ones) so a rule keyed on it would silently stop matching —
+and a parent-segment rule (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
 Ignored findings drop out of the revert plan and the accept bless-set automatically
 (neither acts on the `ignored` tier). A malformed `config.json` fails the run
 (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
