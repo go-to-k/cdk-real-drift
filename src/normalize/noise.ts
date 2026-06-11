@@ -89,10 +89,19 @@ const ID_RE = /^[a-z][a-z0-9]*-[0-9a-f]{6,}$/;
 const isIdLike = (s: unknown): boolean =>
   typeof s === 'string' && (s.startsWith('arn:') || ID_RE.test(s));
 
+// HTTP-method enum sets (CloudFront DefaultCacheBehavior.AllowedMethods /
+// CachedMethods, ...) are UNORDERED: the template lists them in one order, AWS
+// returns them in another, so a positional diff reports false drift. The verb set
+// is closed and order-insensitive wherever AWS accepts it, so an array whose EVERY
+// element is one of these verbs is safe to sort. (Same content-based philosophy as
+// isIdLike: no per-type table, just a value-shape test.)
+const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+const isHttpMethod = (s: unknown): boolean => typeof s === 'string' && HTTP_METHODS.has(s);
+
 export function canonicalizeIdArraysDeep(v: unknown): unknown {
   if (Array.isArray(v)) {
     const mapped = v.map(canonicalizeIdArraysDeep);
-    if (mapped.length > 1 && mapped.every(isIdLike))
+    if (mapped.length > 1 && (mapped.every(isIdLike) || mapped.every(isHttpMethod)))
       return [...(mapped as string[])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     return mapped;
   }

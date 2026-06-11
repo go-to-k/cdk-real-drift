@@ -5,11 +5,17 @@
 //   desired = "MyFn"   actual = "arn:aws:lambda:us-east-1:123:function:MyFn"
 //
 // Conservative + value-shape-based (NOT field-name-based, so it needs no per-type
-// table): only treat the two as equal when `actual` is a well-formed ARN, `desired`
-// is NOT an ARN, and the ARN's final component is EXACTLY `desired` (after the last
-// ':' or '/'). A bare name in such a field resolves to that one resource in the
-// stack's own account+region, whose ARN ends with `:<name>` — so this never hides a
-// real drift to a DIFFERENT name (the suffix must match exactly).
+// table): treat the two as equal when EXACTLY ONE side is a well-formed ARN, the
+// other is a bare (non-ARN) name, and the ARN's final component is EXACTLY that name
+// (after the last ':' or '/'). A bare name in such a field resolves to that one
+// resource in the stack's own account+region, whose ARN ends with `:<name>` — so this
+// never hides a real drift to a DIFFERENT name (the suffix must match exactly).
+//
+// BIDIRECTIONAL: the bare name may be on EITHER side. `desired=name, actual=ARN`
+// occurs when AWS stores the full ARN for a name-accepting input (Lambda
+// EventSourceMapping.FunctionName, ECS Service.Cluster, ...); `desired=ARN,
+// actual=name` occurs the other way (AWS::Lambda::Url.TargetFunctionArn: the template
+// resolves Fn::GetAtt to the function ARN, but the live read returns the bare name).
 //
 // When the stack's accountId/region are supplied, ALSO require the ARN's region
 // (index 3) and account (index 4) segments to match the stack's — a same-named
@@ -22,11 +28,24 @@ export function isArnNameMatch(
   opts?: { accountId?: string; region?: string }
 ): boolean {
   if (typeof desired !== 'string' || typeof actual !== 'string') return false;
-  if (desired.length === 0 || !actual.startsWith('arn:') || desired.startsWith('arn:'))
-    return false;
-  if (!(actual.endsWith(`:${desired}`) || actual.endsWith(`/${desired}`))) return false;
+  const dArn = desired.startsWith('arn:');
+  const aArn = actual.startsWith('arn:');
+  // exactly one side must be an ARN (both ARNs or neither = not a name<->ARN echo)
+  if (dArn === aArn) return false;
+  const arn = dArn ? desired : actual;
+  const name = dArn ? actual : desired;
+  return arnMatchesName(arn, name, opts);
+}
+
+function arnMatchesName(
+  arn: string,
+  name: string,
+  opts?: { accountId?: string; region?: string }
+): boolean {
+  if (name.length === 0) return false;
+  if (!(arn.endsWith(`:${name}`) || arn.endsWith(`/${name}`))) return false;
   // arn:partition:service:region:account:resource — segments 3 (region) + 4 (account)
-  const seg = actual.split(':');
+  const seg = arn.split(':');
   const arnRegion = seg[3] ?? '';
   const arnAccount = seg[4] ?? '';
   if (opts?.region && arnRegion && arnRegion !== opts.region) return false;

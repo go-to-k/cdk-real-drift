@@ -26,6 +26,24 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
     expect(isArnNameMatch('MyFn', `${fnArn}:PROD`)).toBe(false);
   });
 
+  // Bidirectional: the bare name may be on the DESIRED side and the ARN on the
+  // ACTUAL side (AWS::Lambda::Url.TargetFunctionArn: template resolves GetAtt to the
+  // function ARN, live read returns the bare function name).
+  describe('reverse direction (desired=ARN, actual=name)', () => {
+    it('matches an ARN desired against its bare-name actual', () => {
+      expect(isArnNameMatch(fnArn, 'MyFn')).toBe(true);
+    });
+    it('does NOT match a different name (real drift preserved)', () => {
+      expect(isArnNameMatch(fnArn, 'OtherFn')).toBe(false);
+    });
+    it('honors account/region scoping in reverse too', () => {
+      const opts = { accountId: '111122223333', region: 'us-east-1' };
+      expect(isArnNameMatch(fnArn, 'MyFn', opts)).toBe(true);
+      const otherAcct = 'arn:aws:lambda:us-east-1:999999999999:function:MyFn';
+      expect(isArnNameMatch(otherAcct, 'MyFn', opts)).toBe(false);
+    });
+  });
+
   // R10: account/region scoping — a same-named resource in a DIFFERENT account or
   // region is genuine drift, not a name<->ARN echo.
   describe('with account/region scoping', () => {

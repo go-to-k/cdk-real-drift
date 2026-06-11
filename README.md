@@ -118,12 +118,17 @@ removal of all undeclared drift (declining leaves the baseline unchanged). With
 - **Read source:** Cloud Control API (auto-follows new types) → **SDK overrides** for
   common types Cloud Control can't read → skip + log. Large stacks are fully
   supported — resources are enumerated via paginated `ListStackResources` (no
-  100-resource cap) and read with bounded concurrency.
+  100-resource cap) and read with bounded concurrency, with adaptive SDK retry so a
+  transient `ThrottlingException` on a big stack is ridden out rather than reported as
+  a (false) `skipped`.
 - **Schema-driven noise strip:** read-only / write-only properties are removed using
   the CloudFormation resource schema (`describe-type`), at nested paths too.
 - **Reusable normalizers:** IAM-style policy canonicalization (Version / scalar-vs-array
   / statement order / account-id↔root-ARN), embedded JSON-text, `aws:*` tags
-  (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`), name↔ARN +
+  (list + map), AWS-enriched array sub-fields (`declared ⊆ actual`), unordered
+  resource-id / ARN / HTTP-method sets (e.g. CloudFront `AllowedMethods`), name↔ARN
+  collapse (bidirectional — the bare name may be on either side, e.g.
+  `AWS::Lambda::Url.TargetFunctionArn` declares the ARN but reads back the name) +
   managed-default KMS alias (`alias/aws/*`) collapse. For the KMS case, if the
   optional `kms:ListAliases` permission is granted, the alias is resolved strictly so
   a customer-managed key swapped in out of band is reported as real drift; without it,

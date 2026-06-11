@@ -5,6 +5,7 @@ import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
+import { READ_RETRY } from '../read/client-config.js';
 import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../read/kms-aliases.js';
 import { readLive } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
@@ -24,8 +25,8 @@ export async function gatherFindings(
   // would overwrite. physIds + live reads still come from the deployed stack.
   templateOverride?: Record<string, unknown>
 ): Promise<GatherResult> {
-  const cfn = new CloudFormationClient({ region });
-  const cc = new CloudControlClient({ region });
+  const cfn = new CloudFormationClient({ region, ...READ_RETRY });
+  const cc = new CloudControlClient({ region, ...READ_RETRY });
 
   const desired = await loadDesired(cfn, stackName, region, templateOverride);
   const findings: Finding[] = [];

@@ -68,6 +68,22 @@ describe('noise suppressors', () => {
     ]);
   });
 
+  it('canonicalizeIdArraysDeep: sorts HTTP-method sets (CloudFront AllowedMethods)', () => {
+    // CloudFront returns AllowedMethods in a different order than CDK declares them;
+    // the verb set is unordered, so canonicalization must make them compare equal.
+    const declared = canonicalizeIdArraysDeep({
+      AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    });
+    const live = canonicalizeIdArraysDeep({
+      AllowedMethods: ['HEAD', 'DELETE', 'POST', 'GET', 'OPTIONS', 'PUT', 'PATCH'],
+    });
+    expect(declared).toEqual(live);
+    // the smaller cached-methods subset also normalizes
+    expect(canonicalizeIdArraysDeep(['HEAD', 'GET'])).toEqual(['GET', 'HEAD']);
+    // a NON-method scalar list mixed with a method token is left alone (real drift kept)
+    expect(canonicalizeIdArraysDeep(['GET', 'CUSTOM'])).toEqual(['GET', 'CUSTOM']);
+  });
+
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {
     expect(isAllAwsTags([{ Key: 'aws:cloudformation:stack-id', Value: 'x' }])).toBe(true);
     expect(

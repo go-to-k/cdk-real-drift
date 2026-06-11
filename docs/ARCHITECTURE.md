@@ -207,8 +207,8 @@ all live changes
   − policy-doc representational noise  → canonicalized (scalar/array, stmt order, acct-id↔root-ARN)
   − aws:* tags (list + map)           → stripped
   − schema defaults + known defaults  → suppressed
-  − tag-list / id-array ORDER         → canonicalized (see below)
-  − name↔ARN, alias/aws/*↔key-ARN     → collapsed (see below)
+  − tag-list / id-array / method-set ORDER → canonicalized (see below)
+  − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − sibling AWS::IAM::Policy on a role → suppressed
   = undeclared residual                → the unique signal
 ```
@@ -220,17 +220,20 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
 
 1. **Tag-list order** — CFn `Tags` (`{Key,Value}[]`) are unordered sets; positional
    diff flagged every CDK-tagged resource. Fix: `canonicalizeTagListsDeep` (sort by Key).
-2. **resource-id/ARN array order** — `SubnetIds` / `SecurityGroupIds` are unordered;
+2. **resource-id/ARN/HTTP-method array order** — `SubnetIds` / `SecurityGroupIds` and
+   HTTP-method enum sets (CloudFront `AllowedMethods` / `CachedMethods`) are unordered;
    positional diff flagged them. Fix: `canonicalizeIdArraysDeep` (sort arrays whose
-   every element is an AWS id `subnet-…`/`sg-…` or ARN; plain scalar lists untouched).
-3. **name ↔ ARN** — CDK declares a bare name (Lambda EventSourceMapping/Permission
-   `FunctionName`, ECS `Service.Cluster`), AWS returns the full ARN. Fix:
-   `isArnNameMatch` (value-shape: actual is ARN, desired non-ARN, ARN's final
-   `:`/`/` segment == desired; never hides drift to a _different_ name). When the
-   stack's account + region are known they are also required to match the ARN's
-   region/account segments (when non-empty), so a same-named resource swapped to a
-   _different account or region_ is reported as genuine drift; empty-segment ARNs
-   (e.g. S3) stay suffix-only.
+   every element is an AWS id `subnet-…`/`sg-…`, an ARN, or an HTTP verb; plain scalar
+   lists untouched).
+3. **name ↔ ARN (bidirectional)** — CDK declares a bare name (Lambda
+   EventSourceMapping/Permission `FunctionName`, ECS `Service.Cluster`) and AWS returns
+   the full ARN; OR the reverse — the template resolves a `Fn::GetAtt` to an ARN
+   (`AWS::Lambda::Url.TargetFunctionArn`) but the live read returns the bare name. Fix:
+   `isArnNameMatch` (value-shape: EXACTLY one side is an ARN, the other is its final
+   `:`/`/` segment; never hides drift to a _different_ name). When the stack's account +
+   region are known they are also required to match the ARN's region/account segments
+   (when non-empty), so a same-named resource swapped to a _different account or
+   region_ is reported as genuine drift; empty-segment ARNs (e.g. S3) stay suffix-only.
 4. **managed-default KMS alias** — `alias/aws/rds` declared vs resolved key ARN. Fix:
    `isManagedKmsAliasMatch` (only collapses `alias/aws/*`, not custom aliases). When
    the stack declares any `alias/aws/*`, `gather` prefetches the account's
@@ -243,6 +246,20 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
 > Classes 1 & 3 are a latent risk in any AWS-snapshot diff; they were also
 > back-ported to **cdkd** (PR #802, merged) since cdkd's `drift-calculator` shared
 > the same positional comparison. See section 11.
+
+**A second dogfood on a larger real app** (a ~40-resource API stack: Lambda Function
+URLs + CloudFront + Glue + many Custom Resources) surfaced three further refinements,
+each now covered by a unit test: (a) the **name↔ARN reverse direction** above
+(`Lambda::Url.TargetFunctionArn` — 5 false declared drifts); (b) the **HTTP-method set
+order** above (CloudFront `AllowedMethods` — 1 false declared drift); (c) **read-path
+throttling** — on a stack that big the bounded-concurrency Cloud Control reads hit
+`ThrottlingException` and were reported as `skipped` (silent coverage loss), so the
+CC / CloudFormation / SDK-override clients now use `adaptive` retry with a higher
+attempt budget ([src/read/client-config.ts](../src/read/client-config.ts)). The same
+dogfood also fixed the synth IoHost printing the CDK app's stderr passthrough (bundling
+progress, tagged `CDK_ASSEMBLY_E1002`/error by toolkit-lib) in alarming **red** —
+`planIoMessage` re-tags app passthrough to the default color, matching cdk-local
+([src/synth/io-host.ts](../src/synth/io-host.ts)).
 
 **The `isTrivialEmpty` asymmetry (intentional trade-off).** An undeclared value that
 is `false`, `''`, `[]`, or `{}` is suppressed (`isTrivialEmpty` in noise.ts) — AWS

@@ -20,6 +20,7 @@ import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-s
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { READ_RETRY } from './client-config.js';
 
 export interface OverrideCtx {
   physicalId: string;
@@ -54,7 +55,7 @@ function safeDecode(s: string): string {
 const readS3BucketPolicy: OverrideReader = async ({ declared, region }) => {
   const bucket = str(declared.Bucket);
   if (!bucket) return undefined;
-  const c = new S3Client({ region });
+  const c = new S3Client({ region, ...READ_RETRY });
   const r = await c.send(new GetBucketPolicyCommand({ Bucket: bucket }));
   return { Bucket: bucket, PolicyDocument: parsePolicy(r.Policy) };
 };
@@ -62,7 +63,7 @@ const readS3BucketPolicy: OverrideReader = async ({ declared, region }) => {
 const readSnsTopicPolicy: OverrideReader = async ({ declared, region }) => {
   const topic = firstStr(declared.Topics);
   if (!topic) return undefined;
-  const c = new SNSClient({ region });
+  const c = new SNSClient({ region, ...READ_RETRY });
   const r = await c.send(new GetTopicAttributesCommand({ TopicArn: topic }));
   return { Topics: declared.Topics, PolicyDocument: parsePolicy(r.Attributes?.Policy) };
 };
@@ -70,7 +71,7 @@ const readSnsTopicPolicy: OverrideReader = async ({ declared, region }) => {
 const readSqsQueuePolicy: OverrideReader = async ({ declared, region }) => {
   const queue = firstStr(declared.Queues);
   if (!queue) return undefined;
-  const c = new SQSClient({ region });
+  const c = new SQSClient({ region, ...READ_RETRY });
   const r = await c.send(
     new GetQueueAttributesCommand({ QueueUrl: queue, AttributeNames: ['Policy'] })
   );
@@ -80,7 +81,7 @@ const readSqsQueuePolicy: OverrideReader = async ({ declared, region }) => {
 const readIamPolicy: OverrideReader = async ({ declared, region }) => {
   const name = str(declared.PolicyName);
   if (!name) return undefined;
-  const c = new IAMClient({ region });
+  const c = new IAMClient({ region, ...READ_RETRY });
   const role = firstStr(declared.Roles);
   const user = firstStr(declared.Users);
   const group = firstStr(declared.Groups);
@@ -109,7 +110,7 @@ const readIamPolicy: OverrideReader = async ({ declared, region }) => {
 const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
   // CFn physical id for a managed policy IS its ARN.
   if (!physicalId.startsWith('arn:')) return undefined;
-  const c = new IAMClient({ region });
+  const c = new IAMClient({ region, ...READ_RETRY });
   const p = (await c.send(new GetPolicyCommand({ PolicyArn: physicalId }))).Policy;
   if (!p) return undefined;
   const ver = (
@@ -123,7 +124,7 @@ const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
 const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
   const fn = str(declared.FunctionName);
   if (!fn) return undefined;
-  const c = new LambdaClient({ region });
+  const c = new LambdaClient({ region, ...READ_RETRY });
   // GetPolicy throws ResourceNotFoundException when the function has NO resource
   // policy at all — i.e. the permission was deleted out of band. Let it propagate
   // so the router maps it to `deleted` rather than swallowing it as skipped.
@@ -179,7 +180,7 @@ const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
   const budget = declared.Budget as Record<string, unknown> | undefined;
   const name = str(budget?.BudgetName);
   if (!name || !accountId) return undefined;
-  const c = new BudgetsClient({ region });
+  const c = new BudgetsClient({ region, ...READ_RETRY });
   const r = await c.send(new DescribeBudgetCommand({ AccountId: accountId, BudgetName: name }));
   const b = r.Budget;
   if (!b) return undefined;
@@ -192,7 +193,7 @@ const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
 const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
-  const c = new EC2Client({ region });
+  const c = new EC2Client({ region, ...READ_RETRY });
   const input = id.startsWith('eipalloc-') ? { AllocationIds: [id] } : { PublicIps: [id] };
   // Not-found surfaces as InvalidAddress.NotFound / InvalidAllocationID.NotFound;
   // let it propagate so the router maps it to `deleted` (the EIP was released out
