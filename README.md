@@ -1,8 +1,8 @@
 # cdk-real-drift (`cdkrd`)
 
-**Drift detection for AWS CDK / CloudFormation that sees what other tools can't:
-changes to properties you never declared in your template.
-Detect it, accept it, or revert it — no AWS Config required.**
+**Drift detection for AWS CDK — including the undeclared properties `cdk drift`
+can't see (an inline policy added in the console, encryption toggled off, a
+changed bucket setting). Detect it, accept it, or revert it.**
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
@@ -10,38 +10,53 @@ Detect it, accept it, or revert it — no AWS Config required.**
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 -->
 
-**Status:** pre-release. `check` and `accept` never write to AWS.
-`revert` is the only mutating command, and it always shows a plan and confirms first.
-
 ## Quick start
 
 _Not yet on npm — coming with the first public release._
 
 ```bash
-npm install -D cdk-real-drift     # in your CDK project
+npm install -D cdk-real-drift   # in your CDK project
 
-# 1) In a CDK app dir: checks EVERY stack the app defines (multi-stack included)
-npx cdkrd check
-
-# 2) Bless the undeclared values that are fine (interactive multiselect)
-npx cdkrd accept
-
-# 3) From now on, check is CLEAN until something really changes
+# `check` is the only command you run. It checks every stack the app defines and,
+# in a terminal, asks what to do right where it found the drift.
 npx cdkrd check
 ```
+
+When drift is found, `check` prompts inline — no separate command needed:
 
 ```console
-=== cdkrd check: MyStack (us-east-1) ===
+=== cdkrd check: ApiStack (us-east-1) ===
 
-result: CLEAN
-info: readGap=1 (write-only 1) · skipped=2 (custom resource 2) — run with --verbose for the list
+[UNDECLARED DRIFT (the differentiator)] 1
+  ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
+
+result: 1 drift(s) (undeclared=1)
+
+ApiStack: drift found — what do you want to do?
+  ❯ Nothing (keep exit code 1)
+    Accept — bless current state into the baseline (a git file; nothing written to AWS)
+    Revert — write the desired value back to AWS
 ```
 
+- **Accept** records the value in a git-committed baseline, so `check` stays CLEAN
+  until it changes again (a multiselect lets you bless some and keep reporting others).
+- **Revert** shows a plan, confirms, then writes the desired value back to AWS:
+
+```console
+=== cdkrd revert: ApiStack (us-east-1) ===
+
+  ApiStack/ApiRole (AWS::IAM::Role)
+    - Policies -> remove (undeclared, not in baseline)
+
+Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
+  reverted: ApiStack/ApiRole
+ApiStack: CLEAN after revert.
+```
+
+`accept` and `revert` also exist as standalone commands for CI / scripting.
 **Declared drift is detected from the very first `check`** — the deployed template
-is the reference, no setup needed. For undeclared properties, the first `check`
-shows the full picture and offers to bless it on the spot; from then on, `check`
-reports exactly what changed since you blessed. Requirements: Node.js >= 20, AWS
-credentials via the standard SDK chain (env vars, `--profile`, SSO).
+is the reference, no setup needed. Requirements: Node.js >= 20, AWS credentials via
+the standard SDK chain (env vars, `--profile`, SSO).
 
 ### Selecting stacks
 
@@ -75,43 +90,21 @@ $ npx cdk drift ApiStack
 ✨  Number of resources with drift: 0
 ```
 
-`cdkrd` reads the **full** live model and subtracts what is explainable:
+`cdkrd` reads the **full** live model and subtracts what is explainable, so the
+same change shows up:
 
 <!-- demo GIF (record on publish): cdk drift (clean) -> console change -> cdkrd check finds it -> revert -->
 
 ```console
 $ npx cdkrd check ApiStack
 
-=== cdkrd check: ApiStack (us-east-1) ===
-
 [UNDECLARED DRIFT (the differentiator)] 1
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access","PolicyDocument":{"Statement":[{"Action":["s3:*"],"Effect":"Allow","Resource":["*"]}]}}]
 
 result: 1 drift(s) (undeclared=1)
-info: skipped=1 (custom resource 1) — run with --verbose for the list
-
-ApiStack: drift found — what do you want to do?
-  ❯ Nothing (keep exit code 1)
-    Accept — bless current state into the baseline
-    Revert — write the desired values back to AWS
 ```
 
-Choosing **Revert** shows the plan, confirms, applies, and re-checks convergence:
-
-```console
-=== cdkrd revert: ApiStack (us-east-1) ===
-
-  ApiStack/ApiRole (AWS::IAM::Role)
-    - Policies -> remove (undeclared, not in baseline)
-
-Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
-  reverted: ApiStack/ApiRole
-ApiStack: CLEAN after revert.
-```
-
-Choosing **Accept** instead opens the same multiselect as `cdkrd accept`: bless the
-values that are intentional and they are recorded in a git-committed baseline, so
-they never show up again — until they change.
+…and you accept or revert it right there ([see above](#quick-start)).
 
 | Capability                               | `cdkrd` | `cdk drift` / CFn drift detection |
 | ---------------------------------------- | :-----: | :-------------------------------: |
@@ -213,7 +206,10 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   CI:
 
 ```yaml
-- run: npx cdkrd check MyStack --region us-east-1 # fails the job on drift
+- run: npm ci # cdkrd resolves the CDK app, so its deps must be installed
+- run: npx cdkrd check --region us-east-1 # fails the job on drift
+# or point at a prebuilt assembly artifact instead of synthesizing:
+# - run: npx cdkrd check --app cdk.out --region us-east-1
 ```
 
 | option                           | meaning                                                                                                                               |

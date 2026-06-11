@@ -4,7 +4,8 @@
 > launch. This document is the single self-contained map of the whole tool: what it
 > is, every moving part, the design decisions and their rationale, the current
 > state, and the open questions worth challenging. It is accurate to the code after
-> the design-review fix pass (R1–R33 applied; 252 unit tests green, build clean).
+> the design-review fix pass (R1–R34 applied; 250+ unit tests green, build clean —
+> run `vp run test` for the current count).
 > Companion docs:
 > [DESIGN.md](../DESIGN.md) (terse design), [redesign-notes.md](redesign-notes.md)
 > (pre-publication decisions), [README.md](../README.md) (end-user).
@@ -14,8 +15,8 @@
 ## 1. What it is (and is not)
 
 `cdkrd` detects — and reverts — drift between your **real deployed AWS resources**
-and your CDK / CloudFormation intent, **including properties you never declared** in
-the template. That undeclared-property dimension is the differentiator: `cdk drift`,
+and your **AWS CDK** intent, **including properties you never declared** in
+the (synthesized CloudFormation) template. That undeclared-property dimension is the differentiator: `cdk drift`,
 CloudFormation drift detection, `driftctl`, and `terraform plan` all compare only
 properties that appear in the template, so a change to a setting you never declared
 (a bucket's `OwnershipControls`, a role's `PermissionsBoundary`, encryption toggled
@@ -502,7 +503,11 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 
 ## 12. Testing & evidence
 
-- **252 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
+<!-- Do not hardcode an exact test count here — it goes stale on every change.
+     State an approximate floor and point to the command for the live number. -->
+
+- **250+ unit tests** (Vitest — run `vp run test` for the current count), AWS SDK
+  mocked with
   `aws-sdk-client-mock`. Coverage spans resolver (incl. GetAtt-via-live-attrs +
   fail-closed), all normalizers, classify (incl. the dogfood regression pairs),
   baseline, revert plan + apply-ops + writers + the interactive abort→exit mapping

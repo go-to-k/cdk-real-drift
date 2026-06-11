@@ -7,8 +7,8 @@ import { runAccept } from './commands/accept.js';
 import { runCheck } from './commands/check.js';
 import { runRevert } from './commands/revert.js';
 
-const HELP = `cdkrd — drift detection + revert for AWS CDK/CloudFormation, including
-UNDECLARED properties that 'cdk drift' / CloudFormation drift never see. No AWS Config.
+const HELP = `cdkrd — drift detection + revert for AWS CDK, including UNDECLARED
+properties that 'cdk drift' / CloudFormation drift detection never see.
 
 USAGE
   cdkrd check  [<stack>...]   detect drift (read-only)
