@@ -3,8 +3,9 @@
 > Audience: a reviewer doing a **spec + design review** before the Phase 4 public
 > launch. This document is the single self-contained map of the whole tool: what it
 > is, every moving part, the design decisions and their rationale, the current
-> state, and the open questions worth challenging. It is accurate to the code as of
-> 40 local commits (125 unit tests green, build clean). Companion docs:
+> state, and the open questions worth challenging. It is accurate to the code after
+> the design-review fix pass (R1–R17 applied; 189 unit tests green, build clean).
+> Companion docs:
 > [DESIGN.md](../DESIGN.md) (terse design), [redesign-notes.md](redesign-notes.md)
 > (pre-publication decisions), [README.md](../README.md) (end-user).
 
@@ -456,14 +457,21 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
 
 DONE: Phase 2 (MVP) + Phase 3 (broad dogfood, normalizer tuning, revert landed,
 GetAtt resolution, wildcard, EIP, ManagedPolicy revert, `--pre-deploy`, governance
-skills, **lint clean / CI green**).
+skills, **lint clean / CI green**) + the **design-review fix pass (R1–R17)**:
+out-of-band deletion as a first-class `deleted` tier, baseline-absent revert guard,
+per-account baseline, create-only revert guard, promotion-into-template suppression,
+blessed-value re-canonicalization, large-stack `ListStackResources` + concurrent
+reads, more fail-closed intrinsics (FindInMap / Split / ImportValue / Select-OOB /
+`${!Literal}`), strict managed-KMS-alias resolution, account/region-scoped ARN
+identity, write-only `readGap` surfacing, real Lambda-Permission values,
+declared-only `--pre-deploy`, and selective `accept`.
 
-Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is now in place too.
+Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is in place too.
 
 REMAINING before the single public launch (GitHub + npm + blog), none of which is a
 code-correctness blocker:
 
-- this design review (the artifact you are reading) → address any blocking findings.
+- the design-review re-review of this fix pass → address any blocking findings.
 - create the public GitHub repo + push, then `npm publish`, then the blog announce.
   These three are the deliberate, irreversible "single launch" event and are done
   last, on explicit go.
