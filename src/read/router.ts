@@ -19,6 +19,11 @@ export async function readLive(
   accountId: string
 ): Promise<ReadResult> {
   const { resourceType, physicalId, declared } = resource;
+  // Custom resources are backed by a user Lambda; there is NO Cloud Control type to
+  // read, so calling GetResource just wastes an API round-trip (+ retries) and
+  // returns a misleading "ValidationException". Short-circuit to a clear skip.
+  if (resourceType.startsWith('Custom::') || resourceType === 'AWS::CloudFormation::CustomResource')
+    return { skippedReason: 'custom resource — no cloud-side model to read' };
   const override = SDK_OVERRIDES[resourceType];
   if (override) {
     try {

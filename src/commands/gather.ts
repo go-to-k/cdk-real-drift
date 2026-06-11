@@ -7,6 +7,7 @@ import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../read/kms-aliases.js';
+import { SDK_OVERRIDES } from '../read/overrides.js';
 import { readLive } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
 import type { Finding, SchemaInfo } from '../types.js';
@@ -52,6 +53,40 @@ export async function gatherFindings(
   };
   await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
 
+  // Re-resolve EVERY resource's declared now that pass 1 populated all live
+  // attributes, so Fn::GetAtt resolves. Hoisted out of pass 2 because pass 1.5
+  // (below) needs the resolved declared. Mutated in place so downstream consumers
+  // (revert / accept) see the resolved view.
+  for (const r of desired.resources) {
+    if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
+  }
+
+  // Pass 1.5: declared-dependent SDK overrides key off props that are frequently
+  // Fn::GetAtt (AWS::Lambda::Permission.FunctionName = GetAtt[fn, Arn]). Those were
+  // UNRESOLVED during pass 1 (liveAttrs was still being filled), so their pass-1
+  // override read wrongly skipped as "target not resolvable" — the resource is
+  // structurally readable, we just asked too early. Re-read ONCE, concurrently, the
+  // override-routed resources that pass 1 skipped and whose target is now resolvable.
+  const retryTargets = desired.resources.filter(
+    (r) =>
+      r.physicalId &&
+      r.declaredRaw &&
+      SDK_OVERRIDES[r.resourceType] &&
+      reads.get(r.logicalId)?.skippedReason
+  );
+  let rc = 0;
+  const retryWorker = async (): Promise<void> => {
+    while (rc < retryTargets.length) {
+      const r = retryTargets[rc++]!;
+      const read = await readLive(cc, r, region, desired.accountId);
+      reads.set(r.logicalId, read);
+      if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(POOL_SIZE, retryTargets.length) }, () => retryWorker())
+  );
+
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from
   // a customer-managed key swapped in out of band. Missing kms:ListAliases -> {} (the
@@ -61,7 +96,7 @@ export async function gatherFindings(
     : {};
   const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
 
-  // Pass 2: re-resolve declared with liveAttrs populated, then classify.
+  // Pass 2: classify (declared already re-resolved + override retries applied above).
   for (const r of desired.resources) {
     if (!r.physicalId) {
       findings.push({
@@ -96,9 +131,6 @@ export async function gatherFindings(
       });
       continue;
     }
-    // re-resolve GetAtt now that all live attributes are known; mutate declared
-    // in place so downstream consumers (revert / accept) see the resolved view.
-    if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
     const schema = await getSchemaInfo(cfn, r.resourceType);
     schemas.set(r.resourceType, schema);
     findings.push(...classifyResource(r, read.live, schema, classifyOpts));

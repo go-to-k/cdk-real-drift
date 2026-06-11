@@ -51,16 +51,20 @@ CloudFormation drift would never surface:
 ```
 === cdkrd check: MyStack (us-east-1) ===
 
-[DELETED ...] 0
-[DECLARED DRIFT] 0
 [UNDECLARED DRIFT (the differentiator)] 1
   Data.AccelerateConfiguration (AWS::S3::Bucket) = {"AccelerationStatus":"Enabled"}
-[READ GAP ...] 0
-[UNRESOLVED ...] 0
-[SKIPPED ...] 0
 
-result: 1 drift(s) (deleted=0 declared=0 undeclared=1 readGap=0 unresolved=0 skipped=0; fail-on=undeclared)
+result: 1 drift(s) (undeclared=1)
+info: skipped=3 (custom resource 3) — run with --verbose for the list
 ```
+
+The output is deliberately terse: **drift** tiers (`deleted` / `declared` /
+`undeclared`) are always shown in full, but the **informational** tiers
+(`readGap` / `unresolved` / `skipped`) are folded into one `info:` footer line
+(counts + reason breakdown); `--verbose` expands them to full lists. 0-count tiers
+are omitted. The conclusion is the `result:` line (parseable: `^result:` for the
+verdict, `^info:` for the rest); `--json` is unaffected (it always carries every
+finding).
 
 A resource the template still declares but that has been deleted out of band
 (released via the console, another tool, …) is reported in the `deleted` tier and
@@ -105,6 +109,7 @@ removal of all undeclared drift (declining leaves the baseline unchanged). With
 | `--json`                         | machine-readable output                                                                                                       |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)                                                                          |
 | `--show-all`                     | inventory mode: show ALL current undeclared state                                                                             |
+| `--verbose` / `-v`               | (check) expand informational tiers (readGap / unresolved / skipped) from the `info:` summary to full lists                    |
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would overwrite                  |
 | `--all`                          | every deployed stack in the region                                                                                            |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
@@ -157,6 +162,9 @@ the declared form so `x.cloudfront.net.` is not false drift),
 AWS-managed fields dropped), `AWS::Logs::MetricFilter` (read via
 `DescribeMetricFilters`). Other
 Cloud-Control-unreadable types are reported as `skipped` (never silently dropped).
+Custom resources (`Custom::*` / `AWS::CloudFormation::CustomResource`) are skipped
+**without** an API call — they are backed by a user Lambda and have no cloud-side
+model to read.
 
 ## Known limitations
 
@@ -210,7 +218,9 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
 Each finding object has a stable shape: `tier` (`deleted` | `declared` | `undeclared`
 | `readGap` | `unresolved` | `skipped`), `logicalId`, `resourceType`, `path`,
 `desired`, `actual`, `note`, `physicalId`, `constructPath`. After publication this
-shape is treated as a backward-compatible API.
+shape is treated as a backward-compatible API. `--json` always carries **every**
+finding (all tiers, full detail) — it is independent of `--verbose`, which only
+affects the human-readable text layout.
 
 ## Develop
 

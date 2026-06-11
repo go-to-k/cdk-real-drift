@@ -111,19 +111,31 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 2. desired (declared)    template-adapter.ts: GetTemplate + DescribeStackResources
                          (phys-id map) + DescribeStacks (params) → intrinsic resolution
                          (--pre-deploy: LOCAL synth template replaces GetTemplate)
-3. live full state       read/router.ts: SDK override (gap types) FIRST, else
-                         CC API GetResource; not-found → deleted; unreadable → skipped
-   --- PASS 1: read ALL resources first, populate ResolverContext.liveAttrs ---
-   --- PASS 2: re-resolve declared (GetAtt now resolvable) + classify ---
+3. live full state       read/router.ts: Custom:: → skip (no API call); SDK override
+                         (gap types) FIRST, else CC API GetResource; not-found →
+                         deleted; unreadable → skipped
+   --- PASS 1:   read ALL resources (bounded pool), populate ResolverContext.liveAttrs
+   --- RESOLVE:  re-resolve EVERY resource's declared (GetAtt now resolvable)
+   --- PASS 1.5: re-read override resources that pass 1 skipped as "target not
+                 resolvable" but whose declared target now resolves (e.g. Lambda
+                 Permission.FunctionName = GetAtt[fn, Arn]) — concurrent, once
+   --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
 5. classify (tier)       deleted | declared | undeclared | readGap | unresolved | skipped
 6. baseline filter       applyBaseline(): undeclared findings already blessed → drop
-7. report + exit code    report.ts: tiered text or --json; worst exit across stacks
+7. report + exit code    report.ts: drift tiers in full + 1-line info: footer (--verbose
+                         expands); --json carries all findings; worst exit across stacks
 ```
 
 The two-pass structure (PR "resolve Fn::GetAtt against live attributes") is what
 lets a declared `Fn::GetAtt(Role, Arn)` resolve to the referenced role's _real_
-live ARN instead of falling to `unresolved` — see section 5.
+live ARN instead of falling to `unresolved` — see section 5. **Declared-dependent
+SDK override readers retry after GetAtt resolution** (pass 1.5): a reader keyed off
+a declared prop that is `Fn::GetAtt` (e.g. `AWS::Lambda::Permission.FunctionName =
+GetAtt[fn, Arn]`) cannot run in pass 1 (the target's live attributes are still being
+collected), so it would wrongly skip as "target not resolvable"; those resources are
+re-read once, concurrently, after the resolve step, so Permission drift is actually
+checked.
 
 ## 4. Module map (`src/`)
 
@@ -368,14 +380,14 @@ note suggesting a re-`accept` (the blessed set may be stale). Skipped under
 
 ## 9. Tier semantics (the output contract)
 
-| tier         | meaning                                                             | exit-affecting |
-| ------------ | ------------------------------------------------------------------- | -------------- |
-| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)  | yes (always)   |
-| `declared`   | a declared property whose live value differs from the template      | yes (always)   |
-| `undeclared` | a live property not in the template, after noise subtraction        | yes (default)  |
-| `readGap`    | a declared property the live read can't return (CC can't read back) | no             |
-| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped) | no             |
-| `skipped`    | resource unreadable (CC unsupported / no physical id)               | no             |
+| tier         | meaning                                                                 | exit-affecting |
+| ------------ | ----------------------------------------------------------------------- | -------------- |
+| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)      | yes (always)   |
+| `declared`   | a declared property whose live value differs from the template          | yes (always)   |
+| `undeclared` | a live property not in the template, after noise subtraction            | yes (default)  |
+| `readGap`    | a declared property the live read can't return (CC can't read back)     | no             |
+| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)     | no             |
+| `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource) | no             |
 
 `deleted` is the most blatant drift — a resource the template still declares no
 longer exists in AWS (released/deleted via the console, another tool, etc.). The
@@ -390,7 +402,14 @@ cdk deploy`) — a patch cannot recreate a resource.
 `--fail-on declared` makes only `deleted` + `declared` set exit 1; default
 `undeclared` = all three of `deleted` / `declared` / `undeclared`. `readGap` /
 `unresolved` / `skipped` are informational — surfaced, never silently dropped, but
-never false drift.
+never false drift. **Default text layout (R25):** the three DRIFT tiers print in
+full; the three INFORMATIONAL tiers are folded into a single `info:` footer line
+(per-tier counts + a reason breakdown, e.g. `skipped=24 (custom resource 12, override
+target unresolved 12)`); `--verbose` expands them to full lists; 0-count tiers are
+never printed. The `result:` line carries the verdict + non-zero drift counts only
+(the informational breakdown lives on `info:`, so the two never duplicate). `--json`
+is unaffected — it always carries every finding. A `Custom::*` resource is `skipped`
+without any API call (note: `custom resource — no cloud-side model to read`).
 
 A declared **top-level write-only** property (e.g. an IAM Role's
 `AssumeRolePolicyDocument`) is surfaced as a `readGap` (note: `write-only — cannot

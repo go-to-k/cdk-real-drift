@@ -49,6 +49,31 @@ describe('readLive (CC API path)', () => {
   });
 });
 
+describe('readLive (custom resources short-circuit, R26)', () => {
+  it('returns skipped WITHOUT calling Cloud Control for a Custom:: resource', async () => {
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'Custom::S3AutoDeleteObjects' }),
+      'us-east-1',
+      '1'
+    );
+    expect(r.skippedReason).toContain('custom resource');
+    expect(r.live).toBeUndefined();
+    expect(cc.commandCalls(GetResourceCommand)).toHaveLength(0); // no wasted API call
+  });
+
+  it('also short-circuits AWS::CloudFormation::CustomResource', async () => {
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::CloudFormation::CustomResource' }),
+      'us-east-1',
+      '1'
+    );
+    expect(r.skippedReason).toContain('custom resource');
+    expect(cc.commandCalls(GetResourceCommand)).toHaveLength(0);
+  });
+});
+
 describe('readLive (SDK override path)', () => {
   const bucketPolicy = res({
     resourceType: 'AWS::S3::BucketPolicy',

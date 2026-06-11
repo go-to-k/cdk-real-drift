@@ -93,7 +93,11 @@ export async function runCheck(args: string[]): Promise<number> {
           );
         worst = Math.max(
           worst,
-          report(declaredOnly, `${stackName} (${region})`, { json: a.json, failOn: a.failOn })
+          report(declaredOnly, `${stackName} (${region})`, {
+            json: a.json,
+            failOn: a.failOn,
+            verbose: a.verbose,
+          })
         );
         continue;
       }
@@ -136,6 +140,7 @@ export async function runCheck(args: string[]): Promise<number> {
       const code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
+        verbose: a.verbose,
       });
       worst = Math.max(worst, code);
     } catch (e) {

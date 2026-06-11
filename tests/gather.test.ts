@@ -6,6 +6,7 @@ import {
   GetTemplateCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
+import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import { gatherFindings } from '../src/commands/gather.js';
@@ -72,5 +73,116 @@ describe('gatherFindings pass-1 worker pool', () => {
     expect(completionOrder).not.toEqual(ids);
     // ...yet findings stay in deterministic desired.resources order
     expect(findings.map((f) => f.logicalId)).toEqual(ids);
+  });
+});
+
+describe('gatherFindings pass-1.5 override retry (R27)', () => {
+  const baseCfn = (template: string) => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).resolves({ TemplateBody: template });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Fn',
+          PhysicalResourceId: 'Fn-phys',
+          ResourceType: 'AWS::Lambda::Function',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+        {
+          LogicalResourceId: 'Perm',
+          PhysicalResourceId: 'Perm-phys',
+          ResourceType: 'AWS::Lambda::Permission',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+    cfn.on(DescribeTypeCommand).resolves({ Schema: '{}' });
+    return cfn;
+  };
+  const FN_ARN = 'arn:aws:lambda:us-east-1:111122223333:function:Fn-phys';
+  // Permission.FunctionName is Fn::GetAtt[Fn, Arn] — unresolvable in pass 1.
+  const template = JSON.stringify({
+    Resources: {
+      Fn: { Type: 'AWS::Lambda::Function', Properties: { FunctionName: 'Fn-phys' } },
+      Perm: {
+        Type: 'AWS::Lambda::Permission',
+        Properties: {
+          FunctionName: { 'Fn::GetAtt': ['Fn', 'Arn'] },
+          Action: 'lambda:InvokeFunction',
+          Principal: 's3.amazonaws.com',
+        },
+      },
+    },
+  });
+
+  it('re-reads a Lambda Permission whose FunctionName GetAtt resolves only after pass 1', async () => {
+    baseCfn(template);
+    const cc = mockClient(CloudControlClient);
+    // the function reads via CC and exposes its Arn -> populates liveAttrs[Fn].Arn
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Identifier: 'Fn-phys', Properties: JSON.stringify({ Arn: FN_ARN }) },
+    });
+    const lambda = mockClient(LambdaClient);
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          { Action: 'lambda:InvokeFunction', Principal: { Service: 's3.amazonaws.com' } },
+        ],
+      }),
+    });
+
+    const { findings } = await gatherFindings('S', 'us-east-1');
+
+    // the Permission is NO LONGER skipped — pass 1.5 read it with the resolved Arn
+    expect(findings.find((f) => f.logicalId === 'Perm' && f.tier === 'skipped')).toBeUndefined();
+    // GetPolicy was actually called with the resolved function ARN
+    const calls = lambda.commandCalls(LambdaGetPolicyCommand);
+    expect(calls.length).toBeGreaterThanOrEqual(1);
+    expect(calls.some((c) => c.args[0].input.FunctionName === FN_ARN)).toBe(true);
+    // declared == live -> the permission is CLEAN (no drift finding for it)
+    expect(findings.find((f) => f.logicalId === 'Perm')).toBeUndefined();
+  });
+
+  it('leaves the Permission skipped when its FunctionName never resolves', async () => {
+    // GetAtt target "Ghost" is not in the template -> unresolved even after pass 1
+    const ghostTemplate = JSON.stringify({
+      Resources: {
+        Fn: { Type: 'AWS::Lambda::Function', Properties: { FunctionName: 'Fn-phys' } },
+        Perm: {
+          Type: 'AWS::Lambda::Permission',
+          Properties: {
+            FunctionName: { 'Fn::GetAtt': ['Ghost', 'Arn'] },
+            Action: 'lambda:InvokeFunction',
+            Principal: 's3.amazonaws.com',
+          },
+        },
+      },
+    });
+    baseCfn(ghostTemplate);
+    const cc = mockClient(CloudControlClient);
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Identifier: 'Fn-phys', Properties: JSON.stringify({ Arn: FN_ARN }) },
+    });
+    const lambda = mockClient(LambdaClient);
+    lambda.on(LambdaGetPolicyCommand).resolves({ Policy: '{"Statement":[]}' });
+
+    const { findings } = await gatherFindings('S', 'us-east-1');
+    const perm = findings.find((f) => f.logicalId === 'Perm');
+    expect(perm?.tier).toBe('skipped');
+    // GetPolicy was never called (the reader bails on the unresolved FunctionName)
+    expect(lambda.commandCalls(LambdaGetPolicyCommand)).toHaveLength(0);
   });
 });

@@ -50,5 +50,8 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S']).preDeploy).toBe(false);
     expect(parseCommonArgs(['S', '--remove-unblessed']).removeUnblessed).toBe(true);
     expect(parseCommonArgs(['S']).removeUnblessed).toBe(false);
+    expect(parseCommonArgs(['S', '--verbose']).verbose).toBe(true);
+    expect(parseCommonArgs(['S', '-v']).verbose).toBe(true);
+    expect(parseCommonArgs(['S']).verbose).toBe(false);
   });
 });
