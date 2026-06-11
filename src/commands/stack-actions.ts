@@ -16,6 +16,7 @@ import {
   splitAcceptedByBaseline,
 } from '../baseline/baseline-file.js';
 import { applyIgnores, type CdkrdConfig } from '../config/config-file.js';
+import { style } from '../report/style.js';
 import { applyRevertItem } from '../revert/apply.js';
 import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
 import { SDK_WRITERS } from '../revert/writers.js';
@@ -133,9 +134,11 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
   );
   if (refreshedOnly)
     console.log(
-      `${stackName}: nothing new to bless — baseline refreshed (${count} unchanged value(s))`
+      style.ok(
+        `${stackName}: nothing new to bless — baseline refreshed (${count} unchanged value(s))`
+      )
     );
-  else console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
+  else console.log(style.ok(`baseline written: ${path} (${count} undeclared value(s) blessed)`));
   return { wrote: true, refused: false };
 }
 
@@ -198,7 +201,11 @@ function printPlan(
   plan: RevertPlan,
   opts: PlanDisplayOptions
 ): void {
-  for (const line of formatPlan(stackName, region, plan, opts)) console.log(line);
+  // formatPlan stays pure/plain (unit-tested verbatim); only the banner line is
+  // styled here, at the printing edge.
+  for (const line of formatPlan(stackName, region, plan, opts)) {
+    console.log(line.startsWith('\n=== ') ? '\n' + style.header(line.slice(1)) : line);
+  }
 }
 
 export interface RevertStackParams {
@@ -265,7 +272,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const plan = buildRevertPlan(drifted, baseline, { removeUnblessed, schemas: gathered.schemas });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
-    console.log(`${stackName} (${region}): no drift to revert.`);
+    console.log(style.clean(`${stackName} (${region}): no drift to revert.`));
     return { exit: 0, aborted: false };
   }
   printPlan(stackName, region, plan, {
@@ -280,7 +287,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // Drift exists but none of it is revertable (R35). That is NOT the clean
     // "no drift to revert" case — the drift still stands, so exit 1 (the same
     // "drift remains" semantics as a post-apply non-convergence; not a usage error).
-    console.log(`\nnothing revertable — ${driftCount(drifted)} drift(s) remain.`);
+    console.log('\n' + style.drift(`nothing revertable — ${driftCount(drifted)} drift(s) remain.`));
     return { exit: 1, aborted: false };
   }
 
@@ -302,7 +309,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       message: `Apply ${opCount} revert op(s) to ${stackName}? This WRITES to AWS.`,
     });
     if (isCancel(ok) || !ok) {
-      console.log('aborted.');
+      console.log(style.infoTier('aborted.'));
       return { exit: 0, aborted: true };
     }
   }
@@ -331,7 +338,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       r = await applyRevertItem(cc, item);
     }
     console.log(
-      r.ok ? `  reverted: ${item.displayId}` : `  FAILED: ${item.displayId} — ${r.error}`
+      r.ok
+        ? style.ok(`  reverted: ${item.displayId}`)
+        : style.fail(`  FAILED: ${item.displayId} — ${r.error}`)
     );
     if (!r.ok) worst = Math.max(worst, 2);
   }
@@ -341,7 +350,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // scaled with stack size, not with the revert); regatherTouched re-reads only
   // plan.items and carries every other finding forward from the original gather.
   const touched = new Set(plan.items.map((i) => i.logicalId));
-  console.log(`\nverifying convergence (re-reading ${touched.size} resource(s))...`);
+  console.log(
+    '\n' + style.infoTier(`verifying convergence (re-reading ${touched.size} resource(s))...`)
+  );
   const reconcile = (findings: Finding[]): Finding[] =>
     applyIgnores(applyBaseline(findings, baseline, { declaredByLogical }), stackName, config);
   let post = reconcile(await regatherTouched(gathered, touched, region));
@@ -355,8 +366,8 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const remaining = driftCount(post);
   console.log(
     remaining === 0
-      ? `${stackName}: CLEAN after revert.`
-      : `${stackName}: ${remaining} drift(s) remain.`
+      ? style.clean(`${stackName}: CLEAN after revert.`)
+      : style.drift(`${stackName}: ${remaining} drift(s) remain.`)
   );
   if (remaining > 0) worst = Math.max(worst, 1);
   return { exit: worst, aborted: false };

@@ -13,6 +13,7 @@
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
 import type { Finding, Tier } from '../types.js';
+import { style } from './style.js';
 
 const TIER_TITLES: Record<Tier, string> = {
   deleted: 'DELETED (resource deleted out of band — always drift)',
@@ -36,12 +37,24 @@ export interface ReportOptions {
 
 export function formatFinding(f: Finding): string {
   // prefer the CDK construct path for the human-facing id; fall back to logical id
+  // (the id stays uncolored — it gets copy-pasted; only the values are styled,
+  // and style.* is the identity when stdout is not a TTY, so piped output and
+  // unit-test assertions see plain text)
   const id = f.constructPath ?? f.logicalId;
   let s = `${f.path ? `${id}.${f.path}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${f.note}`;
-  if (f.tier === 'declared') s += `\n      desired=${j(f.desired)}\n      actual =${j(f.actual)}`;
-  else if (f.tier === 'undeclared') s += ` = ${j(f.actual)}`;
+  if (f.tier === 'declared')
+    s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;
+  else if (f.tier === 'undeclared') s += ` = ${style.actual(j(f.actual))}`;
   return s;
+}
+
+// section-title color by tier: deleted/declared = red (drift), undeclared =
+// yellow (the differentiator), informational tiers = dim.
+function tierStyle(t: Tier): (s: string) => string {
+  if (t === 'undeclared') return style.undeclaredTier;
+  if (t === 'deleted' || t === 'declared') return style.driftTier;
+  return style.infoTier;
 }
 
 // `deleted` is ALWAYS a failure (the most blatant drift), independent of --fail-on.
@@ -96,11 +109,11 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   const section = (tier: Tier): void => {
     const items = byTier(tier);
     if (items.length === 0) return; // 0-count tiers are never printed
-    log(`\n[${TIER_TITLES[tier]}] ${items.length}`);
+    log('\n' + tierStyle(tier)(`[${TIER_TITLES[tier]}] ${items.length}`));
     for (const f of items) log('  ' + formatFinding(f));
   };
 
-  log(`=== cdkrd check: ${header} ===`);
+  log(style.header(`=== cdkrd check: ${header} ===`));
   // DRIFT tiers: always full detail (the point of the tool)
   for (const tier of DRIFT_TIERS) section(tier);
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
@@ -112,7 +125,9 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
   const failNote = (opts.failOn ?? 'undeclared') === 'declared' ? ' (fail-on=declared)' : '';
-  const verdict = drifted === 0 ? 'CLEAN' : `${drifted} drift(s) (${driftCounts})`;
+  // the verdict is the one line that must stand out: green CLEAN / red drift count
+  const verdict =
+    drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
   log(`result: ${verdict}${failNote}`);
   // INFORMATIONAL tiers: footer below result — full sections under --verbose, else a
   // folded summary (counts + reason breakdown): one `info: ...` line for a single
@@ -125,11 +140,11 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       return items.length ? `${t}=${items.length} (${groupReasons(items)})` : null;
     }).filter((s): s is string => s !== null);
     if (summaries.length === 1) {
-      log(`info: ${summaries[0]} — run with --verbose for the list`);
+      log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));
     } else if (summaries.length > 1) {
-      log('info:');
-      for (const s of summaries) log(`  - ${s}`);
-      log('  run with --verbose for the list');
+      log(style.infoTier('info:'));
+      for (const s of summaries) log(style.infoTier(`  - ${s}`));
+      log(style.infoTier('  run with --verbose for the list'));
     }
   }
   return drifted === 0 ? 0 : 1;

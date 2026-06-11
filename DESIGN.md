@@ -40,7 +40,8 @@ cdkrd is **CDK-only**: every run resolves the CDK app (synth, or a pre-synthesiz
 `cdk.out`) to discover which stacks to check. The drift comparison still reads each
 stack's deployed template + live state from AWS — synth only decides scope + labels
 construct paths (and, in `--pre-deploy`, becomes the declared source). Output is plain
-text + JSON (CI-greppable; no TUI/panes).
+text + JSON (CI-greppable; no TUI/panes; ANSI color on a TTY only — piped/`NO_COLOR`
+output stays byte-identical plain text).
 
 ## Subtractive noise model
 
