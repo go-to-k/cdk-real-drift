@@ -34,23 +34,48 @@ export interface AcceptStackParams {
   desired: Desired;
   findings: Finding[]; // the gather's findings (undeclared still present, pre-baseline)
   yes: boolean;
+  interactive: boolean; // whether the multiselect decision prompt may be shown (TTY && !--no-interactive)
 }
 
 /**
- * Bless the current undeclared state into the baseline file. In a TTY (no --yes) the
- * user picks WHICH undeclared values to bless (selective accept, R14); an empty
- * selection is confirmed first (R19). Returns true if a baseline was written, false
- * if the user cancelled. (Same flow whether reached via `cdkrd accept` or check's
- * interactive prompt — neither re-gathers.)
+ * Outcome of a per-stack accept.
+ *  - `wrote`: a baseline file was written.
+ *  - `refused`: true ONLY when a decision was required (undeclared values to bless)
+ *    but the run is non-interactive and `--yes` was not passed — accept refuses
+ *    rather than blessing everything by default (R38). A user-cancelled multiselect
+ *    is `{ wrote:false, refused:false }`, not a refusal.
  */
-export async function acceptStack(p: AcceptStackParams): Promise<boolean> {
-  const { stackName, region, desired, findings, yes } = p;
+export interface AcceptResult {
+  wrote: boolean;
+  refused: boolean;
+}
+
+/**
+ * Bless the current undeclared state into the baseline file. In an interactive run
+ * (no --yes) the user picks WHICH undeclared values to bless (selective accept, R14);
+ * an empty selection is confirmed first (R19). Non-interactively (--no-interactive or
+ * non-TTY/CI), the multiselect is a required DECISION: with undeclared values present
+ * and no --yes, accept refuses (exit 2) instead of blessing all (R38). When there is
+ * nothing to decide (no undeclared values) the baseline is written regardless. (Same
+ * flow whether reached via `cdkrd accept` or check's interactive prompt — neither
+ * re-gathers.)
+ */
+export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
+  const { stackName, region, desired, findings, yes, interactive } = p;
   if (!yes && (await loadBaseline(stackName, desired.accountId, region)))
     console.error(
       `note: ${stackName}: overwriting existing baseline (it is git-tracked; review the diff). Pass --yes to silence.`
     );
   let accepted = buildAccepted(findings);
-  if (!yes && process.stdin.isTTY && accepted.length > 0) {
+  if (!yes && accepted.length > 0) {
+    // A decision is required (which undeclared values to bless). Non-interactively
+    // we refuse rather than implicitly bless ALL of them (R38).
+    if (!interactive) {
+      console.error(
+        `error: accept needs a decision — pass --yes to bless ALL undeclared values, or run interactively`
+      );
+      return { wrote: false, refused: true };
+    }
     const picked = await multiselect({
       message: `${stackName}: select undeclared value(s) to bless (unselected stay reported)`,
       options: accepted.map((e) => ({ value: acceptedKey(e), label: `${e.logicalId}.${e.path}` })),
@@ -59,7 +84,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<boolean> {
     });
     if (isCancel(picked)) {
       console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
-      return false;
+      return { wrote: false, refused: false };
     }
     // Empty selection writes an EMPTY baseline, which CREATES the file and lifts R2's
     // no-baseline revert guard — `revert` would then plan REMOVAL of all undeclared
@@ -71,7 +96,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<boolean> {
       });
       if (isCancel(proceed) || !proceed) {
         console.error(`note: ${stackName}: accept cancelled — baseline unchanged`);
-        return false;
+        return { wrote: false, refused: false };
       }
     }
     accepted = selectAccepted(findings, new Set(picked));
@@ -85,7 +110,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<boolean> {
     accepted
   );
   console.log(`baseline written: ${path} (${count} undeclared value(s) blessed)`);
-  return true;
+  return { wrote: true, refused: false };
 }
 
 // ---- revert ----
@@ -160,6 +185,7 @@ export interface RevertStackParams {
   yes: boolean;
   removeUnblessed: boolean;
   verbose: boolean; // expand the NOT-revertable summary to the full list
+  interactive: boolean; // whether the confirm prompt may be shown (TTY && !--no-interactive)
 }
 
 /**
@@ -185,8 +211,18 @@ export interface RevertOutcome {
  * gather) — only the convergence re-check re-gathers.
  */
 export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> {
-  const { stackName, region, gathered, baseline, config, dryRun, yes, removeUnblessed, verbose } =
-    p;
+  const {
+    stackName,
+    region,
+    gathered,
+    baseline,
+    config,
+    dryRun,
+    yes,
+    removeUnblessed,
+    verbose,
+    interactive,
+  } = p;
   let worst = 0;
   const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
   const drifted = applyIgnores(
@@ -224,7 +260,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     return { exit: 0, aborted: false };
   }
   if (!yes) {
-    if (!process.stdin.isTTY) {
+    if (!interactive) {
       console.error(
         `\nrefusing to write to AWS non-interactively — pass --yes to apply (or --dry-run to preview).`
       );

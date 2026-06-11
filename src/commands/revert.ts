@@ -11,7 +11,7 @@ import {
   checkBaselineAccount,
   loadBaseline,
 } from '../baseline/baseline-file.js';
-import { parseCommonArgs } from '../cli-args.js';
+import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { loadConfig } from '../config/config-file.js';
 import { gatherFindings } from './gather.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -71,6 +71,7 @@ export async function runRevert(args: string[]): Promise<number> {
         yes: a.yes,
         removeUnblessed: a.removeUnblessed,
         verbose: a.verbose,
+        interactive: isInteractive(a),
       });
       worst = Math.max(worst, exit);
     } catch (e) {

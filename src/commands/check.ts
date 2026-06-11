@@ -13,7 +13,7 @@ import {
   loadBaseline,
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
-import { parseCommonArgs } from '../cli-args.js';
+import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { exitCode, report } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
@@ -129,7 +129,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
       if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
       // first run: no baseline yet → offer to bless interactively (TTY only)
-      if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
+      if (!baseline && !a.showAll && !a.json && isInteractive(a)) {
         const ok = await confirm({
           message: `${stackName}: no baseline yet — bless the current UNDECLARED state as the baseline? (declared drift, i.e. reality vs the deployed template, is reported either way)`,
         });
@@ -170,7 +170,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // of making the user re-run a separate command. Skipped for --json (machine
       // output), --show-all (baseline not applied — accept would mean something else),
       // and --pre-deploy (declared-only, baseline-untouched contract).
-      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && process.stdin.isTTY) {
+      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && isInteractive(a)) {
         const actions = availableActions(reconciled, baseline, schemas, a.removeUnblessed);
         if (actions.accept || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (keep exit code 1)' }];
@@ -195,14 +195,15 @@ export async function runCheck(args: string[]): Promise<number> {
               console.error(
                 `note: ${stackName}: accept blesses the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
               );
-            const wrote = await acceptStack({
+            const result = await acceptStack({
               stackName,
               region,
               desired,
               findings: applyIgnores(findings, stackName, config),
               yes: a.yes,
+              interactive: isInteractive(a),
             });
-            if (wrote) {
+            if (result.wrote) {
               // re-evaluate exit WITHOUT re-querying AWS: re-apply the new baseline to
               // the findings we already have (ignores re-applied so the exit matches).
               const nb = await loadBaseline(stackName, desired.accountId, region);
@@ -226,6 +227,7 @@ export async function runCheck(args: string[]): Promise<number> {
               yes: a.yes,
               removeUnblessed: a.removeUnblessed,
               verbose: a.verbose,
+              interactive: isInteractive(a),
             });
             // R30: an aborted confirm did NOT write to AWS, so the drift still
             // stands — keep the pre-revert exit 1 (symmetric with "Nothing").

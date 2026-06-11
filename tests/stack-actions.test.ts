@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
+import { baselinePath } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
+import type { Desired } from '../src/desired/template-adapter.js';
 import {
+  acceptStack,
   availableActions,
   formatPlan,
   resolveInteractiveRevertExit,
@@ -174,6 +178,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     yes: true,
     removeUnblessed: over.removeUnblessed ?? false,
     verbose: false,
+    interactive: true, // these paths return before any confirm (yes:true); value is irrelevant
   });
 
   const captured = async (findings: Finding[], over: Overrides = {}) => {
@@ -230,6 +235,82 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).not.toContain('has no baseline — undeclared drift has no revert target');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
+  });
+});
+
+describe('acceptStack non-interactive refusal (R38)', () => {
+  it('yes:false + interactive:false + undeclared present → refuses, writes nothing, errors', async () => {
+    // Unique account/region so no baseline file exists on disk for this stack.
+    const desired = {
+      stackName: 'R38Stack',
+      region: 'r38-region',
+      accountId: '999988887777',
+      resources: [],
+      rawTemplate: '{}',
+      ctx: {},
+    } as unknown as Desired;
+    const path = baselinePath(desired.stackName, desired.accountId, desired.region);
+    if (existsSync(path)) rmSync(path);
+
+    const errs: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((m?: unknown) => {
+      errs.push(String(m));
+    });
+    try {
+      const result = await acceptStack({
+        stackName: desired.stackName,
+        region: desired.region,
+        desired,
+        findings: [undeclared()],
+        yes: false,
+        interactive: false,
+      });
+      expect(result).toEqual({ wrote: false, refused: true });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(existsSync(path)).toBe(false); // no baseline written
+    expect(errs.join('\n')).toContain(
+      'error: accept needs a decision — pass --yes to bless ALL undeclared values, or run interactively'
+    );
+  });
+
+  it('yes:true → blesses ALL undeclared values with no prompt (regression)', async () => {
+    const desired = {
+      stackName: 'R38YesStack',
+      region: 'r38-yes-region',
+      accountId: '999988887777',
+      resources: [],
+      rawTemplate: '{}',
+      ctx: {},
+    } as unknown as Desired;
+    const path = baselinePath(desired.stackName, desired.accountId, desired.region);
+    if (existsSync(path)) rmSync(path);
+
+    try {
+      const result = await acceptStack({
+        stackName: desired.stackName,
+        region: desired.region,
+        desired,
+        findings: [undeclared()],
+        yes: true,
+        interactive: false, // ignored when yes:true — --yes blesses all regardless
+      });
+      expect(result).toEqual({ wrote: true, refused: false });
+      expect(existsSync(path)).toBe(true);
+      const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
+      // the full undeclared set is blessed (no selective multiselect under --yes)
+      expect(written.accepted).toEqual([
+        {
+          logicalId: 'B',
+          resourceType: 'AWS::S3::Bucket',
+          path: 'AccelerateConfiguration',
+          value: { AccelerationStatus: 'Enabled' },
+        },
+      ]);
+    } finally {
+      if (existsSync(path)) rmSync(path);
+    }
   });
 });
 

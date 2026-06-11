@@ -196,7 +196,7 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | command                     | does                                                                   |
 | --------------------------- | ---------------------------------------------------------------------- |
 | `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
-| `cdkrd accept [<stack>...]` | snapshot current undeclared state into the baseline file               |
+| `cdkrd accept [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
 - Stack selection (no args = all app stacks / glob / exact name):
@@ -225,11 +225,12 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
 | `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
 | `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                 |
+| `--no-interactive`               | never prompt: optional prompts are skipped, required-decision prompts error (exit 2). `accept` then needs `--yes` to bless    |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
 
-### Interactive flows (TTY only — CI is never prompted)
+### Interactive flows (TTY only, opt out with `--no-interactive` — CI is never prompted)
 
 - **`check` with drift** offers `Nothing / Accept / Revert` inline (shown above).
   `Nothing` is the default; Enter keeps plain-check behavior. Accept and Revert run
@@ -238,8 +239,15 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   exit code at 1 (nothing was written — the drift still stands).
 - **`accept`** shows a multiselect of the undeclared values, all pre-selected.
   Deselect a suspicious one and it stays reported by `check` — bless the intentional
-  changes without rubber-stamping the rest.
+  changes without rubber-stamping the rest. Non-interactively (CI / non-TTY /
+  `--no-interactive`) this selection can't be made, so `accept` refuses with exit 2
+  unless `--yes` is passed to bless **all** undeclared values.
 - **`check` with no baseline yet** offers to bless the current state on the spot.
+
+Flag combinations: `--no-interactive` alone = the read side completes but write
+**decisions** are refused (the safe side — `accept` without `--yes` exits 2, and
+`revert` without `--yes` exits 2); `--no-interactive --yes` = full automation;
+`--yes` alone in a TTY auto-approves confirmations only (select prompts still show).
 
 ### Ignoring externally-managed properties
 

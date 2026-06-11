@@ -41,7 +41,12 @@ OPTIONS
   --remove-unblessed          (revert) on a stack with NO baseline, REMOVE undeclared
                               drift (default: refuse — run \`cdkrd accept\` first)
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
+  --no-interactive            never prompt; optional prompts skipped, required-decision
+                              prompts error (exit 2). accept then needs --yes
   --help, -h    --version, -v
+
+  --no-interactive alone = read side completes, write DECISIONS refused (the safe
+  side: accept/revert without --yes exit 2). --no-interactive --yes = full automation.
 
 EXIT CODES
   0 = clean   1 = drift detected   2 = error

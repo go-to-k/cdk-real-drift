@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { parseCommonArgs } from '../src/cli-args.js';
+import { isInteractive, parseCommonArgs } from '../src/cli-args.js';
 
 describe('parseCommonArgs', () => {
   it('collects positional stack names, not flag values', () => {
@@ -124,5 +124,39 @@ describe('parseCommonArgs', () => {
     expect(() => parseCommonArgs(['--dry-run=1'])).toThrow(
       /option "--dry-run" does not take a value/
     );
+  });
+
+  it('recognizes --no-interactive (default false)', () => {
+    expect(parseCommonArgs(['S', '--no-interactive']).noInteractive).toBe(true);
+    expect(parseCommonArgs(['S']).noInteractive).toBe(false);
+  });
+});
+
+describe('isInteractive (TTY × --no-interactive truth matrix)', () => {
+  const args = (noInteractive: boolean) =>
+    parseCommonArgs(noInteractive ? ['--no-interactive'] : []);
+
+  // Stub process.stdin.isTTY across the matrix; restore in finally so other tests
+  // (and the real terminal) are unaffected.
+  const withTTY = (tty: boolean, fn: () => void) => {
+    const saved = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
+    Object.defineProperty(process.stdin, 'isTTY', { value: tty, configurable: true });
+    try {
+      fn();
+    } finally {
+      if (saved) Object.defineProperty(process.stdin, 'isTTY', saved);
+      else delete (process.stdin as { isTTY?: boolean }).isTTY;
+    }
+  };
+
+  it('true ONLY when TTY && !noInteractive', () => {
+    withTTY(true, () => {
+      expect(isInteractive(args(false))).toBe(true); // TTY, interactive allowed
+      expect(isInteractive(args(true))).toBe(false); // TTY but opted out
+    });
+    withTTY(false, () => {
+      expect(isInteractive(args(false))).toBe(false); // no TTY
+      expect(isInteractive(args(true))).toBe(false); // no TTY + opted out
+    });
   });
 });
