@@ -154,6 +154,47 @@ export function acceptedKey(e: { logicalId: string; path: string }): string {
   return `${e.logicalId}::${e.path}`;
 }
 
+/**
+ * The single source of truth for "is this blessed value equal to the current
+ * value?". `applyBaseline` (suppress vs surface) and `splitAcceptedByBaseline`
+ * (unchanged vs changed) MUST share this exact predicate. The blessed value is
+ * re-canonicalized through the CURRENT pipeline so a baseline written under older
+ * normalization rules still matches today's canonical live value (R6) — the
+ * `currentCanonicalValue` side is expected to be already canonical.
+ */
+export function blessedValueMatches(
+  blessedValue: unknown,
+  currentCanonicalValue: unknown
+): boolean {
+  return deepEqual(canonicalizeForCompare(blessedValue), currentCanonicalValue);
+}
+
+/**
+ * Split a freshly-built accepted set against the existing baseline into the values
+ * a human must decide on (`changed` = new path OR value differs) and the values
+ * already blessed and unchanged (`unchanged` = same logicalId+path AND value
+ * matches by `blessedValueMatches`). With no baseline EVERYTHING is `changed`
+ * (the true first bless). Entries are matched against `entry.value` which comes
+ * from `buildAccepted` (already canonical), so the predicate compares
+ * canonical-vs-canonical, exactly like `applyBaseline`.
+ */
+export function splitAcceptedByBaseline(
+  accepted: AcceptedEntry[],
+  baseline: BaselineFile | undefined
+): { unchanged: AcceptedEntry[]; changed: AcceptedEntry[] } {
+  if (!baseline) return { unchanged: [], changed: [...accepted] };
+  const unchanged: AcceptedEntry[] = [];
+  const changed: AcceptedEntry[] = [];
+  for (const entry of accepted) {
+    const blessed = baseline.accepted.find(
+      (a) => a.logicalId === entry.logicalId && a.path === entry.path
+    );
+    if (blessed && blessedValueMatches(blessed.value, entry.value)) unchanged.push(entry);
+    else changed.push(entry);
+  }
+  return { unchanged, changed };
+}
+
 /** Selective accept: build the blessed set from only the findings whose key is in
  *  `selectedKeys`. Empty set -> []; all keys -> equals buildAccepted(findings). */
 export function selectAccepted(findings: Finding[], selectedKeys: Set<string>): AcceptedEntry[] {
@@ -195,9 +236,7 @@ export function applyBaseline(
     // never resurfaces a suppressed value as false drift.
     const match = blessed.find(
       (a) =>
-        a.logicalId === f.logicalId &&
-        a.path === f.path &&
-        deepEqual(canonicalizeForCompare(a.value), f.actual)
+        a.logicalId === f.logicalId && a.path === f.path && blessedValueMatches(a.value, f.actual)
     );
     return match === undefined;
   });
