@@ -76,3 +76,13 @@ construct paths from the deployed template's `aws:cdk:path` Metadata when presen
   _source of the undeclared target value_, so it is structural, not optional.
 - The drift detection itself never calls CloudFormation's drift API and never
   _requires_ synth — synth only adds discovery / construct paths / clobber.
+
+## Considered and rejected
+
+- **Skipping `isTrivialEmpty` under `--show-all`.** `isTrivialEmpty` suppresses
+  undeclared `false` / `''` / `[]` / `{}` values (AWS returns an "off/empty" value
+  for nearly every unset option). One could argue inventory (`--show-all`) should
+  show those so a user can see "feature X is explicitly off". Rejected: inventory
+  would re-flood with exactly the `false`/empty noise the subtractive model exists
+  to remove, drowning the real signal. The blessed-then-changed-to-empty case is
+  still caught by baseline removal-detection, which is the case that matters.

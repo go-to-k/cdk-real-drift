@@ -139,7 +139,9 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   always revertable (the template is its source). Reverting an undeclared _addition_
   that was blessed-then-changed is done by removal — which is not possible for
   toggle-style properties (e.g. S3 transfer acceleration has no "absent" state, only
-  Enabled/Suspended); such props are reported and left.
+  Enabled/Suspended); such props are reported and left. Revert writes the **canonical**
+  form of the desired value (semantically equal to the template, but statement / tag
+  ordering and scalar-vs-array may differ textually from what you wrote).
   Cloud-Control-unwritable types revert via a type-specific SDK writer (read current
   model -> apply ops -> SDK write): the policy-document types (`AWS::S3::BucketPolicy`,
   `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`, `AWS::IAM::Policy`) and
@@ -153,6 +155,19 @@ Cloud-Control-unreadable types are reported as `skipped` (never silently dropped
   deployed one), surfacing the declared drift your next `cdk deploy` would silently
   overwrite. New resources in the synth that aren't deployed yet show as `skipped`
   (no physical id); resources removed from code are simply not compared.
+- Undeclared values that are `false` / empty (`''` / `[]` / `{}`) are suppressed as
+  noise (AWS returns an "off/empty" value for nearly every unset option). The
+  trade-off: `--show-all` (inventory) does NOT list an explicitly-OFF feature. A
+  blessed value that later flips to `false`/empty out of band is still caught (via
+  baseline removal-detection).
+
+## JSON output contract
+
+`--json` emits `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [ ... ] }`.
+Each finding object has a stable shape: `tier` (`deleted` | `declared` | `undeclared`
+| `readGap` | `unresolved` | `skipped`), `logicalId`, `resourceType`, `path`,
+`desired`, `actual`, `note`, `physicalId`, `constructPath`. After publication this
+shape is treated as a backward-compatible API.
 
 ## Develop
 

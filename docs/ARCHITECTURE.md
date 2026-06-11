@@ -221,6 +221,19 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
 > back-ported to **cdkd** (PR #802, merged) since cdkd's `drift-calculator` shared
 > the same positional comparison. See section 11.
 
+**The `isTrivialEmpty` asymmetry (intentional trade-off).** An undeclared value that
+is `false`, `''`, `[]`, or `{}` is suppressed (`isTrivialEmpty` in noise.ts) — AWS
+returns a "feature off / empty" value for almost every unset option, so without this
+the undeclared residual would be dominated by `X: false` noise on every resource.
+The cost: on the FIRST run / under `--show-all` (inventory), an explicitly-OFF
+feature is **not shown** (you can't see "encryption is false" in the inventory). The
+asymmetry is one-directional and self-correcting for the case that matters: once a
+non-trivial value is blessed and then changes to `false`/empty out of band, the
+baseline removal-detection (§8) DOES surface it. We deliberately do NOT skip
+`isTrivialEmpty` under `--show-all` — that would re-flood inventory with the very
+`false`/empty noise the subtractive model exists to remove. (Considered and rejected;
+see [redesign-notes.md](redesign-notes.md).)
+
 ## 7. Revert (the only AWS-mutating path)
 
 [src/revert/](../src/revert/). `revert` builds a plan, prints it (per finding: path,
@@ -254,6 +267,12 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   replacement, which an in-place `UpdateResource` can't do — caught from the schema
   at plan time, not at apply time), plus any `readGap` / `unresolved` / `skipped`
   finding. KMS keys need no SDK writer — they revert via the generic CC path.
+- **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
+  _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
+  arrays sorted), not the template verbatim. It is semantically equal to the template
+  but the written value may differ **textually** (ordering, scalar-vs-array) from
+  what you wrote in code. This is expected — the comparison is structural, so the
+  revert writes the structural form.
 - **Known limitation**: toggle-style props with no "absent" state (e.g. S3 transfer
   acceleration is only Enabled/Suspended) can't be reverted by removal.
 

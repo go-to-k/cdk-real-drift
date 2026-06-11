@@ -42,6 +42,10 @@ export function stripAwsTagsDeep(v: unknown): unknown {
 // (JSON tiebreak for stability). Applied to BOTH sides before the diff, so a
 // reordered-but-equal tag set compares equal. Recurses so nested tag bags
 // (LaunchTemplate TagSpecifications etc.) are covered too.
+// ASSUMPTION: any array whose every element is an object with a string `Key` field
+// is treated as an unordered set and sorted by Key. This can match non-tag shapes
+// (e.g. SSM MaintenanceWindow Targets, which also use {Key,Values}), but no such
+// Key-shaped AWS property is known to be order-significant, so sorting is safe.
 export function canonicalizeTagListsDeep(v: unknown): unknown {
   if (Array.isArray(v)) {
     const mapped = v.map(canonicalizeTagListsDeep);
@@ -76,6 +80,11 @@ export function canonicalizeTagListsDeep(v: unknown): unknown {
 // EVERY element is an AWS resource id (`subnet-0ab…`, `sg-…`, `vpc-…`) or an ARN —
 // these are never order-significant. A plain scalar list like an enum sequence
 // (["a","b"]) is left untouched, so genuinely ordered lists keep reporting drift.
+// KNOWN LIMITATION: the heuristic is shape-based, so a list whose every element is
+// an arbitrary `prefix-<hex-looking-suffix>` name (e.g. `["svc-abc123","svc-def456"]`)
+// would also be sorted even if that array were order-significant. No such
+// order-significant AWS property is known; the trade-off favors killing the very
+// common id-set false drift over guarding a hypothetical one.
 const ID_RE = /^[a-z][a-z0-9]*-[0-9a-f]{6,}$/;
 const isIdLike = (s: unknown): boolean =>
   typeof s === 'string' && (s.startsWith('arn:') || ID_RE.test(s));
