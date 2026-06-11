@@ -180,6 +180,28 @@ describe('buildRevertPlan', () => {
     for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
   });
 
+  it('R35: undeclared create-only drift on a NO-baseline stack -> reason is no-baseline (accept is the route)', () => {
+    // the fundamental blocker is "no revert target" — a create-only reason would
+    // mis-direct the user toward replacement when `accept` blesses the value away
+    const plan = buildRevertPlan(
+      [F({ tier: 'undeclared', path: 'BucketName', actual: 'b' })],
+      undefined,
+      { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('no baseline');
+  });
+
+  it('R35: undeclared create-only drift WITH a baseline -> create-only reason still applies', () => {
+    const plan = buildRevertPlan(
+      [F({ tier: 'undeclared', path: 'BucketName', actual: 'b' })],
+      baseline([]),
+      { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('create-only');
+  });
+
   it('create-only declared drift -> notRevertable (needs replacement, not a patch)', () => {
     const plan = buildRevertPlan(
       [F({ tier: 'declared', path: 'BucketName', desired: 'a', actual: 'b' })],

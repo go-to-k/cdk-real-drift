@@ -70,6 +70,7 @@ export async function runRevert(args: string[]): Promise<number> {
         dryRun,
         yes: a.yes,
         removeUnblessed: a.removeUnblessed,
+        verbose: a.verbose,
       });
       worst = Math.max(worst, exit);
     } catch (e) {

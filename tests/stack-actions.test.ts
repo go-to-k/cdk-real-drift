@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
-import { availableActions, resolveInteractiveRevertExit } from '../src/commands/stack-actions.js';
+import type { GatherResult } from '../src/commands/gather.js';
+import {
+  availableActions,
+  formatPlan,
+  resolveInteractiveRevertExit,
+  revertStack,
+} from '../src/commands/stack-actions.js';
+import type { RevertPlan } from '../src/revert/plan.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
 const NO_SCHEMAS = new Map<string, SchemaInfo>();
@@ -83,6 +90,146 @@ describe('availableActions (R28 interactive choice logic)', () => {
       accept: true,
       revert: true,
     });
+  });
+});
+
+describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', () => {
+  const nr = (reason: string, path = 'P'): RevertPlan['notRevertable'][number] => ({
+    displayId: 'Stack/Res',
+    resourceType: 'AWS::S3::Bucket',
+    path,
+    reason,
+  });
+
+  it('folds notRevertable into one line per reason, sorted by count desc', () => {
+    const plan: RevertPlan = {
+      items: [],
+      notRevertable: [nr('no baseline — x', 'A'), nr('no baseline — x', 'B'), nr('deleted — y')],
+    };
+    const lines = formatPlan('s', 'r', plan, {});
+    expect(lines).toContain('\n  NOT revertable: 2 (no baseline — x)');
+    expect(lines).toContain('                · 1 (deleted — y)');
+    expect(lines).toContain('    (run with --verbose for the full list)');
+    // no per-finding lines in the folded view
+    expect(lines.some((l) => l.includes('Stack/Res.A'))).toBe(false);
+  });
+
+  it('--verbose expands to the full per-finding list', () => {
+    const plan: RevertPlan = {
+      items: [],
+      notRevertable: [nr('no baseline — x', 'A'), nr('deleted — y')],
+    };
+    const lines = formatPlan('s', 'r', plan, { verbose: true });
+    expect(lines).toContain('\n  NOT revertable (2):');
+    expect(lines).toContain('    - Stack/Res.A (AWS::S3::Bucket) — no baseline — x');
+    expect(lines.some((l) => l.includes('(run with --verbose'))).toBe(false);
+  });
+
+  it('revertable items keep full detail regardless of verbose (the point of the plan)', () => {
+    const plan: RevertPlan = {
+      items: [
+        {
+          logicalId: 'R',
+          displayId: 'Stack/Res',
+          resourceType: 'AWS::S3::Bucket',
+          physicalId: 'p',
+          kind: 'cc',
+          ops: [{ op: 'add', path: '/A', value: 1, human: 'A -> deployed-template value' }],
+        },
+      ],
+      notRevertable: [],
+    };
+    for (const verbose of [false, true]) {
+      const lines = formatPlan('s', 'r', plan, { verbose });
+      expect(lines).toContain('\n  Stack/Res (AWS::S3::Bucket)');
+      expect(lines).toContain('    - A -> deployed-template value');
+    }
+  });
+
+  it('noBaselineGuidance leads with the accept-first route', () => {
+    const plan: RevertPlan = { items: [], notRevertable: [nr('no baseline — x')] };
+    const lines = formatPlan('MyStack', 'r', plan, { noBaselineGuidance: true });
+    expect(lines[1]).toBe(
+      '\nnote: MyStack has no baseline — undeclared drift has no revert target.'
+    );
+    expect(lines[2]).toContain('cdkrd check` or `cdkrd accept');
+  });
+});
+
+describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
+  // findings-only params: every path under test returns BEFORE any AWS client is
+  // used — either nothing is revertable, or --dry-run returns at the preview branch.
+  type Overrides = { removeUnblessed?: boolean; dryRun?: boolean };
+  const params = (findings: Finding[], over: Overrides = {}) => ({
+    stackName: 's',
+    region: 'r',
+    gathered: {
+      desired: { accountId: '111122223333', resources: [], rawTemplate: '' },
+      findings,
+      schemas: NO_SCHEMAS,
+    } as unknown as GatherResult,
+    baseline: undefined,
+    config: { ignore: [] },
+    dryRun: over.dryRun ?? false,
+    yes: true,
+    removeUnblessed: over.removeUnblessed ?? false,
+    verbose: false,
+  });
+
+  const captured = async (findings: Finding[], over: Overrides = {}) => {
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (s: unknown) => logs.push(String(s));
+    try {
+      const outcome = await revertStack(params(findings, over));
+      return { outcome, logs };
+    } finally {
+      console.log = orig;
+    }
+  };
+
+  it('no drift at all -> "no drift to revert." + exit 0 (regression)', async () => {
+    const { outcome, logs } = await captured([]);
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(logs.join('\n')).toContain('no drift to revert.');
+  });
+
+  it('informational-only findings -> still exit 0 (not drift)', async () => {
+    const { outcome } = await captured([
+      { tier: 'readGap', logicalId: 'R', resourceType: 'AWS::X::Y', path: 'P' },
+    ]);
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+  });
+
+  it('drift exists but nothing revertable (deleted-only) -> summary + exit 1', async () => {
+    const { outcome, logs } = await captured([deleted()]);
+    expect(outcome).toEqual({ exit: 1, aborted: false });
+    const out = logs.join('\n');
+    expect(out).toContain('NOT revertable: 1 (deleted — recreate via cdk deploy)');
+    expect(out).toContain('nothing revertable — 1 drift(s) remain.');
+  });
+
+  it('un-blessed undeclared drift -> no-baseline guidance + exit 1', async () => {
+    const { outcome, logs } = await captured([undeclared()]);
+    expect(outcome).toEqual({ exit: 1, aborted: false });
+    const out = logs.join('\n');
+    expect(out).toContain('note: s has no baseline — undeclared drift has no revert target.');
+    expect(out).toContain('NOT revertable: 1 (no baseline — run `cdkrd accept` first');
+    expect(out).toContain('nothing revertable — 1 drift(s) remain.');
+  });
+
+  it('--remove-unblessed: no-baseline note is suppressed; the plan removes the undeclared drift', async () => {
+    // dry-run returns at the preview branch (no AWS write). The note would contradict
+    // a plan that DOES remove the drift, so it must not appear (R35 review).
+    const { outcome, logs } = await captured([undeclared()], {
+      removeUnblessed: true,
+      dryRun: true,
+    });
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    const out = logs.join('\n');
+    expect(out).not.toContain('has no baseline — undeclared drift has no revert target');
+    expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
+    expect(out).toContain('(dry-run) would apply');
   });
 });
 
