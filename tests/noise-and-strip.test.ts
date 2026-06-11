@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
 import {
+  canonicalizeIdArraysDeep,
   canonicalizeTagListsDeep,
   isAllAwsTags,
   isTrivialEmpty,
@@ -52,6 +53,19 @@ describe('noise suppressors', () => {
     expect(canonicalizeTagListsDeep({ L: [{ Key: 'a' }, { X: 1 }] })).toEqual({
       L: [{ Key: 'a' }, { X: 1 }],
     });
+  });
+
+  it('canonicalizeIdArraysDeep: sorts resource-id/ARN arrays (SubnetIds) but not plain scalars', () => {
+    const a = canonicalizeIdArraysDeep({ SubnetIds: ['subnet-0fb5ef44', 'subnet-0daf2ccb'] });
+    const b = canonicalizeIdArraysDeep({ SubnetIds: ['subnet-0daf2ccb', 'subnet-0fb5ef44'] });
+    expect(a).toEqual(b);
+    // a plain non-id scalar list keeps its order (could be semantically ordered)
+    expect(canonicalizeIdArraysDeep({ Order: ['b', 'a'] })).toEqual({ Order: ['b', 'a'] });
+    // ARNs are sorted too
+    expect(canonicalizeIdArraysDeep(['arn:aws:s3:::b', 'arn:aws:s3:::a']) as string[]).toEqual([
+      'arn:aws:s3:::a',
+      'arn:aws:s3:::b',
+    ]);
   });
 
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {

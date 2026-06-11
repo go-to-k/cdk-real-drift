@@ -16,3 +16,19 @@ export function isArnNameMatch(desired: unknown, actual: unknown): boolean {
     return false;
   return actual.endsWith(`:${desired}`) || actual.endsWith(`/${desired}`);
 }
+
+// AWS-managed default KMS keys are declared by their well-known alias
+// (`alias/aws/rds`, `alias/aws/secretsmanager`, ...) but AWS resolves + returns
+// the concrete key ARN, which a string diff flags as drift. Treat a declared
+// `alias/aws/*` against a live KMS key ARN as equal: a custom key would be
+// declared as a custom alias or key id/ARN, never `alias/aws/<service>`, so this
+// only collapses the managed-default case and never hides a real custom-key drift.
+const KMS_KEY_ARN_RE = /^arn:aws[a-z-]*:kms:[^:]*:\d*:key\//;
+export function isManagedKmsAliasMatch(desired: unknown, actual: unknown): boolean {
+  return (
+    typeof desired === 'string' &&
+    typeof actual === 'string' &&
+    desired.startsWith('alias/aws/') &&
+    KMS_KEY_ARN_RE.test(actual)
+  );
+}

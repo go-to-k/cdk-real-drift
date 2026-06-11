@@ -7,10 +7,11 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
-import { isArnNameMatch } from '../normalize/arn-identity.js';
+import { isArnNameMatch, isManagedKmsAliasMatch } from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
+  canonicalizeIdArraysDeep,
   canonicalizeTagListsDeep,
   isAllAwsTags,
   isTrivialEmpty,
@@ -32,13 +33,14 @@ export function classifyResource(
 
   // strip AWS-managed fields + drop aws:* tag elements + canonicalize policy docs
   // + sort tag lists (unordered sets) so reordering is not false drift
-  const live = canonicalizeTagListsDeep(
-    normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)))
+  const live = canonicalizeIdArraysDeep(
+    canonicalizeTagListsDeep(
+      normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)))
+    )
   ) as Record<string, unknown>;
-  const declared = canonicalizeTagListsDeep(normalizePoliciesDeep(declaredIn)) as Record<
-    string,
-    unknown
-  >;
+  const declared = canonicalizeIdArraysDeep(
+    canonicalizeTagListsDeep(normalizePoliciesDeep(declaredIn))
+  ) as Record<string, unknown>;
   // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
   // live); writeOnly cannot be read back (strip from BOTH sides so it is never
   // compared, at top level or nested).
@@ -64,8 +66,10 @@ export function classifyResource(
       continue;
     }
     for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
-      // a bare name declared for a field AWS returns as the full ARN is not drift
+      // a bare name declared for a field AWS returns as the full ARN is not drift;
+      // likewise an AWS-managed-default KMS alias vs its resolved key ARN
       if (isArnNameMatch(d.stateValue, d.awsValue)) continue;
+      if (isManagedKmsAliasMatch(d.stateValue, d.awsValue)) continue;
       findings.push({
         tier: 'declared',
         logicalId,

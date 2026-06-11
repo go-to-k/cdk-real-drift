@@ -69,6 +69,33 @@ export function canonicalizeTagListsDeep(v: unknown): unknown {
   return v;
 }
 
+// AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, AvailabilityZones,
+// VPCSecurityGroups, ...) are UNORDERED sets too, but unlike tags their elements
+// are bare scalars, so the tag canonicalizer doesn't touch them and a positional
+// diff reports false drift whenever CDK's order != AWS's. Sort only arrays whose
+// EVERY element is an AWS resource id (`subnet-0ab…`, `sg-…`, `vpc-…`) or an ARN —
+// these are never order-significant. A plain scalar list like an enum sequence
+// (["a","b"]) is left untouched, so genuinely ordered lists keep reporting drift.
+const ID_RE = /^[a-z][a-z0-9]*-[0-9a-f]{6,}$/;
+const isIdLike = (s: unknown): boolean =>
+  typeof s === 'string' && (s.startsWith('arn:') || ID_RE.test(s));
+
+export function canonicalizeIdArraysDeep(v: unknown): unknown {
+  if (Array.isArray(v)) {
+    const mapped = v.map(canonicalizeIdArraysDeep);
+    if (mapped.length > 1 && mapped.every(isIdLike))
+      return [...(mapped as string[])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return mapped;
+  }
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>))
+      out[k] = canonicalizeIdArraysDeep(val);
+    return out;
+  }
+  return v;
+}
+
 // A1: trivially-empty/off values AWS returns for unset features.
 export function isTrivialEmpty(v: unknown): boolean {
   if (v === false || v === '') return true;
