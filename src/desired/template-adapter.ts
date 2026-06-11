@@ -18,6 +18,7 @@ export interface Desired {
   accountId: string;
   resources: DesiredResource[];
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
+  ctx: ResolverContext; // exposed so gather can re-resolve GetAtt once live attrs are read
 }
 
 /** Parse a deployed template body (JSON or CFn-flavored YAML). */
@@ -64,6 +65,7 @@ export function buildResolverContext(
     },
     conditions: template.Conditions ?? {},
     physIds,
+    liveAttrs: {},
     condCache: new Map(),
   };
 }
@@ -115,16 +117,20 @@ export async function loadDesired(
   )) {
     if (res.Type === 'AWS::CDK::Metadata') continue;
     const cdkPath = res.Metadata?.['aws:cdk:path'];
+    const declaredRaw = (res.Properties ?? {}) as Record<string, unknown>;
     resources.push({
       logicalId,
       resourceType: res.Type as string,
       physicalId: physIds[logicalId],
       constructPath: typeof cdkPath === 'string' ? prettyConstructPath(cdkPath) : undefined,
-      declared: resolveProperties((res.Properties ?? {}) as Record<string, unknown>, ctx),
+      // first-pass resolution (no live attrs yet → GetAtt is UNRESOLVED). gather
+      // re-resolves declaredRaw once liveAttrs is populated, reducing UNRESOLVED.
+      declared: resolveProperties(declaredRaw, ctx),
+      declaredRaw,
       siblingManaged: res.Type === 'AWS::IAM::Role' && rolesWithSiblingPolicy.has(logicalId),
     });
   }
-  return { stackName, region, accountId, resources, rawTemplate };
+  return { stackName, region, accountId, resources, rawTemplate, ctx };
 }
 
 // CDK construct paths end in "/Resource" for the L1 node; drop it for readability

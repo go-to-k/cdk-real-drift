@@ -47,7 +47,7 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         return arr[Number(idx)];
       }
       case 'Fn::GetAtt':
-        return UNRESOLVED;
+        return resolveGetAtt(v, ctx);
       case 'Fn::Equals': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [a, b] = v.map((x) => resolve(x, ctx));
@@ -110,6 +110,32 @@ export function evalCondition(name: string, ctx: ResolverContext): boolean | typ
   return val;
 }
 
+// Resolve Fn::GetAtt against the referenced resource's LIVE model (ctx.liveAttrs),
+// NOT a guessed ARN format. `[LogicalId, AttrName]`; AttrName may be dotted
+// (e.g. "Endpoint.Address"). Returns the live attribute value, or UNRESOLVED
+// (fail-closed) when the target wasn't read or the attribute is absent — so a
+// missing live read never fabricates a value or reports false drift. Comparing a
+// GetAtt against the target's CURRENT attribute is still real drift detection on
+// the CONSUMING resource (does it actually point at that attribute's value?).
+export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
+  if (!Array.isArray(v) || v.length < 2) return UNRESOLVED;
+  const logicalId = String(v[0]);
+  const attr = String(v[1]);
+  const model = ctx.liveAttrs[logicalId];
+  if (!model) return UNRESOLVED;
+  const got = getPath(model, attr.split('.'));
+  return got === undefined ? UNRESOLVED : got;
+}
+
+function getPath(obj: Record<string, unknown>, segs: string[]): unknown {
+  let node: unknown = obj;
+  for (const s of segs) {
+    if (node === null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[s];
+  }
+  return node;
+}
+
 export function resolveRef(name: string, ctx: ResolverContext): unknown {
   if (name in ctx.pseudo) return ctx.pseudo[name];
   if (name === 'AWS::NoValue') return NOVALUE;
@@ -138,9 +164,15 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
       return String(r);
     }
     if (ref.includes('.')) {
-      unresolved = true;
-      return '';
-    } // GetAtt form
+      // ${LogicalId.Attr} GetAtt form — resolve against live attributes.
+      const dot = ref.indexOf('.');
+      const r = resolveGetAtt([ref.slice(0, dot), ref.slice(dot + 1)], ctx);
+      if (r === UNRESOLVED || r === NOVALUE) {
+        unresolved = true;
+        return '';
+      }
+      return String(r);
+    }
     const r = resolveRef(ref, ctx);
     if (r === UNRESOLVED || r === NOVALUE) {
       unresolved = true;

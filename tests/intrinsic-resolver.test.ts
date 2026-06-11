@@ -21,6 +21,7 @@ function ctx(over: Partial<ResolverContext> = {}): ResolverContext {
     },
     conditions: {},
     physIds: { MyBucket: 'bucket-phys' },
+    liveAttrs: {},
     condCache: new Map(),
     ...over,
   };
@@ -34,9 +35,14 @@ describe('intrinsic resolver', () => {
     expect(resolve({ Ref: 'Nope' }, ctx())).toBe(UNRESOLVED);
   });
 
-  it('resolves Fn::Sub with pseudo + vars, marks GetAtt-form unresolved', () => {
+  it('resolves Fn::Sub with pseudo + vars; GetAtt-form unresolved without live attrs', () => {
     expect(resolve({ 'Fn::Sub': 'a-${Env}-${AWS::Region}' }, ctx())).toBe('a-prod-us-east-1');
     expect(resolve({ 'Fn::Sub': '${Thing.Arn}' }, ctx())).toBe(UNRESOLVED);
+  });
+
+  it('resolves Fn::Sub GetAtt-form against live attributes', () => {
+    const c = ctx({ liveAttrs: { Thing: { Arn: 'arn:aws:x:::thing' } } });
+    expect(resolve({ 'Fn::Sub': 'v=${Thing.Arn}' }, c)).toBe('v=arn:aws:x:::thing');
   });
 
   it('evaluates Fn::If via conditions', () => {
@@ -44,9 +50,21 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::If': ['IsProd', 'yes', 'no'] }, c)).toBe('yes');
   });
 
-  it('Fn::GetAtt is UNRESOLVED; Fn::Join drops NoValue', () => {
+  it('Fn::GetAtt is UNRESOLVED without live attrs; Fn::Join drops NoValue', () => {
     expect(resolve({ 'Fn::GetAtt': ['X', 'Arn'] }, ctx())).toBe(UNRESOLVED);
     expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'AWS::NoValue' }, 'b']] }, ctx())).toBe('a-b');
+  });
+
+  it('Fn::GetAtt resolves against live attributes (incl. dotted path), else UNRESOLVED', () => {
+    const c = ctx({
+      liveAttrs: { Role: { Arn: 'arn:aws:iam::123:role/r' }, Db: { Endpoint: { Address: 'h' } } },
+    });
+    expect(resolve({ 'Fn::GetAtt': ['Role', 'Arn'] }, c)).toBe('arn:aws:iam::123:role/r');
+    expect(resolve({ 'Fn::GetAtt': ['Db', 'Endpoint.Address'] }, c)).toBe('h');
+    // referenced resource present but attribute absent -> fail-closed UNRESOLVED
+    expect(resolve({ 'Fn::GetAtt': ['Role', 'Missing'] }, c)).toBe(UNRESOLVED);
+    // referenced resource not read -> UNRESOLVED (never fabricate)
+    expect(resolve({ 'Fn::GetAtt': ['Ghost', 'Arn'] }, c)).toBe(UNRESOLVED);
   });
 
   it('resolveProperties prunes NoValue keys', () => {

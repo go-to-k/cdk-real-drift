@@ -28,6 +28,10 @@ export interface ResolverContext {
   pseudo: Record<string, string>;
   conditions: Record<string, unknown>;
   physIds: Record<string, string>; // logicalId -> physicalId
+  // logicalId -> the referenced resource's live model (CC/SDK read), used to
+  // resolve Fn::GetAtt against real attributes instead of guessing ARN formats.
+  // Empty on the first (pre-live-read) resolve pass; populated for the re-resolve.
+  liveAttrs: Record<string, Record<string, unknown>>;
   condCache: Map<string, unknown>; // true | false | UNRESOLVED (fail-closed)
 }
 
@@ -37,5 +41,6 @@ export interface DesiredResource {
   physicalId?: string | undefined;
   constructPath?: string | undefined; // CDK construct path from aws:cdk:path Metadata (display only)
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
+  declaredRaw?: Record<string, unknown>; // raw Properties, re-resolved by gather once liveAttrs are read
   siblingManaged?: boolean; // an IAM Role whose inline Policies are managed by a sibling AWS::IAM::Policy
 }
