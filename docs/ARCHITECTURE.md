@@ -400,7 +400,10 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
   template-adapter incl. `--pre-deploy` override, report.
 - **Integration fixtures** under `tests/integration/{basic,iam,lambda,revert}` (real
   CDK apps + `verify.sh`). The revert integ proves deploy → accept → out-of-band
-  change → check → `revert --yes` → CLEAN → AWS converged.
+  change → check → `revert --yes` → CLEAN → AWS converged. The `basic` fixture also
+  ships `verify-deleted-guards.sh`, which exercises the `deleted` tier (delete a
+  resource out of band → reported + exit 1, not revertable) and the no-baseline
+  `revert` guard (undeclared drift refused unless `--remove-unblessed`).
 - **Dogfood evidence**: 8 real cdkd fixtures run through `check --show-all` → fix →
   `declared=0`, then `accept` → CLEAN, then destroy + orphan-verified. This is what
   surfaced the four false-positive classes.
