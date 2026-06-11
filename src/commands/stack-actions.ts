@@ -113,13 +113,27 @@ export interface RevertStackParams {
 }
 
 /**
+ * Outcome of a per-stack revert.
+ *  - `exit`: the exit contribution — 0 clean / 1 drift remains / 2 apply failure
+ *    (or a non-interactive write refusal).
+ *  - `aborted`: true ONLY when the user cancelled the confirm prompt (no AWS write
+ *    happened). The standalone `revert` command treats an abort as exit 0 (nothing
+ *    changed), but `check`'s interactive flow must NOT let an abort drop a drifted
+ *    stack to exit 0 — it keeps the pre-revert exit 1 (symmetric with "Nothing").
+ *    See R30.
+ */
+export interface RevertOutcome {
+  exit: number;
+  aborted: boolean;
+}
+
+/**
  * Build the revert plan from the gather's findings + baseline, show it, confirm
  * (unless --yes / --dry-run), apply via Cloud Control / SDK writers, then re-gather
- * to verify convergence. Returns the exit contribution: 0 clean / 1 drift remains /
- * 2 apply failure (or a non-interactive write refusal). Does NOT re-gather to build
- * the plan (uses the passed gather) — only the convergence re-check re-gathers.
+ * to verify convergence. Does NOT re-gather to build the plan (uses the passed
+ * gather) — only the convergence re-check re-gathers.
  */
-export async function revertStack(p: RevertStackParams): Promise<number> {
+export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> {
   const { stackName, region, gathered, baseline, dryRun, yes, removeUnblessed } = p;
   let worst = 0;
   const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
@@ -131,31 +145,31 @@ export async function revertStack(p: RevertStackParams): Promise<number> {
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
     console.log(`${stackName} (${region}): no drift to revert.`);
-    return 0;
+    return { exit: 0, aborted: false };
   }
   printPlan(stackName, region, plan);
-  if (plan.items.length === 0) return 0; // nothing revertable
+  if (plan.items.length === 0) return { exit: 0, aborted: false }; // nothing revertable
 
   const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
   if (dryRun) {
     console.log(
       `\n(dry-run) would apply ${opCount} op(s) to ${plan.items.length} resource(s). No changes made.`
     );
-    return 0;
+    return { exit: 0, aborted: false };
   }
   if (!yes) {
     if (!process.stdin.isTTY) {
       console.error(
         `\nrefusing to write to AWS non-interactively — pass --yes to apply (or --dry-run to preview).`
       );
-      return 2;
+      return { exit: 2, aborted: false };
     }
     const ok = await confirm({
       message: `Apply ${opCount} revert op(s) to ${stackName}? This WRITES to AWS.`,
     });
     if (isCancel(ok) || !ok) {
       console.log('aborted.');
-      return 0;
+      return { exit: 0, aborted: true };
     }
   }
 
@@ -200,7 +214,17 @@ export async function revertStack(p: RevertStackParams): Promise<number> {
       : `${stackName}: ${remaining} drift(s) remain.`
   );
   if (remaining > 0) worst = Math.max(worst, 1);
-  return worst;
+  return { exit: worst, aborted: false };
+}
+
+/**
+ * Map a revert outcome back to `check`'s exit code in the interactive flow (R30).
+ * An aborted confirm wrote nothing to AWS, so the drift still stands — keep the
+ * pre-revert code (always 1 here, the drift branch); otherwise adopt the outcome's
+ * exit (0 clean / 1 drift remains / 2 failure). Pure so the asymmetry is unit-tested.
+ */
+export function resolveInteractiveRevertExit(currentCode: number, outcome: RevertOutcome): number {
+  return outcome.aborted ? currentCode : outcome.exit;
 }
 
 // ---- interactive choice (pure, unit-tested) ----

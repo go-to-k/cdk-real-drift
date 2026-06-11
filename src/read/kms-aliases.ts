@@ -6,6 +6,7 @@
 // cached per region. On any error (e.g. missing kms:ListAliases) returns {} so the
 // classifier falls back to the conservative shape-based match (noise, not false drift).
 import { KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
+import { READ_RETRY } from './client-config.js';
 
 const cache = new Map<string, Record<string, string>>();
 
@@ -14,7 +15,7 @@ export async function fetchManagedAliasTargets(region: string): Promise<Record<s
   if (cached) return cached;
   const out: Record<string, string> = {};
   try {
-    const c = new KMSClient({ region });
+    const c = new KMSClient({ region, ...READ_RETRY });
     let marker: string | undefined;
     do {
       const r = await c.send(new ListAliasesCommand({ Marker: marker, Limit: 100 }));

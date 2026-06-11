@@ -1,5 +1,7 @@
-// Shared AWS SDK client retry config for cdkrd's READ path. `check` reads every
-// resource in a stack with bounded concurrency (gather.ts POOL_SIZE), which on a
+// Shared AWS SDK client retry config for cdkrd's READ path — applied to EVERY
+// read-side client: the Cloud Control / CloudFormation clients in gather.ts, all
+// SDK-override clients in overrides.ts, AND the KMS client in kms-aliases.ts.
+// `check` reads every resource in a stack with bounded concurrency (gather.ts POOL_SIZE), which on a
 // large stack (hundreds of resources) drives Cloud Control GetResource /
 // CloudFormation describe-type / the SDK-override APIs straight into
 // ThrottlingException. The SDK default (`standard` mode, maxAttempts=3) is not

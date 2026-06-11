@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
-import { availableActions } from '../src/commands/stack-actions.js';
+import { availableActions, resolveInteractiveRevertExit } from '../src/commands/stack-actions.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
 const NO_SCHEMAS = new Map<string, SchemaInfo>();
@@ -83,5 +83,24 @@ describe('availableActions (R28 interactive choice logic)', () => {
       accept: true,
       revert: true,
     });
+  });
+});
+
+describe('resolveInteractiveRevertExit (R30 — abort must not drop drift to exit 0)', () => {
+  it('aborted confirm → keep the pre-revert code (drift still stands)', () => {
+    // check is always in the drift branch (code 1) when it reaches revert
+    expect(resolveInteractiveRevertExit(1, { exit: 0, aborted: true })).toBe(1);
+  });
+
+  it('revert applied & converged → adopt the outcome exit (0 clean)', () => {
+    expect(resolveInteractiveRevertExit(1, { exit: 0, aborted: false })).toBe(0);
+  });
+
+  it('revert applied but drift remains → adopt exit 1', () => {
+    expect(resolveInteractiveRevertExit(1, { exit: 1, aborted: false })).toBe(1);
+  });
+
+  it('revert apply failure → adopt exit 2', () => {
+    expect(resolveInteractiveRevertExit(1, { exit: 2, aborted: false })).toBe(2);
   });
 });

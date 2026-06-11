@@ -66,7 +66,12 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
 3. **Cloud Control API as the universal reader.** CC API auto-covers new resource
    types without per-type code; SDK overrides fill only the gaps. _Does CC API's
    coverage + model fidelity hold up across the breadth users will throw at it, or
-   does the SDK-override list grow until the "generic" claim breaks?_
+   does the SDK-override list grow until the "generic" claim breaks?_ **Tracking
+   (as of the R21 pass):** `SDK_OVERRIDES` holds 11 types, all genuine CC-API gaps
+   (`UnsupportedActionException` / `ValidationException` from GetResource), surfaced
+   across 2 real-app dogfoods + 8 integ fixtures. The bet holds while the count grows
+   only a few types per new dogfood; revisit it if a single new stack adds many
+   overrides at once (= the generic claim is breaking).
 4. **The deployed template, not synth, is the declared baseline.** So un-deployed
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
@@ -96,7 +101,10 @@ it prompts `Nothing / Accept / Revert` and branches into the SAME per-stack code
 `accept` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
 as `acceptStack` / `revertStack`, so the interactive flow and the single-verb commands
 can never diverge). Default is `Nothing` (plain-check behaviour); skipped under
-`--json` / `--show-all` / `--pre-deploy` / non-TTY.
+`--json` / `--show-all` / `--pre-deploy` / non-TTY. Aborting the Revert confirmation
+keeps the pre-revert **exit 1** — no AWS write happened, so the drift still stands
+(symmetric with `Nothing`); `revertStack` signals this via `RevertOutcome.aborted` so
+the standalone `revert` command keeps its own exit-0-on-abort behaviour (R30).
 
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
 default — resolves via SDK chain, errors if absent), `--profile`, `--app <cmd|cdk.out>`
@@ -229,6 +237,7 @@ all live changes
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)
+    (scalars only — a typed vs string *array* like [80,443] vs ["80","443"] still reports; fail-safe noise)
   − sibling AWS::IAM::Policy on a role → suppressed
   = undeclared residual                → the unique signal
 ```

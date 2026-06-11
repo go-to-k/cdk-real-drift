@@ -20,7 +20,12 @@ import { synthApp } from '../synth/synth.js';
 import type { Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
-import { acceptStack, availableActions, revertStack } from './stack-actions.js';
+import {
+  acceptStack,
+  availableActions,
+  resolveInteractiveRevertExit,
+  revertStack,
+} from './stack-actions.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
 // undeclared tier is meaningless against a synth (not deployed) declared set, so
@@ -184,7 +189,7 @@ export async function runCheck(args: string[]): Promise<number> {
               code = exitCode(reEvaluated, a.failOn);
             }
           } else if (!isCancel(choice) && choice === 'revert') {
-            code = await revertStack({
+            const outcome = await revertStack({
               stackName,
               region,
               gathered: { desired, findings, schemas },
@@ -193,6 +198,9 @@ export async function runCheck(args: string[]): Promise<number> {
               yes: a.yes,
               removeUnblessed: a.removeUnblessed,
             });
+            // R30: an aborted confirm did NOT write to AWS, so the drift still
+            // stands — keep the pre-revert exit 1 (symmetric with "Nothing").
+            code = resolveInteractiveRevertExit(code, outcome);
           }
         }
       }

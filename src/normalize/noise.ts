@@ -128,6 +128,13 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
 // false drift. Treat a primitive and its EXACT `String()` form as equal. Scalars only
 // (never collapses objects/arrays); a genuine value change (`true` vs `"false"`,
 // `5` vs `"6"`) still differs, so real drift is preserved.
+//
+// KNOWN LIMITATION (R23): this runs in classify's declared loop on LEAF drift records
+// only. The drift-calculator reports a scalar-array mismatch as ONE parent-path record
+// (value = the whole array), so element-wise stringly comparison never happens — a
+// typed `[80, 443]` vs live `["80", "443"]` still reports drift. The direction is a
+// false POSITIVE (noise), never hidden drift, so it is fail-safe; collapsing it would
+// need a drift-calculator change. Revisit only if a real fixture hits it.
 export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
   const prim = (v: unknown): v is boolean | number =>
     typeof v === 'boolean' || typeof v === 'number';

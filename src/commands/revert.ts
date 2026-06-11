@@ -48,18 +48,18 @@ export async function runRevert(args: string[]): Promise<number> {
         region
       );
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
-      worst = Math.max(
-        worst,
-        await revertStack({
-          stackName,
-          region,
-          gathered,
-          baseline,
-          dryRun,
-          yes: a.yes,
-          removeUnblessed: a.removeUnblessed,
-        })
-      );
+      // standalone revert: an aborted confirm means nothing changed → exit 0 (the
+      // outcome's `exit` already encodes that; `aborted` is only consulted by check).
+      const { exit } = await revertStack({
+        stackName,
+        region,
+        gathered,
+        baseline,
+        dryRun,
+        yes: a.yes,
+        removeUnblessed: a.removeUnblessed,
+      });
+      worst = Math.max(worst, exit);
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed — skipped`);
