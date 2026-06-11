@@ -25,7 +25,7 @@ OPTIONS
   --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
                               CDK stacks with explicit env.region are auto-detected
   --profile <p>               AWS profile (or $AWS_PROFILE)
-  --app <cmd|cdk.out>         CDK app command or pre-synthesized assembly dir
+  -a, --app <cmd|cdk.out>     CDK app command or pre-synthesized assembly dir
                               (or $CDKRD_APP / cdk.json "app") — enables stack
                               auto-discovery + construct-path output
   -c, --context key=value     context for synth (repeatable; cdk.json is the base)
@@ -63,6 +63,11 @@ async function main(argv: string[]): Promise<number> {
   }
   if (cmd === '--version' || cmd === '-v') {
     console.log(version());
+    return 0;
+  }
+  // `cdkrd <verb> --help` — unknown options now fail fast, so route help here
+  if (rest.includes('--help') || rest.includes('-h')) {
+    console.log(HELP);
     return 0;
   }
   switch (cmd) {

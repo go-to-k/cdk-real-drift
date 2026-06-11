@@ -52,4 +52,42 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S', '-v']).verbose).toBe(true);
     expect(parseCommonArgs(['S']).verbose).toBe(false);
   });
+
+  it('accepts --dry-run as a known flag (interpreted by revert)', () => {
+    expect(parseCommonArgs(['S', '--dry-run']).stackNames).toEqual(['S']);
+  });
+
+  it('-a is an alias for --app — value goes to app, never to stackNames', () => {
+    const a = parseCommonArgs(['MyStack', '-a', 'cdk.out']);
+    expect(a.app).toBe('cdk.out');
+    expect(a.stackNames).toEqual(['MyStack']);
+    expect(parseCommonArgs(['-a', 'cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
+  });
+
+  it('collects repeatable -c/--context key=value', () => {
+    const a = parseCommonArgs(['-c', 'k1=v1', '--context', 'k2=v=2']);
+    expect(a.context).toEqual({ k1: 'v1', k2: 'v=2' });
+    expect(a.stackNames).toEqual([]);
+  });
+
+  it('fails fast on unknown options instead of silently dropping them', () => {
+    expect(() => parseCommonArgs(['--apq', 'cdk.out'])).toThrow(/unknown option "--apq"/);
+    expect(() => parseCommonArgs(['-x'])).toThrow(/unknown option "-x"/);
+    expect(() => parseCommonArgs(['S', '--dryrun'])).toThrow(/unknown option "--dryrun"/);
+  });
+
+  it('errors when a value flag is missing its value', () => {
+    expect(() => parseCommonArgs(['--app'])).toThrow(/option "--app" requires a value/);
+    expect(() => parseCommonArgs(['-a'])).toThrow(/option "-a" requires a value/);
+    // the next token being another flag is NOT a value
+    expect(() => parseCommonArgs(['--region', '--json'])).toThrow(
+      /option "--region" requires a value/
+    );
+    expect(() => parseCommonArgs(['-c', '--json'])).toThrow(/option "-c" requires a value/);
+  });
+
+  it('errors on malformed -c/--context (no key=value)', () => {
+    expect(() => parseCommonArgs(['-c', 'noequals'])).toThrow(/expects key=value/);
+    expect(() => parseCommonArgs(['--context', '=v'])).toThrow(/expects key=value/);
+  });
 });
