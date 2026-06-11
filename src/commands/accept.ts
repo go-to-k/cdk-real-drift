@@ -6,8 +6,9 @@ import {
   loadBaseline,
   writeBaseline,
 } from '../baseline/baseline-file.js';
+import { isStackNotDeployed } from '../aws-errors.js';
 import { parseCommonArgs } from '../cli-args.js';
-import { listAllStacks } from '../desired/list-stacks.js';
+import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 
 export async function runAccept(args: string[]): Promise<number> {
@@ -17,9 +18,11 @@ export async function runAccept(args: string[]): Promise<number> {
     return 2;
   }
   const region = a.region;
-  const stacks = a.all ? await listAllStacks(region) : a.stackNames;
+  const stacks = await resolveStacks(a, region);
   if (stacks.length === 0) {
-    console.error('usage: cdkrd accept <stack>... | --all [--region r] [--yes]');
+    console.error(
+      'usage: cdkrd accept <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--yes]'
+    );
     return 2;
   }
 
@@ -43,6 +46,10 @@ export async function runAccept(args: string[]): Promise<number> {
       });
       console.log(`baseline written: ${path} (${accepted.length} undeclared value(s) blessed)`);
     } catch (e) {
+      if (isStackNotDeployed(e)) {
+        console.error(`note: ${stackName}: not deployed yet — nothing to bless`);
+        continue;
+      }
       console.error(`error: ${stackName}: ${(e as Error).message}`);
       worst = Math.max(worst, 2);
     }

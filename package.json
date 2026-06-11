@@ -40,7 +40,21 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "aws-cdk-lib": {
+      "optional": false
+    },
+    "constructs": {
+      "optional": false
+    }
+  },
   "dependencies": {
+    "@aws-cdk/cloud-assembly-api": "^2.2.5",
+    "@aws-cdk/toolkit-lib": "^1.28.0",
     "@aws-sdk/client-budgets": "^3.1065.0",
     "@aws-sdk/client-cloudcontrol": "^3.1065.0",
     "@aws-sdk/client-cloudformation": "^3.1065.0",

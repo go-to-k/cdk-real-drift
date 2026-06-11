@@ -18,6 +18,7 @@ OPTIONS
   --app <cmd|cdk.out>         CDK app command or pre-synthesized assembly dir
                               (or $CDKRD_APP / cdk.json "app") — enables stack
                               auto-discovery + construct-path output
+  -c, --context key=value     context for synth (repeatable; cdk.json is the base)
   --json                      machine-readable output
   --fail-on declared|undeclared   which tier sets exit 1 (default: undeclared = both)
   --show-all                  inventory mode: show ALL current undeclared state
