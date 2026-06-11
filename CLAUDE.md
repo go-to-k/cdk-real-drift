@@ -120,8 +120,17 @@ detail:
     solo local repo with no PR workflow).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
     `docs` markers are fresh. Run the relevant skill before committing.
+- **Use a git worktree for any parallel / concurrent development.** Two agents
+  editing the same checkout collide (a real README clobber happened this way). Each
+  concurrent line of work gets its OWN worktree with DISJOINT files:
+  `git worktree add .worktrees/<name> -b wt-<name> main` →
+  `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
+  `node_modules`) → work → run gates + set markers → commit on the branch. The
+  orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
+  the leaked cdkd session hooks block it), then `git worktree remove`. A single
+  sequential session may still work directly in the main checkout.
 - **Branch / PR / merge gates are deferred until Phase 4** (when the repo gets a
-  remote). cdkrd is developed solo-on-`main`, so cdkd's branch-protection,
+  remote). cdkrd is developed on `main` (no PR flow yet), so cdkd's branch-protection,
   verify-pr-merge, pr-review, and integ-\* gates are intentionally NOT ported — they
   would be meaningless or disruptive without a remote.
 
