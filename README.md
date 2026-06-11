@@ -113,7 +113,9 @@ suspicious one. With `--yes` or a non-TTY (CI), it blesses all with no prompt.
 ## How it stays low-noise
 
 - **Read source:** Cloud Control API (auto-follows new types) → **SDK overrides** for
-  common types Cloud Control can't read → skip + log.
+  common types Cloud Control can't read → skip + log. Large stacks are fully
+  supported — resources are enumerated via paginated `ListStackResources` (no
+  100-resource cap) and read with bounded concurrency.
 - **Schema-driven noise strip:** read-only / write-only properties are removed using
   the CloudFormation resource schema (`describe-type`), at nested paths too.
 - **Reusable normalizers:** IAM-style policy canonicalization (Version / scalar-vs-array

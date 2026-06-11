@@ -1,12 +1,13 @@
 // Builds the "declared desired" view of a deployed stack:
-//   GetTemplate + DescribeStackResources (phys-id map) + DescribeStacks (params)
+//   GetTemplate + ListStackResources (phys-id map, paginated) + DescribeStacks (params)
 //   → intrinsic-resolve each resource's declared properties.
 // Slice scope: JSON templates (CDK app output). YAML support is a follow-up.
 import {
   type CloudFormationClient,
-  DescribeStackResourcesCommand,
   DescribeStacksCommand,
   GetTemplateCommand,
+  ListExportsCommand,
+  ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
@@ -66,8 +67,54 @@ export function buildResolverContext(
     conditions: template.Conditions ?? {},
     physIds,
     liveAttrs: {},
+    mappings: template.Mappings ?? {},
+    exports: {}, // populated by loadDesired's prefetch only when the template references Fn::ImportValue
     condCache: new Map(),
   };
+}
+
+// Per-region cache of CFn exports (Name -> Value). Listing exports is account+region
+// scoped, so a single fetch serves every ImportValue in the stack; cache so repeated
+// gather runs in the same process don't re-page.
+const exportsCache = new Map<string, Record<string, string>>();
+
+async function listExports(
+  client: CloudFormationClient,
+  region: string
+): Promise<Record<string, string>> {
+  const cached = exportsCache.get(region);
+  if (cached) return cached;
+  const exports: Record<string, string> = {};
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListExportsCommand({ NextToken: next }));
+    for (const e of res.Exports ?? []) if (e.Name) exports[e.Name] = e.Value ?? '';
+    next = res.NextToken;
+  } while (next);
+  exportsCache.set(region, exports);
+  return exports;
+}
+
+// Page ListStackResources (DescribeStackResources caps at 100; CDK stacks reach ~500).
+async function listStackResources(
+  client: CloudFormationClient,
+  stackName: string
+): Promise<{ physIds: Record<string, string>; typeOf: Record<string, string> }> {
+  const physIds: Record<string, string> = {};
+  const typeOf: Record<string, string> = {};
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListStackResourcesCommand({ StackName: stackName, NextToken: next })
+    );
+    for (const r of res.StackResourceSummaries ?? []) {
+      if (r.LogicalResourceId && r.PhysicalResourceId)
+        physIds[r.LogicalResourceId] = r.PhysicalResourceId;
+      if (r.LogicalResourceId && r.ResourceType) typeOf[r.LogicalResourceId] = r.ResourceType;
+    }
+    next = res.NextToken;
+  } while (next);
+  return { physIds, typeOf };
 }
 
 export async function loadDesired(
@@ -78,12 +125,14 @@ export async function loadDesired(
   // instead of the deployed GetTemplate; physIds + params still come from the live stack
   templateOverride?: Record<string, unknown>
 ): Promise<Desired> {
-  const [tmplRes, resRes, stkRes] = await Promise.all([
+  // GetTemplate + DescribeStacks are single calls (kept in Promise.all); ListStackResources
+  // is paginated separately (DescribeStackResources caps at 100, CDK stacks reach ~500).
+  const [tmplRes, stkRes, { physIds }] = await Promise.all([
     templateOverride
       ? Promise.resolve({ TemplateBody: undefined })
       : client.send(new GetTemplateCommand({ StackName: stackName })),
-    client.send(new DescribeStackResourcesCommand({ StackName: stackName })),
     client.send(new DescribeStacksCommand({ StackName: stackName })),
+    listStackResources(client, stackName),
   ]);
   const template = (templateOverride ?? parseTemplateBody(tmplRes.TemplateBody ?? '{}')) as Record<
     string,
@@ -96,13 +145,6 @@ export async function loadDesired(
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';
 
-  const physIds: Record<string, string> = {};
-  const typeOf: Record<string, string> = {};
-  for (const r of resRes.StackResources ?? []) {
-    if (r.LogicalResourceId && r.PhysicalResourceId)
-      physIds[r.LogicalResourceId] = r.PhysicalResourceId;
-    if (r.LogicalResourceId && r.ResourceType) typeOf[r.LogicalResourceId] = r.ResourceType;
-  }
   const stackParams: Record<string, string> = {};
   for (const p of stack?.Parameters ?? [])
     if (p.ParameterKey) stackParams[p.ParameterKey] = p.ParameterValue ?? '';
@@ -116,6 +158,14 @@ export async function loadDesired(
     stackName,
     stackId
   );
+
+  // Fn::ImportValue is synchronous in the resolver, so prefetch exports here — but
+  // ONLY when the template actually references it (a substring check on the body),
+  // so normal stacks pay nothing for the extra ListExports call(s).
+  const templateBody = templateOverride ? JSON.stringify(templateOverride) : rawTemplate;
+  if (templateBody.includes('Fn::ImportValue')) {
+    ctx.exports = await listExports(client, region);
+  }
 
   const resources: DesiredResource[] = [];
   // Roles whose inline Policies are managed by a SIBLING AWS::IAM::Policy resource

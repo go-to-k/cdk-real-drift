@@ -22,6 +22,8 @@ function ctx(over: Partial<ResolverContext> = {}): ResolverContext {
     conditions: {},
     physIds: { MyBucket: 'bucket-phys' },
     liveAttrs: {},
+    mappings: {},
+    exports: {},
     condCache: new Map(),
     ...over,
   };
@@ -102,6 +104,45 @@ describe('intrinsic resolver', () => {
       },
     });
     expect(resolve({ 'Fn::If': ['HasList', 'yes', 'no'] }, c2)).toBe('yes');
+  });
+
+  it('Fn::FindInMap resolves an existing path, else UNRESOLVED (incl. unresolvable key)', () => {
+    const c = ctx({ mappings: { RegionMap: { 'us-east-1': { ami: 'ami-123' } } } });
+    expect(resolve({ 'Fn::FindInMap': ['RegionMap', { Ref: 'AWS::Region' }, 'ami'] }, c)).toBe(
+      'ami-123'
+    );
+    // missing second key -> fail-closed
+    expect(resolve({ 'Fn::FindInMap': ['RegionMap', 'us-east-1', 'nope'] }, c)).toBe(UNRESOLVED);
+    // a key that can't resolve to a string -> fail-closed (never fabricate)
+    expect(resolve({ 'Fn::FindInMap': ['RegionMap', { Ref: 'Ghost' }, 'ami'] }, c)).toBe(
+      UNRESOLVED
+    );
+  });
+
+  it('Fn::Split splits a resolved string, propagates UNRESOLVED', () => {
+    expect(resolve({ 'Fn::Split': [',', 'a,b,c'] }, ctx())).toEqual(['a', 'b', 'c']);
+    expect(resolve({ 'Fn::Split': [',', { Ref: 'Env' }] }, ctx())).toEqual(['prod']);
+    // unresolvable source -> fail-closed
+    expect(resolve({ 'Fn::Split': [',', { Ref: 'Ghost' }] }, ctx())).toBe(UNRESOLVED);
+  });
+
+  it('Fn::ImportValue resolves a prefetched export, else UNRESOLVED', () => {
+    const c = ctx({ exports: { SharedArn: 'arn:aws:x:::shared' } });
+    expect(resolve({ 'Fn::ImportValue': 'SharedArn' }, c)).toBe('arn:aws:x:::shared');
+    // export not present -> fail-closed (never fabricate)
+    expect(resolve({ 'Fn::ImportValue': 'Missing' }, c)).toBe(UNRESOLVED);
+    // name itself unresolvable -> fail-closed
+    expect(resolve({ 'Fn::ImportValue': { Ref: 'Ghost' } }, c)).toBe(UNRESOLVED);
+  });
+
+  it('Fn::Sub treats ${!Literal} as a literal ${Literal} (no resolution)', () => {
+    expect(resolve({ 'Fn::Sub': 'a-${!Literal}-${Env}' }, ctx())).toBe('a-${Literal}-prod');
+  });
+
+  it('FAIL-CLOSED: Fn::Select out-of-range index / unresolved element → UNRESOLVED', () => {
+    expect(resolve({ 'Fn::Select': [1, ['a', 'b']] }, ctx())).toBe('b'); // in-range ok
+    expect(resolve({ 'Fn::Select': [5, ['a', 'b']] }, ctx())).toBe(UNRESOLVED); // OOB
+    expect(resolve({ 'Fn::Select': [0, [{ Ref: 'Ghost' }, 'b']] }, ctx())).toBe(UNRESOLVED); // unresolved element
   });
 
   it('hasUnresolved detects sentinel at depth', () => {

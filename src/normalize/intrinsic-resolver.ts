@@ -1,5 +1,6 @@
 // Minimal CloudFormation intrinsic resolver for declared-property comparison.
-// Resolves Ref / Fn::Sub / Fn::If (+ condition eval) / Fn::Join / Fn::Select.
+// Resolves Ref / Fn::Sub / Fn::If (+ condition eval) / Fn::Join / Fn::Select /
+// Fn::FindInMap / Fn::Split / Fn::ImportValue (exports prefetched by loadDesired).
 // Fn::GetAtt resolves to UNRESOLVED (needs live attributes) so callers skip that
 // path rather than report false drift. AWS::NoValue resolves to NOVALUE so callers
 // can prune it. (Will be swapped for cdkd's full IntrinsicFunctionResolver later.)
@@ -44,7 +45,39 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         const [idx, list] = v as [number, unknown];
         const arr = resolve(list, ctx);
         if (!Array.isArray(arr)) return UNRESOLVED;
-        return arr[Number(idx)];
+        const i = Number(idx);
+        // Fail-closed: out-of-range index (or a NaN index) would otherwise yield
+        // `undefined` and report false `desired: undefined` drift. The selected
+        // element itself being UNRESOLVED also propagates.
+        if (!Number.isInteger(i) || i < 0 || i >= arr.length) return UNRESOLVED;
+        const sel = arr[i];
+        return sel === UNRESOLVED ? UNRESOLVED : sel;
+      }
+      case 'Fn::FindInMap': {
+        if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
+        const [mapName, topKey, secondKey] = v.map((x) => resolve(x, ctx));
+        // All 3 keys must resolve to strings and the path must exist; else fail-closed.
+        if (
+          typeof mapName !== 'string' ||
+          typeof topKey !== 'string' ||
+          typeof secondKey !== 'string'
+        )
+          return UNRESOLVED;
+        const val = ctx.mappings?.[mapName]?.[topKey]?.[secondKey];
+        return val === undefined ? UNRESOLVED : val;
+      }
+      case 'Fn::Split': {
+        if (!Array.isArray(v) || v.length < 2) return UNRESOLVED;
+        const delim = v[0];
+        const src = resolve(v[1], ctx);
+        if (typeof delim !== 'string' || typeof src !== 'string') return UNRESOLVED;
+        return src.split(delim);
+      }
+      case 'Fn::ImportValue': {
+        const name = resolve(v, ctx);
+        if (typeof name !== 'string') return UNRESOLVED;
+        // Prefetched exports (see loadDesired); absent name -> fail-closed.
+        return name in ctx.exports ? ctx.exports[name] : UNRESOLVED;
       }
       case 'Fn::GetAtt':
         return resolveGetAtt(v, ctx);
@@ -155,6 +188,9 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
   }
   let unresolved = false;
   const out = tmpl.replace(/\$\{([^}]+)\}/g, (_m, ref: string) => {
+    // ${!Literal} is the CFn escape for a literal "${Literal}" — emit verbatim,
+    // do NOT attempt resolution.
+    if (ref.startsWith('!')) return `\${${ref.slice(1)}}`;
     if (ref in vars) {
       const r = resolve(vars[ref], ctx);
       if (r === UNRESOLVED) {

@@ -158,7 +158,12 @@ live ARN instead of falling to `unresolved` — see section 5.
 
 [src/normalize/intrinsic-resolver.ts](../src/normalize/intrinsic-resolver.ts).
 Resolves `Ref` / `Fn::Sub` / `Fn::If` (+ condition eval: Equals/And/Or/Not) /
-`Fn::Join` / `Fn::Select` / `Fn::GetAtt` / `AWS::NoValue`.
+`Fn::Join` / `Fn::Select` / `Fn::GetAtt` / `Fn::FindInMap` / `Fn::Split` /
+`Fn::ImportValue` / `AWS::NoValue`, plus the `Fn::Sub` `${!Literal}` escape.
+`Fn::FindInMap` resolves against `ctx.mappings` (from `template.Mappings`);
+`Fn::ImportValue` against `ctx.exports` (CFn cross-stack exports — see below);
+`Fn::Select` returns `UNRESOLVED` (not `undefined`) for an out-of-range index. All
+of these are fail-closed: a missing mapping / export / non-string key → `UNRESOLVED`.
 
 **Design rule: fail-closed.** Anything not _confidently_ resolvable returns the
 `UNRESOLVED` sentinel, and the consuming property is reported in the `unresolved`
@@ -176,6 +181,13 @@ dotted paths supported) resolves to X's **real live attribute** — not a guesse
 format. If X wasn't read or the attribute is absent → stays `UNRESOLVED`. This is
 still real drift detection: it checks whether the consuming resource actually points
 at that attribute's current value.
+
+**`Fn::ImportValue` (cross-stack).** The resolver is synchronous, so exports can't be
+fetched mid-resolve. `loadDesired` prefetches them — but ONLY when the template body
+references `Fn::ImportValue` (a substring check), so a normal single-stack run pays
+nothing — via paginated CFn `ListExports`, account+region-scoped, cached in a
+module-level per-region Map. `Fn::ImportValue` then resolves a known export name to
+its value, else `UNRESOLVED`.
 
 > Trade-off to review: cdkd has a fuller `IntrinsicFunctionResolver`. We
 > deliberately wrote a focused, fail-closed one. The remaining `unresolved`
@@ -403,11 +415,20 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    (which may add/remove props vs deployed). The primary signal is declared drift;
    undeclared-in-pre-deploy semantics are first-cut. **Open question**: should
    `--pre-deploy` restrict to declared, or define undeclared precisely?
-3. **`unresolved` residual**: exotic intrinsics still skip. Acceptable by design
-   (never false drift) but reduces coverage. **Open question**: adopt cdkd's full
-   resolver, or keep focused + fail-closed?
+3. **`unresolved` residual (narrowed)**: the resolver now also handles `Fn::FindInMap`
+   / `Fn::Split` / `Fn::ImportValue` / out-of-range `Fn::Select` / the `${!Literal}`
+   Sub escape — all deterministically and fail-closed (answer to the original open
+   question: keep the focused, fail-closed resolver and add only intrinsics we can
+   resolve with certainty, rather than adopting cdkd's full resolver). Truly exotic
+   intrinsics still skip honestly. **Residual open question**: is the remaining
+   long-tail worth more, or is "report it as unresolved" the right stopping point?
 4. **Single-region per invocation**; cross-region stacks handled per-stack via env.
-   No cross-stack `Fn::ImportValue` resolution.
+   Cross-stack `Fn::ImportValue` IS now resolved (exports prefetched per region; see
+   §5). Two notes for review: the per-region exports cache is module-level (fine for a
+   one-shot CLI; revisit if cdkrd ever runs as a long-lived / multi-account process),
+   and the prefetch trigger is a substring check on the template body
+   (`includes('Fn::ImportValue')`) — a YAML `!ImportValue` shorthand would need the
+   same trigger if YAML resolution ever diverges from the JSON-normalized body.
 5. **Not-revertable types** (Lambda Permission, Budgets) — documented; revisit if
    demand appears.
 6. **YAML templates**: parsed (`yaml-cfn.ts`), but the dogfooding was JSON (CDK

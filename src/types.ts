@@ -34,6 +34,9 @@ export interface ResolverContext {
   // resolve Fn::GetAtt against real attributes instead of guessing ARN formats.
   // Empty on the first (pre-live-read) resolve pass; populated for the re-resolve.
   liveAttrs: Record<string, Record<string, unknown>>;
+  // template.Mappings (MapName -> TopKey -> SecondKey -> value), for Fn::FindInMap
+  mappings: Record<string, Record<string, Record<string, unknown>>>;
+  exports: Record<string, string>; // CFn export Name -> Value, for Fn::ImportValue (prefetched)
   condCache: Map<string, unknown>; // true | false | UNRESOLVED (fail-closed)
 }
 

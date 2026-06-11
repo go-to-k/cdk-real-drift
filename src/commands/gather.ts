@@ -33,13 +33,22 @@ export async function gatherFindings(
   // Pass 1: read every resource's live model first, so Fn::GetAtt in any
   // resource's declared props can be resolved against the referenced resource's
   // real attributes (populates ctx.liveAttrs) instead of falling to UNRESOLVED.
+  // Bounded-concurrency worker pool (pull-next-when-free): serial reads cost
+  // ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
+  // any throttling. Pass-2 ordering stays deterministic (iterates desired.resources).
   const reads = new Map<string, Awaited<ReturnType<typeof readLive>>>();
-  for (const r of desired.resources) {
-    if (!r.physicalId) continue;
-    const read = await readLive(cc, r, region, desired.accountId);
-    reads.set(r.logicalId, read);
-    if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
-  }
+  const targets = desired.resources.filter((r) => r.physicalId);
+  const POOL_SIZE = 6;
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < targets.length) {
+      const r = targets[cursor++]!;
+      const read = await readLive(cc, r, region, desired.accountId);
+      reads.set(r.logicalId, read);
+      if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
 
   // Pass 2: re-resolve declared with liveAttrs populated, then classify.
   for (const r of desired.resources) {
