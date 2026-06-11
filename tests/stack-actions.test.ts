@@ -1,4 +1,10 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
+import {
+  CloudControlClient,
+  GetResourceCommand,
+  UpdateResourceCommand,
+} from '@aws-sdk/client-cloudcontrol';
+import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { baselinePath } from '../src/baseline/baseline-file.js';
@@ -235,6 +241,125 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).not.toContain('has no baseline — undeclared drift has no revert target');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
+  });
+});
+
+describe('revertStack convergence re-check (R44 — scoped to touched resources)', () => {
+  const EMPTY_SCHEMA = {
+    readOnly: new Set<string>(),
+    writeOnly: new Set<string>(),
+    createOnly: new Set<string>(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  } as SchemaInfo;
+
+  // One bucket with declared VersioningConfiguration drift (the declared() fixture).
+  const gathered = (): GatherResult =>
+    ({
+      desired: {
+        stackName: 's',
+        region: 'r',
+        accountId: '111122223333',
+        resources: [
+          {
+            logicalId: 'B',
+            resourceType: 'AWS::S3::Bucket',
+            physicalId: 'b-phys',
+            declared: { VersioningConfiguration: { Status: 'Enabled' } },
+          },
+        ],
+        rawTemplate: '{}',
+        ctx: {
+          params: {},
+          pseudo: {},
+          conditions: {},
+          physIds: {},
+          liveAttrs: {},
+          mappings: {},
+          exports: {},
+          condCache: new Map(),
+        },
+      },
+      findings: [declared()],
+      schemas: new Map([['AWS::S3::Bucket', EMPTY_SCHEMA]]),
+    }) as GatherResult;
+
+  const params = () => ({
+    stackName: 's',
+    region: 'r',
+    gathered: gathered(),
+    baseline: undefined,
+    config: { ignore: [] },
+    dryRun: false,
+    yes: true,
+    removeUnblessed: false,
+    verbose: false,
+    interactive: false, // yes:true — no confirm prompt is reached
+    convergeRetryDelayMs: 0, // do not sleep for real in tests
+  });
+
+  const liveRead = (status: string) => ({
+    ResourceDescription: {
+      Identifier: 'b-phys',
+      Properties: JSON.stringify({ VersioningConfiguration: { Status: status } }),
+    },
+  });
+
+  const run = async () => {
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (s: unknown) => logs.push(String(s));
+    try {
+      const outcome = await revertStack(params());
+      return { outcome, logs: logs.join('\n') };
+    } finally {
+      console.log = orig;
+    }
+  };
+
+  const mockApplySuccess = (cc: ReturnType<typeof mockClient>) => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+  };
+
+  it('converged on the first scoped read → CLEAN, exit 0, exactly ONE re-read', async () => {
+    const cc = mockClient(CloudControlClient);
+    mockApplySuccess(cc);
+    cc.on(GetResourceCommand).resolves(liveRead('Enabled'));
+
+    const { outcome, logs } = await run();
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(logs).toContain('verifying convergence (re-reading 1 resource(s))...');
+    expect(logs).toContain('s: CLEAN after revert.');
+    // scoped: the single touched resource was read once — no full-stack re-gather,
+    // and no eventual-consistency retry when the first read already converged
+    expect(cc.commandCalls(GetResourceCommand)).toHaveLength(1);
+  });
+
+  it('stale first read → ONE retry, then CLEAN (eventual-consistency guard)', async () => {
+    const cc = mockClient(CloudControlClient);
+    mockApplySuccess(cc);
+    let reads = 0;
+    cc.on(GetResourceCommand).callsFake(() => liveRead(++reads === 1 ? 'Suspended' : 'Enabled'));
+
+    const { outcome, logs } = await run();
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(logs).toContain('s: CLEAN after revert.');
+    expect(cc.commandCalls(GetResourceCommand)).toHaveLength(2);
+  });
+
+  it('still drifted after the retry → "1 drift(s) remain." + exit 1', async () => {
+    const cc = mockClient(CloudControlClient);
+    mockApplySuccess(cc);
+    cc.on(GetResourceCommand).resolves(liveRead('Suspended'));
+
+    const { outcome, logs } = await run();
+    expect(outcome).toEqual({ exit: 1, aborted: false });
+    expect(logs).toContain('s: 1 drift(s) remain.');
+    expect(cc.commandCalls(GetResourceCommand)).toHaveLength(2); // first read + one retry, no more
   });
 });
 

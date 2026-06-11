@@ -21,11 +21,13 @@ import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
 import { SDK_WRITERS } from '../revert/writers.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
-import { type GatherResult, gatherFindings } from './gather.js';
+import { type GatherResult, regatherTouched } from './gather.js';
 
 const driftCount = (findings: Finding[]): number =>
   findings.filter((f) => f.tier === 'deleted' || f.tier === 'declared' || f.tier === 'undeclared')
     .length;
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 // ---- accept ----
 
@@ -210,7 +212,13 @@ export interface RevertStackParams {
   removeUnblessed: boolean;
   verbose: boolean; // expand the NOT-revertable summary to the full list
   interactive: boolean; // whether the confirm prompt may be shown (TTY && !--no-interactive)
+  // Delay before the single convergence re-read retry (SDK-writer paths can lag
+  // behind their API response — eventual consistency). Overridable so unit tests
+  // don't sleep for real.
+  convergeRetryDelayMs?: number;
 }
+
+const CONVERGE_RETRY_DELAY_MS = 3000;
 
 /**
  * Outcome of a per-stack revert.
@@ -328,16 +336,23 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     if (!r.ok) worst = Math.max(worst, 2);
   }
 
-  // re-check convergence (re-gather is allowed here — the world changed)
-  const remaining = driftCount(
-    applyIgnores(
-      applyBaseline((await gatherFindings(stackName, region)).findings, baseline, {
-        declaredByLogical,
-      }),
-      stackName,
-      config
-    )
-  );
+  // Re-check convergence — scoped to the resources the revert just touched (R44).
+  // A full gatherFindings here re-read the ENTIRE stack (a long silent wait that
+  // scaled with stack size, not with the revert); regatherTouched re-reads only
+  // plan.items and carries every other finding forward from the original gather.
+  const touched = new Set(plan.items.map((i) => i.logicalId));
+  console.log(`\nverifying convergence (re-reading ${touched.size} resource(s))...`);
+  const reconcile = (findings: Finding[]): Finding[] =>
+    applyIgnores(applyBaseline(findings, baseline, { declaredByLogical }), stackName, config);
+  let post = reconcile(await regatherTouched(gathered, touched, region));
+  if (driftCount(post.filter((f) => touched.has(f.logicalId))) > 0) {
+    // A touched resource still reads as drifted. SDK-writer paths (IAM etc.) are
+    // eventually consistent — the old slow full re-gather granted propagation time
+    // for free; the scoped read must wait deliberately. One retry only.
+    await sleep(p.convergeRetryDelayMs ?? CONVERGE_RETRY_DELAY_MS);
+    post = reconcile(await regatherTouched(gathered, touched, region));
+  }
+  const remaining = driftCount(post);
   console.log(
     remaining === 0
       ? `${stackName}: CLEAN after revert.`

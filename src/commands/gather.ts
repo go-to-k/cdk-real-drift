@@ -8,14 +8,94 @@ import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../read/kms-aliases.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
-import { readLive } from '../read/router.js';
+import { readLive, type ReadResult } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
-import type { Finding, SchemaInfo } from '../types.js';
+import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 
 export interface GatherResult {
   desired: Desired;
   findings: Finding[];
   schemas: Map<string, SchemaInfo>; // resourceType -> schema (so revert can honor createOnly)
+}
+
+// Bounded-concurrency live-read pool (pull-next-when-free): serial reads cost
+// ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
+// any throttling. Stores each read in `reads` and feeds ctx.liveAttrs so
+// Fn::GetAtt can resolve against real attributes.
+const POOL_SIZE = 6;
+async function readAll(
+  cc: CloudControlClient,
+  targets: DesiredResource[],
+  region: string,
+  desired: Desired,
+  reads: Map<string, ReadResult>
+): Promise<void> {
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < targets.length) {
+      const r = targets[cursor++]!;
+      const read = await readLive(cc, r, region, desired.accountId);
+      reads.set(r.logicalId, read);
+      if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
+}
+
+interface ClassifyOpts {
+  accountId: string;
+  region: string;
+  kmsAliasTargets: Record<string, string>;
+}
+
+// Turn ONE resource's read into findings: no-physical-id / deleted / skipped
+// short-circuits, else schema-strip + classify. Shared by gather's pass 2 and
+// the scoped post-revert re-check (regatherTouched).
+async function classifyRead(
+  cfn: CloudFormationClient,
+  r: DesiredResource,
+  read: ReadResult | undefined,
+  schemas: Map<string, SchemaInfo>,
+  classifyOpts: ClassifyOpts
+): Promise<Finding[]> {
+  if (!r.physicalId) {
+    return [
+      {
+        tier: 'skipped',
+        logicalId: r.logicalId,
+        resourceType: r.resourceType,
+        path: '',
+        note: 'no physical id',
+      },
+    ];
+  }
+  if (read?.deleted) {
+    return [
+      {
+        tier: 'deleted',
+        logicalId: r.logicalId,
+        physicalId: r.physicalId,
+        constructPath: r.constructPath,
+        resourceType: r.resourceType,
+        path: '',
+        note: 'resource deleted out of band',
+      },
+    ];
+  }
+  if (!read || read.skippedReason || !read.live) {
+    return [
+      {
+        tier: 'skipped',
+        logicalId: r.logicalId,
+        resourceType: r.resourceType,
+        path: '',
+        note: read?.skippedReason ?? 'not readable',
+      },
+    ];
+  }
+  const schema = schemas.get(r.resourceType) ?? (await getSchemaInfo(cfn, r.resourceType));
+  schemas.set(r.resourceType, schema);
+  return classifyResource(r, read.live, schema, classifyOpts);
 }
 
 export async function gatherFindings(
@@ -36,22 +116,10 @@ export async function gatherFindings(
   // Pass 1: read every resource's live model first, so Fn::GetAtt in any
   // resource's declared props can be resolved against the referenced resource's
   // real attributes (populates ctx.liveAttrs) instead of falling to UNRESOLVED.
-  // Bounded-concurrency worker pool (pull-next-when-free): serial reads cost
-  // ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
-  // any throttling. Pass-2 ordering stays deterministic (iterates desired.resources).
-  const reads = new Map<string, Awaited<ReturnType<typeof readLive>>>();
+  // Pass-2 ordering stays deterministic (iterates desired.resources).
+  const reads = new Map<string, ReadResult>();
   const targets = desired.resources.filter((r) => r.physicalId);
-  const POOL_SIZE = 6;
-  let cursor = 0;
-  const worker = async (): Promise<void> => {
-    while (cursor < targets.length) {
-      const r = targets[cursor++]!;
-      const read = await readLive(cc, r, region, desired.accountId);
-      reads.set(r.logicalId, read);
-      if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
+  await readAll(cc, targets, region, desired, reads);
 
   // Re-resolve EVERY resource's declared now that pass 1 populated all live
   // attributes, so Fn::GetAtt resolves. Hoisted out of pass 2 because pass 1.5
@@ -74,18 +142,7 @@ export async function gatherFindings(
       SDK_OVERRIDES[r.resourceType] &&
       reads.get(r.logicalId)?.skippedReason
   );
-  let rc = 0;
-  const retryWorker = async (): Promise<void> => {
-    while (rc < retryTargets.length) {
-      const r = retryTargets[rc++]!;
-      const read = await readLive(cc, r, region, desired.accountId);
-      reads.set(r.logicalId, read);
-      if (read.live) desired.ctx.liveAttrs[r.logicalId] = read.live;
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(POOL_SIZE, retryTargets.length) }, () => retryWorker())
-  );
+  await readAll(cc, retryTargets, region, desired, reads);
 
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from
@@ -98,42 +155,60 @@ export async function gatherFindings(
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
   for (const r of desired.resources) {
-    if (!r.physicalId) {
-      findings.push({
-        tier: 'skipped',
-        logicalId: r.logicalId,
-        resourceType: r.resourceType,
-        path: '',
-        note: 'no physical id',
-      });
-      continue;
-    }
-    const read = reads.get(r.logicalId);
-    if (read?.deleted) {
-      findings.push({
-        tier: 'deleted',
-        logicalId: r.logicalId,
-        physicalId: r.physicalId,
-        constructPath: r.constructPath,
-        resourceType: r.resourceType,
-        path: '',
-        note: 'resource deleted out of band',
-      });
-      continue;
-    }
-    if (!read || read.skippedReason || !read.live) {
-      findings.push({
-        tier: 'skipped',
-        logicalId: r.logicalId,
-        resourceType: r.resourceType,
-        path: '',
-        note: read?.skippedReason ?? 'not readable',
-      });
-      continue;
-    }
-    const schema = await getSchemaInfo(cfn, r.resourceType);
-    schemas.set(r.resourceType, schema);
-    findings.push(...classifyResource(r, read.live, schema, classifyOpts));
+    findings.push(...(await classifyRead(cfn, r, reads.get(r.logicalId), schemas, classifyOpts)));
   }
   return { desired, findings, schemas };
+}
+
+/**
+ * Scoped re-gather for the post-revert convergence check (R44): re-read and
+ * re-classify ONLY the `touched` resources, carrying every other resource's
+ * findings forward from the original gather unchanged. The deployed template
+ * cannot have changed (revert writes live state, not CloudFormation), so
+ * `gathered.desired` and `gathered.schemas` stay valid — this turns a
+ * whole-stack re-gather (template fetch + a live read per resource) into a
+ * handful of reads, which is what made `revert` hang silently after the last
+ * `reverted:` line. Out-of-band changes to UNTOUCHED resources during the
+ * revert are deliberately not picked up — that is `check`'s job, and the old
+ * full re-gather could even contradict the plan the user just confirmed by
+ * blaming unrelated new drift on the revert.
+ *
+ * Returned findings are unordered across resources (untouched first, then the
+ * fresh ones) — the convergence check only counts drift, it never renders them.
+ * Mutates `gathered` the same way gatherFindings does (ctx.liveAttrs, resolved
+ * declared, schemas cache).
+ */
+export async function regatherTouched(
+  gathered: GatherResult,
+  touched: Set<string>,
+  region: string
+): Promise<Finding[]> {
+  const cfn = new CloudFormationClient({ region, ...READ_RETRY });
+  const cc = new CloudControlClient({ region, ...READ_RETRY });
+  const { desired, schemas } = gathered;
+  const targets = desired.resources.filter((r) => touched.has(r.logicalId));
+
+  const reads = new Map<string, ReadResult>();
+  await readAll(
+    cc,
+    targets.filter((r) => r.physicalId),
+    region,
+    desired,
+    reads
+  );
+  // Re-resolve declared against the refreshed liveAttrs (mirrors gather's hoisted
+  // re-resolve) — GetAtt targets among the touched resources may have moved.
+  for (const r of targets) {
+    if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
+  }
+  const kmsAliasTargets = targets.some((r) => usesManagedKmsAlias(r.declared))
+    ? await fetchManagedAliasTargets(region)
+    : {};
+  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
+
+  const fresh: Finding[] = [];
+  for (const r of targets) {
+    fresh.push(...(await classifyRead(cfn, r, reads.get(r.logicalId), schemas, classifyOpts)));
+  }
+  return [...gathered.findings.filter((f) => !touched.has(f.logicalId)), ...fresh];
 }
