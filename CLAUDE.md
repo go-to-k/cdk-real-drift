@@ -119,15 +119,18 @@ detail:
     live-test + retrospective; named `verify-pr` for layout parity with cdkd).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
     `docs` markers are fresh. Run the relevant skill before committing.
-- **Use a git worktree for any parallel / concurrent development.** Two agents
-  editing the same checkout collide (a real README clobber happened this way). Each
-  concurrent line of work gets its OWN worktree with DISJOINT files:
+- **ALWAYS develop in a git worktree — never edit or branch in the main
+  checkout, even for a single "sequential" session.** Sessions that believed
+  they were alone have collided twice: a README clobber, and a branch created in
+  the shared checkout that captured another session's staged R44 commit. Every
+  line of work gets its OWN worktree with DISJOINT files:
   `git worktree add .worktrees/<name> -b wt-<name> main` →
   `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
   `node_modules`) → work → run gates + set markers → commit on the branch. The
   orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
-  the leaked cdkd session hooks block it), then `git worktree remove`. A single
-  sequential session may still work directly in the main checkout.
+  the leaked cdkd session hooks block it), then `git worktree remove`. The main
+  checkout is reserved for integration: `main` checkouts, pulls, and PR plumbing
+  only.
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's heavier
