@@ -7,38 +7,61 @@ import { resolve } from 'node:path';
 import { BaseCredentials, CdkAppMultiContext, Toolkit } from '@aws-cdk/toolkit-lib';
 import { QuietIoHost } from './io-host.js';
 
+export interface SynthOptions {
+  region?: string | undefined;
+  profile?: string | undefined;
+  context?: Record<string, string>;
+}
+
 export interface SynthStack {
   stackName: string;
+  region: string | undefined; // the stack's own env.region (concrete) — for per-stack drift reads
   template: Record<string, unknown>;
 }
 
-export async function synthApp(
-  app: string,
-  region: string | undefined,
-  context: Record<string, string> = {}
-): Promise<SynthStack[]> {
+const CONCRETE_REGION = /^[a-z]{2}-[a-z]+-\d+$/;
+
+export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
+  const { region, profile, context = {} } = opts;
   const toolkit = new Toolkit({
     ioHost: new QuietIoHost(),
     sdkConfig: {
-      baseCredentials: BaseCredentials.awsCliCompatible(region ? { defaultRegion: region } : {}),
+      baseCredentials: BaseCredentials.awsCliCompatible({
+        ...(region && { defaultRegion: region }),
+        ...(profile && { profile }),
+      }),
     },
   });
 
   const p = resolve(app);
-  // CdkAppMultiContext reads cdk.json / cdk.context.json / ~/.cdk.json as the base
-  // layer; our -c/--context overrides win on top (mirrors cdk-local / cdk CLI).
-  const hasOverrides = Object.keys(context).length > 0;
-  const source =
-    existsSync(p) && statSync(p).isDirectory()
-      ? await toolkit.fromAssemblyDirectory(p, { failOnMissingContext: false })
-      : await toolkit.fromCdkApp(app, {
-          ...(hasOverrides && { contextStore: new CdkAppMultiContext(process.cwd(), context) }),
-        });
+  const isDir = existsSync(p) && statSync(p).isDirectory();
+  let source;
+  if (isDir) {
+    // pre-synthesized assembly: no subprocess to feed region/profile/context to
+    source = await toolkit.fromAssemblyDirectory(p, { failOnMissingContext: false });
+  } else {
+    const hasOverrides = Object.keys(context).length > 0;
+    // feed the app subprocess the same region/profile the user gave so `this.region`
+    // / env-based credential lookups resolve as they would under `cdk` (cdk-local).
+    const env: Record<string, string> = {};
+    if (region) {
+      env.AWS_REGION = region;
+      env.CDK_DEFAULT_REGION = region;
+    }
+    if (profile) env.AWS_PROFILE = profile;
+    source = await toolkit.fromCdkApp(app, {
+      ...(Object.keys(env).length > 0 && { env }),
+      // CdkAppMultiContext reads cdk.json / cdk.context.json / ~/.cdk.json as the
+      // base layer; our -c/--context overrides win on top (mirrors cdk CLI).
+      ...(hasOverrides && { contextStore: new CdkAppMultiContext(process.cwd(), context) }),
+    });
+  }
 
   const cached = await toolkit.synth(source);
   try {
     return cached.cloudAssembly.stacks.map((s) => ({
       stackName: s.stackName,
+      region: CONCRETE_REGION.test(s.environment.region) ? s.environment.region : undefined,
       template: s.template as Record<string, unknown>,
     }));
   } finally {
@@ -46,11 +69,15 @@ export async function synthApp(
   }
 }
 
-/** Synth and return just the deployed CFn stack names (for auto-discovery). */
-export async function discoverStackNames(
+export interface DiscoveredStack {
+  stackName: string;
+  region: string | undefined; // the stack's own env.region, when concrete
+}
+
+/** Synth and return each stack's name + its own (concrete) region, for auto-discovery. */
+export async function discoverStacks(
   app: string,
-  region: string | undefined,
-  context: Record<string, string> = {}
-): Promise<string[]> {
-  return (await synthApp(app, region, context)).map((s) => s.stackName);
+  opts: SynthOptions = {}
+): Promise<DiscoveredStack[]> {
+  return (await synthApp(app, opts)).map((s) => ({ stackName: s.stackName, region: s.region }));
 }

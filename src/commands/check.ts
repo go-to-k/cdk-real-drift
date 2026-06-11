@@ -1,4 +1,5 @@
-// `cdkrd check [<stack>...] [--all] [--region r] [--json] [--fail-on declared|undeclared] [--show-all]`
+// `cdkrd check [<stack>...] [--all] [--region r] [--profile p] [--app ...] [-c k=v]
+//             [--json] [--fail-on declared|undeclared] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
@@ -11,21 +12,25 @@ import { gatherFindings } from './gather.js';
 
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
-  if (!a.region) {
-    console.error('error: no AWS region. Pass --region or set AWS_REGION / AWS_DEFAULT_REGION.');
-    return 2;
-  }
-  const region = a.region;
-  const stacks = await resolveStacks(a, region);
+  if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
+
+  const stacks = await resolveStacks(a);
   if (stacks.length === 0) {
     console.error(
-      'usage: cdkrd check <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--json] [--fail-on declared|undeclared] [--show-all]'
+      'usage: cdkrd check <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--profile p] [--json] [--fail-on declared|undeclared] [--show-all]'
     );
+    if (a.all && !a.region)
+      console.error('  (--all needs a region: pass --region or set AWS_REGION)');
     return 2;
   }
 
   let worst = 0;
-  for (const stackName of stacks) {
+  for (const { stackName, region } of stacks) {
+    if (!region) {
+      console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
+      worst = Math.max(worst, 2);
+      continue;
+    }
     try {
       const { findings } = await gatherFindings(stackName, region);
       const baseline = a.showAll ? undefined : await loadBaseline(stackName, region);

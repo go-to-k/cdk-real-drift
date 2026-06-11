@@ -1,33 +1,38 @@
-// `cdkrd accept [<stack>...] [--all]` (alias: init) — write the current undeclared
-// state into the baseline FILE(s). Writes ONLY git-committed baselines; no AWS writes.
+// `cdkrd accept [<stack>...] [--all] [--app ...] [--region r] [--profile p] [--yes]`
+// Write the current undeclared state into the baseline FILE(s). Writes ONLY
+// git-committed baselines; no AWS writes.
+import { isStackNotDeployed } from '../aws-errors.js';
 import {
   buildAccepted,
   hashTemplate,
   loadBaseline,
   writeBaseline,
 } from '../baseline/baseline-file.js';
-import { isStackNotDeployed } from '../aws-errors.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 
 export async function runAccept(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
-  if (!a.region) {
-    console.error('error: no AWS region. Pass --region or set AWS_REGION / AWS_DEFAULT_REGION.');
-    return 2;
-  }
-  const region = a.region;
-  const stacks = await resolveStacks(a, region);
+  if (a.profile) process.env.AWS_PROFILE = a.profile;
+
+  const stacks = await resolveStacks(a);
   if (stacks.length === 0) {
     console.error(
-      'usage: cdkrd accept <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--yes]'
+      'usage: cdkrd accept <stack>... | --all | (run in a CDK app dir / --app) [--region r] [--profile p] [--yes]'
     );
+    if (a.all && !a.region)
+      console.error('  (--all needs a region: pass --region or set AWS_REGION)');
     return 2;
   }
 
   let worst = 0;
-  for (const stackName of stacks) {
+  for (const { stackName, region } of stacks) {
+    if (!region) {
+      console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
+      worst = Math.max(worst, 2);
+      continue;
+    }
     try {
       if (!a.yes && (await loadBaseline(stackName, region))) {
         console.error(

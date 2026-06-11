@@ -1,11 +1,12 @@
 // Tiny shared CLI arg parser (no dependency).
 import type { FailOn } from './report/report.js';
 
-const VALUE_FLAGS = new Set(['--region', '--fail-on', '--app', '-c', '--context']);
+const VALUE_FLAGS = new Set(['--region', '--profile', '--fail-on', '--app', '-c', '--context']);
 
 export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty: --all or synth-discovery)
   region: string | undefined; // resolved region (no silent default — caller errors if absent)
+  profile: string | undefined; // AWS profile (--profile or $AWS_PROFILE)
   app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
   context: Record<string, string>; // -c/--context key=value overrides for synth (cdk.json is the base layer)
   json: boolean;
@@ -45,6 +46,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     stackNames,
     context,
     region: get('--region') ?? process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION,
+    profile: get('--profile') ?? process.env.AWS_PROFILE,
     // --app > CDKRD_APP env (cdk.json "app" fallback resolved in the synth layer)
     app: get('--app') ?? process.env.CDKRD_APP,
     json: has('--json'),

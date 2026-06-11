@@ -14,7 +14,9 @@ USAGE
   cdkrd init   <stack>              first-time baseline (alias of accept)
 
 OPTIONS
-  --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION)
+  --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
+                              CDK stacks with explicit env.region are auto-detected
+  --profile <p>               AWS profile (or $AWS_PROFILE)
   --app <cmd|cdk.out>         CDK app command or pre-synthesized assembly dir
                               (or $CDKRD_APP / cdk.json "app") — enables stack
                               auto-discovery + construct-path output
