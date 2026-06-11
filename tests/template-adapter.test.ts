@@ -73,12 +73,20 @@ describe('loadDesired templateOverride (--pre-deploy)', () => {
           LogicalResourceId: 'Bucket',
           PhysicalResourceId: 'b-phys',
           ResourceType: 'AWS::S3::Bucket',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
         },
       ],
     });
     cfn.on(DescribeStacksCommand).resolves({
       Stacks: [
-        { StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x', Parameters: [] },
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
       ],
     });
 

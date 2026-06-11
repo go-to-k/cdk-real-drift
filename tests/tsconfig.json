@@ -1,0 +1,15 @@
+{
+  "// purpose": "Type-aware lint (oxc) discovers the nearest tsconfig per file. The root tsconfig.json excludes tests (rootDir ./src), so test files would lint without node globals (process). This project includes the tests with node types so `vp check` / `vp lint` resolve them. Mirrors tsconfig.test.json's relaxed strictness for tests.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "exactOptionalPropertyTypes": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../src/**/*"],
+  "exclude": ["integration"]
+}
