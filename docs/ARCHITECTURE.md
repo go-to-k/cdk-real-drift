@@ -339,13 +339,14 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    demand appears.
 6. **YAML templates**: parsed (`yaml-cfn.ts`), but the dogfooding was JSON (CDK
    output). Worth a YAML-template pass.
-7. **Governance / repo hygiene**: CI exists (`.github/workflows/ci.yml` runs `vp run
-check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`).
-   `.markgate.yml` + check/check-docs/verify-pr skills exist. Still being added:
-   `CLAUDE.md`, `.claude/hooks` (the repo declares markgate gates but ships no
-   enforcing hooks of its own yet), `CONTRIBUTING.md`. _Open question: how much of
-   cdkd's heavy governance (50 hooks / 10 rules) is proportionate for a smaller new
-   repo?_
+7. **Governance / repo hygiene (in place)**: CI (`.github/workflows/ci.yml` =
+   `vp run check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`),
+   `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
+   `.claude/hooks/check-gate.sh` (+ `.claude/settings.json`), `CLAUDE.md`,
+   `CONTRIBUTING.md`. Deliberately deferred until the repo has a remote (Phase 4):
+   branch/PR/merge gates and `.claude/rules` / `.claude/agents` — cdkd's heavy
+   50-hook / 10-rule suite is disproportionate for a new repo. _Open question: which
+   of those become worth adding once there are external contributors?_
 
 ## 14. Phase 4 readiness
 
@@ -353,11 +354,11 @@ DONE: Phase 2 (MVP) + Phase 3 (broad dogfood, normalizer tuning, revert landed,
 GetAtt resolution, wildcard, EIP, ManagedPolicy revert, `--pre-deploy`, governance
 skills, **lint clean / CI green**).
 
+Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is now in place too.
+
 REMAINING before the single public launch (GitHub + npm + blog), none of which is a
 code-correctness blocker:
 
-- repo hygiene: `CLAUDE.md`, `CONTRIBUTING.md`, minimal `.claude/hooks` enforcing the
-  declared gates (in progress).
 - this design review (the artifact you are reading) → address any blocking findings.
 - create the public GitHub repo + push, then `npm publish`, then the blog announce.
   These three are the deliberate, irreversible "single launch" event and are done
