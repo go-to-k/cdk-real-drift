@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
 import {
+  canonicalizeTagListsDeep,
   isAllAwsTags,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
@@ -17,6 +18,40 @@ describe('noise suppressors', () => {
     expect(isTrivialEmpty(0)).toBe(false); // 0 may be meaningful
     expect(isTrivialEmpty('x')).toBe(false);
     expect(isTrivialEmpty(true)).toBe(false);
+  });
+
+  it('canonicalizeTagListsDeep: sorts {Key,Value}[] by Key so reordering is not drift', () => {
+    const a = canonicalizeTagListsDeep({
+      Tags: [
+        { Key: 'Name', Value: 'n' },
+        { Key: 'aws-cdk:subnet-type', Value: 't' },
+        { Key: 'aws-cdk:subnet-name', Value: 's' },
+      ],
+    });
+    const b = canonicalizeTagListsDeep({
+      Tags: [
+        { Key: 'aws-cdk:subnet-name', Value: 's' },
+        { Key: 'aws-cdk:subnet-type', Value: 't' },
+        { Key: 'Name', Value: 'n' },
+      ],
+    });
+    expect(a).toEqual(b);
+    expect((a as { Tags: { Key: string }[] }).Tags.map((t) => t.Key)).toEqual([
+      'Name',
+      'aws-cdk:subnet-name',
+      'aws-cdk:subnet-type',
+    ]);
+  });
+
+  it('canonicalizeTagListsDeep: recurses + leaves non-tag arrays positional', () => {
+    expect(canonicalizeTagListsDeep({ A: { Tags: [{ Key: 'b' }, { Key: 'a' }] } })).toEqual({
+      A: { Tags: [{ Key: 'a' }, { Key: 'b' }] },
+    });
+    // a plain list (no Key on every element) keeps its order
+    expect(canonicalizeTagListsDeep({ L: [3, 1, 2] })).toEqual({ L: [3, 1, 2] });
+    expect(canonicalizeTagListsDeep({ L: [{ Key: 'a' }, { X: 1 }] })).toEqual({
+      L: [{ Key: 'a' }, { X: 1 }],
+    });
   });
 
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {

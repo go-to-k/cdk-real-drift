@@ -35,6 +35,40 @@ export function stripAwsTagsDeep(v: unknown): unknown {
   return v;
 }
 
+// CFn tag lists ({Key,Value}[]) are UNORDERED sets: CDK declares them in one
+// order, AWS returns them in another, so a positional diff reports false drift on
+// every tagged resource (subnets being the worst offender). Canonicalize any
+// array whose every element is an object with a string `Key` by sorting on Key
+// (JSON tiebreak for stability). Applied to BOTH sides before the diff, so a
+// reordered-but-equal tag set compares equal. Recurses so nested tag bags
+// (LaunchTemplate TagSpecifications etc.) are covered too.
+export function canonicalizeTagListsDeep(v: unknown): unknown {
+  if (Array.isArray(v)) {
+    const mapped = v.map(canonicalizeTagListsDeep);
+    const allKeyed =
+      mapped.length > 0 &&
+      mapped.every(
+        (t) => t && typeof t === 'object' && typeof (t as { Key?: unknown }).Key === 'string'
+      );
+    if (allKeyed) {
+      return [...mapped].sort((a, b) => {
+        const ka = (a as { Key: string }).Key;
+        const kb = (b as { Key: string }).Key;
+        if (ka !== kb) return ka < kb ? -1 : 1;
+        return JSON.stringify(a) < JSON.stringify(b) ? -1 : 1;
+      });
+    }
+    return mapped;
+  }
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>))
+      out[k] = canonicalizeTagListsDeep(val);
+    return out;
+  }
+  return v;
+}
+
 // A1: trivially-empty/off values AWS returns for unset features.
 export function isTrivialEmpty(v: unknown): boolean {
   if (v === false || v === '') return true;

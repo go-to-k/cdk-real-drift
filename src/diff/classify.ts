@@ -10,6 +10,7 @@
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
+  canonicalizeTagListsDeep,
   isAllAwsTags,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
@@ -29,10 +30,14 @@ export function classifyResource(
   const findings: Finding[] = [];
 
   // strip AWS-managed fields + drop aws:* tag elements + canonicalize policy docs
-  const live = normalizePoliciesDeep(
-    stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
+  // + sort tag lists (unordered sets) so reordering is not false drift
+  const live = canonicalizeTagListsDeep(
+    normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)))
   ) as Record<string, unknown>;
-  const declared = normalizePoliciesDeep(declaredIn) as Record<string, unknown>;
+  const declared = canonicalizeTagListsDeep(normalizePoliciesDeep(declaredIn)) as Record<
+    string,
+    unknown
+  >;
   // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
   // live); writeOnly cannot be read back (strip from BOTH sides so it is never
   // compared, at top level or nested).
