@@ -157,8 +157,10 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
 });
 
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
-  // findings-only params: every path under test returns BEFORE any AWS client is used
-  const params = (findings: Finding[]) => ({
+  // findings-only params: every path under test returns BEFORE any AWS client is
+  // used — either nothing is revertable, or --dry-run returns at the preview branch.
+  type Overrides = { removeUnblessed?: boolean; dryRun?: boolean };
+  const params = (findings: Finding[], over: Overrides = {}) => ({
     stackName: 's',
     region: 'r',
     gathered: {
@@ -168,18 +170,18 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     } as unknown as GatherResult,
     baseline: undefined,
     config: { ignore: [] },
-    dryRun: false,
+    dryRun: over.dryRun ?? false,
     yes: true,
-    removeUnblessed: false,
+    removeUnblessed: over.removeUnblessed ?? false,
     verbose: false,
   });
 
-  const captured = async (findings: Finding[]) => {
+  const captured = async (findings: Finding[], over: Overrides = {}) => {
     const logs: string[] = [];
     const orig = console.log;
     console.log = (s: unknown) => logs.push(String(s));
     try {
-      const outcome = await revertStack(params(findings));
+      const outcome = await revertStack(params(findings, over));
       return { outcome, logs };
     } finally {
       console.log = orig;
@@ -214,6 +216,20 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).toContain('note: s has no baseline — undeclared drift has no revert target.');
     expect(out).toContain('NOT revertable: 1 (no baseline — run `cdkrd accept` first');
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
+  });
+
+  it('--remove-unblessed: no-baseline note is suppressed; the plan removes the undeclared drift', async () => {
+    // dry-run returns at the preview branch (no AWS write). The note would contradict
+    // a plan that DOES remove the drift, so it must not appear (R35 review).
+    const { outcome, logs } = await captured([undeclared()], {
+      removeUnblessed: true,
+      dryRun: true,
+    });
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    const out = logs.join('\n');
+    expect(out).not.toContain('has no baseline — undeclared drift has no revert target');
+    expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
+    expect(out).toContain('(dry-run) would apply');
   });
 });
 

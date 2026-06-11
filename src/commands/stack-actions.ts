@@ -202,7 +202,11 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
   printPlan(stackName, region, plan, {
     verbose,
-    noBaselineGuidance: baseline === undefined && drifted.some((f) => f.tier === 'undeclared'),
+    // Only when the no-baseline guard actually fires: with --remove-unblessed the
+    // plan REMOVES undeclared drift, so a "no revert target — accept first" note
+    // would contradict the plan printed right below it (R35 review).
+    noBaselineGuidance:
+      baseline === undefined && !removeUnblessed && drifted.some((f) => f.tier === 'undeclared'),
   });
   if (plan.items.length === 0) {
     // Drift exists but none of it is revertable (R35). That is NOT the clean
