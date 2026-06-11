@@ -4,7 +4,7 @@
 > launch. This document is the single self-contained map of the whole tool: what it
 > is, every moving part, the design decisions and their rationale, the current
 > state, and the open questions worth challenging. It is accurate to the code after
-> the design-review fix pass (R1–R30 applied; 230 unit tests green, build clean).
+> the design-review fix pass (R1–R32 applied; 250 unit tests green, build clean).
 > Companion docs:
 > [DESIGN.md](../DESIGN.md) (terse design), [redesign-notes.md](redesign-notes.md)
 > (pre-publication decisions), [README.md](../README.md) (end-user).
@@ -178,6 +178,7 @@ checked.
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `blessStack`.
+- **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
 - **revert/** — the write path (section 7): **plan.ts**, **apply.ts** (CC UpdateResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **aws-errors.ts** — `isStackNotDeployed` etc. **types.ts** — shared types.
@@ -396,14 +397,15 @@ note suggesting a re-`accept` (the blessed set may be stale). Skipped under
 
 ## 9. Tier semantics (the output contract)
 
-| tier         | meaning                                                                 | exit-affecting |
-| ------------ | ----------------------------------------------------------------------- | -------------- |
-| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)      | yes (always)   |
-| `declared`   | a declared property whose live value differs from the template          | yes (always)   |
-| `undeclared` | a live property not in the template, after noise subtraction            | yes (default)  |
-| `readGap`    | a declared property the live read can't return (CC can't read back)     | no             |
-| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)     | no             |
-| `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource) | no             |
+| tier         | meaning                                                                  | exit-affecting |
+| ------------ | ------------------------------------------------------------------------ | -------------- |
+| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)       | yes (always)   |
+| `declared`   | a declared property whose live value differs from the template           | yes (always)   |
+| `undeclared` | a live property not in the template, after noise subtraction             | yes (default)  |
+| `ignored`    | a declared/undeclared finding matched a `.cdkrd/config.json` ignore rule | no             |
+| `readGap`    | a declared property the live read can't return (CC can't read back)      | no             |
+| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)      | no             |
+| `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource)  | no             |
 
 `deleted` is the most blatant drift — a resource the template still declares no
 longer exists in AWS (released/deleted via the console, another tool, etc.). The
@@ -416,9 +418,43 @@ defective). It is reported as `not revertable` (reason: `deleted — recreate vi
 cdk deploy`) — a patch cannot recreate a resource.
 
 `--fail-on declared` makes only `deleted` + `declared` set exit 1; default
-`undeclared` = all three of `deleted` / `declared` / `undeclared`. `readGap` /
-`unresolved` / `skipped` are informational — surfaced, never silently dropped, but
-never false drift. **Default text layout (R25):** the three DRIFT tiers print in
+`undeclared` = all three of `deleted` / `declared` / `undeclared`. `ignored` /
+`readGap` / `unresolved` / `skipped` are informational — surfaced, never silently
+dropped, but never false drift.
+
+`ignored` (R32) is for properties an external system legitimately keeps rewriting —
+Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled
+capacity, externally-managed Lambda reserved concurrency. Because `accept` is a value
+snapshot, blessing such a property would re-detect and force a re-accept every time
+the value moves. Path-level ignore rules (the `.driftignore` / Terraform
+`ignore_changes` equivalent) live in a git-committed **`.cdkrd/config.json`** —
+deliberately separate from the baseline, which `accept` rewrites wholesale (a
+hand-written rule there would be erased), and because a rule is app-wide intent, not
+a per-stack/account fact:
+
+```jsonc
+{
+  "ignore": [
+    "*.DesiredCount", // any stack, any logical id
+    "Prod*:*.ReservedConcurrentExecutions", // stack-scoped: "<stack glob>:<logicalId>.<path>"
+  ],
+}
+```
+
+`applyIgnores(findings, stackName, config)` ([src/config/config-file.ts](../src/config/config-file.ts))
+is a pure function applied right after `applyBaseline` everywhere (check / revert /
+accept / the interactive flow), so the tier is uniform across commands. It re-tags
+matching `declared` / `undeclared` findings to `ignored` (never `deleted` — a path
+rule must not silence a resource deletion; the already-informational tiers are left
+alone). Patterns glob (`*` / `?`) against `<logicalId>.<path>` — the logicalId is
+template-derived and stable, whereas `constructPath` is absent on a no-synth run — and
+a parent-segment rule (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
+Ignored findings drop out of the revert plan and the accept bless-set automatically
+(neither acts on the `ignored` tier). A malformed `config.json` fails the run
+(exit 2) rather than silently dropping the rules. Applied even under `--show-all`
+(inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
+the ignored entries. A CLI to manage rules (`cdkrd ignore <pattern>`) is a future
+open question (§13) — v1 is hand-edited. **Default text layout (R25):** the three DRIFT tiers print in
 full; the three INFORMATIONAL tiers are folded into a single `info:` footer line
 (per-tier counts + a reason breakdown, e.g. `skipped=24 (custom resource 12, override
 target unresolved 12)`); `--verbose` expands them to full lists; 0-count tiers are
@@ -458,7 +494,7 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 
 ## 12. Testing & evidence
 
-- **230 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
+- **250 unit tests** (Vitest via `vp run test`), AWS SDK mocked with
   `aws-sdk-client-mock`. Coverage spans resolver (incl. GetAtt-via-live-attrs +
   fail-closed), all normalizers, classify (incl. the dogfood regression pairs),
   baseline, revert plan + apply-ops + writers + the interactive abort→exit mapping
@@ -521,6 +557,10 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    branch/PR/merge gates and `.claude/rules` / `.claude/agents` — cdkd's heavy
    50-hook / 10-rule suite is disproportionate for a new repo. _Open question: which
    of those become worth adding once there are external contributors?_
+8. **Ignore-rule management (R32)**: ignore rules are hand-edited in
+   `.cdkrd/config.json` for v1. _Open question: add a `cdkrd ignore <pattern>` /
+   `cdkrd ignore --list` CLI to add/inspect rules without hand-editing JSON, once
+   real usage shows the editing friction is worth it?_
 
 ## 14. Phase 4 readiness
 

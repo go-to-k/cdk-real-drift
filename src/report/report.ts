@@ -14,12 +14,13 @@ const TIER_TITLES: Record<Tier, string> = {
   deleted: 'DELETED (resource deleted out of band — always drift)',
   declared: 'DECLARED DRIFT',
   undeclared: 'UNDECLARED DRIFT (the differentiator)',
+  ignored: 'IGNORED (matched a .cdkrd/config.json ignore rule — not drift)',
   readGap: 'READ GAP (declared but not returned by live read — not drift)',
   unresolved: 'UNRESOLVED (declared paths needing GetAtt — skipped, not drift)',
   skipped: 'SKIPPED (CC API unsupported / no physical id)',
 };
 const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
-const INFO_TIERS: Tier[] = ['readGap', 'unresolved', 'skipped'];
+const INFO_TIERS: Tier[] = ['ignored', 'readGap', 'unresolved', 'skipped'];
 
 export type FailOn = 'declared' | 'undeclared';
 export interface ReportOptions {
@@ -55,6 +56,7 @@ export function exitCode(findings: Finding[], failOn: FailOn = 'undeclared'): nu
 // the `info:` summary can break a tier's count down by cause.
 function reasonKey(f: Finding): string {
   const n = f.note ?? '';
+  if (f.tier === 'ignored') return n.replace(/^ignored by config rule /, '') || 'ignored';
   if (f.tier === 'unresolved') return 'GetAtt unresolved';
   if (n.includes('write-only')) return 'write-only';
   if (n.startsWith('custom resource')) return 'custom resource';

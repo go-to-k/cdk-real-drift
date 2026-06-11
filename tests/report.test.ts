@@ -149,4 +149,28 @@ describe('report', () => {
       expect(run([F('declared')]).text).not.toContain('info:');
     });
   });
+
+  describe('R32 ignored tier', () => {
+    const ignored = (rule: string): Finding => ({
+      tier: 'ignored',
+      logicalId: 'Svc',
+      resourceType: 'AWS::ECS::Service',
+      path: 'DesiredCount',
+      note: `ignored by config rule "${rule}"`,
+    });
+
+    it('ignored is informational — folds into info: and never sets exit 1', () => {
+      const { code, text } = run([ignored('*.DesiredCount')]);
+      expect(code).toBe(0);
+      expect(text).toContain('\nresult: CLEAN');
+      expect(text).toMatch(/info: ignored=1 \("\*\.DesiredCount" 1\)/);
+      expect(text).not.toContain('[IGNORED');
+    });
+
+    it('--verbose expands ignored to a full section', () => {
+      const { text } = run([ignored('*.DesiredCount')], { verbose: true });
+      expect(text).toContain('[IGNORED');
+      expect(text).not.toContain('info:');
+    });
+  });
 });

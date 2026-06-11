@@ -12,6 +12,7 @@ import {
   loadBaseline,
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
+import { loadConfig } from '../config/config-file.js';
 import { gatherFindings } from './gather.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { revertStack } from './stack-actions.js';
@@ -20,6 +21,14 @@ export async function runRevert(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (a.profile) process.env.AWS_PROFILE = a.profile;
   const dryRun = args.includes('--dry-run');
+
+  let config;
+  try {
+    config = await loadConfig();
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
+    return 2;
+  }
 
   const stacks = await resolveStacks(a);
   if (stacks.length === 0) {
@@ -55,6 +64,7 @@ export async function runRevert(args: string[]): Promise<number> {
         region,
         gathered,
         baseline,
+        config,
         dryRun,
         yes: a.yes,
         removeUnblessed: a.removeUnblessed,

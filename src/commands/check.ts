@@ -14,6 +14,7 @@ import {
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
+import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { exitCode, report } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
@@ -37,6 +38,16 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
+
+  // .cdkrd/config.json ignore rules, loaded once (cwd-relative). A malformed config
+  // fails the whole run fast — a silently-ineffective ignore rule is the dangerous case.
+  let config;
+  try {
+    config = await loadConfig();
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
+    return 2;
+  }
 
   const stacks = await resolveStacks(a);
   if (stacks.length === 0) {
@@ -99,7 +110,7 @@ export async function runCheck(args: string[]): Promise<number> {
           );
         worst = Math.max(
           worst,
-          report(declaredOnly, `${stackName} (${region})`, {
+          report(applyIgnores(declaredOnly, stackName, config), `${stackName} (${region})`, {
             json: a.json,
             failOn: a.failOn,
             verbose: a.verbose,
@@ -137,12 +148,16 @@ export async function runCheck(args: string[]): Promise<number> {
           `note: ${stackName}: no baseline — showing all undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
         );
       }
-      const reconciled = applyBaseline(findings, baseline, {
-        declaredByLogical: declaredKeysByLogical(desired.resources),
-        warn: (s: string) => {
-          if (!a.json) console.error(s);
-        },
-      });
+      const reconciled = applyIgnores(
+        applyBaseline(findings, baseline, {
+          declaredByLogical: declaredKeysByLogical(desired.resources),
+          warn: (s: string) => {
+            if (!a.json) console.error(s);
+          },
+        }),
+        stackName,
+        config
+      );
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
@@ -178,14 +193,24 @@ export async function runCheck(args: string[]): Promise<number> {
               console.error(
                 `note: ${stackName}: accept blesses the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
               );
-            const wrote = await acceptStack({ stackName, region, desired, findings, yes: a.yes });
+            const wrote = await acceptStack({
+              stackName,
+              region,
+              desired,
+              findings: applyIgnores(findings, stackName, config),
+              yes: a.yes,
+            });
             if (wrote) {
               // re-evaluate exit WITHOUT re-querying AWS: re-apply the new baseline to
-              // the findings we already have.
+              // the findings we already have (ignores re-applied so the exit matches).
               const nb = await loadBaseline(stackName, desired.accountId, region);
-              const reEvaluated = applyBaseline(findings, nb, {
-                declaredByLogical: declaredKeysByLogical(desired.resources),
-              });
+              const reEvaluated = applyIgnores(
+                applyBaseline(findings, nb, {
+                  declaredByLogical: declaredKeysByLogical(desired.resources),
+                }),
+                stackName,
+                config
+              );
               code = exitCode(reEvaluated, a.failOn);
             }
           } else if (!isCancel(choice) && choice === 'revert') {
@@ -194,6 +219,7 @@ export async function runCheck(args: string[]): Promise<number> {
               region,
               gathered: { desired, findings, schemas },
               baseline,
+              config,
               dryRun: false,
               yes: a.yes,
               removeUnblessed: a.removeUnblessed,

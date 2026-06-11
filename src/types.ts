@@ -1,6 +1,13 @@
 // Shared types for cdk-real-drift.
 
-export type Tier = 'deleted' | 'declared' | 'undeclared' | 'readGap' | 'unresolved' | 'skipped';
+export type Tier =
+  | 'deleted'
+  | 'declared'
+  | 'undeclared'
+  | 'ignored' // re-tagged from declared/undeclared by a .cdkrd/config.json ignore rule (informational)
+  | 'readGap'
+  | 'unresolved'
+  | 'skipped';
 
 export interface Finding {
   tier: Tier;

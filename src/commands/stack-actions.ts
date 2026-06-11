@@ -14,6 +14,7 @@ import {
   loadBaseline,
   selectAccepted,
 } from '../baseline/baseline-file.js';
+import { applyIgnores, type CdkrdConfig } from '../config/config-file.js';
 import { applyRevertItem } from '../revert/apply.js';
 import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
 import { SDK_WRITERS } from '../revert/writers.js';
@@ -107,6 +108,7 @@ export interface RevertStackParams {
   region: string;
   gathered: GatherResult; // the check/revert gather (findings + desired + schemas)
   baseline: BaselineFile | undefined;
+  config: CdkrdConfig; // .cdkrd/config.json ignore rules (ignored findings drop out of the plan)
   dryRun: boolean;
   yes: boolean;
   removeUnblessed: boolean;
@@ -134,13 +136,14 @@ export interface RevertOutcome {
  * gather) — only the convergence re-check re-gathers.
  */
 export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> {
-  const { stackName, region, gathered, baseline, dryRun, yes, removeUnblessed } = p;
+  const { stackName, region, gathered, baseline, config, dryRun, yes, removeUnblessed } = p;
   let worst = 0;
   const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
-  const drifted = applyBaseline(gathered.findings, baseline, {
-    declaredByLogical,
-    warn: console.error,
-  });
+  const drifted = applyIgnores(
+    applyBaseline(gathered.findings, baseline, { declaredByLogical, warn: console.error }),
+    stackName,
+    config
+  );
   const plan = buildRevertPlan(drifted, baseline, { removeUnblessed, schemas: gathered.schemas });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
@@ -204,9 +207,13 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
 
   // re-check convergence (re-gather is allowed here — the world changed)
   const remaining = driftCount(
-    applyBaseline((await gatherFindings(stackName, region)).findings, baseline, {
-      declaredByLogical,
-    })
+    applyIgnores(
+      applyBaseline((await gatherFindings(stackName, region)).findings, baseline, {
+        declaredByLogical,
+      }),
+      stackName,
+      config
+    )
   );
   console.log(
     remaining === 0
