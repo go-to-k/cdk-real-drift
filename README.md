@@ -100,6 +100,23 @@ an empty baseline still creates the baseline file, which makes `revert` plan
 removal of all undeclared drift (declining leaves the baseline unchanged). With
 `--yes` or a non-TTY (CI), it blesses all with no prompt.
 
+When `cdkrd check` finds drift **in an interactive terminal**, it then offers to act
+on it without re-running a command:
+
+```
+<stack>: drift found — what do you want to do?
+  ❯ Nothing (keep exit code 1)        ← default: Enter = same as plain check
+    Accept — bless current state into the baseline
+    Revert — write the desired values back to AWS
+```
+
+`Accept` runs the same selective-bless flow as `cdkrd accept` (it only appears when
+there is undeclared drift to bless; declared drift stays reported); `Revert` runs the
+same plan → confirm → apply flow as `cdkrd revert` (only when something is
+revertable). The default is `Nothing`, so pressing Enter keeps the plain-`check`
+behaviour. The prompt is skipped under `--json`, `--show-all`, `--pre-deploy`, and in
+CI / non-TTY. After Accept/Revert the exit code is re-evaluated (clean = 0).
+
 | option                           | meaning                                                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |

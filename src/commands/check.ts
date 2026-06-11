@@ -3,7 +3,7 @@
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
-import { confirm, isCancel } from '@clack/prompts';
+import { confirm, isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -14,12 +14,13 @@ import {
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
-import { report } from '../report/report.js';
+import { exitCode, report } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
+import { acceptStack, availableActions, revertStack } from './stack-actions.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
 // undeclared tier is meaningless against a synth (not deployed) declared set, so
@@ -73,7 +74,7 @@ export async function runCheck(args: string[]): Promise<number> {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         continue;
       }
-      const { findings, desired } = await gatherFindings(
+      const { findings, desired, schemas } = await gatherFindings(
         stackName,
         region,
         synthTemplates?.get(stackName)
@@ -137,11 +138,64 @@ export async function runCheck(args: string[]): Promise<number> {
           if (!a.json) console.error(s);
         },
       });
-      const code = report(reconciled, `${stackName} (${region})`, {
+      let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
         verbose: a.verbose,
       });
+
+      // R28: drift found in a TTY → offer accept / revert / nothing inline, instead
+      // of making the user re-run a separate command. Skipped for --json (machine
+      // output), --show-all (baseline not applied — accept would mean something else),
+      // and --pre-deploy (declared-only, baseline-untouched contract).
+      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && process.stdin.isTTY) {
+        const actions = availableActions(reconciled, baseline, schemas, a.removeUnblessed);
+        if (actions.accept || actions.revert) {
+          const options = [{ value: 'nothing', label: 'Nothing (keep exit code 1)' }];
+          if (actions.accept)
+            options.push({
+              value: 'accept',
+              label: 'Accept — bless current state into the baseline',
+            });
+          if (actions.revert)
+            options.push({
+              value: 'revert',
+              label: 'Revert — write the desired values back to AWS',
+            });
+          const choice = await select({
+            message: `${stackName}: drift found — what do you want to do?`,
+            options,
+            initialValue: 'nothing',
+          });
+          if (!isCancel(choice) && choice === 'accept') {
+            // accept blesses UNDECLARED only; warn if declared/deleted drift remains
+            if (reconciled.some((f) => f.tier === 'declared' || f.tier === 'deleted'))
+              console.error(
+                `note: ${stackName}: accept blesses the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
+              );
+            const wrote = await acceptStack({ stackName, region, desired, findings, yes: a.yes });
+            if (wrote) {
+              // re-evaluate exit WITHOUT re-querying AWS: re-apply the new baseline to
+              // the findings we already have.
+              const nb = await loadBaseline(stackName, desired.accountId, region);
+              const reEvaluated = applyBaseline(findings, nb, {
+                declaredByLogical: declaredKeysByLogical(desired.resources),
+              });
+              code = exitCode(reEvaluated, a.failOn);
+            }
+          } else if (!isCancel(choice) && choice === 'revert') {
+            code = await revertStack({
+              stackName,
+              region,
+              gathered: { desired, findings, schemas },
+              baseline,
+              dryRun: false,
+              yes: a.yes,
+              removeUnblessed: a.removeUnblessed,
+            });
+          }
+        }
+      }
       worst = Math.max(worst, code);
     } catch (e) {
       if (isStackNotDeployed(e)) {

@@ -44,6 +44,13 @@ function failTiers(failOn: FailOn): Tier[] {
   return failOn === 'declared' ? ['deleted', 'declared'] : ['deleted', 'declared', 'undeclared'];
 }
 
+// The exit code for a set of findings WITHOUT printing — used to re-evaluate a stack
+// after an interactive accept (R28) blessed some/all of its undeclared drift.
+export function exitCode(findings: Finding[], failOn: FailOn = 'undeclared'): number {
+  const fail = failTiers(failOn);
+  return findings.some((f) => fail.includes(f.tier)) ? 1 : 0;
+}
+
 // A short, human label for WHY an informational finding is not actionable drift, so
 // the `info:` summary can break a tier's count down by cause.
 function reasonKey(f: Finding): string {

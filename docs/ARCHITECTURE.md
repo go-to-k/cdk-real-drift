@@ -91,6 +91,13 @@ the verbs mirror it (see [redesign-notes.md](redesign-notes.md) Decision 1):
 | `cdkrd accept` | "current state is RIGHT" — bless it into the baseline file         | git file only   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
 
+In a TTY, `check` makes that binary decision **inline** (R28): after reporting drift
+it prompts `Nothing / Accept / Revert` and branches into the SAME per-stack code as
+`accept` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
+as `acceptStack` / `revertStack`, so the interactive flow and the single-verb commands
+can never diverge). Default is `Nothing` (plain-check behaviour); skipped under
+`--json` / `--show-all` / `--pre-deploy` / non-TTY.
+
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
 default — resolves via SDK chain, errors if absent), `--profile`, `--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
