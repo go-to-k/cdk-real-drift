@@ -14,10 +14,14 @@ USAGE
   cdkrd init   <stack>              first-time baseline (alias of accept)
 
 OPTIONS
-  --region <r>                AWS region (default: $AWS_REGION or us-east-1)
+  --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION)
+  --app <cmd|cdk.out>         CDK app command or pre-synthesized assembly dir
+                              (or $CDKRD_APP / cdk.json "app") — enables stack
+                              auto-discovery + construct-path output
   --json                      machine-readable output
   --fail-on declared|undeclared   which tier sets exit 1 (default: undeclared = both)
-  --no-baseline               ignore the baseline; show all non-default undeclared state
+  --show-all                  inventory mode: show ALL current undeclared state
+                              (not just changes since accept)
   --all                       all deployed stacks in the region
   --yes, -y                   skip the baseline-overwrite notice (accept)
   --help, -h    --version, -v

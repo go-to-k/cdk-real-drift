@@ -67,14 +67,15 @@ is a visible, reviewable change to "what real state we accept".
 | `cdkrd accept <stack>... \| --all` | snapshot current undeclared state into the baseline file          |
 | `cdkrd init <stack>`               | first-time baseline (alias of `accept`)                           |
 
-| option                           | meaning                                                |
-| -------------------------------- | ------------------------------------------------------ |
-| `--region <r>`                   | AWS region (default `$AWS_REGION` or `us-east-1`)      |
-| `--json`                         | machine-readable output                                |
-| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)   |
-| `--no-baseline`                  | ignore baseline; show all non-default undeclared state |
-| `--all`                          | every deployed stack in the region                     |
-| `--yes`/`-y`                     | skip the baseline-overwrite notice                     |
+| option                           | meaning                                                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`)                                                                         |
+| `--app <cmd\|cdk.out>`           | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
+| `--json`                         | machine-readable output                                                                                                       |
+| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both)                                                                          |
+| `--show-all`                     | inventory mode: show ALL current undeclared state                                                                             |
+| `--all`                          | every deployed stack in the region                                                                                            |
+| `--yes`/`-y`                     | skip the baseline-overwrite notice                                                                                            |
 
 **Exit codes:** `0` clean · `1` drift detected · `2` error. Use in CI:
 

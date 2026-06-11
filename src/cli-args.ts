@@ -1,15 +1,16 @@
 // Tiny shared CLI arg parser (no dependency).
 import type { FailOn } from './report/report.js';
 
-const VALUE_FLAGS = new Set(['--region', '--fail-on']);
+const VALUE_FLAGS = new Set(['--region', '--fail-on', '--app']);
 
 export interface CommonArgs {
-  stackNames: string[]; // positional stack names (may be empty when --all)
-  region: string;
+  stackNames: string[]; // positional stack names (may be empty: --all or synth-discovery)
+  region: string | undefined; // resolved region (no silent default — caller errors if absent)
+  app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
   json: boolean;
   failOn: FailOn;
-  noBaseline: boolean;
-  all: boolean;
+  showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
+  all: boolean; // every deployed stack in the region
   yes: boolean;
 }
 
@@ -34,10 +35,12 @@ export function parseCommonArgs(args: string[]): CommonArgs {
 
   return {
     stackNames,
-    region: get('--region') ?? process.env.AWS_REGION ?? 'us-east-1',
+    region: get('--region') ?? process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION,
+    // --app > CDKRD_APP env (cdk.json "app" fallback resolved in the synth layer)
+    app: get('--app') ?? process.env.CDKRD_APP,
     json: has('--json'),
     failOn: get('--fail-on') === 'declared' ? 'declared' : 'undeclared',
-    noBaseline: has('--no-baseline'),
+    showAll: has('--show-all'),
     all: has('--all'),
     yes: has('--yes') || has('-y'),
   };

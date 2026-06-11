@@ -12,7 +12,12 @@ import { gatherFindings } from './gather.js';
 
 export async function runAccept(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
-  const stacks = a.all ? await listAllStacks(a.region) : a.stackNames;
+  if (!a.region) {
+    console.error('error: no AWS region. Pass --region or set AWS_REGION / AWS_DEFAULT_REGION.');
+    return 2;
+  }
+  const region = a.region;
+  const stacks = a.all ? await listAllStacks(region) : a.stackNames;
   if (stacks.length === 0) {
     console.error('usage: cdkrd accept <stack>... | --all [--region r] [--yes]');
     return 2;
@@ -21,17 +26,17 @@ export async function runAccept(args: string[]): Promise<number> {
   let worst = 0;
   for (const stackName of stacks) {
     try {
-      if (!a.yes && (await loadBaseline(stackName, a.region))) {
+      if (!a.yes && (await loadBaseline(stackName, region))) {
         console.error(
           `note: ${stackName}: overwriting existing baseline (it is git-tracked; review the diff). Pass --yes to silence.`
         );
       }
-      const { desired, findings } = await gatherFindings(stackName, a.region);
+      const { desired, findings } = await gatherFindings(stackName, region);
       const accepted = buildAccepted(findings);
       const path = await writeBaseline({
         schemaVersion: 1,
         stackName,
-        region: a.region,
+        region,
         capturedAt: new Date().toISOString(),
         templateHash: hashTemplate(desired.rawTemplate),
         accepted,

@@ -1,4 +1,4 @@
-// `cdkrd check [<stack>...] [--all] [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]`
+// `cdkrd check [<stack>...] [--all] [--region r] [--json] [--fail-on declared|undeclared] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
@@ -10,10 +10,15 @@ import { gatherFindings } from './gather.js';
 
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
-  const stacks = a.all ? await listAllStacks(a.region) : a.stackNames;
+  if (!a.region) {
+    console.error('error: no AWS region. Pass --region or set AWS_REGION / AWS_DEFAULT_REGION.');
+    return 2;
+  }
+  const region = a.region;
+  const stacks = a.all ? await listAllStacks(region) : a.stackNames;
   if (stacks.length === 0) {
     console.error(
-      'usage: cdkrd check <stack>... | --all [--region r] [--json] [--fail-on declared|undeclared] [--no-baseline]'
+      'usage: cdkrd check <stack>... | --all [--region r] [--json] [--fail-on declared|undeclared] [--show-all]'
     );
     return 2;
   }
@@ -21,14 +26,14 @@ export async function runCheck(args: string[]): Promise<number> {
   let worst = 0;
   for (const stackName of stacks) {
     try {
-      const { findings } = await gatherFindings(stackName, a.region);
-      const baseline = a.noBaseline ? undefined : await loadBaseline(stackName, a.region);
-      if (!a.json && !baseline) {
+      const { findings } = await gatherFindings(stackName, region);
+      const baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
+      if (!a.json && !baseline && !a.showAll) {
         console.error(
-          `note: ${stackName}: no baseline — showing all non-default undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
+          `note: ${stackName}: no baseline — showing all undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
         );
       }
-      const code = report(applyBaseline(findings, baseline), `${stackName} (${a.region})`, {
+      const code = report(applyBaseline(findings, baseline), `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
       });
