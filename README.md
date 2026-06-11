@@ -211,20 +211,20 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 # - run: npx cdkrd check --app cdk.out --region us-east-1
 ```
 
-| option                           | meaning                                                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                        |
-| `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                                       |
-| `-a, --app <cmd\|cdk.out>`       | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths         |
-| `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                            |
-| `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                                  |
-| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                          |
-| `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                              |
-| `--verbose` / `-v`               | (check) expand the informational tiers (`readGap` / `unresolved` / `skipped` / `ignored`) from the `info:` summary line to full lists |
-| `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite                 |
-| `--dry-run`                      | (revert) print the plan; make no changes                                                                                              |
-| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                                  |
-| `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                         |
+| option                           | meaning                                                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |
+| `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                               |
+| `-a, --app <cmd\|cdk.out>`       | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
+| `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                    |
+| `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
+| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                  |
+| `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
+| `--verbose` / `-v`               | (check) expand informational tiers from the `info:` line / (revert) the per-reason NOT-revertable summary — to full lists     |
+| `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
+| `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
+| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
+| `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                 |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
@@ -299,12 +299,21 @@ backward-compatible API.
   exotic intrinsic, a write-only value, a Cloud-Control-unreadable type) is reported
   as informational, never guessed. You trade a little coverage for zero false drift.
 - **Revert cannot do everything.** Not revertable, and reported as such:
+  - **undeclared drift on a stack with NO baseline** — there is no blessed value to
+    write back, so `revert` refuses (run `accept` first, or opt into removal with
+    `--remove-unblessed`); the plan leads with a note pointing at that route;
   - a `deleted` resource (recreate it with `cdk deploy`);
   - **create-only** properties (changing them requires resource replacement);
   - toggle-style properties with no "absent" state (e.g. S3 transfer acceleration
     is only `Enabled`/`Suspended`);
   - `AWS::Lambda::Permission` and `AWS::Budgets::Budget` (their write APIs cannot
     safely reconstruct the desired state from what is readable).
+
+  Not-revertable findings fold into a one-line-per-reason summary (`--verbose` for
+  the full list). When drift exists but **nothing** is revertable, `revert` prints
+  `nothing revertable — N drift(s) remain.` and exits 1 (the drift still stands);
+  exit 0 means there was no drift to revert at all.
+
 - **Revert writes the canonical form** of the desired value — semantically equal to
   your template, but statement/tag ordering or scalar-vs-array may differ textually.
 - **Custom resources** (`Custom::*`) have no cloud-side model and are always

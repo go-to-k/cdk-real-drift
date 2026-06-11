@@ -225,6 +225,7 @@ export async function runCheck(args: string[]): Promise<number> {
               dryRun: false,
               yes: a.yes,
               removeUnblessed: a.removeUnblessed,
+              verbose: a.verbose,
             });
             // R30: an aborted confirm did NOT write to AWS, so the drift still
             // stands — keep the pre-revert exit 1 (symmetric with "Nothing").

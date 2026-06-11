@@ -314,9 +314,14 @@ see [redesign-notes.md](redesign-notes.md).)
 
 ## 7. Revert (the only AWS-mutating path)
 
-[src/revert/](../src/revert/). `revert` builds a plan, prints it (per finding: path,
-current → target), asks for confirmation (`@clack`; `--yes` skips; non-TTY refuses;
-`--dry-run` previews), applies, then **re-checks for convergence**.
+[src/revert/](../src/revert/). `revert` builds a plan, prints it (revertable items
+always in full — per finding: path, current → target; NOT-revertable findings folded
+to one line per reason, `--verbose` for the full list — R35), asks for confirmation
+(`@clack`; `--yes` skips; non-TTY refuses; `--dry-run` previews), applies, then
+**re-checks for convergence**. Exit semantics: no drift at all → `no drift to
+revert.` + exit 0; drift exists but **nothing is revertable** → `nothing
+revertable — N drift(s) remain.` + exit 1 (drift-remains semantics, not a usage
+error — R35).
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an un-blessed out-of-band _addition_ reverts by REMOVAL).
@@ -327,6 +332,10 @@ pass --remove-unblessed`) rather than removed. The subtractive noise model's
   that would be **destructive** (a bulk REMOVE of every undeclared value that slipped
   through subtraction). `--remove-unblessed` opts back into removal. Declared drift is
   always revertable (the template is its source, independent of any baseline).
+  For undeclared drift this guard outranks the create-only guard (R35): the
+  fundamental blocker is "no revert target exists", and `accept` blesses the value
+  away entirely — a "requires replacement" reason would mis-direct. When the guard
+  fires, the plan leads with a note pointing at the `check` / `accept` route.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).

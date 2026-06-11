@@ -90,17 +90,64 @@ export async function acceptStack(p: AcceptStackParams): Promise<boolean> {
 
 // ---- revert ----
 
-function printPlan(stackName: string, region: string, plan: RevertPlan): void {
-  console.log(`\n=== cdkrd revert: ${stackName} (${region}) ===`);
+export interface PlanDisplayOptions {
+  verbose?: boolean; // expand the NOT-revertable per-reason summary to the full per-finding list
+  noBaselineGuidance?: boolean; // no baseline + undeclared drift → lead with the accept-first route
+}
+
+/**
+ * Render the revert plan (pure — exported for unit tests; printPlan logs it).
+ * Revertable items are ALWAYS full detail — confirming what will be written to AWS
+ * is the point of the plan. NOT-revertable findings fold into one line per reason
+ * (count + reason — same idea as check's `info:` footer, R25/R35); `--verbose`
+ * expands them to the full per-finding list.
+ */
+export function formatPlan(
+  stackName: string,
+  region: string,
+  plan: RevertPlan,
+  opts: PlanDisplayOptions = {}
+): string[] {
+  const lines: string[] = [`\n=== cdkrd revert: ${stackName} (${region}) ===`];
+  if (opts.noBaselineGuidance) {
+    lines.push(
+      `\nnote: ${stackName} has no baseline — undeclared drift has no revert target.`,
+      '      Run `cdkrd check` or `cdkrd accept` to bless a baseline first.'
+    );
+  }
   for (const item of plan.items) {
-    console.log(`\n  ${item.displayId} (${item.resourceType})`);
-    for (const op of item.ops) console.log(`    - ${op.human}`);
+    lines.push(`\n  ${item.displayId} (${item.resourceType})`);
+    for (const op of item.ops) lines.push(`    - ${op.human}`);
   }
   if (plan.notRevertable.length > 0) {
-    console.log(`\n  NOT revertable (${plan.notRevertable.length}):`);
-    for (const n of plan.notRevertable)
-      console.log(`    - ${n.displayId}.${n.path} (${n.resourceType}) — ${n.reason}`);
+    if (opts.verbose) {
+      lines.push(`\n  NOT revertable (${plan.notRevertable.length}):`);
+      for (const n of plan.notRevertable)
+        lines.push(`    - ${n.displayId}.${n.path} (${n.resourceType}) — ${n.reason}`);
+    } else {
+      const counts = new Map<string, number>();
+      for (const n of plan.notRevertable) counts.set(n.reason, (counts.get(n.reason) ?? 0) + 1);
+      const groups = [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+      groups.forEach(([reason, count], i) => {
+        lines.push(
+          i === 0
+            ? `\n  NOT revertable: ${count} (${reason})`
+            : `                · ${count} (${reason})`
+        );
+      });
+      lines.push('    (run with --verbose for the full list)');
+    }
   }
+  return lines;
+}
+
+function printPlan(
+  stackName: string,
+  region: string,
+  plan: RevertPlan,
+  opts: PlanDisplayOptions
+): void {
+  for (const line of formatPlan(stackName, region, plan, opts)) console.log(line);
 }
 
 export interface RevertStackParams {
@@ -112,12 +159,14 @@ export interface RevertStackParams {
   dryRun: boolean;
   yes: boolean;
   removeUnblessed: boolean;
+  verbose: boolean; // expand the NOT-revertable summary to the full list
 }
 
 /**
  * Outcome of a per-stack revert.
- *  - `exit`: the exit contribution — 0 clean / 1 drift remains / 2 apply failure
- *    (or a non-interactive write refusal).
+ *  - `exit`: the exit contribution — 0 clean / 1 drift remains (including "drift
+ *    exists but nothing is revertable", R35) / 2 apply failure (or a non-interactive
+ *    write refusal).
  *  - `aborted`: true ONLY when the user cancelled the confirm prompt (no AWS write
  *    happened). The standalone `revert` command treats an abort as exit 0 (nothing
  *    changed), but `check`'s interactive flow must NOT let an abort drop a drifted
@@ -136,7 +185,8 @@ export interface RevertOutcome {
  * gather) — only the convergence re-check re-gathers.
  */
 export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> {
-  const { stackName, region, gathered, baseline, config, dryRun, yes, removeUnblessed } = p;
+  const { stackName, region, gathered, baseline, config, dryRun, yes, removeUnblessed, verbose } =
+    p;
   let worst = 0;
   const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
   const drifted = applyIgnores(
@@ -150,8 +200,17 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     console.log(`${stackName} (${region}): no drift to revert.`);
     return { exit: 0, aborted: false };
   }
-  printPlan(stackName, region, plan);
-  if (plan.items.length === 0) return { exit: 0, aborted: false }; // nothing revertable
+  printPlan(stackName, region, plan, {
+    verbose,
+    noBaselineGuidance: baseline === undefined && drifted.some((f) => f.tier === 'undeclared'),
+  });
+  if (plan.items.length === 0) {
+    // Drift exists but none of it is revertable (R35). That is NOT the clean
+    // "no drift to revert" case — the drift still stands, so exit 1 (the same
+    // "drift remains" semantics as a post-apply non-convergence; not a usage error).
+    console.log(`\nnothing revertable — ${driftCount(drifted)} drift(s) remain.`);
+    return { exit: 1, aborted: false };
+  }
 
   const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
   if (dryRun) {

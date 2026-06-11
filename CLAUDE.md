@@ -43,11 +43,11 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 
 ## State of the Repo
 
-- **Pre-release / experimental.** Private until Phase 4; not yet published, no
-  GitHub remote yet (developed solo on `main`).
-- Baseline files live at `.cdkrd/<stack>.<accountId>.<region>.json` — git-committed. A PR (once
-  there is a remote) that changes a baseline is a visible, reviewable change to
-  "what real state we accept".
+- **Pre-release / experimental.** Private until Phase 4; not yet published. Remote:
+  <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based).
+- Baseline files live at `.cdkrd/<stack>.<accountId>.<region>.json` — git-committed.
+  A PR that changes a baseline is a visible, reviewable change to "what real state
+  we accept".
 
 ## Build and Test Commands
 
@@ -110,14 +110,13 @@ detail:
 - **Always add unit tests** for new behavior or bug fixes — do not wait to be asked.
 - **Run `vp run build`** after modifying source, before telling the user to test.
 - **Conventional commits**: use `feat:` / `fix:` / `chore:` / `docs:` / `test:`
-  prefixes. A `pr-title-check` workflow enforces PR titles (once there is a remote).
+  prefixes. A `pr-title-check` workflow enforces PR titles.
 - **markgate gates** (see `.markgate.yml`) — each has a companion skill that sets
   its marker:
   - `/check` → `check` marker (typecheck / lint+format / build / unit tests).
   - `/check-docs` → `docs` marker (README / DESIGN / docs consistency with src).
   - `/verify-pr` → `verify-pr` marker (pre-RELEASE superset of check + docs plus a
-    live-test + retrospective; named `verify-pr` for layout parity, but this is a
-    solo local repo with no PR workflow).
+    live-test + retrospective; named `verify-pr` for layout parity with cdkd).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
     `docs` markers are fresh. Run the relevant skill before committing.
 - **Use a git worktree for any parallel / concurrent development.** Two agents
@@ -129,10 +128,11 @@ detail:
   orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
   the leaked cdkd session hooks block it), then `git worktree remove`. A single
   sequential session may still work directly in the main checkout.
-- **Branch / PR / merge gates are deferred until Phase 4** (when the repo gets a
-  remote). cdkrd is developed on `main` (no PR flow yet), so cdkd's branch-protection,
-  verify-pr-merge, pr-review, and integ-\* gates are intentionally NOT ported — they
-  would be meaningless or disruptive without a remote.
+- **All changes go through a pull request — never commit directly to `main`.**
+  Branch (or worktree branch) → run the gates + set markers → commit → push →
+  `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's heavier
+  branch-protection / verify-pr-merge / pr-review / integ-\* gates are still not
+  ported — revisit at Phase 4.
 
 ## Dependencies
 

@@ -33,6 +33,8 @@ OPTIONS
   --fail-on declared|undeclared   which tier sets exit 1 (default: undeclared = both)
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since accept)
+  --verbose                   (check) expand informational tiers / (revert) the
+                              NOT-revertable summary to full per-finding lists
   --pre-deploy                (check) compare live state vs the LOCAL synth template
                               — the declared drift your next deploy would overwrite
   --dry-run                   (revert) print the plan; make no changes

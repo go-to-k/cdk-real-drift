@@ -112,20 +112,13 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // create-only property: an in-place UpdateResource patch would be rejected (the
-    // change needs a replacement) — report it now instead of failing at apply time.
-    if (opts.schemas?.get(f.resourceType)?.createOnly.has(topSegment(f.path))) {
-      notRevertable.push({
-        displayId,
-        resourceType: f.resourceType,
-        path: f.path,
-        reason: 'create-only property — change requires resource replacement',
-      });
-      continue;
-    }
     // un-blessed undeclared drift: a no-baseline stack would otherwise REMOVE every
     // such value (the subtractive model's failure mode is "check is noisy", but the
     // revert mirror of that is destructive). Refuse unless --remove-unblessed.
+    // Evaluated BEFORE the create-only guard (R35): on a no-baseline stack the
+    // fundamental blocker for undeclared drift is "no revert target exists", and the
+    // right next step is `accept` (which blesses the value away entirely) — a
+    // "requires replacement" reason would mis-direct the user.
     if (
       f.tier === 'undeclared' &&
       noBaseline &&
@@ -137,6 +130,17 @@ export function buildRevertPlan(
         resourceType: f.resourceType,
         path: f.path,
         reason: 'no baseline — run `cdkrd accept` first, or pass --remove-unblessed',
+      });
+      continue;
+    }
+    // create-only property: an in-place UpdateResource patch would be rejected (the
+    // change needs a replacement) — report it now instead of failing at apply time.
+    if (opts.schemas?.get(f.resourceType)?.createOnly.has(topSegment(f.path))) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'create-only property — change requires resource replacement',
       });
       continue;
     }
