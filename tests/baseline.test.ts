@@ -5,6 +5,7 @@ import {
   buildAccepted,
   checkBaselineAccount,
   hashTemplate,
+  warnTemplateHashDrift,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
 
@@ -45,6 +46,27 @@ describe('baseline', () => {
     expect(applyBaseline([undeclared('A', 'P', ['x'])], b)).toEqual([]);
   });
 
+  it('re-canonicalizes the blessed value before compare (old unsorted form still matches)', () => {
+    // blessed under an OLDER rule set: tag list stored UNSORTED
+    const b = baseline([
+      {
+        logicalId: 'A',
+        resourceType: 'AWS::X::Y',
+        path: 'Tags',
+        value: [
+          { Key: 'b', Value: '2' },
+          { Key: 'a', Value: '1' },
+        ],
+      },
+    ]);
+    // current live finding.actual is canonical (sorted by Key), as classify produces
+    const liveActual = [
+      { Key: 'a', Value: '1' },
+      { Key: 'b', Value: '2' },
+    ];
+    expect(applyBaseline([undeclared('A', 'Tags', liveActual)], b)).toEqual([]); // suppressed
+  });
+
   it('applyBaseline keeps a CHANGED undeclared value (= drift)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     expect(applyBaseline([undeclared('A', 'P', ['y'])], b)).toHaveLength(1);
@@ -76,6 +98,43 @@ describe('baseline', () => {
       tier: 'undeclared',
       path: 'P',
       note: 'blessed value removed since accept',
+    });
+  });
+
+  it('does NOT report a removal when the blessed path was promoted into the template', () => {
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const warnings: string[] = [];
+    const out = applyBaseline([], b, {
+      declaredByLogical: new Map([['A', new Set(['P'])]]), // P is now declared
+      warn: (m) => warnings.push(m),
+    });
+    expect(out).toHaveLength(0); // no false "removed" finding
+    expect(warnings[0]).toContain('now declared in the template');
+  });
+
+  it('still reports a removal when the blessed path is genuinely gone (not declared)', () => {
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ note: 'blessed value removed since accept' });
+  });
+
+  describe('warnTemplateHashDrift', () => {
+    it('warns when the stored hash differs from the current template', () => {
+      const b = { ...baseline([]), templateHash: hashTemplate('{"old":1}') };
+      const warnings: string[] = [];
+      warnTemplateHashDrift(b, '{"new":2}', 's', (m) => warnings.push(m));
+      expect(warnings[0]).toContain('different template version');
+    });
+    it('is silent when the hash matches (or is absent)', () => {
+      const tmpl = '{"x":1}';
+      const b = { ...baseline([]), templateHash: hashTemplate(tmpl) };
+      const warnings: string[] = [];
+      warnTemplateHashDrift(b, tmpl, 's', (m) => warnings.push(m));
+      warnTemplateHashDrift({ ...baseline([]), templateHash: '' }, tmpl, 's', (m) =>
+        warnings.push(m)
+      );
+      expect(warnings).toHaveLength(0);
     });
   });
 

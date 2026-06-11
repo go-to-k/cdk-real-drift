@@ -11,15 +11,13 @@ import { isArnNameMatch, isManagedKmsAliasMatch } from '../normalize/arn-identit
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
-  canonicalizeIdArraysDeep,
-  canonicalizeTagListsDeep,
   isAllAwsTags,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
-import { normalizePoliciesDeep } from '../normalize/policy-canonical.js';
+import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
@@ -31,16 +29,14 @@ export function classifyResource(
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
 
-  // strip AWS-managed fields + drop aws:* tag elements + canonicalize policy docs
-  // + sort tag lists (unordered sets) so reordering is not false drift
-  const live = canonicalizeIdArraysDeep(
-    canonicalizeTagListsDeep(
-      normalizePoliciesDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)))
-    )
+  // strip AWS-managed fields + drop aws:* tag elements (live-only), then run the
+  // shared canonicalization pipeline (policy docs + tag lists + id arrays) on both
+  // sides so reordering / scalar-vs-array is not false drift. The pipeline is shared
+  // with baseline-file.ts so blessed values normalize identically (see pipeline.ts).
+  const live = canonicalizeForCompare(
+    stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
   ) as Record<string, unknown>;
-  const declared = canonicalizeIdArraysDeep(
-    canonicalizeTagListsDeep(normalizePoliciesDeep(declaredIn))
-  ) as Record<string, unknown>;
+  const declared = canonicalizeForCompare(declaredIn) as Record<string, unknown>;
   // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
   // live); writeOnly cannot be read back (strip from BOTH sides so it is never
   // compared, at top level or nested).

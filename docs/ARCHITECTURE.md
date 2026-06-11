@@ -281,6 +281,19 @@ With revert it is also the _source of the undeclared target value_, so it is
 structural, not optional. `check` filters undeclared findings against it
 (`applyBaseline`), so a blessed stack reports CLEAN; `--show-all` ignores it.
 
+**Promotion into the template.** The recommended way to resolve undeclared drift is
+to _declare_ it in the CDK code. After that, the blessed path is no longer undeclared,
+so the naive removal check would mis-report it as "blessed value removed since
+accept". `applyBaseline` is passed the set of currently-declared keys per resource
+(`declaredKeysByLogical`) and suppresses that false removal, emitting a one-line
+stderr note ("now declared in the template — re-run `cdkrd accept`") instead. So the
+behavior we recommend is never punished as drift.
+
+**Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
+capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal
+note suggesting a re-`accept` (the blessed set may be stale). Skipped under
+`--pre-deploy`, where the synth template legitimately differs from the deployed one.
+
 ## 9. Tier semantics (the output contract)
 
 | tier         | meaning                                                             | exit-affecting |

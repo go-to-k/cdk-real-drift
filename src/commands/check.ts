@@ -9,7 +9,9 @@ import {
   applyBaseline,
   blessStack,
   checkBaselineAccount,
+  declaredKeysByLogical,
   loadBaseline,
+  warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
 import { report } from '../report/report.js';
@@ -71,6 +73,8 @@ export async function runCheck(args: string[]): Promise<number> {
       let baseline = a.showAll ? undefined : await loadBaseline(stackName, region);
       // per-account guard: a baseline captured in a different account is wrong here
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
+      // stale-baseline warning (skip in pre-deploy: synth template legitimately differs)
+      if (baseline && !a.preDeploy) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
       // first run: no baseline yet → offer to bless interactively (TTY only)
       if (!baseline && !a.showAll && !a.json && process.stdin.isTTY) {
         const ok = await confirm({
@@ -93,7 +97,13 @@ export async function runCheck(args: string[]): Promise<number> {
           `note: ${stackName}: no baseline — showing all undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
         );
       }
-      const code = report(applyBaseline(findings, baseline), `${stackName} (${region})`, {
+      const reconciled = applyBaseline(findings, baseline, {
+        declaredByLogical: declaredKeysByLogical(desired.resources),
+        warn: (s: string) => {
+          if (!a.json) console.error(s);
+        },
+      });
+      const code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         failOn: a.failOn,
       });

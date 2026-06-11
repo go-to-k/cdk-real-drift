@@ -12,6 +12,7 @@ import {
   applyBaseline,
   type BaselineFile,
   checkBaselineAccount,
+  declaredKeysByLogical,
   loadBaseline,
 } from '../baseline/baseline-file.js';
 import { parseCommonArgs } from '../cli-args.js';
@@ -65,7 +66,11 @@ export async function runRevert(args: string[]): Promise<number> {
       const baseline: BaselineFile | undefined = await loadBaseline(stackName, region);
       const gathered = await gatherFindings(stackName, region);
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
-      const drifted = applyBaseline(gathered.findings, baseline);
+      const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
+      const drifted = applyBaseline(gathered.findings, baseline, {
+        declaredByLogical,
+        warn: console.error,
+      });
       const plan = buildRevertPlan(drifted, baseline, {
         removeUnblessed: a.removeUnblessed,
         schemas: gathered.schemas,
@@ -133,7 +138,9 @@ export async function runRevert(args: string[]): Promise<number> {
 
       // re-check convergence
       const remaining = driftCount(
-        applyBaseline((await gatherFindings(stackName, region)).findings, baseline)
+        applyBaseline((await gatherFindings(stackName, region)).findings, baseline, {
+          declaredByLogical,
+        })
       );
       console.log(
         remaining === 0

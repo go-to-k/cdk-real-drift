@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
+import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { Finding } from '../types.js';
 
 export interface AcceptedEntry {
@@ -116,21 +117,44 @@ export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
     }));
 }
 
+export interface ApplyBaselineOptions {
+  // logicalId -> set of currently-declared top-level keys. A blessed entry whose
+  // path is now DECLARED in the template is the recommended "promote undeclared
+  // drift into code" workflow, NOT a removal — suppress the false removal finding.
+  declaredByLogical?: Map<string, Set<string>>;
+  warn?: (s: string) => void; // stderr note channel for the promotion case
+}
+
+const topSegment = (p: string): string => p.split('.')[0] ?? p;
+
 /**
  * Reconcile undeclared findings against the blessed baseline:
  *  - an undeclared finding matching a blessed entry (same value) is suppressed;
  *  - a changed value / new path survives (= real drift);
  *  - a blessed entry with NO corresponding current undeclared value is reported as
- *    a removal (drift in the other direction — something blessed disappeared).
+ *    a removal (drift in the other direction — something blessed disappeared),
+ *    UNLESS that path has since been DECLARED in the template (promotion to code —
+ *    the workflow we recommend — which is noted, not flagged as drift).
  * Non-undeclared findings pass through untouched.
  */
-export function applyBaseline(findings: Finding[], baseline: BaselineFile | undefined): Finding[] {
+export function applyBaseline(
+  findings: Finding[],
+  baseline: BaselineFile | undefined,
+  opts: ApplyBaselineOptions = {}
+): Finding[] {
   if (!baseline) return findings;
   const blessed = baseline.accepted;
   const kept = findings.filter((f) => {
     if (f.tier !== 'undeclared') return true;
+    // re-canonicalize the blessed value through the CURRENT pipeline before comparing
+    // (f.actual is already canonical from classify): a baseline blessed under older
+    // normalization rules still matches today's live, so a cdkrd version bump alone
+    // never resurfaces a suppressed value as false drift.
     const match = blessed.find(
-      (a) => a.logicalId === f.logicalId && a.path === f.path && deepEqual(a.value, f.actual)
+      (a) =>
+        a.logicalId === f.logicalId &&
+        a.path === f.path &&
+        deepEqual(canonicalizeForCompare(a.value), f.actual)
     );
     return match === undefined;
   });
@@ -139,17 +163,49 @@ export function applyBaseline(findings: Finding[], baseline: BaselineFile | unde
     findings.filter((f) => f.tier === 'undeclared').map((f) => `${f.logicalId}.${f.path}`)
   );
   for (const a of blessed) {
-    if (!currentPaths.has(`${a.logicalId}.${a.path}`)) {
-      kept.push({
-        tier: 'undeclared',
-        logicalId: a.logicalId,
-        resourceType: a.resourceType,
-        path: a.path,
-        desired: a.value,
-        actual: undefined,
-        note: 'blessed value removed since accept',
-      });
+    if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
+    // promoted into the template since accept → not a removal, just stale baseline
+    if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
+      opts.warn?.(
+        `note: ${a.logicalId}.${a.path}: baseline entry is now declared in the template — re-run \`cdkrd accept\` to clean it up.`
+      );
+      continue;
     }
+    kept.push({
+      tier: 'undeclared',
+      logicalId: a.logicalId,
+      resourceType: a.resourceType,
+      path: a.path,
+      desired: a.value,
+      actual: undefined,
+      note: 'blessed value removed since accept',
+    });
   }
   return kept;
+}
+
+/** logicalId -> set of declared top-level keys, for applyBaseline's promotion check. */
+export function declaredKeysByLogical(
+  resources: { logicalId: string; declared: Record<string, unknown> }[]
+): Map<string, Set<string>> {
+  return new Map(resources.map((r) => [r.logicalId, new Set(Object.keys(r.declared))]));
+}
+
+/**
+ * Warn (never error) when the baseline was captured against a different template
+ * version than the one now deployed — the blessed set may be stale. Skipped in
+ * --pre-deploy mode (the synth template legitimately differs from the deployed one).
+ */
+export function warnTemplateHashDrift(
+  baseline: BaselineFile,
+  rawTemplate: string,
+  stackName: string,
+  warn: (s: string) => void = console.error
+): void {
+  if (!baseline.templateHash) return;
+  if (baseline.templateHash !== hashTemplate(rawTemplate)) {
+    warn(
+      `note: ${stackName}: baseline was captured against a different template version — consider re-running \`cdkrd accept\`.`
+    );
+  }
 }
