@@ -110,12 +110,15 @@ keeps the pre-revert **exit 1** — no AWS write happened, so the drift still st
 the standalone `revert` command keeps its own exit-0-on-abort behaviour (R30).
 
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
-default — resolves via SDK chain, errors if absent), `--profile`, `--app <cmd|cdk.out>`
+default — resolves via SDK chain, errors if absent), `--profile`, `-a/--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
 `--json`, `--fail-on declared|undeclared`, `--show-all` (inventory mode: ignore
 baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
 `--dry-run` (revert preview), `--yes/-y`. With no stack arg, every stack the app
 defines is targeted; a stack arg selects by exact name or glob (`cdkrd check 'Dev*'`).
+The known-flag set is closed: an unknown option or a value flag missing its
+value is a fail-fast **exit 2** error, so a typo'd flag never silently becomes
+a stack name (R36).
 
 Exit codes: `0` clean · `1` drift detected · `2` error.
 

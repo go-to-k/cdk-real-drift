@@ -216,7 +216,7 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `--region <r>`                   | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                        |
 | `--profile <p>`                  | AWS profile (or `$AWS_PROFILE`)                                                                                                       |
-| `--app <cmd\|cdk.out>`           | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths         |
+| `-a, --app <cmd\|cdk.out>`       | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths         |
 | `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                            |
 | `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                                  |
 | `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                          |
@@ -226,6 +226,9 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                              |
 | `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                                  |
 | `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                         |
+
+Unknown options (`--apq`) and options missing their value (`--app` at the end of
+the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
 
 ### Interactive flows (TTY only — CI is never prompted)
 
