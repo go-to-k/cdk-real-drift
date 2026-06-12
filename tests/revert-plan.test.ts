@@ -255,3 +255,97 @@ describe('buildRevertPlan', () => {
     ]);
   });
 });
+
+describe('property-scoped SDK writer routing (IAM Role inline Policies)', () => {
+  const POLICIES = [{ PolicyName: 'rogue', PolicyDocument: { Version: '2012-10-17' } }];
+  const roleFinding = (over: Partial<Finding> = {}): Finding =>
+    F({
+      tier: 'undeclared',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: POLICIES,
+      ...over,
+    });
+
+  it('an exact Policies finding on a role routes to kind=sdk and the remove op carries prior', () => {
+    const plan = buildRevertPlan([roleFinding()], baseline([]));
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'remove',
+      path: '/Policies',
+      prior: POLICIES,
+    });
+  });
+
+  it('an accepted Policies finding -> add op with the baseline value AND prior (current live subset)', () => {
+    const baselineValue = [{ PolicyName: 'rogue', PolicyDocument: { Version: 'old' } }];
+    const plan = buildRevertPlan(
+      [roleFinding()],
+      baseline([
+        { logicalId: 'R', resourceType: 'AWS::IAM::Role', path: 'Policies', value: baselineValue },
+      ])
+    );
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Policies',
+      value: baselineValue,
+      prior: POLICIES,
+    });
+  });
+
+  it('a DEEP declared Policies path on a role still goes through Cloud Control (kind=cc)', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::IAM::Role',
+          path: 'Policies.0.PolicyDocument',
+          desired: { Version: '2012-10-17' },
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('cc');
+  });
+
+  it('mixed findings on one role split into a cc item and an sdk item', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::IAM::Role',
+          path: 'Description',
+          desired: 'x',
+          actual: 'y',
+        }),
+        roleFinding(),
+      ],
+      baseline([])
+    );
+    expect(plan.items).toHaveLength(2);
+    expect(plan.items.map((i) => i.kind).sort()).toEqual(['cc', 'sdk']);
+    // the cc patch document never serializes `prior`
+    const cc = plan.items.find((i) => i.kind === 'cc')!;
+    expect(toPatchDocument(cc)).not.toContain('prior');
+  });
+
+  it('prior is never serialized into the Cloud Control patch document', () => {
+    const item = {
+      logicalId: 'R',
+      displayId: 'R',
+      resourceType: 'AWS::S3::Bucket',
+      physicalId: 'p',
+      kind: 'cc' as const,
+      ops: [
+        { op: 'remove' as const, path: '/X', prior: ['secret'], human: 'X -> remove' },
+        { op: 'add' as const, path: '/Y', value: 1, prior: 2, human: 'Y -> add' },
+      ],
+    };
+    expect(toPatchDocument(item)).toBe(
+      '[{"op":"remove","path":"/X"},{"op":"add","path":"/Y","value":1}]'
+    );
+  });
+});

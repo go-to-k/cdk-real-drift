@@ -19,7 +19,7 @@ import { applyIgnores, type CdkrdConfig } from '../config/config-file.js';
 import { style } from '../report/style.js';
 import { applyRevertItem } from '../revert/apply.js';
 import { buildRevertPlan, type RevertPlan } from '../revert/plan.js';
-import { SDK_WRITERS } from '../revert/writers.js';
+import { resolveSdkWriter } from '../revert/writers.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
 import { type GatherResult, regatherTouched } from './gather.js';
@@ -335,7 +335,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     if (item.kind === 'sdk') {
       const res = byLogical.get(item.logicalId);
       try {
-        await SDK_WRITERS[item.resourceType]!(
+        const writer = resolveSdkWriter(item.resourceType, item.ops);
+        if (!writer) throw new Error(`no SDK writer for ${item.resourceType}`);
+        await writer(
           {
             physicalId: item.physicalId,
             declared: res?.declared ?? {},

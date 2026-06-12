@@ -54,5 +54,10 @@ export interface DesiredResource {
   constructPath?: string | undefined; // CDK construct path from aws:cdk:path Metadata (display only)
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
   declaredRaw?: Record<string, unknown>; // raw Properties, re-resolved by gather once liveAttrs are read
-  siblingManaged?: boolean; // an IAM Role whose inline Policies are managed by a sibling AWS::IAM::Policy
+  // inline Policies on an IAM Role owned by sibling AWS::IAM::Policy resources (the
+  // CDK pattern). classify drops ONLY the live entries whose PolicyName is listed
+  // here, so an out-of-band inline policy is still reported. 'unresolved' = a
+  // sibling PolicyName is not statically resolvable -> fall back to suppressing the
+  // whole live Policies property (no false positives).
+  siblingPolicyNames?: string[] | 'unresolved' | undefined;
 }

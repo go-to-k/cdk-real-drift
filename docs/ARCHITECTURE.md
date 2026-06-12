@@ -247,7 +247,7 @@ all live changes
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)
     (scalars only — a typed vs string *array* like [80,443] vs ["80","443"] still reports; fail-safe noise)
-  − sibling AWS::IAM::Policy on a role → suppressed
+  − sibling AWS::IAM::Policy entries in a role's Policies → filtered BY NAME (see below)
   = undeclared residual                → the unique signal
 ```
 
@@ -301,6 +301,20 @@ dogfood also fixed the synth IoHost printing the CDK app's stderr passthrough (b
 progress, tagged `CDK_ASSEMBLY_E1002`/error by toolkit-lib) in alarming **red** —
 `planIoMessage` re-tags app passthrough to the default color, matching cdk-local
 ([src/synth/io-host.ts](../src/synth/io-host.ts)).
+
+**Sibling `AWS::IAM::Policy` entries are filtered BY NAME, not suppressed
+wholesale.** The CDK grant pattern puts a role's permissions in a sibling
+`AWS::IAM::Policy` resource (the "DefaultPolicy"), which reflects into the role's
+live `Policies` — pure noise on the role, since the sibling resource's own check
+already owns its content drift. But suppressing the role's whole `Policies`
+property would also hide an out-of-band inline policy added NEXT to the sibling —
+exactly the differentiator case. So the template adapter maps each role to its
+sibling **PolicyNames** (`collectRolesWithSiblingPolicies`,
+[template-adapter.ts](../src/desired/template-adapter.ts)) and classify drops only
+the live entries matching those names — the residual (rogue inline policies)
+surfaces as undeclared drift. A sibling `PolicyName` the resolver can't evaluate
+statically falls back to suppressing the whole property for that role (fail-safe:
+no false positives over an unidentifiable sibling entry).
 
 **The `isTrivialEmpty` asymmetry (intentional trade-off).** An undeclared value that
 is `false`, `''`, `[]`, or an object whose every value is itself trivially empty
@@ -366,6 +380,14 @@ pass --remove-unaccepted`) rather than removed. The subtractive noise model's
     `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
     `AWS::IAM::Policy`, and `AWS::IAM::ManagedPolicy` (`CreatePolicyVersion` +
     SetAsDefault, pruning the oldest version at the 5-version cap).
+  - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
+    ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
+    finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
+    PolicyName, driven by the op's `value` + `prior`) — a CC `remove /Policies`
+    would also wipe the sibling-managed DefaultPolicy entries that classify
+    filtered OUT of the finding (§6). Scoped to the EXACT top-level path: deeper
+    `Policies.*` declared drift still patches via CC. A resource with both kinds
+    of findings splits into one `cc` item and one `sdk` item.
 - **Not revertable (reported honestly, never silently skipped)**:
   `AWS::Lambda::Permission` (add/remove statement model keyed by StatementId, not a
   settable document), `AWS::Budgets::Budget` (`UpdateBudget` needs a full NewBudget

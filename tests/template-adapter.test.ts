@@ -15,21 +15,65 @@ import {
 } from '../src/desired/template-adapter.js';
 
 describe('collectRolesWithSiblingPolicies', () => {
-  it('finds roles referenced by a sibling AWS::IAM::Policy', () => {
+  it('maps roles referenced by sibling AWS::IAM::Policy resources to the policy NAMES', () => {
     const resources = {
       MyRole: { Type: 'AWS::IAM::Role' },
-      MyPolicy: { Type: 'AWS::IAM::Policy', Properties: { Roles: [{ Ref: 'MyRole' }] } },
+      MyPolicy: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'MyRoleDefaultPolicyABC', Roles: [{ Ref: 'MyRole' }] },
+      },
+      ExtraPolicy: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'extra', Roles: [{ Ref: 'MyRole' }] },
+      },
       Other: { Type: 'AWS::S3::Bucket' },
     };
-    expect([...collectRolesWithSiblingPolicies(resources)]).toEqual(['MyRole']);
+    expect(collectRolesWithSiblingPolicies(resources)).toEqual(
+      new Map([['MyRole', ['MyRoleDefaultPolicyABC', 'extra']]])
+    );
   });
 
   it('ignores non-Ref role entries and non-policy resources', () => {
     const resources = {
-      P: { Type: 'AWS::IAM::Policy', Properties: { Roles: ['literal-name'] } },
+      P: { Type: 'AWS::IAM::Policy', Properties: { PolicyName: 'p', Roles: ['literal-name'] } },
       Q: { Type: 'AWS::IAM::ManagedPolicy', Properties: { Roles: [{ Ref: 'R' }] } },
     };
     expect(collectRolesWithSiblingPolicies(resources).size).toBe(0); // literal not a Ref; ManagedPolicy not Policy
+  });
+
+  it("marks the role 'unresolved' when a sibling PolicyName cannot be resolved (sticky)", () => {
+    const resources = {
+      A: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'literal', Roles: [{ Ref: 'MyRole' }] },
+      },
+      B: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: { 'Fn::GetAtt': ['X', 'Y'] }, Roles: [{ Ref: 'MyRole' }] },
+      },
+      C: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'after', Roles: [{ Ref: 'MyRole' }] },
+      },
+    };
+    // no ctx -> the intrinsic cannot resolve; 'unresolved' wins and stays
+    expect(collectRolesWithSiblingPolicies(resources).get('MyRole')).toBe('unresolved');
+  });
+
+  it('resolves an intrinsic PolicyName when a resolver ctx is provided', () => {
+    const resources = {
+      P: {
+        Type: 'AWS::IAM::Policy',
+        Properties: {
+          PolicyName: { 'Fn::Sub': 'pol-${AWS::Region}' },
+          Roles: [{ Ref: 'MyRole' }],
+        },
+      },
+    };
+    const ctx = buildResolverContext({}, {}, {}, 'us-east-1', '111122223333', 's', 'sid');
+    expect(collectRolesWithSiblingPolicies(resources, ctx).get('MyRole')).toEqual([
+      'pol-us-east-1',
+    ]);
   });
 });
 

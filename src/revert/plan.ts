@@ -8,12 +8,16 @@
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
-import { SDK_WRITERS } from './writers.js';
+import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 
 export interface PatchOp {
   op: 'add' | 'remove';
   path: string; // RFC6902 JSON pointer into the resource Properties model
   value?: unknown;
+  // the finding's CURRENT live value, for property-scoped SDK writers that revert
+  // per entry (e.g. IAM Role inline Policies). Never serialized to Cloud Control
+  // (toPatchDocument picks op/path/value only).
+  prior?: unknown;
   human: string; // one-line description for the plan display
 }
 
@@ -145,11 +149,18 @@ export function buildRevertPlan(
       });
       continue;
     }
-    const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] ? 'sdk' : 'cc';
+    // property-scoped SDK writers match the EXACT top-level finding path only
+    // (deeper paths keep going through Cloud Control); a resource can therefore
+    // split into one cc item and one sdk item per scoped path — key the grouping
+    // by kind (+ path when prop-scoped) so each item resolves to ONE writer.
+    const propScoped =
+      !SDK_WRITERS[f.resourceType] && SDK_PROP_WRITERS[f.resourceType]?.[f.path] !== undefined;
+    const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] || propScoped ? 'sdk' : 'cc';
 
     const op = revertOp(f, accepted);
+    const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
     const item =
-      itemsByLogical.get(f.logicalId) ??
+      itemsByLogical.get(key) ??
       ({
         logicalId: f.logicalId,
         displayId,
@@ -159,7 +170,7 @@ export function buildRevertPlan(
         ops: [],
       } as RevertItem);
     item.ops.push(op);
-    itemsByLogical.set(f.logicalId, item);
+    itemsByLogical.set(key, item);
   }
 
   return { items: [...itemsByLogical.values()], notRevertable };
@@ -175,7 +186,9 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
       human: `${f.path} -> deployed-template value`,
     };
   }
-  // undeclared: accepted before? restore that value; else it is a new addition -> remove
+  // undeclared: accepted before? restore that value; else it is a new addition -> remove.
+  // `prior` carries the finding's current live value for property-scoped SDK
+  // writers (per-entry revert); Cloud Control serialization ignores it.
   const wasAccepted = accepted.find((a) => a.logicalId === f.logicalId && a.path === f.path);
   if (f.actual === undefined && f.desired !== undefined) {
     // removed-undeclared finding: re-add the baseline value
@@ -191,12 +204,14 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
       op: 'add',
       path: pointer,
       value: wasAccepted.value,
+      prior: f.actual,
       human: `${f.path} -> baseline value`,
     };
   }
   return {
     op: 'remove',
     path: pointer,
+    prior: f.actual,
     human: `${f.path} -> remove (undeclared, not in baseline)`,
   };
 }

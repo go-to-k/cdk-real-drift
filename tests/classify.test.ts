@@ -260,3 +260,69 @@ describe('classifyResource post-revert phantom drift (R46)', () => {
     ]);
   });
 });
+
+describe('sibling-managed inline Policies (IAM Role)', () => {
+  const noSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const DOC = {
+    Version: '2012-10-17',
+    Statement: [{ Effect: 'Allow', Action: 's3:GetObject', Resource: '*' }],
+  };
+  const sibling = { PolicyName: 'RoleDefaultPolicyABC', PolicyDocument: DOC };
+  const rogue = { PolicyName: 'rogue-inline', PolicyDocument: DOC };
+  const role = (
+    siblingPolicyNames?: string[] | 'unresolved',
+    declared: Record<string, unknown> = {}
+  ): DesiredResource => ({
+    logicalId: 'Role',
+    resourceType: 'AWS::IAM::Role',
+    physicalId: 'role-name',
+    declared,
+    siblingPolicyNames,
+  });
+
+  it('a live Policies entry owned by a sibling is filtered out (no finding)', () => {
+    const findings = classifyResource(
+      role(['RoleDefaultPolicyABC']),
+      { Policies: [sibling] },
+      noSchema
+    );
+    expect(findings).toEqual([]);
+  });
+
+  it('an out-of-band inline policy NEXT TO a sibling surfaces as undeclared with ONLY the rogue entry', () => {
+    const findings = classifyResource(
+      role(['RoleDefaultPolicyABC']),
+      { Policies: [sibling, rogue] },
+      noSchema
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ tier: 'undeclared', path: 'Policies' });
+    const actual = findings[0]!.actual as { PolicyName: string }[];
+    expect(actual.map((p) => p.PolicyName)).toEqual(['rogue-inline']);
+  });
+
+  it('with NO sibling, every live inline policy is undeclared (unchanged behavior)', () => {
+    const findings = classifyResource(role(undefined), { Policies: [rogue] }, noSchema);
+    expect(tiers(findings).undeclared).toEqual(['Policies']);
+  });
+
+  it("'unresolved' sibling names fall back to suppressing the whole property", () => {
+    const findings = classifyResource(role('unresolved'), { Policies: [sibling, rogue] }, noSchema);
+    expect(findings).toEqual([]);
+  });
+
+  it('declared role Policies + sibling entries in live: the sibling entry is not false declared drift', () => {
+    const declared = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] };
+    const live = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }, sibling] };
+    const findings = classifyResource(role(['RoleDefaultPolicyABC'], declared), live, noSchema);
+    expect(findings).toEqual([]);
+  });
+});

@@ -66,6 +66,25 @@ export function classifyResource(
   deepStripPaths(live, schema.writeOnlyPaths);
   deepStripPaths(declared, schema.writeOnlyPaths);
 
+  // Sibling-managed inline Policies (the CDK pattern: grants land in a sibling
+  // AWS::IAM::Policy resource, which reflects into the role's live Policies). Drop
+  // ONLY the live entries owned by a sibling — their content drift is the sibling
+  // resource's own finding — so an out-of-band inline policy added to the role
+  // still surfaces (as undeclared, or inside the declared compare). 'unresolved'
+  // (a sibling PolicyName we cannot resolve statically) falls back to suppressing
+  // the whole property: no false positives over an unidentifiable sibling entry.
+  const sibling = resource.siblingPolicyNames;
+  if (sibling !== undefined && 'Policies' in live) {
+    if (sibling === 'unresolved') {
+      if (!('Policies' in declared)) delete live.Policies;
+    } else if (Array.isArray(live.Policies)) {
+      const names = new Set<unknown>(sibling);
+      live.Policies = live.Policies.filter(
+        (p) => !(p && typeof p === 'object' && names.has((p as Record<string, unknown>).PolicyName))
+      );
+    }
+  }
+
   // declared drift (A3: declared key absent in live = read gap, not drift).
   // NOTE: no `schema.writeOnly.has(k)` guard here — a top-level write-only key was
   // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
@@ -117,8 +136,6 @@ export function classifyResource(
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v)) continue;
-    // inline Policies managed by a sibling AWS::IAM::Policy are not role drift
-    if (resource.siblingManaged && k === 'Policies') continue;
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
