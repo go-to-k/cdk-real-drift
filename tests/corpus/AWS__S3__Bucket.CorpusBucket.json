@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "description": "S3 bucket: readOnly Arn stripped; aws:* tags + empty arrays suppressed; KNOWN_DEFAULTS VersioningConfiguration(Suspended) suppressed; out-of-band transfer acceleration surfaces as the one undeclared finding.",
+  "resource": {
+    "logicalId": "CorpusBucket",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "corpus-bucket",
+    "declared": {
+      "BucketName": "corpus-bucket"
+    }
+  },
+  "liveRaw": {
+    "BucketName": "corpus-bucket",
+    "Arn": "arn:aws:s3:::corpus-bucket",
+    "AccelerateConfiguration": { "AccelerationStatus": "Enabled" },
+    "VersioningConfiguration": { "Status": "Suspended" },
+    "AnalyticsConfigurations": [],
+    "Tags": [{ "Key": "aws:cloudformation:stack-name", "Value": "CorpusStack" }]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["BucketName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BucketName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "CorpusBucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AccelerateConfiguration",
+      "actual": { "AccelerationStatus": "Enabled" },
+      "physicalId": "corpus-bucket"
+    }
+  ]
+}

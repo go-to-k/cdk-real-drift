@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "description": "IAM role: scalar-vs-array Action folds in the declared trust-policy compare (policy canonicalization); sibling-owned DefaultPolicy entry dropped from live Policies while the out-of-band ttttt inline policy still surfaces; KNOWN_DEFAULTS MaxSessionDuration/Path suppressed; RoleName == physicalId suppressed.",
+  "resource": {
+    "logicalId": "ServiceRole",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CorpusStack-ServiceRole-ABC123",
+    "constructPath": "CorpusStack/Service/Role",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": { "Service": "lambda.amazonaws.com" }
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    },
+    "siblingPolicyNames": ["ServiceRoleDefaultPolicy"]
+  },
+  "liveRaw": {
+    "RoleName": "CorpusStack-ServiceRole-ABC123",
+    "Arn": "arn:aws:iam::111111111111:role/CorpusStack-ServiceRole-ABC123",
+    "RoleId": "AROAEXAMPLEEXAMPLE",
+    "AssumeRolePolicyDocument": {
+      "Statement": [
+        {
+          "Action": ["sts:AssumeRole"],
+          "Effect": "Allow",
+          "Principal": { "Service": "lambda.amazonaws.com" }
+        }
+      ],
+      "Version": "2012-10-17"
+    },
+    "MaxSessionDuration": 3600,
+    "Path": "/",
+    "Policies": [
+      {
+        "PolicyName": "ServiceRoleDefaultPolicy",
+        "PolicyDocument": {
+          "Statement": [{ "Action": ["s3:PutObject"], "Effect": "Allow", "Resource": ["*"] }],
+          "Version": "2012-10-17"
+        }
+      },
+      {
+        "PolicyName": "ttttt",
+        "PolicyDocument": {
+          "Statement": [{ "Action": ["s3:GetObject"], "Effect": "Allow", "Resource": ["*"] }],
+          "Version": "2012-10-17"
+        }
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RoleName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ServiceRole",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Policies",
+      "actual": [
+        {
+          "PolicyName": "ttttt",
+          "PolicyDocument": {
+            "Statement": [{ "Action": ["s3:GetObject"], "Effect": "Allow", "Resource": ["*"] }],
+            "Version": "2012-10-17"
+          }
+        }
+      ],
+      "physicalId": "CorpusStack-ServiceRole-ABC123",
+      "constructPath": "CorpusStack/Service/Role"
+    }
+  ]
+}

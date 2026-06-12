@@ -1,0 +1,146 @@
+// Golden-corpus recording (R63). The normalize→classify pipeline is pure, so a
+// resource's classification is fully determined by (resolved declared, raw live
+// model, schema info, classify opts). Recording those four during a REAL gather
+// turns every dogfood / integ run into permanent offline regression coverage:
+// the replay test (tests/corpus-replay.test.ts) re-runs `classifyResource` on
+// every committed case in tests/corpus/ and asserts the findings byte-for-byte
+// — no AWS, runs in CI on every push.
+//
+// Recording is opt-in: `CDKRD_CORPUS_DIR=<dir> cdkrd check ...` writes one JSON
+// case per readable resource. Account ids are sanitized automatically
+// (replaced with 111111111111 EVERYWHERE, so ARN-identity suppression still
+// replays identically); resource/stack NAMES are NOT — review a recording
+// before committing it, and never commit cases recorded from confidential
+// stacks (integ fixtures use fictional names and are always safe).
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
+import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
+
+export const CORPUS_DIR_ENV = 'CDKRD_CORPUS_DIR';
+
+// The UNRESOLVED marker is a Symbol (not JSON-serializable); a recorded declared
+// model swaps it for this sentinel string, and replay swaps it back — otherwise
+// JSON.stringify would silently DROP the key and the replayed classification
+// would diverge from the live one (no `unresolved` finding).
+export const UNRESOLVED_SENTINEL = '__cdkrd_corpus_unresolved__';
+
+function swapUnresolved(v: unknown, from: unknown, to: unknown): unknown {
+  if (v === from) return to;
+  if (Array.isArray(v)) return v.map((x) => swapUnresolved(x, from, to));
+  if (v && typeof v === 'object')
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swapUnresolved(x, from, to)]));
+  return v;
+}
+
+export function encodeUnresolved<T>(v: T): T {
+  return swapUnresolved(v, UNRESOLVED, UNRESOLVED_SENTINEL) as T;
+}
+
+export function decodeUnresolved<T>(v: T): T {
+  return swapUnresolved(v, UNRESOLVED_SENTINEL, UNRESOLVED) as T;
+}
+
+// JSON-serializable mirror of the classifyResource inputs + expected output.
+export interface CorpusCase {
+  corpusVersion: 1;
+  // free-text: what this case locks in (filled in by hand when curating)
+  description?: string;
+  resource: {
+    logicalId: string;
+    resourceType: string;
+    physicalId?: string;
+    constructPath?: string;
+    declared: Record<string, unknown>; // RESOLVED declared (post intrinsic resolution)
+    siblingPolicyNames?: string[] | 'unresolved';
+  };
+  liveRaw: Record<string, unknown>; // un-stripped live model, as the reader returned it
+  schema: {
+    readOnly: string[];
+    writeOnly: string[];
+    createOnly: string[];
+    readOnlyPaths: string[];
+    writeOnlyPaths: string[];
+    createOnlyPaths: string[];
+    defaults: Record<string, unknown>;
+  };
+  opts: { accountId: string; region: string; kmsAliasTargets: Record<string, string> };
+  expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
+}
+
+/** Deep-replace every occurrence of `accountId` inside string values (ARNs,
+ *  physical ids, policy principals, ...) with the fixed sanitized id. Applied
+ *  uniformly to inputs AND expected findings, so account-scoped suppression
+ *  (arn-identity) replays exactly as it ran live. */
+export function sanitizeAccountId<T>(value: T, accountId: string): T {
+  if (!accountId) return value;
+  const walk = (v: unknown): unknown => {
+    if (typeof v === 'string') return v.split(accountId).join('111111111111');
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object')
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(value) as T;
+}
+
+/** Assemble a corpus case from one classified resource (already-sanitized by the caller). */
+export function buildCorpusCase(
+  resource: DesiredResource,
+  liveRaw: Record<string, unknown>,
+  schema: SchemaInfo,
+  opts: { accountId: string; region: string; kmsAliasTargets: Record<string, string> },
+  findings: Finding[]
+): CorpusCase {
+  const c: CorpusCase = {
+    corpusVersion: 1,
+    resource: {
+      logicalId: resource.logicalId,
+      resourceType: resource.resourceType,
+      ...(resource.physicalId !== undefined && { physicalId: resource.physicalId }),
+      ...(resource.constructPath !== undefined && { constructPath: resource.constructPath }),
+      declared: encodeUnresolved(resource.declared),
+      ...(resource.siblingPolicyNames !== undefined && {
+        siblingPolicyNames: resource.siblingPolicyNames,
+      }),
+    },
+    liveRaw,
+    schema: {
+      readOnly: [...schema.readOnly].sort(),
+      writeOnly: [...schema.writeOnly].sort(),
+      createOnly: [...schema.createOnly].sort(),
+      readOnlyPaths: [...schema.readOnlyPaths].sort(),
+      writeOnlyPaths: [...schema.writeOnlyPaths].sort(),
+      createOnlyPaths: [...schema.createOnlyPaths].sort(),
+      defaults: schema.defaults,
+    },
+    opts,
+    expected: findings,
+  };
+  return sanitizeAccountId(c, opts.accountId);
+}
+
+/** Revive a case's schema arrays into the SchemaInfo Sets classify expects. */
+export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
+  return {
+    readOnly: new Set(s.readOnly),
+    writeOnly: new Set(s.writeOnly),
+    createOnly: new Set(s.createOnly),
+    readOnlyPaths: [...s.readOnlyPaths],
+    writeOnlyPaths: [...s.writeOnlyPaths],
+    createOnlyPaths: [...s.createOnlyPaths],
+    defaults: s.defaults,
+  };
+}
+
+/** `AWS::S3::Bucket` + `MyBucket` -> `AWS__S3__Bucket.MyBucket.json` */
+export function corpusFileName(resourceType: string, logicalId: string): string {
+  return `${resourceType.replace(/::/g, '__')}.${logicalId}.json`;
+}
+
+export async function recordCorpusCase(dir: string, c: CorpusCase): Promise<string> {
+  await mkdir(dir, { recursive: true });
+  const p = join(dir, corpusFileName(c.resource.resourceType, c.resource.logicalId));
+  await writeFile(p, JSON.stringify(c, null, 2) + '\n', 'utf8');
+  return p;
+}

@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "description": "Unresolved declared value (GetAtt that could not be resolved) lands in the unresolved tier, never compared; schema default (PackageType=Zip) suppresses an undeclared live value; a genuinely undeclared one (ReservedConcurrentExecutions) surfaces.",
+  "resource": {
+    "logicalId": "Handler",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "corpus-handler",
+    "declared": {
+      "FunctionName": "corpus-handler",
+      "Role": "__cdkrd_corpus_unresolved__",
+      "Runtime": "nodejs20.x"
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "corpus-handler",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:corpus-handler",
+    "Role": "arn:aws:iam::111111111111:role/corpus-handler-role",
+    "Runtime": "nodejs20.x",
+    "PackageType": "Zip",
+    "ReservedConcurrentExecutions": 5
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["FunctionName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FunctionName"],
+    "defaults": { "PackageType": "Zip" }
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "Handler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Role",
+      "physicalId": "corpus-handler"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Handler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "ReservedConcurrentExecutions",
+      "actual": 5,
+      "physicalId": "corpus-handler"
+    }
+  ]
+}
