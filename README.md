@@ -396,14 +396,20 @@ A stateless schema comparison gives each property only two modes: report forever
 (noise) or ignore forever (blind). The baseline adds the third one drift
 detection actually needs: _this value is OK — alarm only when it changes_.
 Example: account-level "EBS encryption by default" makes every volume
-`Encrypted: true` while the schema default is `false` — the baseline pins `true`
-and alarms only on `false`.
+`Encrypted: true`. The schema is no help — it declares no default for
+`Encrypted` at all, like ~99% of CloudFormation properties — so without a
+recorded value the only choices are "report `true` forever" or "ignore the
+property forever". The baseline pins `true` and alarms only when it changes.
+Full rationale (with measurements):
+[docs/why-a-baseline-file.md](docs/why-a-baseline-file.md).
 
 **How can `cdkrd` catch a change to a property that is in neither my template
 nor the baseline?**
 The baseline is not a watch-list. Every `check` reads the _full_ live model,
 then subtracts template + schema + baseline. A property that newly appears (or
 changes) with a meaningful value survives the subtraction and is reported.
+Why neither the schema nor `.cdkrd/config.json` can play the baseline's role is
+covered in [docs/why-a-baseline-file.md](docs/why-a-baseline-file.md).
 
 **Why doesn't `--show-all` list a feature that is explicitly OFF?**
 Undeclared values that are `false`/empty are suppressed — AWS returns an
