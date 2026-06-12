@@ -12,10 +12,12 @@ import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   isAllAwsTags,
+  isEqualUnorderedScalarSet,
   isStringlyEqualScalar,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
+  UNORDERED_ARRAY_PROPS,
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
@@ -89,6 +91,7 @@ export function classifyResource(
   // NOTE: no `schema.writeOnly.has(k)` guard here — a top-level write-only key was
   // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
   // so it cannot reach this loop (the old guard was dead code for top-level keys).
+  const knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
   for (const [k, v] of Object.entries(declared)) {
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
@@ -113,6 +116,26 @@ export function classifyResource(
       // CFn stringly-typed scalar (Glue Parameters Map<String,String>, "5432" ports):
       // declared `true`/`5432` vs AWS `"true"`/`"5432"` is not drift.
       if (isStringlyEqualScalar(d.stateValue, d.awsValue)) continue;
+      // Per-type unordered scalar-array sets (R74: Cognito UserPoolClient OAuth
+      // flow/scope lists) — same elements in the service's canonical order is
+      // not drift; a genuine element change still differs after sorting.
+      if (
+        UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path) &&
+        isEqualUnorderedScalarSet(d.stateValue, d.awsValue)
+      )
+        continue;
+      // A declared trivially-EMPTY value that the service materializes as its
+      // documented default is not drift (R74: CDK Trail declares EventSelectors
+      // [] and CloudTrail returns the default management selector). Equality-
+      // gated on BOTH sides: the declared side must be empty (a real declared
+      // value mismatch is never muted) and the live side must EQUAL the listed
+      // default (any out-of-band change still surfaces).
+      if (
+        isTrivialEmpty(d.stateValue) &&
+        d.path in knownDef &&
+        deepEqual(d.awsValue, knownDef[d.path])
+      )
+        continue;
       findings.push({
         tier: 'declared',
         logicalId,
@@ -125,7 +148,6 @@ export function classifyResource(
   }
 
   // undeclared (A1/A2/A4 + identity suppression)
-  const knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
   for (const [k, v] of Object.entries(live)) {
     if (k in declared) continue;
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was

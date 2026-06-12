@@ -1,0 +1,154 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::KinesisFirehose::DeliveryStream model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Tap",
+    "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+    "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+    "constructPath": "CdkrdIntegHarvest3/Tap",
+    "declared": {
+      "DeliveryStreamType": "DirectPut",
+      "S3DestinationConfiguration": {
+        "BucketARN": "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+        "BufferingHints": {
+          "IntervalInSeconds": 300,
+          "SizeInMBs": 5
+        },
+        "CompressionFormat": "GZIP",
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY"
+      }
+    }
+  },
+  "liveRaw": {
+    "DeliveryStreamType": "DirectPut",
+    "DeliveryStreamName": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+    "Arn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+    "ExtendedS3DestinationConfiguration": {
+      "BucketARN": "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+      "BufferingHints": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "CompressionFormat": "GZIP",
+      "EncryptionConfiguration": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "CloudWatchLoggingOptions": {
+        "Enabled": false
+      },
+      "RoleARN": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
+      "S3BackupMode": "Disabled"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "ElasticsearchDestinationConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration"
+    ],
+    "createOnly": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "DirectPutSourceConfiguration.ThroughputHintInMBs",
+      "ElasticsearchDestinationConfiguration",
+      "ElasticsearchDestinationConfiguration.CloudWatchLoggingOptions.Enabled",
+      "ExtendedS3DestinationConfiguration.CustomTimeZone",
+      "ExtendedS3DestinationConfiguration.FileExtension",
+      "HttpEndpointDestinationConfiguration.EndpointConfiguration.AccessKey",
+      "HttpEndpointDestinationConfiguration.ProcessingConfiguration",
+      "HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "HttpEndpointDestinationConfiguration.SecretsManagerConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "RedshiftDestinationConfiguration.Password",
+      "RedshiftDestinationConfiguration.ProcessingConfiguration",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3Configuration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.Enabled",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.RoleARN",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.SecretARN",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration",
+      "SplunkDestinationConfiguration.BufferingHints",
+      "SplunkDestinationConfiguration.CloudWatchLoggingOptions",
+      "SplunkDestinationConfiguration.ProcessingConfiguration",
+      "SplunkDestinationConfiguration.S3Configuration.EncryptionConfiguration.NoEncryptionConfig",
+      "SplunkDestinationConfiguration.SecretsManagerConfiguration"
+    ],
+    "createOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration.VpcConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration.VpcConfiguration",
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "ElasticsearchDestinationConfiguration.VpcConfiguration",
+      "IcebergDestinationConfiguration.CatalogConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Tap",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "S3DestinationConfiguration",
+      "note": "write-only — cannot be read back",
+      "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+      "constructPath": "CdkrdIntegHarvest3/Tap"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Tap",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration",
+      "actual": {
+        "BucketARN": "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+        "BufferingHints": {
+          "IntervalInSeconds": 300,
+          "SizeInMBs": 5
+        },
+        "CompressionFormat": "GZIP",
+        "EncryptionConfiguration": {
+          "NoEncryptionConfig": "NoEncryption"
+        },
+        "CloudWatchLoggingOptions": {
+          "Enabled": false
+        },
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
+        "S3BackupMode": "Disabled"
+      },
+      "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+      "constructPath": "CdkrdIntegHarvest3/Tap"
+    }
+  ]
+}

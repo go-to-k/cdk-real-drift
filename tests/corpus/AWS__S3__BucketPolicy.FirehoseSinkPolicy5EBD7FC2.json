@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::S3::BucketPolicy model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "FirehoseSinkPolicy5EBD7FC2",
+    "resourceType": "AWS::S3::BucketPolicy",
+    "physicalId": "cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+    "constructPath": "CdkrdIntegHarvest3/FirehoseSink/Policy",
+    "declared": {
+      "Bucket": "cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-CustomS3AutoDeleteObjectsCustomR-c2vHtPWK4W8e"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+              "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy/*"
+            ]
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-CustomS3AutoDeleteObjectsCustomR-c2vHtPWK4W8e"
+          },
+          "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+          "Resource": [
+            "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+            "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy/*"
+          ]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

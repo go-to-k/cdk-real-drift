@@ -1,0 +1,96 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 revert matrix, R74): AWS::SQS::Queue after an OUT-OF-BAND mutation of a declared value — the declared finding in `expected` is the drift the matrix detects and reverts via Cloud Control. A change here means declared-drift semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixQueueEEAE6F08",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+    "constructPath": "CdkrdIntegHarvest3/MatrixQueue",
+    "declared": {
+      "MessageRetentionPeriod": 345600,
+      "VisibilityTimeout": 60
+    }
+  },
+  "liveRaw": {
+    "SqsManagedSseEnabled": true,
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "DelaySeconds": 0,
+    "MessageRetentionPeriod": 345600,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 120,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+    "QueueName": "CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "desired": 60,
+      "actual": 120,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    }
+  ]
+}

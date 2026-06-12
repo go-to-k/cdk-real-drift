@@ -37,6 +37,21 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Chatbot::SlackChannelConfiguration': {
     GuardrailPolicies: ['arn:aws:iam::aws:policy/AdministratorAccess'],
   },
+  // CloudTrail materializes the default management-events selector when the
+  // template declares EventSelectors [] or omits it (observed live on the
+  // harvest3 fixture, R74 — CDK's Trail construct synthesizes `EventSelectors:
+  // []` by default, so EVERY default CDK trail otherwise reports declared
+  // drift). Also consulted by the declared loop's trivially-empty rule.
+  'AWS::CloudTrail::Trail': {
+    EventSelectors: [
+      {
+        IncludeManagementEvents: true,
+        ReadWriteType: 'All',
+        ExcludeManagementEventSources: [],
+        DataResources: [],
+      },
+    ],
+  },
 };
 
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
@@ -161,6 +176,37 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
     return out;
   }
   return v;
+}
+
+// Per-type SCALAR-array props AWS treats as UNORDERED SETS but whose elements
+// match none of the content-shape canonicalizers above (not ids/ARNs, not HTTP
+// verbs, no identity field): the service stores a set and echoes it in ITS
+// canonical order, so a positional diff against the template's order is false
+// drift on every check. Entries are added only when OBSERVED live (R74: a fresh
+// Cognito UserPoolClient deploy reported all three as declared drift with
+// identical elements). Consulted by classify's declared loop, equality-gated:
+// the two sides must be the SAME multiset — a genuine element change still
+// reports.
+export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
+  'AWS::Cognito::UserPoolClient': new Set([
+    'AllowedOAuthFlows',
+    'AllowedOAuthScopes',
+    'ExplicitAuthFlows',
+  ]),
+};
+
+// True when both values are scalar arrays containing the same multiset of
+// primitives (order-insensitive equality). Objects/nested arrays never match —
+// those have their own canonicalizers.
+export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  const scalar = (v: unknown): boolean =>
+    typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+  if (!a.every(scalar) || !b.every(scalar)) return false;
+  const sort = (arr: unknown[]): string[] => arr.map((v) => `${typeof v}:${String(v)}`).sort();
+  const sa = sort(a);
+  const sb = sort(b);
+  return sa.every((v, i) => v === sb[i]);
 }
 
 // CFn has many "stringly-typed" fields: Glue Table `Parameters` is a

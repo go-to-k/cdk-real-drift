@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Backup::BackupVault model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Vault23237E5B",
+    "resourceType": "AWS::Backup::BackupVault",
+    "physicalId": "CdkrdIntegHarvest3Vault1B103709",
+    "constructPath": "CdkrdIntegHarvest3/Vault",
+    "declared": {
+      "BackupVaultName": "CdkrdIntegHarvest3Vault1B103709"
+    }
+  },
+  "liveRaw": {
+    "BackupVaultTags": {
+      "aws:cloudformation:stack-name": "CdkrdIntegHarvest3",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+      "aws:cloudformation:logical-id": "Vault23237E5B"
+    },
+    "BackupVaultName": "CdkrdIntegHarvest3Vault1B103709",
+    "BackupVaultArn": "arn:aws:backup:us-east-1:111111111111:backup-vault:CdkrdIntegHarvest3Vault1B103709",
+    "EncryptionKeyArn": "arn:aws:kms:us-east-1:111111111111:key/b405e2ab-23b0-48e9-834e-aa3aeeded51d"
+  },
+  "schema": {
+    "readOnly": ["BackupVaultArn"],
+    "writeOnly": [],
+    "createOnly": ["BackupVaultName", "EncryptionKeyArn"],
+    "readOnlyPaths": ["BackupVaultArn"],
+    "writeOnlyPaths": ["LockConfiguration.ChangeableForDays"],
+    "createOnlyPaths": ["BackupVaultName", "EncryptionKeyArn"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Vault23237E5B",
+      "resourceType": "AWS::Backup::BackupVault",
+      "path": "EncryptionKeyArn",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "physicalId": "CdkrdIntegHarvest3Vault1B103709",
+      "constructPath": "CdkrdIntegHarvest3/Vault"
+    }
+  ]
+}

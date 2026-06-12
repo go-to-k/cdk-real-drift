@@ -38,7 +38,8 @@ These do NOT run in CI (they need credentials and mutate a real account):
   `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`.
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
   `src/commands/gather.ts`: run at least `basic` + `revert` (and `policies` if
-  `writers.ts` changed) before merging.
+  `writers.ts` changed; `harvest3` for the multi-type Cloud Control revert
+  matrix) before merging.
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
 - Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
@@ -169,6 +170,32 @@ accept -> `check --fail` CLEAN.
 
 ```bash
 cd harvest2 && npm install && bash verify-harvest2.sh
+```
+
+## harvest3
+
+Wave 3 of the corpus harvest (R74), two jobs in one deploy:
+
+- **New service families** the corpus had never seen live: Cognito
+  UserPool+Client, KMS Key+Alias, Secrets Manager, EventBridge Scheduler
+  (group + schedule), Firehose delivery stream, SES configuration set,
+  Cloud Map HTTP namespace, AppSync GraphQL API, CloudTrail trail, AWS
+  Backup vault+plan. Same two harvest invariants: fresh deploy = ZERO
+  declared drift, then accept -> `check --fail` CLEAN.
+- **Multi-type revert matrix** — the first live proof of the Cloud Control
+  write path beyond S3. Five CC-routed declared values are mutated
+  out-of-band (Lambda `MemorySize`, SQS `VisibilityTimeout`, Logs
+  `RetentionInDays`, SNS `DisplayName`, Events Rule `State`); ONE `check`
+  must report exactly 5 declared drifts, ONE `revert --yes` must restore
+  all five, verified by `check --fail` CLEAN and direct per-service AWS
+  reads.
+
+With `CDKRD_CORPUS_DIR` set, the drift-state recordings are snapshotted to
+`${CDKRD_CORPUS_DIR}.drifted` before the post-revert check overwrites them —
+one run yields BOTH a clean and a drifted corpus case per matrix type.
+
+```bash
+cd harvest3 && npm install && bash verify-harvest3.sh
 ```
 
 ## revert

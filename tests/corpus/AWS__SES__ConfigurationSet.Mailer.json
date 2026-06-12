@@ -1,0 +1,74 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::SES::ConfigurationSet model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Mailer",
+    "resourceType": "AWS::SES::ConfigurationSet",
+    "physicalId": "cdkrd-harvest3",
+    "constructPath": "CdkrdIntegHarvest3/Mailer",
+    "declared": {
+      "Name": "cdkrd-harvest3"
+    }
+  },
+  "liveRaw": {
+    "SendingOptions": {
+      "SendingEnabled": true
+    },
+    "ReputationOptions": {
+      "ReputationMetricsEnabled": true
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Mailer",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest3"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Mailer",
+      "resourceType": "AWS::SES::ConfigurationSet",
+      "path": "SendingOptions",
+      "actual": {
+        "SendingEnabled": true
+      },
+      "physicalId": "cdkrd-harvest3",
+      "constructPath": "CdkrdIntegHarvest3/Mailer"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Mailer",
+      "resourceType": "AWS::SES::ConfigurationSet",
+      "path": "ReputationOptions",
+      "actual": {
+        "ReputationMetricsEnabled": true
+      },
+      "physicalId": "cdkrd-harvest3",
+      "constructPath": "CdkrdIntegHarvest3/Mailer"
+    }
+  ]
+}

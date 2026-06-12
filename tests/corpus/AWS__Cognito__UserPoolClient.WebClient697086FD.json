@@ -1,0 +1,99 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Cognito::UserPoolClient model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "WebClient697086FD",
+    "resourceType": "AWS::Cognito::UserPoolClient",
+    "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+    "constructPath": "CdkrdIntegHarvest3/WebClient",
+    "declared": {
+      "AllowedOAuthFlows": ["implicit", "code"],
+      "AllowedOAuthFlowsUserPoolClient": true,
+      "AllowedOAuthScopes": [
+        "profile",
+        "phone",
+        "email",
+        "openid",
+        "aws.cognito.signin.user.admin"
+      ],
+      "CallbackURLs": ["https://example.com"],
+      "ExplicitAuthFlows": ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
+      "GenerateSecret": false,
+      "SupportedIdentityProviders": ["COGNITO"],
+      "UserPoolId": "us-east-1_Ifea0bzss"
+    }
+  },
+  "liveRaw": {
+    "GenerateSecret": false,
+    "CallbackURLs": ["https://example.com"],
+    "EnablePropagateAdditionalUserContextData": false,
+    "AuthSessionValidity": 3,
+    "AllowedOAuthScopes": ["aws.cognito.signin.user.admin", "email", "openid", "phone", "profile"],
+    "TokenValidityUnits": {},
+    "ReadAttributes": [],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "SupportedIdentityProviders": ["COGNITO"],
+    "Name": "WebClient697086FD-4XOyobXvYCtB",
+    "ClientName": "WebClient697086FD-4XOyobXvYCtB",
+    "UserPoolId": "us-east-1_Ifea0bzss",
+    "AllowedOAuthFlows": ["code", "implicit"],
+    "ExplicitAuthFlows": ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_SRP_AUTH"],
+    "LogoutURLs": [],
+    "ClientId": "7d78lu0gfopub8hldk8ogl5asn",
+    "RefreshTokenValidity": 30,
+    "WriteAttributes": [],
+    "EnableTokenRevocation": true
+  },
+  "schema": {
+    "readOnly": ["ClientId", "ClientSecret", "Name"],
+    "writeOnly": [],
+    "createOnly": ["GenerateSecret", "UserPoolId"],
+    "readOnlyPaths": ["ClientId", "ClientSecret", "Name"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GenerateSecret", "UserPoolId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "WebClient697086FD",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "AuthSessionValidity",
+      "actual": 3,
+      "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+      "constructPath": "CdkrdIntegHarvest3/WebClient"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebClient697086FD",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "ClientName",
+      "actual": "WebClient697086FD-4XOyobXvYCtB",
+      "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+      "constructPath": "CdkrdIntegHarvest3/WebClient"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebClient697086FD",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "RefreshTokenValidity",
+      "actual": 30,
+      "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+      "constructPath": "CdkrdIntegHarvest3/WebClient"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebClient697086FD",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "EnableTokenRevocation",
+      "actual": true,
+      "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+      "constructPath": "CdkrdIntegHarvest3/WebClient"
+    }
+  ]
+}

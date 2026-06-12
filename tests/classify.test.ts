@@ -250,7 +250,7 @@ describe('classifyResource post-revert phantom drift (R46)', () => {
     ).toEqual(['VersioningConfiguration']);
   });
 
-  it('DECLARED Enabled vs live Suspended stays declared drift (KNOWN_DEFAULTS never touches the declared loop)', () => {
+  it('DECLARED Enabled vs live Suspended stays declared drift (KNOWN_DEFAULTS never mutes a non-empty declared value)', () => {
     const findings = classifyResource(
       res('AWS::S3::Bucket', { VersioningConfiguration: { Status: 'Enabled' } }),
       { VersioningConfiguration: { Status: 'Suspended' } },
@@ -379,5 +379,109 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
         )
       ).undeclared
     ).toEqual(['GuardrailPolicies']);
+  });
+
+  // R74: the declared loop's trivially-empty rule — CDK Trail synthesizes
+  // `EventSelectors: []`, CloudTrail materializes the default management
+  // selector; that pair must not be drift, but everything around it must stay.
+  describe('declared trivially-empty vs known service default (R74)', () => {
+    const DEFAULT_SELECTOR = {
+      IncludeManagementEvents: true,
+      ReadWriteType: 'All',
+      ExcludeManagementEventSources: [],
+      DataResources: [],
+    };
+    const trail = (declared: Record<string, unknown>): DesiredResource => ({
+      logicalId: 'Audit',
+      resourceType: 'AWS::CloudTrail::Trail',
+      physicalId: 'trail-name',
+      declared,
+    });
+
+    it('declared [] vs the live default selector is NOT drift', () => {
+      const findings = classifyResource(
+        trail({ EventSelectors: [] }),
+        { EventSelectors: [structuredClone(DEFAULT_SELECTOR)] },
+        emptySchema
+      );
+      expect(findings).toEqual([]);
+    });
+
+    it('declared [] vs a MODIFIED selector is still declared drift (equality gate)', () => {
+      const findings = classifyResource(
+        trail({ EventSelectors: [] }),
+        { EventSelectors: [{ ...structuredClone(DEFAULT_SELECTOR), ReadWriteType: 'ReadOnly' }] },
+        emptySchema
+      );
+      expect(tiers(findings).declared).toEqual(['EventSelectors']);
+    });
+
+    it('a NON-empty declared value differing from live is never muted by the rule', () => {
+      const findings = classifyResource(
+        trail({ EventSelectors: [{ ReadWriteType: 'ReadOnly', IncludeManagementEvents: true }] }),
+        { EventSelectors: [structuredClone(DEFAULT_SELECTOR)] },
+        emptySchema
+      );
+      expect(tiers(findings).declared).toEqual(['EventSelectors.0.ReadWriteType']);
+    });
+
+    it('UNORDERED_ARRAY_PROPS: same OAuth enum set in a different order is NOT drift', () => {
+      const client = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'WebClient',
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        physicalId: 'client123',
+        declared,
+      });
+      expect(
+        classifyResource(
+          client({ ExplicitAuthFlows: ['ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'] }),
+          { ExplicitAuthFlows: ['ALLOW_REFRESH_TOKEN_AUTH', 'ALLOW_USER_SRP_AUTH'] },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine element change still reports
+      expect(
+        tiers(
+          classifyResource(
+            client({ ExplicitAuthFlows: ['ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'] }),
+            { ExplicitAuthFlows: ['ALLOW_ADMIN_USER_PASSWORD_AUTH', 'ALLOW_USER_SRP_AUTH'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['ExplicitAuthFlows']);
+      // the rule is per-type+per-prop: the same shape on an UNLISTED prop still reports
+      expect(
+        tiers(
+          classifyResource(
+            client({ CallbackURLs: ['https://b.example', 'https://a.example'] }),
+            { CallbackURLs: ['https://a.example', 'https://b.example'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['CallbackURLs']);
+    });
+
+    it('undeclared EventSelectors equal to the default is suppressed; a changed one surfaces', () => {
+      expect(
+        classifyResource(
+          trail({}),
+          { EventSelectors: [structuredClone(DEFAULT_SELECTOR)] },
+          emptySchema
+        )
+      ).toEqual([]);
+      expect(
+        tiers(
+          classifyResource(
+            trail({}),
+            {
+              EventSelectors: [
+                { ...structuredClone(DEFAULT_SELECTOR), ReadWriteType: 'WriteOnly' },
+              ],
+            },
+            emptySchema
+          )
+        ).undeclared
+      ).toEqual(['EventSelectors']);
+    });
   });
 });

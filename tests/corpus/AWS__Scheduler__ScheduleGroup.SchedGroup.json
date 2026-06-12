@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Scheduler::ScheduleGroup model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "SchedGroup",
+    "resourceType": "AWS::Scheduler::ScheduleGroup",
+    "physicalId": "cdkrd-harvest3",
+    "constructPath": "CdkrdIntegHarvest3/SchedGroup",
+    "declared": {
+      "Name": "cdkrd-harvest3"
+    }
+  },
+  "liveRaw": {
+    "CreationDate": "2026-06-12T17:18:25.472Z",
+    "State": "ACTIVE",
+    "LastModificationDate": "2026-06-12T17:18:25.472Z",
+    "Arn": "arn:aws:scheduler:us-east-1:111111111111:schedule-group/cdkrd-harvest3",
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "SchedGroup",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest3"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreationDate", "LastModificationDate", "State"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "CreationDate", "LastModificationDate", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

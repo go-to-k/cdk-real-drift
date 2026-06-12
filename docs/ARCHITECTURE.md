@@ -75,11 +75,16 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    types without per-type code; SDK overrides fill only the gaps. _Does CC API's
    coverage + model fidelity hold up across the breadth users will throw at it, or
    does the SDK-override list grow until the "generic" claim breaks?_ **Tracking
-   (as of the R21 pass):** `SDK_OVERRIDES` holds 11 types, all genuine CC-API gaps
-   (`UnsupportedActionException` / `ValidationException` from GetResource), surfaced
-   across 2 real-app dogfoods + 8 integ fixtures. The bet holds while the count grows
-   only a few types per new dogfood; revisit it if a single new stack adds many
-   overrides at once (= the generic claim is breaking).
+   (as of the R74 pass):** `SDK_OVERRIDES` holds 12 types, all genuine CC-API gaps
+   (`UnsupportedActionException` / `ValidationException` from GetResource — plus
+   Scheduler::Schedule, whose CC read handler only finds schedules in the DEFAULT
+   group), surfaced across 2 real-app dogfoods + 10 integ fixtures. The bet holds
+   while the count grows only a few types per new dogfood; revisit it if a single
+   new stack adds many overrides at once (= the generic claim is breaking). A
+   second, smaller gap class is CC IDENTIFIERS: some types' CFn physical id is not
+   the CC primaryIdentifier (AppSync GraphQLApi ARN vs ApiId, Cognito
+   UserPoolClient composite) — `CC_IDENTIFIER_ADAPTERS` in router.ts maps those
+   without leaving the CC read path.
 4. **The deployed template, not synth, is the declared baseline.** So un-deployed
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
@@ -182,8 +187,8 @@ checked.
   - **template-adapter.ts** — `loadDesired()`: deployed (or `--pre-deploy` synth) template + phys-ids + params → resolved `DesiredResource[]`. Builds `ResolverContext`.
   - **yaml-cfn.ts** — CFn-flavored YAML/JSON template parser.
 - **read/** — the "reality" side
-  - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource; classifies skip reasons.
-  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters).
+  - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource (with `CC_IDENTIFIER_ADAPTERS` deriving the CC identifier when the CFn physical id is not it — AppSync GraphQLApi ARN→ApiId, Cognito UserPoolClient `UserPoolId|ClientId`); classifies skip reasons.
+  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
   - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**.

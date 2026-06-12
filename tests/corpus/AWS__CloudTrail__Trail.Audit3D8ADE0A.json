@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::CloudTrail::Trail model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Audit3D8ADE0A",
+    "resourceType": "AWS::CloudTrail::Trail",
+    "physicalId": "CdkrdIntegHarvest3-Audit3D8ADE0A-CfTL0QAII0QB",
+    "constructPath": "CdkrdIntegHarvest3/Audit",
+    "declared": {
+      "EnableLogFileValidation": true,
+      "EventSelectors": [],
+      "IncludeGlobalServiceEvents": false,
+      "IsLogging": true,
+      "IsMultiRegionTrail": false,
+      "S3BucketName": "cdkrdintegharvest3-auditlogsb945e340-0v3maaeqpkte"
+    }
+  },
+  "liveRaw": {
+    "IncludeGlobalServiceEvents": false,
+    "EventSelectors": [
+      {
+        "IncludeManagementEvents": true,
+        "ReadWriteType": "All",
+        "ExcludeManagementEventSources": [],
+        "DataResources": []
+      }
+    ],
+    "AggregationConfigurations": [],
+    "AdvancedEventSelectors": [],
+    "TrailName": "CdkrdIntegHarvest3-Audit3D8ADE0A-CfTL0QAII0QB",
+    "IsOrganizationTrail": false,
+    "InsightSelectors": [],
+    "IsMultiRegionTrail": false,
+    "S3BucketName": "cdkrdintegharvest3-auditlogsb945e340-0v3maaeqpkte",
+    "EnableLogFileValidation": true,
+    "Arn": "arn:aws:cloudtrail:us-east-1:111111111111:trail/CdkrdIntegHarvest3-Audit3D8ADE0A-CfTL0QAII0QB",
+    "Tags": [],
+    "IsLogging": true
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnsTopicArn"],
+    "writeOnly": [],
+    "createOnly": ["TrailName"],
+    "readOnlyPaths": ["Arn", "SnsTopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TrailName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

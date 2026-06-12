@@ -28,6 +28,7 @@ import {
 } from '@aws-sdk/client-iam';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { READ_RETRY } from './client-config.js';
@@ -378,6 +379,44 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
   };
 };
 
+// AWS::Scheduler::Schedule — Cloud Control CAN read this type, but its
+// primaryIdentifier is the bare Name and the read handler only looks in the
+// DEFAULT schedule group: a schedule in any other group reads as not-found and
+// falsely reports DELETED (proven live on the harvest3 fixture, R74 — Name-only,
+// "group/name", "group|name", and the full ARN were all tried against CC).
+// Read via Scheduler GetSchedule with the declared GroupName instead. The CFn
+// physical id IS the schedule name.
+const readSchedulerSchedule: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.Name);
+  if (!name) return undefined;
+  const group = str(declared.GroupName); // omitted -> service default group
+  const c = new SchedulerClient({ region, ...READ_RETRY });
+  // Not-found propagates so the router maps a genuinely deleted schedule to `deleted`.
+  const s = await c.send(
+    new GetScheduleCommand({ Name: name, ...(group && { GroupName: group }) })
+  );
+  // Project ONLY CFn-modeled props — Arn/CreationDate/LastModificationDate are
+  // AWS-managed noise the classifier should never see from an SDK reader.
+  return {
+    Name: s.Name,
+    ...(s.GroupName !== undefined && { GroupName: s.GroupName }),
+    ...(s.ScheduleExpression !== undefined && { ScheduleExpression: s.ScheduleExpression }),
+    ...(s.ScheduleExpressionTimezone !== undefined && {
+      ScheduleExpressionTimezone: s.ScheduleExpressionTimezone,
+    }),
+    ...(s.FlexibleTimeWindow !== undefined && { FlexibleTimeWindow: s.FlexibleTimeWindow }),
+    ...(s.State !== undefined && { State: s.State }),
+    ...(s.Description !== undefined && { Description: s.Description }),
+    ...(s.KmsKeyArn !== undefined && { KmsKeyArn: s.KmsKeyArn }),
+    ...(s.ActionAfterCompletion !== undefined && {
+      ActionAfterCompletion: s.ActionAfterCompletion,
+    }),
+    ...(s.StartDate !== undefined && { StartDate: s.StartDate.toISOString() }),
+    ...(s.EndDate !== undefined && { EndDate: s.EndDate.toISOString() }),
+    ...(s.Target !== undefined && { Target: s.Target }),
+  };
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,
@@ -390,4 +429,5 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Logs::MetricFilter': readMetricFilter,
+  'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };
