@@ -16,7 +16,7 @@ import {
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
-import { exitCode, report, stackSeparator } from '../report/report.js';
+import { report, stackSeparator } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { Finding } from '../types.js';
@@ -40,8 +40,8 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 // facts the decision hinges on: HOW MANY values "Yes" would accept sight-unseen,
 // and that "No" is not a dead end (the report prints first and a selective
 // accept is offered right after it). A select carries both in the option labels
-// themselves; "show first" is the safe default. Exported (pure) so the wording
-// contract is unit-tested.
+// themselves; Accept-ALL is first/default since R52 (see the options comment).
+// Exported (pure) so the wording contract is unit-tested.
 //
 // Wording (R49): "undeclared" must be anchored — it means "not declared in YOUR
 // deployed (CDK/CloudFormation) template"; there is no cdkrd-side template, and
@@ -66,17 +66,44 @@ export function firstRunPrompt(
       : 'Declared-side drift is reported either way.';
   return {
     message: `${stackName}: no baseline yet — found ${undeclaredCount} live value(s) not declared in your template (typically AWS defaults, but out-of-band edits hide among them). ${declaredNote} What do you want to do?`,
+    // Accept-ALL first (R52, user decision): it is the overwhelmingly common
+    // first-run choice, and the cost of an accidental Enter is one git-tracked
+    // file — reviewable and revertible, nothing written to AWS. "Show first"
+    // stays one arrow away for the careful path.
     options: [
-      {
-        value: 'show',
-        label: 'Show them first — you can still accept (selectively) right after the report',
-      },
       {
         value: 'acceptAll',
         label: `Accept ALL ${undeclaredCount} into the baseline now, without reviewing them`,
       },
+      {
+        value: 'show',
+        label: 'Show them first — you can still accept (selectively) right after the report',
+      },
     ],
   };
+}
+
+/**
+ * Closing note after an interactive accept inside `check` (R52). A PARTIAL
+ * accept used to end with `baseline written: ...` and then a silent exit 1 —
+ * reading as "accept failed". Semantics (user decision, R52): a successful
+ * interactive accept is a SUCCESS for THIS run — deliberately-unselected
+ * undeclared values do not fail this exit; they surface (exit 1) from the
+ * next check on. This path is TTY-only, so no CI contract is affected.
+ * DECLARED/DELETED drift is outside accept's reach and keeps exit 1 — exiting
+ * 0 over a real un-addressed drift would be a false green.
+ */
+export function postAcceptNote(remainingUndeclared: number, remainingDeclared: number): string {
+  if (remainingDeclared > 0) {
+    const alsoUndeclared =
+      remainingUndeclared > 0
+        ? ` ${remainingUndeclared} unaccepted value(s) also stay reported.`
+        : '';
+    return `accept succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or revert) — exit 1.${alsoUndeclared}`;
+  }
+  if (remainingUndeclared > 0)
+    return `accept succeeded — ${remainingUndeclared} unaccepted value(s) stay reported from the next check on; exit 0 for this run.`;
+  return 'stack is now CLEAN — exit 0.';
 }
 
 export async function runCheck(args: string[]): Promise<number> {
@@ -194,7 +221,7 @@ export async function runCheck(args: string[]): Promise<number> {
           const choice = await select({
             message: prompt.message,
             options: prompt.options,
-            initialValue: 'show' as const,
+            initialValue: 'acceptAll' as const,
           });
           if (!isCancel(choice) && choice === 'acceptAll') {
             const { count } = await writeBaseline(
@@ -279,7 +306,19 @@ export async function runCheck(args: string[]): Promise<number> {
                 stackName,
                 config
               );
-              code = exitCode(reEvaluated, a.failOn);
+              // R52 (user decision): a successful interactive accept is a SUCCESS
+              // for THIS run — deliberately-unselected undeclared values do not
+              // fail this exit (they surface from the next check on; this path is
+              // TTY-only so no CI contract is touched). Declared/deleted drift is
+              // outside accept's reach and keeps exit 1.
+              const remainingDeclared = reEvaluated.filter(
+                (f) => f.tier === 'declared' || f.tier === 'deleted'
+              ).length;
+              const remainingUndeclared = reEvaluated.filter((f) => f.tier === 'undeclared').length;
+              code = remainingDeclared > 0 ? 1 : 0;
+              console.error(
+                `note: ${stackName}: ${postAcceptNote(remainingUndeclared, remainingDeclared)}`
+              );
             }
           } else if (!isCancel(choice) && choice === 'revert') {
             const outcome = await revertStack({

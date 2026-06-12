@@ -15,7 +15,9 @@ import {
   acceptStack,
   availableActions,
   formatPlan,
+  formatSurvivingDrift,
   resolveInteractiveRevertExit,
+  revertConfirmMessage,
   revertStack,
 } from '../src/commands/stack-actions.js';
 import type { RevertPlan } from '../src/revert/plan.js';
@@ -440,6 +442,55 @@ describe('acceptStack non-interactive refusal (R38)', () => {
     } finally {
       if (existsSync(path)) rmSync(path);
     }
+  });
+});
+
+describe('revertConfirmMessage (R52 — the confirm must scope what gets written)', () => {
+  it('with NOT-revertable findings present, states ONLY the listed ops are written', () => {
+    const msg = revertConfirmMessage('s', 1, 113);
+    expect(msg).toContain('Apply 1 revert op(s) to s? This WRITES to AWS.');
+    expect(msg).toContain('Only the 1 op(s) listed above are written');
+    expect(msg).toContain('113 NOT-revertable finding(s) are untouched');
+  });
+
+  it('without NOT-revertable findings, no scope clause (nothing to disclaim)', () => {
+    expect(revertConfirmMessage('s', 2, 0)).toBe('Apply 2 revert op(s) to s? This WRITES to AWS.');
+  });
+});
+
+describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () => {
+  const survivors = (n: number): Finding[] =>
+    Array.from({ length: n }, (_, i) => ({
+      tier: 'undeclared' as const,
+      logicalId: `R${i}`,
+      resourceType: 'AWS::X::Y',
+      path: 'P',
+    }));
+
+  it('lists every survivor when at or under the cap', () => {
+    const lines = formatSurvivingDrift(survivors(3));
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe('  - R0.P (undeclared)');
+  });
+
+  it('folds beyond the cap with a pointer to `cdkrd check`', () => {
+    const lines = formatSurvivingDrift(survivors(113));
+    expect(lines).toHaveLength(11); // 10 entries + the fold line
+    expect(lines[10]).toContain('and 103 more');
+    expect(lines[10]).toContain('cdkrd check');
+  });
+
+  it('prefers the construct path and omits an empty path segment', () => {
+    const lines = formatSurvivingDrift([
+      {
+        tier: 'deleted',
+        logicalId: 'B',
+        constructPath: 'Stack/Bucket',
+        resourceType: 'AWS::S3::Bucket',
+        path: '',
+      },
+    ]);
+    expect(lines[0]).toBe('  - Stack/Bucket (deleted)');
   });
 });
 
