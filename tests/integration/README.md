@@ -15,6 +15,23 @@ bash verify.sh       # deploy -> accept -> check CLEAN -> inject drift -> check 
 `verify.sh` exits non-zero (and prints `INTEG FAIL: ...`) if any assertion fails;
 prints `INTEG PASS` on success.
 
+All scripts call the CLI with `--no-interactive` (and `--yes` for accept/revert):
+since the interactive prompts landed (R28/R38/R45), a bare `check`/`accept` run
+from a terminal would stop and wait for input mid-script (R50).
+
+## When to run (R50)
+
+These do NOT run in CI (they need credentials and mutate a real account):
+
+- **Before every release** (the `/verify-pr` gate): run EVERY fixture —
+  `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh`), `iam`,
+  `lambda`, `revert`, `policies`.
+- **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
+  `src/commands/gather.ts`: run at least `basic` + `revert` (and `policies` if
+  `writers.ts` changed) before merging.
+- Scripts that share a fixture/stack (`basic`'s three) must run sequentially,
+  never concurrently.
+
 ## basic
 
 One versioned S3 bucket. Asserts:
@@ -40,6 +57,20 @@ tier and the `revert` guards:
 cd basic && bash verify-deleted-guards.sh
 ```
 
+### basic / verify-vs-cdk-drift.sh
+
+Empirical proof of the README capability table, against `cdk drift` itself
+(reuses the `basic` stack; needs an aws-cdk with the `drift` command):
+
+1. After an **undeclared** change (transfer acceleration), `cdk drift --fail`
+   exits 0 (CFn drift detection cannot see it) while `cdkrd check` exits 1 and
+   names `AccelerateConfiguration` — the differentiator, demonstrated.
+2. After a **declared** change (versioning suspended), BOTH detect it — cdkrd
+   is a superset, not a sidegrade.
+
+If `cdk drift` ever starts detecting the undeclared change, this test fails —
+the signal to re-verify the README comparison-table claims.
+
 ## iam / lambda
 
 IAM Role (inject a permissions boundary → undeclared drift) and a Node Lambda
@@ -53,3 +84,15 @@ drift (acceleration suspended from its accepted Enabled), asserts `check` detect
 both, runs `cdkrd revert --yes`, and asserts `check` is CLEAN and AWS itself
 converged (versioning Enabled = template, acceleration Enabled = baseline value).
 Proves the Cloud Control `UpdateResource` write path end-to-end.
+
+## policies
+
+One resource per SDK writer (`SDK_WRITERS` in `src/revert/writers.ts`):
+`AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
+`AWS::IAM::Policy` (standalone inline), `AWS::IAM::ManagedPolicy`. After
+accept + CLEAN, a `CdkrdInjected` statement is spliced into EVERY policy
+document out of band; asserts `check` reports all 5 declared drifts, `revert
+--yes` converges through all 5 writers, `check` is CLEAN again, and direct AWS
+reads confirm the injected statement is gone while the declared one survived
+(for the managed policy: on the new default version). Covers the SDK-override
+read path AND the SDK write path for every writer type end-to-end.
