@@ -6,7 +6,7 @@
 #       as NOT revertable (refuses a destructive bulk removal) unless
 #       --remove-unaccepted is passed; declared drift IS revertable regardless.
 #   R1  deleted tier: a resource deleted out of band is reported in the `deleted`
-#       tier (exit 1 regardless of --fail-on) and is NOT revertable (recreate via
+#       tier (exit 1 under --fail) and is NOT revertable (recreate via
 #       cdk deploy).
 # Self-cleaning trap destroys the stack + removes the baseline even on failure.
 #

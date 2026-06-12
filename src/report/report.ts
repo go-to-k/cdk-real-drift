@@ -1,6 +1,5 @@
 // Tiered, CI-greppable report. Plain text or --json. No TUI/panes.
 // Exit: report() returns 0 clean / 1 drift; check maps 1→0 unless --fail (R53).
-// --fail=<tier> selects which tiers count as failure.
 //
 // Default layout is deliberately terse (a 40-resource CLEAN stack was 30+ lines):
 //   header -> DRIFT tier sections (full detail) -> result: -> info: footer
@@ -42,10 +41,8 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
 const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
 const INFO_TIERS: Tier[] = ['ignored', 'readGap', 'unresolved', 'skipped'];
 
-export type FailOn = 'declared' | 'undeclared';
 export interface ReportOptions {
   json?: boolean;
-  failOn?: FailOn; // default 'undeclared' (declared + undeclared both fail)
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
   log?: (s: string) => void;
 }
@@ -70,18 +67,6 @@ function tierStyle(t: Tier): (s: string) => string {
   if (t === 'undeclared') return style.undeclaredTier;
   if (t === 'deleted' || t === 'declared') return style.driftTier;
   return style.infoTier;
-}
-
-// `deleted` is ALWAYS a failure (the most blatant drift), independent of --fail=<tier>.
-function failTiers(failOn: FailOn): Tier[] {
-  return failOn === 'declared' ? ['deleted', 'declared'] : ['deleted', 'declared', 'undeclared'];
-}
-
-// The exit code for a set of findings WITHOUT printing — used to re-evaluate a stack
-// after an interactive accept (R28) accepted some/all of its undeclared drift.
-export function exitCode(findings: Finding[], failOn: FailOn = 'undeclared'): number {
-  const fail = failTiers(failOn);
-  return findings.some((f) => fail.includes(f.tier)) ? 1 : 0;
 }
 
 // A short, human label for WHY an informational finding is not actionable drift, so
@@ -112,8 +97,7 @@ function groupReasons(items: Finding[]): string {
 
 export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
-  const fail = failTiers(opts.failOn ?? 'undeclared');
-  const drifted = findings.filter((f) => fail.includes(f.tier)).length;
+  const drifted = findings.filter((f) => DRIFT_TIERS.includes(f.tier)).length;
 
   if (opts.json) {
     log(JSON.stringify({ stack: header, drifted, findings }, null, 2));
@@ -145,19 +129,17 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
   // informational breakdown lives on the `info:` line, so the two never duplicate);
-  // CLEAN prints just `CLEAN`. `fail=declared` is noted only when non-default (it changes
-  // the verdict). `^result:` stays greppable for the verdict; the formal
+  // CLEAN prints just `CLEAN`. `^result:` stays greppable for the verdict; the formal
   // machine-readable contract is `--json` (the info: footer may span lines).
   const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
-  const failNote = (opts.failOn ?? 'undeclared') === 'declared' ? ' (fail=declared)' : '';
   // the verdict is the one line that must stand out: green CLEAN / red drift count
   const verdict =
     drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
   // A blank line before the verdict ONLY when drift sections were printed — it must
   // not read as a member of the last section (R48); a CLEAN stack stays 3 lines.
-  log((driftSections > 0 ? '\n' : '') + `result: ${verdict}${failNote}`);
+  log((driftSections > 0 ? '\n' : '') + `result: ${verdict}`);
   // INFORMATIONAL tiers: footer below result — full sections under --verbose, else a
   // folded summary (counts + reason breakdown): one `info: ...` line for a single
   // tier, a one-line-per-tier bullet list (with ONE --verbose hint) for 2+ (R37).

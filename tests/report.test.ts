@@ -21,19 +21,13 @@ describe('report', () => {
     expect(run([F('readGap'), F('skipped'), F('unresolved')]).code).toBe(0);
   });
 
-  it('exit 1 on declared or undeclared (default fail-on)', () => {
+  it('exit 1 on declared or undeclared', () => {
     expect(run([F('declared')]).code).toBe(1);
     expect(run([F('undeclared')]).code).toBe(1);
   });
 
-  it('--fail-on declared ignores undeclared for exit code', () => {
-    expect(run([F('undeclared')], { failOn: 'declared' }).code).toBe(0);
-    expect(run([F('declared')], { failOn: 'declared' }).code).toBe(1);
-  });
-
-  it('deleted is ALWAYS exit 1, regardless of --fail-on', () => {
+  it('deleted counts as drift (exit 1)', () => {
     expect(run([F('deleted')]).code).toBe(1);
-    expect(run([F('deleted')], { failOn: 'declared' }).code).toBe(1);
   });
 
   it('deleted appears as its own tier section in text output', () => {
@@ -102,11 +96,6 @@ describe('report', () => {
       // the old full (deleted=0 declared=0 ...) enumeration is gone
       expect(run([F('undeclared')]).text).not.toContain('deleted=0');
       expect(run([F('undeclared')]).text).toMatch(/result: 1 drift\(s\) \(undeclared=1\)/);
-    });
-
-    it('fail=declared is noted only when set (R56 flag spelling)', () => {
-      expect(run([F('declared')]).text).not.toContain('fail=');
-      expect(run([F('declared')], { failOn: 'declared' }).text).toContain('(fail=declared)');
     });
 
     it('folds a single informational tier into a one-line info: footer', () => {

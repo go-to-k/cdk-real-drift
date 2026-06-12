@@ -114,7 +114,7 @@ Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no sile
 default — resolves via SDK chain, errors if absent), `--profile`, `-a/--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
 `--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53),
-`--fail[=declared|undeclared]` (the =tier form selects failing tiers), `--show-all` (inventory mode:
+`--show-all` (inventory mode:
 ignore baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
 `--dry-run` (revert preview), `--yes/-y`. With no stack arg, every stack the app
 defines is targeted; a stack arg selects by exact name or glob (`cdkrd check 'Dev*'`).
@@ -484,7 +484,7 @@ longer exists in AWS (released/deleted via the console, another tool, etc.). The
 live read returns a not-found error (`ResourceNotFoundException` from Cloud
 Control; `NoSuchBucket` / `QueueDoesNotExist` / `NoSuchEntity` / `InvalidAllocationID.NotFound` /
 … from the SDK overrides), which the router maps to `deleted`. It is always a
-drift tier (independent of `--fail=<tier>`) and is reported as `not revertable`
+drift tier and is reported as `not revertable`
 (reason: `deleted — recreate via cdk deploy`) — a patch cannot recreate a
 resource.
 
@@ -493,9 +493,8 @@ is report-only by default — drift prints but exits 0, with a stderr note namin
 the flag. `--fail` makes drift exit 1 AND
 suppresses all prompts: one flag expresses "automation" (locally-run scripts
 inherit the terminal's TTY, so prompts would otherwise fire mid-script). Errors
-always exit 2. In fail mode, `--fail=declared` makes only `deleted` +
-`declared` fail; default `undeclared` = all three of `deleted` / `declared` /
-`undeclared`. `ignored` / `readGap` / `unresolved` / `skipped` are
+always exit 2. All three of `deleted` / `declared` / `undeclared` count as
+failing drift. `ignored` / `readGap` / `unresolved` / `skipped` are
 informational — surfaced, never silently dropped, but never false drift.
 
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —

@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
 
-// R38: interactivity flows through the single `isInteractive(args)` helper in
+// R38: interactivity flows through the single `isInteractive()` helper in
 // cli-args.ts. Command code must NOT read `process.stdin.isTTY` directly — only
-// cli-args.ts may. This guards against a new prompt re-introducing a raw TTY check
-// that would ignore `--no-interactive`.
+// cli-args.ts may. This keeps the TTY check in ONE place (non-interactive simply
+// means non-TTY since R58) so its semantics can never fork per command.
 const COMMAND_FILES = [
   '../src/commands/check.ts',
   '../src/commands/accept.ts',
