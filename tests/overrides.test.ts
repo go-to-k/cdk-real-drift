@@ -213,12 +213,25 @@ describe('SDK overrides', () => {
     ).toBeUndefined();
   });
 
-  it('Budgets: reads the budget by name + account', async () => {
-    budgets
-      .on(DescribeBudgetCommand)
-      .resolves({ Budget: { BudgetName: 'b', BudgetType: 'COST', TimeUnit: 'MONTHLY' } });
+  it('Budgets: reads the budget by name + account, projecting BudgetLimit (R67)', async () => {
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'b',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: '40.0', Unit: 'USD' },
+        CalculatedSpend: { ActualSpend: { Amount: '12.3', Unit: 'USD' } }, // computed — never projected
+      },
+    });
     const out = await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: { BudgetName: 'b' } }));
-    expect(out).toEqual({ Budget: { BudgetName: 'b', BudgetType: 'COST', TimeUnit: 'MONTHLY' } });
+    expect(out).toEqual({
+      Budget: {
+        BudgetName: 'b',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: '40.0', Unit: 'USD' },
+      },
+    });
   });
   it('Budgets: undefined without a budget name', async () => {
     expect(await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: {} }))).toBeUndefined();

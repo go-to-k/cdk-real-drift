@@ -200,7 +200,21 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
   const r = await c.send(new DescribeBudgetCommand({ AccountId: accountId, BudgetName: name }));
   const b = r.Budget;
   if (!b) return undefined;
-  return { Budget: { BudgetName: b.BudgetName, BudgetType: b.BudgetType, TimeUnit: b.TimeUnit } };
+  // BudgetLimit is in the projection (R67): once R65 made budgets readable, a
+  // declared BudgetLimit compared against a projection WITHOUT it reported
+  // `desired={...} actual=undefined` false drift. The live Amount is a string
+  // ("5.0") vs the declared number (5) — isStringlyEqualScalar's numeric arm
+  // folds that. The projection otherwise stays deliberately thin: nested
+  // live-only keys are ignored by the declared compare, but computed fields
+  // (CalculatedSpend) must never be offered for comparison at all.
+  return {
+    Budget: {
+      BudgetName: b.BudgetName,
+      BudgetType: b.BudgetType,
+      TimeUnit: b.TimeUnit,
+      ...(b.BudgetLimit !== undefined && { BudgetLimit: b.BudgetLimit }),
+    },
+  };
 };
 
 // AWS::EC2::EIP — Cloud Control API GetResource throws ValidationException for
