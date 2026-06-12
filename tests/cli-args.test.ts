@@ -87,6 +87,22 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S', '--fail']).fail).toBe(true);
   });
 
+  it('scope flags parse and are mutually exclusive (R59)', () => {
+    expect(parseCommonArgs(['S', '--undeclared-only']).undeclaredOnly).toBe(true);
+    expect(parseCommonArgs(['S', '--declared-only']).declaredOnly).toBe(true);
+    expect(parseCommonArgs(['S']).undeclaredOnly).toBe(false);
+    expect(parseCommonArgs(['S']).declaredOnly).toBe(false);
+    expect(() => parseCommonArgs(['S', '--pre-deploy', '--undeclared-only'])).toThrow(
+      /mutually exclusive/
+    );
+    expect(() => parseCommonArgs(['S', '--pre-deploy', '--declared-only'])).toThrow(
+      /mutually exclusive/
+    );
+    expect(() => parseCommonArgs(['S', '--declared-only', '--undeclared-only'])).toThrow(
+      /mutually exclusive/
+    );
+  });
+
   it('--fail takes no value — the =tier form is GONE (R58)', () => {
     expect(() => parseCommonArgs(['S', '--fail=declared'])).toThrow(
       /option "--fail" does not take a value/

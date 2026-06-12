@@ -33,9 +33,22 @@ import {
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
 // undeclared tier is meaningless against a synth (not deployed) declared set, so
-// it is excluded. Exported (pure) so the contract is unit-tested.
+// it is excluded. --declared-only reuses the same filter against the DEPLOYED
+// template (R59). Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
   return findings.filter((f) => f.tier !== 'undeclared');
+}
+
+// --undeclared-only (R59): the declared-side comparison is delegated to
+// `cdk drift` / CFn drift detection, so declared findings AND the
+// declared-comparison byproducts (readGap = declared-but-unreadable,
+// unresolved = declared-but-GetAtt) drop out. `deleted` stays — a gone resource
+// has no undeclared values to check, and hiding it would be a lie. Exported
+// (pure) so the contract is unit-tested.
+export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
+  return findings.filter(
+    (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
+  );
 }
 
 // The first-run (no-baseline) prompt (R45). The old Yes/No confirm hid the two
@@ -175,11 +188,30 @@ export async function runCheck(args: string[]): Promise<number> {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         continue;
       }
-      const { findings, desired, schemas } = await gatherFindings(
-        stackName,
-        region,
-        synthTemplates?.get(stackName)
-      );
+      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(stackName));
+      const { desired, schemas } = gathered;
+      let findings = gathered.findings;
+
+      // Scope flags (R59). --undeclared-only delegates the declared side to
+      // `cdk drift` / CFn drift detection (no double reporting when pairing);
+      // --declared-only is the inverse (undeclared tier skipped, baseline
+      // untouched) — unlike --pre-deploy, it compares against the DEPLOYED
+      // template. Filtering up front keeps everything downstream consistent:
+      // first-run prompt counts, baseline notes, interactive actions, reverts.
+      if (a.undeclaredOnly) {
+        findings = undeclaredOnlyFindings(findings);
+        if (!a.json)
+          console.error(
+            `note: ${stackName}: --undeclared-only — declared-side drift is not compared (pair with cdk drift / CFn drift detection)`
+          );
+      }
+      if (a.declaredOnly) {
+        findings = preDeployFindings(findings); // same filter: drop the undeclared tier
+        if (!a.json)
+          console.error(
+            `note: ${stackName}: --declared-only — undeclared values are not compared (baseline untouched)`
+          );
+      }
 
       // --pre-deploy: the declared set comes from the LOCAL synth template, so the
       // ONLY meaningful signal is declared drift the next deploy would clobber. The
@@ -247,7 +279,7 @@ export async function runCheck(args: string[]): Promise<number> {
           }
         }
       }
-      if (!a.json && !baseline && !a.showAll) {
+      if (!a.json && !baseline && !a.showAll && !a.declaredOnly) {
         console.error(
           `note: ${stackName}: no baseline — showing all undeclared state. Record it with \`cdkrd accept ${stackName}\`.`
         );

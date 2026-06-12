@@ -39,6 +39,10 @@ OPTIONS
                               NOT-revertable summary to full per-finding lists
   --pre-deploy                (check) compare live state vs the LOCAL synth template
                               — the declared drift your next deploy would overwrite
+  --undeclared-only           (check) undeclared drift only — pair cdkrd with
+                              \`cdk drift\` / CFn drift detection for the declared side
+  --declared-only             (check) declared drift vs the DEPLOYED template only
+                              (undeclared tier skipped; baseline untouched)
   --dry-run                   (revert) print the plan; make no changes
   --remove-unaccepted         (revert) on a stack with NO baseline, REMOVE undeclared
                               drift (default: refuse — run \`cdkrd accept\` first)

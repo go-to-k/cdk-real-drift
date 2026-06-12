@@ -116,6 +116,7 @@ default — resolves via SDK chain, errors if absent), `--profile`, `-a/--app <c
 `--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53),
 `--show-all` (inventory mode:
 ignore baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
+`--undeclared-only` / `--declared-only` (scope to one tier — R59; at most one scope flag),
 `--dry-run` (revert preview), `--yes/-y`. With no stack arg, every stack the app
 defines is targeted; a stack arg selects by exact name or glob (`cdkrd check 'Dev*'`).
 The known-flag set is closed: an unknown option or a value flag missing its

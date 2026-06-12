@@ -170,6 +170,8 @@ when drift remains after it.
 | `--show-all`               | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
 | `--verbose` / `-v`         | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists   |
 | `--pre-deploy`             | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
+| `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` / CFn drift detection for the declared side                       |
+| `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`        |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                      |
 | `--remove-unaccepted`      | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
 | `--yes` / `-y`             | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
