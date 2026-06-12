@@ -24,6 +24,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     RecursiveLoop: 'Terminate',
     RuntimeManagementConfig: { UpdateRuntimeOn: 'Auto' },
     Architectures: ['x86_64'],
+    // R70 (observed live on the lambda integ fixture): a never-declared
+    // default-config function otherwise reports both on every first run.
+    MemorySize: 128,
+    Timeout: 3,
   },
   'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
   'AWS::Events::Rule': { EventBusName: 'default' },
