@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "description": "Policy-document canonicalization: statement ORDER difference + scalar-vs-array Action/Resource forms fold to equal — a reordered but semantically identical live policy is not drift.",
+  "resource": {
+    "logicalId": "AlarmTopicPolicy",
+    "resourceType": "AWS::SNS::TopicPolicy",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic",
+    "declared": {
+      "Topics": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"],
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowPublish",
+            "Effect": "Allow",
+            "Principal": { "Service": "cloudwatch.amazonaws.com" },
+            "Action": "sns:Publish",
+            "Resource": "arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"
+          },
+          {
+            "Sid": "AllowSubscribe",
+            "Effect": "Allow",
+            "Principal": { "Service": "events.amazonaws.com" },
+            "Action": "sns:Subscribe",
+            "Resource": "arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "Topics": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"],
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "AllowSubscribe",
+          "Effect": "Allow",
+          "Principal": { "Service": "events.amazonaws.com" },
+          "Action": ["sns:Subscribe"],
+          "Resource": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"]
+        },
+        {
+          "Sid": "AllowPublish",
+          "Effect": "Allow",
+          "Principal": { "Service": "cloudwatch.amazonaws.com" },
+          "Action": ["sns:Publish"],
+          "Resource": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}

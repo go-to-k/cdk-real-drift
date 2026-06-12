@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "CC-API managed-field strip: generated/timestamp fields (CreationDate, RevisionId — top-level AND nested CreatedAt) are stripped from the live model and never report; the REMAINDER of a partially-stripped struct still surfaces honestly (LoggingConfiguration keeps {Level:OFF} — a string, deliberately NOT folded by isTrivialEmpty; if an SFN known-default is ever added, this expected changes visibly in that PR).",
+  "resource": {
+    "logicalId": "Flow",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:corpus-flow",
+    "declared": {
+      "StateMachineName": "corpus-flow",
+      "RoleArn": "arn:aws:iam::111111111111:role/corpus-flow-role"
+    }
+  },
+  "liveRaw": {
+    "StateMachineName": "corpus-flow",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:corpus-flow",
+    "RoleArn": "arn:aws:iam::111111111111:role/corpus-flow-role",
+    "CreationDate": "2026-06-12T00:00:00.000Z",
+    "RevisionId": "11111111-2222-3333-4444-555566667777",
+    "LoggingConfiguration": {
+      "Level": "OFF",
+      "CreatedAt": "2026-06-12T00:00:00.000Z"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["StateMachineName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["StateMachineName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Flow",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": { "Level": "OFF" },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:corpus-flow"
+    }
+  ]
+}

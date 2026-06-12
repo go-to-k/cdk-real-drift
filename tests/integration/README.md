@@ -94,11 +94,13 @@ each must be detected, named, and resolved back to CLEAN:
 | M1  | declared-change   | versioning suspended            | `VersioningConfiguration`            | `revert` |
 | M2  | undeclared-add    | acceleration appears            | `appeared since accept` (R62)        | `accept` |
 | M3  | undeclared-change | accepted acceleration flips     | `AccelerateConfiguration`            | `accept` |
-| M4  | undeclared-add    | out-of-band bucket tags         | `Tags` + `appeared since accept`     | `accept` |
-| M5  | value-remove      | accepted tags deleted           | `baseline value removed since accept`| `accept` |
+| M4  | undeclared-add    | out-of-band CORS config         | `CorsConfiguration` + `appeared since accept` | `accept` |
+| M5  | value-remove      | accepted CORS deleted           | `baseline value removed since accept`| `accept` |
 
 Every mutation ends at CLEAN, so the script also exercises the accept delta
-loop (R39) each round and the declared revert path once.
+loop (R39) each round and the declared revert path once. (M4/M5 use CORS, not
+tags: S3 refuses a TagSet replacement that drops the CFn `aws:*` system tags —
+found on the first live run, R68.)
 
 ```bash
 cd basic && bash verify-mutation-matrix.sh

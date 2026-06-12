@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK auto-delete bucket policy read via the SDK override classifies fully CLEAN \u2014 policy canonicalization is quiet on a genuine round-tripped document.",
+  "resource": {
+    "logicalId": "DataPolicyB80589C3",
+    "resourceType": "AWS::S3::BucketPolicy",
+    "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+    "constructPath": "CdkdriftIntegBasic/Data/Policy",
+    "declared": {
+      "Bucket": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:role/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+              "arn:aws:s3:::cdkdriftintegbasic-data666c94c7-7pabf0qbkwro/*"
+            ]
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:role/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF"
+          },
+          "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+          "Resource": [
+            "arn:aws:s3:::cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+            "arn:aws:s3:::cdkdriftintegbasic-data666c94c7-7pabf0qbkwro/*"
+          ]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

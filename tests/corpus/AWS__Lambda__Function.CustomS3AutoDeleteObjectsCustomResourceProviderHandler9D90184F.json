@@ -1,0 +1,111 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK-generated Lambda; the R66 KNOWN_DEFAULTS keep everything quiet EXCEPT LoggingConfig (per-function LogGroup name \u2014 not a constant, so deliberately not blanket-suppressed; current behavior locked).",
+  "resource": {
+    "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+    "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+    "declared": {
+      "Code": {
+        "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+        "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+      },
+      "Timeout": 900,
+      "MemorySize": 128,
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
+      "Runtime": "nodejs24.x",
+      "Description": "Lambda function for auto-deleting objects in cdkdriftintegbasic-data666c94c7-7pabf0qbkwro S3 bucket."
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "Lambda function for auto-deleting objects in cdkdriftintegbasic-data666c94c7-7pabf0qbkwro S3 bucket.",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 900,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+    "Runtime": "nodejs24.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegBasic/9e1bdec0-6666-11f1-ba55-121596894369",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkdriftIntegBasic",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq"
+      },
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    }
+  ]
+}
