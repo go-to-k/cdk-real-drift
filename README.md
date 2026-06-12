@@ -206,6 +206,40 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   `--no-interactive --yes` = full automation; `--yes` alone in a TTY
   auto-approves confirmations only (select prompts still show).
 
+### Catching what your next deploy would overwrite (`--pre-deploy`)
+
+Normal `check` asks "did reality drift from what I deployed?". `--pre-deploy`
+asks the inverse, **right before a deploy**: "which LIVE values would my local
+code overwrite?" It compares live state against your **local synth** template
+(instead of the deployed one), so a console hot-fix someone made during an
+incident shows up before `cdk deploy` silently reverts it:
+
+```console
+$ npx cdkrd check --pre-deploy
+(--pre-deploy) comparing live state against the LOCAL synth template
+=== cdkrd check: ApiStack (us-east-1) ===
+[DECLARED DRIFT: 1]
+  ApiStack/Api/Handler.MemorySize (AWS::Lambda::Function)
+      desired=1024
+      actual =2048
+
+result: 1 drift(s) (declared=1)
+```
+
+Here `desired` is what your local code is about to set; `actual` is live right
+now — someone bumped the memory to 2048 out of band. Deploying without porting
+that into code would silently undo it: port it (or decide it should go away),
+then deploy. As a pipeline gate, run it right before the deploy step:
+
+```yaml
+- run: npx cdkrd check --pre-deploy --fail # block the deploy on clobber risk
+- run: npx cdk deploy --all --require-approval never
+```
+
+`--pre-deploy` reports **declared** drift only (the undeclared tier is defined
+against the _deployed_ template, so it is excluded here) and never touches the
+baseline.
+
 ### Ignoring externally-managed properties
 
 Some properties are _legitimately_ rewritten by another system — Application
