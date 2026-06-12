@@ -29,9 +29,9 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-
-[UNDECLARED DRIFT (the differentiator)] 1
+[UNDECLARED DRIFT: 1] (the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
+
 result: 1 drift(s) (undeclared=1)
 ```
 
@@ -229,11 +229,11 @@ consumption the formal contract is `--json`. Output is colorized on a TTY
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-
-[DECLARED DRIFT] 1
+[DECLARED DRIFT: 1]
   ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"
+
 result: 1 drift(s) (declared=1)
 info:
   - readGap=1 (write-only 1)
