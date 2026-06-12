@@ -279,8 +279,8 @@ covers them. If you scope tighter, the calls are:
 `cloudcontrol:UpdateResource` (which resolves to each type's own update permissions),
 plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 `sns:SetTopicAttributes`, `sqs:SetQueueAttributes`, `iam:PutRolePolicy` /
-`PutUserPolicy` / `PutGroupPolicy`, `iam:CreatePolicyVersion` /
-`DeletePolicyVersion` / `ListPolicyVersions`.
+`DeleteRolePolicy` / `PutUserPolicy` / `PutGroupPolicy`,
+`iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`.
 
 **If you never run `revert`, cdkrd needs no write permissions at all.**
 

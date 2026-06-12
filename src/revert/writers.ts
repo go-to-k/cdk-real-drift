@@ -24,6 +24,7 @@
 import {
   CreatePolicyVersionCommand,
   DeletePolicyVersionCommand,
+  DeleteRolePolicyCommand,
   IAMClient,
   ListPolicyVersionsCommand,
   PutGroupPolicyCommand,
@@ -142,6 +143,50 @@ const writeIamManagedPolicy: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// Inline Policies on an IAM Role, reverted PER ENTRY (PutRolePolicy /
+// DeleteRolePolicy by PolicyName) instead of a whole-property Cloud Control patch:
+// a CC `remove /Policies` would also wipe the sibling-AWS::IAM::Policy entries
+// (the CDK DefaultPolicy) that classify filtered OUT of the finding. Each op
+// carries the finding's current live subset in `prior` (set by plan.ts); the
+// desired subset is `value` for an add (baseline restore), empty for a remove.
+// Entries in prior but not desired are deleted; every desired entry is (re)put.
+interface InlinePolicy {
+  PolicyName: string;
+  PolicyDocument: unknown;
+}
+const asInlinePolicies = (v: unknown): InlinePolicy[] =>
+  Array.isArray(v)
+    ? v.filter(
+        (p): p is InlinePolicy =>
+          !!p && typeof p === 'object' && typeof (p as InlinePolicy).PolicyName === 'string'
+      )
+    : [];
+
+const writeIamRoleInlinePolicies: SdkWriter = async (ctx, ops) => {
+  const role = str(ctx.physicalId); // an AWS::IAM::Role physical id IS the role name
+  if (!role) throw new Error('cannot resolve role name for revert');
+  const c = new IAMClient({ region: ctx.region });
+  for (const op of ops) {
+    if (op.path !== '/Policies')
+      throw new Error(`unsupported inline-policy revert path: ${op.path}`);
+    const desired = op.op === 'add' ? asInlinePolicies(op.value) : [];
+    const keep = new Set(desired.map((p) => p.PolicyName));
+    for (const p of asInlinePolicies(op.prior)) {
+      if (!keep.has(p.PolicyName))
+        await c.send(new DeleteRolePolicyCommand({ RoleName: role, PolicyName: p.PolicyName }));
+    }
+    for (const p of desired) {
+      await c.send(
+        new PutRolePolicyCommand({
+          RoleName: role,
+          PolicyName: p.PolicyName,
+          PolicyDocument: JSON.stringify(p.PolicyDocument),
+        })
+      );
+    }
+  }
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
@@ -149,3 +194,22 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::IAM::Policy': writeIamPolicy,
   'AWS::IAM::ManagedPolicy': writeIamManagedPolicy,
 };
+
+// Property-scoped SDK writers: CC-writable types where ONE property must be
+// reverted via the type's own SDK instead of a Cloud Control patch. Keyed by
+// resource type -> EXACT top-level finding path. Deeper paths (e.g. a declared
+// drift at Policies.0...) still go through Cloud Control as before.
+export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
+  'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
+};
+
+/** Resolve the SDK writer for a kind='sdk' revert item: the whole-type writer, or
+ *  the property-scoped writer matching the item's ops (all ops in a prop-scoped
+ *  item share one top-level pointer — plan.ts groups by exact finding path). */
+export function resolveSdkWriter(resourceType: string, ops: PatchOp[]): SdkWriter | undefined {
+  const whole = SDK_WRITERS[resourceType];
+  if (whole) return whole;
+  const byProp = SDK_PROP_WRITERS[resourceType];
+  const top = ops[0]?.path.split('/')[1]?.replace(/~1/g, '/').replace(/~0/g, '~');
+  return byProp && top ? byProp[top] : undefined;
+}

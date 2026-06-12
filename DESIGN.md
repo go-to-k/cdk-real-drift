@@ -31,7 +31,8 @@ un-deployed code edits would show as false "drift".
      - policy canonical (Action/Resource/Principal scalar-vs-array unify, statement
        sort, account-id<->root-ARN; Version kept only when declared — never fabricated)
      - aws:* tags (list + map), scalar schema-defaults + per-type known-defaults
-     - sibling AWS::IAM::Policy suppression on a role's live Policies
+     - sibling AWS::IAM::Policy entries filtered BY NAME from a role's live
+       Policies (an out-of-band inline policy next to them still reports)
 5. classify (tag):  declared | undeclared | readGap | unresolved | skipped
 6. report + exit code (0 clean / 1 drift / 2 error) + --fail-on <tier>
 ```

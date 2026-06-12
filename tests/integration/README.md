@@ -44,6 +44,28 @@ cd basic && bash verify-deleted-guards.sh
 
 IAM Role (inject a permissions boundary → undeclared drift) and a Node Lambda
 (inject reserved concurrency → undeclared drift); each asserts detect + clean destroy.
+The IAM fixture role also carries a CDK-generated sibling `AWS::IAM::Policy`
+(`addToPolicy` → DefaultPolicy), so the boundary test doubles as a no-false-positive
+check for the sibling filter.
+
+### iam / verify-inline-policy.sh
+
+A second script in the `iam` fixture covering the sibling-DefaultPolicy blind
+spot end-to-end (an out-of-band inline policy on a role whose grants live in a
+sibling `AWS::IAM::Policy`):
+
+1. `accept` then `check` reports CLEAN — the sibling DefaultPolicy entry in the
+   role's live `Policies` is filtered by name, not reported as drift.
+2. After `put-role-policy` adds a rogue inline policy out-of-band, `check` reports
+   `Policies` drift (exit 1) naming ONLY the rogue policy — the sibling entry does
+   not leak into the finding.
+3. `revert --yes` deletes ONLY the rogue policy (per-name `DeleteRolePolicy`, not a
+   whole-property Cloud Control patch): the DefaultPolicy survives with its
+   document intact, and `check` is CLEAN again.
+
+```bash
+cd iam && bash verify-inline-policy.sh
+```
 
 ## revert
 

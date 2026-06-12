@@ -168,9 +168,10 @@ export async function loadDesired(
   }
 
   const resources: DesiredResource[] = [];
-  // Roles whose inline Policies are managed by a SIBLING AWS::IAM::Policy resource
-  // (the CDK pattern). Their live Policies would otherwise show as undeclared.
-  const rolesWithSiblingPolicy = collectRolesWithSiblingPolicies(template.Resources ?? {});
+  // Roles whose inline Policies are managed by SIBLING AWS::IAM::Policy resources
+  // (the CDK pattern). classify uses the per-role POLICY NAMES to drop only the
+  // sibling-owned live entries — an out-of-band inline policy still surfaces.
+  const rolesWithSiblingPolicy = collectRolesWithSiblingPolicies(template.Resources ?? {}, ctx);
 
   for (const [logicalId, res] of Object.entries(
     (template.Resources ?? {}) as Record<string, any>
@@ -187,7 +188,8 @@ export async function loadDesired(
       // re-resolves declaredRaw once liveAttrs is populated, reducing UNRESOLVED.
       declared: resolveProperties(declaredRaw, ctx),
       declaredRaw,
-      siblingManaged: res.Type === 'AWS::IAM::Role' && rolesWithSiblingPolicy.has(logicalId),
+      siblingPolicyNames:
+        res.Type === 'AWS::IAM::Role' ? rolesWithSiblingPolicy.get(logicalId) : undefined,
     });
   }
   return { stackName, region, accountId, resources, rawTemplate, ctx };
@@ -199,14 +201,38 @@ function prettyConstructPath(p: string): string {
   return p.endsWith('/Resource') ? p.slice(0, -'/Resource'.length) : p;
 }
 
-export function collectRolesWithSiblingPolicies(resources: Record<string, any>): Set<string> {
-  const roles = new Set<string>();
+/**
+ * Map each role logicalId to the PolicyNames of the sibling AWS::IAM::Policy
+ * resources attached to it. A sibling whose PolicyName cannot be resolved to a
+ * string (an intrinsic the resolver can't evaluate) marks the role 'unresolved' —
+ * classify then falls back to suppressing the whole live Policies property rather
+ * than risk a false positive on the unidentifiable sibling entry.
+ */
+export function collectRolesWithSiblingPolicies(
+  resources: Record<string, any>,
+  ctx?: ResolverContext
+): Map<string, string[] | 'unresolved'> {
+  const roles = new Map<string, string[] | 'unresolved'>();
   for (const res of Object.values(resources)) {
     if (res?.Type !== 'AWS::IAM::Policy') continue;
+    const name = resolvePolicyName(res.Properties?.PolicyName, ctx);
     for (const r of (res.Properties?.Roles ?? []) as unknown[]) {
       const ref = r && typeof r === 'object' ? (r as Record<string, unknown>).Ref : undefined;
-      if (typeof ref === 'string') roles.add(ref);
+      if (typeof ref !== 'string') continue;
+      const prev = roles.get(ref);
+      if (prev === 'unresolved') continue;
+      if (name === undefined) roles.set(ref, 'unresolved');
+      else roles.set(ref, [...(prev ?? []), name]);
     }
   }
   return roles;
+}
+
+// CDK emits literal PolicyNames (e.g. "RoleDefaultPolicyABC123"); hand-written
+// templates may use intrinsics, which we resolve when a ctx is available.
+function resolvePolicyName(raw: unknown, ctx?: ResolverContext): string | undefined {
+  if (typeof raw === 'string') return raw;
+  if (raw === undefined || raw === null || !ctx) return undefined;
+  const resolved = resolveProperties({ PolicyName: raw }, ctx).PolicyName;
+  return typeof resolved === 'string' ? resolved : undefined; // UNRESOLVED is a symbol, never a string
 }
