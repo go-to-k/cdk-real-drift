@@ -1,0 +1,33 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::KMS::Alias model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "DataKeyAliasD4424CA2",
+    "resourceType": "AWS::KMS::Alias",
+    "physicalId": "alias/cdkrd-harvest3",
+    "constructPath": "CdkrdIntegHarvest3/DataKeyAlias",
+    "declared": {
+      "AliasName": "alias/cdkrd-harvest3",
+      "TargetKeyId": "arn:aws:kms:us-east-1:111111111111:key/f989c1f9-fd8b-4a78-a71d-a69a1e096af1"
+    }
+  },
+  "liveRaw": {
+    "TargetKeyId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+    "AliasName": "alias/cdkrd-harvest3"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["AliasName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AliasName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

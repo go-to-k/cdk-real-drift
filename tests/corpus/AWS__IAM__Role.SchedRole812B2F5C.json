@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "SchedRole812B2F5C",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest3-SchedRole812B2F5C-3Z1ZOCe4hlMx",
+    "constructPath": "CdkrdIntegHarvest3/SchedRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "scheduler.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    },
+    "siblingPolicyNames": ["SchedRoleDefaultPolicy49B7B02E"]
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest3-SchedRole812B2F5C-3Z1ZOCe4hlMx",
+    "Description": "",
+    "Policies": [
+      {
+        "PolicyName": "SchedRoleDefaultPolicy49B7B02E",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sns:Publish",
+              "Resource": "arn:aws:sns:us-east-1:111111111111:CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "scheduler.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-SchedRole812B2F5C-3Z1ZOCe4hlMx",
+    "RoleId": "AROAXXXJN2LN6X7LGIQU6"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

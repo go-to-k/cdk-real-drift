@@ -1,0 +1,72 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Backup::BackupPlan model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "PlanDAF4E53A",
+    "resourceType": "AWS::Backup::BackupPlan",
+    "physicalId": "4e662c50-8d81-4e43-b41d-703cacbe0e34",
+    "constructPath": "CdkrdIntegHarvest3/Plan",
+    "declared": {
+      "BackupPlan": {
+        "BackupPlanName": "Plan",
+        "BackupPlanRule": [
+          {
+            "Lifecycle": {
+              "DeleteAfterDays": 35
+            },
+            "RuleName": "Daily",
+            "ScheduleExpression": "cron(0 5 * * ? *)",
+            "TargetBackupVault": "CdkrdIntegHarvest3Vault1B103709"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "VersionId": "Mjk0MGIyZWYtZDdmZi00MzQwLTk5OGItODY1ZDA4NmYwNTcz",
+    "BackupPlan": {
+      "BackupPlanName": "Plan",
+      "ScanSettings": [],
+      "AdvancedBackupSettings": [],
+      "BackupPlanRule": [
+        {
+          "CompletionWindowMinutes": 10080,
+          "ScheduleExpression": "cron(0 5 * * ? *)",
+          "RecoveryPointTags": {},
+          "CopyActions": [],
+          "ScanActions": [],
+          "Lifecycle": {
+            "DeleteAfterDays": 35
+          },
+          "IndexActions": [],
+          "TargetBackupVault": "CdkrdIntegHarvest3Vault1B103709",
+          "StartWindowMinutes": 480,
+          "ScheduleExpressionTimezone": "Etc/UTC",
+          "RuleName": "Daily"
+        }
+      ]
+    },
+    "BackupPlanId": "4e662c50-8d81-4e43-b41d-703cacbe0e34",
+    "BackupPlanTags": {
+      "aws:cloudformation:stack-name": "CdkrdIntegHarvest3",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+      "aws:cloudformation:logical-id": "PlanDAF4E53A"
+    },
+    "BackupPlanArn": "arn:aws:backup:us-east-1:111111111111:backup-plan:4e662c50-8d81-4e43-b41d-703cacbe0e34"
+  },
+  "schema": {
+    "readOnly": ["BackupPlanArn", "BackupPlanId", "VersionId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["BackupPlanArn", "BackupPlanId", "VersionId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

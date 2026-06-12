@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "FirehoseRoleAA67C190",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
+    "constructPath": "CdkrdIntegHarvest3/FirehoseRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "firehose.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    },
+    "siblingPolicyNames": ["FirehoseRoleDefaultPolicyF034DFF7"]
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
+    "Description": "",
+    "Policies": [
+      {
+        "PolicyName": "FirehoseRoleDefaultPolicyF034DFF7",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*"
+              ],
+              "Resource": [
+                "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+                "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy/*"
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "firehose.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
+    "RoleId": "AROAXXXJN2LN5FIP7UKJ4"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

@@ -49,6 +49,68 @@ describe('readLive (CC API path)', () => {
   });
 });
 
+describe('readLive (CC identifier adapters, R74)', () => {
+  const sent = (): string =>
+    (cc.commandCalls(GetResourceCommand)[0]?.args[0].input.Identifier ?? '') as string;
+
+  it('AppSync GraphQLApi: the ARN physical id is reduced to the bare ApiId', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AppSync::GraphQLApi',
+        physicalId: 'arn:aws:appsync:us-east-1:111111111111:apis/abc123xyz',
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('abc123xyz');
+  });
+
+  it('AppSync GraphQLApi: a non-ARN physical id passes through unchanged', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::AppSync::GraphQLApi', physicalId: 'abc123xyz' }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('abc123xyz');
+  });
+
+  it('Cognito UserPoolClient: builds the composite UserPoolId|ClientId identifier', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        physicalId: 'client123',
+        declared: { UserPoolId: 'us-east-1_AbCdEf' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('us-east-1_AbCdEf|client123');
+  });
+
+  it('Cognito UserPoolClient: an unresolved UserPoolId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Cognito::UserPoolClient', physicalId: 'client123', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('client123');
+  });
+
+  it('types without an adapter keep the physical id as the identifier', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(cc as unknown as CloudControlClient, res(), 'us-east-1', '1');
+    expect(sent()).toBe('phys');
+  });
+});
+
 describe('readLive (custom resources short-circuit, R26)', () => {
   it('returns skipped WITHOUT calling Cloud Control for a Custom:: resource', async () => {
     const r = await readLive(

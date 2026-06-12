@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 revert matrix, R74): AWS::Events::Rule after an OUT-OF-BAND mutation of a declared value — the declared finding in `expected` is the drift the matrix detects and reverts via Cloud Control. A change here means declared-drift semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixRuleF1E32BBB",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "constructPath": "CdkrdIntegHarvest3/MatrixRule",
+    "declared": {
+      "ScheduleExpression": "rate(1 hour)",
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "ScheduleExpression": "rate(1 hour)",
+    "State": "DISABLED",
+    "Targets": [],
+    "Id": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MatrixRuleF1E32BBB",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "MatrixRuleF1E32BBB",
+      "resourceType": "AWS::Events::Rule",
+      "path": "State",
+      "desired": "ENABLED",
+      "actual": "DISABLED",
+      "physicalId": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+      "constructPath": "CdkrdIntegHarvest3/MatrixRule"
+    }
+  ]
+}

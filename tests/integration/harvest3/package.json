@@ -1,0 +1,13 @@
+{
+  "name": "cdk-real-drift-integ-harvest3",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Corpus-harvest fixture wave 3: new service families + a multi-type Cloud Control revert matrix. Run via verify-harvest3.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module",
+  "packageManager": "npm@11.17.0"
+}

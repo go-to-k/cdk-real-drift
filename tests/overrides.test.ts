@@ -13,6 +13,7 @@ import {
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -28,6 +29,7 @@ const budgets = mockClient(BudgetsClient);
 const route53 = mockClient(Route53Client);
 const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
+const scheduler = mockClient(SchedulerClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -39,7 +41,7 @@ const POLICY =
   '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:Get","Resource":"*"}]}';
 
 beforeEach(() => {
-  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs]) m.reset();
+  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs, scheduler]) m.reset();
 });
 
 describe('SDK overrides', () => {
@@ -392,6 +394,55 @@ describe('SDK overrides', () => {
       expect(
         await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'missing'))
       ).toBeUndefined();
+    });
+  });
+
+  describe('Scheduler Schedule (R74)', () => {
+    it('reads by physical-id name + declared GroupName and projects only CFn props', async () => {
+      scheduler.on(GetScheduleCommand).resolves({
+        Arn: 'arn:aws:scheduler:us-east-1:123456789012:schedule/grp/sched',
+        Name: 'sched',
+        GroupName: 'grp',
+        ScheduleExpression: 'rate(1 hour)',
+        FlexibleTimeWindow: { Mode: 'OFF' },
+        State: 'DISABLED',
+        CreationDate: new Date(0),
+        LastModificationDate: new Date(0),
+        Target: {
+          Arn: 'arn:aws:sns:us-east-1:123456789012:t',
+          RoleArn: 'arn:aws:iam::123456789012:role/r',
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::Scheduler::Schedule'](
+        ctx({ GroupName: 'grp' }, 'sched')
+      );
+      expect(scheduler.commandCalls(GetScheduleCommand)[0]?.args[0].input).toEqual({
+        Name: 'sched',
+        GroupName: 'grp',
+      });
+      expect(out).toEqual({
+        Name: 'sched',
+        GroupName: 'grp',
+        ScheduleExpression: 'rate(1 hour)',
+        FlexibleTimeWindow: { Mode: 'OFF' },
+        State: 'DISABLED',
+        Target: {
+          Arn: 'arn:aws:sns:us-east-1:123456789012:t',
+          RoleArn: 'arn:aws:iam::123456789012:role/r',
+        },
+      });
+    });
+
+    it('omits GroupName from the call when not declared (service default group)', async () => {
+      scheduler.on(GetScheduleCommand).resolves({ Name: 'sched' });
+      await SDK_OVERRIDES['AWS::Scheduler::Schedule'](ctx({}, 'sched'));
+      expect(scheduler.commandCalls(GetScheduleCommand)[0]?.args[0].input).toEqual({
+        Name: 'sched',
+      });
+    });
+
+    it('undefined when no name is resolvable (-> stays skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::Scheduler::Schedule'](ctx({}))).toBeUndefined();
     });
   });
 });

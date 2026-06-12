@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Logs::LogGroup model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixLogsDDD521D9",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+    "constructPath": "CdkrdIntegHarvest3/MatrixLogs",
+    "declared": {
+      "RetentionInDays": 7
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [],
+    "RetentionInDays": 7,
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "STANDARD",
+    "LogGroupName": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "MatrixLogsDDD521D9",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "DataProtectionPolicy": {}
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

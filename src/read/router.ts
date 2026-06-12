@@ -12,6 +12,27 @@ export interface ReadResult {
   deleted?: boolean; // the resource was deleted out of band (read returned not-found)
 }
 
+// Cloud Control identifier adapters (R74): for most types the CFn physical id IS
+// the CC primaryIdentifier, but not for all — passing the raw physical id then
+// reads as not-found and falsely reports the resource DELETED (found live on the
+// harvest3 fixture). Each adapter derives the CC identifier; returning undefined
+// falls back to the physical id unchanged.
+export const CC_IDENTIFIER_ADAPTERS: Record<
+  string,
+  (physicalId: string, declared: Record<string, unknown>) => string | undefined
+> = {
+  // physical id = the API ARN (arn:...:apis/<apiId>); CC wants the bare ApiId.
+  'AWS::AppSync::GraphQLApi': (pid) => (pid.startsWith('arn:') ? pid.split('/').pop() : pid),
+  // primaryIdentifier is the composite [UserPoolId, ClientId]; the physical id is
+  // only the ClientId. UserPoolId comes from the resolved declared Ref — when it
+  // did not resolve, keep the physical id (CC then reports ValidationException →
+  // an honest skip, same as before).
+  'AWS::Cognito::UserPoolClient': (pid, declared) =>
+    typeof declared.UserPoolId === 'string' && declared.UserPoolId.length > 0
+      ? `${declared.UserPoolId}|${pid}`
+      : undefined,
+};
+
 export async function readLive(
   cc: CloudControlClient,
   resource: DesiredResource,
@@ -37,8 +58,10 @@ export async function readLive(
     }
   }
   try {
+    const identifier =
+      CC_IDENTIFIER_ADAPTERS[resourceType]?.(physicalId ?? '', declared) ?? physicalId ?? '';
     const g = await cc.send(
-      new GetResourceCommand({ TypeName: resourceType, Identifier: physicalId ?? '' })
+      new GetResourceCommand({ TypeName: resourceType, Identifier: identifier })
     );
     return { live: JSON.parse(g.ResourceDescription?.Properties ?? '{}') };
   } catch (e) {

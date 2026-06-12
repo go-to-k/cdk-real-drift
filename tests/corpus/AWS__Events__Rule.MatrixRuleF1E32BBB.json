@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Events::Rule model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixRuleF1E32BBB",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "constructPath": "CdkrdIntegHarvest3/MatrixRule",
+    "declared": {
+      "ScheduleExpression": "rate(1 hour)",
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "ScheduleExpression": "rate(1 hour)",
+    "State": "ENABLED",
+    "Targets": [],
+    "Id": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MatrixRuleF1E32BBB",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

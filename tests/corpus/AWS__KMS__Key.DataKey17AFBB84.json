@@ -1,0 +1,99 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::KMS::Key model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "DataKey17AFBB84",
+    "resourceType": "AWS::KMS::Key",
+    "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+    "constructPath": "CdkrdIntegHarvest3/DataKey",
+    "declared": {
+      "Description": "cdkrd harvest3 data key",
+      "EnableKeyRotation": true,
+      "KeyPolicy": {
+        "Statement": [
+          {
+            "Action": "kms:*",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Resource": "*"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "PendingWindowInDays": 7
+    }
+  },
+  "liveRaw": {
+    "Origin": "AWS_KMS",
+    "MultiRegion": false,
+    "Description": "cdkrd harvest3 data key",
+    "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "kms:*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          }
+        }
+      ]
+    },
+    "KeySpec": "SYMMETRIC_DEFAULT",
+    "Enabled": true,
+    "EnableKeyRotation": true,
+    "KeyUsage": "ENCRYPT_DECRYPT",
+    "KeyId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+    "Arn": "arn:aws:kms:us-east-1:111111111111:key/f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "KeyId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck", "PendingWindowInDays", "RotationPeriodInDays"],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "KeyId"],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "PendingWindowInDays",
+      "RotationPeriodInDays"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {
+      "KeyPolicy": "{\n    \"Version\": \"2012-10-17\",\n    \"Id\": \"key-default\",\n    \"Statement\": [\n        {\n            \"Sid\": \"Enable IAM User Permissions\",\n            \"Effect\": \"Allow\",\n            \"Principal\": {\n                \"AWS\": \"arn:<partition>:iam::<account-id>:root\"\n            },\n            \"Action\": \"kms:*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "Origin": "AWS_KMS",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "MultiRegion": false,
+      "BypassPolicyLockoutSafetyCheck": false,
+      "RotationPeriodInDays": 365
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "PendingWindowInDays",
+      "note": "write-only — cannot be read back",
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    }
+  ]
+}

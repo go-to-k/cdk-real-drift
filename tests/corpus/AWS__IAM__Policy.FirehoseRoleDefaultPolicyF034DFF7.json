@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::IAM::Policy model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "FirehoseRoleDefaultPolicyF034DFF7",
+    "resourceType": "AWS::IAM::Policy",
+    "physicalId": "Cdkrd-Fireh-UJiJLhYiaMMu",
+    "constructPath": "CdkrdIntegHarvest3/FirehoseRole/DefaultPolicy",
+    "declared": {
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": [
+              "s3:GetObject*",
+              "s3:GetBucket*",
+              "s3:List*",
+              "s3:DeleteObject*",
+              "s3:PutObject",
+              "s3:PutObjectLegalHold",
+              "s3:PutObjectRetention",
+              "s3:PutObjectTagging",
+              "s3:PutObjectVersionTagging",
+              "s3:Abort*"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+              "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+              "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy/*"
+            ]
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "PolicyName": "FirehoseRoleDefaultPolicyF034DFF7",
+      "Roles": ["CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY"]
+    }
+  },
+  "liveRaw": {
+    "PolicyName": "FirehoseRoleDefaultPolicyF034DFF7",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": [
+            "s3:GetObject*",
+            "s3:GetBucket*",
+            "s3:List*",
+            "s3:DeleteObject*",
+            "s3:PutObject",
+            "s3:PutObjectLegalHold",
+            "s3:PutObjectRetention",
+            "s3:PutObjectTagging",
+            "s3:PutObjectVersionTagging",
+            "s3:Abort*"
+          ],
+          "Resource": [
+            "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+            "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy/*"
+          ],
+          "Effect": "Allow"
+        }
+      ]
+    },
+    "Roles": ["CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY"]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

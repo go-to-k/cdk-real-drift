@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 revert matrix, R74): AWS::Logs::LogGroup after an OUT-OF-BAND mutation of a declared value — the declared finding in `expected` is the drift the matrix detects and reverts via Cloud Control. A change here means declared-drift semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixLogsDDD521D9",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+    "constructPath": "CdkrdIntegHarvest3/MatrixLogs",
+    "declared": {
+      "RetentionInDays": 7
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [],
+    "RetentionInDays": 30,
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "STANDARD",
+    "LogGroupName": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "MatrixLogsDDD521D9",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "DataProtectionPolicy": {}
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "MatrixLogsDDD521D9",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "RetentionInDays",
+      "desired": 7,
+      "actual": 30,
+      "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+      "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
+    }
+  ]
+}

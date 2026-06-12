@@ -1,0 +1,122 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::AppSync::GraphQLApi model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Graph",
+    "resourceType": "AWS::AppSync::GraphQLApi",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+    "constructPath": "CdkrdIntegHarvest3/Graph",
+    "declared": {
+      "AuthenticationType": "API_KEY",
+      "Name": "cdkrd-harvest3"
+    }
+  },
+  "liveRaw": {
+    "QueryDepthLimit": 0,
+    "IntrospectionConfig": "ENABLED",
+    "RealtimeDns": "ykqwe6k7g5hcfabiuoypeum55u.appsync-realtime-api.us-east-1.amazonaws.com",
+    "ResolverCountLimit": 0,
+    "Name": "cdkrd-harvest3",
+    "RealtimeUrl": "wss://ykqwe6k7g5hcfabiuoypeum55u.appsync-realtime-api.us-east-1.amazonaws.com/graphql",
+    "EnvironmentVariables": {},
+    "GraphQLUrl": "https://ykqwe6k7g5hcfabiuoypeum55u.appsync-api.us-east-1.amazonaws.com/graphql",
+    "GraphQLDns": "ykqwe6k7g5hcfabiuoypeum55u.appsync-api.us-east-1.amazonaws.com",
+    "ApiType": "GRAPHQL",
+    "XrayEnabled": false,
+    "Visibility": "GLOBAL",
+    "Arn": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+    "ApiId": "bb3dolsy4jf4vgdelqzpaojuqq",
+    "Tags": [],
+    "AuthenticationType": "API_KEY",
+    "GraphQLEndpointArn": "arn:aws:appsync:us-east-1:111111111111:endpoints/graphql-api/ykqwe6k7g5hcfabiuoypeum55u"
+  },
+  "schema": {
+    "readOnly": [
+      "ApiId",
+      "Arn",
+      "GraphQLDns",
+      "GraphQLEndpointArn",
+      "GraphQLUrl",
+      "RealtimeDns",
+      "RealtimeUrl"
+    ],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "ApiId",
+      "Arn",
+      "GraphQLDns",
+      "GraphQLEndpointArn",
+      "GraphQLUrl",
+      "RealtimeDns",
+      "RealtimeUrl"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "LambdaAuthorizerConfig.AuthorizerResultTtlInSeconds",
+      "LambdaAuthorizerConfig.AuthorizerUri",
+      "LambdaAuthorizerConfig.IdentityValidationExpression",
+      "OpenIDConnectConfig.AuthTTL",
+      "OpenIDConnectConfig.ClientId",
+      "OpenIDConnectConfig.IatTTL",
+      "OpenIDConnectConfig.Issuer",
+      "UserPoolConfig.AppIdClientRegex",
+      "UserPoolConfig.AwsRegion",
+      "UserPoolConfig.DefaultAction",
+      "UserPoolConfig.UserPoolId"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "QueryDepthLimit",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "IntrospectionConfig",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "ResolverCountLimit",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "ApiType",
+      "actual": "GRAPHQL",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "Visibility",
+      "actual": "GLOBAL",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    }
+  ]
+}

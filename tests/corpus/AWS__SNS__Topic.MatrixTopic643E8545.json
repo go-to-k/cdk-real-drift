@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::SNS::Topic model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "MatrixTopic643E8545",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu",
+    "constructPath": "CdkrdIntegHarvest3/MatrixTopic",
+    "declared": {
+      "DisplayName": "cdkrd harvest3 matrix"
+    }
+  },
+  "liveRaw": {
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu",
+    "DisplayName": "cdkrd harvest3 matrix",
+    "FifoTopic": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MatrixTopic643E8545",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ArchivePolicy": {},
+    "TopicName": "CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixTopic643E8545",
+      "resourceType": "AWS::SNS::Topic",
+      "path": "TopicName",
+      "actual": "CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu",
+      "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkrdIntegHarvest3-MatrixTopic643E8545-sQb9jM5VUINu",
+      "constructPath": "CdkrdIntegHarvest3/MatrixTopic"
+    }
+  ]
+}
