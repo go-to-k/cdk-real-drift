@@ -223,6 +223,20 @@ describe('SDK overrides', () => {
   it('Budgets: undefined without a budget name', async () => {
     expect(await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: {} }))).toBeUndefined();
   });
+  it('Budgets: resolves by PHYSICAL ID when the template declares no name (R65)', async () => {
+    // the CFn-generated-name case: the physical id IS the budget name
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: { BudgetName: 'CfnBudget-us-east-1-123-abc', BudgetType: 'COST', TimeUnit: 'DAILY' },
+    });
+    const out = await SDK_OVERRIDES['AWS::Budgets::Budget'](
+      ctx({ Budget: {} }, 'CfnBudget-us-east-1-123-abc')
+    );
+    expect(out).toEqual({
+      Budget: { BudgetName: 'CfnBudget-us-east-1-123-abc', BudgetType: 'COST', TimeUnit: 'DAILY' },
+    });
+    const input = budgets.commandCalls(DescribeBudgetCommand).at(-1)!.args[0].input;
+    expect(input.BudgetName).toBe('CfnBudget-us-east-1-123-abc');
+  });
 
   describe('Route53 RecordSet', () => {
     it('reads an alias record + aligns the trailing dot to the declared style', async () => {
