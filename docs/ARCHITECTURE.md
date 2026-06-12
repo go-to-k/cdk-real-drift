@@ -251,7 +251,8 @@ all live changes
   − schema readOnly/writeOnly         → stripped (describe-type, nested + '*')
   − cc-api managed fields             → stripped (timestamps, revision ids)
   − policy-doc representational noise  → canonicalized (scalar/array, stmt order, acct-id↔root-ARN)
-  − aws:* tags (list + map)           → stripped
+  − aws:* tags ({Key,Value}[] anywhere; maps only under a `Tags` key — never
+    IAM condition keys like aws:SecureTransport, R69) → stripped
   − schema defaults + known defaults  → suppressed
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)

@@ -91,6 +91,18 @@ describe('SDK overrides', () => {
   it('IAM ManagedPolicy: undefined when physical id is not an ARN', async () => {
     expect(await SDK_OVERRIDES['AWS::IAM::ManagedPolicy'](ctx({}, 'not-an-arn'))).toBeUndefined();
   });
+  it('IAM ManagedPolicy: an OMITTED Description reads as "" — the empty description (R69)', async () => {
+    // GetPolicy omits Description when empty, while CDK declares Description: "";
+    // an undefined-valued key produced desired-vs-undefined false declared drift.
+    iam.on(GetPolicyCommand).resolves({ Policy: { DefaultVersionId: 'v1', Path: '/' } });
+    iam
+      .on(GetPolicyVersionCommand)
+      .resolves({ PolicyVersion: { Document: encodeURIComponent(POLICY) } });
+    const out = await SDK_OVERRIDES['AWS::IAM::ManagedPolicy'](
+      ctx({}, 'arn:aws:iam::123:policy/p')
+    );
+    expect(out!.Description).toBe('');
+  });
 
   it('Lambda Permission: matches statement by Action + Principal', async () => {
     const fnPolicy = JSON.stringify({

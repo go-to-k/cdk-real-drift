@@ -45,9 +45,14 @@ phys() {
 BUCKET="$(phys 'AWS::S3::Bucket')"
 TOPIC_ARN="$(phys 'AWS::SNS::Topic')"
 QUEUE_URL="$(phys 'AWS::SQS::Queue')"
-INLINE_NAME="$(phys 'AWS::IAM::Policy')"
 MANAGED_ARN="$(phys 'AWS::IAM::ManagedPolicy')"
 ROLE_NAME="$(phys 'AWS::IAM::Role')"
+# The CFn physical id of AWS::IAM::Policy is an OPAQUE generated string, NOT the
+# policy name on the role (declared PolicyName=WorkerInline..., physical id =
+# Cdkdr-Worke-...) — GetRolePolicy by physical id was NoSuchEntity on the first
+# live run (R69). The fixture role carries exactly one inline policy; ask IAM.
+INLINE_NAME="$(aws iam list-role-policies --role-name "$ROLE_NAME" \
+  --query 'PolicyNames[0]' --output text)"
 for v in BUCKET TOPIC_ARN QUEUE_URL INLINE_NAME MANAGED_ARN ROLE_NAME; do
   [ -n "${!v}" ] || fail "could not resolve $v"
 done

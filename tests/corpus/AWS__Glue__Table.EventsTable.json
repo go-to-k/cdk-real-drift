@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "description": "Stringly-typed map values (Glue Table Parameters is Map<String,String>): declared typed booleans/numbers vs the live string forms fold leaf-by-leaf; a REAL nested value change (compressed) still surfaces as declared drift on the parent property.",
+  "resource": {
+    "logicalId": "EventsTable",
+    "resourceType": "AWS::Glue::Table",
+    "physicalId": "corpus_db/corpus_events",
+    "declared": {
+      "DatabaseName": "corpus_db",
+      "TableInput": {
+        "Name": "corpus_events",
+        "Parameters": {
+          "classification": "json",
+          "has_encrypted_data": false,
+          "averageRecordSize": 123,
+          "compressed": false
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "corpus_db",
+    "TableInput": {
+      "Name": "corpus_events",
+      "Parameters": {
+        "classification": "json",
+        "has_encrypted_data": "false",
+        "averageRecordSize": "123",
+        "compressed": "true"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DatabaseName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DatabaseName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "EventsTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Parameters.compressed",
+      "desired": false,
+      "actual": "true",
+      "physicalId": "corpus_db/corpus_events"
+    }
+  ]
+}

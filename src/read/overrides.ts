@@ -128,7 +128,15 @@ const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
       new GetPolicyVersionCommand({ PolicyArn: physicalId, VersionId: p.DefaultVersionId })
     )
   ).PolicyVersion;
-  return { PolicyDocument: parsePolicy(ver?.Document), Path: p.Path, Description: p.Description };
+  // GetPolicy OMITS Description when it is empty, while CDK templates declare
+  // `Description: ""` — an undefined-valued key here read as `desired="" actual=
+  // undefined` false declared drift (first live policies integ run, R69). An
+  // absent live description IS the empty description.
+  return {
+    PolicyDocument: parsePolicy(ver?.Document),
+    Path: p.Path,
+    Description: p.Description ?? '',
+  };
 };
 
 const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
