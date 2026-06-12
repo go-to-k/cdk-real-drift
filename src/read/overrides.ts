@@ -186,9 +186,15 @@ function normalizeLambdaPrincipal(p: unknown): unknown {
   return p;
 }
 
-const readBudget: OverrideReader = async ({ declared, accountId, region }) => {
+const readBudget: OverrideReader = async ({ physicalId, declared, accountId, region }) => {
+  // The CFn physical id of AWS::Budgets::Budget IS the budget name — and unlike
+  // declared.Budget.BudgetName it is always present, including the common case
+  // where the template declares no name and CFn generates one
+  // (`<logicalId>-<region>-<ts>-...`). Resolving by declared name only skipped
+  // exactly those budgets whole-resource (dogfood, R65); declared name stays as
+  // the fallback for safety.
   const budget = declared.Budget as Record<string, unknown> | undefined;
-  const name = str(budget?.BudgetName);
+  const name = str(physicalId) || str(budget?.BudgetName);
   if (!name || !accountId) return undefined;
   const c = new BudgetsClient({ region, ...READ_RETRY });
   const r = await c.send(new DescribeBudgetCommand({ AccountId: accountId, BudgetName: name }));
