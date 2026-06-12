@@ -52,6 +52,9 @@ cdk.context.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 
+# Development worktrees (mandated by CLAUDE.md workflow rules; never committed)
+.worktrees/
+
 # markgate pr-review sentinel
 .markgate-pr-review-sha
 
