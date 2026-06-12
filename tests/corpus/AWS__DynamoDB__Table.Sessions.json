@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "description": "Tag canonicalization: live aws:* tag elements stripped + declared/live tag ORDER difference folded (sorted by Key) -> tags are not drift; a genuinely undeclared live property (TableClass) still surfaces.",
+  "resource": {
+    "logicalId": "Sessions",
+    "resourceType": "AWS::DynamoDB::Table",
+    "physicalId": "corpus-sessions",
+    "declared": {
+      "TableName": "corpus-sessions",
+      "Tags": [
+        { "Key": "team", "Value": "platform" },
+        { "Key": "env", "Value": "dev" }
+      ]
+    }
+  },
+  "liveRaw": {
+    "TableName": "corpus-sessions",
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/corpus-sessions",
+    "Tags": [
+      { "Key": "aws:cloudformation:stack-name", "Value": "CorpusStack" },
+      { "Key": "env", "Value": "dev" },
+      { "Key": "team", "Value": "platform" }
+    ],
+    "TableClass": "STANDARD_INFREQUENT_ACCESS"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["TableName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TableName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Sessions",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "TableClass",
+      "actual": "STANDARD_INFREQUENT_ACCESS",
+      "physicalId": "corpus-sessions"
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (mutation-matrix integ run, final state): a real versioned+encrypted bucket; raw classify (pre-baseline) surfaces exactly the 3 real undeclared values (AccelerateConfiguration left Suspended by M3, PublicAccessBlockConfiguration, OwnershipControls) while encryption struct extras (BucketKeyEnabled/BlockedEncryptionTypes), aws:* tags, generated names and readOnly fields stay quiet.",
+  "resource": {
+    "logicalId": "Data666C94C7",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+    "constructPath": "CdkdriftIntegBasic/Data",
+    "declared": {
+      "BucketEncryption": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "aws-cdk:auto-delete-objects",
+          "Value": "true"
+        }
+      ],
+      "VersioningConfiguration": {
+        "Status": "Enabled"
+      }
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkdriftintegbasic-data666c94c7-7pabf0qbkwro.s3-website-us-east-1.amazonaws.com",
+    "DualStackDomainName": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro.s3.dualstack.us-east-1.amazonaws.com",
+    "VersioningConfiguration": {
+      "Status": "Enabled"
+    },
+    "AbacStatus": "Disabled",
+    "AccelerateConfiguration": {
+      "AccelerationStatus": "Suspended"
+    },
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+    "RegionalDomainName": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegBasic",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Data666C94C7",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegBasic/9e1bdec0-6666-11f1-ba55-121596894369",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "true",
+        "Key": "aws-cdk:auto-delete-objects"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AccelerateConfiguration",
+      "actual": {
+        "AccelerationStatus": "Suspended"
+      },
+      "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+      "constructPath": "CdkdriftIntegBasic/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+      "constructPath": "CdkdriftIntegBasic/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+      "constructPath": "CdkdriftIntegBasic/Data"
+    }
+  ]
+}

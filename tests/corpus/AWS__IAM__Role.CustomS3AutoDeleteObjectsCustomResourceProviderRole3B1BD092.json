@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK-generated custom-resource provider role classifies fully CLEAN \u2014 KNOWN_DEFAULTS (MaxSessionDuration/Path), readOnly strips, and trust-policy canonicalization are all quiet on a genuine CC GetResource model.",
+  "resource": {
+    "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
+    "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "lambda.amazonaws.com"
+            }
+          }
+        ]
+      },
+      "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
+    "RoleId": "AROAXXXJN2LNXYWNCK53V"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

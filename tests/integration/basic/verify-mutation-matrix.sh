@@ -10,9 +10,14 @@
 #                         "appeared since accept" on a
 #                         snapshot-complete resource)
 #   M3 undeclared-change  accepted acceleration value flips resolve: accept
-#   M4 undeclared-add     out-of-band bucket tags appear    resolve: accept
-#   M5 value-remove       accepted tags deleted ->          resolve: accept
+#   M4 undeclared-add     out-of-band CORS config appears   resolve: accept
+#   M5 value-remove       accepted CORS deleted ->          resolve: accept
 #                         "baseline value removed since accept"
+#
+# M4/M5 use CORS, not tags (first live run, R68): put-bucket-tagging REPLACES
+# the whole TagSet and S3 refuses to drop the CFn-applied aws:* system tags
+# ("System tags cannot be removed by requester") — CORS has no system-managed
+# entries to collide with.
 #
 # Each mutation ends back at CLEAN, so the matrix also exercises the accept
 # delta loop (R39) and the declared revert path once. Reuses the `basic`
@@ -95,16 +100,17 @@ expect_drift "M3" "UNDECLARED DRIFT" "AccelerateConfiguration"
 $CLI accept "$STACK" --region "$REGION" --yes || fail "M3 accept"
 expect_clean "M3"
 
-echo "=== M4 undeclared-add: out-of-band bucket tags ==="
-aws s3api put-bucket-tagging --bucket "$BUCKET" \
-  --tagging 'TagSet=[{Key=CdkrdMutation,Value=m4}]' --region "$REGION" || fail "M4 inject"
-expect_drift "M4" "UNDECLARED DRIFT" "Tags" "appeared since accept"
+echo "=== M4 undeclared-add: out-of-band CORS configuration ==="
+aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration \
+  '{"CORSRules":[{"AllowedMethods":["GET"],"AllowedOrigins":["https://example.com"]}]}' \
+  || fail "M4 inject"
+expect_drift "M4" "UNDECLARED DRIFT" "CorsConfiguration" "appeared since accept"
 $CLI accept "$STACK" --region "$REGION" --yes || fail "M4 accept"
 expect_clean "M4"
 
-echo "=== M5 value-remove: the accepted tags disappear ==="
-aws s3api delete-bucket-tagging --bucket "$BUCKET" --region "$REGION" || fail "M5 inject"
-expect_drift "M5" "UNDECLARED DRIFT" "Tags" "baseline value removed since accept"
+echo "=== M5 value-remove: the accepted CORS configuration disappears ==="
+aws s3api delete-bucket-cors --bucket "$BUCKET" --region "$REGION" || fail "M5 inject"
+expect_drift "M5" "UNDECLARED DRIFT" "CorsConfiguration" "baseline value removed since accept"
 $CLI accept "$STACK" --region "$REGION" --yes || fail "M5 accept"
 expect_clean "M5"
 

@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "description": "Id-array set semantics: nested SecurityGroupIds/SubnetIds in a different ORDER than declared are not drift (sorted as id-sets); the R66 Lambda KNOWN_DEFAULTS keep a default-config function quiet.",
+  "resource": {
+    "logicalId": "VpcHandler",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "corpus-vpc-handler",
+    "declared": {
+      "FunctionName": "corpus-vpc-handler",
+      "Runtime": "nodejs20.x",
+      "VpcConfig": {
+        "SecurityGroupIds": ["sg-0bbbbbb222222", "sg-0aaaaaa111111"],
+        "SubnetIds": ["subnet-0ddddd444444", "subnet-0ccccc333333"]
+      }
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "corpus-vpc-handler",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:corpus-vpc-handler",
+    "Runtime": "nodejs20.x",
+    "VpcConfig": {
+      "SecurityGroupIds": ["sg-0aaaaaa111111", "sg-0bbbbbb222222"],
+      "SubnetIds": ["subnet-0ccccc333333", "subnet-0ddddd444444"]
+    },
+    "PackageType": "Zip",
+    "TracingConfig": { "Mode": "PassThrough" },
+    "EphemeralStorage": { "Size": 512 },
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["FunctionName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FunctionName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}
