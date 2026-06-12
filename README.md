@@ -188,7 +188,11 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   `keeping N already-blessed unchanged value(s)` note. Deselect a suspicious one
   and it stays reported by `check` — bless the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
-- **`check` with no baseline yet** offers to bless the current state on the spot.
+- **`check` with no baseline yet** asks what to do with the N undeclared values
+  it found: **show them first** (the default — the report prints, and a
+  selective accept is offered right after it), or **accept ALL of them** into
+  the baseline without reviewing them. With zero undeclared values there is
+  nothing to decide, so no prompt.
 - Flag combinations: `--no-interactive` alone = the read side completes but
   write **decisions** are refused with exit 2 (the safe side);
   `--no-interactive --yes` = full automation; `--yes` alone in a TTY

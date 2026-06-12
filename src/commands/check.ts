@@ -3,7 +3,7 @@
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
-import { confirm, isCancel, select } from '@clack/prompts';
+import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -33,6 +33,31 @@ import {
 // it is excluded. Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
   return findings.filter((f) => f.tier !== 'undeclared');
+}
+
+// The first-run (no-baseline) prompt (R45). The old Yes/No confirm hid the two
+// facts the decision hinges on: HOW MANY values "Yes" would accept sight-unseen,
+// and that "No" is not a dead end (the report prints first and a selective
+// accept is offered right after it). A select carries both in the option labels
+// themselves; "show first" is the safe default. Exported (pure) so the wording
+// contract is unit-tested.
+export function firstRunPrompt(
+  stackName: string,
+  undeclaredCount: number
+): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
+  return {
+    message: `${stackName}: no baseline yet — ${undeclaredCount} undeclared value(s) found (declared drift is reported either way). What do you want to do?`,
+    options: [
+      {
+        value: 'show',
+        label: 'Show them first — you can still accept (selectively) right after the report',
+      },
+      {
+        value: 'acceptAll',
+        label: `Accept ALL ${undeclaredCount} into the baseline now, without reviewing them`,
+      },
+    ],
+  };
 }
 
 export async function runCheck(args: string[]): Promise<number> {
@@ -132,21 +157,34 @@ export async function runCheck(args: string[]): Promise<number> {
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
       if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
-      // first run: no baseline yet → offer to bless interactively (TTY only)
+      // First run: no baseline yet → choose between "report first" (the safe
+      // default — a selective accept is offered again right after the report) and
+      // a bulk accept of everything sight-unseen (R45). Ignore rules are applied
+      // BEFORE counting/accepting so the bulk path can never bless values the
+      // report would have re-tagged as ignored (same as the post-report accept).
+      // With ZERO undeclared values there is no decision worth interrupting for —
+      // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
       if (!baseline && !a.showAll && !a.json && isInteractive(a)) {
-        const ok = await confirm({
-          message: `${stackName}: no baseline yet — bless the current UNDECLARED state as the baseline? (declared drift, i.e. reality vs the deployed template, is reported either way)`,
-        });
-        if (!isCancel(ok) && ok) {
-          const { count } = await blessStack(
-            stackName,
-            region,
-            desired.accountId,
-            findings,
-            desired.rawTemplate
-          );
-          console.error(`baseline written (${count} undeclared value(s) blessed) — commit it.`);
-          baseline = await loadBaseline(stackName, desired.accountId, region);
+        const blessable = applyIgnores(findings, stackName, config);
+        const undeclaredCount = blessable.filter((f) => f.tier === 'undeclared').length;
+        if (undeclaredCount > 0) {
+          const prompt = firstRunPrompt(stackName, undeclaredCount);
+          const choice = await select({
+            message: prompt.message,
+            options: prompt.options,
+            initialValue: 'show' as const,
+          });
+          if (!isCancel(choice) && choice === 'acceptAll') {
+            const { count } = await blessStack(
+              stackName,
+              region,
+              desired.accountId,
+              blessable,
+              desired.rawTemplate
+            );
+            console.error(`baseline written (${count} undeclared value(s) accepted) — commit it.`);
+            baseline = await loadBaseline(stackName, desired.accountId, region);
+          }
         }
       }
       if (!a.json && !baseline && !a.showAll) {
