@@ -367,21 +367,28 @@ reads as drifted, ONE re-read after a short delay guards against SDK-writer
 eventual consistency (the slow full re-gather used to grant that propagation
 time by accident). When drift survives, each surviving finding is listed
 (id.path + tier) under the `N drift(s) remain.` line so the user doesn't have
-to re-run `check` to learn what failed to converge (R46). Exit semantics: no
-drift at all → `no drift to revert.` + exit 0; drift exists but **nothing is
-revertable** → `nothing revertable — N drift(s) remain.` + exit 1
-(drift-remains semantics, not a usage error — R35).
+to re-run `check` to learn what failed to converge (R46); if unrecorded values
+remain after a clean revert, one dim pointer line names the count (they are not
+drift, but silence would read as "all decided" — R62). Exit semantics: no
+drift at all → `no drift to revert.` + exit 0; findings exist but **nothing
+is revertable** →
+`nothing revertable — N drift(s) + M unrecorded value(s) remain.` (each part
+only when non-zero — unrecorded values are named as such, never folded into
+"drift", R62) + exit 1 (drift-remains semantics, not a usage error — R35).
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
-  the **baseline** value (an unaccepted out-of-band _addition_ reverts by REMOVAL).
-- **No-baseline safety guard**: on a stack that has never been `accept`ed, undeclared
-  drift is reported as `notRevertable` (`no baseline — accept it if the live value
-is right, or --remove-unaccepted to remove it`) rather than removed. The
+  the **baseline** value (an out-of-band _addition_ that appeared since a
+  snapshot-complete accept reverts by REMOVAL).
+- **Unrecorded safety guard (R62, generalizing the old no-baseline guard)**: a value
+  the user never decided on (no baseline entry, resource never snapshot-complete —
+  which includes every undeclared value on a no-baseline stack) is reported as
+  `notRevertable` (`unrecorded — accept it if the live value is right, or
+--remove-unaccepted to remove it`) rather than removed. The
   subtractive noise model's failure mode in `check` is "the report is noisy"; the
   un-guarded revert mirror of that would be **destructive** (a bulk REMOVE of every
-  undeclared value that slipped through subtraction). Declared drift is always
+  undecided value that slipped through subtraction). Declared drift is always
   revertable (the template is its source, independent of any baseline). For
-  undeclared drift this guard outranks the create-only guard (R35): the fundamental
+  unrecorded values this guard outranks the create-only guard (R35): the fundamental
   blocker is "no revert target exists" — a "requires replacement" reason would
   mis-direct. The guard's wording is a FORK, not a sequence (R55): `accept`
   endorses the live value (it stops being drift entirely — accept is never a step
@@ -432,11 +439,28 @@ replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 `.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
 
 ```jsonc
-{ "schemaVersion": 1, "stackName": "...", "region": "...",
+{ "schemaVersion": 2, "stackName": "...", "region": "...",
   "accountId": "<aws account the baseline was captured in>",
   "capturedAt": "<iso>", "templateHash": "<hash of deployed template>",
-  "accepted": [ { "logicalId", "resourceType", "path", "value" }, ... ] }
+  "accepted": [ { "logicalId", "resourceType", "path", "value" }, ... ],
+  "completeResources": [ "<logicalIds the accept snapshot fully covered>" ] }
 ```
+
+**Per-entry classification (R62).** The unit of "accepted" is the ENTRY, not the
+file: an undeclared finding with a matching entry is suppressed; with an entry
+whose value differs it is **drift**; with NO entry it is drift only when its
+resource is in `completeResources` (the accept covered that whole resource, so
+the value **appeared since accept** — noted as such); on any other resource the
+user never decided, so it is **UNRECORDED** (see §13). File existence alone
+decides nothing — a cherry-pick accept of one value must not flip the other
+hundred from unrecorded to drift, and `accept 0 → CI green / accept 1 → CI red`
+would be incoherent. `completeResources` is computed at write time (every
+undeclared finding of the resource is in `accepted`; zero findings = trivially
+complete; a `skipped`/`deleted` resource is never complete) and is **monotonic**
+across re-accepts (declining a newly-appeared value keeps it drift instead of
+demoting it back to unrecorded). A schema-v1 file (no `completeResources`) still
+loads — nothing is complete, so appeared-since-accept values read as unrecorded
+until the next `accept` upgrades the file (a stderr note says so).
 
 `accountId` is in the **filename**, not just a field (R21): the same stack name
 deployed to dev + prod (the very common `env: { account: PERSONAL || SHARED }` CDK
@@ -566,17 +590,23 @@ so the two never duplicate); `^result:` stays greppable, but the formal
 machine-readable contract is `--json` (the `info:` footer may span lines). `--json`
 is unaffected — it always carries every finding. A `Custom::*` resource is `skipped`
 without any API call (note: `custom resource — no cloud-side model to read`).
-**No baseline = UNRECORDED, not drift (R60):** the baseline is the contract that
-defines undeclared drift; with no baseline there is nothing to violate, so on a
-no-baseline stack the undeclared tier renders as `[UNRECORDED: N]` (note:
-`no baseline yet — accept to record`), is excluded from the verdict and the
-`--fail` exit, and the `result:` line carries the count + the way out
+**Undecided = UNRECORDED, not drift (R60, per VALUE since R62):** the baseline
+ENTRY is the contract that defines undeclared drift; a value with no entry on a
+never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
+tags such findings `unrecorded` — on a no-baseline first run that is every
+undeclared value, and after a cherry-pick accept it is still every value the
+user did not pick. They render as their own `[UNRECORDED: N]` section (note:
+`not in the baseline yet — accept to record`) alongside any real
+`[UNDECLARED DRIFT]` section, are excluded from the verdict and the `--fail`
+exit, and the `result:` line carries the count + the way out
 (`— N unrecorded value(s) await a baseline (run cdkrd accept)`). Declared and
 deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`unrecorded values found — what do
 you want to do?`) so "show them first" keeps its promise of a selective accept.
-In `--json` the findings keep `tier: "undeclared"` (the documented enum), but
-`drifted` excludes them. `--show-all` keeps its existing inventory semantics.
+In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
+an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
+bypasses the baseline entirely — no suppression and no unrecorded tagging (a
+raw inventory view).
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
 yellow undeclared tier, dim informational footers — ONLY when stdout is a real
@@ -632,8 +662,8 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
   CDK apps + `verify.sh`). The revert integ proves deploy → accept → out-of-band
   change → check → `revert --yes` → CLEAN → AWS converged. The `basic` fixture also
   ships `verify-deleted-guards.sh`, which exercises the `deleted` tier (delete a
-  resource out of band → reported + exit 1, not revertable) and the no-baseline
-  `revert` guard (undeclared drift refused unless `--remove-unaccepted`).
+  resource out of band → reported + exit 1, not revertable) and the unrecorded
+  `revert` guard (unrecorded values refused unless `--remove-unaccepted`).
 - **Dogfood evidence**: 8 real cdkd fixtures run through `check --show-all` → fix →
   `declared=0`, then `accept` → CLEAN, then destroy + orphan-verified. This is what
   surfaced the four false-positive classes.

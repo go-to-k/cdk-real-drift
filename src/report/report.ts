@@ -44,14 +44,15 @@ const INFO_TIERS: Tier[] = ['ignored', 'readGap', 'unresolved', 'skipped'];
 export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
-  // No baseline exists for this stack (R60): the undeclared tier is then an
-  // UNRECORDED inventory, not drift — the baseline is the contract that defines
-  // undeclared drift, and with no contract there is nothing to violate. The
-  // section renders as [UNRECORDED: N], the values are excluded from the
-  // drift verdict/exit, and the result line points at `cdkrd accept`.
-  unrecorded?: boolean;
   log?: (s: string) => void;
 }
+// Unrecorded values (R60, per finding since R62): an undeclared finding tagged
+// `unrecorded` by applyBaseline (no baseline entry, resource never
+// snapshot-complete) is an inventory awaiting a decision, not drift — the
+// baseline entry is the contract that defines undeclared drift, and with no
+// entry there is nothing to violate. They render as their own [UNRECORDED: N]
+// section, are excluded from the drift verdict/exit, and the result line points
+// at `cdkrd accept`.
 
 export function formatFinding(f: Finding): string {
   // prefer the CDK construct path for the human-facing id; fall back to logical id
@@ -103,10 +104,9 @@ function groupReasons(items: Finding[]): string {
 
 export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
-  // unrecorded mode (R60): undeclared values are an inventory awaiting a
-  // baseline, not drift — they never count toward the verdict or the exit.
-  const isDriftHere = (f: Finding): boolean =>
-    DRIFT_TIERS.includes(f.tier) && !(opts.unrecorded && f.tier === 'undeclared');
+  // unrecorded findings (R60/R62): an inventory awaiting a baseline decision,
+  // not drift — they never count toward the verdict or the exit.
+  const isDriftHere = (f: Finding): boolean => DRIFT_TIERS.includes(f.tier) && !f.unrecorded;
   const drifted = findings.filter(isDriftHere).length;
 
   if (opts.json) {
@@ -114,41 +114,53 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     return drifted === 0 ? 0 : 1;
   }
 
-  const byTier = (t: Tier) => findings.filter((f) => f.tier === t);
-  const unrecordedCount = opts.unrecorded ? byTier('undeclared').length : 0;
+  const byTier = (t: Tier) => findings.filter((f) => f.tier === t && !f.unrecorded);
+  const unrecordedItems = findings.filter((f) => f.unrecorded === true);
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
-  const section = (tier: Tier, leadingBlank: boolean): boolean => {
-    const items = byTier(tier);
+  const section = (
+    items: Finding[],
+    name: string,
+    note: string | undefined,
+    color: (s: string) => string,
+    leadingBlank: boolean
+  ): boolean => {
     if (items.length === 0) return false; // 0-count tiers are never printed
-    const renamed = tier === 'undeclared' && opts.unrecorded;
-    const name = renamed ? 'UNRECORDED' : TIER_NAMES[tier];
-    const note = renamed
-      ? 'not declared in your template; no baseline yet — accept to record'
-      : TIER_NOTES[tier];
     log(
       (leadingBlank ? '\n' : '') +
-        tierStyle(tier)(`[${name}: ${items.length}]`) +
+        color(`[${name}: ${items.length}]`) +
         (note ? ' ' + style.infoTier(`(${note})`) : '')
     );
     for (const f of items) log('  ' + formatFinding(f));
     return true;
   };
+  const tierSection = (tier: Tier, leadingBlank: boolean): boolean =>
+    section(byTier(tier), TIER_NAMES[tier], TIER_NOTES[tier], tierStyle(tier), leadingBlank);
 
   log(style.header(`=== cdkrd check: ${header} ===`));
   // DRIFT tiers: always full detail (the point of the tool)
   let driftSections = 0;
   for (const tier of DRIFT_TIERS) {
-    if (section(tier, driftSections > 0)) driftSections++;
+    if (tierSection(tier, driftSections > 0)) driftSections++;
   }
+  // UNRECORDED: full detail like a drift section (these values await a decision —
+  // hiding them would defeat the differentiator), but kept OUT of the verdict.
+  if (
+    section(
+      unrecordedItems,
+      'UNRECORDED',
+      'not declared in your template; not in the baseline yet — accept to record',
+      style.undeclaredTier,
+      driftSections > 0
+    )
+  )
+    driftSections++;
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
   // informational breakdown lives on the `info:` line, so the two never duplicate);
   // CLEAN prints just `CLEAN`. `^result:` stays greppable for the verdict; the formal
   // machine-readable contract is `--json` (the info: footer may span lines).
-  const driftCounts = DRIFT_TIERS.filter(
-    (t) => byTier(t).length > 0 && !(opts.unrecorded && t === 'undeclared')
-  )
+  const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
   // the verdict is the one line that must stand out: green CLEAN / red drift count
@@ -157,9 +169,9 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // unrecorded values are stated NEXT TO the verdict (not as drift): the count
   // and the way out, in one place (R60).
   const unrecordedNote =
-    unrecordedCount > 0
+    unrecordedItems.length > 0
       ? style.infoTier(
-          ` — ${unrecordedCount} unrecorded value(s) await a baseline (run cdkrd accept)`
+          ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
         )
       : '';
   // A blank line before the verdict ONLY when drift sections were printed — it must
@@ -169,7 +181,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // folded summary (counts + reason breakdown): one `info: ...` line for a single
   // tier, a one-line-per-tier bullet list (with ONE --verbose hint) for 2+ (R37).
   if (opts.verbose) {
-    for (const tier of INFO_TIERS) section(tier, true);
+    for (const tier of INFO_TIERS) tierSection(tier, true);
   } else {
     const summaries = INFO_TIERS.map((t) => {
       const items = byTier(t);

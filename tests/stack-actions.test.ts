@@ -70,15 +70,20 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
-  it('undeclared-only with NO baseline → Accept shown, Revert hidden (no-baseline guard)', () => {
-    expect(availableActions([undeclared()], undefined, NO_SCHEMAS, false)).toEqual({
+  it('unrecorded-only → Accept shown, Revert hidden (no recorded state to restore, R62)', () => {
+    // applyBaseline tags entry-less values on never-complete resources as unrecorded
+    expect(
+      availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, false)
+    ).toEqual({
       accept: true,
       revert: false,
     });
   });
 
-  it('undeclared-only with --remove-unaccepted → Revert becomes available', () => {
-    expect(availableActions([undeclared()], undefined, NO_SCHEMAS, true)).toEqual({
+  it('unrecorded-only with --remove-unaccepted → Revert becomes available', () => {
+    expect(
+      availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, true)
+    ).toEqual({
       accept: true,
       revert: true,
     });
@@ -161,11 +166,11 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
     }
   });
 
-  it('noBaselineGuidance explains the accept-vs-remove FORK, not a sequence (R55)', () => {
-    const plan: RevertPlan = { items: [], notRevertable: [nr('no baseline — x')] };
-    const lines = formatPlan('MyStack', 'r', plan, { noBaselineGuidance: true });
+  it('unrecordedGuidance explains the accept-vs-remove FORK, not a sequence (R55/R62)', () => {
+    const plan: RevertPlan = { items: [], notRevertable: [nr('unrecorded — x')] };
+    const lines = formatPlan('MyStack', 'r', plan, { unrecordedGuidance: true });
     expect(lines[1]).toBe(
-      '\nnote: MyStack has no baseline — these undeclared values have no recorded state to restore.'
+      '\nnote: MyStack has unrecorded value(s) — never accepted, so there is no recorded state to restore.'
     );
     expect(lines[2]).toContain('If the live values are RIGHT, accept them');
     expect(lines[3]).toContain('REMOVED, re-run revert with --remove-unaccepted');
@@ -226,29 +231,28 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
   });
 
-  it('unaccepted undeclared drift -> no-baseline guidance + exit 1', async () => {
+  it('unrecorded values (no baseline) -> unrecorded guidance + exit 1, named as unrecorded not drift', async () => {
+    // revertStack's own applyBaseline tags the no-baseline findings as unrecorded
     const { outcome, logs } = await captured([undeclared()]);
     expect(outcome).toEqual({ exit: 1, aborted: false });
     const out = logs.join('\n');
     expect(out).toContain(
-      'note: s has no baseline — these undeclared values have no recorded state to restore.'
+      'note: s has unrecorded value(s) — never accepted, so there is no recorded state to restore.'
     );
-    expect(out).toContain('NOT revertable: 1 (no baseline — accept it if the live value is right');
-    expect(out).toContain('nothing revertable — 1 drift(s) remain.');
+    expect(out).toContain('NOT revertable: 1 (unrecorded — accept it if the live value is right');
+    expect(out).toContain('nothing revertable — 1 unrecorded value(s) remain.');
   });
 
-  it('--remove-unaccepted: no-baseline note is suppressed; the plan removes the undeclared drift', async () => {
+  it('--remove-unaccepted: unrecorded note is suppressed; the plan removes the value', async () => {
     // dry-run returns at the preview branch (no AWS write). The note would contradict
-    // a plan that DOES remove the drift, so it must not appear (R35 review).
+    // a plan that DOES remove the value, so it must not appear (R35 review).
     const { outcome, logs } = await captured([undeclared()], {
       removeUnaccepted: true,
       dryRun: true,
     });
     expect(outcome).toEqual({ exit: 0, aborted: false });
     const out = logs.join('\n');
-    expect(out).not.toContain(
-      'has no baseline — these undeclared values have no recorded state to restore'
-    );
+    expect(out).not.toContain('has unrecorded value(s) — never accepted');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
   });

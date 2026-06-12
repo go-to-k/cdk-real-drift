@@ -9,10 +9,13 @@ import {
   baselinePath,
   buildAccepted,
   checkBaselineAccount,
+  computeCompleteResources,
   hashTemplate,
   selectAccepted,
   splitAcceptedByBaseline,
+  warnBaselineSchemaV1,
   warnTemplateHashDrift,
+  writeBaseline,
   writeBaselineFile,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
@@ -194,8 +197,8 @@ describe('baseline', () => {
     expect(applyBaseline([undeclared('A', 'P', ['y'])], b)).toHaveLength(1);
   });
 
-  it('applyBaseline keeps a NEW undeclared path, passes non-undeclared through', () => {
-    const b = baseline([]);
+  it('applyBaseline keeps a NEW undeclared path (unrecorded on a never-complete resource), passes non-undeclared through', () => {
+    const b = baseline([]); // v1: no completeResources -> nothing is snapshot-complete
     const decl: Finding = {
       tier: 'declared',
       logicalId: 'B',
@@ -206,10 +209,108 @@ describe('baseline', () => {
     };
     const out = applyBaseline([undeclared('A', 'NEW', 1), decl], b);
     expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ path: 'NEW', unrecorded: true });
+    expect(out[1]).toBe(decl);
   });
 
-  it('no baseline = pass everything through', () => {
-    expect(applyBaseline([undeclared('A', 'P', 1)], undefined)).toHaveLength(1);
+  it('no baseline = everything undeclared survives, tagged unrecorded (R62)', () => {
+    const out = applyBaseline([undeclared('A', 'P', 1)], undefined);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', unrecorded: true });
+  });
+
+  describe('per-entry classification (R62 — unrecorded vs appeared-since-accept)', () => {
+    const v2 = (accepted: BaselineFile['accepted'], completeResources: string[]): BaselineFile => ({
+      ...baseline(accepted),
+      schemaVersion: 2,
+      completeResources,
+    });
+
+    it('entry-less value on a snapshot-COMPLETE resource -> drift, noted as appeared since accept', () => {
+      const b = v2([], ['A']);
+      const out = applyBaseline([undeclared('A', 'NEW', 1)], b);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ tier: 'undeclared', note: 'appeared since accept' });
+      expect(out[0]!.unrecorded).toBeUndefined();
+    });
+
+    it('entry-less value on a NOT-complete resource -> unrecorded, even though the file exists', () => {
+      // the cherry-pick case: accepting one value on B must not flip A's values to drift
+      const b = v2([{ logicalId: 'B', resourceType: 'AWS::X::Y', path: 'P', value: 1 }], ['B']);
+      const out = applyBaseline([undeclared('A', 'NEW', 1)], b);
+      expect(out[0]).toMatchObject({ unrecorded: true });
+    });
+
+    it('recorded value that CHANGED is drift (never unrecorded), complete or not', () => {
+      const b = v2([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }], []);
+      const out = applyBaseline([undeclared('A', 'P', ['y'])], b);
+      expect(out).toHaveLength(1);
+      expect(out[0]!.unrecorded).toBeUndefined();
+    });
+
+    it('appends the appeared-since-accept note after an existing note', () => {
+      const b = v2([], ['A']);
+      const f = { ...undeclared('A', 'NEW', 1), note: 'prior' };
+      const out = applyBaseline([f], b);
+      expect(out[0]!.note).toBe('prior; appeared since accept');
+    });
+  });
+
+  describe('computeCompleteResources (R62 — what the accept snapshot covered)', () => {
+    it('covered, uncovered, unread, and clean resources bucket correctly', () => {
+      const findings: Finding[] = [
+        undeclared('Covered', 'P', 1),
+        undeclared('Uncovered', 'P', 1),
+        { tier: 'skipped', logicalId: 'Unread', resourceType: 'T', path: '' },
+        { tier: 'deleted', logicalId: 'Gone', resourceType: 'T', path: '' },
+      ];
+      const accepted = [{ logicalId: 'Covered', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
+      expect(
+        computeCompleteResources(
+          ['Covered', 'Uncovered', 'Unread', 'Gone', 'Clean'],
+          findings,
+          accepted
+        )
+      ).toEqual(['Clean', 'Covered']); // sorted; Uncovered/Unread/Gone excluded
+    });
+
+    it('a resource with one of two values accepted is NOT complete', () => {
+      const findings = [undeclared('A', 'P', 1), undeclared('A', 'Q', 2)];
+      const accepted = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
+      expect(computeCompleteResources(['A'], findings, accepted)).toEqual([]);
+    });
+
+    it('ignored-tier values do not block completeness (visible, deliberately ruled out)', () => {
+      const findings: Finding[] = [
+        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+      ];
+      expect(computeCompleteResources(['A'], findings, [])).toEqual(['A']);
+    });
+
+    it('monotonic: a previously-complete resource stays complete when a new value is declined', () => {
+      // the appeared value was shown as drift; declining it must not demote to unrecorded
+      const findings = [undeclared('A', 'NEW', 1)];
+      expect(computeCompleteResources(['A'], findings, [], ['A'])).toEqual(['A']);
+    });
+
+    it('previous completeness is pruned to ids still in the template', () => {
+      expect(computeCompleteResources(['B'], [], [], ['A', 'B'])).toEqual(['B']);
+    });
+  });
+
+  describe('warnBaselineSchemaV1 (R62)', () => {
+    it('warns when completeResources is absent (schema v1)', () => {
+      const warnings: string[] = [];
+      warnBaselineSchemaV1(baseline([]), 's', (m) => warnings.push(m));
+      expect(warnings[0]).toContain('predates snapshot tracking');
+    });
+    it('silent on a v2 file', () => {
+      const warnings: string[] = [];
+      warnBaselineSchemaV1({ ...baseline([]), completeResources: [] }, 's', (m) =>
+        warnings.push(m)
+      );
+      expect(warnings).toEqual([]);
+    });
   });
 
   it('reports a baseline value that was removed since accept', () => {
@@ -286,6 +387,38 @@ describe('baseline', () => {
       const snapshot = accepted.map((e) => e.logicalId);
       await writeInTmp(withOrder(accepted));
       expect(accepted.map((e) => e.logicalId)).toEqual(snapshot);
+    });
+
+    it('writes completeResources sorted (byte-stable, R62)', async () => {
+      const out = await writeInTmp({ ...withOrder([]), completeResources: ['B', 'A'] });
+      expect((JSON.parse(out) as BaselineFile).completeResources).toEqual(['A', 'B']);
+    });
+  });
+
+  describe('writeBaseline (schema v2, R62)', () => {
+    it('stamps schemaVersion 2 and the completeResources snapshot', async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const findings = [undeclared('A', 'P', 1), undeclared('B', 'Q', 2)];
+        // selective accept: only A.P — so A is complete, B is not, Clean trivially is
+        const { path } = await writeBaseline(
+          's',
+          'r',
+          '111122223333',
+          findings,
+          '{}',
+          [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }],
+          { allLogicalIds: ['A', 'B', 'Clean'] }
+        );
+        const parsed = JSON.parse(await readFile(path, 'utf8')) as BaselineFile;
+        expect(parsed.schemaVersion).toBe(2);
+        expect(parsed.completeResources).toEqual(['A', 'Clean']);
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
     });
   });
 

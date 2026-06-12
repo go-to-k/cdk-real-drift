@@ -1,8 +1,12 @@
 // Build a revert plan from drift findings (pure — no AWS). Revert writes the
 // DESIRED value back to AWS:
 //   declared drift   -> the deployed-template value (finding.desired)
-//   undeclared drift -> the baseline value if accepted before (restore), else REMOVE
+//   undeclared drift -> the baseline value if accepted before (restore), else
+//                       REMOVE (the value appeared since a snapshot-complete accept)
 //   removed-undeclared (baseline value gone) -> re-add the baseline value
+// UNRECORDED values (R62: no baseline entry, resource never snapshot-complete)
+// are not drift and have no revert target — notRevertable unless
+// --remove-unaccepted explicitly turns them into REMOVE ops.
 // Not revertable: readGap / unresolved / skipped, and (v1) the SDK-override
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
@@ -56,10 +60,9 @@ function toPointer(dotted: string): string {
 const DRIFT_TIERS = new Set(['declared', 'undeclared']);
 
 export interface RevertOptions {
-  // (revert) when no baseline file exists, undeclared drift is removed only if this
-  // is set. Without it, undeclared drift on an unaccepted stack is reported as
-  // notRevertable (a bulk REMOVE of every undeclared value that slipped through
-  // noise subtraction would be destructive — fail-safe instead).
+  // UNRECORDED undeclared values are removed only if this is set. Without it they
+  // are reported as notRevertable (a bulk REMOVE of every undecided value that
+  // slipped through noise subtraction would be destructive — fail-safe instead).
   removeUnaccepted?: boolean;
   // resourceType -> schema, so create-only property drift is reported as
   // notRevertable up front (an in-place patch would fail at apply time).
@@ -80,8 +83,6 @@ export function buildRevertPlan(
   const itemsByLogical = new Map<string, RevertItem>();
   const notRevertable: NotRevertable[] = [];
   const accepted = baseline?.accepted ?? [];
-  // "the stack has never been `accept`ed" — undeclared removal is gated on this.
-  const noBaseline = baseline === undefined;
 
   for (const f of findings) {
     const displayId = f.constructPath ?? f.logicalId;
@@ -116,27 +117,22 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // unaccepted undeclared drift: a no-baseline stack would otherwise REMOVE every
-    // such value (the subtractive model's failure mode is "check is noisy", but the
-    // revert mirror of that is destructive). Refuse unless --remove-unaccepted.
-    // Evaluated BEFORE the create-only guard (R35): on a no-baseline stack the
-    // fundamental blocker for undeclared drift is "no revert target exists".
+    // UNRECORDED values (R62): the user never decided on them, so a default plan
+    // would otherwise REMOVE every such value (the subtractive model's failure
+    // mode is "check is noisy", but the revert mirror of that is destructive).
+    // Refuse unless --remove-unaccepted. Evaluated BEFORE the create-only guard
+    // (R35): the fundamental blocker is "no revert target exists".
     // The reason wording is a FORK, not a sequence (R55): "accept first, then
     // revert" reads as if accept were a step toward reverting THESE values, but
-    // accepting them endorses them (they stop being drift entirely) — accept is
+    // accepting them endorses them (they leave the report entirely) — accept is
     // for values that are RIGHT; --remove-unaccepted is for values that are WRONG.
-    if (
-      f.tier === 'undeclared' &&
-      noBaseline &&
-      !opts.removeUnaccepted &&
-      !(f.actual === undefined && f.desired !== undefined) // a removed-baseline-value re-add can't occur without a baseline, but be explicit
-    ) {
+    if (f.tier === 'undeclared' && f.unrecorded && !opts.removeUnaccepted) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
         path: f.path,
         reason:
-          'no baseline — accept it if the live value is right, or --remove-unaccepted to remove it',
+          'unrecorded — accept it if the live value is right, or --remove-unaccepted to remove it',
       });
       continue;
     }

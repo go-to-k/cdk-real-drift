@@ -48,11 +48,11 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "inject accel"
 sleep 5
 
-echo "=== R2: revert --dry-run refuses the unaccepted undeclared value ==="
+echo "=== R2: revert --dry-run refuses the unrecorded undeclared value ==="
 $CLI revert "$STACK" --region "$REGION" --dry-run --verbose | tee /tmp/cdkrd-guard-noremove.out
 grep -q "NOT revertable" /tmp/cdkrd-guard-noremove.out || fail "R2: expected a NOT revertable section"
-grep -q "AccelerateConfiguration.*no baseline" /tmp/cdkrd-guard-noremove.out \
-  || fail "R2: undeclared accel should be not-revertable (no baseline)"
+grep -q "AccelerateConfiguration.*unrecorded" /tmp/cdkrd-guard-noremove.out \
+  || fail "R2: undeclared accel should be not-revertable (unrecorded, R62)"
 # declared versioning drift IS revertable even without a baseline (template is its source)
 grep -q "VersioningConfiguration" /tmp/cdkrd-guard-noremove.out \
   || fail "R2: declared versioning drift should be in the plan"

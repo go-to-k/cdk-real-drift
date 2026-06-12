@@ -74,23 +74,35 @@ describe('buildRevertPlan', () => {
     });
   });
 
-  it('undeclared drift NOT in baseline (new addition) -> remove op', () => {
+  it('appeared-since-accept undeclared drift (entry-less, NOT unrecorded) -> remove op', () => {
+    // applyBaseline leaves a finding untagged only when its resource is
+    // snapshot-complete — restoring the snapshot means removing the addition.
     const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
     const plan = buildRevertPlan([f], baseline([]));
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
     expect(plan.items[0]!.ops[0]).not.toHaveProperty('value');
   });
 
-  it('undeclared drift with NO baseline -> notRevertable (refuse destructive bulk remove)', () => {
-    const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
+  it('UNRECORDED undeclared value -> notRevertable (refuse destructive bulk remove, R62)', () => {
+    const f = F({
+      tier: 'undeclared',
+      path: 'OwnershipControls',
+      actual: { Rules: [] },
+      unrecorded: true,
+    });
     const plan = buildRevertPlan([f], undefined);
     expect(plan.items).toHaveLength(0);
     expect(plan.notRevertable).toHaveLength(1);
-    expect(plan.notRevertable[0]!.reason).toContain('no baseline');
+    expect(plan.notRevertable[0]!.reason).toContain('unrecorded');
   });
 
-  it('--remove-unaccepted re-enables the remove op on a no-baseline stack', () => {
-    const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
+  it('--remove-unaccepted re-enables the remove op for unrecorded values', () => {
+    const f = F({
+      tier: 'undeclared',
+      path: 'OwnershipControls',
+      actual: { Rules: [] },
+      unrecorded: true,
+    });
     const plan = buildRevertPlan([f], undefined, { removeUnaccepted: true });
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
   });
@@ -180,16 +192,16 @@ describe('buildRevertPlan', () => {
     for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
   });
 
-  it('R35: undeclared create-only drift on a NO-baseline stack -> reason is no-baseline (accept is the route)', () => {
+  it('R35: UNRECORDED create-only value -> reason is unrecorded (accept is the route)', () => {
     // the fundamental blocker is "no revert target" — a create-only reason would
     // mis-direct the user toward replacement when `accept` records the value into the baseline
     const plan = buildRevertPlan(
-      [F({ tier: 'undeclared', path: 'BucketName', actual: 'b' })],
+      [F({ tier: 'undeclared', path: 'BucketName', actual: 'b', unrecorded: true })],
       undefined,
       { schemas: schemaWithCreateOnly('AWS::S3::Bucket', 'BucketName') }
     );
     expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable[0]!.reason).toContain('no baseline');
+    expect(plan.notRevertable[0]!.reason).toContain('unrecorded');
   });
 
   it('R35: undeclared create-only drift WITH a baseline -> create-only reason still applies', () => {

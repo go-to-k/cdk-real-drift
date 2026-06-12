@@ -16,12 +16,14 @@ function run(findings: Finding[], opts: Parameters<typeof report>[2] = {}) {
   return { code, text: lines.join('\n') };
 }
 
-describe('report unrecorded mode (R60 — no baseline: undeclared is inventory, not drift)', () => {
-  it('undeclared renders as [UNRECORDED: N] and does NOT count as drift', () => {
-    const { code, text } = run([F('undeclared'), F('undeclared', 'Q')], { unrecorded: true });
+const U = (path = 'P'): Finding => ({ ...F('undeclared', path), unrecorded: true });
+
+describe('report unrecorded findings (R60/R62 — per finding: never decided is inventory, not drift)', () => {
+  it('unrecorded findings render as [UNRECORDED: N] and do NOT count as drift', () => {
+    const { code, text } = run([U(), U('Q')]);
     expect(code).toBe(0);
     expect(text).toContain('[UNRECORDED: 2]');
-    expect(text).toContain('no baseline yet — accept to record');
+    expect(text).toContain('not in the baseline yet — accept to record');
     expect(text).not.toContain('UNDECLARED DRIFT');
     expect(text).toContain(
       'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd accept)'
@@ -29,25 +31,34 @@ describe('report unrecorded mode (R60 — no baseline: undeclared is inventory, 
   });
 
   it('declared drift still fails, with unrecorded values noted beside the verdict', () => {
-    const { code, text } = run([F('declared'), F('undeclared', 'Q')], { unrecorded: true });
+    const { code, text } = run([F('declared'), U('Q')]);
     expect(code).toBe(1);
     expect(text).toContain('result: 1 drift(s) (declared=1) — 1 unrecorded value(s)');
     expect(text).not.toContain('undeclared=1'); // unrecorded never appears as a drift count
   });
 
-  it('deleted still fails in unrecorded mode (a gone resource is drift, baseline or not)', () => {
-    expect(run([F('deleted', ''), F('undeclared')], { unrecorded: true }).code).toBe(1);
+  it('undeclared DRIFT and UNRECORDED coexist as separate sections (partial baseline)', () => {
+    const { code, text } = run([F('undeclared'), U('Q')]);
+    expect(code).toBe(1);
+    expect(text).toContain('[UNDECLARED DRIFT: 1]');
+    expect(text).toContain('[UNRECORDED: 1]');
+    expect(text).toContain('result: 1 drift(s) (undeclared=1) — 1 unrecorded value(s)');
   });
 
-  it('json: drifted excludes unrecorded values; findings keep the undeclared tier', () => {
-    const { code, text } = run([F('undeclared')], { unrecorded: true, json: true });
+  it('deleted still fails alongside unrecorded values (a gone resource is drift, baseline or not)', () => {
+    expect(run([F('deleted', ''), U()]).code).toBe(1);
+  });
+
+  it('json: drifted excludes unrecorded values; findings keep the undeclared tier + the flag', () => {
+    const { code, text } = run([U()], { json: true });
     const parsed = JSON.parse(text);
     expect(code).toBe(0);
     expect(parsed.drifted).toBe(0);
     expect(parsed.findings[0].tier).toBe('undeclared');
+    expect(parsed.findings[0].unrecorded).toBe(true);
   });
 
-  it('with a baseline (unrecorded: false / absent), undeclared is drift as before', () => {
+  it('untagged undeclared (recorded value changed / appeared since accept) is drift as before', () => {
     const { code, text } = run([F('undeclared')]);
     expect(code).toBe(1);
     expect(text).toContain('[UNDECLARED DRIFT: 1]');

@@ -19,6 +19,11 @@ export interface Finding {
   desired?: unknown;
   actual?: unknown;
   note?: string;
+  // undeclared tier only (R62): the value has NO baseline entry and its resource
+  // was never snapshot-complete — the user has not decided on it yet, so it is an
+  // UNRECORDED inventory item, not drift. Set by applyBaseline; excluded from the
+  // verdict/exit and from revert's default plan (accept or --remove-unaccepted).
+  unrecorded?: boolean;
 }
 
 export interface SchemaInfo {
