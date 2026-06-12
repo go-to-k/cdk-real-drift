@@ -49,12 +49,23 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 // a drift count: on a first run these are typically AWS defaults the template
 // never pinned (with any real out-of-band edits hiding among them), so the
 // message says so instead of reading as "N problems found".
+//
+// declaredDriftCount (R51): a user whose out-of-band edit hit a DECLARED
+// property sees a prompt that only talks about NOT-declared values and reads it
+// as "the tool missed my change". When declared-side drift exists (declared or
+// deleted tier — both are reported regardless of the baseline decision), say so
+// explicitly instead of the generic "either way" clause.
 export function firstRunPrompt(
   stackName: string,
-  undeclaredCount: number
+  undeclaredCount: number,
+  declaredDriftCount = 0
 ): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
+  const declaredNote =
+    declaredDriftCount > 0
+      ? `Also found ${declaredDriftCount} declared-side drift(s) — reported below whichever you choose.`
+      : 'Declared-side drift is reported either way.';
   return {
-    message: `${stackName}: no baseline yet — found ${undeclaredCount} live value(s) not declared in your template (typically AWS defaults, but out-of-band edits hide among them; declared-property drift is reported either way). What do you want to do?`,
+    message: `${stackName}: no baseline yet — found ${undeclaredCount} live value(s) not declared in your template (typically AWS defaults, but out-of-band edits hide among them). ${declaredNote} What do you want to do?`,
     options: [
       {
         value: 'show',
@@ -175,8 +186,11 @@ export async function runCheck(args: string[]): Promise<number> {
       if (!baseline && !a.showAll && !a.json && isInteractive(a)) {
         const acceptable = applyIgnores(findings, stackName, config);
         const undeclaredCount = acceptable.filter((f) => f.tier === 'undeclared').length;
+        const declaredDriftCount = acceptable.filter(
+          (f) => f.tier === 'declared' || f.tier === 'deleted'
+        ).length;
         if (undeclaredCount > 0) {
-          const prompt = firstRunPrompt(stackName, undeclaredCount);
+          const prompt = firstRunPrompt(stackName, undeclaredCount, declaredDriftCount);
           const choice = await select({
             message: prompt.message,
             options: prompt.options,

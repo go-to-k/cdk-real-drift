@@ -33,8 +33,22 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
     expect(message).toContain('ApiStack: no baseline yet');
     expect(message).toContain('found 113 live value(s) not declared in your template');
     expect(message).toContain('typically AWS defaults'); // first-run framing, not "113 problems"
-    expect(message).toContain('declared-property drift is reported either way');
+    expect(message).toContain('Declared-side drift is reported either way');
     expect(message).not.toContain('drift(s) found'); // it must never read as a drift verdict
+  });
+
+  it('declared-side drift present → the prompt says it was FOUND, with its count (R51)', () => {
+    const { message } = firstRunPrompt('ApiStack', 113, 3);
+    expect(message).toContain(
+      'Also found 3 declared-side drift(s) — reported below whichever you choose.'
+    );
+    expect(message).not.toContain('either way'); // the generic clause is replaced, not appended
+  });
+
+  it('no declared-side drift → the generic either-way clause (R51)', () => {
+    const { message } = firstRunPrompt('ApiStack', 113, 0);
+    expect(message).toContain('Declared-side drift is reported either way.');
+    expect(message).not.toContain('Also found');
   });
 
   it('"show first" is the FIRST option (the safe default) and says accept is still possible after', () => {
