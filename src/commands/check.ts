@@ -10,9 +10,11 @@ import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
+  buildAccepted,
   checkBaselineAccount,
   declaredKeysByLogical,
   loadBaseline,
+  warnBaselineSchemaV1,
   warnTemplateHashDrift,
   writeBaseline,
 } from '../baseline/baseline-file.js';
@@ -246,6 +248,9 @@ export async function runCheck(args: string[]): Promise<number> {
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
       if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
+      // schema-v1 baseline: no completeResources — appeared-since-accept values
+      // read as unrecorded until the next accept upgrades the file (R62)
+      if (baseline && !a.json) warnBaselineSchemaV1(baseline, stackName);
       // First run: no baseline yet → choose between "report first" (the safe
       // default — a selective accept is offered again right after the report) and
       // a bulk accept of everything sight-unseen (R45). Ignore rules are applied
@@ -272,37 +277,45 @@ export async function runCheck(args: string[]): Promise<number> {
               region,
               desired.accountId,
               acceptable,
-              desired.rawTemplate
+              desired.rawTemplate,
+              buildAccepted(acceptable),
+              // full resource list so read-clean resources are snapshot-complete too (R62)
+              { allLogicalIds: desired.resources.map((r) => r.logicalId) }
             );
             console.error(`baseline written (${count} undeclared value(s) accepted) — commit it.`);
             baseline = await loadBaseline(stackName, desired.accountId, region);
           }
         }
       }
+      // applyBaseline classifies per ENTRY (R62): matching entries are suppressed,
+      // changed values are drift, entry-less values are drift only on a
+      // snapshot-complete resource (appeared since accept) and UNRECORDED
+      // otherwise — including the whole no-baseline first run (R60). The report
+      // renders unrecorded values as [UNRECORDED: N], excludes them from the
+      // verdict/exit, and points at `cdkrd accept` on the result line.
+      // --show-all keeps its raw inventory semantics: the baseline is bypassed
+      // entirely (no suppression, no unrecorded tagging). --declared-only also
+      // bypasses it ("undeclared values are not compared"): with the undeclared
+      // tier filtered out, applyBaseline's removal pass would mis-read EVERY
+      // accepted entry as `baseline value removed since accept` (latent in R59).
       const reconciled = applyIgnores(
-        applyBaseline(findings, baseline, {
-          declaredByLogical: declaredKeysByLogical(desired.resources),
-          warn: (s: string) => {
-            if (!a.json) console.error(s);
-          },
-        }),
+        a.showAll || a.declaredOnly
+          ? findings
+          : applyBaseline(findings, baseline, {
+              declaredByLogical: declaredKeysByLogical(desired.resources),
+              warn: (s: string) => {
+                if (!a.json) console.error(s);
+              },
+            }),
         stackName,
         config
       );
-      // No baseline → the undeclared tier is an UNRECORDED inventory, not drift
-      // (R60): the baseline is the contract that defines undeclared drift, and
-      // with no contract there is nothing to violate. The report renders it as
-      // [UNRECORDED: N], excludes it from the verdict/exit, and points at
-      // `cdkrd accept` on the result line (which replaced the old stderr note).
-      // --show-all keeps its existing inventory semantics untouched.
-      const unrecordedMode = !baseline && !a.showAll;
       if (!a.json) separate();
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         verbose: a.verbose,
-        unrecorded: unrecordedMode,
       });
-      const hasUnrecorded = unrecordedMode && reconciled.some((f) => f.tier === 'undeclared');
+      const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 
       // R28: drift found in a TTY → offer accept / revert / nothing inline, instead
       // of making the user re-run a separate command. Skipped for --json (machine

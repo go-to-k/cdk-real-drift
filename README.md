@@ -190,7 +190,7 @@ when drift remains after it.
 | `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` / CFn drift detection for the declared side                       |
 | `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`        |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                      |
-| `--remove-unaccepted`      | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
+| `--remove-unaccepted`      | (revert) REMOVE unrecorded values — never accepted (default: refuse; accept the ones that are right instead)                  |
 | `--yes` / `-y`             | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
@@ -221,8 +221,9 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   **show them first** (the report prints, and a selective accept is offered
   right after it). With zero undeclared values there is nothing to decide, so
   no prompt. After an interactive accept, a closing note states what remains:
-  a PARTIAL accept is a success (unselected values simply stay reported from
-  the next `check` on), and any remaining declared/deleted drift is named —
+  a PARTIAL accept is a success — unselected values simply stay reported as
+  UNRECORDED from the next `check` on (recording one value never flips the
+  rest into drift) — and any remaining declared/deleted drift is named —
   accept cannot address it (fix the code or choose Revert).
 - A non-TTY run (CI, cron, pipes) never prompts: required write **decisions**
   without `--yes` error with exit 2 (the safe side). `--yes` alone in a TTY
@@ -285,11 +286,17 @@ A **deleted resource is never ignorable**.
 ## Output
 
 Drift tiers (`deleted` / `declared` / `undeclared`) are always printed in full —
-they are the point. Informational tiers (`readGap` / `unresolved` / `skipped` /
-`ignored`) fold into an `info:` footer with per-reason counts; `--verbose`
-expands them to full lists. Greppable: `^result:` is the verdict; for machine
-consumption the formal contract is `--json`. Output is colorized on a TTY
-(`NO_COLOR` respected); piped / CI / `--json` output is always plain text.
+they are the point. Undeclared values you have **not yet accepted** (no baseline
+entry, and their resource was never fully snapshot) print as their own
+`[UNRECORDED: N]` section: full detail like a drift section, but they are not
+drift — they never count toward the verdict or the `--fail` exit, and the
+`result:` line names the count with the way out (`run cdkrd accept`). Once a
+resource's snapshot is complete, a value that appears out of band IS undeclared
+drift (`appeared since accept`). Informational tiers (`readGap` / `unresolved` /
+`skipped` / `ignored`) fold into an `info:` footer with per-reason counts;
+`--verbose` expands them to full lists. Greppable: `^result:` is the verdict;
+for machine consumption the formal contract is `--json`. Output is colorized on
+a TTY (`NO_COLOR` respected); piped / CI / `--json` output is always plain text.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -311,9 +318,11 @@ info:
 `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`.
 Each finding has a stable shape: `tier` (`deleted` | `declared` | `undeclared` |
 `readGap` | `unresolved` | `skipped` | `ignored`), `logicalId`, `resourceType`,
-`path`, `desired`, `actual`, `note`, `physicalId`, `constructPath`. It always
-carries every finding regardless of `--verbose`. After publication this shape is
-treated as a backward-compatible API.
+`path`, `desired`, `actual`, `note`, `physicalId`, `constructPath`. An
+unrecorded value keeps `tier: "undeclared"` and carries `"unrecorded": true`;
+`drifted` excludes it. The output always carries every finding regardless of
+`--verbose`. After publication this shape is treated as a backward-compatible
+API.
 
 ## IAM permissions
 
@@ -355,9 +364,10 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   reported as informational, never guessed. You trade a little coverage for zero
   false drift.
 - **Revert cannot do everything.** Not revertable, and reported as such:
-  - **undeclared drift on a stack with NO baseline** — there is no baseline value
-    to write back, so `revert` refuses (run `accept` first, or opt into removal
-    with `--remove-unaccepted`);
+  - **UNRECORDED values** (never accepted — including everything undeclared on
+    a stack with no baseline yet) — there is no recorded state to write back,
+    so `revert` refuses: accept them if the live values are right, or opt into
+    removal with `--remove-unaccepted`;
   - a `deleted` resource (recreate it with `cdk deploy`);
   - **create-only** properties (changing them requires resource replacement);
   - toggle-style properties with no "absent" state (e.g. S3 transfer acceleration
@@ -366,9 +376,10 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
     safely reconstruct the desired state from what is readable).
 
   Not-revertable findings fold into a one-line-per-reason summary (`--verbose`
-  for the full list). When drift exists but **nothing** is revertable, `revert`
-  prints `nothing revertable — N drift(s) remain.` and exits 1 (the drift still
-  stands); exit 0 means there was no drift to revert at all.
+  for the full list). When findings exist but **nothing** is revertable, `revert`
+  prints a `nothing revertable — ... remain.` summary (drift and unrecorded
+  values counted separately) and exits 1 (they still stand); exit 0 means there
+  was no drift to revert at all.
 
 - **Revert writes the canonical form** of the desired value — semantically equal
   to your template, but statement/tag ordering or scalar-vs-array may differ

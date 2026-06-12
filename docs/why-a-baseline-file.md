@@ -33,8 +33,9 @@ Two properties of that state follow immediately:
   thing being judged.
 - **It is the definition of undeclared drift.** Undeclared "drift" is only
   meaningful relative to an accepted reference. With no reference there is
-  nothing to violate — which is exactly why a no-baseline stack renders its
-  undeclared values as `[UNRECORDED]`, not drift (R60).
+  nothing to violate — which is exactly why a value you never accepted renders
+  as `[UNRECORDED]`, not drift (R60; per VALUE since R62 — a partial accept
+  leaves the unpicked values unrecorded rather than flipping them to drift).
 
 ## 2. Why schema defaults cannot substitute
 

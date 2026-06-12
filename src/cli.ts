@@ -44,8 +44,8 @@ OPTIONS
   --declared-only             (check) declared drift vs the DEPLOYED template only
                               (undeclared tier skipped; baseline untouched)
   --dry-run                   (revert) print the plan; make no changes
-  --remove-unaccepted         (revert) on a stack with NO baseline, REMOVE undeclared
-                              drift (default: refuse — run \`cdkrd accept\` first)
+  --remove-unaccepted         (revert) REMOVE unrecorded values (never accepted;
+                              default: refuse — accept the ones that are right)
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
   --help, -h    --version, -v
 

@@ -47,8 +47,8 @@ A second script in the `basic` fixture (reuses its bucket) covering the `deleted
 tier and the `revert` guards:
 
 1. **R2 revert guard** — with NO baseline, `revert --dry-run` reports the
-   undeclared drift as `NOT revertable` (`no baseline`) while a declared drift is
-   still in the plan; `--remove-unaccepted` opts in to removing the undeclared value.
+   undeclared value as `NOT revertable` (`unrecorded`, R62) while a declared drift
+   is still in the plan; `--remove-unaccepted` opts in to removing it.
 2. **R1 deleted tier** — after deleting the bucket out of band, `check` reports the
    `deleted` tier (exit 1) and `revert --dry-run` reports it as not revertable
    (`deleted — recreate via cdk deploy`).
