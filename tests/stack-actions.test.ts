@@ -14,10 +14,12 @@ import {
   acceptSelectMessage,
   acceptStack,
   availableActions,
+  filterRevertPlan,
   formatPlan,
   formatSurvivingDrift,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
+  revertSelectOptions,
   revertStack,
 } from '../src/commands/stack-actions.js';
 import type { RevertPlan } from '../src/revert/plan.js';
@@ -451,15 +453,82 @@ describe('acceptStack non-interactive refusal (R38)', () => {
 });
 
 describe('revertConfirmMessage (R52 — the confirm must scope what gets written)', () => {
-  it('with NOT-revertable findings present, states ONLY the listed ops are written', () => {
+  it('with NOT-revertable findings present, states ONLY the selected ops are written', () => {
     const msg = revertConfirmMessage('s', 1, 113);
     expect(msg).toContain('Apply 1 revert op(s) to s? This WRITES to AWS.');
-    expect(msg).toContain('Only the 1 op(s) listed above are written');
+    expect(msg).toContain('Only the 1 selected op(s) are written');
     expect(msg).toContain('113 NOT-revertable finding(s) are untouched');
   });
 
   it('without NOT-revertable findings, no scope clause (nothing to disclaim)', () => {
     expect(revertConfirmMessage('s', 2, 0)).toBe('Apply 2 revert op(s) to s? This WRITES to AWS.');
+  });
+});
+
+describe('revertSelectOptions / filterRevertPlan (R57 — pick what to revert)', () => {
+  const plan = (): RevertPlan => ({
+    items: [
+      {
+        logicalId: 'R',
+        displayId: 'Stack/Rule',
+        resourceType: 'AWS::Events::Rule',
+        physicalId: 'r-phys',
+        kind: 'cc',
+        ops: [
+          {
+            op: 'add',
+            path: '/State',
+            value: 'ENABLED',
+            human: 'State -> deployed-template value',
+          },
+        ],
+      },
+      {
+        logicalId: 'B',
+        displayId: 'Stack/Bucket',
+        resourceType: 'AWS::S3::Bucket',
+        physicalId: 'b-phys',
+        kind: 'cc',
+        ops: [
+          { op: 'add', path: '/Acc', value: 'Enabled', human: 'Acc -> baseline value' },
+          { op: 'remove', path: '/Extra', human: 'Extra -> remove (undeclared, not in baseline)' },
+        ],
+      },
+    ],
+    notRevertable: [],
+  });
+
+  it('RESTORE ops are pre-selected; REMOVE ops start unselected with a (REMOVE) label', () => {
+    const options = revertSelectOptions(plan());
+    expect(options).toHaveLength(3);
+    expect(options[0]).toMatchObject({ selected: true });
+    expect(options[0]!.label).toBe('Stack/Rule: State -> deployed-template value');
+    expect(options[1]).toMatchObject({ selected: true });
+    const remove = options[2]!;
+    expect(remove.selected).toBe(false);
+    expect(remove.label).toContain('(REMOVE)');
+  });
+
+  it('filterRevertPlan keeps only the picked ops and drops emptied items', () => {
+    const options = revertSelectOptions(plan());
+    // pick only the bucket's restore op
+    const filtered = filterRevertPlan(plan(), new Set([options[1]!.value]));
+    expect(filtered.items).toHaveLength(1);
+    expect(filtered.items[0]!.logicalId).toBe('B');
+    expect(filtered.items[0]!.ops).toHaveLength(1);
+    expect(filtered.items[0]!.ops[0]!.path).toBe('/Acc');
+  });
+
+  it('picking nothing empties the plan (the caller aborts)', () => {
+    expect(filterRevertPlan(plan(), new Set()).items).toHaveLength(0);
+  });
+
+  it('notRevertable carries through untouched', () => {
+    const p = {
+      ...plan(),
+      notRevertable: [{ displayId: 'X', resourceType: 'T', path: 'P', reason: 'r' }],
+    };
+    expect(filterRevertPlan(p, new Set()).notRevertable).toHaveLength(1);
   });
 });
 
