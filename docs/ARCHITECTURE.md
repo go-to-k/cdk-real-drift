@@ -555,6 +555,17 @@ so the two never duplicate); `^result:` stays greppable, but the formal
 machine-readable contract is `--json` (the `info:` footer may span lines). `--json`
 is unaffected — it always carries every finding. A `Custom::*` resource is `skipped`
 without any API call (note: `custom resource — no cloud-side model to read`).
+**No baseline = UNRECORDED, not drift (R60):** the baseline is the contract that
+defines undeclared drift; with no baseline there is nothing to violate, so on a
+no-baseline stack the undeclared tier renders as `[UNRECORDED: N]` (note:
+`no baseline yet — accept to record`), is excluded from the verdict and the
+`--fail` exit, and the `result:` line carries the count + the way out
+(`— N unrecorded value(s) await a baseline (run cdkrd accept)`). Declared and
+deleted drift still report and fail normally. The interactive after-report
+prompt still fires for unrecorded values (`unrecorded values found — what do
+you want to do?`) so "show them first" keeps its promise of a selective accept.
+In `--json` the findings keep `tier: "undeclared"` (the documented enum), but
+`drifted` excludes them. `--show-all` keeps its existing inventory semantics.
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
 yellow undeclared tier, dim informational footers — ONLY when stdout is a real

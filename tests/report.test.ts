@@ -16,6 +16,44 @@ function run(findings: Finding[], opts: Parameters<typeof report>[2] = {}) {
   return { code, text: lines.join('\n') };
 }
 
+describe('report unrecorded mode (R60 — no baseline: undeclared is inventory, not drift)', () => {
+  it('undeclared renders as [UNRECORDED: N] and does NOT count as drift', () => {
+    const { code, text } = run([F('undeclared'), F('undeclared', 'Q')], { unrecorded: true });
+    expect(code).toBe(0);
+    expect(text).toContain('[UNRECORDED: 2]');
+    expect(text).toContain('no baseline yet — accept to record');
+    expect(text).not.toContain('UNDECLARED DRIFT');
+    expect(text).toContain(
+      'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd accept)'
+    );
+  });
+
+  it('declared drift still fails, with unrecorded values noted beside the verdict', () => {
+    const { code, text } = run([F('declared'), F('undeclared', 'Q')], { unrecorded: true });
+    expect(code).toBe(1);
+    expect(text).toContain('result: 1 drift(s) (declared=1) — 1 unrecorded value(s)');
+    expect(text).not.toContain('undeclared=1'); // unrecorded never appears as a drift count
+  });
+
+  it('deleted still fails in unrecorded mode (a gone resource is drift, baseline or not)', () => {
+    expect(run([F('deleted', ''), F('undeclared')], { unrecorded: true }).code).toBe(1);
+  });
+
+  it('json: drifted excludes unrecorded values; findings keep the undeclared tier', () => {
+    const { code, text } = run([F('undeclared')], { unrecorded: true, json: true });
+    const parsed = JSON.parse(text);
+    expect(code).toBe(0);
+    expect(parsed.drifted).toBe(0);
+    expect(parsed.findings[0].tier).toBe('undeclared');
+  });
+
+  it('with a baseline (unrecorded: false / absent), undeclared is drift as before', () => {
+    const { code, text } = run([F('undeclared')]);
+    expect(code).toBe(1);
+    expect(text).toContain('[UNDECLARED DRIFT: 1]');
+  });
+});
+
 describe('report', () => {
   it('exit 0 when no drift tiers present', () => {
     expect(run([F('readGap'), F('skipped'), F('unresolved')]).code).toBe(0);

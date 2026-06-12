@@ -44,6 +44,12 @@ const INFO_TIERS: Tier[] = ['ignored', 'readGap', 'unresolved', 'skipped'];
 export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
+  // No baseline exists for this stack (R60): the undeclared tier is then an
+  // UNRECORDED inventory, not drift — the baseline is the contract that defines
+  // undeclared drift, and with no contract there is nothing to violate. The
+  // section renders as [UNRECORDED: N], the values are excluded from the
+  // drift verdict/exit, and the result line points at `cdkrd accept`.
+  unrecorded?: boolean;
   log?: (s: string) => void;
 }
 
@@ -97,7 +103,11 @@ function groupReasons(items: Finding[]): string {
 
 export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
-  const drifted = findings.filter((f) => DRIFT_TIERS.includes(f.tier)).length;
+  // unrecorded mode (R60): undeclared values are an inventory awaiting a
+  // baseline, not drift — they never count toward the verdict or the exit.
+  const isDriftHere = (f: Finding): boolean =>
+    DRIFT_TIERS.includes(f.tier) && !(opts.unrecorded && f.tier === 'undeclared');
+  const drifted = findings.filter(isDriftHere).length;
 
   if (opts.json) {
     log(JSON.stringify({ stack: header, drifted, findings }, null, 2));
@@ -105,16 +115,21 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
 
   const byTier = (t: Tier) => findings.filter((f) => f.tier === t);
+  const unrecordedCount = opts.unrecorded ? byTier('undeclared').length : 0;
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
   const section = (tier: Tier, leadingBlank: boolean): boolean => {
     const items = byTier(tier);
     if (items.length === 0) return false; // 0-count tiers are never printed
-    const note = TIER_NOTES[tier];
+    const renamed = tier === 'undeclared' && opts.unrecorded;
+    const name = renamed ? 'UNRECORDED' : TIER_NAMES[tier];
+    const note = renamed
+      ? 'not declared in your template; no baseline yet — accept to record'
+      : TIER_NOTES[tier];
     log(
       (leadingBlank ? '\n' : '') +
-        tierStyle(tier)(`[${TIER_NAMES[tier]}: ${items.length}]`) +
+        tierStyle(tier)(`[${name}: ${items.length}]`) +
         (note ? ' ' + style.infoTier(`(${note})`) : '')
     );
     for (const f of items) log('  ' + formatFinding(f));
@@ -131,15 +146,25 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // informational breakdown lives on the `info:` line, so the two never duplicate);
   // CLEAN prints just `CLEAN`. `^result:` stays greppable for the verdict; the formal
   // machine-readable contract is `--json` (the info: footer may span lines).
-  const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
+  const driftCounts = DRIFT_TIERS.filter(
+    (t) => byTier(t).length > 0 && !(opts.unrecorded && t === 'undeclared')
+  )
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
   // the verdict is the one line that must stand out: green CLEAN / red drift count
   const verdict =
     drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
+  // unrecorded values are stated NEXT TO the verdict (not as drift): the count
+  // and the way out, in one place (R60).
+  const unrecordedNote =
+    unrecordedCount > 0
+      ? style.infoTier(
+          ` — ${unrecordedCount} unrecorded value(s) await a baseline (run cdkrd accept)`
+        )
+      : '';
   // A blank line before the verdict ONLY when drift sections were printed — it must
   // not read as a member of the last section (R48); a CLEAN stack stays 3 lines.
-  log((driftSections > 0 ? '\n' : '') + `result: ${verdict}`);
+  log((driftSections > 0 ? '\n' : '') + `result: ${verdict}${unrecordedNote}`);
   // INFORMATIONAL tiers: footer below result — full sections under --verbose, else a
   // folded summary (counts + reason breakdown): one `info: ...` line for a single
   // tier, a one-line-per-tier bullet list (with ONE --verbose hint) for 2+ (R37).

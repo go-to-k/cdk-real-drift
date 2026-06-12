@@ -52,8 +52,26 @@ npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
 ```
 
-`check` is the only command you run day to day. When it finds drift in a
-terminal, it asks what to do right there:
+**First run** — your template never pins every live value (AWS defaults,
+generated names), so `check` first asks you to record a baseline of those
+UNRECORDED values (they are not drift — there is nothing to compare them to
+yet):
+
+```console
+ApiStack: no baseline yet — found 42 live value(s) not declared in your
+template (typically AWS defaults, but out-of-band edits hide among them).
+Declared-side drift is reported either way. What do you want to do?
+  ❯ Accept ALL 42 into the baseline now, without reviewing them
+    Show them first — you can still accept (selectively) right after the report
+```
+
+Accept writes `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing
+written to AWS** — commit it. From here on `check` reports CLEAN until reality
+actually changes. (Declared drift — template vs reality — is detected from this
+very first run, baseline or not.)
+
+**Day to day** — someone changes something from the console; the next `check`
+reports it and asks right there:
 
 ```console
 ApiStack: drift found — what do you want to do?
@@ -62,10 +80,10 @@ ApiStack: drift found — what do you want to do?
     Revert — write the desired value back to AWS
 ```
 
-- **Accept** records the value in a git-committed baseline, so `check` stays
-  CLEAN until it changes again (a multiselect lets you accept some and keep
-  reporting others).
-- **Revert** shows a plan, confirms, then writes the desired value back to AWS:
+- **Accept** records the value in the baseline, so `check` stays CLEAN until it
+  changes again (a multiselect lets you accept some and keep reporting others).
+- **Revert** shows a plan, lets you pick which op(s) to write, confirms, then
+  writes the desired values back to AWS:
 
 ```console
 === cdkrd revert: ApiStack (us-east-1) ===
@@ -80,9 +98,8 @@ verifying convergence (re-reading 1 resource(s))...
 ApiStack: CLEAN after revert.
 ```
 
-**Declared drift is detected from the very first `check`** — the deployed
-template is the reference, no setup needed. `accept` and `revert` also exist as
-standalone commands for CI / scripting.
+`accept` and `revert` also exist as standalone commands; in CI, run
+`npx cdkrd check --fail`.
 
 Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
 (env vars, `--profile`, SSO).
