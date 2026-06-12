@@ -4,6 +4,7 @@ import {
   firstRunPrompt,
   postAcceptNote,
   preDeployFindings,
+  undeclaredOnlyFindings,
 } from '../src/commands/check.js';
 import type { Finding } from '../src/types.js';
 
@@ -29,6 +30,24 @@ describe('preDeployFindings (--pre-deploy scope)', () => {
   it('is a no-op when there are no undeclared findings (regression)', () => {
     const findings = [F('declared'), F('readGap')];
     expect(preDeployFindings(findings)).toEqual(findings);
+  });
+});
+
+describe('undeclaredOnlyFindings (R59 — pair-with-cdk-drift scope)', () => {
+  it('drops declared findings AND declared-comparison byproducts (readGap/unresolved)', () => {
+    const out = undeclaredOnlyFindings([
+      F('declared'),
+      F('undeclared'),
+      F('readGap', 'Q'),
+      F('unresolved', 'R'),
+    ]);
+    expect(out.map((f) => f.tier)).toEqual(['undeclared']);
+  });
+
+  it('keeps deleted (a gone resource has no undeclared values; silence would lie) and skipped', () => {
+    const kept: Finding['tier'][] = ['deleted', 'undeclared', 'skipped'];
+    const out = undeclaredOnlyFindings(kept.map((t) => F(t)));
+    expect(out.map((f) => f.tier)).toEqual(kept);
   });
 });
 

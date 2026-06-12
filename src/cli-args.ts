@@ -13,6 +13,8 @@ const BOOLEAN_FLAGS = new Set([
   '--yes',
   '-y',
   '--pre-deploy',
+  '--undeclared-only',
+  '--declared-only',
   '--dry-run',
   '--remove-unaccepted',
   '--verbose',
@@ -29,6 +31,18 @@ export interface CommonArgs {
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
+  // (check) scope flags (R59) — at most ONE of --pre-deploy / --declared-only /
+  // --undeclared-only; the parser rejects combinations.
+  // --undeclared-only skips the declared-side comparison entirely — for pairing
+  // cdkrd with `cdk drift` / CFn drift detection, which already own declared
+  // drift. Deleted resources still report (a gone resource has no undeclared
+  // values to check; silence would be a lie).
+  undeclaredOnly: boolean;
+  // --declared-only skips the undeclared tier (baseline untouched): declared
+  // drift vs the DEPLOYED template only. NOT the same as --pre-deploy, which
+  // compares against the LOCAL SYNTH template (a different question: what would
+  // my next deploy clobber).
+  declaredOnly: boolean;
   // (check) automation mode, following the `cdk diff --fail` / `cdk drift --fail`
   // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
   // check REPORTS drift but exits 0 (report-only).
@@ -106,6 +120,13 @@ export function parseCommonArgs(args: string[]): CommonArgs {
   }
 
   const has = (flag: string): boolean => found.has(flag);
+  // scope flags select WHICH comparison runs — more than one is contradictory
+  // (--pre-deploy + --undeclared-only would compare nothing) or redundant
+  // (--pre-deploy is already declared-side). Reject at parse.
+  const scopes = ['--pre-deploy', '--declared-only', '--undeclared-only'].filter(has);
+  if (scopes.length > 1) {
+    throw new Error(`${scopes.join(' and ')} are mutually exclusive — see cdkrd --help`);
+  }
   return {
     stackNames,
     context,
@@ -118,6 +139,8 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
+    undeclaredOnly: has('--undeclared-only'),
+    declaredOnly: has('--declared-only'),
     removeUnaccepted: has('--remove-unaccepted'),
     verbose: has('--verbose') || has('-v'),
   };
