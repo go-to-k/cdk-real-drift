@@ -1,0 +1,116 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DelaySeconds, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled, undeclared:VisibilityTimeout). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "resource": {
+    "logicalId": "InboxA8E05DC3",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+    "constructPath": "CdkrdIntegHarvest2/Inbox",
+    "declared": {}
+  },
+  "liveRaw": {
+    "SqsManagedSseEnabled": true,
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "DelaySeconds": 0,
+    "MessageRetentionPeriod": 345600,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 30,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+    "QueueName": "CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    }
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    }
+  ]
+}

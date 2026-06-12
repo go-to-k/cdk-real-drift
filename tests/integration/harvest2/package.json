@@ -1,0 +1,13 @@
+{
+  "name": "cdk-real-drift-integ-harvest2",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Corpus-harvest fixture: many cheap types deployed once to record golden-corpus cases. Run via verify-harvest2.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module",
+  "packageManager": "npm@11.17.0"
+}
