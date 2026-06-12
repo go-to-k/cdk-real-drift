@@ -57,7 +57,7 @@ QUEUE_ARN="$(aws sqs get-queue-attributes --queue-url "$QUEUE_URL" --attribute-n
 echo "=== accept (baseline) ==="
 $CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail accept
 echo "=== check CLEAN ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive; [ $? -eq 0 ] || fail "expected CLEAN after accept"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
 
 echo "=== inject a CdkrdInjected statement into all 5 policy documents ==="
 # S3 bucket policy (Deny is always writable under BlockPublicPolicy; harmless action)
@@ -90,7 +90,7 @@ aws iam create-policy-version --policy-arn "$MANAGED_ARN" --set-as-default --pol
 echo "(waiting for IAM/SQS propagation)"; sleep 15
 
 echo "=== check DETECTS all 5 declared drifts ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdkrd-policies-pre.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-policies-pre.out
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected drift exit 1"
 for name in "Data/Policy" "EventsPolicy" "JobsPolicy" "WorkerInline" "WorkerManaged"; do
   grep -q "$name" /tmp/cdkrd-policies-pre.out || fail "$name drift not reported"
@@ -100,7 +100,7 @@ echo "=== revert --yes (all 5 SDK writers) ==="
 $CLI revert "$STACK" --region "$REGION" --yes --no-interactive || fail "revert returned non-zero"
 
 echo "=== check CLEAN after revert ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive; [ $? -eq 0 ] || fail "drift remains after revert"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "drift remains after revert"
 
 echo "=== belt-and-suspenders: injected statement gone, declared statement survived ==="
 sleep 5

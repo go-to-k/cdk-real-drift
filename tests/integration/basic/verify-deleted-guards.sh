@@ -68,7 +68,7 @@ aws s3api delete-bucket --bucket "$BUCKET" --region "$REGION" || fail "delete-bu
 sleep 5
 
 echo "=== R1: check reports the deleted tier + exit 1 ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdkrd-guard-deleted.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-guard-deleted.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "R1: expected exit 1 on a deleted resource, got $rc"
 grep -qi "DELETED (resource deleted out of band" /tmp/cdkrd-guard-deleted.out \

@@ -1,5 +1,6 @@
 // Tiered, CI-greppable report. Plain text or --json. No TUI/panes.
-// Exit: 0 clean / 1 drift. --fail-on selects which tiers count as failure.
+// Exit: report() returns 0 clean / 1 drift; check maps 1→0 unless --fail (R53).
+// --fail-on selects which tiers count as failure.
 //
 // Default layout is deliberately terse (a 40-resource CLEAN stack was 30+ lines):
 //   header -> DRIFT tier sections (full detail) -> result: -> info: footer

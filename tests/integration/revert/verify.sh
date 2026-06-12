@@ -35,7 +35,7 @@ echo "=== enable acceleration, then accept (baseline) ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" --accelerate-configuration Status=Enabled --region "$REGION" || fail "enable accel"
 sleep 5
 $CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail accept
-echo "=== check CLEAN ==="; $CLI check "$STACK" --region "$REGION" --no-interactive; [ $? -eq 0 ] || fail "expected CLEAN after accept"
+echo "=== check CLEAN ==="; $CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
 
 echo "=== inject DECLARED drift (suspend versioning) + UNDECLARED drift (suspend accel from accepted Enabled) ==="
 aws s3api put-bucket-versioning --bucket "$BUCKET" --versioning-configuration Status=Suspended --region "$REGION" || fail "inject versioning"
@@ -43,7 +43,7 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" --accelerate-co
 sleep 5
 
 echo "=== check DETECTS drift ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdkrd-revert-pre.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-revert-pre.out
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected drift exit 1"
 grep -q "VersioningConfiguration" /tmp/cdkrd-revert-pre.out || fail "declared versioning drift not reported"
 grep -q "AccelerateConfiguration" /tmp/cdkrd-revert-pre.out || fail "undeclared accel drift not reported"
@@ -52,7 +52,7 @@ echo "=== revert --yes (writes to AWS via Cloud Control) ==="
 $CLI revert "$STACK" --region "$REGION" --yes --no-interactive || fail "revert returned non-zero"
 
 echo "=== check CLEAN after revert ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive; [ $? -eq 0 ] || fail "drift remains after revert"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "drift remains after revert"
 
 # belt-and-suspenders: confirm AWS itself converged to the desired/baseline values
 VSTATUS="$(aws s3api get-bucket-versioning --bucket "$BUCKET" --region "$REGION" --query Status --output text)"

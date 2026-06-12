@@ -47,10 +47,10 @@ DEFAULT_POLICY="$(aws iam list-role-policies --role-name "$ROLE_NAME" --query 'P
 echo "role=$ROLE_NAME defaultPolicy=$DEFAULT_POLICY"
 
 echo "=== accept (write baseline) ==="
-$CLI accept "$STACK" --region "$REGION" || fail "accept"
+$CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail "accept"
 
 echo "=== check should be CLEAN (sibling DefaultPolicy filtered, no false positive) ==="
-$CLI check "$STACK" --region "$REGION"
+$CLI check "$STACK" --region "$REGION" --fail
 [ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after accept — sibling DefaultPolicy leaked as drift?"
 
 echo "=== inject undeclared drift (out-of-band inline policy next to the sibling) ==="
@@ -60,7 +60,7 @@ aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "$ROGUE" \
 
 echo "=== check should DETECT the rogue inline policy (and ONLY it) ==="
 OUT=/tmp/cdk-real-drift-integ-iam-inline.out
-$CLI check "$STACK" --region "$REGION" | tee "$OUT"
+$CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
 grep -q "Policies" "$OUT" || fail "Policies drift not reported"
@@ -79,7 +79,7 @@ aws iam get-role-policy --role-name "$ROLE_NAME" --policy-name "$DEFAULT_POLICY"
   || fail "sibling DefaultPolicy document changed"
 
 echo "=== check should be CLEAN again ==="
-$CLI check "$STACK" --region "$REGION"
+$CLI check "$STACK" --region "$REGION" --fail
 [ $? -eq 0 ] || fail "expected CLEAN (exit 0) after revert"
 
 echo "INTEG PASS"

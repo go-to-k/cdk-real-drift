@@ -100,6 +100,16 @@ describe('parseCommonArgs', () => {
     expect(() => parseCommonArgs(['S', '--fail-on', 'deleted'])).toThrow(/--fail-on expects/);
   });
 
+  it('--fail parses as a boolean; default is report-only (fail=false) (R53)', () => {
+    expect(parseCommonArgs(['S']).fail).toBe(false);
+    expect(parseCommonArgs(['S', '--fail']).fail).toBe(true);
+  });
+
+  it('--fail-on implies fail mode — selecting a failing tier only makes sense when failing (R53)', () => {
+    expect(parseCommonArgs(['S', '--fail-on', 'declared']).fail).toBe(true);
+    expect(parseCommonArgs(['S', '--fail-on', 'undeclared']).fail).toBe(true);
+  });
+
   it('accepts --flag=value form, equal to the space form (R41)', () => {
     expect(parseCommonArgs(['--app=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
     expect(parseCommonArgs(['-a=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));

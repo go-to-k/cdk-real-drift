@@ -1,9 +1,11 @@
 // `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
-//             [--json] [--fail-on declared|undeclared] [--show-all]`
+//             [--json] [--fail] [--fail-on declared|undeclared] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a stack with an accepted baseline reports CLEAN.
-// Exit code is the
-// worst across all checked stacks (0 clean / 1 drift / 2 error).
+// Exit (R53, the `cdk diff --fail` convention): report-only by default — drift
+// exits 0 (a hint names --fail); with --fail (or --fail-on, which implies it)
+// drift exits 1 and prompts are suppressed. Errors always exit 2. The exit is
+// the worst across all checked stacks.
 import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
@@ -85,13 +87,10 @@ export function firstRunPrompt(
 
 /**
  * Closing note after an interactive accept inside `check` (R52). A PARTIAL
- * accept used to end with `baseline written: ...` and then a silent exit 1 —
- * reading as "accept failed". Semantics (user decision, R52): a successful
- * interactive accept is a SUCCESS for THIS run — deliberately-unselected
- * undeclared values do not fail this exit; they surface (exit 1) from the
- * next check on. This path is TTY-only, so no CI contract is affected.
- * DECLARED/DELETED drift is outside accept's reach and keeps exit 1 — exiting
- * 0 over a real un-addressed drift would be a false green.
+ * accept used to end with `baseline written: ...` and a silent failure-looking
+ * exit. State plainly what remains; the exit story itself is R53's: check is
+ * report-only (exit 0 on drift) unless --fail, and the interactive prompts
+ * never fire in fail mode, so this note never coexists with a drift exit.
  */
 export function postAcceptNote(remainingUndeclared: number, remainingDeclared: number): string {
   if (remainingDeclared > 0) {
@@ -99,11 +98,21 @@ export function postAcceptNote(remainingUndeclared: number, remainingDeclared: n
       remainingUndeclared > 0
         ? ` ${remainingUndeclared} unaccepted value(s) also stay reported.`
         : '';
-    return `accept succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or revert) — exit 1.${alsoUndeclared}`;
+    return `accept succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
   }
   if (remainingUndeclared > 0)
-    return `accept succeeded — ${remainingUndeclared} unaccepted value(s) stay reported from the next check on; exit 0 for this run.`;
-  return 'stack is now CLEAN — exit 0.';
+    return `accept succeeded — ${remainingUndeclared} unaccepted value(s) stay reported from the next check on.`;
+  return 'stack is now CLEAN.';
+}
+
+/**
+ * Map a stack's drift code to check's final exit (R53, the `cdk diff --fail` /
+ * `cdk drift --fail` convention): without --fail, check is REPORT-ONLY — drift
+ * (1) exits 0; errors (2) always propagate. With --fail (or --fail-on, which
+ * implies it), drift exits 1. Pure + exported for tests.
+ */
+export function finalCheckExit(code: number, fail: boolean): number {
+  return fail || code !== 1 ? code : 0;
 }
 
 export async function runCheck(args: string[]): Promise<number> {
@@ -152,6 +161,7 @@ export async function runCheck(args: string[]): Promise<number> {
   }
 
   let worst = 0;
+  let anyDrift = false; // for the report-only hint (R53)
   // R37: one blank line between consecutive stack reports (text mode only) — done
   // here at the call site so a single-stack run never gets a stray leading blank.
   const separate = stackSeparator();
@@ -185,14 +195,17 @@ export async function runCheck(args: string[]): Promise<number> {
             `note: ${stackName}: --pre-deploy reports declared drift only (undeclared tiers are evaluated against the deployed template — run check without --pre-deploy)`
           );
         if (!a.json) separate();
-        worst = Math.max(
-          worst,
-          report(applyIgnores(declaredOnly, stackName, config), `${stackName} (${region})`, {
+        const preDeployCode = report(
+          applyIgnores(declaredOnly, stackName, config),
+          `${stackName} (${region})`,
+          {
             json: a.json,
             failOn: a.failOn,
             verbose: a.verbose,
-          })
+          }
         );
+        if (preDeployCode === 1) anyDrift = true;
+        worst = Math.max(worst, finalCheckExit(preDeployCode, a.fail));
         continue;
       }
 
@@ -210,7 +223,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // report would have re-tagged as ignored (same as the post-report accept).
       // With ZERO undeclared values there is no decision worth interrupting for —
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
-      if (!baseline && !a.showAll && !a.json && isInteractive(a)) {
+      if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive(a)) {
         const acceptable = applyIgnores(findings, stackName, config);
         const undeclaredCount = acceptable.filter((f) => f.tier === 'undeclared').length;
         const declaredDriftCount = acceptable.filter(
@@ -262,10 +275,10 @@ export async function runCheck(args: string[]): Promise<number> {
       // of making the user re-run a separate command. Skipped for --json (machine
       // output), --show-all (baseline not applied — accept would mean something else),
       // and --pre-deploy (declared-only, baseline-untouched contract).
-      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && isInteractive(a)) {
+      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && !a.fail && isInteractive(a)) {
         const actions = availableActions(reconciled, baseline, schemas, a.removeUnaccepted);
         if (actions.accept || actions.revert) {
-          const options = [{ value: 'nothing', label: 'Nothing (keep exit code 1)' }];
+          const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
           if (actions.accept)
             options.push({
               value: 'accept',
@@ -339,7 +352,8 @@ export async function runCheck(args: string[]): Promise<number> {
           }
         }
       }
-      worst = Math.max(worst, code);
+      if (code === 1) anyDrift = true;
+      worst = Math.max(worst, finalCheckExit(code, a.fail));
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — skipped`);
@@ -348,6 +362,14 @@ export async function runCheck(args: string[]): Promise<number> {
       console.error(`error: ${stackName}: ${(e as Error).message}`);
       worst = Math.max(worst, 2);
     }
+  }
+  // Report-only mode found drift: say so, and say how to make it fail — a script
+  // author piping this must discover --fail from the output, not from a surprise
+  // green pipeline (R53). Suppressed under --json (machine consumers read stdout).
+  if (anyDrift && !a.fail && !a.json) {
+    console.error(
+      'note: drift found — exit 0 (report-only). Pass --fail (or --fail-on <tier>) to make drift fail this command.'
+    );
   }
   return worst;
 }
