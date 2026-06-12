@@ -138,6 +138,20 @@ describe('noise suppressors', () => {
     expect(isStringlyEqualScalar({ a: 1 }, '[object Object]')).toBe(false);
   });
 
+  it('isStringlyEqualScalar: numeric FORMATTING variants fold, value changes do not (R67)', async () => {
+    const { isStringlyEqualScalar } = await import('../src/normalize/noise.js');
+    // AWS decimal-string forms of a declared number (Budgets BudgetLimit.Amount)
+    expect(isStringlyEqualScalar(5, '5.0')).toBe(true);
+    expect(isStringlyEqualScalar('40.00', 40)).toBe(true);
+    expect(isStringlyEqualScalar(1500, '1.5e3')).toBe(true);
+    // real drift preserved
+    expect(isStringlyEqualScalar(5, '5.5')).toBe(false);
+    // strict decimal literal only: no '' -> 0, no hex, booleans never numeric
+    expect(isStringlyEqualScalar(0, '')).toBe(false);
+    expect(isStringlyEqualScalar(16, '0x10')).toBe(false);
+    expect(isStringlyEqualScalar(true, '1')).toBe(false);
+  });
+
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {
     expect(isAllAwsTags([{ Key: 'aws:cloudformation:stack-id', Value: 'x' }])).toBe(true);
     expect(

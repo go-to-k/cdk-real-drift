@@ -164,11 +164,21 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
 // typed `[80, 443]` vs live `["80", "443"]` still reports drift. The direction is a
 // false POSITIVE (noise), never hidden drift, so it is fail-safe; collapsing it would
 // need a drift-calculator change. Revisit only if a real fixture hits it.
+const DECIMAL_RE = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+
 export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
   const prim = (v: unknown): v is boolean | number =>
     typeof v === 'boolean' || typeof v === 'number';
-  if (prim(a) && typeof b === 'string') return String(a) === b;
-  if (prim(b) && typeof a === 'string') return String(b) === a;
+  const eq = (p: boolean | number, s: string): boolean => {
+    if (String(p) === s) return true;
+    // Numeric FORMATTING variants (R67): AWS returns decimal strings like "5.0"
+    // for a declared number 5 (Budgets BudgetLimit.Amount). Numbers only, and the
+    // string must be a plain decimal literal (no '' -> 0, no '0x10' = 16), so a
+    // genuine value change still differs.
+    return typeof p === 'number' && DECIMAL_RE.test(s.trim()) && Number(s) === p;
+  };
+  if (prim(a) && typeof b === 'string') return eq(a, b);
+  if (prim(b) && typeof a === 'string') return eq(b, a);
   return false;
 }
 

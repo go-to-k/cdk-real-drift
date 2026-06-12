@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "description": "Budgets budget (dogfood R65/R67): CFn-generated name (declared has no BudgetName; nested live-only BudgetName is ignored by the declared compare); declared numeric Amount 40 vs live decimal string \"40.0\" folds (stringly numeric); NotificationsWithSubscribers is an honest readGap (DescribeBudget cannot return it).",
+  "resource": {
+    "logicalId": "MonthlyCost",
+    "resourceType": "AWS::Budgets::Budget",
+    "physicalId": "MonthlyCost-us-east-1-1679810595490-abcDEFghij",
+    "declared": {
+      "Budget": {
+        "BudgetLimit": { "Amount": 40, "Unit": "USD" },
+        "BudgetType": "COST",
+        "TimeUnit": "MONTHLY"
+      },
+      "NotificationsWithSubscribers": [
+        {
+          "Notification": {
+            "ComparisonOperator": "GREATER_THAN",
+            "NotificationType": "ACTUAL",
+            "Threshold": 80
+          },
+          "Subscribers": [{ "Address": "corpus@example.com", "SubscriptionType": "EMAIL" }]
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Budget": {
+      "BudgetName": "MonthlyCost-us-east-1-1679810595490-abcDEFghij",
+      "BudgetType": "COST",
+      "TimeUnit": "MONTHLY",
+      "BudgetLimit": { "Amount": "40.0", "Unit": "USD" }
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "MonthlyCost",
+      "resourceType": "AWS::Budgets::Budget",
+      "path": "NotificationsWithSubscribers",
+      "note": "declared but not returned by live read",
+      "physicalId": "MonthlyCost-us-east-1-1679810595490-abcDEFghij"
+    }
+  ]
+}
