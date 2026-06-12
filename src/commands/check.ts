@@ -279,11 +279,6 @@ export async function runCheck(args: string[]): Promise<number> {
           }
         }
       }
-      if (!a.json && !baseline && !a.showAll && !a.declaredOnly) {
-        console.error(
-          `note: ${stackName}: no baseline — showing all undeclared state. Record it with \`cdkrd accept ${stackName}\`.`
-        );
-      }
       const reconciled = applyIgnores(
         applyBaseline(findings, baseline, {
           declaredByLogical: declaredKeysByLogical(desired.resources),
@@ -294,17 +289,35 @@ export async function runCheck(args: string[]): Promise<number> {
         stackName,
         config
       );
+      // No baseline → the undeclared tier is an UNRECORDED inventory, not drift
+      // (R60): the baseline is the contract that defines undeclared drift, and
+      // with no contract there is nothing to violate. The report renders it as
+      // [UNRECORDED: N], excludes it from the verdict/exit, and points at
+      // `cdkrd accept` on the result line (which replaced the old stderr note).
+      // --show-all keeps its existing inventory semantics untouched.
+      const unrecordedMode = !baseline && !a.showAll;
       if (!a.json) separate();
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         verbose: a.verbose,
+        unrecorded: unrecordedMode,
       });
+      const hasUnrecorded = unrecordedMode && reconciled.some((f) => f.tier === 'undeclared');
 
       // R28: drift found in a TTY → offer accept / revert / nothing inline, instead
       // of making the user re-run a separate command. Skipped for --json (machine
       // output), --show-all (baseline not applied — accept would mean something else),
-      // and --pre-deploy (declared-only, baseline-untouched contract).
-      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && !a.fail && isInteractive()) {
+      // and --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED
+      // values do not set code 1 (R60) but still deserve the prompt — "show them
+      // first" promises a selective accept right after the report.
+      if (
+        (code === 1 || hasUnrecorded) &&
+        !a.json &&
+        !a.showAll &&
+        !a.preDeploy &&
+        !a.fail &&
+        isInteractive()
+      ) {
         const actions = availableActions(reconciled, baseline, schemas, a.removeUnaccepted);
         if (actions.accept || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
@@ -319,7 +332,10 @@ export async function runCheck(args: string[]): Promise<number> {
               label: 'Revert — write the desired values back to AWS',
             });
           const choice = await select({
-            message: `${stackName}: drift found — what do you want to do?`,
+            message:
+              code === 1
+                ? `${stackName}: drift found — what do you want to do?`
+                : `${stackName}: unrecorded values found — what do you want to do?`,
             options,
             initialValue: 'nothing',
           });
