@@ -55,6 +55,14 @@ describe('report', () => {
     expect(text).toContain('result:');
   });
 
+  it('section header carries the count INSIDE the brackets, note outside (R48)', () => {
+    const { text } = run([F('undeclared'), F('declared', 'Q')]);
+    expect(text).toContain('[UNDECLARED DRIFT: 1] (the differentiator)');
+    expect(text).toContain('[DECLARED DRIFT: 1]'); // no note for declared
+    // the old bare-digit-right-of-bracket form is gone
+    expect(text).not.toMatch(/\] \d/);
+  });
+
   it('shows the CDK construct path instead of the logical id when present', () => {
     const f: Finding = {
       tier: 'undeclared',
@@ -208,13 +216,20 @@ describe('report', () => {
       ]);
     });
 
-    it('drift keeps a blank line after the header but none before result:', () => {
+    it('drift: first section directly under the header; blank line BEFORE result: (R48)', () => {
       const lines = run([F('declared')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
-      expect(lines[1]).toBe(''); // blank between header and the drift section (grouping)
-      expect(lines[2]).toBe('[DECLARED DRIFT] 1');
+      expect(lines[1]).toBe('[DECLARED DRIFT: 1]'); // no stray blank after the header
       const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
-      expect(lines[resultIdx - 1]).not.toBe(''); // result follows the section directly
+      expect(lines[resultIdx - 1]).toBe(''); // the verdict is separated from the section above
+    });
+
+    it('two drift sections: blank BETWEEN them, none after the header (R48)', () => {
+      const lines = run([F('declared'), F('undeclared', 'Q')]).text.split('\n');
+      expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
+      expect(lines[1]).toBe('[DECLARED DRIFT: 1]');
+      const undeclaredIdx = lines.findIndex((l) => l.startsWith('[UNDECLARED'));
+      expect(lines[undeclaredIdx - 1]).toBe(''); // grouping blank between sections
     });
 
     it('multi-stack: ONE blank line between consecutive reports, none before the first', () => {
