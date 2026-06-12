@@ -63,7 +63,7 @@ function failTiers(failOn: FailOn): Tier[] {
 }
 
 // The exit code for a set of findings WITHOUT printing — used to re-evaluate a stack
-// after an interactive accept (R28) blessed some/all of its undeclared drift.
+// after an interactive accept (R28) accepted some/all of its undeclared drift.
 export function exitCode(findings: Finding[], failOn: FailOn = 'undeclared'): number {
   const fail = failTiers(failOn);
   return findings.some((f) => fail.includes(f.tier)) ? 1 : 0;

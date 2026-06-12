@@ -12,7 +12,7 @@ properties that 'cdk drift' / CloudFormation drift detection never see.
 
 USAGE
   cdkrd check  [<stack>...]   detect drift (read-only)
-  cdkrd accept [<stack>...]   bless current state into the baseline file
+  cdkrd accept [<stack>...]   record current state into the baseline file
   cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
   cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
@@ -38,7 +38,7 @@ OPTIONS
   --pre-deploy                (check) compare live state vs the LOCAL synth template
                               — the declared drift your next deploy would overwrite
   --dry-run                   (revert) print the plan; make no changes
-  --remove-unblessed          (revert) on a stack with NO baseline, REMOVE undeclared
+  --remove-unaccepted         (revert) on a stack with NO baseline, REMOVE undeclared
                               drift (default: refuse — run \`cdkrd accept\` first)
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
   --no-interactive            never prompt; optional prompts skipped, required-decision

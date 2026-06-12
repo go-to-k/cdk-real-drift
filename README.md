@@ -58,12 +58,12 @@ terminal, it asks what to do right there:
 ```console
 ApiStack: drift found — what do you want to do?
   ❯ Nothing (keep exit code 1)
-    Accept — bless current state into the baseline (a git file; nothing written to AWS)
+    Accept — record current state into the baseline (a git file; nothing written to AWS)
     Revert — write the desired value back to AWS
 ```
 
 - **Accept** records the value in a git-committed baseline, so `check` stays
-  CLEAN until it changes again (a multiselect lets you bless some and keep
+  CLEAN until it changes again (a multiselect lets you accept some and keep
   reporting others).
 - **Revert** shows a plan, confirms, then writes the desired value back to AWS:
 
@@ -91,15 +91,15 @@ Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
 
 After `check` finds drift, the human decision is binary, and the verbs mirror it:
 
-| verb           | meaning                                                 | writes               |
-| -------------- | ------------------------------------------------------- | -------------------- |
-| `cdkrd check`  | find drift                                              | nothing              |
-| `cdkrd accept` | "this state is RIGHT" — bless it into the baseline file | a git file only      |
-| `cdkrd revert` | "this state is WRONG" — write the desired value back    | AWS (plan + confirm) |
+| verb           | meaning                                                | writes               |
+| -------------- | ------------------------------------------------------ | -------------------- |
+| `cdkrd check`  | find drift                                             | nothing              |
+| `cdkrd accept` | "this state is RIGHT" — record it in the baseline file | a git file only      |
+| `cdkrd revert` | "this state is WRONG" — write the desired value back   | AWS (plan + confirm) |
 
 - **Declared** properties are compared against the **deployed template** — no
   baseline involved, drift is detected from the first run.
-- **Undeclared** properties are compared against a **baseline** you bless with
+- **Undeclared** properties are compared against a **baseline** you record with
   `accept`: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed
   to git. A PR that changes it is a visible, reviewable change to "what real
   state we accept". Account id and region are part of the filename, so the same
@@ -168,9 +168,9 @@ into CI:
 | `--verbose` / `-v`               | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists   |
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
 | `--dry-run`                      | (revert) print the plan; make no changes                                                                                      |
-| `--remove-unblessed`             | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
-| `--yes` / `-y`                   | skip confirmations (revert apply; accept blesses all without the multiselect)                                                 |
-| `--no-interactive`               | never prompt: optional prompts are skipped, required-decision prompts error (exit 2). `accept` then needs `--yes` to bless    |
+| `--remove-unaccepted`            | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
+| `--yes` / `-y`                   | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
+| `--no-interactive`               | never prompt: optional prompts are skipped, required-decision prompts error (exit 2). `accept` then needs `--yes` to write    |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
@@ -183,10 +183,10 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   `--show-all`, and `--pre-deploy`. Aborting the Revert confirmation keeps the
   exit code at 1 — nothing was written, the drift still stands.
 - **`accept`** shows a multiselect of only the **delta** from the existing
-  baseline (new + changed undeclared values, all pre-selected); already-blessed
+  baseline (new + changed undeclared values, all pre-selected); already-accepted
   unchanged values are auto-kept and surfaced with a
-  `keeping N already-blessed unchanged value(s)` note. Deselect a suspicious one
-  and it stays reported by `check` — bless the intentional changes without
+  `keeping N already-accepted unchanged value(s)` note. Deselect a suspicious one
+  and it stays reported by `check` — accept the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
 - **`check` with no baseline yet** asks what to do with the N undeclared values
   it found: **show them first** (the default — the report prints, and a
@@ -202,7 +202,7 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
 
 Some properties are _legitimately_ rewritten by another system — Application
 Auto Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity.
-A blessed snapshot would re-flag every move. List those paths in a git-committed
+An accepted snapshot would re-flag every move. List those paths in a git-committed
 `.cdkrd/config.json` instead (strict JSON — no comments or trailing commas):
 
 ```json
@@ -291,9 +291,9 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   reported as informational, never guessed. You trade a little coverage for zero
   false drift.
 - **Revert cannot do everything.** Not revertable, and reported as such:
-  - **undeclared drift on a stack with NO baseline** — there is no blessed value
+  - **undeclared drift on a stack with NO baseline** — there is no baseline value
     to write back, so `revert` refuses (run `accept` first, or opt into removal
-    with `--remove-unblessed`);
+    with `--remove-unaccepted`);
   - a `deleted` resource (recreate it with `cdk deploy`);
   - **create-only** properties (changing them requires resource replacement);
   - toggle-style properties with no "absent" state (e.g. S3 transfer acceleration
@@ -344,7 +344,7 @@ changes) with a meaningful value survives the subtraction and is reported.
 **Why doesn't `--show-all` list a feature that is explicitly OFF?**
 Undeclared values that are `false`/empty are suppressed — AWS returns an
 "off/empty" value for nearly every unset option, and keeping them would flood
-the output. The case that matters is still caught: a blessed value that later
+the output. The case that matters is still caught: an accepted value that later
 flips to `false`/empty out of band is reported via baseline removal-detection.
 
 **A property keeps drifting because an autoscaler manages it — do I have to

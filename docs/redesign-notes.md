@@ -12,7 +12,7 @@ decision is binary, and the verbs mirror it:
 | verb           | meaning                                                            | writes          |
 | -------------- | ------------------------------------------------------------------ | --------------- |
 | `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing         |
-| `cdkrd accept` | "current state is RIGHT" — bless it into the baseline file         | git file only   |
+| `cdkrd accept` | "current state is RIGHT" — record it in the baseline file          | git file only   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
 
 - declared drift reverts to the **deployed template** value.
@@ -39,7 +39,7 @@ Safety:
 ## Decision 3 — first-run UX
 
 `check` with no baseline on a TTY interactively offers: "No baseline found —
-bless the current state now? [Y/n]" (CI / non-TTY keeps the note-only behavior).
+accept the current state now? [Y/n]" (CI / non-TTY keeps the note-only behavior).
 Interactive prompts use `@clack/prompts` (same stack as cdk-local).
 
 ## Decision 4 — flag cleanup
@@ -90,5 +90,5 @@ core thesis is unchanged.
   for nearly every unset option). One could argue inventory (`--show-all`) should
   show those so a user can see "feature X is explicitly off". Rejected: inventory
   would re-flood with exactly the `false`/empty noise the subtractive model exists
-  to remove, drowning the real signal. The blessed-then-changed-to-empty case is
+  to remove, drowning the real signal. The accepted-then-changed-to-empty case is
   still caught by baseline removal-detection, which is the case that matters.

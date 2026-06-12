@@ -27,7 +27,7 @@ pre-publication decisions).
 
 ```bash
 node dist/cli.js check  [<stack>...] [--all]   # detect drift (read-only)
-node dist/cli.js accept [<stack>...] [--all]   # bless current state into the baseline file
+node dist/cli.js accept [<stack>...] [--all]   # record current state into the baseline file
 node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to AWS (confirms)
 ```
 

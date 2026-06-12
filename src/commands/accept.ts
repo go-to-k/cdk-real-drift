@@ -1,6 +1,6 @@
 // `cdkrd accept [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
-// git-committed baselines; no AWS writes. The per-stack bless flow lives in
+// git-committed baselines; no AWS writes. The per-stack accept flow lives in
 // stack-actions.ts (shared with check's interactive prompt, R28).
 import { isStackNotDeployed } from '../aws-errors.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
@@ -44,8 +44,8 @@ export async function runAccept(args: string[]): Promise<number> {
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       const { desired, findings } = await gatherFindings(stackName, region);
-      // ignore rules re-tag matching undeclared findings out of the bless set, so an
-      // externally-managed property is never blessed (and never re-detected).
+      // ignore rules re-tag matching undeclared findings out of the accept set, so an
+      // externally-managed property is never accepted (and never re-detected).
       const result = await acceptStack({
         stackName,
         region,
@@ -58,7 +58,7 @@ export async function runAccept(args: string[]): Promise<number> {
       if (result.refused) worst = Math.max(worst, 2);
     } catch (e) {
       if (isStackNotDeployed(e)) {
-        console.error(`note: ${stackName}: not deployed yet — nothing to bless`);
+        console.error(`note: ${stackName}: not deployed yet — nothing to accept`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);

@@ -47,7 +47,7 @@ const deleted = (): Finding => ({
   physicalId: 'b-phys',
 });
 
-const blessed = (entries: BaselineFile['accepted']): BaselineFile => ({
+const baselineWith = (entries: BaselineFile['accepted']): BaselineFile => ({
   schemaVersion: 1,
   stackName: 's',
   region: 'r',
@@ -58,7 +58,7 @@ const blessed = (entries: BaselineFile['accepted']): BaselineFile => ({
 });
 
 describe('availableActions (R28 interactive choice logic)', () => {
-  it('declared-only → Accept hidden (cannot bless declared), Revert shown', () => {
+  it('declared-only → Accept hidden (cannot accept declared), Revert shown', () => {
     expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
       accept: false,
       revert: true,
@@ -72,14 +72,14 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
-  it('undeclared-only with --remove-unblessed → Revert becomes available', () => {
+  it('undeclared-only with --remove-unaccepted → Revert becomes available', () => {
     expect(availableActions([undeclared()], undefined, NO_SCHEMAS, true)).toEqual({
       accept: true,
       revert: true,
     });
   });
 
-  it('deleted-only → neither (deleted is not revertable, nothing to bless)', () => {
+  it('deleted-only → neither (deleted is not revertable, nothing to accept)', () => {
     expect(availableActions([deleted()], undefined, NO_SCHEMAS, false)).toEqual({
       accept: false,
       revert: false,
@@ -87,7 +87,7 @@ describe('availableActions (R28 interactive choice logic)', () => {
   });
 
   it('mixed declared + undeclared (with baseline making undeclared revertable) → both', () => {
-    const b = blessed([
+    const b = baselineWith([
       {
         logicalId: 'B',
         resourceType: 'AWS::S3::Bucket',
@@ -95,7 +95,7 @@ describe('availableActions (R28 interactive choice logic)', () => {
         value: { AccelerationStatus: 'Suspended' },
       },
     ]);
-    // undeclared is blessed-then-changed → revertable to the blessed value; declared → revertable
+    // undeclared is accepted-then-changed → revertable to the baseline value; declared → revertable
     expect(availableActions([declared(), undeclared()], b, NO_SCHEMAS, false)).toEqual({
       accept: true,
       revert: true,
@@ -169,7 +169,7 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
   // findings-only params: every path under test returns BEFORE any AWS client is
   // used — either nothing is revertable, or --dry-run returns at the preview branch.
-  type Overrides = { removeUnblessed?: boolean; dryRun?: boolean };
+  type Overrides = { removeUnaccepted?: boolean; dryRun?: boolean };
   const params = (findings: Finding[], over: Overrides = {}) => ({
     stackName: 's',
     region: 'r',
@@ -182,7 +182,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     config: { ignore: [] },
     dryRun: over.dryRun ?? false,
     yes: true,
-    removeUnblessed: over.removeUnblessed ?? false,
+    removeUnaccepted: over.removeUnaccepted ?? false,
     verbose: false,
     interactive: true, // these paths return before any confirm (yes:true); value is irrelevant
   });
@@ -220,7 +220,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
   });
 
-  it('un-blessed undeclared drift -> no-baseline guidance + exit 1', async () => {
+  it('unaccepted undeclared drift -> no-baseline guidance + exit 1', async () => {
     const { outcome, logs } = await captured([undeclared()]);
     expect(outcome).toEqual({ exit: 1, aborted: false });
     const out = logs.join('\n');
@@ -229,11 +229,11 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
   });
 
-  it('--remove-unblessed: no-baseline note is suppressed; the plan removes the undeclared drift', async () => {
+  it('--remove-unaccepted: no-baseline note is suppressed; the plan removes the undeclared drift', async () => {
     // dry-run returns at the preview branch (no AWS write). The note would contradict
     // a plan that DOES remove the drift, so it must not appear (R35 review).
     const { outcome, logs } = await captured([undeclared()], {
-      removeUnblessed: true,
+      removeUnaccepted: true,
       dryRun: true,
     });
     expect(outcome).toEqual({ exit: 0, aborted: false });
@@ -294,7 +294,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     config: { ignore: [] },
     dryRun: false,
     yes: true,
-    removeUnblessed: false,
+    removeUnaccepted: false,
     verbose: false,
     interactive: false, // yes:true — no confirm prompt is reached
     convergeRetryDelayMs: 0, // do not sleep for real in tests
@@ -396,11 +396,11 @@ describe('acceptStack non-interactive refusal (R38)', () => {
     }
     expect(existsSync(path)).toBe(false); // no baseline written
     expect(errs.join('\n')).toContain(
-      'error: accept needs a decision — pass --yes to bless ALL undeclared values, or run interactively'
+      'error: accept needs a decision — pass --yes to accept ALL undeclared values, or run interactively'
     );
   });
 
-  it('yes:true → blesses ALL undeclared values with no prompt (regression)', async () => {
+  it('yes:true → accepts ALL undeclared values with no prompt (regression)', async () => {
     const desired = {
       stackName: 'R38YesStack',
       region: 'r38-yes-region',
@@ -419,12 +419,12 @@ describe('acceptStack non-interactive refusal (R38)', () => {
         desired,
         findings: [undeclared()],
         yes: true,
-        interactive: false, // ignored when yes:true — --yes blesses all regardless
+        interactive: false, // ignored when yes:true — --yes accepts all regardless
       });
       expect(result).toEqual({ wrote: true, refused: false });
       expect(existsSync(path)).toBe(true);
       const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
-      // the full undeclared set is blessed (no selective multiselect under --yes)
+      // the full undeclared set is accepted (no selective multiselect under --yes)
       expect(written.accepted).toEqual([
         {
           logicalId: 'B',

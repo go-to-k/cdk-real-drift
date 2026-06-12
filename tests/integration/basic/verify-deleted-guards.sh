@@ -4,7 +4,7 @@
 # `basic` / `revert` verify.sh do not:
 #   R2  revert guard: on a stack with NO baseline, undeclared drift is reported
 #       as NOT revertable (refuses a destructive bulk removal) unless
-#       --remove-unblessed is passed; declared drift IS revertable regardless.
+#       --remove-unaccepted is passed; declared drift IS revertable regardless.
 #   R1  deleted tier: a resource deleted out of band is reported in the `deleted`
 #       tier (exit 1 regardless of --fail-on) and is NOT revertable (recreate via
 #       cdk deploy).
@@ -48,7 +48,7 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "inject accel"
 sleep 5
 
-echo "=== R2: revert --dry-run refuses the unblessed undeclared value ==="
+echo "=== R2: revert --dry-run refuses the unaccepted undeclared value ==="
 $CLI revert "$STACK" --region "$REGION" --dry-run | tee /tmp/cdkrd-guard-noremove.out
 grep -q "NOT revertable" /tmp/cdkrd-guard-noremove.out || fail "R2: expected a NOT revertable section"
 grep -q "AccelerateConfiguration.*no baseline" /tmp/cdkrd-guard-noremove.out \
@@ -57,10 +57,10 @@ grep -q "AccelerateConfiguration.*no baseline" /tmp/cdkrd-guard-noremove.out \
 grep -q "VersioningConfiguration" /tmp/cdkrd-guard-noremove.out \
   || fail "R2: declared versioning drift should be in the plan"
 
-echo "=== R2: --remove-unblessed opts in to removing the undeclared value ==="
-$CLI revert "$STACK" --region "$REGION" --dry-run --remove-unblessed | tee /tmp/cdkrd-guard-remove.out
+echo "=== R2: --remove-unaccepted opts in to removing the undeclared value ==="
+$CLI revert "$STACK" --region "$REGION" --dry-run --remove-unaccepted | tee /tmp/cdkrd-guard-remove.out
 grep -qE "would apply [1-9][0-9]* op" /tmp/cdkrd-guard-remove.out \
-  || fail "R2: --remove-unblessed should plan op(s) including the undeclared removal"
+  || fail "R2: --remove-unaccepted should plan op(s) including the undeclared removal"
 
 # -------- R1: deleted tier --------
 echo "=== R1: delete the bucket out of band ==="

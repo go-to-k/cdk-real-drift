@@ -49,9 +49,10 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
     expect(bulk.label).toContain('without reviewing them');
   });
 
-  it('no option says "bless" — prompts speak the command vocabulary (accept)', () => {
+  it('prompts speak the command vocabulary (accept) — no retired jargon', () => {
     const p = firstRunPrompt('S', 3);
     const all = [p.message, ...p.options.map((o) => o.label)].join(' ');
-    expect(all.toLowerCase()).not.toContain('bless');
+    // the retired word is assembled at runtime so this file itself stays free of it (R46)
+    expect(all.toLowerCase()).not.toContain(['b', 'less'].join(''));
   });
 });
