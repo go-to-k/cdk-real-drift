@@ -208,4 +208,14 @@ describe('loadConfig', () => {
     await write('["*.DesiredCount"]');
     await expect(loadConfig()).rejects.toThrow(/must be a JSON object/);
   });
+
+  it('unknown key → throws (a typo like "ignroe" must not silently disable rules)', async () => {
+    await write('{ "ignroe": ["*.DesiredCount"] }');
+    await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "ignroe" — known keys: "ignore"/);
+  });
+
+  it('unknown key alongside a valid one → still throws, listing only the unknown', async () => {
+    await write('{ "ignore": [], "concurency": 4 }');
+    await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "concurency"/);
+  });
 });

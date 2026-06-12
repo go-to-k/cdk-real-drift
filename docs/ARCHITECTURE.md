@@ -566,8 +566,10 @@ targets by, offered as an additional match target (it comes from optional
 `aws:cdk:path` Metadata, so it can't be the only key). A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
 Ignored findings drop out of the revert plan and the accept-set automatically
-(neither acts on the `ignored` tier). A malformed `config.json` fails the run
-(exit 2) rather than silently dropping the rules. Applied even under `--show-all`
+(neither acts on the `ignored` tier). A malformed `config.json` — invalid JSON,
+a wrong-typed `ignore`, or an unknown top-level key (R62: a typo like `"ignroe"`
+would otherwise load as an empty config and silently disable every rule) — fails
+the run (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
 (inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
 the ignored entries. A CLI to manage rules (`cdkrd ignore <pattern>`) is a future
 open question (§13) — v1 is hand-edited. **Default text layout (R25, spacing

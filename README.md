@@ -268,7 +268,8 @@ baseline.
 Some properties are _legitimately_ rewritten by another system — Application
 Auto Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity.
 An accepted snapshot would re-flag every move. List those paths in a git-committed
-`.cdkrd/config.json` instead (strict JSON — no comments or trailing commas):
+`.cdkrd/config.json` instead (strict JSON — no comments or trailing commas, and
+unknown keys are rejected so a typo can't silently disable your rules):
 
 ```json
 {
