@@ -193,6 +193,22 @@ describe('noise suppressors', () => {
       Tags: { Team: 'a' },
     });
   });
+
+  it('stripAwsTagsDeep NEVER touches aws:* keys outside a Tags map — IAM condition keys survive (R69)', () => {
+    // the CDK enforceSSL pattern: Condition.Bool["aws:SecureTransport"] is a
+    // policy CONDITION KEY, not a tag — the old strip-anywhere rule deleted it
+    // from the live side and produced desired-vs-undefined false drift.
+    const stmt = {
+      Effect: 'Deny',
+      Condition: { Bool: { 'aws:SecureTransport': 'false' } },
+      StringEquals: { 'aws:PrincipalOrgID': 'o-corpus123' },
+    };
+    expect(stripAwsTagsDeep(stmt)).toEqual(stmt);
+    // a map under Tags nested deeper still strips
+    expect(stripAwsTagsDeep({ Nested: { Tags: { 'aws:cf': '1', Team: 'a' } } })).toEqual({
+      Nested: { Tags: { Team: 'a' } },
+    });
+  });
 });
 
 describe('cc-api strip', () => {

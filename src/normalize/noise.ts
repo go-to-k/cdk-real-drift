@@ -37,9 +37,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
 // set (which never contains aws:* tags) compares equal to the live set (which
-// AWS augments with aws:cloudformation:* etc.). Handles {Key,Value}[] lists and
-// key->value maps; recurses so nested tag bags are covered too.
+// AWS augments with aws:cloudformation:* etc.). Handles {Key,Value}[] lists at
+// any depth (shape-specific enough to be safe) and key->value maps ONLY under a
+// key named `Tags` (R69): the old strip-any-`aws:`-map-key-anywhere rule also
+// deleted IAM condition keys (`Condition.Bool["aws:SecureTransport"]`,
+// aws:SourceArn, aws:PrincipalOrgID, ...) from live policy documents, turning
+// every CDK enforceSSL-style statement into a desired-vs-undefined false drift
+// (found by the first live policies integ run).
 export function stripAwsTagsDeep(v: unknown): unknown {
+  return stripTagsWalk(v, false);
+}
+
+function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
   if (Array.isArray(v)) {
     return v
       .filter(
@@ -51,13 +60,13 @@ export function stripAwsTagsDeep(v: unknown): unknown {
             (t as { Key: string }).Key.startsWith('aws:')
           )
       )
-      .map(stripAwsTagsDeep);
+      .map((t) => stripTagsWalk(t, false));
   }
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-      if (k.startsWith('aws:')) continue;
-      out[k] = stripAwsTagsDeep(val);
+      if (underTagsKey && k.startsWith('aws:')) continue;
+      out[k] = stripTagsWalk(val, k === 'Tags');
     }
     return out;
   }

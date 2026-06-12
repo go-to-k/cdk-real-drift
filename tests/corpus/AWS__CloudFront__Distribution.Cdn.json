@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "HTTP-method enum sets are UNORDERED: AllowedMethods/CachedMethods returned in a different order than declared (deep inside DistributionConfig) are not drift; trivially-false live extras (Staging) stay quiet.",
+  "resource": {
+    "logicalId": "Cdn",
+    "resourceType": "AWS::CloudFront::Distribution",
+    "physicalId": "E1A2B3C4D5E6F7",
+    "declared": {
+      "DistributionConfig": {
+        "Enabled": true,
+        "DefaultCacheBehavior": {
+          "TargetOriginId": "corpus-origin",
+          "ViewerProtocolPolicy": "redirect-to-https",
+          "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+          "CachedMethods": ["GET", "HEAD"]
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "Id": "E1A2B3C4D5E6F7",
+    "DistributionConfig": {
+      "Enabled": true,
+      "DefaultCacheBehavior": {
+        "TargetOriginId": "corpus-origin",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "AllowedMethods": ["OPTIONS", "HEAD", "GET"],
+        "CachedMethods": ["HEAD", "GET"]
+      }
+    },
+    "Staging": false
+  },
+  "schema": {
+    "readOnly": ["Id", "DomainName"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "DomainName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}

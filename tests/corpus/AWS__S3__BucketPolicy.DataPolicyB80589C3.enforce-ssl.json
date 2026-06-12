@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (first policies integ run) \u2014 the R69 regression case: a real CDK enforceSSL-style bucket policy whose Condition.Bool[\"aws:SecureTransport\"] the old strip-any-aws:-map-key rule DELETED from the live side (desired-vs-undefined false drift). With the strip scoped to Tags maps, this classifies CLEAN.",
+  "resource": {
+    "logicalId": "DataPolicyB80589C3",
+    "resourceType": "AWS::S3::BucketPolicy",
+    "physicalId": "cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+    "constructPath": "CdkdriftIntegPolicies/Data/Policy",
+    "declared": {
+      "Bucket": "cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": "s3:*",
+            "Condition": {
+              "Bool": {
+                "aws:SecureTransport": "false"
+              }
+            },
+            "Effect": "Deny",
+            "Principal": {
+              "AWS": "*"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+              "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i/*"
+            ],
+            "Sid": "DenyInsecureTransport"
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "DenyInsecureTransport",
+          "Effect": "Deny",
+          "Principal": {
+            "AWS": "*"
+          },
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+            "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

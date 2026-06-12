@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "description": "Principal identity: IAM treats a bare account id and its :root ARN as the same principal — declared root ARN vs live account id (and a multi-principal array in a different order) is not drift.",
+  "resource": {
+    "logicalId": "WorkQueuePolicy",
+    "resourceType": "AWS::SQS::QueuePolicy",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue",
+    "declared": {
+      "Queues": ["https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue"],
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "AWS": "arn:aws:iam::111111111111:root" },
+            "Action": ["sqs:SendMessage"],
+            "Resource": ["arn:aws:sqs:us-east-1:111111111111:corpus-work-queue"]
+          },
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": [
+                "arn:aws:iam::111111111111:role/corpus-producer",
+                "arn:aws:iam::111111111111:role/corpus-consumer"
+              ]
+            },
+            "Action": ["sqs:ReceiveMessage"],
+            "Resource": ["arn:aws:sqs:us-east-1:111111111111:corpus-work-queue"]
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "Queues": ["https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue"],
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": [
+              "arn:aws:iam::111111111111:role/corpus-consumer",
+              "arn:aws:iam::111111111111:role/corpus-producer"
+            ]
+          },
+          "Action": ["sqs:ReceiveMessage"],
+          "Resource": ["arn:aws:sqs:us-east-1:111111111111:corpus-work-queue"]
+        },
+        {
+          "Effect": "Allow",
+          "Principal": { "AWS": "111111111111" },
+          "Action": ["sqs:SendMessage"],
+          "Resource": ["arn:aws:sqs:us-east-1:111111111111:corpus-work-queue"]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}
