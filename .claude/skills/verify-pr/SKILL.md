@@ -5,18 +5,11 @@ description: Comprehensive pre-release verification. Run quality checks, docs co
 
 # Pre-Release Verification
 
-Heavy verification gate. cdk-real-drift (cdkrd) is a solo, local-only repo with
-**no GitHub remote and no pull-request workflow** — so this is not a PR gate, it
-is a **pre-release** readiness check. Run it before cutting a release (the name
-`verify-pr` and the `verify-pr` marker are kept to match the markgate gate
-layout shared with the sibling repos). Per-commit verification is handled by
-`/check`; this skill is a superset of `/check` + `/check-docs` plus a live-test
-and a retrospective.
-
-There is no CI-status step, no `gh` step, no remote-branch step, and no real-AWS
-deploy/destroy/local/schema integ step here — cdkrd's `integ` gate is a separate,
-read-only real-AWS verification that is not wired into this flow (see
-`.markgate.yml`).
+Heavy verification gate — a **pre-release** readiness check, not a per-PR gate
+(per-PR verification is `/check` + `/check-docs` + CI on the pull request). Run
+it before cutting a release. This skill is a superset of `/check` +
+`/check-docs` plus the real-AWS integration fixtures, a live-test, and a
+retrospective.
 
 ## Checklist
 
@@ -80,7 +73,17 @@ Run each check and report pass/fail:
      credentials and no offline fixture), say so explicitly rather than skip
      silently, and DO NOT set the `verify-pr` marker — let the human decide.
 
-7. **Retrospective + rules update**
+7. **Integration fixtures (real AWS) — required before a release (R50)**
+   - Run EVERY fixture under `tests/integration/` (see its README "When to
+     run"): `basic/verify.sh`, `basic/verify-deleted-guards.sh`,
+     `basic/verify-vs-cdk-drift.sh`, `iam`, `lambda`, `revert`, `policies`.
+     Scripts sharing a fixture (`basic`'s three) run sequentially.
+   - Each must print `INTEG PASS`. These mutate a real AWS account (and clean
+     up after themselves) — they need credentials and a bootstrapped account.
+   - If credentials are absent, say so explicitly and DO NOT set the
+     `verify-pr` marker — let the human run them or decide.
+
+8. **Retrospective + rules update**
    - Walk back over the session that produced this change. For each surprise,
      friction, or correction, ask: "one-off, or a recurring pattern?"
    - For each pattern, propose where it should be reflected so it doesn't recur:
@@ -107,6 +110,7 @@ Present results as a table:
 | docs consistency               | pass/fail                 |
 | code review                    | pass/issues found         |
 | live-test changed behavior     | pass/skipped/issues found |
+| integration fixtures (7)       | pass/skipped/issues found |
 | retrospective + rule proposals | done/skipped              |
 
 If all pass, confirm "Ready to release."
