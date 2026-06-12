@@ -21,6 +21,21 @@ describe('noise suppressors', () => {
     expect(isTrivialEmpty(true)).toBe(false);
   });
 
+  it('isTrivialEmpty: recurses into objects — a feature-off struct is empty (R46)', () => {
+    // the empty VpcConfig Lambda materializes after a Cloud Control update
+    expect(
+      isTrivialEmpty({ Ipv6AllowedForDualStack: false, SecurityGroupIds: [], SubnetIds: [] })
+    ).toBe(true);
+    expect(isTrivialEmpty({ a: { b: [], c: false }, d: '' })).toBe(true); // nested
+    // any real content keeps the struct reported
+    expect(isTrivialEmpty({ Status: 'Suspended' })).toBe(false);
+    expect(isTrivialEmpty({ a: false, b: 'x' })).toBe(false);
+    expect(isTrivialEmpty({ SubnetIds: ['subnet-0aaa111'] })).toBe(false);
+    // arrays do NOT recurse — only length 0 is empty ([false] may be a meaningful list)
+    expect(isTrivialEmpty([false])).toBe(false);
+    expect(isTrivialEmpty({ L: [false] })).toBe(false);
+  });
+
   it('canonicalizeTagListsDeep: sorts {Key,Value}[] by Key so reordering is not drift', () => {
     const a = canonicalizeTagListsDeep({
       Tags: [
@@ -145,6 +160,12 @@ describe('noise suppressors', () => {
 
   it('IAM Role known defaults present', () => {
     expect(KNOWN_DEFAULTS['AWS::IAM::Role'].MaxSessionDuration).toBe(3600);
+  });
+
+  it('S3 suspended versioning is a known default — the off state a revert lands on (R46)', () => {
+    expect(KNOWN_DEFAULTS['AWS::S3::Bucket'].VersioningConfiguration).toEqual({
+      Status: 'Suspended',
+    });
   });
 
   it('stripAwsTagsDeep removes aws:* tags (list + map), keeps the rest', () => {

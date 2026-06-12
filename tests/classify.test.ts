@@ -201,3 +201,62 @@ describe('classifyResource regressions (dogfood false-positive classes)', () => 
     );
   });
 });
+
+describe('classifyResource post-revert phantom drift (R46)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: 'p',
+    declared,
+  });
+  const undeclaredPaths = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource(res(resourceType, declared), live, bare)
+      .filter((f) => f.tier === 'undeclared')
+      .map((f) => f.path);
+
+  it('the empty VpcConfig struct a CC update materializes on a Lambda is not drift', () => {
+    const emptyVpc = { Ipv6AllowedForDualStack: false, SecurityGroupIds: [], SubnetIds: [] };
+    expect(undeclaredPaths('AWS::Lambda::Function', {}, { VpcConfig: emptyVpc })).toEqual([]);
+    // a REAL out-of-band VPC attachment is still reported
+    expect(
+      undeclaredPaths(
+        'AWS::Lambda::Function',
+        {},
+        { VpcConfig: { ...emptyVpc, SubnetIds: ['subnet-0aaa111bbb'] } }
+      )
+    ).toEqual(['VpcConfig']);
+  });
+
+  it('undeclared S3 versioning: Suspended (the post-revert off state) is not drift; Enabled is', () => {
+    expect(
+      undeclaredPaths('AWS::S3::Bucket', {}, { VersioningConfiguration: { Status: 'Suspended' } })
+    ).toEqual([]);
+    expect(
+      undeclaredPaths('AWS::S3::Bucket', {}, { VersioningConfiguration: { Status: 'Enabled' } })
+    ).toEqual(['VersioningConfiguration']);
+  });
+
+  it('DECLARED Enabled vs live Suspended stays declared drift (KNOWN_DEFAULTS never touches the declared loop)', () => {
+    const findings = classifyResource(
+      res('AWS::S3::Bucket', { VersioningConfiguration: { Status: 'Enabled' } }),
+      { VersioningConfiguration: { Status: 'Suspended' } },
+      bare
+    );
+    expect(findings.filter((f) => f.tier === 'declared').map((f) => f.path)).toEqual([
+      'VersioningConfiguration.Status',
+    ]);
+  });
+});
