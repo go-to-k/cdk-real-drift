@@ -104,9 +104,9 @@ describe('report', () => {
       expect(run([F('undeclared')]).text).toMatch(/result: 1 drift\(s\) \(undeclared=1\)/);
     });
 
-    it('fail-on=declared is noted only when set', () => {
-      expect(run([F('declared')]).text).not.toContain('fail-on');
-      expect(run([F('declared')], { failOn: 'declared' }).text).toContain('(fail-on=declared)');
+    it('fail=declared is noted only when set (R56 flag spelling)', () => {
+      expect(run([F('declared')]).text).not.toContain('fail=');
+      expect(run([F('declared')], { failOn: 'declared' }).text).toContain('(fail=declared)');
     });
 
     it('folds a single informational tier into a one-line info: footer', () => {

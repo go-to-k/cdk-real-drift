@@ -30,11 +30,11 @@ OPTIONS
                               auto-discovery + construct-path output
   -c, --context key=value     context for synth (repeatable; cdk.json is the base)
   --json                      machine-readable output
-  --fail                      (check) exit 1 on drift + never prompt — for scripts/CI
-                              (same convention as \`cdk diff --fail\`); without it,
-                              check REPORTS drift but exits 0
-  --fail-on declared|undeclared   which tier fails (default: undeclared = both);
-                              implies --fail
+  --fail[=declared|undeclared]  (check) exit 1 on drift + never prompt — for
+                              scripts/CI (same convention as \`cdk diff --fail\`);
+                              without it, check REPORTS drift but exits 0. The
+                              =tier form selects which tiers fail (default:
+                              undeclared = all drift; deleted always fails)
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since accept)
   --verbose                   (check) expand informational tiers / (revert) the
