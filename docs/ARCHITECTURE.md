@@ -21,7 +21,11 @@ CloudFormation drift detection, `driftctl`, and `terraform plan` all compare onl
 properties that appear in the template, so a change to a setting you never declared
 (a bucket's `OwnershipControls`, a role's `PermissionsBoundary`, encryption toggled
 off, an extra inline policy, transfer acceleration enabled out-of-band) is invisible
-to them. `cdkrd` reads the **full** live resource model and reports the divergence.
+to them. (`terraform plan` comes closest — its refresh notice surfaces some
+undeclared-attribute changes — but the notice carries no exit-code signal, the next
+`apply` silently absorbs the change into state, and undeclared sub-resources are
+never read at all; see [why-a-baseline-file.md §8](why-a-baseline-file.md#8-prior-art-what-terraform-plan-actually-does-here).)
+`cdkrd` reads the **full** live resource model and reports the divergence.
 
 - **Reality vs intent**, not code vs template. It deliberately does NOT reimplement
   `cdk diff` (which is code-vs-deployed-template). It is a drift tool.
@@ -37,7 +41,8 @@ to them. `cdkrd` reads the **full** live resource model and reports the divergen
 **The problem.** Infrastructure drifts. Someone clicks the console, a script runs, an
 incident gets a hot-fix — and the real resource no longer matches the IaC. Every
 existing drift tool (`cdk drift`, CloudFormation drift detection, `driftctl`,
-`terraform plan`) answers only "do the properties I _declared_ still match?" But the
+`terraform plan` — §1 notes terraform's partial exception) answers only "do the
+properties I _declared_ still match?" But the
 most dangerous drift is often in properties you never declared at all — security
 posture (public-access blocks, encryption, ownership controls, permission
 boundaries, extra inline policies) lives in defaults you never wrote down, so when it
@@ -79,8 +84,10 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
 5. **Git-committed baseline as the undeclared contract.** Undeclared "drift" is only
-   drift relative to a human-accepted snapshot. _Is a committed file the right control
-   surface, or does it become a rubber-stamp that hides real change?_
+   drift relative to a human-accepted snapshot — the full rationale (why the state
+   must exist, and why neither schema defaults nor `config.json` can replace it)
+   is [why-a-baseline-file.md](why-a-baseline-file.md). _Is a committed file the
+   right control surface, or does it become a rubber-stamp that hides real change?_
 6. **Revert via the same generic CC write path** (UpdateResource) + thin SDK writers,
    not a per-type provider fleet. _Is generic revert safe/complete enough, or are the
    not-revertable gaps (toggle props, add/remove-statement types) too sharp an edge?_
@@ -416,6 +423,10 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   acceleration is only Enabled/Suspended) can't be reverted by removal.
 
 ## 8. Baseline model
+
+This section is the mechanics. The design rationale — why the baseline must be
+state at all, and why neither schema defaults nor `.cdkrd/config.json` can
+replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 
 `accept` snapshots the current undeclared state into a **git-committed** file
 `.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
