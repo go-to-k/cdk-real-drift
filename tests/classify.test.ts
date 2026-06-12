@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
+import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
 function tiers(findings: Finding[]) {
@@ -324,5 +325,59 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
     const live = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }, sibling] };
     const findings = classifyResource(role(['RoleDefaultPolicyABC'], declared), live, noSchema);
     expect(findings).toEqual([]);
+  });
+});
+
+describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const bare = (resourceType: string): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared: {},
+  });
+
+  it('EVERY entry suppresses its exact default value through the full pipeline', () => {
+    // generic: each (type, key, default) must classify to zero findings — this
+    // also catches a canonicalization step mangling the listed default shape.
+    for (const [resourceType, defs] of Object.entries(KNOWN_DEFAULTS)) {
+      for (const [key, value] of Object.entries(defs)) {
+        const findings = classifyResource(
+          bare(resourceType),
+          { [key]: structuredClone(value) },
+          emptySchema
+        );
+        expect(findings, `${resourceType}.${key}`).toEqual([]);
+      }
+    }
+  });
+
+  it('a NON-default value for a listed key still surfaces (equality-gated)', () => {
+    expect(
+      tiers(
+        classifyResource(
+          bare('AWS::Lambda::Function'),
+          { TracingConfig: { Mode: 'Active' } },
+          emptySchema
+        )
+      ).undeclared
+    ).toEqual(['TracingConfig']);
+    expect(
+      tiers(
+        classifyResource(
+          bare('AWS::Chatbot::SlackChannelConfiguration'),
+          { GuardrailPolicies: ['arn:aws:iam::aws:policy/ReadOnlyAccess'] },
+          emptySchema
+        )
+      ).undeclared
+    ).toEqual(['GuardrailPolicies']);
   });
 });

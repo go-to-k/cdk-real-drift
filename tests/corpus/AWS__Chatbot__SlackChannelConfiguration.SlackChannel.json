@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "description": "Chatbot Slack channel (dogfood R66): the service-applied default GuardrailPolicies=[AdministratorAccess] is KNOWN_DEFAULTS-suppressed; declared values match live; nothing surfaces.",
+  "resource": {
+    "logicalId": "SlackChannel",
+    "resourceType": "AWS::Chatbot::SlackChannelConfiguration",
+    "physicalId": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/corpus-alerts",
+    "declared": {
+      "ConfigurationName": "corpus-alerts",
+      "IamRoleArn": "arn:aws:iam::111111111111:role/corpus-chatbot-role",
+      "SlackChannelId": "C0000000000",
+      "SlackWorkspaceId": "T0000000000",
+      "LoggingLevel": "ERROR",
+      "SnsTopicArns": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"]
+    }
+  },
+  "liveRaw": {
+    "ConfigurationName": "corpus-alerts",
+    "Arn": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/corpus-alerts",
+    "IamRoleArn": "arn:aws:iam::111111111111:role/corpus-chatbot-role",
+    "SlackChannelId": "C0000000000",
+    "SlackWorkspaceId": "T0000000000",
+    "LoggingLevel": "ERROR",
+    "SnsTopicArns": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"],
+    "GuardrailPolicies": ["arn:aws:iam::aws:policy/AdministratorAccess"]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ConfigurationName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ConfigurationName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}

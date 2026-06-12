@@ -2,12 +2,37 @@
 // Keep conservative — over-suppression hides real undeclared drift.
 
 // A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
+// Every entry is equality-gated: it only suppresses a live value EQUAL to the
+// listed default, so an out-of-band change to anything else still surfaces (and
+// a recorded baseline value that flips back to the default is still drift —
+// the entry only mutes the never-declared/never-decided first sighting). R66
+// entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
   // S3 versioning can never return to the never-enabled state — a revert "remove"
   // lands on Suspended, which IS the off state. Without this entry an undeclared
   // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
-  'AWS::S3::Bucket': { VersioningConfiguration: { Status: 'Suspended' } },
+  'AWS::S3::Bucket': {
+    VersioningConfiguration: { Status: 'Suspended' },
+    AbacStatus: 'Disabled', // R66
+  },
+  // R66 (dogfood-observed service defaults):
+  'AWS::Lambda::Function': {
+    TracingConfig: { Mode: 'PassThrough' },
+    EphemeralStorage: { Size: 512 },
+    PackageType: 'Zip',
+    RecursiveLoop: 'Terminate',
+    RuntimeManagementConfig: { UpdateRuntimeOn: 'Auto' },
+    Architectures: ['x86_64'],
+  },
+  'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
+  'AWS::Events::Rule': { EventBusName: 'default' },
+  'AWS::Athena::WorkGroup': { State: 'ENABLED' },
+  // Chatbot applies the AdministratorAccess guardrail when none is declared
+  // (verified live on a default-config SlackChannelConfiguration).
+  'AWS::Chatbot::SlackChannelConfiguration': {
+    GuardrailPolicies: ['arn:aws:iam::aws:policy/AdministratorAccess'],
+  },
 };
 
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
