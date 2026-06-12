@@ -155,6 +155,22 @@ fixture exists to convert one AWS round trip into permanent offline coverage.
 cd harvest && npm install && bash verify-harvest.sh
 ```
 
+## harvest2
+
+Wave 2 of the corpus harvest (R73): RICHLY-DECLARED configurations — S3
+lifecycle+CORS, DynamoDB GSI+TTL+stream, Lambda with non-default
+memory/timeout/arch/tracing/env, FIFO queues with redrive, SNS->SQS
+subscription with a filter policy, EventBridge input transformer, WAFv2
+WebACL with a managed rule group, ECS cluster (pulls in a full VPC: subnets,
+routes, NAT, IGW — all recorded), Kinesis with the aws-managed KMS alias
+(exercises the strict alias<->key-ARN match live). Asserts the same two
+invariants as `harvest`: fresh deploy = ZERO declared drift, then
+accept -> `check --fail` CLEAN.
+
+```bash
+cd harvest2 && npm install && bash verify-harvest2.sh
+```
+
 ## revert
 
 A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the

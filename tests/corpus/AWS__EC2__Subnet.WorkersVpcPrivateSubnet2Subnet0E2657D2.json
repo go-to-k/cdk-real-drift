@@ -1,0 +1,171 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::EC2::Subnet with deep declared config classifies as recorded (undeclared:AvailabilityZoneId, undeclared:PrivateDnsNameOptionsOnLaunch, unresolved:AvailabilityZone). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "resource": {
+    "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
+    "resourceType": "AWS::EC2::Subnet",
+    "physicalId": "subnet-0b456bc01025cb129",
+    "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet",
+    "declared": {
+      "AvailabilityZone": "__cdkrd_corpus_unresolved__",
+      "CidrBlock": "10.0.192.0/18",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "aws-cdk:subnet-name",
+          "Value": "Private"
+        },
+        {
+          "Key": "aws-cdk:subnet-type",
+          "Value": "Private"
+        },
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2"
+        }
+      ],
+      "VpcId": "vpc-0b4c09b4fa46530e9"
+    }
+  },
+  "liveRaw": {
+    "MapPublicIpOnLaunch": false,
+    "EnableDns64": false,
+    "AvailabilityZoneId": "use1-az2",
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.192.0/18",
+    "SubnetId": "subnet-0b456bc01025cb129",
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "AssignIpv6AddressOnCreation": false,
+    "VpcId": "vpc-0b4c09b4fa46530e9",
+    "NetworkAclAssociationId": "aclassoc-0464465b8ffc9a575",
+    "PrivateDnsNameOptionsOnLaunch": {
+      "EnableResourceNameDnsARecord": false,
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "Ipv6Native": false,
+    "Tags": [
+      {
+        "Value": "Private",
+        "Key": "aws-cdk:subnet-name"
+      },
+      {
+        "Value": "Private",
+        "Key": "aws-cdk:subnet-type"
+      },
+      {
+        "Value": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "BlockPublicAccessStates",
+      "Ipv6CidrBlocks",
+      "NetworkAclAssociationId",
+      "SubnetId"
+    ],
+    "writeOnly": [
+      "EnableLniAtDeviceIndex",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength"
+    ],
+    "createOnly": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6IpamPoolId",
+      "Ipv6Native",
+      "Ipv6NetmaskLength",
+      "OutpostArn",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "BlockPublicAccessStates",
+      "Ipv6CidrBlocks",
+      "NetworkAclAssociationId",
+      "SubnetId"
+    ],
+    "writeOnlyPaths": [
+      "EnableLniAtDeviceIndex",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6IpamPoolId",
+      "Ipv6Native",
+      "Ipv6NetmaskLength",
+      "OutpostArn",
+      "VpcId"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    }
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZone",
+      "physicalId": "subnet-0b456bc01025cb129",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az2",
+      "physicalId": "subnet-0b456bc01025cb129",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "PrivateDnsNameOptionsOnLaunch",
+      "actual": {
+        "EnableResourceNameDnsARecord": false,
+        "HostnameType": "ip-name",
+        "EnableResourceNameDnsAAAARecord": false
+      },
+      "physicalId": "subnet-0b456bc01025cb129",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
+    }
+  ]
+}
