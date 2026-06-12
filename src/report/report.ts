@@ -1,6 +1,6 @@
 // Tiered, CI-greppable report. Plain text or --json. No TUI/panes.
 // Exit: report() returns 0 clean / 1 drift; check maps 1→0 unless --fail (R53).
-// --fail-on selects which tiers count as failure.
+// --fail=<tier> selects which tiers count as failure.
 //
 // Default layout is deliberately terse (a 40-resource CLEAN stack was 30+ lines):
 //   header -> DRIFT tier sections (full detail) -> result: -> info: footer
@@ -72,7 +72,7 @@ function tierStyle(t: Tier): (s: string) => string {
   return style.infoTier;
 }
 
-// `deleted` is ALWAYS a failure (the most blatant drift), independent of --fail-on.
+// `deleted` is ALWAYS a failure (the most blatant drift), independent of --fail=<tier>.
 function failTiers(failOn: FailOn): Tier[] {
   return failOn === 'declared' ? ['deleted', 'declared'] : ['deleted', 'declared', 'undeclared'];
 }
@@ -145,13 +145,13 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
   // informational breakdown lives on the `info:` line, so the two never duplicate);
-  // CLEAN prints just `CLEAN`. `fail-on` is noted only when non-default (it changes
+  // CLEAN prints just `CLEAN`. `fail=declared` is noted only when non-default (it changes
   // the verdict). `^result:` stays greppable for the verdict; the formal
   // machine-readable contract is `--json` (the info: footer may span lines).
   const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
-  const failNote = (opts.failOn ?? 'undeclared') === 'declared' ? ' (fail-on=declared)' : '';
+  const failNote = (opts.failOn ?? 'undeclared') === 'declared' ? ' (fail=declared)' : '';
   // the verdict is the one line that must stand out: green CLEAN / red drift count
   const verdict =
     drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;

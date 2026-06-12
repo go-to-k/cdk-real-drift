@@ -14,8 +14,7 @@ describe('parseCommonArgs', () => {
       '--region',
       'us-east-1',
       'MyStack',
-      '--fail-on',
-      'declared',
+      '--fail=declared',
       '--app',
       'node app.js',
     ]);
@@ -24,7 +23,7 @@ describe('parseCommonArgs', () => {
     expect(a.app).toBe('node app.js');
   });
 
-  it('defaults: fail-on undeclared, flags false, region undefined when no flag/env', () => {
+  it('defaults: failOn undeclared, flags false, region undefined when no flag/env', () => {
     const saved = { r: process.env.AWS_REGION, d: process.env.AWS_DEFAULT_REGION };
     delete process.env.AWS_REGION;
     delete process.env.AWS_DEFAULT_REGION;
@@ -91,23 +90,37 @@ describe('parseCommonArgs', () => {
     expect(() => parseCommonArgs(['--context', '=v'])).toThrow(/expects key=value/);
   });
 
-  it('validates --fail-on, rejecting typos instead of falling back to undeclared (R41)', () => {
-    expect(parseCommonArgs(['S', '--fail-on', 'declared']).failOn).toBe('declared');
-    expect(parseCommonArgs(['S', '--fail-on', 'undeclared']).failOn).toBe('undeclared');
-    expect(() => parseCommonArgs(['S', '--fail-on', 'declarred'])).toThrow(
-      /--fail-on expects "declared" or "undeclared", got "declarred"/
-    );
-    expect(() => parseCommonArgs(['S', '--fail-on', 'deleted'])).toThrow(/--fail-on expects/);
-  });
-
   it('--fail parses as a boolean; default is report-only (fail=false) (R53)', () => {
     expect(parseCommonArgs(['S']).fail).toBe(false);
     expect(parseCommonArgs(['S', '--fail']).fail).toBe(true);
+    expect(parseCommonArgs(['S', '--fail']).failOn).toBe('undeclared'); // bare --fail = all drift
   });
 
-  it('--fail-on implies fail mode — selecting a failing tier only makes sense when failing (R53)', () => {
-    expect(parseCommonArgs(['S', '--fail-on', 'declared']).fail).toBe(true);
-    expect(parseCommonArgs(['S', '--fail-on', 'undeclared']).fail).toBe(true);
+  it('--fail=<tier> selects the failing tier and implies fail mode (R56)', () => {
+    expect(parseCommonArgs(['S', '--fail=declared']).failOn).toBe('declared');
+    expect(parseCommonArgs(['S', '--fail=declared']).fail).toBe(true);
+    expect(parseCommonArgs(['S', '--fail=undeclared']).failOn).toBe('undeclared');
+    expect(parseCommonArgs(['S', '--fail=undeclared']).fail).toBe(true);
+  });
+
+  it('--fail rejects a bad tier instead of falling back to undeclared (R41 spirit)', () => {
+    expect(() => parseCommonArgs(['S', '--fail=declarred'])).toThrow(
+      /--fail expects no value, =declared, or =undeclared, got "declarred"/
+    );
+    expect(() => parseCommonArgs(['S', '--fail=deleted'])).toThrow(/--fail expects/);
+    expect(() => parseCommonArgs(['S', '--fail='])).toThrow(/--fail expects/);
+  });
+
+  it('--fail never consumes the NEXT token (a tier needs the = form; tokens stay stack names)', () => {
+    const a = parseCommonArgs(['--fail', 'declared']);
+    expect(a.fail).toBe(true);
+    expect(a.failOn).toBe('undeclared'); // 'declared' was NOT taken as a tier...
+    expect(a.stackNames).toEqual(['declared']); // ...it is a (oddly named) stack arg
+  });
+
+  it('--fail-on is GONE — fails fast as an unknown option (R56)', () => {
+    expect(() => parseCommonArgs(['S', '--fail-on', 'declared'])).toThrow(/unknown option/);
+    expect(() => parseCommonArgs(['S', '--fail-on=declared'])).toThrow(/unknown option/);
   });
 
   it('accepts --flag=value form, equal to the space form (R41)', () => {
@@ -115,7 +128,6 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['-a=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
     expect(parseCommonArgs(['MyStack', '--region=eu-west-1']).region).toBe('eu-west-1');
     expect(parseCommonArgs(['MyStack', '--region=eu-west-1']).stackNames).toEqual(['MyStack']);
-    expect(parseCommonArgs(['--fail-on=declared']).failOn).toBe('declared');
   });
 
   it('splits --context=key=value on the first = only (R41)', () => {

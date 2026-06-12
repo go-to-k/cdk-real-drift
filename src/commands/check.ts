@@ -1,9 +1,9 @@
 // `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
-//             [--json] [--fail] [--fail-on declared|undeclared] [--show-all]`
+//             [--json] [--fail[=declared|undeclared]] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a stack with an accepted baseline reports CLEAN.
 // Exit (R53, the `cdk diff --fail` convention): report-only by default — drift
-// exits 0 (a hint names --fail); with --fail (or --fail-on, which implies it)
+// exits 0 (a hint names --fail); with --fail (optionally --fail=declared)
 // drift exits 1 and prompts are suppressed. Errors always exit 2. The exit is
 // the worst across all checked stacks.
 import { isCancel, select } from '@clack/prompts';
@@ -108,8 +108,7 @@ export function postAcceptNote(remainingUndeclared: number, remainingDeclared: n
 /**
  * Map a stack's drift code to check's final exit (R53, the `cdk diff --fail` /
  * `cdk drift --fail` convention): without --fail, check is REPORT-ONLY — drift
- * (1) exits 0; errors (2) always propagate. With --fail (or --fail-on, which
- * implies it), drift exits 1. Pure + exported for tests.
+ * (1) exits 0; errors (2) always propagate. With --fail (or --fail=<tier>), drift exits 1. Pure + exported for tests.
  */
 export function finalCheckExit(code: number, fail: boolean): number {
   return fail || code !== 1 ? code : 0;
@@ -368,7 +367,7 @@ export async function runCheck(args: string[]): Promise<number> {
   // green pipeline (R53). Suppressed under --json (machine consumers read stdout).
   if (anyDrift && !a.fail && !a.json) {
     console.error(
-      'note: drift found — exit 0 (report-only). Pass --fail (or --fail-on <tier>) to make drift fail this command.'
+      'note: drift found — exit 0 (report-only). Pass --fail (or --fail=declared) to make drift fail this command.'
     );
   }
   return worst;
