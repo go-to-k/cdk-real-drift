@@ -47,7 +47,7 @@ DEFAULT_POLICY="$(aws iam list-role-policies --role-name "$ROLE_NAME" --query 'P
 echo "role=$ROLE_NAME defaultPolicy=$DEFAULT_POLICY"
 
 echo "=== accept (write baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail "accept"
+$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
 
 echo "=== check should be CLEAN (sibling DefaultPolicy filtered, no false positive) ==="
 $CLI check "$STACK" --region "$REGION" --fail

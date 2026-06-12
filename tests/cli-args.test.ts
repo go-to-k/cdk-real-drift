@@ -10,26 +10,18 @@ describe('parseCommonArgs', () => {
   });
 
   it("does not treat a value-flag's value as a stack name", () => {
-    const a = parseCommonArgs([
-      '--region',
-      'us-east-1',
-      'MyStack',
-      '--fail=declared',
-      '--app',
-      'node app.js',
-    ]);
+    const a = parseCommonArgs(['--region', 'us-east-1', 'MyStack', '--app', 'node app.js']);
     expect(a.stackNames).toEqual(['MyStack']);
-    expect(a.failOn).toBe('declared');
     expect(a.app).toBe('node app.js');
   });
 
-  it('defaults: failOn undeclared, flags false, region undefined when no flag/env', () => {
+  it('defaults: flags false, region undefined when no flag/env', () => {
     const saved = { r: process.env.AWS_REGION, d: process.env.AWS_DEFAULT_REGION };
     delete process.env.AWS_REGION;
     delete process.env.AWS_DEFAULT_REGION;
     try {
       const a = parseCommonArgs(['S']);
-      expect(a.failOn).toBe('undeclared');
+      expect(a.fail).toBe(false);
       expect(a.yes).toBe(false);
       expect(a.showAll).toBe(false);
       expect(a.region).toBeUndefined(); // no silent us-east-1 default
@@ -90,37 +82,29 @@ describe('parseCommonArgs', () => {
     expect(() => parseCommonArgs(['--context', '=v'])).toThrow(/expects key=value/);
   });
 
-  it('--fail parses as a boolean; default is report-only (fail=false) (R53)', () => {
+  it('--fail parses as a boolean; default is report-only (fail false) (R53)', () => {
     expect(parseCommonArgs(['S']).fail).toBe(false);
     expect(parseCommonArgs(['S', '--fail']).fail).toBe(true);
-    expect(parseCommonArgs(['S', '--fail']).failOn).toBe('undeclared'); // bare --fail = all drift
   });
 
-  it('--fail=<tier> selects the failing tier and implies fail mode (R56)', () => {
-    expect(parseCommonArgs(['S', '--fail=declared']).failOn).toBe('declared');
-    expect(parseCommonArgs(['S', '--fail=declared']).fail).toBe(true);
-    expect(parseCommonArgs(['S', '--fail=undeclared']).failOn).toBe('undeclared');
-    expect(parseCommonArgs(['S', '--fail=undeclared']).fail).toBe(true);
-  });
-
-  it('--fail rejects a bad tier instead of falling back to undeclared (R41 spirit)', () => {
-    expect(() => parseCommonArgs(['S', '--fail=declarred'])).toThrow(
-      /--fail expects no value, =declared, or =undeclared, got "declarred"/
+  it('--fail takes no value — the =tier form is GONE (R58)', () => {
+    expect(() => parseCommonArgs(['S', '--fail=declared'])).toThrow(
+      /option "--fail" does not take a value/
     );
-    expect(() => parseCommonArgs(['S', '--fail=deleted'])).toThrow(/--fail expects/);
-    expect(() => parseCommonArgs(['S', '--fail='])).toThrow(/--fail expects/);
-  });
-
-  it('--fail never consumes the NEXT token (a tier needs the = form; tokens stay stack names)', () => {
-    const a = parseCommonArgs(['--fail', 'declared']);
-    expect(a.fail).toBe(true);
-    expect(a.failOn).toBe('undeclared'); // 'declared' was NOT taken as a tier...
-    expect(a.stackNames).toEqual(['declared']); // ...it is a (oddly named) stack arg
+    expect(() => parseCommonArgs(['S', '--fail=undeclared'])).toThrow(
+      /option "--fail" does not take a value/
+    );
   });
 
   it('--fail-on is GONE — fails fast as an unknown option (R56)', () => {
     expect(() => parseCommonArgs(['S', '--fail-on', 'declared'])).toThrow(/unknown option/);
     expect(() => parseCommonArgs(['S', '--fail-on=declared'])).toThrow(/unknown option/);
+  });
+
+  it('--fail never consumes the NEXT token — it stays a stack name', () => {
+    const a = parseCommonArgs(['--fail', 'declared']);
+    expect(a.fail).toBe(true);
+    expect(a.stackNames).toEqual(['declared']); // a (oddly named) stack arg, not a tier
   });
 
   it('accepts --flag=value form, equal to the space form (R41)', () => {
@@ -148,17 +132,13 @@ describe('parseCommonArgs', () => {
     );
   });
 
-  it('recognizes --no-interactive (default false)', () => {
-    expect(parseCommonArgs(['S', '--no-interactive']).noInteractive).toBe(true);
-    expect(parseCommonArgs(['S']).noInteractive).toBe(false);
+  it('--no-interactive is GONE — fails fast as an unknown option (R58)', () => {
+    expect(() => parseCommonArgs(['S', '--no-interactive'])).toThrow(/unknown option/);
   });
 });
 
-describe('isInteractive (TTY × --no-interactive truth matrix)', () => {
-  const args = (noInteractive: boolean) =>
-    parseCommonArgs(noInteractive ? ['--no-interactive'] : []);
-
-  // Stub process.stdin.isTTY across the matrix; restore in finally so other tests
+describe('isInteractive (non-interactive simply means non-TTY, R58)', () => {
+  // Stub process.stdin.isTTY; restore in finally so other tests
   // (and the real terminal) are unaffected.
   const withTTY = (tty: boolean, fn: () => void) => {
     const saved = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
@@ -171,14 +151,8 @@ describe('isInteractive (TTY × --no-interactive truth matrix)', () => {
     }
   };
 
-  it('true ONLY when TTY && !noInteractive', () => {
-    withTTY(true, () => {
-      expect(isInteractive(args(false))).toBe(true); // TTY, interactive allowed
-      expect(isInteractive(args(true))).toBe(false); // TTY but opted out
-    });
-    withTTY(false, () => {
-      expect(isInteractive(args(false))).toBe(false); // no TTY
-      expect(isInteractive(args(true))).toBe(false); // no TTY + opted out
-    });
+  it('true exactly when stdin is a TTY', () => {
+    withTTY(true, () => expect(isInteractive()).toBe(true));
+    withTTY(false, () => expect(isInteractive()).toBe(false));
   });
 });

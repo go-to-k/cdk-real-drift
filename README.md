@@ -114,7 +114,7 @@ After `check` finds drift, the human decision is binary, and the verbs mirror it
   (`readGap` / `unresolved` / `skipped`) — **never** guessed, so no false drift.
 - A resource **deleted out of band** — the most blatant drift there is — is
   reported in the `deleted` tier and always counts as failing drift under
-  `--fail`, regardless of `--fail=<tier>`.
+  `--fail`.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
@@ -159,21 +159,20 @@ when drift remains after it.
 # - run: npx cdkrd check --fail --app cdk.out --region us-east-1
 ```
 
-| option                          | meaning                                                                                                                                                         |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`                  | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                                                  |
-| `--profile <p>`                 | AWS profile (or `$AWS_PROFILE`)                                                                                                                                 |
-| `-a, --app <cmd\|cdk.out>`      | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths                                   |
-| `-c, --context key=value`       | context for synth (repeatable; cdk.json is the base layer)                                                                                                      |
-| `--json`                        | machine-readable output (see [JSON contract](#json-output-contract))                                                                                            |
-| `--fail[=declared\|undeclared]` | (check) exit 1 on drift + never prompt — for scripts/CI; without it, check reports drift but exits 0. `=tier` selects which tiers fail (`deleted` always fails) |
-| `--show-all`                    | inventory mode: show ALL current undeclared state, ignoring the baseline                                                                                        |
-| `--verbose` / `-v`              | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists                                     |
-| `--pre-deploy`                  | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite                                           |
-| `--dry-run`                     | (revert) print the plan; make no changes                                                                                                                        |
-| `--remove-unaccepted`           | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                                                            |
-| `--yes` / `-y`                  | skip confirmations (revert apply; accept records all without the multiselect)                                                                                   |
-| `--no-interactive`              | never prompt: optional prompts are skipped, required-decision prompts error (exit 2). `accept` then needs `--yes` to write                                      |
+| option                     | meaning                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); CDK stacks with explicit `env.region` are auto-detected                |
+| `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                               |
+| `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
+| `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                    |
+| `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
+| `--fail`                   | (check) exit 1 on drift + never prompt — for scripts/CI; without it, check reports drift but exits 0                          |
+| `--show-all`               | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
+| `--verbose` / `-v`         | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists   |
+| `--pre-deploy`             | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
+| `--dry-run`                | (revert) print the plan; make no changes                                                                                      |
+| `--remove-unaccepted`      | (revert) on a stack with NO baseline, REMOVE undeclared drift (default: refuse — run `accept` first)                          |
+| `--yes` / `-y`             | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
@@ -206,9 +205,8 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   a PARTIAL accept is a success (unselected values simply stay reported from
   the next `check` on), and any remaining declared/deleted drift is named —
   accept cannot address it (fix the code or choose Revert).
-- Flag combinations: `--no-interactive` alone = the read side completes but
-  write **decisions** are refused with exit 2 (the safe side);
-  `--no-interactive --yes` = full automation; `--yes` alone in a TTY
+- A non-TTY run (CI, cron, pipes) never prompts: required write **decisions**
+  without `--yes` error with exit 2 (the safe side). `--yes` alone in a TTY
   auto-approves confirmations only (select prompts still show).
 
 ### Catching what your next deploy would overwrite (`--pre-deploy`)

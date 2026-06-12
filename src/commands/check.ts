@@ -1,11 +1,11 @@
 // `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
-//             [--json] [--fail[=declared|undeclared]] [--show-all]`
+//             [--json] [--fail] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
 // baseline file (if present) so a stack with an accepted baseline reports CLEAN.
 // Exit (R53, the `cdk diff --fail` convention): report-only by default — drift
-// exits 0 (a hint names --fail); with --fail (optionally --fail=declared)
-// drift exits 1 and prompts are suppressed. Errors always exit 2. The exit is
-// the worst across all checked stacks.
+// exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
+// suppressed. Errors always exit 2. The exit is the worst across all checked
+// stacks.
 import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
@@ -108,7 +108,7 @@ export function postAcceptNote(remainingUndeclared: number, remainingDeclared: n
 /**
  * Map a stack's drift code to check's final exit (R53, the `cdk diff --fail` /
  * `cdk drift --fail` convention): without --fail, check is REPORT-ONLY — drift
- * (1) exits 0; errors (2) always propagate. With --fail (or --fail=<tier>), drift exits 1. Pure + exported for tests.
+ * (1) exits 0; errors (2) always propagate. With --fail, drift exits 1. Pure + exported for tests.
  */
 export function finalCheckExit(code: number, fail: boolean): number {
   return fail || code !== 1 ? code : 0;
@@ -199,7 +199,6 @@ export async function runCheck(args: string[]): Promise<number> {
           `${stackName} (${region})`,
           {
             json: a.json,
-            failOn: a.failOn,
             verbose: a.verbose,
           }
         );
@@ -222,7 +221,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // report would have re-tagged as ignored (same as the post-report accept).
       // With ZERO undeclared values there is no decision worth interrupting for —
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
-      if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive(a)) {
+      if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive()) {
         const acceptable = applyIgnores(findings, stackName, config);
         const undeclaredCount = acceptable.filter((f) => f.tier === 'undeclared').length;
         const declaredDriftCount = acceptable.filter(
@@ -266,7 +265,6 @@ export async function runCheck(args: string[]): Promise<number> {
       if (!a.json) separate();
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
-        failOn: a.failOn,
         verbose: a.verbose,
       });
 
@@ -274,7 +272,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // of making the user re-run a separate command. Skipped for --json (machine
       // output), --show-all (baseline not applied — accept would mean something else),
       // and --pre-deploy (declared-only, baseline-untouched contract).
-      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && !a.fail && isInteractive(a)) {
+      if (code === 1 && !a.json && !a.showAll && !a.preDeploy && !a.fail && isInteractive()) {
         const actions = availableActions(reconciled, baseline, schemas, a.removeUnaccepted);
         if (actions.accept || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
@@ -305,7 +303,7 @@ export async function runCheck(args: string[]): Promise<number> {
               desired,
               findings: applyIgnores(findings, stackName, config),
               yes: a.yes,
-              interactive: isInteractive(a),
+              interactive: isInteractive(),
             });
             if (result.wrote) {
               // re-evaluate exit WITHOUT re-querying AWS: re-apply the new baseline to
@@ -343,7 +341,7 @@ export async function runCheck(args: string[]): Promise<number> {
               yes: a.yes,
               removeUnaccepted: a.removeUnaccepted,
               verbose: a.verbose,
-              interactive: isInteractive(a),
+              interactive: isInteractive(),
             });
             // R30: an aborted confirm did NOT write to AWS, so the drift still
             // stands — keep the pre-revert exit 1 (symmetric with "Nothing").
@@ -367,7 +365,7 @@ export async function runCheck(args: string[]): Promise<number> {
   // green pipeline (R53). Suppressed under --json (machine consumers read stdout).
   if (anyDrift && !a.fail && !a.json) {
     console.error(
-      'note: drift found — exit 0 (report-only). Pass --fail (or --fail=declared) to make drift fail this command.'
+      'note: drift found — exit 0 (report-only). Pass --fail to make drift fail this command.'
     );
   }
   return worst;

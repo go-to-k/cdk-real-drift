@@ -55,7 +55,7 @@ QUEUE_ARN="$(aws sqs get-queue-attributes --queue-url "$QUEUE_URL" --attribute-n
   --region "$REGION" --query 'Attributes.QueueArn' --output text)"
 
 echo "=== accept (baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail accept
+$CLI accept "$STACK" --region "$REGION" --yes || fail accept
 echo "=== check CLEAN ==="
 $CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
 
@@ -97,7 +97,7 @@ for name in "Data/Policy" "EventsPolicy" "JobsPolicy" "WorkerInline" "WorkerMana
 done
 
 echo "=== revert --yes (all 5 SDK writers) ==="
-$CLI revert "$STACK" --region "$REGION" --yes --no-interactive || fail "revert returned non-zero"
+$CLI revert "$STACK" --region "$REGION" --yes || fail "revert returned non-zero"
 
 echo "=== check CLEAN after revert ==="
 $CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "drift remains after revert"

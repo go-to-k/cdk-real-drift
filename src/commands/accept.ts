@@ -52,7 +52,7 @@ export async function runAccept(args: string[]): Promise<number> {
         desired,
         findings: applyIgnores(findings, stackName, config),
         yes: a.yes,
-        interactive: isInteractive(a),
+        interactive: isInteractive(),
       });
       // a non-interactive accept that needed a decision but had no --yes refuses (R38)
       if (result.refused) worst = Math.max(worst, 2);

@@ -31,7 +31,7 @@ echo "=== deploy fixture ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
 
 echo "=== accept (write baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail "accept"
+$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
 
 echo "=== check should be CLEAN ==="
 $CLI check "$STACK" --region "$REGION" --fail

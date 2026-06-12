@@ -34,7 +34,7 @@ un-deployed code edits would show as false "drift".
      - sibling AWS::IAM::Policy entries filtered BY NAME from a role's live
        Policies (an out-of-band inline policy next to them still reports)
 5. classify (tag):  declared | undeclared | readGap | unresolved | skipped
-6. report + exit code (report-only by default; --fail → 1 on drift; 2 error) (--fail=<tier> selects tiers)
+6. report + exit code (report-only by default; --fail → 1 on drift; 2 error)
 ```
 
 cdkrd is **CDK-only**: every run resolves the CDK app (synth, or a pre-synthesized

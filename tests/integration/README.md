@@ -15,9 +15,9 @@ bash verify.sh       # deploy -> accept -> check CLEAN -> inject drift -> check 
 `verify.sh` exits non-zero (and prints `INTEG FAIL: ...`) if any assertion fails;
 prints `INTEG PASS` on success.
 
-All scripts call the CLI with `--no-interactive` (and `--yes` for accept/revert):
-since the interactive prompts landed (R28/R38/R45), a bare `check`/`accept` run
-from a terminal would stop and wait for input mid-script (R50).
+All accept/revert calls in the scripts pass `--yes`: since the interactive
+prompts landed (R28/R38/R45), a write decision without `--yes` would refuse
+(exit 2) when stdin is not a TTY — and stop to wait for input when it is (R50).
 
 ## When to run (R50)
 

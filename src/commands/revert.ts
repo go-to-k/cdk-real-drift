@@ -71,7 +71,7 @@ export async function runRevert(args: string[]): Promise<number> {
         yes: a.yes,
         removeUnaccepted: a.removeUnaccepted,
         verbose: a.verbose,
-        interactive: isInteractive(a),
+        interactive: isInteractive(),
       });
       worst = Math.max(worst, exit);
     } catch (e) {

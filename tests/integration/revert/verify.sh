@@ -34,7 +34,7 @@ BUCKET="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --re
 echo "=== enable acceleration, then accept (baseline) ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" --accelerate-configuration Status=Enabled --region "$REGION" || fail "enable accel"
 sleep 5
-$CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail accept
+$CLI accept "$STACK" --region "$REGION" --yes || fail accept
 echo "=== check CLEAN ==="; $CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
 
 echo "=== inject DECLARED drift (suspend versioning) + UNDECLARED drift (suspend accel from accepted Enabled) ==="
@@ -49,7 +49,7 @@ grep -q "VersioningConfiguration" /tmp/cdkrd-revert-pre.out || fail "declared ve
 grep -q "AccelerateConfiguration" /tmp/cdkrd-revert-pre.out || fail "undeclared accel drift not reported"
 
 echo "=== revert --yes (writes to AWS via Cloud Control) ==="
-$CLI revert "$STACK" --region "$REGION" --yes --no-interactive || fail "revert returned non-zero"
+$CLI revert "$STACK" --region "$REGION" --yes || fail "revert returned non-zero"
 
 echo "=== check CLEAN after revert ==="
 $CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "drift remains after revert"

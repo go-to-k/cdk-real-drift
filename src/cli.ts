@@ -30,11 +30,9 @@ OPTIONS
                               auto-discovery + construct-path output
   -c, --context key=value     context for synth (repeatable; cdk.json is the base)
   --json                      machine-readable output
-  --fail[=declared|undeclared]  (check) exit 1 on drift + never prompt — for
+  --fail                      (check) exit 1 on drift + never prompt — for
                               scripts/CI (same convention as \`cdk diff --fail\`);
-                              without it, check REPORTS drift but exits 0. The
-                              =tier form selects which tiers fail (default:
-                              undeclared = all drift; deleted always fails)
+                              without it, check REPORTS drift but exits 0
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since accept)
   --verbose                   (check) expand informational tiers / (revert) the
@@ -45,12 +43,10 @@ OPTIONS
   --remove-unaccepted         (revert) on a stack with NO baseline, REMOVE undeclared
                               drift (default: refuse — run \`cdkrd accept\` first)
   --yes, -y                   skip confirmation (revert) / overwrite notice (accept)
-  --no-interactive            never prompt; optional prompts skipped, required-decision
-                              prompts error (exit 2). accept then needs --yes
   --help, -h    --version, -v
 
-  --no-interactive alone = read side completes, write DECISIONS refused (the safe
-  side: accept/revert without --yes exit 2). --no-interactive --yes = full automation.
+  Automation: check --fail / accept --yes / revert --yes (or --dry-run); non-TTY
+  runs never prompt.
 
 EXIT CODES
   check:  0 = clean (or drift without --fail)   1 = drift (--fail)   2 = error

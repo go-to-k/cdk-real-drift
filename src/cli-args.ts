@@ -1,5 +1,4 @@
 // Tiny shared CLI arg parser (no dependency).
-import type { FailOn } from './report/report.js';
 
 // The complete known-option surface. parseCommonArgs is shared by all three
 // verbs, so verb-specific flags (--dry-run) are accepted here and interpreted
@@ -9,6 +8,7 @@ import type { FailOn } from './report/report.js';
 const VALUE_FLAGS = new Set(['--region', '--profile', '--app', '-a', '-c', '--context']);
 const BOOLEAN_FLAGS = new Set([
   '--json',
+  '--fail',
   '--show-all',
   '--yes',
   '-y',
@@ -17,13 +17,7 @@ const BOOLEAN_FLAGS = new Set([
   '--remove-unaccepted',
   '--verbose',
   '-v',
-  '--no-interactive',
 ]);
-// `--fail` is a HYBRID flag (R56): boolean alone (`--fail` = all drift tiers
-// fail), with an optional `=tier` value (`--fail=declared`). Only the `=` form
-// carries a value — a space-separated `--fail declared` would be ambiguous with
-// a positional stack name. This replaced the separate `--fail-on` flag, which
-// confused next to `--fail` (what would `--fail --fail-on declared` mean?).
 
 export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty → all stacks the CDK app defines)
@@ -32,28 +26,25 @@ export interface CommonArgs {
   app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
   context: Record<string, string>; // -c/--context key=value overrides for synth (cdk.json is the base layer)
   json: boolean;
-  failOn: FailOn;
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
   // (check) automation mode, following the `cdk diff --fail` / `cdk drift --fail`
   // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
-  // check REPORTS drift but exits 0 (report-only). `--fail=declared|undeclared`
-  // selects which tiers fail (R56; the value lands in `failOn`).
+  // check REPORTS drift but exits 0 (report-only).
   fail: boolean;
   removeUnaccepted: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
-  noInteractive: boolean; // suppress all prompts; required-decision prompts then error instead of prompting
 }
 
 /**
- * Whether prompts may be shown: only in a real TTY AND when --no-interactive was not
- * passed. The single source of truth — command code threads this in rather than reading
- * `process.stdin.isTTY` directly. Optional prompts skip when false; required-decision
- * prompts error (exit 2) when false.
+ * Whether prompts may be shown: only in a real TTY. Non-interactive now simply means
+ * non-TTY (real CI/cron/pipes). The single source of truth — command code threads this
+ * in rather than reading `process.stdin.isTTY` directly. Optional prompts skip when
+ * false; required-decision prompts error (exit 2) when false.
  */
-export function isInteractive(a: CommonArgs): boolean {
-  return Boolean(process.stdin.isTTY) && !a.noInteractive;
+export function isInteractive(): boolean {
+  return Boolean(process.stdin.isTTY);
 }
 
 export function parseCommonArgs(args: string[]): CommonArgs {
@@ -103,20 +94,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
       }
       continue;
     }
-    if (flag === '--fail') {
-      // hybrid: `--fail` alone, or `--fail=declared|undeclared` (the `=` form
-      // only — see the comment above BOOLEAN_FLAGS). Validate the tier during
-      // parse so a typo (`--fail=declarred`) is a loud error, not a silent
-      // fall-through to the `undeclared` default (R41 spirit).
-      if (inlineValue !== undefined && inlineValue !== 'declared' && inlineValue !== 'undeclared') {
-        throw new Error(
-          `--fail expects no value, =declared, or =undeclared, got "${inlineValue}" — see cdkrd --help`
-        );
-      }
-      found.add('--fail');
-      if (inlineValue !== undefined) values['--fail'] = inlineValue;
-      continue;
-    }
     if (BOOLEAN_FLAGS.has(flag)) {
       // a boolean flag takes no value: `--json=true` is a mistake, not a stack name
       if (inlineValue !== undefined) {
@@ -137,13 +114,11 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     // -a/--app > CDKRD_APP env (cdk.json "app" fallback resolved in the synth layer)
     app: values['--app'] ?? process.env.CDKRD_APP,
     json: has('--json'),
-    failOn: values['--fail'] === 'declared' ? 'declared' : 'undeclared',
     fail: has('--fail'),
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
     removeUnaccepted: has('--remove-unaccepted'),
     verbose: has('--verbose') || has('-v'),
-    noInteractive: has('--no-interactive'),
   };
 }
