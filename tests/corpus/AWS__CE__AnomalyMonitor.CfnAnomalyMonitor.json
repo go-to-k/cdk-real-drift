@@ -1,0 +1,66 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (dogfood): a real Cost Explorer anomaly monitor classifies fully CLEAN.",
+  "resource": {
+    "logicalId": "CfnAnomalyMonitor",
+    "resourceType": "AWS::CE::AnomalyMonitor",
+    "physicalId": "arn:aws:ce::111111111111:anomalymonitor/ae408f26-20f1-4dbc-a85c-47a399eec3e4",
+    "constructPath": "main-CostCheck/CfnAnomalyMonitor",
+    "declared": {
+      "MonitorName": "main-CostCheck-AWSServices",
+      "MonitorType": "DIMENSIONAL",
+      "MonitorDimension": "SERVICE"
+    }
+  },
+  "liveRaw": {
+    "LastUpdatedDate": "2026-06-12T14:05:42.499Z",
+    "CreationDate": "2023-03-26T06:03:01.390Z",
+    "LastEvaluatedDate": "2026-06-12T14:05:42.499858752Z",
+    "MonitorType": "DIMENSIONAL",
+    "ResourceTags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/main-CostCheck/d50e7fa0-cb9b-11ed-a5ba-0e37f845411b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "main-CostCheck",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CfnAnomalyMonitor",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "MonitorArn": "arn:aws:ce::111111111111:anomalymonitor/ae408f26-20f1-4dbc-a85c-47a399eec3e4",
+    "MonitorName": "main-CostCheck-AWSServices",
+    "MonitorDimension": "SERVICE",
+    "DimensionalValueCount": 32
+  },
+  "schema": {
+    "readOnly": [
+      "CreationDate",
+      "DimensionalValueCount",
+      "LastEvaluatedDate",
+      "LastUpdatedDate",
+      "MonitorArn"
+    ],
+    "writeOnly": [],
+    "createOnly": ["MonitorDimension", "MonitorSpecification", "MonitorType", "ResourceTags"],
+    "readOnlyPaths": [
+      "CreationDate",
+      "DimensionalValueCount",
+      "LastEvaluatedDate",
+      "LastUpdatedDate",
+      "MonitorArn"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["MonitorDimension", "MonitorSpecification", "MonitorType", "ResourceTags"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

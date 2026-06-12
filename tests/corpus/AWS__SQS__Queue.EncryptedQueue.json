@@ -1,0 +1,29 @@
+{
+  "corpusVersion": 1,
+  "description": "KMS managed-alias identity, CONSERVATIVE fallback: with NO kmsAliasTargets (kms:ListAliases unavailable), a declared alias/aws/sqs vs ANY live key ARN is suppressed shape-based — biased toward noise, never a false positive (the STRICT path is locked by the SecretsManager case).",
+  "resource": {
+    "logicalId": "EncryptedQueue",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/corpus-encrypted-queue",
+    "declared": {
+      "QueueName": "corpus-encrypted-queue",
+      "KmsMasterKeyId": "alias/aws/sqs"
+    }
+  },
+  "liveRaw": {
+    "QueueName": "corpus-encrypted-queue",
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:corpus-encrypted-queue",
+    "KmsMasterKeyId": "arn:aws:kms:us-east-1:111111111111:key/9z8y7x6w-5v4u-3t2s-1r0q-ponmlkjihgfe"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["QueueName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": []
+}

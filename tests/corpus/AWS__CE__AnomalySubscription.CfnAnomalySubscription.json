@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (dogfood): the service DERIVES ThresholdExpression (a JSON string) from the declared legacy Threshold \u2014 surfaces as the one undeclared value (accept-once material, locked as-is); the live Subscribers entry gains a Status field the declared side never set (nested live-extra, ignored).",
+  "resource": {
+    "logicalId": "CfnAnomalySubscription",
+    "resourceType": "AWS::CE::AnomalySubscription",
+    "physicalId": "arn:aws:ce::111111111111:anomalysubscription/fd11a712-95bd-4459-8dd1-2227882aef60",
+    "constructPath": "main-CostCheck/CfnAnomalySubscription",
+    "declared": {
+      "Frequency": "IMMEDIATE",
+      "MonitorArnList": [
+        "arn:aws:ce::111111111111:anomalymonitor/ae408f26-20f1-4dbc-a85c-47a399eec3e4"
+      ],
+      "Subscribers": [
+        {
+          "Address": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
+          "Type": "SNS"
+        }
+      ],
+      "SubscriptionName": "main-CostCheck-Subscription",
+      "Threshold": 5
+    }
+  },
+  "liveRaw": {
+    "MonitorArnList": [
+      "arn:aws:ce::111111111111:anomalymonitor/ae408f26-20f1-4dbc-a85c-47a399eec3e4"
+    ],
+    "AccountId": "111111111111",
+    "ResourceTags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/main-CostCheck/d50e7fa0-cb9b-11ed-a5ba-0e37f845411b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "main-CostCheck",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CfnAnomalySubscription",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Frequency": "IMMEDIATE",
+    "SubscriptionName": "main-CostCheck-Subscription",
+    "Subscribers": [
+      {
+        "Status": "CONFIRMED",
+        "Type": "SNS",
+        "Address": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic"
+      }
+    ],
+    "SubscriptionArn": "arn:aws:ce::111111111111:anomalysubscription/fd11a712-95bd-4459-8dd1-2227882aef60",
+    "Threshold": 5,
+    "ThresholdExpression": "{\n  \"Dimensions\" : {\n    \"Key\" : \"ANOMALY_TOTAL_IMPACT_ABSOLUTE\",\n    \"Values\" : [ \"5.0\" ],\n    \"MatchOptions\" : [ \"GREATER_THAN_OR_EQUAL\" ]\n  }\n}"
+  },
+  "schema": {
+    "readOnly": ["AccountId", "SubscriptionArn"],
+    "writeOnly": [],
+    "createOnly": ["ResourceTags"],
+    "readOnlyPaths": ["AccountId", "Subscribers.*.Status", "SubscriptionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceTags"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "CfnAnomalySubscription",
+      "resourceType": "AWS::CE::AnomalySubscription",
+      "path": "ThresholdExpression",
+      "actual": "{\"Dimensions\":{\"Key\":\"ANOMALY_TOTAL_IMPACT_ABSOLUTE\",\"MatchOptions\":[\"GREATER_THAN_OR_EQUAL\"],\"Values\":[\"5.0\"]}}",
+      "physicalId": "arn:aws:ce::111111111111:anomalysubscription/fd11a712-95bd-4459-8dd1-2227882aef60",
+      "constructPath": "main-CostCheck/CfnAnomalySubscription"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (dogfood, ids sanitized): a real Slack channel configuration; the R66 GuardrailPolicies default and readOnly Arn keep it fully CLEAN.",
+  "resource": {
+    "logicalId": "SlackChannel425D424B",
+    "resourceType": "AWS::Chatbot::SlackChannelConfiguration",
+    "physicalId": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/main-CostCheck",
+    "constructPath": "main-CostCheck/SlackChannel",
+    "declared": {
+      "ConfigurationName": "main-CostCheck",
+      "IamRoleArn": "arn:aws:iam::111111111111:role/main-CostCheck-SlackChannelConfigurationRole7EE950-1SN896N2F22EI",
+      "SlackChannelId": "C0000000000",
+      "SlackWorkspaceId": "T0000000000",
+      "LoggingLevel": "INFO",
+      "SnsTopicArns": ["arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic"]
+    }
+  },
+  "liveRaw": {
+    "UserRoleRequired": false,
+    "LoggingLevel": "INFO",
+    "CustomizationResourceArns": [],
+    "SnsTopicArns": ["arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic"],
+    "GuardrailPolicies": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+    "SlackWorkspaceId": "T0000000000",
+    "SlackChannelId": "C0000000000",
+    "IamRoleArn": "arn:aws:iam::111111111111:role/main-CostCheck-SlackChannelConfigurationRole7EE950-1SN896N2F22EI",
+    "ConfigurationName": "main-CostCheck",
+    "Arn": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/main-CostCheck",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ConfigurationName", "SlackWorkspaceId"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ConfigurationName", "SlackWorkspaceId"],
+    "defaults": {
+      "LoggingLevel": "NONE",
+      "UserRoleRequired": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
