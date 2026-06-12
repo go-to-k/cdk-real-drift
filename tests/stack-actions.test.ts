@@ -159,13 +159,14 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
     }
   });
 
-  it('noBaselineGuidance leads with the accept-first route', () => {
+  it('noBaselineGuidance explains the accept-vs-remove FORK, not a sequence (R55)', () => {
     const plan: RevertPlan = { items: [], notRevertable: [nr('no baseline — x')] };
     const lines = formatPlan('MyStack', 'r', plan, { noBaselineGuidance: true });
     expect(lines[1]).toBe(
-      '\nnote: MyStack has no baseline — undeclared drift has no revert target.'
+      '\nnote: MyStack has no baseline — these undeclared values have no recorded state to restore.'
     );
-    expect(lines[2]).toContain('cdkrd check` or `cdkrd accept');
+    expect(lines[2]).toContain('If the live values are RIGHT, accept them');
+    expect(lines[3]).toContain('REMOVED, re-run revert with --remove-unaccepted');
   });
 });
 
@@ -227,8 +228,10 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     const { outcome, logs } = await captured([undeclared()]);
     expect(outcome).toEqual({ exit: 1, aborted: false });
     const out = logs.join('\n');
-    expect(out).toContain('note: s has no baseline — undeclared drift has no revert target.');
-    expect(out).toContain('NOT revertable: 1 (no baseline — run `cdkrd accept` first');
+    expect(out).toContain(
+      'note: s has no baseline — these undeclared values have no recorded state to restore.'
+    );
+    expect(out).toContain('NOT revertable: 1 (no baseline — accept it if the live value is right');
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
   });
 
@@ -241,7 +244,9 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     });
     expect(outcome).toEqual({ exit: 0, aborted: false });
     const out = logs.join('\n');
-    expect(out).not.toContain('has no baseline — undeclared drift has no revert target');
+    expect(out).not.toContain(
+      'has no baseline — these undeclared values have no recorded state to restore'
+    );
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
   });

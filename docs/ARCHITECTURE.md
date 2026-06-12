@@ -362,17 +362,18 @@ revertable** → `nothing revertable — N drift(s) remain.` + exit 1
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an unaccepted out-of-band _addition_ reverts by REMOVAL).
 - **No-baseline safety guard**: on a stack that has never been `accept`ed, undeclared
-  drift is reported as `notRevertable` (`no baseline — run cdkrd accept first, or
-pass --remove-unaccepted`) rather than removed. The subtractive noise model's
-  failure mode in `check` is "the report is noisy"; the un-guarded revert mirror of
-  that would be **destructive** (a bulk REMOVE of every undeclared value that slipped
-  through subtraction). `--remove-unaccepted` opts back into removal. Declared drift is
-  always revertable (the template is its source, independent of any baseline).
-  For undeclared drift this guard outranks the create-only guard (R35): the
-  fundamental blocker is "no revert target exists", and `accept` records the value
-  into the baseline, making it no longer drift — a "requires replacement" reason
-  would mis-direct. When the guard
-  fires, the plan leads with a note pointing at the `check` / `accept` route.
+  drift is reported as `notRevertable` (`no baseline — accept it if the live value
+is right, or --remove-unaccepted to remove it`) rather than removed. The
+  subtractive noise model's failure mode in `check` is "the report is noisy"; the
+  un-guarded revert mirror of that would be **destructive** (a bulk REMOVE of every
+  undeclared value that slipped through subtraction). Declared drift is always
+  revertable (the template is its source, independent of any baseline). For
+  undeclared drift this guard outranks the create-only guard (R35): the fundamental
+  blocker is "no revert target exists" — a "requires replacement" reason would
+  mis-direct. The guard's wording is a FORK, not a sequence (R55): `accept`
+  endorses the live value (it stops being drift entirely — accept is never a step
+  toward reverting that same value), while `--remove-unaccepted` removes it. When
+  the guard fires, the plan leads with a note spelling out that fork.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).

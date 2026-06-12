@@ -49,7 +49,7 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
 sleep 5
 
 echo "=== R2: revert --dry-run refuses the unaccepted undeclared value ==="
-$CLI revert "$STACK" --region "$REGION" --dry-run | tee /tmp/cdkrd-guard-noremove.out
+$CLI revert "$STACK" --region "$REGION" --dry-run --verbose | tee /tmp/cdkrd-guard-noremove.out
 grep -q "NOT revertable" /tmp/cdkrd-guard-noremove.out || fail "R2: expected a NOT revertable section"
 grep -q "AccelerateConfiguration.*no baseline" /tmp/cdkrd-guard-noremove.out \
   || fail "R2: undeclared accel should be not-revertable (no baseline)"
@@ -71,7 +71,7 @@ echo "=== R1: check reports the deleted tier + exit 1 ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-guard-deleted.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "R1: expected exit 1 on a deleted resource, got $rc"
-grep -qi "DELETED (resource deleted out of band" /tmp/cdkrd-guard-deleted.out \
+grep -qi "resource deleted out of band" /tmp/cdkrd-guard-deleted.out \
   || fail "R1: deleted tier header not reported"
 
 echo "=== R1: deleted tier is NOT revertable (recreate via cdk deploy) ==="
