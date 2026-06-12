@@ -104,16 +104,18 @@ it prompts `Nothing / Accept / Revert` and branches into the SAME per-stack code
 `accept` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
 as `acceptStack` / `revertStack`, so the interactive flow and the single-verb commands
 can never diverge). Default is `Nothing` (plain-check behaviour); skipped under
-`--json` / `--show-all` / `--pre-deploy` / non-TTY. Aborting the Revert confirmation
-keeps the pre-revert **exit 1** — no AWS write happened, so the drift still stands
-(symmetric with `Nothing`); `revertStack` signals this via `RevertOutcome.aborted` so
-the standalone `revert` command keeps its own exit-0-on-abort behaviour (R30).
+`--json` / `--show-all` / `--pre-deploy` / `--fail` / non-TTY. Aborting the Revert
+confirmation keeps the pre-revert drift state — no AWS write happened, so the
+drift still stands and stays reported (symmetric with `Nothing`); `revertStack`
+signals this via `RevertOutcome.aborted` so the standalone `revert` command keeps
+its own exit-0-on-abort behaviour (R30).
 
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
 default — resolves via SDK chain, errors if absent), `--profile`, `-a/--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
-`--json`, `--fail-on declared|undeclared`, `--show-all` (inventory mode: ignore
-baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
+`--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53),
+`--fail-on declared|undeclared` (implies `--fail`), `--show-all` (inventory mode:
+ignore baseline, show ALL undeclared), `--pre-deploy` (check vs local synth template),
 `--dry-run` (revert preview), `--yes/-y`. With no stack arg, every stack the app
 defines is targeted; a stack arg selects by exact name or glob (`cdkrd check 'Dev*'`).
 The known-flag set is closed: an unknown option or a value flag missing its
@@ -475,16 +477,20 @@ note suggesting a re-`accept` (the accepted set may be stale). Skipped under
 longer exists in AWS (released/deleted via the console, another tool, etc.). The
 live read returns a not-found error (`ResourceNotFoundException` from Cloud
 Control; `NoSuchBucket` / `QueueDoesNotExist` / `NoSuchEntity` / `InvalidAllocationID.NotFound` /
-… from the SDK overrides), which the router maps to `deleted`. It **always** sets
-exit 1 regardless of `--fail-on` (CloudFormation's own drift detection reports
-DELETED too — a drift tool that returned exit 0 on a deleted resource would be
-defective). It is reported as `not revertable` (reason: `deleted — recreate via
-cdk deploy`) — a patch cannot recreate a resource.
+… from the SDK overrides), which the router maps to `deleted`. It is always a
+drift tier (independent of `--fail-on`) and is reported as `not revertable`
+(reason: `deleted — recreate via cdk deploy`) — a patch cannot recreate a
+resource.
 
-`--fail-on declared` makes only `deleted` + `declared` set exit 1; default
-`undeclared` = all three of `deleted` / `declared` / `undeclared`. `ignored` /
-`readGap` / `unresolved` / `skipped` are informational — surfaced, never silently
-dropped, but never false drift.
+**Exit (R53, the `cdk diff --fail` / `cdk drift --fail` convention):** `check`
+is report-only by default — drift prints but exits 0, with a stderr note naming
+the flag. `--fail` (or `--fail-on`, which implies it) makes drift exit 1 AND
+suppresses all prompts: one flag expresses "automation" (locally-run scripts
+inherit the terminal's TTY, so prompts would otherwise fire mid-script). Errors
+always exit 2. In fail mode, `--fail-on declared` makes only `deleted` +
+`declared` fail; default `undeclared` = all three of `deleted` / `declared` /
+`undeclared`. `ignored` / `readGap` / `unresolved` / `skipped` are
+informational — surfaced, never silently dropped, but never false drift.
 
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —
 Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled

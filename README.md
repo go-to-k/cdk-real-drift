@@ -57,7 +57,7 @@ terminal, it asks what to do right there:
 
 ```console
 ApiStack: drift found — what do you want to do?
-  ❯ Nothing (keep exit code 1)
+  ❯ Nothing (decide later)
     Accept — record current state into the baseline (a git file; nothing written to AWS)
     Revert — write the desired value back to AWS
 ```
@@ -113,8 +113,8 @@ After `check` finds drift, the human decision is binary, and the verbs mirror it
 - Anything not confidently comparable is reported honestly as informational
   (`readGap` / `unresolved` / `skipped`) — **never** guessed, so no false drift.
 - A resource **deleted out of band** — the most blatant drift there is — is
-  reported in the `deleted` tier and always sets exit 1, regardless of
-  `--fail-on`.
+  reported in the `deleted` tier and always counts as failing drift under
+  `--fail`, regardless of `--fail-on`.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
@@ -146,14 +146,17 @@ tells cdkrd which stacks to look at.
 | `cdkrd accept [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
-**Exit codes:** `0` clean · `1` drift · `2` error — so `check` drops straight
-into CI:
+**Exit codes:** `check` is **report-only by default** — drift prints but exits
+`0` (a note names the flag). Pass **`--fail`** (the `cdk diff --fail` /
+`cdk drift --fail` convention) to exit `1` on drift and suppress all prompts —
+the one flag for scripts and CI. Errors always exit `2`; `revert` exits `1`
+when drift remains after it.
 
 ```yaml
 - run: npm ci # cdkrd resolves the CDK app, so its deps must be installed
-- run: npx cdkrd check --region us-east-1 # fails the job on drift
+- run: npx cdkrd check --fail --region us-east-1 # fails the job on drift
 # or point at a prebuilt assembly artifact instead of synthesizing:
-# - run: npx cdkrd check --app cdk.out --region us-east-1
+# - run: npx cdkrd check --fail --app cdk.out --region us-east-1
 ```
 
 | option                           | meaning                                                                                                                       |
@@ -163,7 +166,8 @@ into CI:
 | `-a, --app <cmd\|cdk.out>`       | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths |
 | `-c, --context key=value`        | context for synth (repeatable; cdk.json is the base layer)                                                                    |
 | `--json`                         | machine-readable output (see [JSON contract](#json-output-contract))                                                          |
-| `--fail-on declared\|undeclared` | which tier sets exit 1 (default `undeclared` = both; `deleted` always fails)                                                  |
+| `--fail`                         | (check) exit 1 on drift + never prompt — for scripts/CI; without it, check reports drift but exits 0                          |
+| `--fail-on declared\|undeclared` | which tier fails (default `undeclared` = both; `deleted` always fails); implies `--fail`                                      |
 | `--show-all`                     | inventory mode: show ALL current undeclared state, ignoring the baseline                                                      |
 | `--verbose` / `-v`               | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists   |
 | `--pre-deploy`                   | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite         |
@@ -180,8 +184,8 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
 - **`check` with drift** offers `Nothing / Accept / Revert` inline (shown above).
   `Nothing` is the default; Enter keeps plain-check behavior. Accept and Revert
   run exactly the same code as the standalone commands. Skipped under `--json`,
-  `--show-all`, and `--pre-deploy`. Aborting the Revert confirmation keeps the
-  exit code at 1 — nothing was written, the drift still stands.
+  `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert confirmation
+  writes nothing — the drift still stands and stays reported.
 - **`accept`** shows a multiselect of only the **delta** from the existing
   baseline (new + changed undeclared values, all pre-selected); already-accepted
   unchanged values are auto-kept and surfaced with a
@@ -194,9 +198,9 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   **show them first** (the report prints, and a selective accept is offered
   right after it). With zero undeclared values there is nothing to decide, so
   no prompt. After an interactive accept, a closing note states what remains:
-  a PARTIAL accept exits **0** for that run (the accept succeeded; unselected
-  values stay reported — and exit 1 — from the next `check` on), while
-  remaining declared/deleted drift keeps exit 1 (accept cannot address it).
+  a PARTIAL accept is a success (unselected values simply stay reported from
+  the next `check` on), and any remaining declared/deleted drift is named —
+  accept cannot address it (fix the code or choose Revert).
 - Flag combinations: `--no-interactive` alone = the read side completes but
   write **decisions** are refused with exit 2 (the safe side);
   `--no-interactive --yes` = full automation; `--yes` alone in a TTY

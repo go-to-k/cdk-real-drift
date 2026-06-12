@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { firstRunPrompt, postAcceptNote, preDeployFindings } from '../src/commands/check.js';
+import {
+  finalCheckExit,
+  firstRunPrompt,
+  postAcceptNote,
+  preDeployFindings,
+} from '../src/commands/check.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -74,28 +79,46 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
   });
 });
 
-describe('postAcceptNote (R52 — a partial accept is a SUCCESS for this run)', () => {
-  it('partial accept (undeclared remain) → success + exit 0, remainder surfaces next check', () => {
+describe('postAcceptNote (R52 — a partial accept is a SUCCESS, said plainly)', () => {
+  it('partial accept (undeclared remain) → success; remainder surfaces from the next check', () => {
     const note = postAcceptNote(112, 0);
     expect(note).toContain('accept succeeded');
     expect(note).toContain('112 unaccepted value(s) stay reported from the next check on');
-    expect(note).toContain('exit 0 for this run');
   });
 
-  it('everything accepted → CLEAN, exit 0', () => {
-    expect(postAcceptNote(0, 0)).toBe('stack is now CLEAN — exit 0.');
+  it('everything accepted → CLEAN', () => {
+    expect(postAcceptNote(0, 0)).toBe('stack is now CLEAN.');
   });
 
-  it("declared/deleted drift remains → exit 1 (outside accept's reach), undeclared remainder also named", () => {
+  it("declared/deleted drift remains → named (outside accept's reach), undeclared remainder too", () => {
     const note = postAcceptNote(112, 2);
     expect(note).toContain('2 declared/deleted drift(s) remain un-addressed');
-    expect(note).toContain('exit 1');
     expect(note).toContain('112 unaccepted value(s) also stay reported');
   });
 
-  it('declared drift remains, nothing else → exit 1 without the undeclared clause', () => {
+  it('declared drift remains, nothing else → no undeclared clause', () => {
     const note = postAcceptNote(0, 1);
-    expect(note).toContain('exit 1');
+    expect(note).toContain('declared/deleted drift(s) remain');
     expect(note).not.toContain('also stay reported');
+  });
+});
+
+describe('finalCheckExit (R53 — report-only by default, --fail opts into exit 1)', () => {
+  it('without --fail, drift (1) maps to 0 — report-only', () => {
+    expect(finalCheckExit(1, false)).toBe(0);
+  });
+
+  it('with --fail, drift stays 1', () => {
+    expect(finalCheckExit(1, true)).toBe(1);
+  });
+
+  it('clean stays 0 either way', () => {
+    expect(finalCheckExit(0, false)).toBe(0);
+    expect(finalCheckExit(0, true)).toBe(0);
+  });
+
+  it('errors (2) ALWAYS propagate, with or without --fail', () => {
+    expect(finalCheckExit(2, false)).toBe(2);
+    expect(finalCheckExit(2, true)).toBe(2);
   });
 });

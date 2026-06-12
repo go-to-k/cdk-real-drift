@@ -46,7 +46,7 @@ npx cdk drift "$STACK" --fail 2>&1 | tee /tmp/cdkrd-vs-drift-1.out
 [ "${PIPESTATUS[0]}" -eq 0 ] || fail "cdk drift detected the undeclared change — capability changed? Re-verify the README comparison table"
 
 echo "=== cdkrd MUST see it ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdkrd-vs-drift-2.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-vs-drift-2.out
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "cdkrd missed the undeclared change"
 grep -q "AccelerateConfiguration" /tmp/cdkrd-vs-drift-2.out || fail "AccelerateConfiguration not reported"
 
@@ -60,7 +60,7 @@ npx cdk drift "$STACK" --fail 2>&1 | tee /tmp/cdkrd-vs-drift-3.out
 [ "${PIPESTATUS[0]}" -ne 0 ] || fail "cdk drift missed the declared change (expected --fail exit != 0)"
 
 echo "=== ... and cdkrd sees BOTH ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdkrd-vs-drift-4.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-vs-drift-4.out
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "cdkrd expected drift exit 1"
 grep -q "VersioningConfiguration" /tmp/cdkrd-vs-drift-4.out || fail "declared versioning drift not reported"
 grep -q "AccelerateConfiguration" /tmp/cdkrd-vs-drift-4.out || fail "undeclared accel drift not reported"

@@ -33,7 +33,7 @@ echo "=== accept (write baseline) ==="
 $CLI accept "$STACK" --region "$REGION" --yes --no-interactive || fail "accept"
 
 echo "=== check should be CLEAN ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive
+$CLI check "$STACK" --region "$REGION" --fail
 [ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after accept"
 
 echo "=== inject undeclared drift (enable transfer acceleration) ==="
@@ -44,7 +44,7 @@ aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "inject drift"
 
 echo "=== check should DETECT the undeclared drift ==="
-$CLI check "$STACK" --region "$REGION" --no-interactive | tee /tmp/cdk-real-drift-integ.out
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
 grep -q "AccelerateConfiguration" /tmp/cdk-real-drift-integ.out || fail "AccelerateConfiguration not reported"

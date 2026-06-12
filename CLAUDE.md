@@ -37,8 +37,9 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 - With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`)
   and every stack it defines is targeted. A stack arg containing `*`/`?` is a glob.
 - Key flags: `--region`, `--profile`, `--app`, `-c/--context key=value`, `--json`,
-  `--fail-on declared|undeclared`, `--show-all`, `--pre-deploy` (check), `--all`,
-  `--dry-run`/`--yes` (revert). Exit codes: `0` clean, `1` drift, `2` error.
+  `--fail` / `--fail-on declared|undeclared` (check), `--show-all`, `--pre-deploy` (check), `--all`,
+  `--dry-run`/`--yes` (revert). check is report-only by default; `--fail` makes
+  drift exit 1 (errors always 2).
 - See `src/cli.ts` `HELP` and README.md "Commands & options" for the full surface.
 
 ## State of the Repo

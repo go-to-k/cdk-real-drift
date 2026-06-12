@@ -26,6 +26,7 @@ const BOOLEAN_FLAGS = new Set([
   '--verbose',
   '-v',
   '--no-interactive',
+  '--fail',
 ]);
 
 export interface CommonArgs {
@@ -39,6 +40,11 @@ export interface CommonArgs {
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
+  // (check) automation mode, following the `cdk diff --fail` / `cdk drift --fail`
+  // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
+  // check REPORTS drift but exits 0 (report-only). Passing --fail-on <tier>
+  // implies --fail (selecting which tiers fail only makes sense in fail mode).
+  fail: boolean;
   removeUnaccepted: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
   noInteractive: boolean; // suppress all prompts; required-decision prompts then error instead of prompting
@@ -131,6 +137,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     app: values['--app'] ?? process.env.CDKRD_APP,
     json: has('--json'),
     failOn: failOnRaw === 'declared' ? 'declared' : 'undeclared',
+    fail: has('--fail') || failOnRaw !== undefined, // --fail-on implies fail mode
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
