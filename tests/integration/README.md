@@ -43,6 +43,10 @@ These do NOT run in CI (they need credentials and mutate a real account):
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
 - Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
   never concurrently.
+- **After changing exit-code or baseline semantics** (report-only/--fail, the
+  UNRECORDED contract, prompt flows): re-run EVERY script. They assert exit
+  codes and grep output wording, and have now broken on three such changes
+  (R55, R62, R70) — each found only on the next live run.
 
 ## basic
 
