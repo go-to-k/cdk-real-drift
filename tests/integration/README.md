@@ -133,6 +133,24 @@ sibling `AWS::IAM::Policy`):
 cd iam && bash verify-inline-policy.sh
 ```
 
+## harvest
+
+A corpus-harvest fixture (R71): ~18 cheap, fast-create/delete types in one
+stack (DynamoDB, EventBridge Bus+Rule, Step Functions SM+Activity, Athena
+WorkGroup, CloudWatch Alarm+Dashboard, LogGroup+MetricFilter, ECR, SSM,
+HTTP API, REST API, CodeBuild, IAM User, EIP, Glue Database+Table). Asserts:
+
+1. A FRESH deploy classifies with **zero declared drift** across every type
+   (the cross-type false-positive test) and exits 0 (inventory is UNRECORDED).
+2. `accept --yes` then `check --fail` lands CLEAN across every type.
+
+Run with `CDKRD_CORPUS_DIR` to record one golden-corpus case per type — the
+fixture exists to convert one AWS round trip into permanent offline coverage.
+
+```bash
+cd harvest && npm install && bash verify-harvest.sh
+```
+
 ## revert
 
 A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the

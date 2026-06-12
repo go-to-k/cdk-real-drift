@@ -1,0 +1,72 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (dogfood, R65/R67 aftermath): a real CFn-generated-name budget read by physical id; declared BudgetLimit {Amount:5} folds against the live decimal string \"5.0\"; NotificationsWithSubscribers stays an honest readGap (DescribeBudget cannot return it).",
+  "resource": {
+    "logicalId": "CfnBudgetCostForDaily",
+    "resourceType": "AWS::Budgets::Budget",
+    "physicalId": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
+    "constructPath": "main-CostCheck/CfnBudgetCostForDaily",
+    "declared": {
+      "Budget": {
+        "BudgetLimit": {
+          "Amount": 5,
+          "Unit": "USD"
+        },
+        "BudgetType": "COST",
+        "TimeUnit": "DAILY"
+      },
+      "NotificationsWithSubscribers": [
+        {
+          "Notification": {
+            "ComparisonOperator": "GREATER_THAN",
+            "NotificationType": "ACTUAL",
+            "Threshold": 100,
+            "ThresholdType": "PERCENTAGE"
+          },
+          "Subscribers": [
+            {
+              "Address": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
+              "SubscriptionType": "SNS"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Budget": {
+      "BudgetName": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
+      "BudgetType": "COST",
+      "TimeUnit": "DAILY",
+      "BudgetLimit": {
+        "Amount": "5.0",
+        "Unit": "USD"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["NotificationsWithSubscribers"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["NotificationsWithSubscribers"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "CfnBudgetCostForDaily",
+      "resourceType": "AWS::Budgets::Budget",
+      "path": "NotificationsWithSubscribers",
+      "note": "declared but not returned by live read",
+      "physicalId": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
+      "constructPath": "main-CostCheck/CfnBudgetCostForDaily"
+    }
+  ]
+}

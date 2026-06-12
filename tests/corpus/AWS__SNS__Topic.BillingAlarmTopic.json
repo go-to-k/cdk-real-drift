@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (dogfood): a Chatbot-service-created Subscription on a real SNS topic surfaces as the one undeclared value \u2014 genuinely out-of-band state from the template's perspective (true positive).",
+  "resource": {
+    "logicalId": "BillingAlarmTopic299F87AA",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
+    "constructPath": "main-CostCheck/BillingAlarmTopic",
+    "declared": {
+      "DisplayName": "main-CostCheck-BillingAlarmTopic",
+      "TopicName": "main-CostCheck-BillingAlarmTopic"
+    }
+  },
+  "liveRaw": {
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
+    "DisplayName": "main-CostCheck-BillingAlarmTopic",
+    "FifoTopic": false,
+    "Subscription": [
+      {
+        "Endpoint": "https://global.sns-api.chatbot.amazonaws.com",
+        "Protocol": "https"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/main-CostCheck/d50e7fa0-cb9b-11ed-a5ba-0e37f845411b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "main-CostCheck",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "BillingAlarmTopic299F87AA",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ArchivePolicy": {},
+    "TopicName": "main-CostCheck-BillingAlarmTopic"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "BillingAlarmTopic299F87AA",
+      "resourceType": "AWS::SNS::Topic",
+      "path": "Subscription",
+      "actual": [
+        {
+          "Endpoint": "https://global.sns-api.chatbot.amazonaws.com",
+          "Protocol": "https"
+        }
+      ],
+      "physicalId": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
+      "constructPath": "main-CostCheck/BillingAlarmTopic"
+    }
+  ]
+}
