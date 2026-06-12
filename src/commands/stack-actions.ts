@@ -212,9 +212,12 @@ export function formatPlan(
 ): string[] {
   const lines: string[] = [`\n=== cdkrd revert: ${stackName} (${region}) ===`];
   if (opts.noBaselineGuidance) {
+    // A fork, not a sequence (R55): accepting these values endorses them (they
+    // stop being drift) — it is NOT a step toward reverting them.
     lines.push(
-      `\nnote: ${stackName} has no baseline — undeclared drift has no revert target.`,
-      '      Run `cdkrd check` or `cdkrd accept` to record a baseline first.'
+      `\nnote: ${stackName} has no baseline — these undeclared values have no recorded state to restore.`,
+      '      If the live values are RIGHT, accept them (they stop being drift);',
+      '      if they should be REMOVED, re-run revert with --remove-unaccepted.'
     );
   }
   for (const item of plan.items) {

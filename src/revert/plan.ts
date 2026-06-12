@@ -120,10 +120,11 @@ export function buildRevertPlan(
     // such value (the subtractive model's failure mode is "check is noisy", but the
     // revert mirror of that is destructive). Refuse unless --remove-unaccepted.
     // Evaluated BEFORE the create-only guard (R35): on a no-baseline stack the
-    // fundamental blocker for undeclared drift is "no revert target exists", and the
-    // right next step is `accept` (which records the value into the baseline,
-    // making it no longer drift) — a "requires replacement" reason would
-    // mis-direct the user.
+    // fundamental blocker for undeclared drift is "no revert target exists".
+    // The reason wording is a FORK, not a sequence (R55): "accept first, then
+    // revert" reads as if accept were a step toward reverting THESE values, but
+    // accepting them endorses them (they stop being drift entirely) — accept is
+    // for values that are RIGHT; --remove-unaccepted is for values that are WRONG.
     if (
       f.tier === 'undeclared' &&
       noBaseline &&
@@ -134,7 +135,8 @@ export function buildRevertPlan(
         displayId,
         resourceType: f.resourceType,
         path: f.path,
-        reason: 'no baseline — run `cdkrd accept` first, or pass --remove-unaccepted',
+        reason:
+          'no baseline — accept it if the live value is right, or --remove-unaccepted to remove it',
       });
       continue;
     }
