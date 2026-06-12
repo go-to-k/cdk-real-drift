@@ -25,13 +25,16 @@ export interface CdkrdConfig {
 }
 
 const CONFIG_PATH = '.cdkrd/config.json';
+const KNOWN_KEYS = new Set(['ignore']);
 
 /**
  * Load `.cdkrd/config.json` (cwd-relative). Absent file -> empty config (backward
- * compatible, no migration needed). Invalid JSON or a wrong-typed `ignore` throws
- * a clear error (caller surfaces exit 2): a silently-ignored ignore-rule file is
- * the most dangerous failure mode (the user thinks a property is suppressed when it
- * is not), so this fails fast.
+ * compatible, no migration needed). Invalid JSON, a wrong-typed `ignore`, or an
+ * unknown top-level key throws a clear error (caller surfaces exit 2): a
+ * silently-ignored ignore-rule file is the most dangerous failure mode (the user
+ * thinks a property is suppressed when it is not), so this fails fast. Unknown-key
+ * rejection closes the typo variant of the same mode (`"ignroe"` would otherwise
+ * load as an empty config without a sound).
  */
 export async function loadConfig(): Promise<CdkrdConfig> {
   let raw: string;
@@ -49,6 +52,11 @@ export async function loadConfig(): Promise<CdkrdConfig> {
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
     throw new Error(`${CONFIG_PATH} must be a JSON object`);
+  const unknown = Object.keys(parsed).filter((k) => !KNOWN_KEYS.has(k));
+  if (unknown.length > 0)
+    throw new Error(
+      `${CONFIG_PATH}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: ${[...KNOWN_KEYS].map((k) => `"${k}"`).join(', ')}`
+    );
   const ignore = (parsed as Record<string, unknown>).ignore ?? [];
   if (!Array.isArray(ignore) || !ignore.every((x) => typeof x === 'string'))
     throw new Error(`${CONFIG_PATH}: "ignore" must be an array of strings`);
