@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (lambda integ run): a real default-config Node Lambda; with the R66+R70 KNOWN_DEFAULTS the only survivors are the deliberately INJECTED ReservedConcurrentExecutions=1 and the per-function LoggingConfig (LogGroup name is function-specific \u2014 deliberately not blanket-suppressed).",
+  "resource": {
+    "logicalId": "TestFn04335C60",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+    "constructPath": "CdkRealDriftIntegLambda/TestFn",
+    "declared": {
+      "Code": {
+        "ZipFile": "exports.handler = async () => ({ statusCode: 200 });"
+      },
+      "Description": "cdk-real-drift Lambda integration test function",
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambda-TestFnServiceRoleEED02BF3-InAoIu1VgMxY",
+      "Runtime": "nodejs20.x"
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "cdk-real-drift Lambda integration test function",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "ReservedConcurrentExecutions": 1,
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambda-TestFnServiceRoleEED02BF3-InAoIu1VgMxY",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+    "Runtime": "nodejs20.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegLambda",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLambda/80e23f30-666f-11f1-ad72-0afffb3bb7ff",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "TestFn04335C60",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "ReservedConcurrentExecutions",
+      "actual": 1,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92"
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    }
+  ]
+}

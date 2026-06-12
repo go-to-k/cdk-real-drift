@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (iam integ run): the README headline use case \u2014 an out-of-band PermissionsBoundary attached to a real CDK role surfaces as the ONLY finding, while the sibling DefaultPolicy reflection, trust-policy canonicalization, and IAM KNOWN_DEFAULTS all stay quiet.",
+  "resource": {
+    "logicalId": "TestRole6C9272DF",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+    "constructPath": "CdkRealDriftIntegIam/TestRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ec2.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Description": "cdk-real-drift IAM integration test role"
+    },
+    "siblingPolicyNames": ["TestRoleDefaultPolicyD1C92014"]
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+    "Description": "cdk-real-drift IAM integration test role",
+    "Policies": [
+      {
+        "PolicyName": "TestRoleDefaultPolicyD1C92014",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "s3:ListAllMyBuckets",
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "ec2.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+    "RoleId": "AROAXXXJN2LNRT25RNGI2",
+    "PermissionsBoundary": "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "TestRole6C9272DF",
+      "resourceType": "AWS::IAM::Role",
+      "path": "PermissionsBoundary",
+      "actual": "arn:aws:iam::aws:policy/ReadOnlyAccess",
+      "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+      "constructPath": "CdkRealDriftIntegIam/TestRole"
+    }
+  ]
+}

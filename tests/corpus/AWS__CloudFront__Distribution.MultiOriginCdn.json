@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "description": "Identity-keyed array sets: a multi-origin distribution returns Origins in a different ORDER (sorted by Id on both sides — not drift), while a REAL change inside one origin (OriginPath) still surfaces as declared drift with the post-sort index path.",
+  "resource": {
+    "logicalId": "MultiOriginCdn",
+    "resourceType": "AWS::CloudFront::Distribution",
+    "physicalId": "E7F8G9H0J1K2L3",
+    "declared": {
+      "DistributionConfig": {
+        "Enabled": true,
+        "Origins": [
+          {
+            "Id": "static-assets",
+            "DomainName": "corpus-assets.s3.us-east-1.amazonaws.com",
+            "OriginPath": "/v1"
+          },
+          {
+            "Id": "api-origin",
+            "DomainName": "api.corpus.example.com",
+            "OriginPath": ""
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "Id": "E7F8G9H0J1K2L3",
+    "DistributionConfig": {
+      "Enabled": true,
+      "Origins": [
+        {
+          "Id": "api-origin",
+          "DomainName": "api.corpus.example.com",
+          "OriginPath": ""
+        },
+        {
+          "Id": "static-assets",
+          "DomainName": "corpus-assets.s3.us-east-1.amazonaws.com",
+          "OriginPath": "/v2"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Id", "DomainName"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "DomainName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "MultiOriginCdn",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins.1.OriginPath",
+      "desired": "/v1",
+      "actual": "/v2",
+      "physicalId": "E7F8G9H0J1K2L3"
+    }
+  ]
+}
