@@ -1,0 +1,45 @@
+{
+  "corpusVersion": 1,
+  "description": "Write-only + read-gap: a declared top-level write-only key (MasterUserPassword) is ONE readGap finding and never compared; a declared key absent from the live read (Port) is a readGap, not drift.",
+  "resource": {
+    "logicalId": "Warehouse",
+    "resourceType": "AWS::Redshift::Cluster",
+    "physicalId": "corpus-warehouse",
+    "declared": {
+      "NodeType": "dc2.large",
+      "MasterUserPassword": "not-a-real-secret",
+      "Port": 5439
+    }
+  },
+  "liveRaw": {
+    "NodeType": "dc2.large"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["MasterUserPassword"],
+    "createOnly": [],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["MasterUserPassword"],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Warehouse",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "physicalId": "corpus-warehouse"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "Warehouse",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "Port",
+      "note": "declared but not returned by live read",
+      "physicalId": "corpus-warehouse"
+    }
+  ]
+}

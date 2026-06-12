@@ -660,6 +660,20 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
   baseline, revert plan + apply-ops + writers + the interactive abort→exit mapping
   (`resolveInteractiveRevertExit`, R30), overrides incl. EIP, glob, cli-args,
   template-adapter incl. `--pre-deploy` override, report.
+- **Golden corpus** (R63, [record.ts](../src/corpus/record.ts) +
+  `tests/corpus-replay.test.ts`): the normalize→classify pipeline is pure, so a
+  resource's classification is fully determined by (resolved declared, raw live
+  model, schema info, opts). `CDKRD_CORPUS_DIR=<dir> cdkrd check ...` records
+  those inputs + the produced findings per readable resource during a REAL
+  gather; committed cases under `tests/corpus/` are replayed offline through
+  `classifyResource` on every CI run and must reproduce the findings exactly.
+  This converts every dogfood / integ run into permanent false-positive AND
+  false-negative regression coverage without AWS access. Account ids are
+  sanitized at record time (uniformly, so ARN-identity suppression replays);
+  resource/stack NAMES are not — recordings are reviewed before committing,
+  and cases from confidential stacks are never committed (integ fixtures use
+  fictional names and are always safe). An intended behavior change updates a
+  case's `expected` in the same PR, making the semantic change reviewable.
 - **Integration fixtures** under `tests/integration/{basic,iam,lambda,revert}` (real
   CDK apps + `verify.sh`). The revert integ proves deploy → accept → out-of-band
   change → check → `revert --yes` → CLEAN → AWS converged. The `basic` fixture also

@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "description": "SQS queue: stringly-typed scalar (declared number 5 vs live string \"5\") is NOT drift; a real declared change (VisibilityTimeout 30 -> 60) IS; readOnly QueueUrl/Arn stripped.",
+  "resource": {
+    "logicalId": "WorkQueue",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue",
+    "declared": {
+      "QueueName": "corpus-work-queue",
+      "DelaySeconds": 5,
+      "VisibilityTimeout": 30
+    }
+  },
+  "liveRaw": {
+    "QueueName": "corpus-work-queue",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue",
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:corpus-work-queue",
+    "DelaySeconds": "5",
+    "VisibilityTimeout": 60
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["QueueName"],
+    "defaults": {}
+  },
+  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "WorkQueue",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "desired": 30,
+      "actual": 60,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/corpus-work-queue"
+    }
+  ]
+}

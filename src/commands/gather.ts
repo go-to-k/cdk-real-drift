@@ -2,6 +2,7 @@
 
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
 import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
@@ -154,8 +155,27 @@ export async function gatherFindings(
   const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
+  // CDKRD_CORPUS_DIR records every readable resource as a golden-corpus case
+  // (the pure pipeline inputs + the findings they produced) for offline replay —
+  // see src/corpus/record.ts (R63). Account ids are sanitized at record time.
+  const corpusDir = process.env[CORPUS_DIR_ENV];
   for (const r of desired.resources) {
-    findings.push(...(await classifyRead(cfn, r, reads.get(r.logicalId), schemas, classifyOpts)));
+    const resourceFindings = await classifyRead(
+      cfn,
+      r,
+      reads.get(r.logicalId),
+      schemas,
+      classifyOpts
+    );
+    findings.push(...resourceFindings);
+    const live = reads.get(r.logicalId)?.live;
+    const schema = schemas.get(r.resourceType);
+    if (corpusDir && live && schema) {
+      await recordCorpusCase(
+        corpusDir,
+        buildCorpusCase(r, live, schema, classifyOpts, resourceFindings)
+      );
+    }
   }
   return { desired, findings, schemas };
 }

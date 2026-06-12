@@ -79,6 +79,7 @@ NEW (cdkd does NOT have these):
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON
 - **report** — tiered text + JSON
+- **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 
 ## Roadmap (private until Phase 4)
 

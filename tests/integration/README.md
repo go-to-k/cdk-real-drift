@@ -19,6 +19,16 @@ All accept/revert calls in the scripts pass `--yes`: since the interactive
 prompts landed (R28/R38/R45), a write decision without `--yes` would refuse
 (exit 2) when stdin is not a TTY — and stop to wait for input when it is (R50).
 
+## Recording golden-corpus cases (R63)
+
+Any `check` in these scripts (or a manual dogfood run) can double as corpus
+recording: `CDKRD_CORPUS_DIR=/tmp/corpus bash verify.sh` writes one JSON case
+per readable resource (pipeline inputs + findings, account ids sanitized).
+Review a recording, add a `description`, and commit it under `tests/corpus/` —
+the offline replay test then locks that classification in CI forever. Integ
+fixtures use fictional names, so their recordings are always safe to commit;
+never commit recordings from confidential stacks.
+
 ## When to run (R50)
 
 These do NOT run in CI (they need credentials and mutate a real account):
