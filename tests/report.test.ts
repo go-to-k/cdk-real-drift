@@ -57,7 +57,9 @@ describe('report', () => {
 
   it('section header carries the count INSIDE the brackets, note outside (R48)', () => {
     const { text } = run([F('undeclared'), F('declared', 'Q')]);
-    expect(text).toContain('[UNDECLARED DRIFT: 1] (the differentiator)');
+    expect(text).toContain(
+      '[UNDECLARED DRIFT: 1] (not declared in your template — the differentiator)'
+    );
     expect(text).toContain('[DECLARED DRIFT: 1]'); // no note for declared
     // the old bare-digit-right-of-bracket form is gone
     expect(text).not.toMatch(/\] \d/);

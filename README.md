@@ -29,7 +29,7 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-[UNDECLARED DRIFT: 1] (the differentiator)
+[UNDECLARED DRIFT: 1] (not declared in your template — the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)

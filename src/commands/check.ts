@@ -42,12 +42,19 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 // accept is offered right after it). A select carries both in the option labels
 // themselves; "show first" is the safe default. Exported (pure) so the wording
 // contract is unit-tested.
+//
+// Wording (R49): "undeclared" must be anchored — it means "not declared in YOUR
+// deployed (CDK/CloudFormation) template"; there is no cdkrd-side template, and
+// the baseline only filters which of these get REPORTED. The count is also NOT
+// a drift count: on a first run these are typically AWS defaults the template
+// never pinned (with any real out-of-band edits hiding among them), so the
+// message says so instead of reading as "N problems found".
 export function firstRunPrompt(
   stackName: string,
   undeclaredCount: number
 ): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
   return {
-    message: `${stackName}: no baseline yet — ${undeclaredCount} undeclared value(s) found (declared drift is reported either way). What do you want to do?`,
+    message: `${stackName}: no baseline yet — found ${undeclaredCount} live value(s) not declared in your template (typically AWS defaults, but out-of-band edits hide among them; declared-property drift is reported either way). What do you want to do?`,
     options: [
       {
         value: 'show',

@@ -28,11 +28,13 @@ describe('preDeployFindings (--pre-deploy scope)', () => {
 });
 
 describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', () => {
-  it('the message carries the stack name and the undeclared count', () => {
+  it('the message anchors "undeclared" to the template and does not read as a drift count (R49)', () => {
     const { message } = firstRunPrompt('ApiStack', 113);
     expect(message).toContain('ApiStack: no baseline yet');
-    expect(message).toContain('113 undeclared value(s) found');
-    expect(message).toContain('declared drift is reported either way');
+    expect(message).toContain('found 113 live value(s) not declared in your template');
+    expect(message).toContain('typically AWS defaults'); // first-run framing, not "113 problems"
+    expect(message).toContain('declared-property drift is reported either way');
+    expect(message).not.toContain('drift(s) found'); // it must never read as a drift verdict
   });
 
   it('"show first" is the FIRST option (the safe default) and says accept is still possible after', () => {

@@ -11,6 +11,7 @@ import { baselinePath } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
+  acceptSelectMessage,
   acceptStack,
   availableActions,
   formatPlan,
@@ -439,6 +440,18 @@ describe('acceptStack non-interactive refusal (R38)', () => {
     } finally {
       if (existsSync(path)) rmSync(path);
     }
+  });
+});
+
+describe('acceptSelectMessage (R49 — multiselect key hints)', () => {
+  it('spells out the clack keys: space / a / i / enter (clack shows no hints by default)', () => {
+    const msg = acceptSelectMessage('ApiStack');
+    expect(msg).toContain('ApiStack: select undeclared value(s) to accept');
+    expect(msg).toContain('unselected stay reported');
+    expect(msg).toContain('space = toggle');
+    expect(msg).toContain('a = toggle all');
+    expect(msg).toContain('i = invert');
+    expect(msg).toContain('enter = confirm');
   });
 });
 
