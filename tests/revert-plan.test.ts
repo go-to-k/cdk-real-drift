@@ -52,7 +52,7 @@ describe('buildRevertPlan', () => {
     });
   });
 
-  it('undeclared drift with a blessed prior value -> add op restoring the blessed value', () => {
+  it('undeclared drift with an accepted prior value -> add op restoring the baseline value', () => {
     const f = F({
       tier: 'undeclared',
       path: 'AccelerateConfiguration',
@@ -89,9 +89,9 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('no baseline');
   });
 
-  it('--remove-unblessed re-enables the remove op on a no-baseline stack', () => {
+  it('--remove-unaccepted re-enables the remove op on a no-baseline stack', () => {
     const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
-    const plan = buildRevertPlan([f], undefined, { removeUnblessed: true });
+    const plan = buildRevertPlan([f], undefined, { removeUnaccepted: true });
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
   });
 
@@ -102,7 +102,7 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
-  it('removed-undeclared (blessed value gone) -> re-add the blessed value', () => {
+  it('removed-undeclared (baseline value gone) -> re-add the baseline value', () => {
     const f = F({
       tier: 'undeclared',
       path: 'Tags',
@@ -182,7 +182,7 @@ describe('buildRevertPlan', () => {
 
   it('R35: undeclared create-only drift on a NO-baseline stack -> reason is no-baseline (accept is the route)', () => {
     // the fundamental blocker is "no revert target" — a create-only reason would
-    // mis-direct the user toward replacement when `accept` blesses the value away
+    // mis-direct the user toward replacement when `accept` records the value into the baseline
     const plan = buildRevertPlan(
       [F({ tier: 'undeclared', path: 'BucketName', actual: 'b' })],
       undefined,

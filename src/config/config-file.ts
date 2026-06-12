@@ -1,7 +1,7 @@
 // Git-committed project config: .cdkrd/config.json (cwd-relative, loaded once per run).
 //
 // Kept SEPARATE from the per-stack baseline file on purpose:
-//   1. the baseline is a machine-generated artifact that `accept` (blessStack)
+//   1. the baseline is a machine-generated artifact that `accept` (writeBaseline)
 //      rewrites WHOLESALE every time — hand-written ignore rules would be erased on
 //      every accept (and a carry-over special case would be an accident magnet);
 //   2. ignore rules express an APP-WIDE intent ("this property is managed by an

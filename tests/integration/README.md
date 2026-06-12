@@ -31,7 +31,7 @@ tier and the `revert` guards:
 
 1. **R2 revert guard** — with NO baseline, `revert --dry-run` reports the
    undeclared drift as `NOT revertable` (`no baseline`) while a declared drift is
-   still in the plan; `--remove-unblessed` opts in to removing the undeclared value.
+   still in the plan; `--remove-unaccepted` opts in to removing the undeclared value.
 2. **R1 deleted tier** — after deleting the bucket out of band, `check` reports the
    `deleted` tier (exit 1) and `revert --dry-run` reports it as not revertable
    (`deleted — recreate via cdk deploy`).
@@ -47,9 +47,9 @@ IAM Role (inject a permissions boundary → undeclared drift) and a Node Lambda
 
 ## revert
 
-A versioned S3 bucket. Enables acceleration, `accept`s (baseline blesses it), then
-injects a DECLARED drift (versioning suspended) + an UNDECLARED drift (acceleration
-suspended from its blessed Enabled), asserts `check` detects both, runs
-`cdkrd revert --yes`, and asserts `check` is CLEAN and AWS itself converged
-(versioning Enabled = template, acceleration Enabled = blessed). Proves the
-Cloud Control `UpdateResource` write path end-to-end.
+A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the
+baseline), then injects a DECLARED drift (versioning suspended) + an UNDECLARED
+drift (acceleration suspended from its accepted Enabled), asserts `check` detects
+both, runs `cdkrd revert --yes`, and asserts `check` is CLEAN and AWS itself
+converged (versioning Enabled = template, acceleration Enabled = baseline value).
+Proves the Cloud Control `UpdateResource` write path end-to-end.

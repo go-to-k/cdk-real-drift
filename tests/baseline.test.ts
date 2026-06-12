@@ -13,7 +13,7 @@ import {
   selectAccepted,
   splitAcceptedByBaseline,
   warnTemplateHashDrift,
-  writeBaseline,
+  writeBaselineFile,
 } from '../src/baseline/baseline-file.js';
 import type { Finding } from '../src/types.js';
 
@@ -110,7 +110,7 @@ describe('baseline', () => {
     });
 
     it('R6 regression: a baseline value in an OLDER canonical form is still unchanged', () => {
-      // blessed under an OLDER rule set: IAM policy Action stored as a scalar; the current
+      // accepted under an OLDER rule set: IAM policy Action stored as a scalar; the current
       // canonical value (from buildAccepted) is the sorted-array form. canonicalizeForCompare
       // folds them together, so this must bucket as unchanged (not changed).
       const b = baseline([
@@ -134,7 +134,7 @@ describe('baseline', () => {
       expect(changed).toHaveLength(0);
     });
 
-    it('no baseline -> everything is changed (the true first bless)', () => {
+    it('no baseline -> everything is changed (the true first accept)', () => {
       const { unchanged, changed } = splitAcceptedByBaseline(accepted, undefined);
       expect(unchanged).toEqual([]);
       expect(changed).toEqual(accepted);
@@ -158,18 +158,18 @@ describe('baseline', () => {
         { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
         { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' },
       ]);
-      // the unselected new path C.R is NOT blessed
+      // the unselected new path C.R is NOT accepted
       expect(written.some((e) => e.logicalId === 'C')).toBe(false);
     });
   });
 
-  it('applyBaseline suppresses a blessed undeclared value (-> CLEAN)', () => {
+  it('applyBaseline suppresses an accepted undeclared value (-> CLEAN)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     expect(applyBaseline([undeclared('A', 'P', ['x'])], b)).toEqual([]);
   });
 
-  it('re-canonicalizes the blessed value before compare (old unsorted form still matches)', () => {
-    // blessed under an OLDER rule set: tag list stored UNSORTED
+  it('re-canonicalizes the baseline value before compare (old unsorted form still matches)', () => {
+    // accepted under an OLDER rule set: tag list stored UNSORTED
     const b = baseline([
       {
         logicalId: 'A',
@@ -212,18 +212,18 @@ describe('baseline', () => {
     expect(applyBaseline([undeclared('A', 'P', 1)], undefined)).toHaveLength(1);
   });
 
-  it('reports a blessed value that was removed since accept', () => {
+  it('reports a baseline value that was removed since accept', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const out = applyBaseline([], b); // nothing undeclared now
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
       tier: 'undeclared',
       path: 'P',
-      note: 'blessed value removed since accept',
+      note: 'baseline value removed since accept',
     });
   });
 
-  it('does NOT report a removal when the blessed path was promoted into the template', () => {
+  it('does NOT report a removal when the accepted path was promoted into the template', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const warnings: string[] = [];
     const out = applyBaseline([], b, {
@@ -234,14 +234,14 @@ describe('baseline', () => {
     expect(warnings[0]).toContain('now declared in the template');
   });
 
-  it('still reports a removal when the blessed path is genuinely gone (not declared)', () => {
+  it('still reports a removal when the accepted path is genuinely gone (not declared)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ note: 'blessed value removed since accept' });
+    expect(out[0]).toMatchObject({ note: 'baseline value removed since accept' });
   });
 
-  describe('writeBaseline (deterministic order, R40)', () => {
+  describe('writeBaselineFile (deterministic order, R40)', () => {
     // capturedAt is fixed so the only variable across writes is the accepted order.
     const entry = (logicalId: string, path: string): BaselineFile['accepted'][number] => ({
       logicalId,
@@ -259,7 +259,7 @@ describe('baseline', () => {
       const cwd = process.cwd();
       process.chdir(dir);
       try {
-        const p = await writeBaseline(b);
+        const p = await writeBaselineFile(b);
         return await readFile(p, 'utf8');
       } finally {
         process.chdir(cwd);

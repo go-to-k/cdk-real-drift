@@ -1,19 +1,19 @@
 // Per-stack accept / revert actions, shared by the standalone `accept` / `revert`
 // commands AND `check`'s interactive after-drift prompt (R28). Extracting them keeps
 // the interactive flow and the single-verb commands behaviourally identical: both go
-// through exactly the same bless / plan / apply / converge code.
+// through exactly the same accept / plan / apply / converge code.
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
 import { confirm, isCancel, multiselect } from '@clack/prompts';
 import {
   acceptedKey,
   applyBaseline,
   type BaselineFile,
-  blessStack,
   buildAccepted,
   declaredKeysByLogical,
   loadBaseline,
   selectAccepted,
   splitAcceptedByBaseline,
+  writeBaseline,
 } from '../baseline/baseline-file.js';
 import { applyIgnores, type CdkrdConfig } from '../config/config-file.js';
 import { style } from '../report/style.js';
@@ -44,9 +44,9 @@ export interface AcceptStackParams {
 /**
  * Outcome of a per-stack accept.
  *  - `wrote`: a baseline file was written.
- *  - `refused`: true ONLY when a decision was required (undeclared values to bless)
+ *  - `refused`: true ONLY when a decision was required (undeclared values to accept)
  *    but the run is non-interactive and `--yes` was not passed — accept refuses
- *    rather than blessing everything by default (R38). A user-cancelled multiselect
+ *    rather than accepting everything by default (R38). A user-cancelled multiselect
  *    is `{ wrote:false, refused:false }`, not a refusal.
  */
 export interface AcceptResult {
@@ -55,13 +55,13 @@ export interface AcceptResult {
 }
 
 /**
- * Bless the current undeclared state into the baseline file. In an interactive run
- * (no --yes) the user picks WHICH undeclared values to bless (selective accept, R14).
+ * Record the current undeclared state into the baseline file. In an interactive run
+ * (no --yes) the user picks WHICH undeclared values to accept (selective accept, R14).
  * When an existing baseline is present the multiselect shows only the DELTA from it
- * (new/changed); already-blessed unchanged values are auto-kept and surfaced with a
+ * (new/changed); already-accepted unchanged values are auto-kept and surfaced with a
  * note (R39). An empty FINAL set is confirmed first (R19). Non-interactively
  * (--no-interactive or non-TTY/CI), the multiselect is a required DECISION: with
- * undeclared values present and no --yes, accept refuses (exit 2) instead of blessing
+ * undeclared values present and no --yes, accept refuses (exit 2) instead of accepting
  * all (R38). When there is nothing to decide (no undeclared values) the baseline is
  * written regardless. (Same flow whether reached via `cdkrd accept` or check's
  * interactive prompt — neither re-gathers.)
@@ -76,21 +76,21 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
   let accepted = buildAccepted(findings);
   let refreshedOnly = false; // true when only unchanged values remained (no delta to decide)
   if (!yes && accepted.length > 0) {
-    // A decision is required (which undeclared values to bless). Non-interactively
-    // we refuse rather than implicitly bless ALL of them (R38).
+    // A decision is required (which undeclared values to accept). Non-interactively
+    // we refuse rather than implicitly accept ALL of them (R38).
     if (!interactive) {
       console.error(
-        `error: accept needs a decision — pass --yes to bless ALL undeclared values, or run interactively`
+        `error: accept needs a decision — pass --yes to accept ALL undeclared values, or run interactively`
       );
       return { wrote: false, refused: true };
     }
-    // Only make the human decide on the DELTA from the existing baseline: already-blessed
+    // Only make the human decide on the DELTA from the existing baseline: already-accepted
     // unchanged values are auto-kept (re-confirming a 50-item snapshot every time is wrong,
-    // R39). With no baseline the split returns everything as `changed` (the true first bless).
+    // R39). With no baseline the split returns everything as `changed` (the true first accept).
     const { unchanged, changed } = splitAcceptedByBaseline(accepted, existing);
     if (unchanged.length > 0)
       console.error(
-        `note: ${stackName}: keeping ${unchanged.length} already-blessed unchanged value(s)`
+        `note: ${stackName}: keeping ${unchanged.length} already-accepted unchanged value(s)`
       );
     if (changed.length === 0) {
       // Nothing new to decide — just refresh the baseline (re-snapshot the unchanged set).
@@ -98,7 +98,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
       refreshedOnly = true;
     } else {
       const picked = await multiselect({
-        message: `${stackName}: select undeclared value(s) to bless (unselected stay reported)`,
+        message: `${stackName}: select undeclared value(s) to accept (unselected stay reported)`,
         options: changed.map((e) => ({ value: acceptedKey(e), label: `${e.logicalId}.${e.path}` })),
         initialValues: changed.map((e) => acceptedKey(e)), // default = all selected
         required: false,
@@ -114,7 +114,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
       // would then plan REMOVAL of all undeclared drift. Confirm that consequence (R19).
       if (accepted.length === 0) {
         const proceed = await confirm({
-          message: `${stackName}: bless nothing? This writes an EMPTY baseline — \`cdkrd revert\` will then plan REMOVAL of ALL undeclared drift on this stack.`,
+          message: `${stackName}: accept nothing? This writes an EMPTY baseline — \`cdkrd revert\` will then plan REMOVAL of ALL undeclared drift on this stack.`,
           initialValue: false,
         });
         if (isCancel(proceed) || !proceed) {
@@ -124,7 +124,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
       }
     }
   }
-  const { path, count } = await blessStack(
+  const { path, count } = await writeBaseline(
     stackName,
     region,
     desired.accountId,
@@ -135,10 +135,10 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
   if (refreshedOnly)
     console.log(
       style.ok(
-        `${stackName}: nothing new to bless — baseline refreshed (${count} unchanged value(s))`
+        `${stackName}: nothing new to accept — baseline refreshed (${count} unchanged value(s))`
       )
     );
-  else console.log(style.ok(`baseline written: ${path} (${count} undeclared value(s) blessed)`));
+  else console.log(style.ok(`baseline written: ${path} (${count} undeclared value(s) accepted)`));
   return { wrote: true, refused: false };
 }
 
@@ -166,7 +166,7 @@ export function formatPlan(
   if (opts.noBaselineGuidance) {
     lines.push(
       `\nnote: ${stackName} has no baseline — undeclared drift has no revert target.`,
-      '      Run `cdkrd check` or `cdkrd accept` to bless a baseline first.'
+      '      Run `cdkrd check` or `cdkrd accept` to record a baseline first.'
     );
   }
   for (const item of plan.items) {
@@ -216,7 +216,7 @@ export interface RevertStackParams {
   config: CdkrdConfig; // .cdkrd/config.json ignore rules (ignored findings drop out of the plan)
   dryRun: boolean;
   yes: boolean;
-  removeUnblessed: boolean;
+  removeUnaccepted: boolean;
   verbose: boolean; // expand the NOT-revertable summary to the full list
   interactive: boolean; // whether the confirm prompt may be shown (TTY && !--no-interactive)
   // Delay before the single convergence re-read retry (SDK-writer paths can lag
@@ -258,7 +258,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     config,
     dryRun,
     yes,
-    removeUnblessed,
+    removeUnaccepted,
     verbose,
     interactive,
   } = p;
@@ -269,7 +269,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     stackName,
     config
   );
-  const plan = buildRevertPlan(drifted, baseline, { removeUnblessed, schemas: gathered.schemas });
+  const plan = buildRevertPlan(drifted, baseline, { removeUnaccepted, schemas: gathered.schemas });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
     console.log(style.clean(`${stackName} (${region}): no drift to revert.`));
@@ -277,11 +277,11 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
   printPlan(stackName, region, plan, {
     verbose,
-    // Only when the no-baseline guard actually fires: with --remove-unblessed the
+    // Only when the no-baseline guard actually fires: with --remove-unaccepted the
     // plan REMOVES undeclared drift, so a "no revert target — accept first" note
     // would contradict the plan printed right below it (R35 review).
     noBaselineGuidance:
-      baseline === undefined && !removeUnblessed && drifted.some((f) => f.tier === 'undeclared'),
+      baseline === undefined && !removeUnaccepted && drifted.some((f) => f.tier === 'undeclared'),
   });
   if (plan.items.length === 0) {
     // Drift exists but none of it is revertable (R35). That is NOT the clean
@@ -386,7 +386,7 @@ export function resolveInteractiveRevertExit(currentCode: number, outcome: Rever
 // ---- interactive choice (pure, unit-tested) ----
 
 export interface Actions {
-  accept: boolean; // an undeclared drift exists to bless
+  accept: boolean; // an undeclared drift exists to accept
   revert: boolean; // at least one finding is revertable
 }
 
@@ -402,9 +402,9 @@ export function availableActions(
   findings: Finding[],
   baseline: BaselineFile | undefined,
   schemas: Map<string, SchemaInfo>,
-  removeUnblessed: boolean
+  removeUnaccepted: boolean
 ): Actions {
   const accept = findings.some((f) => f.tier === 'undeclared');
-  const plan = buildRevertPlan(findings, baseline, { removeUnblessed, schemas });
+  const plan = buildRevertPlan(findings, baseline, { removeUnaccepted, schemas });
   return { accept, revert: plan.items.length > 0 };
 }

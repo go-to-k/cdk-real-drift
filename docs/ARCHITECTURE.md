@@ -49,7 +49,7 @@ security-relevant drift hides.**
 subset), and report everything that diverges — then make the noise tractable by
 _subtracting_ what's explainable (the template, the resource schema, AWS-managed
 fields, canonicalization) rather than by maintaining a hand-curated allow-list of
-"things worth watching." Give the result a baseline you bless and commit to git, so
+"things worth watching." Give the result a baseline you accept and commit to git, so
 "what undeclared state we accept" becomes a reviewable artifact, and let the user
 `revert` the rest.
 
@@ -79,7 +79,7 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
 5. **Git-committed baseline as the undeclared contract.** Undeclared "drift" is only
-   drift relative to a human-blessed snapshot. _Is a committed file the right control
+   drift relative to a human-accepted snapshot. _Is a committed file the right control
    surface, or does it become a rubber-stamp that hides real change?_
 6. **Revert via the same generic CC write path** (UpdateResource) + thin SDK writers,
    not a per-type provider fleet. _Is generic revert safe/complete enough, or are the
@@ -96,7 +96,7 @@ the verbs mirror it (see [redesign-notes.md](redesign-notes.md) Decision 1):
 | verb           | meaning                                                            | writes          |
 | -------------- | ------------------------------------------------------------------ | --------------- |
 | `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing         |
-| `cdkrd accept` | "current state is RIGHT" — bless it into the baseline file         | git file only   |
+| `cdkrd accept` | "current state is RIGHT" — record it in the baseline file          | git file only   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
 
 In a TTY, `check` makes that binary decision **inline** (R28): after reporting drift
@@ -143,7 +143,7 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
    --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
 5. classify (tier)       deleted | declared | undeclared | readGap | unresolved | skipped
-6. baseline filter       applyBaseline(): undeclared findings already blessed → drop
+6. baseline filter       applyBaseline(): undeclared findings already accepted → drop
 7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
                          1 bullet/tier when 2+; --verbose expands); --json carries
                          all findings; worst exit across stacks
@@ -183,7 +183,7 @@ checked.
 - **diff/**
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
-- **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `blessStack`.
+- **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
 - **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
 - **revert/** — the write path (section 7): **plan.ts**, **apply.ts** (CC UpdateResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
@@ -309,7 +309,7 @@ the undeclared residual would be dominated by `X: false` noise on every resource
 The cost: on the FIRST run / under `--show-all` (inventory), an explicitly-OFF
 feature is **not shown** (you can't see "encryption is false" in the inventory). The
 asymmetry is one-directional and self-correcting for the case that matters: once a
-non-trivial value is blessed and then changes to `false`/empty out of band, the
+non-trivial value is accepted and then changes to `false`/empty out of band, the
 baseline removal-detection (§8) DOES surface it. We deliberately do NOT skip
 `isTrivialEmpty` under `--show-all` — that would re-flood inventory with the very
 `false`/empty noise the subtractive model exists to remove. (Considered and rejected;
@@ -337,17 +337,18 @@ exit 0; drift exists but **nothing is revertable** → `nothing revertable — N
 drift(s) remain.` + exit 1 (drift-remains semantics, not a usage error — R35).
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
-  the **baseline** value (an un-blessed out-of-band _addition_ reverts by REMOVAL).
+  the **baseline** value (an unaccepted out-of-band _addition_ reverts by REMOVAL).
 - **No-baseline safety guard**: on a stack that has never been `accept`ed, undeclared
   drift is reported as `notRevertable` (`no baseline — run cdkrd accept first, or
-pass --remove-unblessed`) rather than removed. The subtractive noise model's
+pass --remove-unaccepted`) rather than removed. The subtractive noise model's
   failure mode in `check` is "the report is noisy"; the un-guarded revert mirror of
   that would be **destructive** (a bulk REMOVE of every undeclared value that slipped
-  through subtraction). `--remove-unblessed` opts back into removal. Declared drift is
+  through subtraction). `--remove-unaccepted` opts back into removal. Declared drift is
   always revertable (the template is its source, independent of any baseline).
   For undeclared drift this guard outranks the create-only guard (R35): the
-  fundamental blocker is "no revert target exists", and `accept` blesses the value
-  away entirely — a "requires replacement" reason would mis-direct. When the guard
+  fundamental blocker is "no revert target exists", and `accept` records the value
+  into the baseline, making it no longer drift — a "requires replacement" reason
+  would mis-direct. When the guard
   fires, the plan leads with a note pointing at the `check` / `accept` route.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
@@ -406,26 +407,27 @@ field only warns and is stamped on the next `accept`.
 
 When a baseline already exists, the interactive `accept` multiselect shows only the
 **delta** from it (`splitAcceptedByBaseline`) — new/changed undeclared values, where
-"unchanged" reuses the same `blessedValueMatches` predicate as `applyBaseline`
-(R6 — canonicalized compare); already-blessed unchanged values are auto-kept (noted,
+"unchanged" reuses the same `baselineValueMatches` predicate as `applyBaseline`
+(R6 — canonicalized compare); already-accepted unchanged values are auto-kept (noted,
 not re-confirmed) and a delta of zero just refreshes the file (R39).
 
 Committing it makes "what real state we accept" a visible, reviewable PR change.
 With revert it is also the _source of the undeclared target value_, so it is
 structural, not optional. `check` filters undeclared findings against it
-(`applyBaseline`), so a blessed stack reports CLEAN; `--show-all` ignores it.
+(`applyBaseline`), so a stack with an accepted baseline reports CLEAN; `--show-all`
+ignores it.
 
 **Promotion into the template.** The recommended way to resolve undeclared drift is
-to _declare_ it in the CDK code. After that, the blessed path is no longer undeclared,
-so the naive removal check would mis-report it as "blessed value removed since
-accept". `applyBaseline` is passed the set of currently-declared keys per resource
+to _declare_ it in the CDK code. After that, the accepted path is no longer
+undeclared, so the naive removal check would mis-report it as "baseline value
+removed since accept". `applyBaseline` is passed the set of currently-declared keys per resource
 (`declaredKeysByLogical`) and suppresses that false removal, emitting a one-line
 stderr note ("now declared in the template — re-run `cdkrd accept`") instead. So the
 behavior we recommend is never punished as drift.
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal
-note suggesting a re-`accept` (the blessed set may be stale). Skipped under
+note suggesting a re-`accept` (the accepted set may be stale). Skipped under
 `--pre-deploy`, where the synth template legitimately differs from the deployed one.
 
 ## 9. Tier semantics (the output contract)
@@ -458,7 +460,7 @@ dropped, but never false drift.
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —
 Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled
 capacity, externally-managed Lambda reserved concurrency. Because `accept` is a value
-snapshot, blessing such a property would re-detect and force a re-accept every time
+snapshot, accepting such a property would re-detect and force a re-accept every time
 the value moves. Path-level ignore rules (the `.driftignore` / Terraform
 `ignore_changes` equivalent) live in a git-committed **`.cdkrd/config.json`** —
 deliberately separate from the baseline, which `accept` rewrites wholesale (a
@@ -487,7 +489,7 @@ constructPath (`MyStack/ApiRole.Policies`) is the human-friendly id `cdk-local` 
 targets by, offered as an additional match target (it comes from optional
 `aws:cdk:path` Metadata, so it can't be the only key). A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
-Ignored findings drop out of the revert plan and the accept bless-set automatically
+Ignored findings drop out of the revert plan and the accept-set automatically
 (neither acts on the `ignored` tier). A malformed `config.json` fails the run
 (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
 (inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
@@ -563,7 +565,7 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
   change → check → `revert --yes` → CLEAN → AWS converged. The `basic` fixture also
   ships `verify-deleted-guards.sh`, which exercises the `deleted` tier (delete a
   resource out of band → reported + exit 1, not revertable) and the no-baseline
-  `revert` guard (undeclared drift refused unless `--remove-unblessed`).
+  `revert` guard (undeclared drift refused unless `--remove-unaccepted`).
 - **Dogfood evidence**: 8 real cdkd fixtures run through `check --show-all` → fix →
   `declared=0`, then `accept` → CLEAN, then destroy + orphan-verified. This is what
   surfaced the four false-positive classes.
@@ -584,7 +586,7 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    tiers only** (declared / deleted / readGap / unresolved / skipped) and excludes
    undeclared entirely — the undeclared tier is "live minus declared", so with a
    _synth_ declared set its meaning silently shifts (a prop deleted from code would
-   appear as undeclared). It also does NOT touch the baseline (no bless offer, no
+   appear as undeclared). It also does NOT touch the baseline (no accept offer, no
    hash check against the synth template). The question "what undeclared state do we
    accept" is only meaningful against the deployed template, so it is answered by a
    normal `check`. pre-deploy answers exactly one question: what declared drift would
@@ -627,7 +629,7 @@ GetAtt resolution, wildcard, EIP, ManagedPolicy revert, `--pre-deploy`, governan
 skills, **lint clean / CI green**) + the **design-review fix pass (R1–R17)**:
 out-of-band deletion as a first-class `deleted` tier, baseline-absent revert guard,
 per-account baseline, create-only revert guard, promotion-into-template suppression,
-blessed-value re-canonicalization, large-stack `ListStackResources` + concurrent
+baseline-value re-canonicalization, large-stack `ListStackResources` + concurrent
 reads, more fail-closed intrinsics (FindInMap / Split / ImportValue / Select-OOB /
 `${!Literal}`), strict managed-KMS-alias resolution, account/region-scoped ARN
 identity, write-only `readGap` surfacing, real Lambda-Permission values,

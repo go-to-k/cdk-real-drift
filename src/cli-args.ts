@@ -22,7 +22,7 @@ const BOOLEAN_FLAGS = new Set([
   '-y',
   '--pre-deploy',
   '--dry-run',
-  '--remove-unblessed',
+  '--remove-unaccepted',
   '--verbose',
   '-v',
   '--no-interactive',
@@ -39,7 +39,7 @@ export interface CommonArgs {
   showAll: boolean; // inventory mode: ignore baseline, show ALL undeclared values
   yes: boolean;
   preDeploy: boolean; // compare live vs the LOCAL synth template (drift your next deploy would clobber)
-  removeUnblessed: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
+  removeUnaccepted: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
   noInteractive: boolean; // suppress all prompts; required-decision prompts then error instead of prompting
 }
@@ -134,7 +134,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),
-    removeUnblessed: has('--remove-unblessed'),
+    removeUnaccepted: has('--remove-unaccepted'),
     verbose: has('--verbose') || has('-v'),
     noInteractive: has('--no-interactive'),
   };

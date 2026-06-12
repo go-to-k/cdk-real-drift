@@ -38,7 +38,7 @@ export function classifyResource(
   // strip AWS-managed fields + drop aws:* tag elements (live-only), then run the
   // shared canonicalization pipeline (policy docs + tag lists + id arrays) on both
   // sides so reordering / scalar-vs-array is not false drift. The pipeline is shared
-  // with baseline-file.ts so blessed values normalize identically (see pipeline.ts).
+  // with baseline-file.ts so baseline values normalize identically (see pipeline.ts).
   const live = canonicalizeForCompare(
     stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
   ) as Record<string, unknown>;

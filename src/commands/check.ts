@@ -1,17 +1,18 @@
 // `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
 //             [--json] [--fail-on declared|undeclared] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
-// baseline file (if present) so a blessed stack reports CLEAN. Exit code is the
+// baseline file (if present) so a stack with an accepted baseline reports CLEAN.
+// Exit code is the
 // worst across all checked stacks (0 clean / 1 drift / 2 error).
 import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
-  blessStack,
   checkBaselineAccount,
   declaredKeysByLogical,
   loadBaseline,
   warnTemplateHashDrift,
+  writeBaseline,
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
@@ -130,7 +131,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // ONLY meaningful signal is declared drift the next deploy would clobber. The
       // undeclared tier is "live minus declared" — with a synth declared set its
       // meaning silently shifts, so we drop it and do NOT touch the baseline at all
-      // (no bless offer, no baseline load — which would also wrongly hash the synth
+      // (no accept offer, no baseline load — which would also wrongly hash the synth
       // template). See ARCHITECTURE §13-2.
       if (a.preDeploy) {
         const declaredOnly = preDeployFindings(findings);
@@ -160,13 +161,13 @@ export async function runCheck(args: string[]): Promise<number> {
       // First run: no baseline yet → choose between "report first" (the safe
       // default — a selective accept is offered again right after the report) and
       // a bulk accept of everything sight-unseen (R45). Ignore rules are applied
-      // BEFORE counting/accepting so the bulk path can never bless values the
+      // BEFORE counting/accepting so the bulk path can never accept values the
       // report would have re-tagged as ignored (same as the post-report accept).
       // With ZERO undeclared values there is no decision worth interrupting for —
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
       if (!baseline && !a.showAll && !a.json && isInteractive(a)) {
-        const blessable = applyIgnores(findings, stackName, config);
-        const undeclaredCount = blessable.filter((f) => f.tier === 'undeclared').length;
+        const acceptable = applyIgnores(findings, stackName, config);
+        const undeclaredCount = acceptable.filter((f) => f.tier === 'undeclared').length;
         if (undeclaredCount > 0) {
           const prompt = firstRunPrompt(stackName, undeclaredCount);
           const choice = await select({
@@ -175,11 +176,11 @@ export async function runCheck(args: string[]): Promise<number> {
             initialValue: 'show' as const,
           });
           if (!isCancel(choice) && choice === 'acceptAll') {
-            const { count } = await blessStack(
+            const { count } = await writeBaseline(
               stackName,
               region,
               desired.accountId,
-              blessable,
+              acceptable,
               desired.rawTemplate
             );
             console.error(`baseline written (${count} undeclared value(s) accepted) — commit it.`);
@@ -189,7 +190,7 @@ export async function runCheck(args: string[]): Promise<number> {
       }
       if (!a.json && !baseline && !a.showAll) {
         console.error(
-          `note: ${stackName}: no baseline — showing all undeclared state. Run \`cdkrd accept ${stackName}\` to bless it.`
+          `note: ${stackName}: no baseline — showing all undeclared state. Record it with \`cdkrd accept ${stackName}\`.`
         );
       }
       const reconciled = applyIgnores(
@@ -214,13 +215,13 @@ export async function runCheck(args: string[]): Promise<number> {
       // output), --show-all (baseline not applied — accept would mean something else),
       // and --pre-deploy (declared-only, baseline-untouched contract).
       if (code === 1 && !a.json && !a.showAll && !a.preDeploy && isInteractive(a)) {
-        const actions = availableActions(reconciled, baseline, schemas, a.removeUnblessed);
+        const actions = availableActions(reconciled, baseline, schemas, a.removeUnaccepted);
         if (actions.accept || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (keep exit code 1)' }];
           if (actions.accept)
             options.push({
               value: 'accept',
-              label: 'Accept — bless current state into the baseline',
+              label: 'Accept — record current state into the baseline',
             });
           if (actions.revert)
             options.push({
@@ -233,10 +234,10 @@ export async function runCheck(args: string[]): Promise<number> {
             initialValue: 'nothing',
           });
           if (!isCancel(choice) && choice === 'accept') {
-            // accept blesses UNDECLARED only; warn if declared/deleted drift remains
+            // accept records UNDECLARED only; warn if declared/deleted drift remains
             if (reconciled.some((f) => f.tier === 'declared' || f.tier === 'deleted'))
               console.error(
-                `note: ${stackName}: accept blesses the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
+                `note: ${stackName}: accept records the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
               );
             const result = await acceptStack({
               stackName,
@@ -268,7 +269,7 @@ export async function runCheck(args: string[]): Promise<number> {
               config,
               dryRun: false,
               yes: a.yes,
-              removeUnblessed: a.removeUnblessed,
+              removeUnaccepted: a.removeUnaccepted,
               verbose: a.verbose,
               interactive: isInteractive(a),
             });

@@ -2,7 +2,7 @@
 //              [--dry-run] [--yes]`
 // The ONLY AWS-mutating command. Reverts drift to its desired value:
 //   declared   -> deployed-template value
-//   undeclared -> baseline value (restore) or removal (if never blessed)
+//   undeclared -> baseline value (restore) or removal (if never accepted)
 // The per-stack plan / apply / converge flow lives in stack-actions.ts (shared with
 // check's interactive prompt, R28).
 import { isStackNotDeployed } from '../aws-errors.js';
@@ -69,7 +69,7 @@ export async function runRevert(args: string[]): Promise<number> {
         config,
         dryRun,
         yes: a.yes,
-        removeUnblessed: a.removeUnblessed,
+        removeUnaccepted: a.removeUnaccepted,
         verbose: a.verbose,
         interactive: isInteractive(a),
       });

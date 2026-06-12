@@ -1,5 +1,5 @@
 // Git-committed baseline file: .cdkrd/<stack>.<accountId>.<region>.json
-// Stores the BLESSED undeclared property values (the only thing with no other
+// Stores the ACCEPTED undeclared property values (the only thing with no other
 // source of truth — declared desired comes live from GetTemplate). `check`
 // reports an undeclared finding only when it differs from / is absent in the
 // baseline; with no baseline, every non-default undeclared value is shown.
@@ -73,7 +73,7 @@ function sortAccepted(accepted: AcceptedEntry[]): AcceptedEntry[] {
   );
 }
 
-export async function writeBaseline(b: BaselineFile): Promise<string> {
+export async function writeBaselineFile(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
   // sort at the write point (not per entry-generation path) so every caller — accept,
@@ -85,9 +85,9 @@ export async function writeBaseline(b: BaselineFile): Promise<string> {
 
 /** Write a baseline for a stack from a check run's findings + raw template.
  *  Shared by `accept` and `check`'s first-run interactive offer. Pass `accepted`
- *  to bless a pre-filtered subset (selective accept); omit it to bless ALL
+ *  to record a pre-filtered subset (selective accept); omit it to accept ALL
  *  undeclared findings (the default — same as `buildAccepted(findings)`). */
-export async function blessStack(
+export async function writeBaseline(
   stackName: string,
   region: string,
   accountId: string,
@@ -95,7 +95,7 @@ export async function blessStack(
   rawTemplate: string,
   accepted: AcceptedEntry[] = buildAccepted(findings)
 ): Promise<{ path: string; count: number }> {
-  const path = await writeBaseline({
+  const path = await writeBaselineFile({
     schemaVersion: 1,
     stackName,
     region,
@@ -136,7 +136,7 @@ export function checkBaselineAccount(
   }
 }
 
-/** Build the blessed-undeclared set from a check run's findings. */
+/** Build the accepted-undeclared set from a check run's findings. */
 export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
   return findings
     .filter((f) => f.tier === 'undeclared')
@@ -155,26 +155,26 @@ export function acceptedKey(e: { logicalId: string; path: string }): string {
 }
 
 /**
- * The single source of truth for "is this blessed value equal to the current
+ * The single source of truth for "is this baseline value equal to the current
  * value?". `applyBaseline` (suppress vs surface) and `splitAcceptedByBaseline`
- * (unchanged vs changed) MUST share this exact predicate. The blessed value is
+ * (unchanged vs changed) MUST share this exact predicate. The baseline value is
  * re-canonicalized through the CURRENT pipeline so a baseline written under older
  * normalization rules still matches today's canonical live value (R6) — the
  * `currentCanonicalValue` side is expected to be already canonical.
  */
-export function blessedValueMatches(
-  blessedValue: unknown,
+export function baselineValueMatches(
+  baselineValue: unknown,
   currentCanonicalValue: unknown
 ): boolean {
-  return deepEqual(canonicalizeForCompare(blessedValue), currentCanonicalValue);
+  return deepEqual(canonicalizeForCompare(baselineValue), currentCanonicalValue);
 }
 
 /**
  * Split a freshly-built accepted set against the existing baseline into the values
  * a human must decide on (`changed` = new path OR value differs) and the values
- * already blessed and unchanged (`unchanged` = same logicalId+path AND value
- * matches by `blessedValueMatches`). With no baseline EVERYTHING is `changed`
- * (the true first bless). Entries are matched against `entry.value` which comes
+ * already accepted and unchanged (`unchanged` = same logicalId+path AND value
+ * matches by `baselineValueMatches`). With no baseline EVERYTHING is `changed`
+ * (the true first accept). Entries are matched against `entry.value` which comes
  * from `buildAccepted` (already canonical), so the predicate compares
  * canonical-vs-canonical, exactly like `applyBaseline`.
  */
@@ -186,23 +186,24 @@ export function splitAcceptedByBaseline(
   const unchanged: AcceptedEntry[] = [];
   const changed: AcceptedEntry[] = [];
   for (const entry of accepted) {
-    const blessed = baseline.accepted.find(
+    const baselineEntry = baseline.accepted.find(
       (a) => a.logicalId === entry.logicalId && a.path === entry.path
     );
-    if (blessed && blessedValueMatches(blessed.value, entry.value)) unchanged.push(entry);
+    if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value))
+      unchanged.push(entry);
     else changed.push(entry);
   }
   return { unchanged, changed };
 }
 
-/** Selective accept: build the blessed set from only the findings whose key is in
+/** Selective accept: build the accepted set from only the findings whose key is in
  *  `selectedKeys`. Empty set -> []; all keys -> equals buildAccepted(findings). */
 export function selectAccepted(findings: Finding[], selectedKeys: Set<string>): AcceptedEntry[] {
   return buildAccepted(findings).filter((e) => selectedKeys.has(acceptedKey(e)));
 }
 
 export interface ApplyBaselineOptions {
-  // logicalId -> set of currently-declared top-level keys. A blessed entry whose
+  // logicalId -> set of currently-declared top-level keys. An accepted entry whose
   // path is now DECLARED in the template is the recommended "promote undeclared
   // drift into code" workflow, NOT a removal — suppress the false removal finding.
   declaredByLogical?: Map<string, Set<string>>;
@@ -212,11 +213,11 @@ export interface ApplyBaselineOptions {
 const topSegment = (p: string): string => p.split('.')[0] ?? p;
 
 /**
- * Reconcile undeclared findings against the blessed baseline:
- *  - an undeclared finding matching a blessed entry (same value) is suppressed;
+ * Reconcile undeclared findings against the accepted baseline:
+ *  - an undeclared finding matching an accepted entry (same value) is suppressed;
  *  - a changed value / new path survives (= real drift);
- *  - a blessed entry with NO corresponding current undeclared value is reported as
- *    a removal (drift in the other direction — something blessed disappeared),
+ *  - an accepted entry with NO corresponding current undeclared value is reported as
+ *    a removal (drift in the other direction — something accepted disappeared),
  *    UNLESS that path has since been DECLARED in the template (promotion to code —
  *    the workflow we recommend — which is noted, not flagged as drift).
  * Non-undeclared findings pass through untouched.
@@ -227,24 +228,24 @@ export function applyBaseline(
   opts: ApplyBaselineOptions = {}
 ): Finding[] {
   if (!baseline) return findings;
-  const blessed = baseline.accepted;
+  const accepted = baseline.accepted;
   const kept = findings.filter((f) => {
     if (f.tier !== 'undeclared') return true;
-    // re-canonicalize the blessed value through the CURRENT pipeline before comparing
-    // (f.actual is already canonical from classify): a baseline blessed under older
+    // re-canonicalize the baseline value through the CURRENT pipeline before comparing
+    // (f.actual is already canonical from classify): a baseline accepted under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
-    const match = blessed.find(
+    const match = accepted.find(
       (a) =>
-        a.logicalId === f.logicalId && a.path === f.path && blessedValueMatches(a.value, f.actual)
+        a.logicalId === f.logicalId && a.path === f.path && baselineValueMatches(a.value, f.actual)
     );
     return match === undefined;
   });
-  // removed: blessed entries whose path is no longer present in any current undeclared finding
+  // removed: accepted entries whose path is no longer present in any current undeclared finding
   const currentPaths = new Set(
     findings.filter((f) => f.tier === 'undeclared').map((f) => `${f.logicalId}.${f.path}`)
   );
-  for (const a of blessed) {
+  for (const a of accepted) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     // promoted into the template since accept → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
@@ -260,7 +261,7 @@ export function applyBaseline(
       path: a.path,
       desired: a.value,
       actual: undefined,
-      note: 'blessed value removed since accept',
+      note: 'baseline value removed since accept',
     });
   }
   return kept;
@@ -275,7 +276,7 @@ export function declaredKeysByLogical(
 
 /**
  * Warn (never error) when the baseline was captured against a different template
- * version than the one now deployed — the blessed set may be stale. Skipped in
+ * version than the one now deployed — the accepted set may be stale. Skipped in
  * --pre-deploy mode (the synth template legitimately differs from the deployed one).
  */
 export function warnTemplateHashDrift(
