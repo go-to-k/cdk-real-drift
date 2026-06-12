@@ -339,8 +339,13 @@ see [redesign-notes.md](redesign-notes.md).)
 
 [src/revert/](../src/revert/). `revert` builds a plan, prints it (revertable items
 always in full — per finding: path, current → target; NOT-revertable findings folded
-to one line per reason, `--verbose` for the full list — R35), asks for confirmation
-(`@clack`; `--yes` skips; non-TTY refuses; `--dry-run` previews), applies, then
+to one line per reason, `--verbose` for the full list — R35), then in a TTY shows a
+**multiselect of the op(s) to write** (R57 — symmetric with accept's multiselect:
+RESTORE ops pre-selected; REMOVE ops, which DELETE a live value not in the
+baseline, start unselected and labeled `(REMOVE)` so removal stays an explicit
+per-item choice; picking nothing aborts), asks for confirmation with the selected
+op count (`@clack`; `--yes` skips both and applies the full plan; non-TTY
+refuses; `--dry-run` previews), applies, then
 **re-checks for convergence**. The convergence re-check is **scoped to the
 resources the revert touched** (R44, `regatherTouched` in
 [gather.ts](../src/commands/gather.ts)): only the plan's resources are re-read

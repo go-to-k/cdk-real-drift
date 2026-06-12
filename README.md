@@ -185,6 +185,12 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   run exactly the same code as the standalone commands. Skipped under `--json`,
   `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert confirmation
   writes nothing — the drift still stands and stays reported.
+- **`revert`** shows the plan, then a multiselect of the op(s) to write:
+  RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
+  (deleting a live value that is not in the baseline) start **unselected** and
+  are labeled `(REMOVE)` — removal is an explicit per-item choice. A final
+  confirm states exactly how many selected op(s) will be written. `--yes`
+  skips both and applies the full plan.
 - **`accept`** shows a multiselect of only the **delta** from the existing
   baseline (new + changed undeclared values, all pre-selected); already-accepted
   unchanged values are auto-kept and surfaced with a
