@@ -34,12 +34,14 @@ never commit recordings from confidential stacks.
 These do NOT run in CI (they need credentials and mutate a real account):
 
 - **Before every release** (the `/verify-pr` gate): run EVERY fixture —
-  `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh`), `iam`,
-  `lambda`, `revert`, `policies`.
+  `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh` +
+  `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`.
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
   `src/commands/gather.ts`: run at least `basic` + `revert` (and `policies` if
   `writers.ts` changed) before merging.
-- Scripts that share a fixture/stack (`basic`'s three) must run sequentially,
+- **After changing** `src/diff/**` or `src/baseline/**`: run
+  `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
+- Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
   never concurrently.
 
 ## basic
@@ -80,6 +82,27 @@ Empirical proof of the README capability table, against `cdk drift` itself
 
 If `cdk drift` ever starts detecting the undeclared change, this test fails —
 the signal to re-verify the README comparison-table claims.
+
+### basic / verify-mutation-matrix.sh
+
+False-negative matrix (R64): after a FULL accept (snapshot-complete baseline),
+one bucket is walked through every drift direction the model distinguishes;
+each must be detected, named, and resolved back to CLEAN:
+
+| #   | direction         | mutation                        | must name                            | resolve  |
+| --- | ----------------- | ------------------------------- | ------------------------------------ | -------- |
+| M1  | declared-change   | versioning suspended            | `VersioningConfiguration`            | `revert` |
+| M2  | undeclared-add    | acceleration appears            | `appeared since accept` (R62)        | `accept` |
+| M3  | undeclared-change | accepted acceleration flips     | `AccelerateConfiguration`            | `accept` |
+| M4  | undeclared-add    | out-of-band bucket tags         | `Tags` + `appeared since accept`     | `accept` |
+| M5  | value-remove      | accepted tags deleted           | `baseline value removed since accept`| `accept` |
+
+Every mutation ends at CLEAN, so the script also exercises the accept delta
+loop (R39) each round and the declared revert path once.
+
+```bash
+cd basic && bash verify-mutation-matrix.sh
+```
 
 ## iam / lambda
 
