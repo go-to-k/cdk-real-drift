@@ -359,6 +359,9 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     const { outcome, logs } = await run();
     expect(outcome).toEqual({ exit: 1, aborted: false });
     expect(logs).toContain('s: 1 drift(s) remain.');
+    // R46: each surviving drift is listed (id.path + tier) so the user does not
+    // have to re-run `check` just to learn what failed to converge.
+    expect(logs).toContain('  - B.VersioningConfiguration.Status (declared)');
     expect(cc.commandCalls(GetResourceCommand)).toHaveLength(2); // first read + one retry, no more
   });
 });

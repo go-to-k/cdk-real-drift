@@ -4,6 +4,10 @@
 // A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // S3 versioning can never return to the never-enabled state — a revert "remove"
+  // lands on Suspended, which IS the off state. Without this entry an undeclared
+  // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
+  'AWS::S3::Bucket': { VersioningConfiguration: { Status: 'Suspended' } },
 };
 
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
@@ -143,11 +147,17 @@ export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
   return false;
 }
 
-// A1: trivially-empty/off values AWS returns for unset features.
+// A1: trivially-empty/off values AWS returns for unset features. Objects recurse:
+// a struct whose EVERY value is itself trivially empty is a feature-off struct —
+// e.g. the empty VpcConfig ({Ipv6AllowedForDualStack:false, SecurityGroupIds:[],
+// SubnetIds:[]}) that Lambda materializes after a Cloud Control UpdateResource,
+// which otherwise phantom-drifts on every revert (R46). Arrays stay length-0-only
+// (no element recursion — [false] may be a meaningful list), same conservative
+// stance as the top-level scalars (0 stays meaningful, false does not).
 export function isTrivialEmpty(v: unknown): boolean {
   if (v === false || v === '') return true;
   if (Array.isArray(v)) return v.length === 0;
-  if (v && typeof v === 'object') return Object.keys(v).length === 0;
+  if (v && typeof v === 'object') return Object.values(v).every(isTrivialEmpty);
   return false;
 }
 

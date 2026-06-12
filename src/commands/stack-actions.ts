@@ -24,9 +24,9 @@ import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
 import { type GatherResult, regatherTouched } from './gather.js';
 
-const driftCount = (findings: Finding[]): number =>
-  findings.filter((f) => f.tier === 'deleted' || f.tier === 'declared' || f.tier === 'undeclared')
-    .length;
+const isDrift = (f: Finding): boolean =>
+  f.tier === 'deleted' || f.tier === 'declared' || f.tier === 'undeclared';
+const driftCount = (findings: Finding[]): number => findings.filter(isDrift).length;
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -363,12 +363,19 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     await sleep(p.convergeRetryDelayMs ?? CONVERGE_RETRY_DELAY_MS);
     post = reconcile(await regatherTouched(gathered, touched, region));
   }
-  const remaining = driftCount(post);
+  const remainingDrift = post.filter(isDrift);
+  const remaining = remainingDrift.length;
   console.log(
     remaining === 0
       ? style.clean(`${stackName}: CLEAN after revert.`)
       : style.drift(`${stackName}: ${remaining} drift(s) remain.`)
   );
+  // Say WHICH drift survived — without this the user must re-run `check` just to
+  // learn what didn't converge (R46). A terse id-per-line pointer, not a report.
+  for (const f of remainingDrift) {
+    const id = f.constructPath ?? f.logicalId;
+    console.log(`  - ${id}${f.path ? `.${f.path}` : ''} (${f.tier})`);
+  }
   if (remaining > 0) worst = Math.max(worst, 1);
   return { exit: worst, aborted: false };
 }

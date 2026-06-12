@@ -303,9 +303,13 @@ progress, tagged `CDK_ASSEMBLY_E1002`/error by toolkit-lib) in alarming **red** 
 ([src/synth/io-host.ts](../src/synth/io-host.ts)).
 
 **The `isTrivialEmpty` asymmetry (intentional trade-off).** An undeclared value that
-is `false`, `''`, `[]`, or `{}` is suppressed (`isTrivialEmpty` in noise.ts) — AWS
+is `false`, `''`, `[]`, or an object whose every value is itself trivially empty
+(recursively — `{}` included) is suppressed (`isTrivialEmpty` in noise.ts) — AWS
 returns a "feature off / empty" value for almost every unset option, so without this
 the undeclared residual would be dominated by `X: false` noise on every resource.
+The object recursion covers feature-off STRUCTS AWS materializes (e.g. the empty
+`VpcConfig {Ipv6AllowedForDualStack:false, SecurityGroupIds:[], SubnetIds:[]}` a
+Lambda reports after a Cloud Control update — R46); arrays stay length-0-only.
 The cost: on the FIRST run / under `--show-all` (inventory), an explicitly-OFF
 feature is **not shown** (you can't see "encryption is false" in the inventory). The
 asymmetry is one-directional and self-correcting for the case that matters: once a
@@ -332,9 +336,12 @@ unrelated mid-revert drift on the revert. A `verifying convergence (re-reading
 N resource(s))...` line attributes the wait, and if a touched resource still
 reads as drifted, ONE re-read after a short delay guards against SDK-writer
 eventual consistency (the slow full re-gather used to grant that propagation
-time by accident). Exit semantics: no drift at all → `no drift to revert.` +
-exit 0; drift exists but **nothing is revertable** → `nothing revertable — N
-drift(s) remain.` + exit 1 (drift-remains semantics, not a usage error — R35).
+time by accident). When drift survives, each surviving finding is listed
+(id.path + tier) under the `N drift(s) remain.` line so the user doesn't have
+to re-run `check` to learn what failed to converge (R46). Exit semantics: no
+drift at all → `no drift to revert.` + exit 0; drift exists but **nothing is
+revertable** → `nothing revertable — N drift(s) remain.` + exit 1
+(drift-remains semantics, not a usage error — R35).
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an unaccepted out-of-band _addition_ reverts by REMOVAL).
