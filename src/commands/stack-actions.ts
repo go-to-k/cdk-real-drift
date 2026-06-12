@@ -31,6 +31,40 @@ const driftCount = (findings: Finding[]): number => findings.filter(isDrift).len
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * The revert confirm message (R52). When NOT-revertable findings exist (e.g. a
+ * no-baseline first check with one declared drift and 100+ undeclared values),
+ * users read "This WRITES to AWS" as "everything I just saw gets written" —
+ * state explicitly that ONLY the listed op(s) are written and the rest is
+ * untouched. Pure + exported so the wording is unit-tested.
+ */
+export function revertConfirmMessage(
+  stackName: string,
+  opCount: number,
+  notRevertableCount: number
+): string {
+  const scope =
+    notRevertableCount > 0
+      ? ` Only the ${opCount} op(s) listed above are written — the ${notRevertableCount} NOT-revertable finding(s) are untouched.`
+      : '';
+  return `Apply ${opCount} revert op(s) to ${stackName}? This WRITES to AWS.${scope}`;
+}
+
+/**
+ * The post-revert surviving-drift pointer list (R46), capped (R52): after a
+ * partial revert on a no-baseline stack, every unaccepted undeclared value
+ * "survives" — re-listing 100+ lines the user just saw in the report is noise.
+ * Show up to `cap` entries, then a one-line fold. Pure + exported for tests.
+ */
+export function formatSurvivingDrift(remaining: Finding[], cap = 10): string[] {
+  const lines = remaining
+    .slice(0, cap)
+    .map((f) => `  - ${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''} (${f.tier})`);
+  if (remaining.length > cap)
+    lines.push(`  ... and ${remaining.length - cap} more — run \`cdkrd check\` for the full list`);
+  return lines;
+}
+
+/**
  * Message for accept's multiselect. clack renders NO key hints by default (they
  * only appear inside the required-validation error), so the keys users need —
  * verified against @clack/core: space toggles, `a` toggles all, `i` inverts,
@@ -320,7 +354,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       return { exit: 2, aborted: false };
     }
     const ok = await confirm({
-      message: `Apply ${opCount} revert op(s) to ${stackName}? This WRITES to AWS.`,
+      message: revertConfirmMessage(stackName, opCount, plan.notRevertable.length),
     });
     if (isCancel(ok) || !ok) {
       console.log(style.infoTier('aborted.'));
@@ -387,11 +421,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       : style.drift(`${stackName}: ${remaining} drift(s) remain.`)
   );
   // Say WHICH drift survived — without this the user must re-run `check` just to
-  // learn what didn't converge (R46). A terse id-per-line pointer, not a report.
-  for (const f of remainingDrift) {
-    const id = f.constructPath ?? f.logicalId;
-    console.log(`  - ${id}${f.path ? `.${f.path}` : ''} (${f.tier})`);
-  }
+  // learn what didn't converge (R46). A terse id-per-line pointer, not a report;
+  // capped so a no-baseline partial revert doesn't re-list 100+ lines (R52).
+  for (const line of formatSurvivingDrift(remainingDrift)) console.log(line);
   if (remaining > 0) worst = Math.max(worst, 1);
   return { exit: worst, aborted: false };
 }

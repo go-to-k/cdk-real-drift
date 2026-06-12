@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { firstRunPrompt, preDeployFindings } from '../src/commands/check.js';
+import { firstRunPrompt, postAcceptNote, preDeployFindings } from '../src/commands/check.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -51,11 +51,12 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
     expect(message).not.toContain('Also found');
   });
 
-  it('"show first" is the FIRST option (the safe default) and says accept is still possible after', () => {
+  it('"Accept ALL" is the FIRST option (the common first-run choice — R52); show-first follows', () => {
     const { options } = firstRunPrompt('S', 5);
-    expect(options[0]!.value).toBe('show');
-    expect(options[0]!.label).toContain('Show them first');
-    expect(options[0]!.label).toContain('accept (selectively) right after');
+    expect(options[0]!.value).toBe('acceptAll');
+    expect(options[1]!.value).toBe('show');
+    expect(options[1]!.label).toContain('Show them first');
+    expect(options[1]!.label).toContain('accept (selectively) right after');
   });
 
   it('the bulk option states the count and that values have NOT been reviewed', () => {
@@ -70,5 +71,31 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
     const all = [p.message, ...p.options.map((o) => o.label)].join(' ');
     // the retired word is assembled at runtime so this file itself stays free of it (R46)
     expect(all.toLowerCase()).not.toContain(['b', 'less'].join(''));
+  });
+});
+
+describe('postAcceptNote (R52 — a partial accept is a SUCCESS for this run)', () => {
+  it('partial accept (undeclared remain) → success + exit 0, remainder surfaces next check', () => {
+    const note = postAcceptNote(112, 0);
+    expect(note).toContain('accept succeeded');
+    expect(note).toContain('112 unaccepted value(s) stay reported from the next check on');
+    expect(note).toContain('exit 0 for this run');
+  });
+
+  it('everything accepted → CLEAN, exit 0', () => {
+    expect(postAcceptNote(0, 0)).toBe('stack is now CLEAN — exit 0.');
+  });
+
+  it("declared/deleted drift remains → exit 1 (outside accept's reach), undeclared remainder also named", () => {
+    const note = postAcceptNote(112, 2);
+    expect(note).toContain('2 declared/deleted drift(s) remain un-addressed');
+    expect(note).toContain('exit 1');
+    expect(note).toContain('112 unaccepted value(s) also stay reported');
+  });
+
+  it('declared drift remains, nothing else → exit 1 without the undeclared clause', () => {
+    const note = postAcceptNote(0, 1);
+    expect(note).toContain('exit 1');
+    expect(note).not.toContain('also stay reported');
   });
 });

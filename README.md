@@ -189,10 +189,14 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   and it stays reported by `check` — accept the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
 - **`check` with no baseline yet** asks what to do with the N undeclared values
-  it found: **show them first** (the default — the report prints, and a
-  selective accept is offered right after it), or **accept ALL of them** into
-  the baseline without reviewing them. With zero undeclared values there is
-  nothing to decide, so no prompt.
+  it found: **accept ALL of them** into the baseline (the default — the common
+  first-run choice; it writes only a git-tracked file, nothing to AWS), or
+  **show them first** (the report prints, and a selective accept is offered
+  right after it). With zero undeclared values there is nothing to decide, so
+  no prompt. After an interactive accept, a closing note states what remains:
+  a PARTIAL accept exits **0** for that run (the accept succeeded; unselected
+  values stay reported — and exit 1 — from the next `check` on), while
+  remaining declared/deleted drift keeps exit 1 (accept cannot address it).
 - Flag combinations: `--no-interactive` alone = the read side completes but
   write **decisions** are refused with exit 2 (the safe side);
   `--no-interactive --yes` = full automation; `--yes` alone in a TTY
