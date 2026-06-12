@@ -32,7 +32,7 @@ const TIER_NAMES: Record<Tier, string> = {
 // Explanation printed after the bracketed name+count, outside the brackets.
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
-  undeclared: 'the differentiator',
+  undeclared: 'not declared in your template — the differentiator',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
   readGap: 'declared but not returned by live read — not drift',
   unresolved: 'declared paths needing GetAtt — skipped, not drift',

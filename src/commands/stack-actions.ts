@@ -30,6 +30,20 @@ const driftCount = (findings: Finding[]): number => findings.filter(isDrift).len
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Message for accept's multiselect. clack renders NO key hints by default (they
+ * only appear inside the required-validation error), so the keys users need —
+ * verified against @clack/core: space toggles, `a` toggles all, `i` inverts,
+ * enter confirms — are spelled out on a dim second line (R49). Pure + exported
+ * so the wording is unit-tested.
+ */
+export function acceptSelectMessage(stackName: string): string {
+  return (
+    `${stackName}: select undeclared value(s) to accept (unselected stay reported)\n` +
+    style.infoTier('space = toggle · a = toggle all · i = invert · enter = confirm')
+  );
+}
+
 // ---- accept ----
 
 export interface AcceptStackParams {
@@ -98,7 +112,7 @@ export async function acceptStack(p: AcceptStackParams): Promise<AcceptResult> {
       refreshedOnly = true;
     } else {
       const picked = await multiselect({
-        message: `${stackName}: select undeclared value(s) to accept (unselected stay reported)`,
+        message: acceptSelectMessage(stackName),
         options: changed.map((e) => ({ value: acceptedKey(e), label: `${e.logicalId}.${e.path}` })),
         initialValues: changed.map((e) => acceptedKey(e)), // default = all selected
         required: false,
