@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Fs6C1AF03C",
+    "resourceType": "AWS::EFS::FileSystem",
+    "physicalId": "fs-0d81f40b7a880b7ae",
+    "constructPath": "CdkdriftIntegHarvest9/Fs",
+    "declared": {
+      "Encrypted": true,
+      "FileSystemTags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest9/Fs"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
+    "PerformanceMode": "generalPurpose",
+    "Encrypted": true,
+    "FileSystemTags": [
+      {
+        "Value": "CdkdriftIntegHarvest9/Fs",
+        "Key": "Name"
+      }
+    ],
+    "FileSystemId": "fs-0d81f40b7a880b7ae",
+    "FileSystemProtection": {
+      "ReplicationOverwriteProtection": "ENABLED"
+    },
+    "LifecyclePolicies": [],
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-0d81f40b7a880b7ae",
+    "ThroughputMode": "bursting",
+    "BackupPolicy": {
+      "Status": "DISABLED"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "FileSystemId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck"],
+    "createOnly": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "readOnlyPaths": [
+      "Arn",
+      "FileSystemId",
+      "ReplicationConfiguration.Destinations.*.Status",
+      "ReplicationConfiguration.Destinations.*.StatusMessage"
+    ],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "ReplicationConfiguration.Destinations.0.AvailabilityZoneName",
+      "ReplicationConfiguration.Destinations.0.KmsKeyId"
+    ],
+    "createOnlyPaths": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "PerformanceMode",
+      "actual": "generalPurpose",
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "FileSystemProtection",
+      "actual": {
+        "ReplicationOverwriteProtection": "ENABLED"
+      },
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "ThroughputMode",
+      "actual": "bursting",
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    }
+  ]
+}

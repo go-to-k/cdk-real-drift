@@ -363,7 +363,7 @@ ImageTagMutability IMMUTABLE). Run after changing `src/revert/**`.
 cd revert-multi && npm install && bash verify.sh
 ```
 
-## harvest7 / harvest8
+## harvest7 / harvest8 / harvest9
 
 Waves 7 and 8 of the corpus harvest (R90): cheap, low-dependency CFn types that
 were still uncovered after the corpus crossed 115 distinct types. Wave 7 — WAFv2
@@ -373,7 +373,7 @@ EventSchemas Registry + Schema, CodeDeploy Application, SES Template, CloudWatch
 AnomalyDetector. Wave 8 — ApiGateway Model / RequestValidator / GatewayResponse
 (children of a RestApi), a Cognito UserPoolResourceServer, Route53 Resolver DNS
 firewall (FirewallDomainList + FirewallRuleGroup), an IAM OIDC provider, and a
-public ECR repository. Same two harvest invariants (fresh deploy = ZERO declared
+public ECR repository. Wave 9 — a single-AZ VPC carrying a NetworkAcl + entry, an S3 gateway VPC endpoint, and an EFS file system + access point. Same two harvest invariants (fresh deploy = ZERO declared
 drift, then accept -> `check --fail` CLEAN); the CC-unreadable types among them are
 honestly `skipped` (not recorded, never false drift). Run with
 `CDKRD_CORPUS_DIR=<dir>` to record the readable types as golden cases.
