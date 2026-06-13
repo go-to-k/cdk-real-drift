@@ -75,7 +75,7 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    types without per-type code; SDK overrides fill only the gaps. _Does CC API's
    coverage + model fidelity hold up across the breadth users will throw at it, or
    does the SDK-override list grow until the "generic" claim breaks?_ **Tracking
-   (as of the R74 pass):** `SDK_OVERRIDES` holds 12 types, all genuine CC-API gaps
+   (as of the R85 pass):** `SDK_OVERRIDES` holds 13 types, all genuine CC-API gaps
    (`UnsupportedActionException` / `ValidationException` from GetResource — plus
    Scheduler::Schedule, whose CC read handler only finds schedules in the DEFAULT
    group), surfaced across 2 real-app dogfoods + 10 integ fixtures. The bet holds
@@ -195,7 +195,7 @@ checked.
   - **yaml-cfn.ts** — CFn-flavored YAML/JSON template parser.
 - **read/** — the "reality" side
   - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource (with `CC_IDENTIFIER_ADAPTERS` deriving the CC identifier when the CFn physical id is not it — AppSync GraphQLApi ARN→ApiId, Cognito UserPoolClient `UserPoolId|ClientId`); classifies skip reasons.
-  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group).
+  - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group, **CodeBuild Project** via BatchGetProjects with a camelCase→CFn-PascalCase projection, R85).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
   - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `projectLiveToDeclaredSubset` (attribute-bag subset), `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` / `CASE_INSENSITIVE_PATHS` (per-type compare rules).

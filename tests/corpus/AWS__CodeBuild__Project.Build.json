@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 + R85 CodeBuild SDK override): fresh-deploy AWS::CodeBuild::Project model — now READABLE via batch-get-projects (camelCase SDK -> CFn PascalCase projection); was a CC UnsupportedActionException skip before R85. A change in this case's expected means the projection/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Build",
+    "resourceType": "AWS::CodeBuild::Project",
+    "physicalId": "cdkrd-harvest6",
+    "constructPath": "CdkrdIntegHarvest6/Build",
+    "declared": {
+      "Artifacts": {
+        "Type": "NO_ARTIFACTS"
+      },
+      "Environment": {
+        "ComputeType": "BUILD_GENERAL1_SMALL",
+        "Image": "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
+        "Type": "LINUX_CONTAINER"
+      },
+      "Name": "cdkrd-harvest6",
+      "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-CbRole566E4F1D-qcEj5AOkbOAV",
+      "Source": {
+        "BuildSpec": "version: 0.2\nphases:\n  build:\n    commands:\n      - echo hi",
+        "Type": "NO_SOURCE"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-harvest6",
+    "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-CbRole566E4F1D-qcEj5AOkbOAV",
+    "TimeoutInMinutes": 60,
+    "QueuedTimeoutInMinutes": 480,
+    "EncryptionKey": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+    "Source": {
+      "Type": "NO_SOURCE",
+      "BuildSpec": "version: 0.2\nphases:\n  build:\n    commands:\n      - echo hi"
+    },
+    "Artifacts": {
+      "Type": "NO_ARTIFACTS"
+    },
+    "Environment": {
+      "Type": "LINUX_CONTAINER",
+      "ComputeType": "BUILD_GENERAL1_SMALL",
+      "Image": "aws/codebuild/amazonlinux2-x86_64-standard:5.0",
+      "PrivilegedMode": false,
+      "ImagePullCredentialsType": "CODEBUILD",
+      "EnvironmentVariables": []
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Build",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "TimeoutInMinutes",
+      "actual": 60,
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Build"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Build",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "QueuedTimeoutInMinutes",
+      "actual": 480,
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Build"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Build",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "EncryptionKey",
+      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Build"
+    }
+  ]
+}

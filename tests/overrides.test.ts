@@ -1,4 +1,5 @@
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
@@ -30,6 +31,7 @@ const route53 = mockClient(Route53Client);
 const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
 const scheduler = mockClient(SchedulerClient);
+const codebuild = mockClient(CodeBuildClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -41,7 +43,8 @@ const POLICY =
   '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:Get","Resource":"*"}]}';
 
 beforeEach(() => {
-  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs, scheduler]) m.reset();
+  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs, scheduler, codebuild])
+    m.reset();
 });
 
 describe('SDK overrides', () => {
@@ -443,6 +446,60 @@ describe('SDK overrides', () => {
 
     it('undefined when no name is resolvable (-> stays skipped)', async () => {
       expect(await SDK_OVERRIDES['AWS::Scheduler::Schedule'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('CodeBuild Project (R85)', () => {
+    it('maps the camelCase SDK Project to the CFn PascalCase shape', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'cdkrd-harvest6',
+            arn: 'arn:aws:codebuild:us-east-1:1:project/cdkrd-harvest6',
+            serviceRole: 'arn:aws:iam::1:role/cb',
+            timeoutInMinutes: 60,
+            queuedTimeoutInMinutes: 480,
+            source: { type: 'NO_SOURCE', buildspec: 'version: 0.2' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            environment: {
+              type: 'LINUX_CONTAINER',
+              computeType: 'BUILD_GENERAL1_SMALL',
+              image: 'aws/codebuild/amazonlinux2-x86_64-standard:5.0',
+              privilegedMode: false,
+              environmentVariables: [{ name: 'K', value: 'V', type: 'PLAINTEXT' }],
+            },
+            created: new Date(0), // AWS-managed noise — must NOT appear in the model
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'cdkrd-harvest6'));
+      expect(codebuild.commandCalls(BatchGetProjectsCommand)[0]?.args[0].input).toEqual({
+        names: ['cdkrd-harvest6'],
+      });
+      expect(out).toEqual({
+        Name: 'cdkrd-harvest6',
+        ServiceRole: 'arn:aws:iam::1:role/cb',
+        TimeoutInMinutes: 60,
+        QueuedTimeoutInMinutes: 480,
+        Source: { Type: 'NO_SOURCE', BuildSpec: 'version: 0.2' },
+        Artifacts: { Type: 'NO_ARTIFACTS' },
+        Environment: {
+          Type: 'LINUX_CONTAINER',
+          ComputeType: 'BUILD_GENERAL1_SMALL',
+          Image: 'aws/codebuild/amazonlinux2-x86_64-standard:5.0',
+          PrivilegedMode: false,
+          EnvironmentVariables: [{ Name: 'K', Value: 'V', Type: 'PLAINTEXT' }],
+        },
+      });
+    });
+
+    it('undefined when the project is absent (-> stays skipped)', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({ projects: [] });
+      expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'missing'))).toBeUndefined();
+    });
+
+    it('undefined when no name is resolvable', async () => {
+      expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}))).toBeUndefined();
     });
   });
 });
