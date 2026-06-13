@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::Cognito::IdentityPool model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Ids",
+    "resourceType": "AWS::Cognito::IdentityPool",
+    "physicalId": "us-east-1:86c10d35-8cbb-45b9-ae04-7b0116642efb",
+    "constructPath": "CdkrdIntegHarvest4/Ids",
+    "declared": {
+      "AllowUnauthenticatedIdentities": false,
+      "IdentityPoolName": "cdkrd_harvest4"
+    }
+  },
+  "liveRaw": {
+    "CognitoIdentityProviders": [],
+    "Id": "us-east-1:86c10d35-8cbb-45b9-ae04-7b0116642efb",
+    "IdentityPoolName": "cdkrd_harvest4",
+    "SupportedLoginProviders": {},
+    "AllowUnauthenticatedIdentities": false,
+    "Name": "cdkrd_harvest4",
+    "SamlProviderARNs": [],
+    "OpenIdConnectProviderARNs": [],
+    "AllowClassicFlow": false,
+    "IdentityPoolTags": []
+  },
+  "schema": {
+    "readOnly": ["Id", "Name"],
+    "writeOnly": ["CognitoEvents", "CognitoStreams", "PushSync"],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "Name"],
+    "writeOnlyPaths": ["CognitoEvents", "CognitoStreams", "PushSync"],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

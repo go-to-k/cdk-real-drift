@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::Route model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetpublicSubnet1DefaultRoute05F98207",
+    "resourceType": "AWS::EC2::Route",
+    "physicalId": "rtb-0f55fd2a2deab184b|0.0.0.0/0",
+    "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/DefaultRoute",
+    "declared": {
+      "DestinationCidrBlock": "0.0.0.0/0",
+      "GatewayId": "igw-0c7816775f3353a51",
+      "RouteTableId": "rtb-0f55fd2a2deab184b"
+    }
+  },
+  "liveRaw": {
+    "RouteTableId": "rtb-0f55fd2a2deab184b",
+    "CidrBlock": "0.0.0.0/0",
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": "igw-0c7816775f3353a51",
+    "VpcEndpointId": "igw-0c7816775f3353a51"
+  },
+  "schema": {
+    "readOnly": ["CidrBlock"],
+    "writeOnly": [],
+    "createOnly": [
+      "DestinationCidrBlock",
+      "DestinationIpv6CidrBlock",
+      "DestinationPrefixListId",
+      "RouteTableId"
+    ],
+    "readOnlyPaths": ["CidrBlock"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DestinationCidrBlock",
+      "DestinationIpv6CidrBlock",
+      "DestinationPrefixListId",
+      "RouteTableId"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "NetpublicSubnet1DefaultRoute05F98207",
+      "resourceType": "AWS::EC2::Route",
+      "path": "VpcEndpointId",
+      "actual": "igw-0c7816775f3353a51",
+      "physicalId": "rtb-0f55fd2a2deab184b|0.0.0.0/0",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/DefaultRoute"
+    }
+  ]
+}

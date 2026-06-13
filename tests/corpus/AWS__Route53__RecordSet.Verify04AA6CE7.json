@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::Route53::RecordSet model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Verify04AA6CE7",
+    "resourceType": "AWS::Route53::RecordSet",
+    "physicalId": "verify.cdkrd-harvest4-integ-fixture.com",
+    "constructPath": "CdkrdIntegHarvest4/Verify",
+    "declared": {
+      "HostedZoneId": "Z04472198DJOBTXYG54D",
+      "Name": "verify.cdkrd-harvest4-integ-fixture.com.",
+      "ResourceRecords": ["\"cdkrd-harvest4\""],
+      "TTL": "300",
+      "Type": "TXT"
+    }
+  },
+  "liveRaw": {
+    "Name": "verify.cdkrd-harvest4-integ-fixture.com.",
+    "Type": "TXT",
+    "HostedZoneId": "Z04472198DJOBTXYG54D",
+    "TTL": "300",
+    "ResourceRecords": ["\"cdkrd-harvest4\""]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["HostedZoneId", "HostedZoneName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HostedZoneId", "HostedZoneName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

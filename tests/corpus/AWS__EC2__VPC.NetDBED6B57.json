@@ -1,0 +1,78 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::VPC model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetDBED6B57",
+    "resourceType": "AWS::EC2::VPC",
+    "physicalId": "vpc-08521c59b278960ac",
+    "constructPath": "CdkrdIntegHarvest4/Net",
+    "declared": {
+      "CidrBlock": "10.0.0.0/16",
+      "EnableDnsHostnames": true,
+      "EnableDnsSupport": true,
+      "InstanceTenancy": "default",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest4/Net"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-08521c59b278960ac",
+    "InstanceTenancy": "default",
+    "CidrBlockAssociations": ["vpc-cidr-assoc-03895c9da8354a701"],
+    "CidrBlock": "10.0.0.0/16",
+    "DefaultNetworkAcl": "acl-0b2de30671549f143",
+    "EnableDnsSupport": true,
+    "Ipv6CidrBlocks": [],
+    "DefaultSecurityGroup": "sg-03b714a63cd355862",
+    "EnableDnsHostnames": true,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/bd58c130-6685-11f1-9f86-12ace98ca6c3",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "NetDBED6B57",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest4",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CdkrdIntegHarvest4/Net",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnly": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnly": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "readOnlyPaths": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnlyPaths": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

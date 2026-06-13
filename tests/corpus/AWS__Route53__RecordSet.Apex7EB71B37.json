@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::Route53::RecordSet model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Apex7EB71B37",
+    "resourceType": "AWS::Route53::RecordSet",
+    "physicalId": "cdkrd-harvest4-integ-fixture.com",
+    "constructPath": "CdkrdIntegHarvest4/Apex",
+    "declared": {
+      "AliasTarget": {
+        "DNSName": "dualstack.CdkrdI-Edge7-ivPMKfmp3Fts-1275371827.us-east-1.elb.amazonaws.com",
+        "HostedZoneId": "Z35SXDOTRQ7X7K"
+      },
+      "HostedZoneId": "Z04472198DJOBTXYG54D",
+      "Name": "cdkrd-harvest4-integ-fixture.com.",
+      "Type": "A"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-harvest4-integ-fixture.com.",
+    "Type": "A",
+    "HostedZoneId": "Z04472198DJOBTXYG54D",
+    "AliasTarget": {
+      "DNSName": "dualstack.cdkrdi-edge7-ivpmkfmp3fts-1275371827.us-east-1.elb.amazonaws.com",
+      "HostedZoneId": "Z35SXDOTRQ7X7K",
+      "EvaluateTargetHealth": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["HostedZoneId", "HostedZoneName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HostedZoneId", "HostedZoneName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

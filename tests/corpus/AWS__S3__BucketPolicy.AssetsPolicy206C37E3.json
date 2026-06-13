@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (cloudfront fixture, R75): fresh-deploy AWS::S3::BucketPolicy model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "AssetsPolicy206C37E3",
+    "resourceType": "AWS::S3::BucketPolicy",
+    "physicalId": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+    "constructPath": "CdkrdIntegCloudfront/Assets/Policy",
+    "declared": {
+      "Bucket": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:role/CdkrdIntegCloudfront-CustomS3AutoDeleteObjectsCusto-8cxy7ReNMQCk"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+              "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh/*"
+            ]
+          },
+          {
+            "Action": "s3:GetObject",
+            "Condition": {
+              "StringEquals": {
+                "AWS:SourceArn": "arn:aws:cloudfront::111111111111:distribution/E2WBGYTS0T0BVH"
+              }
+            },
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "cloudfront.amazonaws.com"
+            },
+            "Resource": "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh/*"
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:role/CdkrdIntegCloudfront-CustomS3AutoDeleteObjectsCusto-8cxy7ReNMQCk"
+          },
+          "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+          "Resource": [
+            "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+            "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh/*"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "cloudfront.amazonaws.com"
+          },
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh/*",
+          "Condition": {
+            "StringEquals": {
+              "AWS:SourceArn": "arn:aws:cloudfront::111111111111:distribution/E2WBGYTS0T0BVH"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

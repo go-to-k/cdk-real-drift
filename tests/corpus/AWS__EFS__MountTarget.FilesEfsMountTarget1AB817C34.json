@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EFS::MountTarget model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "FilesEfsMountTarget1AB817C34",
+    "resourceType": "AWS::EFS::MountTarget",
+    "physicalId": "fsmt-05f0117bf74a4697e",
+    "constructPath": "CdkrdIntegHarvest4/Files/EfsMountTarget1",
+    "declared": {
+      "FileSystemId": "fs-0679f705e7e468268",
+      "SecurityGroups": ["sg-0b45db45b9c237e91"],
+      "SubnetId": "subnet-0f3317e0d9ac5df28"
+    }
+  },
+  "liveRaw": {
+    "SecurityGroups": ["sg-0b45db45b9c237e91"],
+    "FileSystemId": "fs-0679f705e7e468268",
+    "IpAddress": "10.0.88.116",
+    "Id": "fsmt-05f0117bf74a4697e",
+    "SubnetId": "subnet-0f3317e0d9ac5df28"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["IpAddressType"],
+    "createOnly": ["FileSystemId", "IpAddress", "IpAddressType", "Ipv6Address", "SubnetId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["IpAddressType"],
+    "createOnlyPaths": ["FileSystemId", "IpAddress", "IpAddressType", "Ipv6Address", "SubnetId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "FilesEfsMountTarget1AB817C34",
+      "resourceType": "AWS::EFS::MountTarget",
+      "path": "IpAddress",
+      "actual": "10.0.88.116",
+      "physicalId": "fsmt-05f0117bf74a4697e",
+      "constructPath": "CdkrdIntegHarvest4/Files/EfsMountTarget1"
+    }
+  ]
+}

@@ -485,3 +485,141 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     });
   });
 });
+
+describe('declared-compare false-positive classes from harvest4 (R75)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+
+  describe('identity-keyed attribute bag subset (ELB)', () => {
+    const T = 'AWS::ElasticLoadBalancingV2::LoadBalancer';
+    const declared = {
+      LoadBalancerAttributes: [
+        { Key: 'idle_timeout.timeout_seconds', Value: '120' },
+        { Key: 'deletion_protection.enabled', Value: 'false' },
+      ],
+    };
+    // AWS returns ~15 attributes; the template declared 2.
+    const liveAll = [
+      { Key: 'access_logs.s3.enabled', Value: 'false' },
+      { Key: 'idle_timeout.timeout_seconds', Value: '120' },
+      { Key: 'routing.http2.enabled', Value: 'true' },
+      { Key: 'deletion_protection.enabled', Value: 'false' },
+      { Key: 'client_keep_alive.seconds', Value: '3600' },
+    ];
+
+    it('a fresh deploy with extra live attributes is NOT drift (subset compared)', () => {
+      expect(
+        classifyResource(res(T, declared), { LoadBalancerAttributes: liveAll }, emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuine change to a DECLARED attribute still surfaces', () => {
+      const drifted = liveAll.map((a) =>
+        a.Key === 'idle_timeout.timeout_seconds' ? { ...a, Value: '300' } : a
+      );
+      const findings = classifyResource(
+        res(T, declared),
+        { LoadBalancerAttributes: drifted },
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toHaveLength(1);
+      expect(findings[0]?.path).toContain('LoadBalancerAttributes');
+    });
+  });
+
+  describe('JSON-string vs declared object (SSM Document.Content)', () => {
+    const T = 'AWS::SSM::Document';
+    const content = {
+      schemaVersion: '2.2',
+      description: 'noop',
+      mainSteps: [
+        { action: 'aws:runShellScript', name: 'noop', inputs: { runCommand: ['echo hi'] } },
+      ],
+    };
+
+    it('declared object vs the same value as a key-reordered JSON string is NOT drift', () => {
+      // AWS returns the content as a string with keys in a different order
+      const liveStr = JSON.stringify({
+        description: 'noop',
+        mainSteps: [
+          { action: 'aws:runShellScript', inputs: { runCommand: ['echo hi'] }, name: 'noop' },
+        ],
+        schemaVersion: '2.2',
+      });
+      expect(
+        classifyResource(res(T, { Content: content }), { Content: liveStr }, emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuine content change is still declared drift', () => {
+      const liveStr = JSON.stringify({ ...content, description: 'CHANGED' });
+      expect(
+        tiers(classifyResource(res(T, { Content: content }), { Content: liveStr }, emptySchema))
+          .declared
+      ).toEqual(['Content']);
+    });
+
+    it('an unparseable live string is still drift (never silently equal)', () => {
+      expect(
+        tiers(
+          classifyResource(res(T, { Content: content }), { Content: 'not json {' }, emptySchema)
+        ).declared
+      ).toEqual(['Content']);
+    });
+  });
+
+  describe('case-insensitive scalar path (Route53 AliasTarget.DNSName)', () => {
+    const T = 'AWS::Route53::RecordSet';
+    const alias = (dns: string) => ({
+      AliasTarget: { DNSName: dns, HostedZoneId: 'Z123', EvaluateTargetHealth: false },
+    });
+
+    it('mixed-case declared vs lowercase live DNS name is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(T, alias('dualstack.CdkrdI-Edge7-abc.us-east-1.elb.amazonaws.com')),
+          alias('dualstack.cdkrdi-edge7-abc.us-east-1.elb.amazonaws.com'),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely different DNS name is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, alias('dualstack.aaa.us-east-1.elb.amazonaws.com')),
+            alias('dualstack.bbb.us-east-1.elb.amazonaws.com'),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['AliasTarget.DNSName']);
+    });
+
+    it('the case-insensitive rule is scoped per-type+path (other scalars still strict)', () => {
+      // a different type with the same path shape stays strict
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::S3::Bucket', { Name: 'MyBucket' }),
+            { Name: 'mybucket' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Name']);
+    });
+  });
+});

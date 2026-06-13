@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiFnServiceRoleD18AAE0E",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest4-ApiFnServiceRoleD18AAE0E-tXwWTGyzrNsl",
+    "constructPath": "CdkrdIntegHarvest4/ApiFn/ServiceRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "lambda.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest4-ApiFnServiceRoleD18AAE0E-tXwWTGyzrNsl",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest4-ApiFnServiceRoleD18AAE0E-tXwWTGyzrNsl",
+    "RoleId": "AROAXXXJN2LNRK4ZOCNDQ"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

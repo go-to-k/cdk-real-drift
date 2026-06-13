@@ -1,0 +1,200 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (cloudfront fixture, R75): fresh-deploy AWS::CloudFront::Distribution model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Cdn9963B1AD",
+    "resourceType": "AWS::CloudFront::Distribution",
+    "physicalId": "E2WBGYTS0T0BVH",
+    "constructPath": "CdkrdIntegCloudfront/Cdn",
+    "declared": {
+      "DistributionConfig": {
+        "CacheBehaviors": [
+          {
+            "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+            "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+            "Compress": true,
+            "PathPattern": "/api/*",
+            "TargetOriginId": "CdkrdIntegCloudfrontCdnOrigin2499A636E",
+            "ViewerProtocolPolicy": "https-only"
+          }
+        ],
+        "Comment": "cdkrd cloudfront corpus fixture",
+        "CustomErrorResponses": [
+          {
+            "ErrorCachingMinTTL": 300,
+            "ErrorCode": 404,
+            "ResponseCode": 200,
+            "ResponsePagePath": "/index.html"
+          }
+        ],
+        "DefaultCacheBehavior": {
+          "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+          "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+          "CachedMethods": ["GET", "HEAD"],
+          "Compress": true,
+          "TargetOriginId": "CdkrdIntegCloudfrontCdnOrigin1117C92F8",
+          "ViewerProtocolPolicy": "redirect-to-https"
+        },
+        "DefaultRootObject": "index.html",
+        "Enabled": true,
+        "HttpVersion": "http2and3",
+        "IPV6Enabled": true,
+        "Origins": [
+          {
+            "DomainName": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh.s3.us-east-1.amazonaws.com",
+            "Id": "CdkrdIntegCloudfrontCdnOrigin1117C92F8",
+            "OriginAccessControlId": "EGP8LO2Z4DVZ6",
+            "S3OriginConfig": {
+              "OriginAccessIdentity": ""
+            }
+          },
+          {
+            "CustomOriginConfig": {
+              "OriginProtocolPolicy": "https-only",
+              "OriginReadTimeout": 20,
+              "OriginSSLProtocols": ["TLSv1.2"]
+            },
+            "DomainName": "api.example.com",
+            "Id": "CdkrdIntegCloudfrontCdnOrigin2499A636E"
+          }
+        ],
+        "PriceClass": "PriceClass_100"
+      }
+    }
+  },
+  "liveRaw": {
+    "DistributionConfig": {
+      "Logging": {
+        "IncludeCookies": false,
+        "Bucket": "",
+        "Prefix": ""
+      },
+      "Comment": "cdkrd cloudfront corpus fixture",
+      "DefaultRootObject": "index.html",
+      "Origins": [
+        {
+          "ConnectionTimeout": 10,
+          "OriginAccessControlId": "EGP8LO2Z4DVZ6",
+          "ConnectionAttempts": 3,
+          "OriginCustomHeaders": [],
+          "DomainName": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh.s3.us-east-1.amazonaws.com",
+          "OriginShield": {
+            "Enabled": false
+          },
+          "S3OriginConfig": {
+            "OriginReadTimeout": 30,
+            "OriginAccessIdentity": ""
+          },
+          "OriginPath": "",
+          "Id": "CdkrdIntegCloudfrontCdnOrigin1117C92F8"
+        },
+        {
+          "ConnectionTimeout": 10,
+          "OriginAccessControlId": "",
+          "ConnectionAttempts": 3,
+          "OriginCustomHeaders": [],
+          "DomainName": "api.example.com",
+          "OriginShield": {
+            "Enabled": false
+          },
+          "OriginPath": "",
+          "Id": "CdkrdIntegCloudfrontCdnOrigin2499A636E",
+          "CustomOriginConfig": {
+            "OriginReadTimeout": 20,
+            "HTTPSPort": 443,
+            "OriginKeepaliveTimeout": 5,
+            "OriginSSLProtocols": ["TLSv1.2"],
+            "HTTPPort": 80,
+            "OriginProtocolPolicy": "https-only"
+          }
+        }
+      ],
+      "ViewerCertificate": {
+        "SslSupportMethod": "vip",
+        "MinimumProtocolVersion": "TLSv1",
+        "CloudFrontDefaultCertificate": true
+      },
+      "PriceClass": "PriceClass_100",
+      "DefaultCacheBehavior": {
+        "Compress": true,
+        "FunctionAssociations": [],
+        "LambdaFunctionAssociations": [],
+        "TargetOriginId": "CdkrdIntegCloudfrontCdnOrigin1117C92F8",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "GrpcConfig": {
+          "Enabled": false
+        },
+        "TrustedSigners": [],
+        "FieldLevelEncryptionId": "",
+        "TrustedKeyGroups": [],
+        "AllowedMethods": ["HEAD", "GET", "OPTIONS"],
+        "CachedMethods": ["HEAD", "GET"],
+        "SmoothStreaming": false,
+        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6"
+      },
+      "Staging": false,
+      "CustomErrorResponses": [
+        {
+          "ResponseCode": 200,
+          "ErrorCachingMinTTL": 300,
+          "ErrorCode": 404,
+          "ResponsePagePath": "/index.html"
+        }
+      ],
+      "ContinuousDeploymentPolicyId": "",
+      "OriginGroups": {
+        "Quantity": 0,
+        "Items": []
+      },
+      "Enabled": true,
+      "Aliases": [],
+      "IPV6Enabled": true,
+      "WebACLId": "",
+      "HttpVersion": "http2and3",
+      "Restrictions": {
+        "GeoRestriction": {
+          "Locations": [],
+          "RestrictionType": "none"
+        }
+      },
+      "CacheBehaviors": [
+        {
+          "Compress": true,
+          "FunctionAssociations": [],
+          "LambdaFunctionAssociations": [],
+          "TargetOriginId": "CdkrdIntegCloudfrontCdnOrigin2499A636E",
+          "ViewerProtocolPolicy": "https-only",
+          "GrpcConfig": {
+            "Enabled": false
+          },
+          "TrustedSigners": [],
+          "FieldLevelEncryptionId": "",
+          "TrustedKeyGroups": [],
+          "AllowedMethods": ["HEAD", "DELETE", "POST", "GET", "OPTIONS", "PUT", "PATCH"],
+          "PathPattern": "/api/*",
+          "CachedMethods": ["HEAD", "GET"],
+          "SmoothStreaming": false,
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+        }
+      ]
+    },
+    "DomainName": "d2adwxv8w2e8q.cloudfront.net",
+    "Id": "E2WBGYTS0T0BVH",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["DomainName", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["DomainName", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

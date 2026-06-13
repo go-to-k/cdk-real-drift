@@ -1,0 +1,94 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::SecurityGroup model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "AlbSg1155C1BE",
+    "resourceType": "AWS::EC2::SecurityGroup",
+    "physicalId": "sg-027baeaf6d1dfcb34",
+    "constructPath": "CdkrdIntegHarvest4/AlbSg",
+    "declared": {
+      "GroupDescription": "cdkrd harvest4 alb",
+      "SecurityGroupEgress": [
+        {
+          "CidrIp": "0.0.0.0/0",
+          "Description": "Allow all outbound traffic by default",
+          "IpProtocol": "-1"
+        }
+      ],
+      "SecurityGroupIngress": [
+        {
+          "CidrIp": "0.0.0.0/0",
+          "Description": "http in",
+          "FromPort": 80,
+          "IpProtocol": "tcp",
+          "ToPort": 80
+        }
+      ],
+      "VpcId": "vpc-08521c59b278960ac"
+    }
+  },
+  "liveRaw": {
+    "GroupDescription": "cdkrd harvest4 alb",
+    "GroupName": "CdkrdIntegHarvest4-AlbSg1155C1BE-xPthhDznw5Ma",
+    "VpcId": "vpc-08521c59b278960ac",
+    "Id": "sg-027baeaf6d1dfcb34",
+    "SecurityGroupIngress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "Description": "http in",
+        "FromPort": 80,
+        "ToPort": 80,
+        "IpProtocol": "tcp"
+      }
+    ],
+    "SecurityGroupEgress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "Description": "Allow all outbound traffic by default",
+        "FromPort": -1,
+        "ToPort": -1,
+        "IpProtocol": "-1"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest4",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "AlbSg1155C1BE",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/bd58c130-6685-11f1-9f86-12ace98ca6c3",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "GroupId": "sg-027baeaf6d1dfcb34"
+  },
+  "schema": {
+    "readOnly": ["GroupId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["GroupDescription", "GroupName", "VpcId"],
+    "readOnlyPaths": ["GroupId", "Id"],
+    "writeOnlyPaths": ["SecurityGroupIngress.*.SourceSecurityGroupName"],
+    "createOnlyPaths": ["GroupDescription", "GroupName", "VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "AlbSg1155C1BE",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "GroupName",
+      "actual": "CdkrdIntegHarvest4-AlbSg1155C1BE-xPthhDznw5Ma",
+      "physicalId": "sg-027baeaf6d1dfcb34",
+      "constructPath": "CdkrdIntegHarvest4/AlbSg"
+    }
+  ]
+}

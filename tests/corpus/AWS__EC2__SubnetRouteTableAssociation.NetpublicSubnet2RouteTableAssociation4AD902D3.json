@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::SubnetRouteTableAssociation model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetpublicSubnet2RouteTableAssociation4AD902D3",
+    "resourceType": "AWS::EC2::SubnetRouteTableAssociation",
+    "physicalId": "rtbassoc-081ce08c63a8b9ca7",
+    "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/RouteTableAssociation",
+    "declared": {
+      "RouteTableId": "rtb-09f760c55f4a567d2",
+      "SubnetId": "subnet-0e4bae13856face36"
+    }
+  },
+  "liveRaw": {
+    "RouteTableId": "rtb-09f760c55f4a567d2",
+    "Id": "rtbassoc-081ce08c63a8b9ca7",
+    "SubnetId": "subnet-0e4bae13856face36"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["RouteTableId", "SubnetId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RouteTableId", "SubnetId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
