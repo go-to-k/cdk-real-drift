@@ -1,0 +1,115 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EFS::FileSystem model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Files8E6940B8",
+    "resourceType": "AWS::EFS::FileSystem",
+    "physicalId": "fs-0679f705e7e468268",
+    "constructPath": "CdkrdIntegHarvest4/Files",
+    "declared": {
+      "Encrypted": true,
+      "FileSystemTags": [
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest4/Files"
+        }
+      ],
+      "LifecyclePolicies": [
+        {
+          "TransitionToIA": "AFTER_14_DAYS"
+        }
+      ],
+      "PerformanceMode": "generalPurpose"
+    }
+  },
+  "liveRaw": {
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
+    "PerformanceMode": "generalPurpose",
+    "Encrypted": true,
+    "FileSystemTags": [
+      {
+        "Value": "CdkrdIntegHarvest4/Files",
+        "Key": "Name"
+      }
+    ],
+    "FileSystemId": "fs-0679f705e7e468268",
+    "FileSystemProtection": {
+      "ReplicationOverwriteProtection": "ENABLED"
+    },
+    "LifecyclePolicies": [
+      {
+        "TransitionToIA": "AFTER_14_DAYS"
+      }
+    ],
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-0679f705e7e468268",
+    "ThroughputMode": "bursting",
+    "BackupPolicy": {
+      "Status": "DISABLED"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "FileSystemId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck"],
+    "createOnly": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "readOnlyPaths": [
+      "Arn",
+      "FileSystemId",
+      "ReplicationConfiguration.Destinations.*.Status",
+      "ReplicationConfiguration.Destinations.*.StatusMessage"
+    ],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "ReplicationConfiguration.Destinations.0.AvailabilityZoneName",
+      "ReplicationConfiguration.Destinations.0.KmsKeyId"
+    ],
+    "createOnlyPaths": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Files8E6940B8",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "physicalId": "fs-0679f705e7e468268",
+      "constructPath": "CdkrdIntegHarvest4/Files"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Files8E6940B8",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "FileSystemProtection",
+      "actual": {
+        "ReplicationOverwriteProtection": "ENABLED"
+      },
+      "physicalId": "fs-0679f705e7e468268",
+      "constructPath": "CdkrdIntegHarvest4/Files"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Files8E6940B8",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "ThroughputMode",
+      "actual": "bursting",
+      "physicalId": "fs-0679f705e7e468268",
+      "constructPath": "CdkrdIntegHarvest4/Files"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Files8E6940B8",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
+      "physicalId": "fs-0679f705e7e468268",
+      "constructPath": "CdkrdIntegHarvest4/Files"
+    }
+  ]
+}

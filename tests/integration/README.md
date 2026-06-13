@@ -198,6 +198,43 @@ one run yields BOTH a clean and a drifted corpus case per matrix type.
 cd harvest3 && npm install && bash verify-harvest3.sh
 ```
 
+## harvest4
+
+Wave 4 of the corpus harvest (R75): the remaining high-frequency families —
+ALB + target group + listener (1-AZ-pair VPC, no NAT), EFS with mount
+targets, Route53 public zone with an ALIAS record to the ALB (runs the
+Route53 SDK reader's AliasTarget path live) + TXT record, Cognito
+IdentityPool, DynamoDB Application Auto Scaling (ScalableTarget +
+target-tracking policy), SSM Document, HTTP API with an explicit throttled
+stage, ECR with a lifecycle policy. Same two harvest invariants, plus a
+subset-projection detection check: the declared `idle_timeout` lives inside
+the `{Key,Value}[]` LoadBalancerAttributes bag — the template declares 2 of
+~23 attributes — so an out-of-band change to it must surface as exactly ONE
+declared drift (without the R75 projection the whole list reports). This
+fixture does NOT `revert` the bag: reverting an identity-keyed attribute bag
+needs a Key-based Cloud Control patch (the index-based JSON patch misaligns
+and ELB caps a modify at 20 attributes) — tracked separately; the revert
+write path itself is covered by the `revert` / `policies` / `harvest3`
+fixtures. `CDKRD_HARVEST4_KEEP=1` keeps the stack for debug iteration.
+
+```bash
+cd harvest4 && npm install && bash verify-harvest4.sh
+```
+
+## cloudfront
+
+CloudFront Distribution (R75) — the most config-dense type, previously
+covered only by hand-written corpus seeds. Two origins (S3 with OAC + HTTP)
+and two behaviors so the Id-keyed Origins sort, the HTTP-method enum-set
+sort, and the cache-policy reference shapes all run against real data.
+Asserts the two harvest invariants (fresh deploy = ZERO declared drift,
+accept -> CLEAN). Kept separate from the harvest waves because deploy and
+destroy each take minutes. `CDKRD_CLOUDFRONT_KEEP=1` keeps the stack.
+
+```bash
+cd cloudfront && npm install && bash verify-cloudfront.sh
+```
+
 ## revert
 
 A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the

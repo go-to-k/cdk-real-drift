@@ -137,6 +137,100 @@ export function canonicalizeTagListsDeep(v: unknown): unknown {
   return v;
 }
 
+// Identity-keyed ATTRIBUTE BAGS where the template declares only a SUBSET of the
+// keys AWS returns (R75: ELB LoadBalancerAttributes / TargetGroupAttributes —
+// CDK declares the two attrs it set, AWS returns all ~15). A positional diff of
+// the declared 2-element list against the live 15-element list is false drift on
+// the whole property. Project the live side down to ONLY the keys the template
+// declared, recursing through nested bags. Both sides are already identity-sorted
+// by canonicalizeTagListsDeep, so the projected subset stays aligned. A genuine
+// change to a DECLARED attribute's value still differs element-wise after the
+// projection; a never-declared live attribute is simply not compared (it lives
+// inside a declared parent, so it is not undeclared drift either). Returns the
+// live value unchanged when the shapes are not both identity-keyed arrays.
+export function projectLiveToDeclaredSubset(declaredVal: unknown, liveVal: unknown): unknown {
+  if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
+    const idf = identityField(declaredVal);
+    if (idf && identityField(liveVal) === idf) {
+      const keys = new Set(declaredVal.map((e) => (e as Record<string, unknown>)[idf]));
+      return liveVal
+        .filter((e) => keys.has((e as Record<string, unknown>)[idf]))
+        .map((e) => {
+          const d = declaredVal.find(
+            (x) => (x as Record<string, unknown>)[idf] === (e as Record<string, unknown>)[idf]
+          );
+          return projectLiveToDeclaredSubset(d, e);
+        });
+    }
+    return liveVal;
+  }
+  if (declaredVal && liveVal && typeof declaredVal === 'object' && typeof liveVal === 'object') {
+    const out: Record<string, unknown> = { ...(liveVal as Record<string, unknown>) };
+    for (const [k, dv] of Object.entries(declaredVal as Record<string, unknown>))
+      if (k in out) out[k] = projectLiveToDeclaredSubset(dv, out[k]);
+    return out;
+  }
+  return liveVal;
+}
+
+// A declared OBJECT/ARRAY whose live counterpart is the same value serialized as a
+// JSON STRING (R75: SSM Document.Content — CDK declares the parsed object, AWS
+// returns a JSON string, with keys in a different order). The compare is
+// key-order-insensitive, so a successful parse + structural equality means
+// equal-not-drift. One side must be a string and the other a non-null object; a
+// genuine content change still differs after the parse.
+const SENTINEL_UNPARSEABLE = Symbol('unparseable');
+function deepCompareUnordered(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  const aArr = Array.isArray(a);
+  if (aArr !== Array.isArray(b)) return false;
+  if (aArr) {
+    const ba = b as unknown[];
+    return (
+      (a as unknown[]).length === ba.length &&
+      (a as unknown[]).every((v, i) => deepCompareUnordered(v, ba[i]))
+    );
+  }
+  const ao = a as Record<string, unknown>;
+  const bo = b as Record<string, unknown>;
+  const ak = Object.keys(ao);
+  return (
+    ak.length === Object.keys(bo).length &&
+    ak.every((k) => Object.hasOwn(bo, k) && deepCompareUnordered(ao[k], bo[k]))
+  );
+}
+export function isJsonStringStructEqual(a: unknown, b: unknown): boolean {
+  const parse = (s: string): unknown => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return SENTINEL_UNPARSEABLE;
+    }
+  };
+  if (typeof a === 'string' && b !== null && typeof b === 'object') {
+    const pa = parse(a);
+    return pa !== SENTINEL_UNPARSEABLE && deepCompareUnordered(pa, b);
+  }
+  if (typeof b === 'string' && a !== null && typeof a === 'object') {
+    const pb = parse(b);
+    return pb !== SENTINEL_UNPARSEABLE && deepCompareUnordered(a, pb);
+  }
+  return false;
+}
+
+// Per-type property paths AWS compares CASE-INSENSITIVELY (R75: Route53
+// RecordSet AliasTarget.DNSName — an ALB's generated DNS name is mixed-case in
+// the template's GetAtt and all-lowercase in the live record; DNS hostnames are
+// case-insensitive). Observed-only entries. The drift path is the dotted path
+// from calculateResourceDrift (e.g. `AliasTarget.DNSName`).
+export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Route53::RecordSet': new Set(['AliasTarget.DNSName']),
+};
+export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
+  return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+}
+
 // AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, AvailabilityZones,
 // VPCSecurityGroups, ...) are UNORDERED sets too, but unlike tags their elements
 // are bare scalars, so the tag canonicalizer doesn't touch them and a positional

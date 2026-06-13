@@ -191,7 +191,7 @@ checked.
   - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
-  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**.
+  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `projectLiveToDeclaredSubset` (attribute-bag subset), `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` / `CASE_INSENSITIVE_PATHS` (per-type compare rules).
   - **arn-identity.ts** — **`isArnNameMatch`** (bare name ↔ ARN), **`isManagedKmsAliasMatch`** (`alias/aws/*` ↔ key ARN).
   - **policy-canonical.ts** — IAM policy-doc canonicalization. **cc-api-strip.ts** — strip AWS-managed fields. **path-strip.ts** — schema readOnly/writeOnly path stripping (incl `*`).
 - **schema/schema-strip.ts** — `describe-type` → readOnly/writeOnly/defaults `SchemaInfo` (cached).
@@ -263,6 +263,10 @@ all live changes
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)
     (scalars only — a typed vs string *array* like [80,443] vs ["80","443"] still reports; fail-safe noise)
+  − declared object vs its JSON-STRING live form (SSM Document.Content, R75) → equal (isJsonStringStructEqual)
+  − declared SUBSET of an identity-keyed attribute bag (ELB Load/TargetGroupAttributes, R75) → live projected to declared keys (projectLiveToDeclaredSubset)
+  − per-type case-insensitive scalar paths (Route53 AliasTarget.DNSName, R75) → equal (CASE_INSENSITIVE_PATHS)
+  − per-type unordered scalar-array sets (Cognito UserPoolClient OAuth lists, R74) → equal (UNORDERED_ARRAY_PROPS)
   − sibling AWS::IAM::Policy entries in a role's Policies → filtered BY NAME (see below)
   = undeclared residual                → the unique signal
 ```

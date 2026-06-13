@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::RouteTable model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetpublicSubnet1RouteTable513C44C4",
+    "resourceType": "AWS::EC2::RouteTable",
+    "physicalId": "rtb-0f55fd2a2deab184b",
+    "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/RouteTable",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest4/Net/publicSubnet1"
+        }
+      ],
+      "VpcId": "vpc-08521c59b278960ac"
+    }
+  },
+  "liveRaw": {
+    "RouteTableId": "rtb-0f55fd2a2deab184b",
+    "VpcId": "vpc-08521c59b278960ac",
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest4/Net/publicSubnet1",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["RouteTableId"],
+    "writeOnly": [],
+    "createOnly": ["VpcId"],
+    "readOnlyPaths": ["RouteTableId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

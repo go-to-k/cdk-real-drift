@@ -11,11 +11,15 @@ import { isArnNameMatch, isManagedKmsAliasMatch } from '../normalize/arn-identit
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
+  CASE_INSENSITIVE_PATHS,
   isAllAwsTags,
+  isCaseInsensitiveScalarEqual,
   isEqualUnorderedScalarSet,
+  isJsonStringStructEqual,
   isStringlyEqualScalar,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
+  projectLiveToDeclaredSubset,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
 } from '../normalize/noise.js';
@@ -107,7 +111,12 @@ export function classifyResource(
       });
       continue;
     }
-    for (const d of calculateResourceDrift({ [k]: v }, { [k]: live[k] })) {
+    // Identity-keyed attribute bags (R75: ELB LoadBalancerAttributes /
+    // TargetGroupAttributes) — the template declares a SUBSET of the keys AWS
+    // returns; compare only the declared keys so the extra live attributes are
+    // not false drift on the whole list.
+    const liveVal = projectLiveToDeclaredSubset(v, live[k]);
+    for (const d of calculateResourceDrift({ [k]: v }, { [k]: liveVal })) {
       // a bare name declared for a field AWS returns as the full ARN is not drift
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN
@@ -116,6 +125,16 @@ export function classifyResource(
       // CFn stringly-typed scalar (Glue Parameters Map<String,String>, "5432" ports):
       // declared `true`/`5432` vs AWS `"true"`/`"5432"` is not drift.
       if (isStringlyEqualScalar(d.stateValue, d.awsValue)) continue;
+      // A declared object whose live form is the same value as a JSON STRING
+      // (R75: SSM Document.Content) — equal after parse, key-order-insensitive.
+      if (isJsonStringStructEqual(d.stateValue, d.awsValue)) continue;
+      // Per-type case-insensitive scalar paths (R75: Route53 AliasTarget.DNSName
+      // — the ALB's generated DNS name is mixed-case declared, lowercase live).
+      if (
+        CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) &&
+        isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
+      )
+        continue;
       // Per-type unordered scalar-array sets (R74: Cognito UserPoolClient OAuth
       // flow/scope lists) — same elements in the service's canonical order is
       // not drift; a genuine element change still differs after sorting.

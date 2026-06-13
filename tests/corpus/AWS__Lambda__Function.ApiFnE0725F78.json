@@ -1,0 +1,107 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::Lambda::Function model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiFnE0725F78",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+    "constructPath": "CdkrdIntegHarvest4/ApiFn",
+    "declared": {
+      "Code": {
+        "ZipFile": "exports.handler = async () => ({statusCode: 200, body: 'ok'});"
+      },
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest4-ApiFnServiceRoleD18AAE0E-tXwWTGyzrNsl",
+      "Runtime": "nodejs20.x"
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest4-ApiFnServiceRoleD18AAE0E-tXwWTGyzrNsl",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+    "Runtime": "nodejs20.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/bd58c130-6685-11f1-9f86-12ace98ca6c3",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest4",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ApiFnE0725F78",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiFnE0725F78",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo"
+      },
+      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+      "constructPath": "CdkrdIntegHarvest4/ApiFn"
+    }
+  ]
+}

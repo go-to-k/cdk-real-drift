@@ -1,0 +1,156 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::Subnet model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetpublicSubnet1SubnetA0498A0F",
+    "resourceType": "AWS::EC2::Subnet",
+    "physicalId": "subnet-0f3317e0d9ac5df28",
+    "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/Subnet",
+    "declared": {
+      "AvailabilityZone": "__cdkrd_corpus_unresolved__",
+      "CidrBlock": "10.0.0.0/17",
+      "MapPublicIpOnLaunch": true,
+      "Tags": [
+        {
+          "Key": "aws-cdk:subnet-name",
+          "Value": "public"
+        },
+        {
+          "Key": "aws-cdk:subnet-type",
+          "Value": "Public"
+        },
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest4/Net/publicSubnet1"
+        }
+      ],
+      "VpcId": "vpc-08521c59b278960ac"
+    }
+  },
+  "liveRaw": {
+    "MapPublicIpOnLaunch": true,
+    "EnableDns64": false,
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/17",
+    "SubnetId": "subnet-0f3317e0d9ac5df28",
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "AssignIpv6AddressOnCreation": false,
+    "VpcId": "vpc-08521c59b278960ac",
+    "NetworkAclAssociationId": "aclassoc-0a337ee9aab287b01",
+    "PrivateDnsNameOptionsOnLaunch": {
+      "EnableResourceNameDnsARecord": false,
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "Ipv6Native": false,
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest4/Net/publicSubnet1",
+        "Key": "Name"
+      },
+      {
+        "Value": "public",
+        "Key": "aws-cdk:subnet-name"
+      },
+      {
+        "Value": "Public",
+        "Key": "aws-cdk:subnet-type"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "BlockPublicAccessStates",
+      "Ipv6CidrBlocks",
+      "NetworkAclAssociationId",
+      "SubnetId"
+    ],
+    "writeOnly": [
+      "EnableLniAtDeviceIndex",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength"
+    ],
+    "createOnly": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6IpamPoolId",
+      "Ipv6Native",
+      "Ipv6NetmaskLength",
+      "OutpostArn",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "BlockPublicAccessStates",
+      "Ipv6CidrBlocks",
+      "NetworkAclAssociationId",
+      "SubnetId"
+    ],
+    "writeOnlyPaths": [
+      "EnableLniAtDeviceIndex",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6IpamPoolId",
+      "Ipv6Native",
+      "Ipv6NetmaskLength",
+      "OutpostArn",
+      "VpcId"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "NetpublicSubnet1SubnetA0498A0F",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZone",
+      "physicalId": "subnet-0f3317e0d9ac5df28",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/Subnet"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "NetpublicSubnet1SubnetA0498A0F",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
+      "physicalId": "subnet-0f3317e0d9ac5df28",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/Subnet"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "NetpublicSubnet1SubnetA0498A0F",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "PrivateDnsNameOptionsOnLaunch",
+      "actual": {
+        "EnableResourceNameDnsARecord": false,
+        "HostnameType": "ip-name",
+        "EnableResourceNameDnsAAAARecord": false
+      },
+      "physicalId": "subnet-0f3317e0d9ac5df28",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet1/Subnet"
+    }
+  ]
+}

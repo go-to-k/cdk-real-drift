@@ -1,0 +1,43 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (cloudfront fixture, R75): fresh-deploy AWS::CloudFront::OriginAccessControl model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "CdnOrigin1S3OriginAccessControl6AC0AEFC",
+    "resourceType": "AWS::CloudFront::OriginAccessControl",
+    "physicalId": "EGP8LO2Z4DVZ6",
+    "constructPath": "CdkrdIntegCloudfront/Cdn/Origin1/S3OriginAccessControl",
+    "declared": {
+      "OriginAccessControlConfig": {
+        "Name": "CdkrdIntegCloudfrontCdnOrigin1S3OriginAccessControl72EC851C",
+        "OriginAccessControlOriginType": "s3",
+        "SigningBehavior": "always",
+        "SigningProtocol": "sigv4"
+      }
+    }
+  },
+  "liveRaw": {
+    "OriginAccessControlConfig": {
+      "SigningBehavior": "always",
+      "Description": "",
+      "OriginAccessControlOriginType": "s3",
+      "SigningProtocol": "sigv4",
+      "Name": "CdkrdIntegCloudfrontCdnOrigin1S3OriginAccessControl72EC851C"
+    },
+    "Id": "EGP8LO2Z4DVZ6"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

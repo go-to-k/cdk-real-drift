@@ -1,0 +1,13 @@
+{
+  "name": "cdk-real-drift-integ-cloudfront",
+  "private": true,
+  "version": "0.0.0",
+  "description": "CloudFront corpus fixture: the most config-dense type, recorded live. Run via verify-cloudfront.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module",
+  "packageManager": "npm@11.17.0"
+}

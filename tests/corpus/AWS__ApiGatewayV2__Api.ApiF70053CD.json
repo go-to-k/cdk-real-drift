@@ -1,0 +1,84 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::ApiGatewayV2::Api model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiF70053CD",
+    "resourceType": "AWS::ApiGatewayV2::Api",
+    "physicalId": "rno3u8uv0f",
+    "constructPath": "CdkrdIntegHarvest4/Api",
+    "declared": {
+      "Name": "Api",
+      "ProtocolType": "HTTP"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "RouteSelectionExpression": "$request.method $request.path",
+    "ProtocolType": "HTTP",
+    "ApiEndpoint": "https://rno3u8uv0f.execute-api.us-east-1.amazonaws.com",
+    "DisableExecuteApiEndpoint": false,
+    "ApiId": "rno3u8uv0f",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdIntegHarvest4",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/bd58c130-6685-11f1-9f86-12ace98ca6c3",
+      "aws:cloudformation:logical-id": "ApiF70053CD"
+    },
+    "Name": "Api"
+  },
+  "schema": {
+    "readOnly": ["ApiEndpoint", "ApiId"],
+    "writeOnly": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnly": ["ProtocolType"],
+    "readOnlyPaths": ["ApiEndpoint", "ApiId"],
+    "writeOnlyPaths": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "BodyS3Location.Bucket",
+      "BodyS3Location.Etag",
+      "BodyS3Location.Key",
+      "BodyS3Location.Version",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnlyPaths": ["ProtocolType"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "rno3u8uv0f",
+      "constructPath": "CdkrdIntegHarvest4/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "RouteSelectionExpression",
+      "actual": "$request.method $request.path",
+      "physicalId": "rno3u8uv0f",
+      "constructPath": "CdkrdIntegHarvest4/Api"
+    }
+  ]
+}

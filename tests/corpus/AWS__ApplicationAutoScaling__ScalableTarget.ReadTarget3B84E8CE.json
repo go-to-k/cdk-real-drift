@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::ApplicationAutoScaling::ScalableTarget model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ReadTarget3B84E8CE",
+    "resourceType": "AWS::ApplicationAutoScaling::ScalableTarget",
+    "physicalId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2|dynamodb:table:ReadCapacityUnits|dynamodb",
+    "constructPath": "CdkrdIntegHarvest4/ReadTarget",
+    "declared": {
+      "MaxCapacity": 5,
+      "MinCapacity": 1,
+      "ResourceId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2",
+      "RoleARN": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest4-ReadTargetRoleA9FE198C-PjhZAE0bBV4v",
+      "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+      "ServiceNamespace": "dynamodb"
+    }
+  },
+  "liveRaw": {
+    "ResourceId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2",
+    "ServiceNamespace": "dynamodb",
+    "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+    "SuspendedState": {
+      "DynamicScalingOutSuspended": false,
+      "ScheduledScalingSuspended": false,
+      "DynamicScalingInSuspended": false
+    },
+    "Id": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2|dynamodb:table:ReadCapacityUnits|dynamodb",
+    "MinCapacity": 1,
+    "MaxCapacity": 5
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["RoleARN"],
+    "createOnly": ["ResourceId", "ScalableDimension", "ServiceNamespace"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["RoleARN"],
+    "createOnlyPaths": ["ResourceId", "ScalableDimension", "ServiceNamespace"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ReadTarget3B84E8CE",
+      "resourceType": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "path": "RoleARN",
+      "note": "write-only — cannot be read back",
+      "physicalId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2|dynamodb:table:ReadCapacityUnits|dynamodb",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::InternetGateway model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetIGW5B03566F",
+    "resourceType": "AWS::EC2::InternetGateway",
+    "physicalId": "igw-0c7816775f3353a51",
+    "constructPath": "CdkrdIntegHarvest4/Net/IGW",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkrdIntegHarvest4/Net"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "InternetGatewayId": "igw-0c7816775f3353a51",
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest4/Net",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["InternetGatewayId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["InternetGatewayId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

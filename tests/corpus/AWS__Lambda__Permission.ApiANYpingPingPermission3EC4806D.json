@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::Lambda::Permission model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiANYpingPingPermission3EC4806D",
+    "resourceType": "AWS::Lambda::Permission",
+    "physicalId": "CdkrdIntegHarvest4-ApiANYpingPingPermission3EC4806D-HNjdwPvueJi1",
+    "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping-Permission",
+    "declared": {
+      "Action": "lambda:InvokeFunction",
+      "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+      "Principal": "apigateway.amazonaws.com",
+      "SourceArn": "arn:aws:execute-api:us-east-1:111111111111:rno3u8uv0f/*/*/ping"
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:111111111111:rno3u8uv0f/*/*/ping"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "Action",
+      "EventSourceToken",
+      "FunctionName",
+      "FunctionUrlAuthType",
+      "InvokedViaFunctionUrl",
+      "Principal",
+      "PrincipalOrgID",
+      "SourceAccount",
+      "SourceArn"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Action",
+      "EventSourceToken",
+      "FunctionName",
+      "FunctionUrlAuthType",
+      "InvokedViaFunctionUrl",
+      "Principal",
+      "PrincipalOrgID",
+      "SourceAccount",
+      "SourceArn"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

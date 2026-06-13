@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::EC2::VPCGatewayAttachment model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "NetVPCGWB4C77F62",
+    "resourceType": "AWS::EC2::VPCGatewayAttachment",
+    "physicalId": "IGW|vpc-08521c59b278960ac",
+    "constructPath": "CdkrdIntegHarvest4/Net/VPCGW",
+    "declared": {
+      "InternetGatewayId": "igw-0c7816775f3353a51",
+      "VpcId": "vpc-08521c59b278960ac"
+    }
+  },
+  "liveRaw": {
+    "InternetGatewayId": "igw-0c7816775f3353a51",
+    "AttachmentType": "IGW",
+    "VpcId": "vpc-08521c59b278960ac"
+  },
+  "schema": {
+    "readOnly": ["AttachmentType"],
+    "writeOnly": [],
+    "createOnly": ["VpcId"],
+    "readOnlyPaths": ["AttachmentType"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

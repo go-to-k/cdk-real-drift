@@ -1,0 +1,160 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::ElasticLoadBalancingV2::Listener model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "EdgeHttp4128BFC4",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8/bdc3da920490ea14",
+    "constructPath": "CdkrdIntegHarvest4/Edge/Http",
+    "declared": {
+      "DefaultActions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+          "Type": "forward"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "Port": 80,
+      "Protocol": "HTTP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8/bdc3da920490ea14",
+    "ListenerAttributes": [
+      {
+        "Value": "true",
+        "Key": "routing.http.response.server.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_frame_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_methods.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_origin.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_credentials.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_content_type_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.content_security_policy.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_expose_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.strict_transport_security.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_max_age.header_value"
+      }
+    ],
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+    "DefaultActions": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+              "Weight": 1
+            }
+          ]
+        }
+      }
+    ],
+    "Port": 80,
+    "Protocol": "HTTP"
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "EdgeHttp4128BFC4",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes",
+      "actual": [
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_allow_credentials.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_allow_headers.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_allow_methods.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_allow_origin.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_expose_headers.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.access_control_max_age.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.content_security_policy.header_value"
+        },
+        {
+          "Value": "true",
+          "Key": "routing.http.response.server.enabled"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.strict_transport_security.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.x_content_type_options.header_value"
+        },
+        {
+          "Value": "",
+          "Key": "routing.http.response.x_frame_options.header_value"
+        }
+      ],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8/bdc3da920490ea14",
+      "constructPath": "CdkrdIntegHarvest4/Edge/Http"
+    }
+  ]
+}

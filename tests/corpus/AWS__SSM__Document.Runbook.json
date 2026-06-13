@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::SSM::Document model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Runbook",
+    "resourceType": "AWS::SSM::Document",
+    "physicalId": "CdkrdIntegHarvest4-Runbook-EFhGaKUli3ve",
+    "constructPath": "CdkrdIntegHarvest4/Runbook",
+    "declared": {
+      "Content": {
+        "schemaVersion": "2.2",
+        "description": "cdkrd harvest4 noop runbook",
+        "mainSteps": [
+          {
+            "action": "aws:runShellScript",
+            "name": "noop",
+            "inputs": {
+              "runCommand": ["echo cdkrd-harvest4"]
+            }
+          }
+        ]
+      },
+      "DocumentType": "Command"
+    }
+  },
+  "liveRaw": {
+    "DocumentFormat": "JSON",
+    "Content": "{\n  \"schemaVersion\" : \"2.2\",\n  \"description\" : \"cdkrd harvest4 noop runbook\",\n  \"mainSteps\" : [ {\n    \"inputs\" : {\n      \"runCommand\" : [ \"echo cdkrd-harvest4\" ]\n    },\n    \"name\" : \"noop\",\n    \"action\" : \"aws:runShellScript\"\n  } ]\n}",
+    "DocumentType": "Command",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/bd58c130-6685-11f1-9f86-12ace98ca6c3",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest4",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Runbook",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "CdkrdIntegHarvest4-Runbook-EFhGaKUli3ve"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["Attachments", "UpdateMethod"],
+    "createOnly": [
+      "Attachments",
+      "Content",
+      "DocumentFormat",
+      "DocumentType",
+      "Name",
+      "Requires",
+      "TargetType",
+      "VersionName"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["Attachments", "UpdateMethod"],
+    "createOnlyPaths": [
+      "Attachments",
+      "Content",
+      "DocumentFormat",
+      "DocumentType",
+      "Name",
+      "Requires",
+      "TargetType",
+      "VersionName"
+    ],
+    "defaults": {
+      "DocumentFormat": "JSON",
+      "UpdateMethod": "Replace"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
