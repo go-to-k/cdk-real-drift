@@ -288,5 +288,22 @@ describe('report', () => {
         'result: CLEAN',
       ]);
     });
+
+    // R78: an ELB attribute-bag drift names the changed attribute by Key
+    // (LoadBalancerAttributes[idle_timeout.timeout_seconds]) instead of a bare path.
+    it('declared drift with attributeKey names the attribute by Key', () => {
+      const finding: Finding = {
+        tier: 'declared',
+        logicalId: 'Edge',
+        resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+        path: 'LoadBalancerAttributes',
+        attributeKey: 'idle_timeout.timeout_seconds',
+        desired: '120',
+        actual: '300',
+      };
+      const { text } = run([finding]);
+      expect(text).toContain('LoadBalancerAttributes[idle_timeout.timeout_seconds]');
+      expect(text).toContain('desired=');
+    });
   });
 });
