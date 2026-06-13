@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::AppConfig::Application model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Cfg",
+    "resourceType": "AWS::AppConfig::Application",
+    "physicalId": "h0s9fpf",
+    "constructPath": "CdkrdIntegHarvest5/Cfg",
+    "declared": {
+      "Name": "cdkrd-harvest5"
+    }
+  },
+  "liveRaw": {
+    "ApplicationId": "h0s9fpf",
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Cfg",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest5"
+  },
+  "schema": {
+    "readOnly": ["ApplicationId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["ApplicationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

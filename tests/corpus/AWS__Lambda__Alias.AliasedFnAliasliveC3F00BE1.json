@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Lambda::Alias model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "AliasedFnAliasliveC3F00BE1",
+    "resourceType": "AWS::Lambda::Alias",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:live",
+    "constructPath": "CdkrdIntegHarvest5/AliasedFn/Aliaslive",
+    "declared": {
+      "Description": "cdkrd harvest5 alias",
+      "FunctionName": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "FunctionVersion": "1",
+      "Name": "live"
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+    "Description": "cdkrd harvest5 alias",
+    "FunctionVersion": "1",
+    "AliasArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:live",
+    "RoutingConfig": {},
+    "Name": "live"
+  },
+  "schema": {
+    "readOnly": ["AliasArn"],
+    "writeOnly": [],
+    "createOnly": ["FunctionName", "Name"],
+    "readOnlyPaths": ["AliasArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FunctionName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

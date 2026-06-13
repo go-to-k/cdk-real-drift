@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Events::ApiDestination model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiDest",
+    "resourceType": "AWS::Events::ApiDestination",
+    "physicalId": "ApiDest-5oBdTeq27GBi",
+    "constructPath": "CdkrdIntegHarvest5/ApiDest",
+    "declared": {
+      "ConnectionArn": "arn:aws:events:us-east-1:111111111111:connection/Conn-L4BxGdJVCL8Z/3f826775-e72f-4e64-8ccf-f25357750c6a",
+      "HttpMethod": "POST",
+      "InvocationEndpoint": "https://example.com/webhook",
+      "InvocationRateLimitPerSecond": 10
+    }
+  },
+  "liveRaw": {
+    "ConnectionArn": "arn:aws:events:us-east-1:111111111111:connection/Conn-L4BxGdJVCL8Z/3f826775-e72f-4e64-8ccf-f25357750c6a",
+    "InvocationEndpoint": "https://example.com/webhook",
+    "Arn": "arn:aws:events:us-east-1:111111111111:api-destination/ApiDest-5oBdTeq27GBi/ff602157-2c7a-41e5-9bce-ee9d11e069d4",
+    "ArnForPolicy": "arn:aws:events:us-east-1:111111111111:api-destination/ApiDest-5oBdTeq27GBi",
+    "HttpMethod": "POST",
+    "Name": "ApiDest-5oBdTeq27GBi",
+    "InvocationRateLimitPerSecond": 10
+  },
+  "schema": {
+    "readOnly": ["Arn", "ArnForPolicy"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "ArnForPolicy"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

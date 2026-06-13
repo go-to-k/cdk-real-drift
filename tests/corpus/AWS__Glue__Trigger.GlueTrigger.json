@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Glue::Trigger model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "GlueTrigger",
+    "resourceType": "AWS::Glue::Trigger",
+    "physicalId": "GlueTrigger-9t6zHnu1aOIa",
+    "constructPath": "CdkrdIntegHarvest5/GlueTrigger",
+    "declared": {
+      "Actions": [
+        {
+          "JobName": "cdkrd-harvest5"
+        }
+      ],
+      "Type": "ON_DEMAND"
+    }
+  },
+  "liveRaw": {
+    "Type": "ON_DEMAND",
+    "Actions": [
+      {
+        "JobName": "cdkrd-harvest5",
+        "Arguments": {}
+      }
+    ],
+    "Tags": {},
+    "Name": "GlueTrigger-9t6zHnu1aOIa"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["StartOnCreation"],
+    "createOnly": ["Name", "Type", "WorkflowName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["StartOnCreation"],
+    "createOnlyPaths": ["Name", "Type", "WorkflowName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Route53::HealthCheck model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Health",
+    "resourceType": "AWS::Route53::HealthCheck",
+    "physicalId": "fc5f8fb0-4e1a-49d2-9491-17730c70f226",
+    "constructPath": "CdkrdIntegHarvest5/Health",
+    "declared": {
+      "HealthCheckConfig": {
+        "FailureThreshold": 3,
+        "FullyQualifiedDomainName": "example.com",
+        "Port": 443,
+        "RequestInterval": 30,
+        "Type": "HTTPS"
+      }
+    }
+  },
+  "liveRaw": {
+    "HealthCheckId": "fc5f8fb0-4e1a-49d2-9491-17730c70f226",
+    "HealthCheckConfig": {
+      "EnableSNI": true,
+      "Type": "HTTPS",
+      "FullyQualifiedDomainName": "example.com",
+      "MeasureLatency": false,
+      "Inverted": false,
+      "Port": 443,
+      "RequestInterval": 30,
+      "FailureThreshold": 3
+    }
+  },
+  "schema": {
+    "readOnly": ["HealthCheckId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["HealthCheckId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "HealthCheckConfig.MeasureLatency",
+      "HealthCheckConfig.RequestInterval",
+      "HealthCheckConfig.Type"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

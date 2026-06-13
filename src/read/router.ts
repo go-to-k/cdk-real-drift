@@ -23,30 +23,30 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
 > = {
   // physical id = the API ARN (arn:...:apis/<apiId>); CC wants the bare ApiId.
   'AWS::AppSync::GraphQLApi': (pid) => (pid.startsWith('arn:') ? pid.split('/').pop() : pid),
-  // primaryIdentifier is the composite [UserPoolId, ClientId]; the physical id is
-  // only the ClientId. UserPoolId comes from the resolved declared Ref — when it
-  // did not resolve, keep the physical id (CC then reports ValidationException →
-  // an honest skip, same as before).
-  'AWS::Cognito::UserPoolClient': (pid, declared) =>
-    typeof declared.UserPoolId === 'string' && declared.UserPoolId.length > 0
-      ? `${declared.UserPoolId}|${pid}`
-      : undefined,
-  // ApiGatewayV2 Stage/Route/Integration: primaryIdentifier is the composite
-  // [ApiId, <child id>]; the CFn physical id is only the child id (StageName /
-  // RouteId / IntegrationId). ApiId comes from the resolved declared Ref. CC's
-  // composite-identifier separator is `|` (verified live, R76 — without this
-  // these three common HTTP-API resources read as ValidationException skips).
-  'AWS::ApiGatewayV2::Stage': apiGwV2Composite,
-  'AWS::ApiGatewayV2::Route': apiGwV2Composite,
-  'AWS::ApiGatewayV2::Integration': apiGwV2Composite,
+  // The rest are `[<parent ref>, <child id>]` composites: the CFn physical id is
+  // only the child id; the parent id comes from the resolved declared Ref. CC's
+  // composite-identifier separator is `|` (verified live — R74 Cognito, R76
+  // ApiGatewayV2, R77 AppConfig). An unresolved parent → fall back to the bare
+  // physical id (CC then reports an honest ValidationException skip).
+  'AWS::Cognito::UserPoolClient': compositeWith('UserPoolId'),
+  'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
+  'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
+  'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),
+  'AWS::AppConfig::Environment': compositeWith('ApplicationId'),
+  'AWS::AppConfig::ConfigurationProfile': compositeWith('ApplicationId'),
 };
 
-function apiGwV2Composite(pid: string, declared: Record<string, unknown>): string | undefined {
-  // already composite (defensive — never double-prefix) or unresolved ApiId →
-  // fall back to the physical id (CC then reports an honest ValidationException skip).
-  if (pid.includes('|')) return pid;
-  const apiId = declared.ApiId;
-  return typeof apiId === 'string' && apiId.length > 0 ? `${apiId}|${pid}` : undefined;
+// Build a `${declared[parentKey]}|${physicalId}` composite CC identifier, or
+// undefined when the parent ref did not resolve (→ honest skip). Never
+// double-prefixes an id that is already composite.
+function compositeWith(
+  parentKey: string
+): (pid: string, declared: Record<string, unknown>) => string | undefined {
+  return (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const parent = declared[parentKey];
+    return typeof parent === 'string' && parent.length > 0 ? `${parent}|${pid}` : undefined;
+  };
 }
 
 export async function readLive(

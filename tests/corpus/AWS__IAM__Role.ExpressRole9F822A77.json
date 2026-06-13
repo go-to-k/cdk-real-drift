@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ExpressRole9F822A77",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest5-ExpressRole9F822A77-n22tUTypsJHx",
+    "constructPath": "CdkrdIntegHarvest5/Express/Role",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "states.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest5-ExpressRole9F822A77-n22tUTypsJHx",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "states.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest5-ExpressRole9F822A77-n22tUTypsJHx",
+    "RoleId": "AROAXXXJN2LNU5EP4VLZX"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

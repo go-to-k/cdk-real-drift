@@ -1,0 +1,96 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::StepFunctions::StateMachine model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ExpressEE4D4F3B",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:ExpressEE4D4F3B-STsbmWDm37Ea",
+    "constructPath": "CdkrdIntegHarvest5/Express",
+    "declared": {
+      "DefinitionString": "{\"StartAt\":\"Noop\",\"States\":{\"Noop\":{\"Type\":\"Pass\",\"End\":true}}}",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest5-ExpressRole9F822A77-n22tUTypsJHx",
+      "StateMachineType": "EXPRESS"
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\"StartAt\":\"Noop\",\"States\":{\"Noop\":{\"Type\":\"Pass\",\"End\":true}}}",
+    "EncryptionConfiguration": {
+      "Type": "AWS_OWNED_KEY"
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": false,
+      "Level": "OFF"
+    },
+    "StateMachineRevisionId": "INITIAL",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:ExpressEE4D4F3B-STsbmWDm37Ea",
+    "StateMachineName": "ExpressEE4D4F3B-STsbmWDm37Ea",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest5-ExpressRole9F822A77-n22tUTypsJHx",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ExpressEE4D4F3B",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "ExpressEE4D4F3B-STsbmWDm37Ea",
+    "StateMachineType": "EXPRESS",
+    "TracingConfiguration": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ExpressEE4D4F3B",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "Type": "AWS_OWNED_KEY"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:ExpressEE4D4F3B-STsbmWDm37Ea",
+      "constructPath": "CdkrdIntegHarvest5/Express"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ExpressEE4D4F3B",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": {
+        "IncludeExecutionData": false,
+        "Level": "OFF"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:ExpressEE4D4F3B-STsbmWDm37Ea",
+      "constructPath": "CdkrdIntegHarvest5/Express"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ExpressEE4D4F3B",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineName",
+      "actual": "ExpressEE4D4F3B-STsbmWDm37Ea",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:ExpressEE4D4F3B-STsbmWDm37Ea",
+      "constructPath": "CdkrdIntegHarvest5/Express"
+    }
+  ]
+}
