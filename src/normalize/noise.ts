@@ -287,6 +287,10 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
     'AllowedOAuthScopes',
     'ExplicitAuthFlows',
   ]),
+  // R84 (observed live on a fresh harvest6 deploy): WAFv2 stores the IP address
+  // set and echoes it in its own canonical order, so a fresh deploy reports the
+  // declared CIDR list as drift with identical elements in a different order.
+  'AWS::WAFv2::IPSet': new Set(['Addresses']),
 };
 
 // True when both values are scalar arrays containing the same multiset of

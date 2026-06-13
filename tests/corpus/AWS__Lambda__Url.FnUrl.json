@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::Lambda::Url model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "FnUrl",
+    "resourceType": "AWS::Lambda::Url",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+    "constructPath": "CdkrdIntegHarvest6/FnUrl",
+    "declared": {
+      "AuthType": "NONE",
+      "TargetFunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz"
+    }
+  },
+  "liveRaw": {
+    "FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+    "FunctionUrl": "https://fw3rloqogc22w2u4n2vrdv3qhu0plkgj.lambda-url.us-east-1.on.aws/",
+    "InvokeMode": "BUFFERED",
+    "AuthType": "NONE",
+    "TargetFunctionArn": "CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz"
+  },
+  "schema": {
+    "readOnly": ["FunctionArn", "FunctionUrl"],
+    "writeOnly": [],
+    "createOnly": ["Qualifier", "TargetFunctionArn"],
+    "readOnlyPaths": ["FunctionArn", "FunctionUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Qualifier", "TargetFunctionArn"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

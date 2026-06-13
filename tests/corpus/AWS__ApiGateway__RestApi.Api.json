@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::ApiGateway::RestApi model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Api",
+    "resourceType": "AWS::ApiGateway::RestApi",
+    "physicalId": "plg2s0yj0k",
+    "constructPath": "CdkrdIntegHarvest6/Api",
+    "declared": {
+      "Name": "cdkrd-harvest6"
+    }
+  },
+  "liveRaw": {
+    "RootResourceId": "gjwltve1fj",
+    "SecurityPolicy": "TLS_1_0",
+    "RestApiId": "plg2s0yj0k",
+    "ApiKeySourceType": "HEADER",
+    "EndpointConfiguration": {
+      "IpAddressType": "ipv4",
+      "Types": ["EDGE"]
+    },
+    "DisableExecuteApiEndpoint": false,
+    "Tags": [
+      {
+        "Value": "Api",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["RestApiId", "RootResourceId"],
+    "writeOnly": ["Body", "BodyS3Location", "CloneFrom", "FailOnWarnings", "Mode", "Parameters"],
+    "createOnly": [],
+    "readOnlyPaths": ["RestApiId", "RootResourceId"],
+    "writeOnlyPaths": [
+      "Body",
+      "BodyS3Location",
+      "CloneFrom",
+      "FailOnWarnings",
+      "Mode",
+      "Parameters"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Api",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
+      "physicalId": "plg2s0yj0k",
+      "constructPath": "CdkrdIntegHarvest6/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Api",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "ApiKeySourceType",
+      "actual": "HEADER",
+      "physicalId": "plg2s0yj0k",
+      "constructPath": "CdkrdIntegHarvest6/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Api",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "EndpointConfiguration",
+      "actual": {
+        "IpAddressType": "ipv4",
+        "Types": ["EDGE"]
+      },
+      "physicalId": "plg2s0yj0k",
+      "constructPath": "CdkrdIntegHarvest6/Api"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::WAFv2::IPSet model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "IpSet",
+    "resourceType": "AWS::WAFv2::IPSet",
+    "physicalId": "cdkrd-harvest6|ec032017-71fe-45da-873f-1ee3c130036c|REGIONAL",
+    "constructPath": "CdkrdIntegHarvest6/IpSet",
+    "declared": {
+      "Addresses": ["192.0.2.0/24", "198.51.100.0/24"],
+      "IPAddressVersion": "IPV4",
+      "Name": "cdkrd-harvest6",
+      "Scope": "REGIONAL"
+    }
+  },
+  "liveRaw": {
+    "Addresses": ["198.51.100.0/24", "192.0.2.0/24"],
+    "Description": "",
+    "Scope": "REGIONAL",
+    "Id": "ec032017-71fe-45da-873f-1ee3c130036c",
+    "IPAddressVersion": "IPV4",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/ipset/cdkrd-harvest6/ec032017-71fe-45da-873f-1ee3c130036c",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "IpSet",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

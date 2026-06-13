@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::ApiGateway::UsagePlan model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Plan",
+    "resourceType": "AWS::ApiGateway::UsagePlan",
+    "physicalId": "6aiqlx",
+    "constructPath": "CdkrdIntegHarvest6/Plan",
+    "declared": {
+      "Quota": {
+        "Limit": 1000,
+        "Period": "MONTH"
+      },
+      "Throttle": {
+        "BurstLimit": 5,
+        "RateLimit": 10
+      },
+      "UsagePlanName": "cdkrd-harvest6"
+    }
+  },
+  "liveRaw": {
+    "Quota": {
+      "Period": "MONTH",
+      "Limit": 1000,
+      "Offset": 0
+    },
+    "Id": "6aiqlx",
+    "ApiStages": [],
+    "Tags": [
+      {
+        "Value": "Plan",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Throttle": {
+      "BurstLimit": 5,
+      "RateLimit": 10
+    },
+    "UsagePlanName": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

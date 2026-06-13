@@ -461,6 +461,33 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['CallbackURLs']);
     });
 
+    it('UNORDERED_ARRAY_PROPS: WAFv2 IPSet Addresses in a different order is NOT drift (R84)', () => {
+      const ipset = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'IpSet',
+        resourceType: 'AWS::WAFv2::IPSet',
+        physicalId: 'ipset-1',
+        declared,
+      });
+      // same CIDR set, reversed order — WAFv2 echoes its own canonical order
+      expect(
+        classifyResource(
+          ipset({ Addresses: ['192.0.2.0/24', '198.51.100.0/24'] }),
+          { Addresses: ['198.51.100.0/24', '192.0.2.0/24'] },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine CIDR change still reports
+      expect(
+        tiers(
+          classifyResource(
+            ipset({ Addresses: ['192.0.2.0/24', '198.51.100.0/24'] }),
+            { Addresses: ['203.0.113.0/24', '192.0.2.0/24'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Addresses']);
+    });
+
     it('undeclared EventSelectors equal to the default is suppressed; a changed one surfaces', () => {
       expect(
         classifyResource(

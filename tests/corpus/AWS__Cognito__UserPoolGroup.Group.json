@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::Cognito::UserPoolGroup model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Group",
+    "resourceType": "AWS::Cognito::UserPoolGroup",
+    "physicalId": "cdkrd-harvest6",
+    "constructPath": "CdkrdIntegHarvest6/Group",
+    "declared": {
+      "Description": "harvest6 group",
+      "GroupName": "cdkrd-harvest6",
+      "Precedence": 10,
+      "UserPoolId": "us-east-1_4tB3jYmmc"
+    }
+  },
+  "liveRaw": {
+    "GroupName": "cdkrd-harvest6",
+    "Description": "harvest6 group",
+    "UserPoolId": "us-east-1_4tB3jYmmc",
+    "Precedence": 10
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["GroupName", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GroupName", "UserPoolId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

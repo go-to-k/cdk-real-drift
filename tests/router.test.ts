@@ -93,6 +93,21 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('us-east-1_AbCdEf|client123');
   });
 
+  it('Cognito UserPoolGroup: builds the composite UserPoolId|GroupName identifier (R84)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Cognito::UserPoolGroup',
+        physicalId: 'admins',
+        declared: { UserPoolId: 'us-east-1_AbCdEf' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('us-east-1_AbCdEf|admins');
+  });
+
   it('Cognito UserPoolClient: an unresolved UserPoolId falls back to the raw physical id', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(

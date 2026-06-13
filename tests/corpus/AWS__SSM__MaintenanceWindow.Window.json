@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::SSM::MaintenanceWindow model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Window",
+    "resourceType": "AWS::SSM::MaintenanceWindow",
+    "physicalId": "mw-0b5d2cf6aec29900c",
+    "constructPath": "CdkrdIntegHarvest6/Window",
+    "declared": {
+      "AllowUnassociatedTargets": true,
+      "Cutoff": 1,
+      "Duration": 2,
+      "Name": "cdkrd-harvest6",
+      "Schedule": "rate(7 days)"
+    }
+  },
+  "liveRaw": {
+    "WindowId": "mw-0b5d2cf6aec29900c",
+    "AllowUnassociatedTargets": true,
+    "Cutoff": 1,
+    "Schedule": "rate(7 days)",
+    "Duration": 2,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Window",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["WindowId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["WindowId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

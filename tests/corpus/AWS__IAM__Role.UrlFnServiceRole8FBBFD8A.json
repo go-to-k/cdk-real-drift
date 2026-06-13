@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::IAM::Role model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "UrlFnServiceRole8FBBFD8A",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest6-UrlFnServiceRole8FBBFD8A-O0fAhbiRABr7",
+    "constructPath": "CdkrdIntegHarvest6/UrlFn/ServiceRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "lambda.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest6-UrlFnServiceRole8FBBFD8A-O0fAhbiRABr7",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-UrlFnServiceRole8FBBFD8A-O0fAhbiRABr7",
+    "RoleId": "AROAXXXJN2LN3EOS4R5LG"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::ApiGateway::ApiKey model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "ApiKey",
+    "resourceType": "AWS::ApiGateway::ApiKey",
+    "physicalId": "6r6yg8wk4j",
+    "constructPath": "CdkrdIntegHarvest6/ApiKey",
+    "declared": {
+      "Enabled": true,
+      "Name": "cdkrd-harvest6"
+    }
+  },
+  "liveRaw": {
+    "APIKeyId": "6r6yg8wk4j",
+    "StageKeys": [],
+    "Value": "OL2cc3xWoX85uZuwBZpvO311UM7TN5ke2SyXoEYD",
+    "Enabled": true,
+    "Tags": [
+      {
+        "Value": "ApiKey",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["APIKeyId"],
+    "writeOnly": ["GenerateDistinctId"],
+    "createOnly": ["GenerateDistinctId", "Name", "Value"],
+    "readOnlyPaths": ["APIKeyId"],
+    "writeOnlyPaths": ["GenerateDistinctId"],
+    "createOnlyPaths": ["GenerateDistinctId", "Name", "Value"],
+    "defaults": {
+      "Enabled": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiKey",
+      "resourceType": "AWS::ApiGateway::ApiKey",
+      "path": "Value",
+      "actual": "OL2cc3xWoX85uZuwBZpvO311UM7TN5ke2SyXoEYD",
+      "physicalId": "6r6yg8wk4j",
+      "constructPath": "CdkrdIntegHarvest6/ApiKey"
+    }
+  ]
+}
