@@ -1,0 +1,32 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CodeDeployApp",
+    "resourceType": "AWS::CodeDeploy::Application",
+    "physicalId": "cdkrd-integ-cd",
+    "constructPath": "CdkdriftIntegHarvest7/CodeDeployApp",
+    "declared": {
+      "ApplicationName": "cdkrd-integ-cd",
+      "ComputePlatform": "Lambda"
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "cdkrd-integ-cd",
+    "ComputePlatform": "Lambda"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApplicationName", "ComputePlatform"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApplicationName", "ComputePlatform"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

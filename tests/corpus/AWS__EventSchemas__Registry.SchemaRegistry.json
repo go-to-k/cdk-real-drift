@@ -1,0 +1,31 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SchemaRegistry",
+    "resourceType": "AWS::EventSchemas::Registry",
+    "physicalId": "arn:aws:schemas:us-east-1:111111111111:registry/cdkrd-integ-registry",
+    "constructPath": "CdkdriftIntegHarvest7/SchemaRegistry",
+    "declared": {
+      "RegistryName": "cdkrd-integ-registry"
+    }
+  },
+  "liveRaw": {
+    "RegistryName": "cdkrd-integ-registry",
+    "RegistryArn": "arn:aws:schemas:us-east-1:111111111111:registry/cdkrd-integ-registry"
+  },
+  "schema": {
+    "readOnly": ["RegistryArn"],
+    "writeOnly": [],
+    "createOnly": ["RegistryName"],
+    "readOnlyPaths": ["RegistryArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RegistryName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

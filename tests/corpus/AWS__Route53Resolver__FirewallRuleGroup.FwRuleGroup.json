@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FwRuleGroup",
+    "resourceType": "AWS::Route53Resolver::FirewallRuleGroup",
+    "physicalId": "rslvr-frg-4b70eb88fb1c45ef",
+    "constructPath": "CdkdriftIntegHarvest8/FwRuleGroup",
+    "declared": {
+      "FirewallRules": [
+        {
+          "Action": "BLOCK",
+          "BlockResponse": "NODATA",
+          "FirewallDomainListId": "rslvr-fdl-fae10c927473462b",
+          "Priority": 100
+        }
+      ],
+      "Name": "cdkrd-integ-frg"
+    }
+  },
+  "liveRaw": {
+    "RuleCount": 1,
+    "Status": "COMPLETE",
+    "ShareStatus": "NOT_SHARED",
+    "ModificationTime": "2026-06-13T13:10:30.746307457Z",
+    "CreatorRequestId": "466328c8-c1db-e373-5cb4-5e1dfca334bd",
+    "Name": "cdkrd-integ-frg",
+    "StatusMessage": "Finished rule group update",
+    "OwnerId": "111111111111",
+    "CreationTime": "2026-06-13T13:09:38.721431276Z",
+    "Id": "rslvr-frg-4b70eb88fb1c45ef",
+    "Arn": "arn:aws:route53resolver:us-east-1:111111111111:firewall-rule-group/rslvr-frg-4b70eb88fb1c45ef",
+    "FirewallRules": [
+      {
+        "Action": "BLOCK",
+        "Priority": 100,
+        "FirewallDomainListId": "rslvr-fdl-fae10c927473462b",
+        "FirewallThreatProtectionId": "NOT_APPLICABLE",
+        "BlockResponse": "NODATA",
+        "FirewallDomainRedirectionAction": "INSPECT_REDIRECTION_DOMAIN"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest8",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest8/19b5c920-6729-11f1-9ba5-0e26a0c940e7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "FwRuleGroup",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CreationTime",
+      "CreatorRequestId",
+      "Id",
+      "ModificationTime",
+      "OwnerId",
+      "RuleCount",
+      "ShareStatus",
+      "Status",
+      "StatusMessage"
+    ],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "CreationTime",
+      "CreatorRequestId",
+      "FirewallRules.*.FirewallThreatProtectionId",
+      "Id",
+      "ModificationTime",
+      "OwnerId",
+      "RuleCount",
+      "ShareStatus",
+      "Status",
+      "StatusMessage"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

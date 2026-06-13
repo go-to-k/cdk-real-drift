@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SesTemplate",
+    "resourceType": "AWS::SES::Template",
+    "physicalId": "cdkrd-integ-tmpl",
+    "constructPath": "CdkdriftIntegHarvest7/SesTemplate",
+    "declared": {
+      "Template": {
+        "SubjectPart": "cdk-real-drift integ",
+        "TemplateName": "cdkrd-integ-tmpl",
+        "TextPart": "hello"
+      }
+    }
+  },
+  "liveRaw": {
+    "Id": "cdkrd-integ-tmpl",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest7/60f88ad0-6728-11f1-851e-12bc8aa3685f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest7",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SesTemplate",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Template": {
+      "TextPart": "hello",
+      "TemplateName": "cdkrd-integ-tmpl",
+      "SubjectPart": "cdk-real-drift integ"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Template.TemplateName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

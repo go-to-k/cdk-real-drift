@@ -1,0 +1,31 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiAccountA18C9B29",
+    "resourceType": "AWS::ApiGateway::Account",
+    "physicalId": "Cdkdri-ApiAc-uSKoF74o8pn9",
+    "constructPath": "CdkdriftIntegHarvest8/Api/Account",
+    "declared": {
+      "CloudWatchRoleArn": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT"
+    }
+  },
+  "liveRaw": {
+    "Id": "Cdkdri-ApiAc-uSKoF74o8pn9",
+    "CloudWatchRoleArn": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

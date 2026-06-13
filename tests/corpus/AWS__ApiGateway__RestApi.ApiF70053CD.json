@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiF70053CD",
+    "resourceType": "AWS::ApiGateway::RestApi",
+    "physicalId": "38w1jnsg0j",
+    "constructPath": "CdkdriftIntegHarvest8/Api",
+    "declared": {
+      "Name": "cdkrd-integ-api"
+    }
+  },
+  "liveRaw": {
+    "RootResourceId": "1pd9ky6ghl",
+    "SecurityPolicy": "TLS_1_0",
+    "RestApiId": "38w1jnsg0j",
+    "ApiKeySourceType": "HEADER",
+    "EndpointConfiguration": {
+      "IpAddressType": "ipv4",
+      "Types": ["EDGE"]
+    },
+    "DisableExecuteApiEndpoint": false,
+    "Tags": [
+      {
+        "Value": "ApiF70053CD",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest8/19b5c920-6729-11f1-9ba5-0e26a0c940e7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest8",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "cdkrd-integ-api"
+  },
+  "schema": {
+    "readOnly": ["RestApiId", "RootResourceId"],
+    "writeOnly": ["Body", "BodyS3Location", "CloneFrom", "FailOnWarnings", "Mode", "Parameters"],
+    "createOnly": [],
+    "readOnlyPaths": ["RestApiId", "RootResourceId"],
+    "writeOnlyPaths": [
+      "Body",
+      "BodyS3Location",
+      "CloneFrom",
+      "FailOnWarnings",
+      "Mode",
+      "Parameters"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
+      "physicalId": "38w1jnsg0j",
+      "constructPath": "CdkdriftIntegHarvest8/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "ApiKeySourceType",
+      "actual": "HEADER",
+      "physicalId": "38w1jnsg0j",
+      "constructPath": "CdkdriftIntegHarvest8/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "EndpointConfiguration",
+      "actual": {
+        "IpAddressType": "ipv4",
+        "Types": ["EDGE"]
+      },
+      "physicalId": "38w1jnsg0j",
+      "constructPath": "CdkdriftIntegHarvest8/Api"
+    }
+  ]
+}

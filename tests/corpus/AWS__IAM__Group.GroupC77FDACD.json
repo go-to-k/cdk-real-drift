@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GroupC77FDACD",
+    "resourceType": "AWS::IAM::Group",
+    "physicalId": "CdkdriftIntegHarvest7-GroupC77FDACD-FNM4Ze6xlaOA",
+    "constructPath": "CdkdriftIntegHarvest7/Group",
+    "declared": {}
+  },
+  "liveRaw": {
+    "GroupName": "CdkdriftIntegHarvest7-GroupC77FDACD-FNM4Ze6xlaOA",
+    "Path": "/",
+    "Arn": "arn:aws:iam::111111111111:group/CdkdriftIntegHarvest7-GroupC77FDACD-FNM4Ze6xlaOA"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["GroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GroupName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "GroupC77FDACD",
+      "resourceType": "AWS::IAM::Group",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkdriftIntegHarvest7-GroupC77FDACD-FNM4Ze6xlaOA",
+      "constructPath": "CdkdriftIntegHarvest7/Group"
+    }
+  ]
+}
