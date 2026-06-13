@@ -38,6 +38,12 @@ cdk.out/
 # ignored only inside this repo's own scratch dirs)
 /tmp-dogfood/
 
+# Integration-fixture baselines are transient — written by the verify scripts
+# during a live run, never committed. Without this, `git add -A` repeatedly swept
+# a fixture baseline into a commit (R69/R75/R78/R79). The top-level project
+# .cdkrd/ stays committed; only the fixtures' own .cdkrd dirs are ignored.
+tests/integration/**/.cdkrd/
+
 # Temporary README-example generator: `vp check`/README-gen drops this self-deleting
 # test in tests/; it is explicitly "Not committed" but is easy to sweep up via
 # `git add -A`. Ignore it so it can never be accidentally committed.
