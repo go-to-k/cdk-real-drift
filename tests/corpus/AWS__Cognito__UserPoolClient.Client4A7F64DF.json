@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Client4A7F64DF",
+    "resourceType": "AWS::Cognito::UserPoolClient",
+    "physicalId": "mr9u1vrva41nona9of2rfctdi",
+    "constructPath": "CdkRealDriftIntegCognito/Client",
+    "declared": {
+      "AllowedOAuthFlows": ["implicit", "code"],
+      "AllowedOAuthFlowsUserPoolClient": true,
+      "AllowedOAuthScopes": ["openid", "email", "profile"],
+      "CallbackURLs": ["https://a.example/cb", "https://b.example/cb"],
+      "ExplicitAuthFlows": [
+        "ALLOW_USER_PASSWORD_AUTH",
+        "ALLOW_USER_SRP_AUTH",
+        "ALLOW_REFRESH_TOKEN_AUTH"
+      ],
+      "GenerateSecret": false,
+      "SupportedIdentityProviders": ["COGNITO"],
+      "UserPoolId": "us-east-1_J7y6AVs3e"
+    }
+  },
+  "liveRaw": {
+    "GenerateSecret": false,
+    "CallbackURLs": ["https://a.example/cb", "https://b.example/cb"],
+    "EnablePropagateAdditionalUserContextData": false,
+    "AuthSessionValidity": 3,
+    "AllowedOAuthScopes": ["email", "openid", "profile"],
+    "TokenValidityUnits": {},
+    "ReadAttributes": [],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "SupportedIdentityProviders": ["COGNITO"],
+    "Name": "Client4A7F64DF-sygg0gzLDfo0",
+    "ClientName": "Client4A7F64DF-sygg0gzLDfo0",
+    "UserPoolId": "us-east-1_J7y6AVs3e",
+    "AllowedOAuthFlows": ["code", "implicit"],
+    "ExplicitAuthFlows": [
+      "ALLOW_REFRESH_TOKEN_AUTH",
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_USER_SRP_AUTH"
+    ],
+    "LogoutURLs": [],
+    "ClientId": "mr9u1vrva41nona9of2rfctdi",
+    "RefreshTokenValidity": 30,
+    "WriteAttributes": [],
+    "EnableTokenRevocation": true
+  },
+  "schema": {
+    "readOnly": ["ClientId", "ClientSecret", "Name"],
+    "writeOnly": [],
+    "createOnly": ["GenerateSecret", "UserPoolId"],
+    "readOnlyPaths": ["ClientId", "ClientSecret", "Name"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GenerateSecret", "UserPoolId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Client4A7F64DF",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "AuthSessionValidity",
+      "actual": 3,
+      "physicalId": "mr9u1vrva41nona9of2rfctdi",
+      "constructPath": "CdkRealDriftIntegCognito/Client"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Client4A7F64DF",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "ClientName",
+      "actual": "Client4A7F64DF-sygg0gzLDfo0",
+      "physicalId": "mr9u1vrva41nona9of2rfctdi",
+      "constructPath": "CdkRealDriftIntegCognito/Client"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Client4A7F64DF",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "RefreshTokenValidity",
+      "actual": 30,
+      "physicalId": "mr9u1vrva41nona9of2rfctdi",
+      "constructPath": "CdkRealDriftIntegCognito/Client"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Client4A7F64DF",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "EnableTokenRevocation",
+      "actual": true,
+      "physicalId": "mr9u1vrva41nona9of2rfctdi",
+      "constructPath": "CdkRealDriftIntegCognito/Client"
+    }
+  ]
+}

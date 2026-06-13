@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcIGWD7BA715C",
+    "resourceType": "AWS::EC2::InternetGateway",
+    "physicalId": "igw-09d610db1e1a48943",
+    "constructPath": "CdkRealDriftIntegSg/Vpc/IGW",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkRealDriftIntegSg/Vpc"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "InternetGatewayId": "igw-09d610db1e1a48943",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegSg/Vpc",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["InternetGatewayId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["InternetGatewayId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Machine6FC8AE80",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+    "constructPath": "CdkRealDriftIntegSfn/Machine",
+    "declared": {
+      "DefinitionString": "{\"StartAt\":\"Start\",\"States\":{\"Start\":{\"Type\":\"Pass\",\"Comment\":\"a pass state\",\"Next\":\"Done\"},\"Done\":{\"Type\":\"Succeed\"}}}",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\"StartAt\":\"Start\",\"States\":{\"Start\":{\"Type\":\"Pass\",\"Comment\":\"a pass state\",\"Next\":\"Done\"},\"Done\":{\"Type\":\"Succeed\"}}}",
+    "EncryptionConfiguration": {
+      "Type": "AWS_OWNED_KEY"
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": false,
+      "Level": "OFF"
+    },
+    "StateMachineRevisionId": "INITIAL",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+    "StateMachineName": "Machine6FC8AE80-rOT2HXO40dQB",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegSfn",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Machine6FC8AE80",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSfn/e7377be0-6725-11f1-b348-0affd2e8cf5d",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "Machine6FC8AE80-rOT2HXO40dQB",
+    "StateMachineType": "STANDARD",
+    "TracingConfiguration": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Machine6FC8AE80",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "Type": "AWS_OWNED_KEY"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+      "constructPath": "CdkRealDriftIntegSfn/Machine"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Machine6FC8AE80",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": {
+        "IncludeExecutionData": false,
+        "Level": "OFF"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+      "constructPath": "CdkRealDriftIntegSfn/Machine"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Machine6FC8AE80",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineName",
+      "actual": "Machine6FC8AE80-rOT2HXO40dQB",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+      "constructPath": "CdkRealDriftIntegSfn/Machine"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Machine6FC8AE80",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineType",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:Machine6FC8AE80-rOT2HXO40dQB",
+      "constructPath": "CdkRealDriftIntegSfn/Machine"
+    }
+  ]
+}

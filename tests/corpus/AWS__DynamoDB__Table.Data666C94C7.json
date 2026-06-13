@@ -1,0 +1,186 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Data666C94C7",
+    "resourceType": "AWS::DynamoDB::Table",
+    "physicalId": "CdkRealDriftIntegDynamoDB-Data666C94C7-C09XWQ7XMDHF",
+    "constructPath": "CdkRealDriftIntegDynamoDB/Data",
+    "declared": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "sk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "gsi1pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "gsi1sk",
+          "AttributeType": "N"
+        }
+      ],
+      "BillingMode": "PAY_PER_REQUEST",
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "gsi1",
+          "KeySchema": [
+            {
+              "AttributeName": "gsi1pk",
+              "KeyType": "HASH"
+            },
+            {
+              "AttributeName": "gsi1sk",
+              "KeyType": "RANGE"
+            }
+          ],
+          "Projection": {
+            "ProjectionType": "ALL"
+          }
+        }
+      ],
+      "KeySchema": [
+        {
+          "AttributeName": "pk",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "sk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "PointInTimeRecoverySpecification": {
+        "PointInTimeRecoveryEnabled": true
+      },
+      "Tags": [
+        {
+          "Key": "cost-center",
+          "Value": "1234"
+        },
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SSESpecification": {
+      "SSEEnabled": false
+    },
+    "ContributorInsightsSpecification": {
+      "Enabled": false
+    },
+    "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": true,
+      "RecoveryPeriodInDays": 35
+    },
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 12000,
+      "WriteUnitsPerSecond": 4000
+    },
+    "TableName": "CdkRealDriftIntegDynamoDB-Data666C94C7-C09XWQ7XMDHF",
+    "AttributeDefinitions": [
+      {
+        "AttributeType": "S",
+        "AttributeName": "gsi1pk"
+      },
+      {
+        "AttributeType": "N",
+        "AttributeName": "gsi1sk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "pk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "sk"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "gsi1",
+        "ContributorInsightsSpecification": {
+          "Enabled": false
+        },
+        "Projection": {
+          "NonKeyAttributes": [],
+          "ProjectionType": "ALL"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "gsi1pk"
+          },
+          {
+            "KeyType": "RANGE",
+            "AttributeName": "gsi1sk"
+          }
+        ],
+        "WarmThroughput": {
+          "ReadUnitsPerSecond": 12000,
+          "WriteUnitsPerSecond": 4000
+        }
+      }
+    ],
+    "KeySchema": [
+      {
+        "KeyType": "HASH",
+        "AttributeName": "pk"
+      },
+      {
+        "KeyType": "RANGE",
+        "AttributeName": "sk"
+      }
+    ],
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftIntegDynamoDB-Data666C94C7-C09XWQ7XMDHF",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "1234",
+        "Key": "cost-center"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      }
+    ],
+    "TimeToLiveSpecification": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "StreamArn"],
+    "writeOnly": ["ImportSourceSpecification"],
+    "createOnly": ["ImportSourceSpecification", "KeySchema", "TableName"],
+    "readOnlyPaths": ["Arn", "StreamArn"],
+    "writeOnlyPaths": ["ImportSourceSpecification"],
+    "createOnlyPaths": ["ImportSourceSpecification", "KeySchema", "TableName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "physicalId": "CdkRealDriftIntegDynamoDB-Data666C94C7-C09XWQ7XMDHF",
+      "constructPath": "CdkRealDriftIntegDynamoDB/Data"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcpublicSubnet1RouteTableAssociation4E83B6E4",
+    "resourceType": "AWS::EC2::SubnetRouteTableAssociation",
+    "physicalId": "rtbassoc-0e438ec054aac8cc7",
+    "constructPath": "CdkRealDriftIntegSg/Vpc/publicSubnet1/RouteTableAssociation",
+    "declared": {
+      "RouteTableId": "rtb-09f1f01d82cbfdfcc",
+      "SubnetId": "subnet-0a9a838411f55ddb0"
+    }
+  },
+  "liveRaw": {
+    "RouteTableId": "rtb-09f1f01d82cbfdfcc",
+    "Id": "rtbassoc-0e438ec054aac8cc7",
+    "SubnetId": "subnet-0a9a838411f55ddb0"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["RouteTableId", "SubnetId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RouteTableId", "SubnetId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

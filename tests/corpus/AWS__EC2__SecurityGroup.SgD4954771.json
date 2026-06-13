@@ -1,0 +1,131 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SgD4954771",
+    "resourceType": "AWS::EC2::SecurityGroup",
+    "physicalId": "sg-0f4873d4b3aa50607",
+    "constructPath": "CdkRealDriftIntegSg/Sg",
+    "declared": {
+      "GroupDescription": "CdkRealDriftIntegSg/Sg",
+      "SecurityGroupEgress": [
+        {
+          "CidrIp": "0.0.0.0/0",
+          "Description": "Allow all outbound traffic by default",
+          "IpProtocol": "-1"
+        }
+      ],
+      "SecurityGroupIngress": [
+        {
+          "CidrIp": "10.0.0.0/24",
+          "Description": "https from a",
+          "FromPort": 443,
+          "IpProtocol": "tcp",
+          "ToPort": 443
+        },
+        {
+          "CidrIp": "10.0.1.0/24",
+          "Description": "https from b",
+          "FromPort": 443,
+          "IpProtocol": "tcp",
+          "ToPort": 443
+        },
+        {
+          "CidrIp": "192.168.0.0/16",
+          "Description": "ssh",
+          "FromPort": 22,
+          "IpProtocol": "tcp",
+          "ToPort": 22
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "VpcId": "vpc-08f08ab760705a18a"
+    }
+  },
+  "liveRaw": {
+    "GroupDescription": "CdkRealDriftIntegSg/Sg",
+    "GroupName": "CdkRealDriftIntegSg-SgD4954771-8qZ9xcu9LOZR",
+    "VpcId": "vpc-08f08ab760705a18a",
+    "Id": "sg-0f4873d4b3aa50607",
+    "SecurityGroupIngress": [
+      {
+        "CidrIp": "192.168.0.0/16",
+        "Description": "ssh",
+        "FromPort": 22,
+        "ToPort": 22,
+        "IpProtocol": "tcp"
+      },
+      {
+        "CidrIp": "10.0.0.0/24",
+        "Description": "https from a",
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp"
+      },
+      {
+        "CidrIp": "10.0.1.0/24",
+        "Description": "https from b",
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp"
+      }
+    ],
+    "SecurityGroupEgress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "Description": "Allow all outbound traffic by default",
+        "FromPort": -1,
+        "ToPort": -1,
+        "IpProtocol": "-1"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegSg",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSg/93f7af90-6725-11f1-a89d-0e41c8a66b63",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "SgD4954771",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "GroupId": "sg-0f4873d4b3aa50607"
+  },
+  "schema": {
+    "readOnly": ["GroupId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["GroupDescription", "GroupName", "VpcId"],
+    "readOnlyPaths": ["GroupId", "Id"],
+    "writeOnlyPaths": ["SecurityGroupIngress.*.SourceSecurityGroupName"],
+    "createOnlyPaths": ["GroupDescription", "GroupName", "VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "SgD4954771",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "GroupName",
+      "actual": "CdkRealDriftIntegSg-SgD4954771-8qZ9xcu9LOZR",
+      "physicalId": "sg-0f4873d4b3aa50607",
+      "constructPath": "CdkRealDriftIntegSg/Sg"
+    }
+  ]
+}

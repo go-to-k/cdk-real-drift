@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MachineRoleD2D3D395",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+    "constructPath": "CdkRealDriftIntegSfn/Machine/Role",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "states.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "states.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+    "RoleId": "AROAXXXJN2LN3RULV5VNB",
+    "Tags": [
+      {
+        "Value": "platform",
+        "Key": "team"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MachineRoleD2D3D395",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+      "constructPath": "CdkRealDriftIntegSfn/Machine/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MachineRoleD2D3D395",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+      "constructPath": "CdkRealDriftIntegSfn/Machine/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MachineRoleD2D3D395",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
+      "constructPath": "CdkRealDriftIntegSfn/Machine/Role"
+    }
+  ]
+}

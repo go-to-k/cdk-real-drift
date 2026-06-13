@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule4C995B7F",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU",
+    "constructPath": "CdkRealDriftIntegEvents/Rule",
+    "declared": {
+      "EventPattern": {
+        "source": ["cdkrd.integ"],
+        "detail-type": ["test-a", "test-b"]
+      },
+      "State": "ENABLED",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "Targets": [
+        {
+          "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+          "Id": "Target0"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "EventPattern": {
+      "detail-type": ["test-a", "test-b"],
+      "source": ["cdkrd.integ"]
+    },
+    "State": "ENABLED",
+    "Targets": [
+      {
+        "Id": "Target0",
+        "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe"
+      }
+    ],
+    "Id": "CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegEvents",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Rule4C995B7F",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEvents/70671ce0-6726-11f1-893a-0eacb13db4b5",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rule4C995B7F",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU",
+      "constructPath": "CdkRealDriftIntegEvents/Rule"
+    }
+  ]
+}

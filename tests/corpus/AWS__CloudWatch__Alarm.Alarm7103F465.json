@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Alarm7103F465",
+    "resourceType": "AWS::CloudWatch::Alarm",
+    "physicalId": "CdkRealDriftIntegAlarm-Alarm7103F465-sZUYbouFngxU",
+    "constructPath": "CdkRealDriftIntegAlarm/Alarm",
+    "declared": {
+      "ComparisonOperator": "GreaterThanThreshold",
+      "Dimensions": [
+        {
+          "Name": "FunctionName",
+          "Value": "cdkrd-integ-fn"
+        },
+        {
+          "Name": "Resource",
+          "Value": "cdkrd-integ-fn:live"
+        }
+      ],
+      "EvaluationPeriods": 2,
+      "MetricName": "Errors",
+      "Namespace": "AWS/Lambda",
+      "Period": 300,
+      "Statistic": "Sum",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "Threshold": 5
+    }
+  },
+  "liveRaw": {
+    "ComparisonOperator": "GreaterThanThreshold",
+    "Dimensions": [
+      {
+        "Value": "cdkrd-integ-fn",
+        "Name": "FunctionName"
+      },
+      {
+        "Value": "cdkrd-integ-fn:live",
+        "Name": "Resource"
+      }
+    ],
+    "Period": 300,
+    "EvaluationPeriods": 2,
+    "Namespace": "AWS/Lambda",
+    "OKActions": [],
+    "AlarmActions": [],
+    "MetricName": "Errors",
+    "ActionsEnabled": true,
+    "AlarmName": "CdkRealDriftIntegAlarm-Alarm7103F465-sZUYbouFngxU",
+    "Statistic": "Sum",
+    "InsufficientDataActions": [],
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkRealDriftIntegAlarm-Alarm7103F465-sZUYbouFngxU",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegAlarm",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Alarm7103F465",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAlarm/cd3b1c10-6725-11f1-90f6-0e3526a02887",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Threshold": 5
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["AlarmName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AlarmName"],
+    "defaults": {
+      "ActionsEnabled": true
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Alarm7103F465",
+      "resourceType": "AWS::CloudWatch::Alarm",
+      "path": "ActionsEnabled",
+      "actual": true,
+      "physicalId": "CdkRealDriftIntegAlarm-Alarm7103F465-sZUYbouFngxU",
+      "constructPath": "CdkRealDriftIntegAlarm/Alarm"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Vpc8378EB38",
+    "resourceType": "AWS::EC2::VPC",
+    "physicalId": "vpc-08f08ab760705a18a",
+    "constructPath": "CdkRealDriftIntegSg/Vpc",
+    "declared": {
+      "CidrBlock": "10.0.0.0/16",
+      "EnableDnsHostnames": true,
+      "EnableDnsSupport": true,
+      "InstanceTenancy": "default",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkRealDriftIntegSg/Vpc"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-08f08ab760705a18a",
+    "InstanceTenancy": "default",
+    "CidrBlockAssociations": ["vpc-cidr-assoc-09f6797051d22a710"],
+    "CidrBlock": "10.0.0.0/16",
+    "DefaultNetworkAcl": "acl-05e56cde864d77687",
+    "EnableDnsSupport": true,
+    "Ipv6CidrBlocks": [],
+    "DefaultSecurityGroup": "sg-0a911c30b680f3c4e",
+    "EnableDnsHostnames": true,
+    "Tags": [
+      {
+        "Value": "Vpc8378EB38",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSg/93f7af90-6725-11f1-a89d-0e41c8a66b63",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSg",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CdkRealDriftIntegSg/Vpc",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnly": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnly": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "readOnlyPaths": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnlyPaths": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
