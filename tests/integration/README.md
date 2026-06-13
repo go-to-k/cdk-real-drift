@@ -350,6 +350,19 @@ then accept -> `check --fail` CLEAN.
 cd harvest5 && npm install && bash verify-harvest5.sh
 ```
 
+## revert-multi
+
+Exercises the one AWS-mutating path across five types via Cloud Control
+UpdateResource. Deploy SQS / SNS / Lambda / S3 / ECR, accept a CLEAN baseline,
+change one declared property on each out of band, then `revert --yes` and assert the
+stack converges to CLEAN AND every live value is restored to its template value
+(VisibilityTimeout 30, DisplayName, Timeout 10, VersioningConfiguration Enabled,
+ImageTagMutability IMMUTABLE). Run after changing `src/revert/**`.
+
+```bash
+cd revert-multi && npm install && bash verify.sh
+```
+
 ## harvest7 / harvest8
 
 Waves 7 and 8 of the corpus harvest (R90): cheap, low-dependency CFn types that
