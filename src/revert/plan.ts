@@ -22,6 +22,10 @@ export interface PatchOp {
   // per entry (e.g. IAM Role inline Policies). Never serialized to Cloud Control
   // (toPatchDocument picks op/path/value only).
   prior?: unknown;
+  // R78: the Key of a changed attribute inside an ELB attribute bag. Set only for
+  // attribute-bag findings; the SDK writer sends `{Key, Value: value}` via
+  // ModifyLoadBalancerAttributes. Never serialized to Cloud Control.
+  attributeKey?: string;
   human: string; // one-line description for the plan display
 }
 
@@ -181,7 +185,8 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
       op: 'add',
       path: pointer,
       value: f.desired,
-      human: `${f.path} -> deployed-template value`,
+      ...(f.attributeKey !== undefined && { attributeKey: f.attributeKey }),
+      human: `${f.path}${f.attributeKey ? `[${f.attributeKey}]` : ''} -> deployed-template value`,
     };
   }
   // undeclared: accepted before? restore that value; else it is a new addition -> remove.

@@ -24,6 +24,13 @@ export interface Finding {
   // UNRECORDED inventory item, not drift. Set by applyBaseline; excluded from the
   // verdict/exit and from revert's default plan (accept or --remove-unaccepted).
   unrecorded?: boolean;
+  // declared tier only (R78): for a drift INSIDE an identity-keyed attribute bag
+  // (ELB Load/TargetGroupAttributes) this is the Key of the changed attribute. The
+  // path stays at the bag property (`LoadBalancerAttributes`) and desired/actual
+  // are the scalar Value; revert routes to the bag's SDK writer, which sends ONLY
+  // this Key=Value via ModifyLoadBalancerAttributes (a Cloud Control index patch
+  // would misalign against the full live bag and exceed ELB's 20-attribute cap).
+  attributeKey?: string;
 }
 
 export interface SchemaInfo {

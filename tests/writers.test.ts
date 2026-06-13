@@ -1,4 +1,9 @@
 import {
+  ElasticLoadBalancingV2Client,
+  ModifyLoadBalancerAttributesCommand,
+  ModifyTargetGroupAttributesCommand,
+} from '@aws-sdk/client-elastic-load-balancing-v2';
+import {
   CreatePolicyVersionCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
@@ -15,6 +20,7 @@ import type { PatchOp } from '../src/revert/plan.js';
 import { resolveSdkWriter, SDK_WRITERS } from '../src/revert/writers.js';
 
 const iam = mockClient(IAMClient);
+const elb = mockClient(ElasticLoadBalancingV2Client);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -43,7 +49,10 @@ const stubReader = (currentDoc: unknown): void => {
     .resolves({ PolicyVersion: { Document: JSON.stringify(currentDoc) } });
 };
 
-beforeEach(() => iam.reset());
+beforeEach(() => {
+  iam.reset();
+  elb.reset();
+});
 
 describe('IAM ManagedPolicy writer', () => {
   it('creates a new default version carrying the reverted document', async () => {
@@ -184,5 +193,87 @@ describe('IAM Role inline Policies prop-scoped writer', () => {
   it('a missing prior on a remove op is a safe no-op (never a bulk wipe)', async () => {
     await writer()(roleCtx, [{ op: 'remove', path: '/Policies', human: '' }]);
     expect(iam.commandCalls(DeleteRolePolicyCommand)).toHaveLength(0);
+  });
+});
+
+describe('ELB attribute-bag prop-scoped writers (R78)', () => {
+  const LB_ARN = 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/x/abc';
+  const TG_ARN = 'arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/y/def';
+  const attrOp = (path: string, attributeKey: string, value: unknown): PatchOp => ({
+    op: 'add',
+    path,
+    value,
+    attributeKey,
+    human: `${path}[${attributeKey}] -> deployed-template value`,
+  });
+
+  it('resolveSdkWriter routes the bag property to the ELB prop writer', () => {
+    expect(
+      resolveSdkWriter('AWS::ElasticLoadBalancingV2::LoadBalancer', [
+        attrOp('/LoadBalancerAttributes', 'idle_timeout.timeout_seconds', '120'),
+      ])
+    ).toBeDefined();
+    expect(
+      resolveSdkWriter('AWS::ElasticLoadBalancingV2::TargetGroup', [
+        attrOp('/TargetGroupAttributes', 'deregistration_delay.timeout_seconds', '15'),
+      ])
+    ).toBeDefined();
+  });
+
+  it('LoadBalancer: sends ONLY the declared attributes (Key=Value) to ModifyLoadBalancerAttributes', async () => {
+    elb.on(ModifyLoadBalancerAttributesCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::ElasticLoadBalancingV2::LoadBalancer', [
+      attrOp('/LoadBalancerAttributes', 'idle_timeout.timeout_seconds', '120'),
+    ])!;
+    await writer(ctx({ physicalId: LB_ARN }), [
+      attrOp('/LoadBalancerAttributes', 'idle_timeout.timeout_seconds', '120'),
+      attrOp('/LoadBalancerAttributes', 'deletion_protection.enabled', 'false'),
+    ]);
+    const calls = elb.commandCalls(ModifyLoadBalancerAttributesCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input).toEqual({
+      LoadBalancerArn: LB_ARN,
+      Attributes: [
+        { Key: 'idle_timeout.timeout_seconds', Value: '120' },
+        { Key: 'deletion_protection.enabled', Value: 'false' },
+      ],
+    });
+  });
+
+  it('LoadBalancer: a non-string desired value is stringified (ELB Values are strings)', async () => {
+    elb.on(ModifyLoadBalancerAttributesCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::ElasticLoadBalancingV2::LoadBalancer', [
+      attrOp('/LoadBalancerAttributes', 'idle_timeout.timeout_seconds', 120),
+    ])!;
+    await writer(ctx({ physicalId: LB_ARN }), [
+      attrOp('/LoadBalancerAttributes', 'idle_timeout.timeout_seconds', 120),
+    ]);
+    expect(
+      elb.commandCalls(ModifyLoadBalancerAttributesCommand)[0].args[0].input.Attributes
+    ).toEqual([{ Key: 'idle_timeout.timeout_seconds', Value: '120' }]);
+  });
+
+  it('TargetGroup: sends to ModifyTargetGroupAttributes with the TG arn', async () => {
+    elb.on(ModifyTargetGroupAttributesCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::ElasticLoadBalancingV2::TargetGroup', [
+      attrOp('/TargetGroupAttributes', 'deregistration_delay.timeout_seconds', '15'),
+    ])!;
+    await writer(ctx({ physicalId: TG_ARN }), [
+      attrOp('/TargetGroupAttributes', 'deregistration_delay.timeout_seconds', '15'),
+    ]);
+    expect(elb.commandCalls(ModifyTargetGroupAttributesCommand)[0].args[0].input).toEqual({
+      TargetGroupArn: TG_ARN,
+      Attributes: [{ Key: 'deregistration_delay.timeout_seconds', Value: '15' }],
+    });
+  });
+
+  it('no attribute-keyed ops -> no AWS call (never a blind write)', async () => {
+    const writer = resolveSdkWriter('AWS::ElasticLoadBalancingV2::LoadBalancer', [
+      attrOp('/LoadBalancerAttributes', 'x', '1'),
+    ])!;
+    await writer(ctx({ physicalId: LB_ARN }), [
+      { op: 'add', path: '/LoadBalancerAttributes', value: '1', human: '' },
+    ]);
+    expect(elb.commandCalls(ModifyLoadBalancerAttributesCommand)).toHaveLength(0);
   });
 });

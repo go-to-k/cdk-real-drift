@@ -28,6 +28,21 @@ import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
+// R78: identity-keyed attribute bags whose declared drift must be reverted BY KEY
+// (the index-based Cloud Control patch misaligns against the full live bag and ELB
+// caps a modify at 20 attributes). Maps the resource type to its bag property; a
+// drift inside the bag emits one declared finding per changed Key (path stays at
+// the bag property, the Key rides on Finding.attributeKey for the SDK writer).
+const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': 'LoadBalancerAttributes',
+  'AWS::ElasticLoadBalancingV2::TargetGroup': 'TargetGroupAttributes',
+};
+const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
+  !!t &&
+  typeof t === 'object' &&
+  typeof (t as { Key?: unknown }).Key === 'string' &&
+  'Value' in (t as object);
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -111,10 +126,33 @@ export function classifyResource(
       });
       continue;
     }
-    // Identity-keyed attribute bags (R75: ELB LoadBalancerAttributes /
-    // TargetGroupAttributes) — the template declares a SUBSET of the keys AWS
-    // returns; compare only the declared keys so the extra live attributes are
-    // not false drift on the whole list.
+    // R78: ELB attribute bags compare BY KEY (the template declares a subset of
+    // the keys AWS returns) and emit one declared finding per changed attribute
+    // carrying its Key, so revert can send only that Key=Value. This is naturally
+    // subset-aware, subsuming the R75 projection for these two types.
+    if (k === ELB_ATTRIBUTE_BAGS[resourceType] && Array.isArray(v) && Array.isArray(live[k])) {
+      const liveBag = live[k] as unknown[];
+      for (const dEl of v) {
+        if (!isKeyValueEntry(dEl)) continue;
+        const lEl = liveBag.find((e) => isKeyValueEntry(e) && e.Key === dEl.Key);
+        const liveValue = lEl ? (lEl as { Value: unknown }).Value : undefined;
+        if (deepEqual(dEl.Value, liveValue)) continue;
+        if (isStringlyEqualScalar(dEl.Value, liveValue)) continue;
+        findings.push({
+          tier: 'declared',
+          logicalId,
+          resourceType,
+          path: k,
+          attributeKey: dEl.Key,
+          desired: dEl.Value,
+          actual: liveValue,
+        });
+      }
+      continue;
+    }
+    // Identity-keyed attribute bags (R75: other bag-shaped props) — the template
+    // declares a SUBSET of the keys AWS returns; compare only the declared keys so
+    // the extra live attributes are not false drift on the whole list.
     const liveVal = projectLiveToDeclaredSubset(v, live[k]);
     for (const d of calculateResourceDrift({ [k]: v }, { [k]: liveVal })) {
       // a bare name declared for a field AWS returns as the full ARN is not drift

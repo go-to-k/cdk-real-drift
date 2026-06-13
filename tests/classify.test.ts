@@ -526,7 +526,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ).toEqual([]);
     });
 
-    it('a genuine change to a DECLARED attribute still surfaces', () => {
+    it('a genuine change to a DECLARED attribute still surfaces, named by Key (R78)', () => {
       const drifted = liveAll.map((a) =>
         a.Key === 'idle_timeout.timeout_seconds' ? { ...a, Value: '300' } : a
       );
@@ -535,8 +535,68 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         { LoadBalancerAttributes: drifted },
         emptySchema
       );
-      expect(findings.filter((f) => f.tier === 'declared')).toHaveLength(1);
-      expect(findings[0]?.path).toContain('LoadBalancerAttributes');
+      const declaredF = findings.filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      // R78: path stays at the bag property; the Key rides on attributeKey so
+      // revert can send only this Key=Value (not an array-index Cloud Control patch).
+      expect(declaredF[0]).toMatchObject({
+        path: 'LoadBalancerAttributes',
+        attributeKey: 'idle_timeout.timeout_seconds',
+        desired: '120',
+        actual: '300',
+      });
+    });
+
+    it('R78: each changed attribute is its OWN finding (Key-scoped)', () => {
+      const drifted = liveAll.map((a) =>
+        a.Key === 'idle_timeout.timeout_seconds'
+          ? { ...a, Value: '300' }
+          : a.Key === 'deletion_protection.enabled'
+            ? { ...a, Value: 'true' }
+            : a
+      );
+      const declaredF = classifyResource(
+        res(T, declared),
+        { LoadBalancerAttributes: drifted },
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF.map((f) => f.attributeKey).sort()).toEqual([
+        'deletion_protection.enabled',
+        'idle_timeout.timeout_seconds',
+      ]);
+      expect(declaredF.every((f) => f.path === 'LoadBalancerAttributes')).toBe(true);
+    });
+
+    it('R78: a stringly-equal Value (declared 60 number vs live "60") is NOT drift', () => {
+      const findings = classifyResource(
+        res(T, { LoadBalancerAttributes: [{ Key: 'idle_timeout.timeout_seconds', Value: 60 }] }),
+        { LoadBalancerAttributes: [{ Key: 'idle_timeout.timeout_seconds', Value: '60' }] },
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    });
+
+    it('R78: TargetGroupAttributes is Key-scoped too', () => {
+      const TG = 'AWS::ElasticLoadBalancingV2::TargetGroup';
+      const declaredF = classifyResource(
+        res(TG, {
+          TargetGroupAttributes: [{ Key: 'deregistration_delay.timeout_seconds', Value: '15' }],
+        }),
+        {
+          TargetGroupAttributes: [
+            { Key: 'deregistration_delay.timeout_seconds', Value: '30' },
+            { Key: 'stickiness.enabled', Value: 'false' },
+          ],
+        },
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]).toMatchObject({
+        path: 'TargetGroupAttributes',
+        attributeKey: 'deregistration_delay.timeout_seconds',
+        desired: '15',
+        actual: '30',
+      });
     });
   });
 

@@ -70,20 +70,15 @@ aws elbv2 modify-load-balancer-attributes --load-balancer-arn "$ALB_ARN" \
 sleep 10
 
 # DETECTION of an out-of-band change to ONE attribute inside the {Key,Value}[]
-# LoadBalancerAttributes bag must name exactly that attribute — this proves the
-# R75 subset projection live (the template declares 2 of ~23 attributes; without
-# the projection the whole list reports as drift; with it, only idle_timeout).
-# NOTE: this fixture deliberately does NOT revert the ELB attribute. Reverting an
-# identity-keyed attribute bag through Cloud Control needs a Key-based patch (the
-# index-based JSON patch misaligns against the live array AND ELB caps a single
-# ModifyLoadBalancerAttributes at 20 attributes) — tracked as its own work item.
-# The revert WRITE path is already proven live by the revert/policies/harvest3
-# fixtures.
-echo "=== B2. check must name ONLY the mutated attribute (subset projection, live) ==="
+# LoadBalancerAttributes bag must name exactly that attribute by KEY — the
+# template declares 2 of ~23 attributes, so without the R75 subset comparison the
+# whole list reports as drift; with the R78 Key-scoped comparison only
+# idle_timeout surfaces, named LoadBalancerAttributes[idle_timeout.timeout_seconds].
+echo "=== B2. check must name ONLY the mutated attribute by Key ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected drift exit 1"
-grep -q "DECLARED DRIFT: 1" "$OUT" || fail "expected exactly 1 declared drift (subset projection failed)"
-grep -q "idle_timeout\|LoadBalancerAttributes" "$OUT" || fail "missing idle_timeout drift"
+grep -q "DECLARED DRIFT: 1" "$OUT" || fail "expected exactly 1 declared drift (Key-scoped compare failed)"
+grep -q "idle_timeout" "$OUT" || fail "missing idle_timeout drift"
 
 if [ -n "${CDKRD_CORPUS_DIR:-}" ]; then
   echo "=== snapshot drift-state corpus recordings ==="
@@ -91,10 +86,21 @@ if [ -n "${CDKRD_CORPUS_DIR:-}" ]; then
   cp -R "$CDKRD_CORPUS_DIR" "${CDKRD_CORPUS_DIR}.drifted" || fail "corpus snapshot"
 fi
 
-echo "=== B3. restore the attribute out of band (no cdkrd revert — see note above) ==="
-aws elbv2 modify-load-balancer-attributes --load-balancer-arn "$ALB_ARN" \
-  --attributes Key=idle_timeout.timeout_seconds,Value=120 --region "$REGION" >/dev/null || fail "restore alb attribute"
+# R78: revert the identity-keyed attribute bag via the ELB SDK writer
+# (ModifyLoadBalancerAttributes with ONLY the declared Key=Value — not a Cloud
+# Control index patch, which misaligns against the full live bag and exceeds
+# ELB's 20-attribute cap). This is the live proof of the R78 revert path.
+echo "=== B3. revert --yes restores the attribute via the ELB SDK writer ==="
+$CLI revert "$STACK" --region "$REGION" --yes || fail "revert returned non-zero"
 sleep 5
-$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after restore"
+
+echo "=== B4. check CLEAN after revert ==="
+$CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "drift remains after revert"
+
+echo "=== B5. direct ELBv2 read confirms idle_timeout restored to 120 ==="
+IDLE="$(aws elbv2 describe-load-balancer-attributes --load-balancer-arn "$ALB_ARN" --region "$REGION" \
+  --query "Attributes[?Key=='idle_timeout.timeout_seconds'].Value | [0]" --output text)"
+[ "$IDLE" = "120" ] || fail "idle_timeout not restored (got $IDLE)"
 
 echo "INTEG PASS"
