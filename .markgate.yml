@@ -30,9 +30,11 @@
 #               (AWS-side wire-format + Cloud Control behavior drift over time).
 #
 # NOTE: the commit/PR-blocking ENFORCEMENT (the .claude hooks that call markgate)
-# is intentionally not installed yet. CI (.github/workflows/ci.yml) enforces
-# typecheck/lint/build/test on every push in the meantime. When hooks are added,
-# wire them ONLY to check / docs / verify-pr (the gates with companion skills).
+# is now installed (R83): check-gate (commit), verify-pr-gate (gh pr create/merge),
+# plus the marker-free branch-gate and non-english-text-gate. Hooks are wired ONLY
+# to check / docs / verify-pr — the gates with companion skills. pr-review and integ
+# remain INERT and UNWIRED (no companion skill) so they cannot brick the flow.
+# CI (.github/workflows/ci.yml) still enforces typecheck/lint/build/test on push.
 
 gates:
   check:
