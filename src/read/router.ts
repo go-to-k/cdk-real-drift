@@ -31,7 +31,23 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     typeof declared.UserPoolId === 'string' && declared.UserPoolId.length > 0
       ? `${declared.UserPoolId}|${pid}`
       : undefined,
+  // ApiGatewayV2 Stage/Route/Integration: primaryIdentifier is the composite
+  // [ApiId, <child id>]; the CFn physical id is only the child id (StageName /
+  // RouteId / IntegrationId). ApiId comes from the resolved declared Ref. CC's
+  // composite-identifier separator is `|` (verified live, R76 — without this
+  // these three common HTTP-API resources read as ValidationException skips).
+  'AWS::ApiGatewayV2::Stage': apiGwV2Composite,
+  'AWS::ApiGatewayV2::Route': apiGwV2Composite,
+  'AWS::ApiGatewayV2::Integration': apiGwV2Composite,
 };
+
+function apiGwV2Composite(pid: string, declared: Record<string, unknown>): string | undefined {
+  // already composite (defensive — never double-prefix) or unresolved ApiId →
+  // fall back to the physical id (CC then reports an honest ValidationException skip).
+  if (pid.includes('|')) return pid;
+  const apiId = declared.ApiId;
+  return typeof apiId === 'string' && apiId.length > 0 ? `${apiId}|${pid}` : undefined;
+}
 
 export async function readLive(
   cc: CloudControlClient,
