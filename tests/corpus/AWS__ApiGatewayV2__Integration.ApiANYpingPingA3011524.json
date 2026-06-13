@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 + R76 ApiGatewayV2 CC-identifier adapters): fresh-deploy AWS::ApiGatewayV2::Integration model — now READABLE via the ApiId|<child> composite identifier (was a CC ValidationException skip before R76). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiANYpingPingA3011524",
+    "resourceType": "AWS::ApiGatewayV2::Integration",
+    "physicalId": "qf0uwiu",
+    "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping",
+    "declared": {
+      "ApiId": "w89hrka2nb",
+      "IntegrationType": "AWS_PROXY",
+      "IntegrationUri": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest4-ApiFnE0725F78-It2GXF2ICbSF",
+      "PayloadFormatVersion": "2.0"
+    }
+  },
+  "liveRaw": {
+    "IntegrationUri": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest4-ApiFnE0725F78-It2GXF2ICbSF",
+    "PayloadFormatVersion": "2.0",
+    "ConnectionType": "INTERNET",
+    "RequestTemplates": {},
+    "ResponseParameters": {},
+    "TimeoutInMillis": 30000,
+    "IntegrationId": "qf0uwiu",
+    "ApiId": "w89hrka2nb",
+    "IntegrationMethod": "POST",
+    "IntegrationType": "AWS_PROXY"
+  },
+  "schema": {
+    "readOnly": ["IntegrationId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["IntegrationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiANYpingPingA3011524",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "ConnectionType",
+      "actual": "INTERNET",
+      "physicalId": "qf0uwiu",
+      "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiANYpingPingA3011524",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "TimeoutInMillis",
+      "actual": 30000,
+      "physicalId": "qf0uwiu",
+      "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiANYpingPingA3011524",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "IntegrationMethod",
+      "actual": "POST",
+      "physicalId": "qf0uwiu",
+      "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping"
+    }
+  ]
+}

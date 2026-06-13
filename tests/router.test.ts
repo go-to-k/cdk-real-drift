@@ -109,6 +109,50 @@ describe('readLive (CC identifier adapters, R74)', () => {
     await readLive(cc as unknown as CloudControlClient, res(), 'us-east-1', '1');
     expect(sent()).toBe('phys');
   });
+
+  // R76: ApiGatewayV2 Stage/Route/Integration composite [ApiId, <child id>].
+  for (const t of [
+    'AWS::ApiGatewayV2::Stage',
+    'AWS::ApiGatewayV2::Route',
+    'AWS::ApiGatewayV2::Integration',
+  ]) {
+    it(`${t}: builds the ApiId|<child> composite identifier`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: 'child123', declared: { ApiId: 'api456' } }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('api456|child123');
+    });
+  }
+
+  it('ApiGatewayV2 Stage: an unresolved ApiId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ApiGatewayV2::Stage', physicalId: 'live', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('live');
+  });
+
+  it('ApiGatewayV2 Route: an already-composite physical id is not double-prefixed', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::Route',
+        physicalId: 'api456|route789',
+        declared: { ApiId: 'api456' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('api456|route789');
+  });
 });
 
 describe('readLive (custom resources short-circuit, R26)', () => {

@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 + R76 ApiGatewayV2 CC-identifier adapters): fresh-deploy AWS::ApiGatewayV2::Route model — now READABLE via the ApiId|<child> composite identifier (was a CC ValidationException skip before R76). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ApiANYpingF0D17186",
+    "resourceType": "AWS::ApiGatewayV2::Route",
+    "physicalId": "lghabc6",
+    "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping",
+    "declared": {
+      "ApiId": "w89hrka2nb",
+      "AuthorizationType": "NONE",
+      "RouteKey": "ANY /ping",
+      "Target": "integrations/qf0uwiu"
+    }
+  },
+  "liveRaw": {
+    "Target": "integrations/qf0uwiu",
+    "RequestModels": {},
+    "AuthorizationScopes": [],
+    "ApiKeyRequired": false,
+    "RouteKey": "ANY /ping",
+    "RouteId": "lghabc6",
+    "AuthorizationType": "NONE",
+    "ApiId": "w89hrka2nb"
+  },
+  "schema": {
+    "readOnly": ["RouteId"],
+    "writeOnly": ["AuthorizerId", "RequestParameters"],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["RouteId"],
+    "writeOnlyPaths": ["AuthorizerId", "RequestParameters"],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

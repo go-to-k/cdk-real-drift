@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 + R76 ApiGatewayV2 CC-identifier adapters): fresh-deploy AWS::ApiGatewayV2::Stage model — now READABLE via the ApiId|<child> composite identifier (was a CC ValidationException skip before R76). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Live",
+    "resourceType": "AWS::ApiGatewayV2::Stage",
+    "physicalId": "live",
+    "constructPath": "CdkrdIntegHarvest4/Live",
+    "declared": {
+      "ApiId": "w89hrka2nb",
+      "AutoDeploy": true,
+      "DefaultRouteSettings": {
+        "ThrottlingBurstLimit": 10,
+        "ThrottlingRateLimit": 5
+      },
+      "StageName": "live"
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "yy83cc",
+    "AutoDeploy": true,
+    "RouteSettings": {},
+    "StageName": "live",
+    "StageVariables": {},
+    "ApiId": "w89hrka2nb",
+    "DefaultRouteSettings": {
+      "ThrottlingBurstLimit": 10,
+      "DetailedMetricsEnabled": false,
+      "ThrottlingRateLimit": 5
+    },
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdIntegHarvest4",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest4/b3adf870-66db-11f1-ba13-122419eb6ddf",
+      "aws:cloudformation:logical-id": "Live"
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "StageName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "StageName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Live",
+      "resourceType": "AWS::ApiGatewayV2::Stage",
+      "path": "DeploymentId",
+      "actual": "yy83cc",
+      "physicalId": "live",
+      "constructPath": "CdkrdIntegHarvest4/Live"
+    }
+  ]
+}
