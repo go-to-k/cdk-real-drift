@@ -132,7 +132,12 @@ function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
 // Recurses so nested bags (LaunchTemplate TagSpecifications, Origins, ...) are covered.
 // ASSUMPTION: no `Key`- or `Id`-keyed AWS array is known to be order-significant, so
 // sorting is safe (same conservative bet as the scalar id-array canonicalizer).
-const IDENTITY_FIELDS = ['Key', 'Id'] as const;
+// R88: `AttributeName` and `IndexName` extend this to DynamoDB's identity-keyed
+// arrays — AttributeDefinitions / KeySchema (keyed by AttributeName) and
+// GlobalSecondaryIndexes (keyed by IndexName), which AWS returns in a different order
+// than the template declares them (a positional diff otherwise reports false drift on
+// every element). Both are set-like identities, not order-significant.
+const IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName'] as const;
 function identityField(arr: unknown[]): string | undefined {
   return IDENTITY_FIELDS.find((f) =>
     arr.every(
@@ -331,6 +336,48 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
   const sa = sort(a);
   const sb = sort(b);
   return sa.every((v, i) => v === sb[i]);
+}
+
+// Per-type OBJECT-array props AWS treats as UNORDERED SETS whose element objects
+// carry NO single identity field (so canonicalizeTagListsDeep cannot key them) and
+// are NOT scalar (so isEqualUnorderedScalarSet does not apply): EC2 SecurityGroup
+// ingress/egress rules are the case (R88) — a set of {CidrIp,IpProtocol,FromPort,
+// ToPort,Description,...} rules AWS returns in a different order than declared, which
+// a positional diff reports as false drift on every field of every shifted rule.
+// A blanket "sort every identity-less object array" is unsafe (some object arrays ARE
+// order-significant — CloudFront cache behaviors by precedence, etc.), so this stays a
+// per-type opt-in. Consulted by classify's declared loop, which sorts BOTH sides by
+// canonical JSON before the positional diff — a genuine rule change still differs.
+export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
+  'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
+};
+
+// Stable, key-order-insensitive JSON of a value (objects emit keys sorted), used as a
+// total order to sort an unordered object array deterministically on both sides.
+function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(o[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
+}
+
+// Sort an array by each element's canonical JSON (a no-op on non-arrays). Applied to
+// BOTH the declared and live side of an UNORDERED_OBJECT_ARRAY_PROPS property so a
+// reordered-but-equal rule set aligns positionally; equal elements (modulo key order)
+// land in the same slot, so the subsequent element-wise diff sees no drift, while a
+// genuinely changed rule still differs.
+export function sortUnorderedObjectArray(v: unknown): unknown {
+  if (!Array.isArray(v)) return v;
+  return [...v].sort((a, b) => {
+    const ka = canonicalJson(a);
+    const kb = canonicalJson(b);
+    return ka < kb ? -1 : ka > kb ? 1 : 0;
+  });
 }
 
 // CFn has many "stringly-typed" fields: Glue Table `Parameters` is a

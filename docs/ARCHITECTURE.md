@@ -202,7 +202,7 @@ checked.
   - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group, **CodeBuild Project** via BatchGetProjects with a camelCase→CFn-PascalCase projection, R85).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
-  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `projectLiveToDeclaredSubset` (attribute-bag subset), `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` / `CASE_INSENSITIVE_PATHS` (per-type compare rules).
+  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `projectLiveToDeclaredSubset` (attribute-bag subset), `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules).
   - **arn-identity.ts** — **`isArnNameMatch`** (bare name ↔ ARN), **`isManagedKmsAliasMatch`** (`alias/aws/*` ↔ key ARN).
   - **policy-canonical.ts** — IAM policy-doc canonicalization. **cc-api-strip.ts** — strip AWS-managed fields. **path-strip.ts** — schema readOnly/writeOnly path stripping (incl `*`).
 - **schema/schema-strip.ts** — `describe-type` → readOnly/writeOnly/defaults `SchemaInfo` (cached).
@@ -283,6 +283,7 @@ all live changes
   − declared SUBSET of an identity-keyed attribute bag (ELB Load/TargetGroupAttributes, R75) → live projected to declared keys (projectLiveToDeclaredSubset)
   − per-type case-insensitive scalar paths (Route53 AliasTarget.DNSName, R75) → equal (CASE_INSENSITIVE_PATHS)
   − per-type unordered scalar-array sets (Cognito UserPoolClient OAuth lists, R74) → equal (UNORDERED_ARRAY_PROPS)
+  − per-type unordered OBJECT-array sets (EC2 SecurityGroup ingress/egress rules — no identity field, R88) → both sides sorted by canonical JSON (UNORDERED_OBJECT_ARRAY_PROPS / sortUnorderedObjectArray)
   − sibling AWS::IAM::Policy entries in a role's Policies → filtered BY NAME (see below)
   = undeclared residual                → the unique signal
 ```
@@ -296,7 +297,10 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
    `DistributionConfig.Origins` (`{Id,...}[]`) are unordered sets; a positional diff
    flagged every CDK-tagged resource (and every field of every swapped origin on a
    multi-origin distribution). Fix: `canonicalizeTagListsDeep` sorts arrays whose every
-   element is an object with a string identity field (`Key` preferred, else `Id`).
+   element is an object with a string identity field (`Key`, `Id`, or — R88 — DynamoDB's
+   `AttributeName` / `IndexName`). Identity-LESS unordered object arrays (EC2
+   SecurityGroup ingress/egress rules) have no such field and are instead sorted by
+   canonical JSON per-type (`UNORDERED_OBJECT_ARRAY_PROPS`, R88) in the classify loop.
 2. **resource-id/ARN/HTTP-method array order** — `SubnetIds` / `SecurityGroupIds` and
    HTTP-method enum sets (CloudFront `AllowedMethods` / `CachedMethods`) are unordered;
    positional diff flagged them. Fix: `canonicalizeIdArraysDeep` (sort arrays whose

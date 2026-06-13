@@ -85,6 +85,51 @@ core thesis is unchanged.
 
 ## Considered and rejected
 
+- **Delegating DECLARED-property drift to CloudFormation's native drift detection
+  (`DetectStackDrift`), and keeping only the undeclared detection in cdkrd.**
+  Tempting: CFn drift detection is AWS-authoritative for declared properties, so
+  it would remove cdkrd's _reimplemented_ declared comparison — a genuine
+  false-positive surface (it is exactly what the `noise` / false-positive-matrix
+  integ fixtures exist to guard). Rejected as a runtime default, for reasons that
+  mostly do NOT depend on coverage:
+  - **The normalization is SHARED, so delegation does not remove the
+    false-positive surface.** Policy canonicalization, ARN↔name collapse, array
+    ordering, object↔JSON-string equality, `aws:*`-tag stripping, etc. are all
+    still required for the UNDECLARED comparison (an undeclared policy / tag set /
+    ordered array needs the identical subtraction). Handing the declared half to
+    CFn leaves every normalizer in place, still running on the undeclared half —
+    which is the differentiator, the part that matters most. The bug class is
+    halved in exposure, not eliminated.
+  - **`--pre-deploy` cannot be delegated.** It compares live state against the
+    LOCAL synth template; CFn drift detection only knows the DEPLOYED template, so
+    cdkrd must own the declared comparison for that feature regardless.
+  - **Coverage gap.** CFn drift detection returns `NOT_CHECKED` for unsupported
+    resource types (and does not check every property even on supported ones).
+    Coverage is broad and has grown a lot (core services are covered) — it is NOT
+    "about half", an earlier overstatement — but it is still incomplete; delegating
+    would make declared drift invisible on the unchecked tail, against the
+    fail-closed "honest about what it cannot check" promise. cdkrd's full live read
+    (Cloud Control + SDK overrides) reaches further.
+  - **Runtime cost + two diff models.** `DetectStackDrift` is asynchronous
+    (start + poll, minutes on large stacks) and throttled; reconciling its
+    `PropertyDifferences` with cdkrd's findings into one report / exit / revert plan
+    adds complexity and a second failure mode, and the declared comparison would no
+    longer be offline-replayable (the golden corpus).
+  - **CFn drift has its own quirks** — a _different_ false-positive set, not
+    strictly fewer; `cdk drift` is built on it. cdkrd keeps a deliberately
+    conservative, self-controlled normalization (zero false drift).
+
+  Where the instinct lands instead: `--undeclared-only` lets a user who WANTS this
+  split suppress cdkrd's declared output and run `cdk drift` themselves for the
+  declared side. It is a pure OUTPUT FILTER (`undeclaredOnlyFindings` in
+  `commands/check.ts`) — cdkrd never calls the CFn drift API, and the declared
+  detection logic is identical with or without the flag; the flag only drops the
+  declared / readGap / unresolved tiers from the report. CFn drift detection IS
+  used, but as a differential TEST ORACLE (`basic/verify-vs-cdk-drift.sh`), not a
+  runtime dependency. A future enhancement could use it to cross-validate cdkrd's
+  declared findings in CI (catch cdkrd false positives); as a runtime engine the
+  trade is net-negative.
+
 - **Skipping `isTrivialEmpty` under `--show-all`.** `isTrivialEmpty` suppresses
   undeclared `false` / `''` / `[]` / `{}` values (AWS returns an "off/empty" value
   for nearly every unset option). One could argue inventory (`--show-all`) should

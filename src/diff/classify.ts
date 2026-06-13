@@ -20,8 +20,10 @@ import {
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   projectLiveToDeclaredSubset,
+  sortUnorderedObjectArray,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
+  UNORDERED_OBJECT_ARRAY_PROPS,
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
@@ -150,11 +152,18 @@ export function classifyResource(
       }
       continue;
     }
+    // Per-type unordered OBJECT-array sets (R88: EC2 SecurityGroup ingress/egress) —
+    // rule objects with no single identity field that AWS returns reordered. Sort BOTH
+    // sides by canonical JSON before the positional diff so a reorder is not false
+    // drift; a genuine rule change still differs after the sort.
+    const unorderedObjArray = UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k);
+    const declaredVal = unorderedObjArray ? sortUnorderedObjectArray(v) : v;
+    const liveSorted = unorderedObjArray ? sortUnorderedObjectArray(live[k]) : live[k];
     // Identity-keyed attribute bags (R75: other bag-shaped props) — the template
     // declares a SUBSET of the keys AWS returns; compare only the declared keys so
     // the extra live attributes are not false drift on the whole list.
-    const liveVal = projectLiveToDeclaredSubset(v, live[k]);
-    for (const d of calculateResourceDrift({ [k]: v }, { [k]: liveVal })) {
+    const liveVal = projectLiveToDeclaredSubset(declaredVal, liveSorted);
+    for (const d of calculateResourceDrift({ [k]: declaredVal }, { [k]: liveVal })) {
       // a bare name declared for a field AWS returns as the full ARN is not drift
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN
