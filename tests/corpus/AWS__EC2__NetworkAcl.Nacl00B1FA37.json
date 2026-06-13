@@ -1,0 +1,43 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Nacl00B1FA37",
+    "resourceType": "AWS::EC2::NetworkAcl",
+    "physicalId": "acl-0b09fb918deeb6d6b",
+    "constructPath": "CdkdriftIntegHarvest9/Nacl",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest9/Nacl"
+        }
+      ],
+      "VpcId": "vpc-0a787ce59de137b49"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-0a787ce59de137b49",
+    "Id": "acl-0b09fb918deeb6d6b",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest9/Nacl",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["VpcId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

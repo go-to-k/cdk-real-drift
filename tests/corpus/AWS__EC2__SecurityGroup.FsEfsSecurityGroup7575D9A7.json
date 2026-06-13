@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FsEfsSecurityGroup7575D9A7",
+    "resourceType": "AWS::EC2::SecurityGroup",
+    "physicalId": "sg-07181dc5cc63319cd",
+    "constructPath": "CdkdriftIntegHarvest9/Fs/EfsSecurityGroup",
+    "declared": {
+      "GroupDescription": "CdkdriftIntegHarvest9/Fs/EfsSecurityGroup",
+      "SecurityGroupEgress": [
+        {
+          "CidrIp": "0.0.0.0/0",
+          "Description": "Allow all outbound traffic by default",
+          "IpProtocol": "-1"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest9/Fs"
+        }
+      ],
+      "VpcId": "vpc-0a787ce59de137b49"
+    }
+  },
+  "liveRaw": {
+    "GroupDescription": "CdkdriftIntegHarvest9/Fs/EfsSecurityGroup",
+    "GroupName": "CdkdriftIntegHarvest9-FsEfsSecurityGroup7575D9A7-Vmu0w7lGgXbJ",
+    "VpcId": "vpc-0a787ce59de137b49",
+    "Id": "sg-07181dc5cc63319cd",
+    "SecurityGroupEgress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "Description": "Allow all outbound traffic by default",
+        "FromPort": -1,
+        "ToPort": -1,
+        "IpProtocol": "-1"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "FsEfsSecurityGroup7575D9A7",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest9/Fs",
+        "Key": "Name"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest9",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest9/1230bfd0-672d-11f1-8375-12f04685a5d7",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "GroupId": "sg-07181dc5cc63319cd"
+  },
+  "schema": {
+    "readOnly": ["GroupId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["GroupDescription", "GroupName", "VpcId"],
+    "readOnlyPaths": ["GroupId", "Id"],
+    "writeOnlyPaths": ["SecurityGroupIngress.*.SourceSecurityGroupName"],
+    "createOnlyPaths": ["GroupDescription", "GroupName", "VpcId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "FsEfsSecurityGroup7575D9A7",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "GroupName",
+      "actual": "CdkdriftIntegHarvest9-FsEfsSecurityGroup7575D9A7-Vmu0w7lGgXbJ",
+      "physicalId": "sg-07181dc5cc63319cd",
+      "constructPath": "CdkdriftIntegHarvest9/Fs/EfsSecurityGroup"
+    }
+  ]
+}

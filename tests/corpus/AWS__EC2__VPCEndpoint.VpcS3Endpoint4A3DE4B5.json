@@ -1,0 +1,156 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcS3Endpoint4A3DE4B5",
+    "resourceType": "AWS::EC2::VPCEndpoint",
+    "physicalId": "vpce-010c0956e4433b47b",
+    "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint",
+    "declared": {
+      "RouteTableIds": ["rtb-039add7b1c659e51a"],
+      "ServiceName": "com.amazonaws.us-east-1.s3",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest9/Vpc"
+        }
+      ],
+      "VpcEndpointType": "Gateway",
+      "VpcId": "vpc-0a787ce59de137b49"
+    }
+  },
+  "liveRaw": {
+    "PrivateDnsEnabled": false,
+    "IpAddressType": "ipv4",
+    "ServiceRegion": "us-east-1",
+    "CreationTimestamp": "Sat 6 13 13:38:18 UTC 2026",
+    "DnsOptions": {
+      "PrivateDnsOnlyForInboundResolverEndpoint": "NotSpecified",
+      "PrivateDnsSpecifiedDomains": ["*"],
+      "DnsRecordIpType": "service-defined",
+      "PrivateDnsPreference": "VERIFIED_DOMAINS_ONLY"
+    },
+    "NetworkInterfaceIds": [],
+    "DnsEntries": [],
+    "ResourceConfigurationArn": "",
+    "SecurityGroupIds": [],
+    "SubnetIds": [],
+    "ServiceNetworkArn": "",
+    "VpcId": "vpc-0a787ce59de137b49",
+    "RouteTableIds": ["rtb-039add7b1c659e51a"],
+    "ServiceName": "com.amazonaws.us-east-1.s3",
+    "PolicyDocument": {
+      "Version": "2008-10-17",
+      "Statement": [
+        {
+          "Action": "*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": "*"
+        }
+      ]
+    },
+    "VpcEndpointType": "Gateway",
+    "Id": "vpce-010c0956e4433b47b",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest9",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "VpcS3Endpoint4A3DE4B5",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest9/1230bfd0-672d-11f1-8375-12f04685a5d7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest9/Vpc",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreationTimestamp", "DnsEntries", "Id", "NetworkInterfaceIds"],
+    "writeOnly": [],
+    "createOnly": [
+      "ResourceConfigurationArn",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceRegion",
+      "VpcEndpointType",
+      "VpcId"
+    ],
+    "readOnlyPaths": ["CreationTimestamp", "DnsEntries", "Id", "NetworkInterfaceIds"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DnsOptions.PrivateDnsPreference",
+      "DnsOptions.PrivateDnsSpecifiedDomains",
+      "ResourceConfigurationArn",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceRegion",
+      "VpcEndpointType",
+      "VpcId"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "ServiceRegion",
+      "actual": "us-east-1",
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "DnsOptions",
+      "actual": {
+        "PrivateDnsOnlyForInboundResolverEndpoint": "NotSpecified",
+        "PrivateDnsSpecifiedDomains": ["*"],
+        "DnsRecordIpType": "service-defined",
+        "PrivateDnsPreference": "VERIFIED_DOMAINS_ONLY"
+      },
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "PolicyDocument",
+      "actual": {
+        "Statement": [
+          {
+            "Action": ["*"],
+            "Effect": "Allow",
+            "Principal": "*",
+            "Resource": ["*"]
+          }
+        ],
+        "Version": "2008-10-17"
+      },
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    }
+  ]
+}

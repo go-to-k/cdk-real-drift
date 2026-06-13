@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FsEfsMountTarget11EC3BF7C",
+    "resourceType": "AWS::EFS::MountTarget",
+    "physicalId": "fsmt-03133bb006f34d15f",
+    "constructPath": "CdkdriftIntegHarvest9/Fs/EfsMountTarget1",
+    "declared": {
+      "FileSystemId": "fs-0d81f40b7a880b7ae",
+      "SecurityGroups": ["sg-07181dc5cc63319cd"],
+      "SubnetId": "subnet-09e3c8678a25f92bd"
+    }
+  },
+  "liveRaw": {
+    "SecurityGroups": ["sg-07181dc5cc63319cd"],
+    "FileSystemId": "fs-0d81f40b7a880b7ae",
+    "IpAddress": "10.0.0.242",
+    "Id": "fsmt-03133bb006f34d15f",
+    "SubnetId": "subnet-09e3c8678a25f92bd"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["IpAddressType"],
+    "createOnly": ["FileSystemId", "IpAddress", "IpAddressType", "Ipv6Address", "SubnetId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["IpAddressType"],
+    "createOnlyPaths": ["FileSystemId", "IpAddress", "IpAddressType", "Ipv6Address", "SubnetId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "FsEfsMountTarget11EC3BF7C",
+      "resourceType": "AWS::EFS::MountTarget",
+      "path": "IpAddress",
+      "actual": "10.0.0.242",
+      "physicalId": "fsmt-03133bb006f34d15f",
+      "constructPath": "CdkdriftIntegHarvest9/Fs/EfsMountTarget1"
+    }
+  ]
+}

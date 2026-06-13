@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FsApCFF9572D",
+    "resourceType": "AWS::EFS::AccessPoint",
+    "physicalId": "fsap-0fc842a4c443a343d",
+    "constructPath": "CdkdriftIntegHarvest9/Fs/Ap",
+    "declared": {
+      "AccessPointTags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest9/Fs/Ap"
+        }
+      ],
+      "FileSystemId": "fs-0d81f40b7a880b7ae",
+      "RootDirectory": {
+        "Path": "/cdkrd"
+      }
+    }
+  },
+  "liveRaw": {
+    "AccessPointId": "fsap-0fc842a4c443a343d",
+    "FileSystemId": "fs-0d81f40b7a880b7ae",
+    "RootDirectory": {
+      "Path": "/cdkrd"
+    },
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:access-point/fsap-0fc842a4c443a343d",
+    "ClientToken": "FsApCFF9572D-dRkYh637cpxN",
+    "AccessPointTags": [
+      {
+        "Value": "CdkdriftIntegHarvest9/Fs/Ap",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AccessPointId", "Arn"],
+    "writeOnly": [],
+    "createOnly": ["ClientToken", "CreationInfo", "FileSystemId", "PosixUser", "RootDirectory"],
+    "readOnlyPaths": ["AccessPointId", "Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ClientToken",
+      "CreationInfo",
+      "CreationInfo.OwnerGid",
+      "CreationInfo.OwnerUid",
+      "CreationInfo.Permissions",
+      "FileSystemId",
+      "PosixUser",
+      "PosixUser.Gid",
+      "PosixUser.SecondaryGids",
+      "PosixUser.Uid",
+      "RootDirectory",
+      "RootDirectory.CreationInfo",
+      "RootDirectory.Path"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "FsApCFF9572D",
+      "resourceType": "AWS::EFS::AccessPoint",
+      "path": "ClientToken",
+      "actual": "FsApCFF9572D-dRkYh637cpxN",
+      "physicalId": "fsap-0fc842a4c443a343d",
+      "constructPath": "CdkdriftIntegHarvest9/Fs/Ap"
+    }
+  ]
+}
