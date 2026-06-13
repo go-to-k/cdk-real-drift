@@ -39,7 +39,7 @@ result: 1 drift(s) (undeclared=1)
 | ------------------------------------------------------------------- | :-----: | :-------------------------------: | :--------: | :--------------: |
 | Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |     ✅     |        ✅        |
 | Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |     ❌     |        ❌        |
-| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |     ❌     |  ✅ `apply`      |
+| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |     ❌     |    ✅ `apply`    |
 | **Revert** undeclared drift                                         |   ✅    |                ❌                 |     ❌     |        ❌        |
 | **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |     ❌     |        ❌        |
 
