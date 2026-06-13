@@ -168,41 +168,15 @@ export function canonicalizeTagListsDeep(v: unknown): unknown {
   return v;
 }
 
-// Identity-keyed ATTRIBUTE BAGS where the template declares only a SUBSET of the
-// keys AWS returns (R75: ELB LoadBalancerAttributes / TargetGroupAttributes —
-// CDK declares the two attrs it set, AWS returns all ~15). A positional diff of
-// the declared 2-element list against the live 15-element list is false drift on
-// the whole property. Project the live side down to ONLY the keys the template
-// declared, recursing through nested bags. Both sides are already identity-sorted
-// by canonicalizeTagListsDeep, so the projected subset stays aligned. A genuine
-// change to a DECLARED attribute's value still differs element-wise after the
-// projection; a never-declared live attribute is simply not compared (it lives
-// inside a declared parent, so it is not undeclared drift either). Returns the
-// live value unchanged when the shapes are not both identity-keyed arrays.
-export function projectLiveToDeclaredSubset(declaredVal: unknown, liveVal: unknown): unknown {
-  if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
-    const idf = identityField(declaredVal);
-    if (idf && identityField(liveVal) === idf) {
-      const keys = new Set(declaredVal.map((e) => (e as Record<string, unknown>)[idf]));
-      return liveVal
-        .filter((e) => keys.has((e as Record<string, unknown>)[idf]))
-        .map((e) => {
-          const d = declaredVal.find(
-            (x) => (x as Record<string, unknown>)[idf] === (e as Record<string, unknown>)[idf]
-          );
-          return projectLiveToDeclaredSubset(d, e);
-        });
-    }
-    return liveVal;
-  }
-  if (declaredVal && liveVal && typeof declaredVal === 'object' && typeof liveVal === 'object') {
-    const out: Record<string, unknown> = { ...(liveVal as Record<string, unknown>) };
-    for (const [k, dv] of Object.entries(declaredVal as Record<string, unknown>))
-      if (k in out) out[k] = projectLiveToDeclaredSubset(dv, out[k]);
-    return out;
-  }
-  return liveVal;
-}
+// (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live
+// side of an identity-keyed array down to only the keys the template declared, to
+// mute the extra default attributes ELB returns (declares 2, AWS returns ~15). But
+// projecting away every undeclared live element ALSO silently dropped genuine
+// out-of-band ADDITIONS to any identity-keyed array — a console-added Tag, an extra
+// CloudFront Origin — a false negative a drift tool must never produce (fail-closed:
+// report, do not suppress). The one type that needed subset behaviour, ELB attribute
+// bags, is handled in classify by ELB_ATTRIBUTE_BAGS (R78, compare BY KEY); the
+// golden corpus confirmed no other type relied on the projection.
 
 // A declared OBJECT/ARRAY whose live counterpart is the same value serialized as a
 // JSON STRING (R75: SSM Document.Content — CDK declares the parsed object, AWS
