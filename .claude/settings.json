@@ -1,5 +1,5 @@
 {
-  "//": "PreToolUse hooks for cdk-real-drift. Only the check-gate is wired: cdkrd is a solo, local-only repo with no GitHub remote yet, so branch-protection / verify-pr-merge / pr-review / integ-* gates are deferred until Phase 4 (when the repo gets a remote). check-gate blocks `git commit` unless both the `check` and `docs` markgate markers are fresh.",
+  "//": "PreToolUse hooks for cdk-real-drift. The repo now has a GitHub remote and a PR-based flow, so the cdkd-derived branch-protection and verify-pr-merge gates are active (R83). Wired (per .markgate.yml, ONLY to gates with companion skills): check-gate blocks `git commit` unless check+docs markers are fresh; branch-gate blocks commit/push directly on main; verify-pr-gate blocks `gh pr create`/`gh pr merge` unless the verify-pr marker is fresh; non-english-text-gate blocks `gh pr create`/`edit`/`merge` when the PR diff contains non-English text (the OSS English-only rule). NOT wired: pr-review and integ-* — they have no companion skill in cdkrd (pr-review is multi-agent; cdkrd has no providers/state/destroy integ), so wiring them would brick the flow.",
   "hooks": {
     "PreToolUse": [
       {
@@ -11,6 +11,27 @@
             "if": "Bash(git commit*) or Bash(git -C * commit*)",
             "timeout": 10,
             "statusMessage": "Checking /check + /check-docs markers..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/branch-gate.sh",
+            "if": "Bash(git commit*) or Bash(git push*) or Bash(git -C * commit*) or Bash(git -C * push*) or Bash(cd * && git commit*) or Bash(cd * && git push*)",
+            "timeout": 10,
+            "statusMessage": "Checking target branch is not main..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/verify-pr-gate.sh",
+            "if": "Bash(gh pr create*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr merge*)",
+            "timeout": 15,
+            "statusMessage": "Checking /verify-pr marker is fresh..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/non-english-text-gate.sh",
+            "if": "Bash(gh pr create*) or Bash(gh pr edit*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr edit*) or Bash(gh -C * pr merge*)",
+            "timeout": 20,
+            "statusMessage": "Scanning PR diff for non-English text..."
           }
         ]
       }

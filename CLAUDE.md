@@ -134,9 +134,12 @@ detail:
   only.
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
-  `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's heavier
-  branch-protection / verify-pr-merge / pr-review / integ-\* gates are still not
-  ported — revisit at Phase 4.
+  `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's
+  branch-protection (`branch-gate`) and verify-pr-merge (`verify-pr-gate`) gates
+  ARE now ported and wired (R83), plus the OSS English-only
+  `non-english-text-gate`. pr-review and integ-\* stay UNPORTED on purpose:
+  pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
+  providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
 
 ## Dependencies
 
