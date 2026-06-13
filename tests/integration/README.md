@@ -35,13 +35,20 @@ These do NOT run in CI (they need credentials and mutate a real account):
 
 - **Before every release** (the `/verify-pr` gate): run EVERY fixture —
   `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh` +
-  `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`.
+  `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`, `atdefault`,
+  `noise`, `readgap`.
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
-  `src/commands/gather.ts`: run at least `basic` + `revert` (and `policies` if
-  `writers.ts` changed; `harvest3` for the multi-type Cloud Control revert
-  matrix) before merging.
+  `src/commands/gather.ts`: run at least `basic` + `revert` + `noise` (the
+  false-positive guard — `noise` asserts tricky declared values normalize equal to
+  live, never a false declared drift) (and `policies` if `writers.ts` changed;
+  `harvest3` for the multi-type Cloud Control revert matrix) before merging.
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
+- **After changing** `KNOWN_DEFAULTS` (`src/normalize/noise.ts`) or the
+  `atDefault` fold: run `atdefault` — it asserts the hand-written default shapes
+  still match live Cloud Control output (a shape mismatch would resurface the
+  value as real undeclared drift) and that a value changed away from its default
+  still surfaces.
 - Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
   never concurrently.
 - **After changing exit-code or baseline semantics** (report-only/--fail, the
@@ -136,6 +143,60 @@ sibling `AWS::IAM::Policy`):
 
 ```bash
 cd iam && bash verify-inline-policy.sh
+```
+
+## atdefault
+
+Validates the R86 `atDefault` fold end-to-end (a default-config Lambda + a bare
+L1 S3 bucket, whose undeclared properties all sit at a known AWS default):
+
+1. **before any baseline**, those values FOLD into the `atDefault` tier — they are
+   counted in the `info:` footer but NOT listed in the report body. This proves the
+   hand-written `KNOWN_DEFAULTS` shapes (especially the S3 `BucketEncryption` shape
+   with `BlockedEncryptionTypes`) still match what Cloud Control returns; a mismatch
+   would reclassify the value as real undeclared and surface it in the body.
+2. `--show-all` expands the fold and lists those same values under `AT AWS DEFAULT`.
+3. after `accept`, `check` is CLEAN (the at-default values fold, never recorded).
+4. mutating one at-default value away from its default (Lambda `TracingConfig`
+   `PassThrough` → `Active`) makes `check` surface it as real drift — the fold
+   never blinds cdkrd to an actual change (the equality gate has teeth).
+
+```bash
+cd atdefault && bash verify.sh
+```
+
+## noise
+
+The false-positive guard. Deploys resources that DECLARE properties whose live
+AWS form is textually different from the template but semantically identical —
+exactly what the `normalize/` layer subtracts:
+
+- an IAM inline policy with an `aws:SecureTransport` **Condition** key (R69
+  regression: it must survive the live read, NOT be stripped as an `aws:*` tag),
+  multi-action statements, and a managed policy attached by name (name↔ARN);
+- resource **Tags** AWS augments with `aws:cloudformation:*` and may reorder;
+- an S3 **CorsConfiguration** (ordered array of rules).
+
+The assertion is the strong one: with NO baseline, `check --fail` must exit `0` —
+there is no declared drift, because every declared value normalizes equal to live.
+A normalizer regression turns one of these into a false declared drift and fails.
+
+```bash
+cd noise && bash verify.sh
+```
+
+## readgap
+
+The honest-gap guard (the other direction). Some declared properties genuinely
+cannot be read back — a write-only value is the canonical case. A change to one out
+of band IS real drift cdkrd cannot verify; the promise is to say so honestly
+(`readGap`) rather than silently pass it as CLEAN. Deploys a SecretsManager secret
+with a literal write-only `SecretString` and asserts it surfaces in the `readGap`
+tier (reason: `write-only`), never silently absent; `--fail` still exits `0` (a
+readGap is informational, not drift). The cleanup trap force-deletes the secret.
+
+```bash
+cd readgap && bash verify.sh
 ```
 
 ## harvest

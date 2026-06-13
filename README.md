@@ -67,14 +67,11 @@ want to do?
 ```
 
 The count is the **complete** undeclared inventory, but the report lists only the
-handful that actually diverge — the rest sit at a known AWS default and fold into
-one `info: atDefault=40 (…)` line (`--show-all` expands it to the full list). So a
-first run highlights your real out-of-band edits instead of burying them under
-defaults you never touched. Accept writes
+handful that actually diverge — defaults you never touched fold into a single
+`info: atDefault=40 (…)` line (`--show-all` expands it). Accept writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
-AWS** — commit it. From here on `check` reports CLEAN until reality actually
-changes. (Declared drift — template vs reality — is detected from this very first
-run, baseline or not.)
+AWS** — commit it; from here on `check` reports CLEAN until reality changes.
+(Declared drift is detected from the very first run, baseline or not.)
 
 **Day to day** — someone changes something from the console; the next `check`
 reports it and asks right there:
@@ -292,26 +289,28 @@ A **deleted resource is never ignorable**.
 
 ## Output
 
-Drift tiers (`deleted` / `declared` / `undeclared`) are always printed in full —
-they are the point. Undeclared values you have **not yet accepted** (no baseline
-entry, and their resource was never fully snapshot) print as their own
-`[UNRECORDED: N]` section: full detail like a drift section, but they are not
-drift — they never count toward the verdict or the `--fail` exit, and the
-`result:` line names the count with the way out (`run cdkrd accept`). Once a
-resource's snapshot is complete, a value that appears out of band IS undeclared
-drift (`appeared since accept`). Informational tiers (`atDefault` / `readGap` /
-`unresolved` / `skipped` / `ignored`) fold into an `info:` footer with per-reason
-counts; `--verbose` expands them to full lists. **`atDefault`** is the bulk of a
-first run: an undeclared value whose live state EQUALS a known AWS default (e.g. a
-Lambda's `TracingConfig: PassThrough`, an S3 bucket's account-default Block Public
-Access). It is **not dropped** — it is folded to a count so the report states the
-_complete_ undeclared inventory but lists only the values that actually diverge
-(your real out-of-band edits). The match is equality-gated: change one away from
-its default and it re-surfaces as real undeclared drift. `accept` never records an
-`atDefault`; `--show-all` (or `--verbose`) expands the fold to the full list.
-Greppable: `^result:` is the verdict;
-for machine consumption the formal contract is `--json`. Output is colorized on
-a TTY (`NO_COLOR` respected); piped / CI / `--json` output is always plain text.
+Two parts: the **drift sections** in full detail, then a one-line `info:` footer
+that folds everything informational.
+
+- **Drift tiers** — `deleted` / `declared` / `undeclared` — are always listed in
+  full and drive the `--fail` exit. They are the point.
+- **`[UNRECORDED: N]`** — undeclared values you have not accepted yet. Listed in
+  full, but not drift (there is nothing to compare them to): they never fail the
+  build, and `result:` points you at `cdkrd accept`. Once a resource is fully
+  snapshotted, a value that _appears_ later is real drift (`appeared since accept`).
+- **`info:` footer** folds the informational tiers to per-reason counts
+  (`--verbose` expands them):
+  - **`atDefault`** — undeclared values sitting at a known AWS default (a Lambda's
+    `TracingConfig: PassThrough`, a bucket's default Block Public Access). The bulk
+    of a first run, folded to a count so the body shows only what actually
+    diverges. Equality-gated: a change away from the default still surfaces, and
+    `--show-all` lists them.
+  - **`readGap` / `unresolved` / `skipped` / `ignored`** — values cdkrd can't
+    confidently compare, reported honestly rather than guessed (never false drift).
+
+`^result:` is the greppable verdict; `--json` is the formal machine contract.
+Colorized on a TTY (`NO_COLOR` respected); piped / CI / `--json` output is plain
+text.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
