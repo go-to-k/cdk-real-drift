@@ -45,5 +45,24 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SlackChannel425D424B",
+      "resourceType": "AWS::Chatbot::SlackChannelConfiguration",
+      "path": "GuardrailPolicies",
+      "actual": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+      "physicalId": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/main-CostCheck",
+      "constructPath": "main-CostCheck/SlackChannel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SlackChannel425D424B",
+      "resourceType": "AWS::Chatbot::SlackChannelConfiguration",
+      "path": "UserRoleRequired",
+      "actual": false,
+      "physicalId": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/main-CostCheck",
+      "constructPath": "main-CostCheck/SlackChannel"
+    }
+  ]
 }

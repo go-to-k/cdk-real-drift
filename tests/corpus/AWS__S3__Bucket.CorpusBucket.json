@@ -12,10 +12,19 @@
   "liveRaw": {
     "BucketName": "corpus-bucket",
     "Arn": "arn:aws:s3:::corpus-bucket",
-    "AccelerateConfiguration": { "AccelerationStatus": "Enabled" },
-    "VersioningConfiguration": { "Status": "Suspended" },
+    "AccelerateConfiguration": {
+      "AccelerationStatus": "Enabled"
+    },
+    "VersioningConfiguration": {
+      "Status": "Suspended"
+    },
     "AnalyticsConfigurations": [],
-    "Tags": [{ "Key": "aws:cloudformation:stack-name", "Value": "CorpusStack" }]
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CorpusStack"
+      }
+    ]
   },
   "schema": {
     "readOnly": ["Arn"],
@@ -26,14 +35,30 @@
     "createOnlyPaths": ["BucketName"],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CorpusBucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "VersioningConfiguration",
+      "actual": {
+        "Status": "Suspended"
+      },
+      "physicalId": "corpus-bucket"
+    },
     {
       "tier": "undeclared",
       "logicalId": "CorpusBucket",
       "resourceType": "AWS::S3::Bucket",
       "path": "AccelerateConfiguration",
-      "actual": { "AccelerationStatus": "Enabled" },
+      "actual": {
+        "AccelerationStatus": "Enabled"
+      },
       "physicalId": "corpus-bucket"
     }
   ]

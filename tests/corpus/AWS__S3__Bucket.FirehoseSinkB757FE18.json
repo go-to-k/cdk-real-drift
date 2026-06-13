@@ -114,22 +114,16 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FirehoseSinkB757FE18",
       "resourceType": "AWS::S3::Bucket",
-      "path": "OwnershipControls",
-      "actual": {
-        "Rules": [
-          {
-            "ObjectOwnership": "BucketOwnerEnforced"
-          }
-        ]
-      },
+      "path": "AbacStatus",
+      "actual": "Disabled",
       "physicalId": "cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
       "constructPath": "CdkrdIntegHarvest3/FirehoseSink"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FirehoseSinkB757FE18",
       "resourceType": "AWS::S3::Bucket",
       "path": "BucketEncryption",
@@ -143,6 +137,21 @@
             "ServerSideEncryptionByDefault": {
               "SSEAlgorithm": "AES256"
             }
+          }
+        ]
+      },
+      "physicalId": "cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
+      "constructPath": "CdkrdIntegHarvest3/FirehoseSink"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FirehoseSinkB757FE18",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
           }
         ]
       },

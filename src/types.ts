@@ -4,6 +4,7 @@ export type Tier =
   | 'deleted'
   | 'declared'
   | 'undeclared'
+  | 'atDefault' // undeclared, but the live value EQUALS a known AWS default (schema `default` or KNOWN_DEFAULTS) — informational inventory, folded in the report (R86); never drift, never recorded by accept. An out-of-band change AWAY from the default no longer matches, so it re-surfaces as a real `undeclared` finding.
   | 'ignored' // re-tagged from declared/undeclared by a .cdkrd/config.json ignore rule (informational)
   | 'readGap'
   | 'unresolved'

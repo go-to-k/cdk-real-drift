@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::Athena::WorkGroup model; surviving raw-classify findings locked as-is (RecursiveDeleteOption, WorkGroupConfiguration). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::Athena::WorkGroup model; surviving raw-classify findings locked as-is (RecursiveDeleteOption, WorkGroupConfiguration). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Queries",
     "resourceType": "AWS::Athena::WorkGroup",
@@ -65,11 +65,20 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "Queries",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "cdkrd-harvest",
+      "constructPath": "CdkrdIntegHarvest/Queries"
+    },
+    {
       "tier": "readGap",
       "logicalId": "Queries",
       "resourceType": "AWS::Athena::WorkGroup",
       "path": "RecursiveDeleteOption",
-      "note": "write-only \u2014 cannot be read back",
+      "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-harvest",
       "constructPath": "CdkrdIntegHarvest/Queries"
     },

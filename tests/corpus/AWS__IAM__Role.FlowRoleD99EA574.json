@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is (none \u2014 fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is (none — fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "FlowRoleD99EA574",
     "resourceType": "AWS::IAM::Role",
@@ -72,5 +72,33 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowRoleD99EA574",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkrdIntegHarvest-FlowRoleD99EA574-fkfT28B8EOai",
+      "constructPath": "CdkrdIntegHarvest/Flow/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowRoleD99EA574",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkrdIntegHarvest-FlowRoleD99EA574-fkfT28B8EOai",
+      "constructPath": "CdkrdIntegHarvest/Flow/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowRoleD99EA574",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest-FlowRoleD99EA574-fkfT28B8EOai",
+      "constructPath": "CdkrdIntegHarvest/Flow/Role"
+    }
+  ]
 }

@@ -164,11 +164,15 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                  Permission.FunctionName = GetAtt[fn, Arn]) — concurrent, once
    --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
-5. classify (tier)       deleted | declared | undeclared | readGap | unresolved | skipped
-6. baseline filter       applyBaseline(): undeclared findings already accepted → drop
+5. classify (tier)       deleted | declared | undeclared | atDefault | readGap | unresolved | skipped
+                         (atDefault = undeclared but EQUAL to a known AWS default —
+                         folded, never drift, never recorded; R86)
+6. baseline filter       applyBaseline(): undeclared findings already accepted → drop;
+                         atDefault reconciled too (an accepted value now at-default is
+                         suppressed, not a false "removed since accept")
 7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
-                         1 bullet/tier when 2+; --verbose expands); --json carries
-                         all findings; worst exit across stacks
+                         1 bullet/tier when 2+; --verbose expands, --show-all expands
+                         atDefault only); --json carries all findings; worst exit across stacks
 ```
 
 The two-pass structure (PR "resolve Fn::GetAtt against live attributes") is what
@@ -265,7 +269,12 @@ all live changes
   − policy-doc representational noise  → canonicalized (scalar/array, stmt order, acct-id↔root-ARN)
   − aws:* tags ({Key,Value}[] anywhere; maps only under a `Tags` key — never
     IAM condition keys like aws:SecureTransport, R69) → stripped
-  − schema defaults + known defaults  → suppressed
+  − schema defaults + known defaults  → tagged "atDefault" (R86): NOT dropped — folded
+    into the info: footer as a count, so the report states the COMPLETE undeclared
+    inventory but lists only the values that actually diverge. Equality-gated: change
+    one away from its default and it re-tags as real undeclared drift. (`--show-all` /
+    `--verbose` expand the fold to the full list; accept never records an atDefault.)
+  − pure structural noise (aws:* tags, physical-id echo, trivially-empty {}/[]) → dropped
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)

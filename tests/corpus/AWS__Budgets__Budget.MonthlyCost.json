@@ -7,7 +7,10 @@
     "physicalId": "MonthlyCost-us-east-1-1679810595490-abcDEFghij",
     "declared": {
       "Budget": {
-        "BudgetLimit": { "Amount": 40, "Unit": "USD" },
+        "BudgetLimit": {
+          "Amount": 40,
+          "Unit": "USD"
+        },
         "BudgetType": "COST",
         "TimeUnit": "MONTHLY"
       },
@@ -18,7 +21,12 @@
             "NotificationType": "ACTUAL",
             "Threshold": 80
           },
-          "Subscribers": [{ "Address": "corpus@example.com", "SubscriptionType": "EMAIL" }]
+          "Subscribers": [
+            {
+              "Address": "corpus@example.com",
+              "SubscriptionType": "EMAIL"
+            }
+          ]
         }
       ]
     }
@@ -28,7 +36,10 @@
       "BudgetName": "MonthlyCost-us-east-1-1679810595490-abcDEFghij",
       "BudgetType": "COST",
       "TimeUnit": "MONTHLY",
-      "BudgetLimit": { "Amount": "40.0", "Unit": "USD" }
+      "BudgetLimit": {
+        "Amount": "40.0",
+        "Unit": "USD"
+      }
     }
   },
   "schema": {
@@ -40,7 +51,11 @@
     "createOnlyPaths": [],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": [
     {
       "tier": "readGap",

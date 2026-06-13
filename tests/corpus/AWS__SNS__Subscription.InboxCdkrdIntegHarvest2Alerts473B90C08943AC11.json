@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::SNS::Subscription with deep declared config classifies as recorded (undeclared:FilterPolicyScope). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::SNS::Subscription with deep declared config classifies as recorded (undeclared:FilterPolicyScope). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "InboxCdkrdIntegHarvest2Alerts473B90C08943AC11",
     "resourceType": "AWS::SNS::Subscription",

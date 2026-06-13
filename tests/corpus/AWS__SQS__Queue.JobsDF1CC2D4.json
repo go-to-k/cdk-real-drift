@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DelaySeconds, undeclared:FifoThroughputLimit, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DelaySeconds, undeclared:FifoThroughputLimit, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "JobsDF1CC2D4",
     "resourceType": "AWS::SQS::Queue",
@@ -70,7 +70,7 @@
       "tier": "undeclared",
       "logicalId": "JobsDF1CC2D4",
       "resourceType": "AWS::SQS::Queue",
-      "path": "ReceiveMessageWaitTimeSeconds",
+      "path": "DelaySeconds",
       "actual": 0,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
       "constructPath": "CdkrdIntegHarvest2/Jobs"
@@ -97,24 +97,6 @@
       "tier": "undeclared",
       "logicalId": "JobsDF1CC2D4",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
-      "constructPath": "CdkrdIntegHarvest2/Jobs"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "JobsDF1CC2D4",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
-      "constructPath": "CdkrdIntegHarvest2/Jobs"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "JobsDF1CC2D4",
-      "resourceType": "AWS::SQS::Queue",
       "path": "MessageRetentionPeriod",
       "actual": 345600,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
@@ -126,6 +108,24 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
       "actual": "CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
+      "constructPath": "CdkrdIntegHarvest2/Jobs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobsDF1CC2D4",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
+      "constructPath": "CdkrdIntegHarvest2/Jobs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobsDF1CC2D4",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
       "constructPath": "CdkrdIntegHarvest2/Jobs"
     }

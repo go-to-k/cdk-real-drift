@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DelaySeconds, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled, undeclared:VisibilityTimeout). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DelaySeconds, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled, undeclared:VisibilityTimeout). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "InboxA8E05DC3",
     "resourceType": "AWS::SQS::Queue",
@@ -53,35 +53,8 @@
       "tier": "undeclared",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "ReceiveMessageWaitTimeSeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
       "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MessageRetentionPeriod",
-      "actual": 345600,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
@@ -98,8 +71,8 @@
       "tier": "undeclared",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
-      "path": "VisibilityTimeout",
-      "actual": 30,
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
@@ -109,6 +82,33 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
       "actual": "CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "actual": 30,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     }

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (first policies integ run) \u2014 the R69 regression case: a real CDK enforceSSL-style bucket policy whose Condition.Bool[\"aws:SecureTransport\"] the old strip-any-aws:-map-key rule DELETED from the live side (desired-vs-undefined false drift). With the strip scoped to Tags maps, this classifies CLEAN.",
+  "description": "RECORDED LIVE (first policies integ run) — the R69 regression case: a real CDK enforceSSL-style bucket policy whose Condition.Bool[\"aws:SecureTransport\"] the old strip-any-aws:-map-key rule DELETED from the live side (desired-vs-undefined false drift). With the strip scoped to Tags maps, this classifies CLEAN.",
   "resource": {
     "logicalId": "DataPolicyB80589C3",
     "resourceType": "AWS::S3::BucketPolicy",

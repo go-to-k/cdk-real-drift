@@ -30,14 +30,20 @@
     "createOnlyPaths": ["StateMachineName"],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": [
     {
       "tier": "undeclared",
       "logicalId": "Flow",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "LoggingConfiguration",
-      "actual": { "Level": "OFF" },
+      "actual": {
+        "Level": "OFF"
+      },
       "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:corpus-flow"
     }
   ]

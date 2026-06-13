@@ -33,6 +33,19 @@
     "createOnlyPaths": ["ConfigurationName"],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
-  "expected": []
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SlackChannel",
+      "resourceType": "AWS::Chatbot::SlackChannelConfiguration",
+      "path": "GuardrailPolicies",
+      "actual": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+      "physicalId": "arn:aws:chatbot::111111111111:chat-configuration/slack-channel/corpus-alerts"
+    }
+  ]
 }

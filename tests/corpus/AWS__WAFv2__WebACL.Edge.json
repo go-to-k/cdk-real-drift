@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::WAFv2::WebACL with deep declared config classifies as recorded (undeclared:Name, undeclared:OnSourceDDoSProtectionConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::WAFv2::WebACL with deep declared config classifies as recorded (undeclared:Name, undeclared:OnSourceDDoSProtectionConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "Edge",
     "resourceType": "AWS::WAFv2::WebACL",
@@ -130,10 +130,8 @@
       "tier": "undeclared",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
-      "path": "OnSourceDDoSProtectionConfig",
-      "actual": {
-        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
-      },
+      "path": "Name",
+      "actual": "Edge-iCCoPGcllLnA",
       "physicalId": "Edge-iCCoPGcllLnA|8db5286a-695e-41b6-beba-f4207a727afc|REGIONAL",
       "constructPath": "CdkrdIntegHarvest2/Edge"
     },
@@ -141,8 +139,10 @@
       "tier": "undeclared",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
-      "path": "Name",
-      "actual": "Edge-iCCoPGcllLnA",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
       "physicalId": "Edge-iCCoPGcllLnA|8db5286a-695e-41b6-beba-f4207a727afc|REGIONAL",
       "constructPath": "CdkrdIntegHarvest2/Edge"
     }

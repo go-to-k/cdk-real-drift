@@ -15,6 +15,32 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::S3::Bucket': {
     VersioningConfiguration: { Status: 'Suspended' },
     AbacStatus: 'Disabled', // R66
+    // R86 (account-wide S3 defaults AWS has applied to every new bucket since 2023):
+    // Block Public Access fully on (Apr 2023), ACLs disabled / BucketOwnerEnforced
+    // (Apr 2023), and SSE-S3 (AES256) default encryption (Jan 2023). A CDK bucket that
+    // does not declare these reports all three on every first run, yet they are the
+    // (secure) AWS default, not an edit. Equality-gated like every KNOWN_DEFAULTS
+    // entry: weaken any of them out of band (e.g. BlockPublicAcls=false) and the value
+    // no longer matches, so it re-surfaces as real undeclared drift. The encryption
+    // shape mirrors what Cloud Control returns today (incl. the newer
+    // BlockedEncryptionTypes field); if AWS changes the shape the match simply falls
+    // through and the value is shown again — never silently wrong.
+    PublicAccessBlockConfiguration: {
+      RestrictPublicBuckets: true,
+      BlockPublicPolicy: true,
+      BlockPublicAcls: true,
+      IgnorePublicAcls: true,
+    },
+    OwnershipControls: { Rules: [{ ObjectOwnership: 'BucketOwnerEnforced' }] },
+    BucketEncryption: {
+      ServerSideEncryptionConfiguration: [
+        {
+          BucketKeyEnabled: false,
+          BlockedEncryptionTypes: { EncryptionType: ['SSE-C'] },
+          ServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' },
+        },
+      ],
+    },
   },
   // R66 (dogfood-observed service defaults):
   'AWS::Lambda::Function': {

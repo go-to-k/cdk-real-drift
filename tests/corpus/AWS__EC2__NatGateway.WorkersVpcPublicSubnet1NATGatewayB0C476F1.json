@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::EC2::NatGateway with deep declared config classifies as recorded (undeclared:AvailabilityMode, undeclared:ConnectivityType, undeclared:PrivateIpAddress, undeclared:VpcId, unresolved:AllocationId). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::EC2::NatGateway with deep declared config classifies as recorded (undeclared:AvailabilityMode, undeclared:ConnectivityType, undeclared:PrivateIpAddress, undeclared:VpcId, unresolved:AllocationId). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
     "resourceType": "AWS::EC2::NatGateway",
@@ -96,19 +96,11 @@
   },
   "expected": [
     {
-      "tier": "unresolved",
-      "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
-      "resourceType": "AWS::EC2::NatGateway",
-      "path": "AllocationId",
-      "physicalId": "nat-07e873bd1eb79666a",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "PrivateIpAddress",
-      "actual": "10.0.0.62",
+      "path": "AvailabilityMode",
+      "actual": "zonal",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     },
@@ -125,8 +117,8 @@
       "tier": "undeclared",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "VpcId",
-      "actual": "vpc-0b4c09b4fa46530e9",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.62",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     },
@@ -134,8 +126,16 @@
       "tier": "undeclared",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "AvailabilityMode",
-      "actual": "zonal",
+      "path": "VpcId",
+      "actual": "vpc-0b4c09b4fa46530e9",
+      "physicalId": "nat-07e873bd1eb79666a",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
+      "resourceType": "AWS::EC2::NatGateway",
+      "path": "AllocationId",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     }

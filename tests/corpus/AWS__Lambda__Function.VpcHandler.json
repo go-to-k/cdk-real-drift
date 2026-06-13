@@ -23,8 +23,12 @@
       "SubnetIds": ["subnet-0ccccc333333", "subnet-0ddddd444444"]
     },
     "PackageType": "Zip",
-    "TracingConfig": { "Mode": "PassThrough" },
-    "EphemeralStorage": { "Size": 512 },
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "EphemeralStorage": {
+      "Size": 512
+    },
     "Architectures": ["x86_64"]
   },
   "schema": {
@@ -36,6 +40,47 @@
     "createOnlyPaths": ["FunctionName"],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
-  "expected": []
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcHandler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "corpus-vpc-handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcHandler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "corpus-vpc-handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcHandler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "corpus-vpc-handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcHandler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "corpus-vpc-handler"
+    }
+  ]
 }

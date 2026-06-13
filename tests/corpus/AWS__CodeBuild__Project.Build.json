@@ -64,8 +64,8 @@
       "tier": "undeclared",
       "logicalId": "Build",
       "resourceType": "AWS::CodeBuild::Project",
-      "path": "TimeoutInMinutes",
-      "actual": 60,
+      "path": "EncryptionKey",
+      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
       "physicalId": "cdkrd-harvest6",
       "constructPath": "CdkrdIntegHarvest6/Build"
     },
@@ -82,8 +82,8 @@
       "tier": "undeclared",
       "logicalId": "Build",
       "resourceType": "AWS::CodeBuild::Project",
-      "path": "EncryptionKey",
-      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+      "path": "TimeoutInMinutes",
+      "actual": 60,
       "physicalId": "cdkrd-harvest6",
       "constructPath": "CdkrdIntegHarvest6/Build"
     }

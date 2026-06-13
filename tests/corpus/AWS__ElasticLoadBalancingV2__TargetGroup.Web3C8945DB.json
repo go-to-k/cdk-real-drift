@@ -165,6 +165,42 @@
       "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPort",
+      "actual": "traffic-port",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "HTTP",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "IpAddressType",
       "actual": "ipv4",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
@@ -185,8 +221,8 @@
       "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckEnabled",
-      "actual": true,
+      "path": "Name",
+      "actual": "CdkrdI-Web3C-B2EBJYBQ0UEJ",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
@@ -205,42 +241,6 @@
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "UnhealthyThresholdCount",
       "actual": 2,
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
-      "constructPath": "CdkrdIntegHarvest4/Web"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Web3C8945DB",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckTimeoutSeconds",
-      "actual": 5,
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
-      "constructPath": "CdkrdIntegHarvest4/Web"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Web3C8945DB",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "Name",
-      "actual": "CdkrdI-Web3C-B2EBJYBQ0UEJ",
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
-      "constructPath": "CdkrdIntegHarvest4/Web"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Web3C8945DB",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckProtocol",
-      "actual": "HTTP",
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
-      "constructPath": "CdkrdIntegHarvest4/Web"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Web3C8945DB",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckPort",
-      "actual": "traffic-port",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     }

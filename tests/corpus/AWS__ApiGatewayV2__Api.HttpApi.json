@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ApiGatewayV2::Api model; surviving raw-classify findings locked as-is (IpAddressType, RouteSelectionExpression). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ApiGatewayV2::Api model; surviving raw-classify findings locked as-is (IpAddressType, RouteSelectionExpression). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "HttpApi",
     "resourceType": "AWS::ApiGatewayV2::Api",

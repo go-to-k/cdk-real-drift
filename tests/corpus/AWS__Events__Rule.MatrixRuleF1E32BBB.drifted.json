@@ -50,6 +50,15 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "MatrixRuleF1E32BBB",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkrdIntegHarvest3-MatrixRuleF1E32BBB-RmVkDPhzGLgk",
+      "constructPath": "CdkrdIntegHarvest3/MatrixRule"
+    },
+    {
       "tier": "declared",
       "logicalId": "MatrixRuleF1E32BBB",
       "resourceType": "AWS::Events::Rule",

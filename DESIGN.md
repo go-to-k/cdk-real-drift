@@ -30,10 +30,11 @@ un-deployed code edits would show as false "drift".
      - cc-api strip   (timestamps, revision ids, ...)
      - policy canonical (Action/Resource/Principal scalar-vs-array unify, statement
        sort, account-id<->root-ARN; Version kept only when declared — never fabricated)
-     - aws:* tags (list + map), scalar schema-defaults + per-type known-defaults
+     - aws:* tags (list + map); scalar schema-defaults + per-type known-defaults
+       are NOT dropped but tagged `atDefault` (folded, never drift; R86)
      - sibling AWS::IAM::Policy entries filtered BY NAME from a role's live
        Policies (an out-of-band inline policy next to them still reports)
-5. classify (tag):  declared | undeclared | readGap | unresolved | skipped
+5. classify (tag):  declared | undeclared | atDefault | readGap | unresolved | skipped
 6. report + exit code (report-only by default; --fail → 1 on drift; 2 error)
 ```
 

@@ -24,6 +24,7 @@ const TIER_NAMES: Record<Tier, string> = {
   deleted: 'DELETED',
   declared: 'DECLARED DRIFT',
   undeclared: 'UNDECLARED DRIFT',
+  atDefault: 'AT AWS DEFAULT',
   ignored: 'IGNORED',
   readGap: 'READ GAP',
   unresolved: 'UNRESOLVED',
@@ -33,17 +34,24 @@ const TIER_NAMES: Record<Tier, string> = {
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   undeclared: 'not declared in your template — the differentiator',
+  atDefault: 'undeclared, but the live value matches a known AWS default — not drift',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
   readGap: 'declared but not returned by live read — not drift',
   unresolved: 'declared paths needing GetAtt — skipped, not drift',
   skipped: 'CC API unsupported / no physical id',
 };
 const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
-const INFO_TIERS: Tier[] = ['ignored', 'readGap', 'unresolved', 'skipped'];
+// atDefault leads the informational footer: it is the bulk of a first run (undeclared
+// values sitting at their AWS default) and folding it is the whole point of R86 — the
+// report states the complete undeclared count but lists only the values that actually
+// diverge, with the at-default remainder collapsed to a count (expanded by --verbose
+// or --show-all).
+const INFO_TIERS: Tier[] = ['atDefault', 'ignored', 'readGap', 'unresolved', 'skipped'];
 
 export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
+  expandAtDefault?: boolean; // expand ONLY the atDefault tier to a full list (--show-all inventory mode)
   log?: (s: string) => void;
 }
 // Unrecorded values (R60, per finding since R62): an undeclared finding tagged
@@ -68,7 +76,8 @@ export function formatFinding(f: Finding): string {
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared')
     s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;
-  else if (f.tier === 'undeclared') s += ` = ${style.actual(j(f.actual))}`;
+  else if (f.tier === 'undeclared' || f.tier === 'atDefault')
+    s += ` = ${style.actual(j(f.actual))}`;
   return s;
 }
 
@@ -181,23 +190,32 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // A blank line before the verdict ONLY when drift sections were printed — it must
   // not read as a member of the last section (R48); a CLEAN stack stays 3 lines.
   log((driftSections > 0 ? '\n' : '') + `result: ${verdict}${unrecordedNote}`);
-  // INFORMATIONAL tiers: footer below result — full sections under --verbose, else a
-  // folded summary (counts + reason breakdown): one `info: ...` line for a single
-  // tier, a one-line-per-tier bullet list (with ONE --verbose hint) for 2+ (R37).
-  if (opts.verbose) {
-    for (const tier of INFO_TIERS) tierSection(tier, true);
-  } else {
-    const summaries = INFO_TIERS.map((t) => {
+  // INFORMATIONAL tiers: footer below result. Each tier is either EXPANDED to a full
+  // section or FOLDED into the `info:` summary. --verbose expands all of them;
+  // --show-all expands ONLY atDefault (inventory mode lists every undeclared value but
+  // keeps the read-gap/skip breakdown terse). A tier's count is always stated, so the
+  // "surfaced, never silently dropped" invariant holds whichever way it renders.
+  const isExpanded = (t: Tier): boolean =>
+    !!opts.verbose || (t === 'atDefault' && !!opts.expandAtDefault);
+  for (const tier of INFO_TIERS) if (isExpanded(tier)) tierSection(tier, true);
+  const summaryFor = (t: Tier, items: Finding[]): string =>
+    // atDefault has a single cause (matches an AWS default), so the generic
+    // reason-breakdown would just echo the count — give it a plain-English label.
+    t === 'atDefault'
+      ? `atDefault=${items.length} (undeclared values matching a known AWS default — not drift)`
+      : `${t}=${items.length} (${groupReasons(items)})`;
+  const summaries = INFO_TIERS.filter((t) => !isExpanded(t))
+    .map((t) => {
       const items = byTier(t);
-      return items.length ? `${t}=${items.length} (${groupReasons(items)})` : null;
-    }).filter((s): s is string => s !== null);
-    if (summaries.length === 1) {
-      log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));
-    } else if (summaries.length > 1) {
-      log(style.infoTier('info:'));
-      for (const s of summaries) log(style.infoTier(`  - ${s}`));
-      log(style.infoTier('  run with --verbose for the list'));
-    }
+      return items.length ? summaryFor(t, items) : null;
+    })
+    .filter((s): s is string => s !== null);
+  if (summaries.length === 1) {
+    log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));
+  } else if (summaries.length > 1) {
+    log(style.infoTier('info:'));
+    for (const s of summaries) log(style.infoTier(`  - ${s}`));
+    log(style.infoTier('  run with --verbose for the list'));
   }
   return drifted === 0 ? 0 : 1;
 }

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::CloudWatch::Alarm model; surviving raw-classify findings locked as-is (none \u2014 fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::CloudWatch::Alarm model; surviving raw-classify findings locked as-is (none — fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Pulse82D6B25B",
     "resourceType": "AWS::CloudWatch::Alarm",
@@ -76,5 +76,15 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Pulse82D6B25B",
+      "resourceType": "AWS::CloudWatch::Alarm",
+      "path": "ActionsEnabled",
+      "actual": true,
+      "physicalId": "CdkrdIntegHarvest-Pulse82D6B25B-Kbg6xkr8PZ1U",
+      "constructPath": "CdkrdIntegHarvest/Pulse"
+    }
+  ]
 }

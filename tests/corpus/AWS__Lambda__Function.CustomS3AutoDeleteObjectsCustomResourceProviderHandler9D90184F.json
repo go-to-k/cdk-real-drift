@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK-generated Lambda; the R66 KNOWN_DEFAULTS keep everything quiet EXCEPT LoggingConfig (per-function LogGroup name \u2014 not a constant, so deliberately not blanket-suppressed; current behavior locked).",
+  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK-generated Lambda; the R66 KNOWN_DEFAULTS keep everything quiet EXCEPT LoggingConfig (per-function LogGroup name — not a constant, so deliberately not blanket-suppressed; current behavior locked).",
   "resource": {
     "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
     "resourceType": "AWS::Lambda::Function",
@@ -95,6 +95,66 @@
     "kmsAliasTargets": {}
   },
   "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustom-172a073N52yq",
+      "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
+    },
     {
       "tier": "undeclared",
       "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",

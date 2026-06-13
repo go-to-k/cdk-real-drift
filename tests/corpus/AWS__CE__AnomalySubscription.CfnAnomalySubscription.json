@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (dogfood): the service DERIVES ThresholdExpression (a JSON string) from the declared legacy Threshold \u2014 surfaces as the one undeclared value (accept-once material, locked as-is); the live Subscribers entry gains a Status field the declared side never set (nested live-extra, ignored).",
+  "description": "RECORDED LIVE (dogfood): the service DERIVES ThresholdExpression (a JSON string) from the declared legacy Threshold — surfaces as the one undeclared value (accept-once material, locked as-is); the live Subscribers entry gains a Status field the declared side never set (nested live-extra, ignored).",
   "resource": {
     "logicalId": "CfnAnomalySubscription",
     "resourceType": "AWS::CE::AnomalySubscription",

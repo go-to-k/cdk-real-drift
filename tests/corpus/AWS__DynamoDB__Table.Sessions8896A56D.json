@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::DynamoDB::Table model; surviving raw-classify findings locked as-is (WarmThroughput). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::DynamoDB::Table model; surviving raw-classify findings locked as-is (WarmThroughput). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Sessions8896A56D",
     "resourceType": "AWS::DynamoDB::Table",

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::Kinesis::Stream with deep declared config classifies as recorded (undeclared:MaxRecordSizeInKiB). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::Kinesis::Stream with deep declared config classifies as recorded (undeclared:MaxRecordSizeInKiB). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "EventsD32975C2",
     "resourceType": "AWS::Kinesis::Stream",
@@ -68,6 +68,17 @@
     }
   },
   "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EventsD32975C2",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "StreamModeDetails",
+      "actual": {
+        "StreamMode": "PROVISIONED"
+      },
+      "physicalId": "CdkrdIntegHarvest2-EventsD32975C2-IyHLeNv132l2",
+      "constructPath": "CdkrdIntegHarvest2/Events"
+    },
     {
       "tier": "undeclared",
       "logicalId": "EventsD32975C2",

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (dogfood): a Chatbot-service-created Subscription on a real SNS topic surfaces as the one undeclared value \u2014 genuinely out-of-band state from the template's perspective (true positive).",
+  "description": "RECORDED LIVE (dogfood): a Chatbot-service-created Subscription on a real SNS topic surfaces as the one undeclared value — genuinely out-of-band state from the template's perspective (true positive).",
   "resource": {
     "logicalId": "BillingAlarmTopic299F87AA",
     "resourceType": "AWS::SNS::Topic",

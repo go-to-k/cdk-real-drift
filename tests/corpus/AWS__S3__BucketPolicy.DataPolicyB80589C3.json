@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK auto-delete bucket policy read via the SDK override classifies fully CLEAN \u2014 policy canonicalization is quiet on a genuine round-tripped document.",
+  "description": "RECORDED LIVE (mutation-matrix integ run): a real CDK auto-delete bucket policy read via the SDK override classifies fully CLEAN — policy canonicalization is quiet on a genuine round-tripped document.",
   "resource": {
     "logicalId": "DataPolicyB80589C3",
     "resourceType": "AWS::S3::BucketPolicy",

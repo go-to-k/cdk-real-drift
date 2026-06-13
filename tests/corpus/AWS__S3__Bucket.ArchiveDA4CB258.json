@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::S3::Bucket with deep declared config classifies as recorded (undeclared:BucketEncryption, undeclared:OwnershipControls). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::S3::Bucket with deep declared config classifies as recorded (undeclared:BucketEncryption, undeclared:OwnershipControls). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "ArchiveDA4CB258",
     "resourceType": "AWS::S3::Bucket",
@@ -205,7 +205,16 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
+      "logicalId": "ArchiveDA4CB258",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
+      "constructPath": "CdkrdIntegHarvest2/Archive"
+    },
+    {
+      "tier": "atDefault",
       "logicalId": "ArchiveDA4CB258",
       "resourceType": "AWS::S3::Bucket",
       "path": "BucketEncryption",
@@ -226,7 +235,7 @@
       "constructPath": "CdkrdIntegHarvest2/Archive"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ArchiveDA4CB258",
       "resourceType": "AWS::S3::Bucket",
       "path": "OwnershipControls",

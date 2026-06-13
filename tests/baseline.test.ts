@@ -171,6 +171,48 @@ describe('baseline', () => {
     expect(applyBaseline([undeclared('A', 'P', ['x'])], b)).toEqual([]);
   });
 
+  describe('atDefault reconciliation (R86 — folded inventory, never drift, never a false removal)', () => {
+    const atDefault = (logicalId: string, path: string, value: unknown): Finding => ({
+      tier: 'atDefault',
+      logicalId,
+      resourceType: 'AWS::Lambda::Function',
+      path,
+      actual: value,
+    });
+
+    it('an at-default value with no baseline entry passes through folded (not unrecorded, not drift)', () => {
+      const out = applyBaseline(
+        [atDefault('A', 'TracingConfig', { Mode: 'PassThrough' })],
+        baseline([])
+      );
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ tier: 'atDefault', path: 'TracingConfig' });
+      expect(out[0]!.unrecorded).toBeUndefined();
+    });
+
+    it('with NO baseline at all, an at-default value stays atDefault (only undeclared is tagged unrecorded)', () => {
+      const out = applyBaseline([atDefault('A', 'PackageType', 'Zip')], undefined);
+      expect(out[0]).toMatchObject({ tier: 'atDefault' });
+      expect(out[0]!.unrecorded).toBeUndefined();
+    });
+
+    it('a value the user accepted that is now classified at-default is SUPPRESSED, not reported as removed (the live regression)', () => {
+      // baseline accepted Encryption=<AES256>; today classify tags it atDefault (it now
+      // matches a known default). It must vanish (already decided), and must NOT appear
+      // as "baseline value removed since accept".
+      const b = baseline([
+        {
+          logicalId: 'Bkt',
+          resourceType: 'AWS::S3::Bucket',
+          path: 'Encryption',
+          value: { alg: 'AES256' },
+        },
+      ]);
+      const out = applyBaseline([atDefault('Bkt', 'Encryption', { alg: 'AES256' })], b);
+      expect(out).toEqual([]);
+    });
+  });
+
   it('re-canonicalizes the baseline value before compare (old unsorted form still matches)', () => {
     // accepted under an OLDER rule set: tag list stored UNSORTED
     const b = baseline([

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::Lambda::Function with deep declared config classifies as recorded (undeclared:LoggingConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::Lambda::Function with deep declared config classifies as recorded (undeclared:LoggingConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "Worker11F36D0F",
     "resourceType": "AWS::Lambda::Function",
@@ -124,6 +124,46 @@
     }
   },
   "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Worker11F36D0F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
+      "constructPath": "CdkrdIntegHarvest2/Worker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Worker11F36D0F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
+      "constructPath": "CdkrdIntegHarvest2/Worker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Worker11F36D0F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
+      "constructPath": "CdkrdIntegHarvest2/Worker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Worker11F36D0F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
+      "constructPath": "CdkrdIntegHarvest2/Worker"
+    },
     {
       "tier": "undeclared",
       "logicalId": "Worker11F36D0F",

@@ -13,6 +13,7 @@ function tiers(findings: Finding[]) {
   return {
     declared: by('declared'),
     undeclared: by('undeclared'),
+    atDefault: by('atDefault'),
     readGap: by('readGap'),
     unresolved: by('unresolved'),
   };
@@ -345,9 +346,10 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     declared: {},
   });
 
-  it('EVERY entry suppresses its exact default value through the full pipeline', () => {
-    // generic: each (type, key, default) must classify to zero findings — this
-    // also catches a canonicalization step mangling the listed default shape.
+  it('EVERY entry FOLDS its exact default value to the atDefault tier (R86), never to drift', () => {
+    // generic: each (type, key, default) must classify to a single atDefault finding
+    // (folded inventory, not drift) — this also catches a canonicalization step
+    // mangling the listed default shape (which would resurface it as undeclared).
     for (const [resourceType, defs] of Object.entries(KNOWN_DEFAULTS)) {
       for (const [key, value] of Object.entries(defs)) {
         const findings = classifyResource(
@@ -355,7 +357,11 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
           { [key]: structuredClone(value) },
           emptySchema
         );
-        expect(findings, `${resourceType}.${key}`).toEqual([]);
+        expect(findings, `${resourceType}.${key}`).toHaveLength(1);
+        expect(findings[0], `${resourceType}.${key}`).toMatchObject({
+          tier: 'atDefault',
+          path: key,
+        });
       }
     }
   });
@@ -488,14 +494,16 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['Addresses']);
     });
 
-    it('undeclared EventSelectors equal to the default is suppressed; a changed one surfaces', () => {
+    it('undeclared EventSelectors equal to the default folds to atDefault; a changed one surfaces', () => {
       expect(
-        classifyResource(
-          trail({}),
-          { EventSelectors: [structuredClone(DEFAULT_SELECTOR)] },
-          emptySchema
-        )
-      ).toEqual([]);
+        tiers(
+          classifyResource(
+            trail({}),
+            { EventSelectors: [structuredClone(DEFAULT_SELECTOR)] },
+            emptySchema
+          )
+        ).atDefault
+      ).toEqual(['EventSelectors']);
       expect(
         tiers(
           classifyResource(

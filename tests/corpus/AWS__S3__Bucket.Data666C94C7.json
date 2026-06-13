@@ -126,18 +126,31 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::S3::Bucket",
-      "path": "AccelerateConfiguration",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
+      "constructPath": "CdkdriftIntegBasic/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
       "actual": {
-        "AccelerationStatus": "Suspended"
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
       },
       "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
       "constructPath": "CdkdriftIntegBasic/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::S3::Bucket",
       "path": "PublicAccessBlockConfiguration",
@@ -154,13 +167,9 @@
       "tier": "undeclared",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::S3::Bucket",
-      "path": "OwnershipControls",
+      "path": "AccelerateConfiguration",
       "actual": {
-        "Rules": [
-          {
-            "ObjectOwnership": "BucketOwnerEnforced"
-          }
-        ]
+        "AccelerationStatus": "Suspended"
       },
       "physicalId": "cdkdriftintegbasic-data666c94c7-7pabf0qbkwro",
       "constructPath": "CdkdriftIntegBasic/Data"

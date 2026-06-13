@@ -77,8 +77,8 @@
       "tier": "undeclared",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
-      "path": "QueryDepthLimit",
-      "actual": 0,
+      "path": "ApiType",
+      "actual": "GRAPHQL",
       "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
       "constructPath": "CdkrdIntegHarvest3/Graph"
     },
@@ -95,7 +95,7 @@
       "tier": "undeclared",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
-      "path": "ResolverCountLimit",
+      "path": "QueryDepthLimit",
       "actual": 0,
       "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
       "constructPath": "CdkrdIntegHarvest3/Graph"
@@ -104,8 +104,8 @@
       "tier": "undeclared",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
-      "path": "ApiType",
-      "actual": "GRAPHQL",
+      "path": "ResolverCountLimit",
+      "actual": 0,
       "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
       "constructPath": "CdkrdIntegHarvest3/Graph"
     },

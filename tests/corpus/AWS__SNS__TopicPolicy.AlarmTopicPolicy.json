@@ -13,14 +13,18 @@
           {
             "Sid": "AllowPublish",
             "Effect": "Allow",
-            "Principal": { "Service": "cloudwatch.amazonaws.com" },
+            "Principal": {
+              "Service": "cloudwatch.amazonaws.com"
+            },
             "Action": "sns:Publish",
             "Resource": "arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"
           },
           {
             "Sid": "AllowSubscribe",
             "Effect": "Allow",
-            "Principal": { "Service": "events.amazonaws.com" },
+            "Principal": {
+              "Service": "events.amazonaws.com"
+            },
             "Action": "sns:Subscribe",
             "Resource": "arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"
           }
@@ -36,14 +40,18 @@
         {
           "Sid": "AllowSubscribe",
           "Effect": "Allow",
-          "Principal": { "Service": "events.amazonaws.com" },
+          "Principal": {
+            "Service": "events.amazonaws.com"
+          },
           "Action": ["sns:Subscribe"],
           "Resource": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"]
         },
         {
           "Sid": "AllowPublish",
           "Effect": "Allow",
-          "Principal": { "Service": "cloudwatch.amazonaws.com" },
+          "Principal": {
+            "Service": "cloudwatch.amazonaws.com"
+          },
           "Action": ["sns:Publish"],
           "Resource": ["arn:aws:sns:us-east-1:111111111111:corpus-alarm-topic"]
         }
@@ -59,6 +67,10 @@
     "createOnlyPaths": [],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": []
 }

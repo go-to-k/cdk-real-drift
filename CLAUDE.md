@@ -93,7 +93,7 @@ detail:
   types (`overrides.ts` / `SDK_OVERRIDES`).
 - `normalize/` — noise subtraction (policy canonicalization, ARN/identity, `aws:*`
   tags, CC-API strip, path strip, intrinsic resolution).
-- `diff/` — drift classification + calculation (declared / undeclared / readGap /
+- `diff/` — drift classification + calculation (declared / undeclared / atDefault / readGap /
   unresolved / skipped).
 - `revert/` — the AWS-mutating path: Cloud Control `UpdateResource` + type-specific
   SDK writers (`writers.ts` / `SDK_WRITERS`).

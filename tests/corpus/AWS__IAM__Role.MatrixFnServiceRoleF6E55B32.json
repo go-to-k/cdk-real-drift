@@ -59,5 +59,33 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFnServiceRoleF6E55B32",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkrdIntegHarvest3-MatrixFnServiceRoleF6E55B32-ryqUvLrnxdXh",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn/ServiceRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFnServiceRoleF6E55B32",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkrdIntegHarvest3-MatrixFnServiceRoleF6E55B32-ryqUvLrnxdXh",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn/ServiceRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFnServiceRoleF6E55B32",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest3-MatrixFnServiceRoleF6E55B32-ryqUvLrnxdXh",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn/ServiceRole"
+    }
+  ]
 }
