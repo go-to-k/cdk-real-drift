@@ -201,6 +201,20 @@ readGap is informational, not drift). The cleanup trap force-deletes the secret.
 cd readgap && bash verify.sh
 ```
 
+## mutation-multi
+
+The false-NEGATIVE guard (the opposite of `noise` / the false-positive matrix).
+Deploys five types, accepts a CLEAN baseline, then changes one declared property on
+each out of band (SQS VisibilityTimeout, SNS DisplayName, Lambda Timeout, S3
+VersioningConfiguration, ECR ImageTagMutability) and asserts `check --fail` DETECTS
+every one. A normalizer that wrongly collapses a real change would make cdkrd miss
+it and report CLEAN — this catches that (it also guards the R88 array-sort fixes
+against over-suppression). Run after changing `src/normalize/**` or `src/diff/**`.
+
+```bash
+cd mutation-multi && npm install && bash verify.sh
+```
+
 ## false-positive matrix
 
 Eight focused fixtures (R88), each the same shape as `noise`: deploy a resource that
