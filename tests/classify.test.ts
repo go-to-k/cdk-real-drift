@@ -855,3 +855,83 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 });
+
+describe('identity-keyed array ADDITIONS are detected, not subset-projected away (R95)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+
+  it('a tag ADDED out of band (live has a Key the template does not) is drift, NOT silently dropped', () => {
+    const findings = classifyResource(
+      res('AWS::S3::Bucket', { Tags: [{ Key: 'team', Value: 'platform' }] }),
+      {
+        Tags: [
+          { Key: 'team', Value: 'platform' },
+          { Key: 'rogue', Value: 'x' },
+        ],
+      },
+      emptySchema
+    );
+    // before R95 this returned [] (the rogue tag was projected away) — the bug.
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings.some((f) => f.tier === 'declared' && f.path.startsWith('Tags'))).toBe(true);
+  });
+
+  it('a CHANGED tag value is still detected (regression — changes were always caught)', () => {
+    const findings = classifyResource(
+      res('AWS::S3::Bucket', { Tags: [{ Key: 'team', Value: 'platform' }] }),
+      { Tags: [{ Key: 'team', Value: 'CHANGED' }] },
+      emptySchema
+    );
+    expect(findings.some((f) => f.tier === 'declared' && f.path.startsWith('Tags'))).toBe(true);
+  });
+
+  it('an ADDED Id-keyed element (e.g. a CloudFront Origin) is drift, not dropped', () => {
+    const findings = classifyResource(
+      res('AWS::CloudFront::Distribution', {
+        DistributionConfig: { Origins: [{ Id: 'o1', DomainName: 'a.example' }] },
+      }),
+      {
+        DistributionConfig: {
+          Origins: [
+            { Id: 'o1', DomainName: 'a.example' },
+            { Id: 'o2', DomainName: 'b.example' },
+          ],
+        },
+      },
+      emptySchema
+    );
+    expect(findings.length).toBeGreaterThan(0);
+  });
+
+  it('ELB attribute bags still compare as a SUBSET (declared 2, AWS returns extra defaults) — no false drift', () => {
+    const T = 'AWS::ElasticLoadBalancingV2::LoadBalancer';
+    const declared = {
+      LoadBalancerAttributes: [
+        { Key: 'idle_timeout.timeout_seconds', Value: '120' },
+        { Key: 'deletion_protection.enabled', Value: 'false' },
+      ],
+    };
+    const liveAll = {
+      LoadBalancerAttributes: [
+        { Key: 'access_logs.s3.enabled', Value: 'false' },
+        { Key: 'idle_timeout.timeout_seconds', Value: '120' },
+        { Key: 'deletion_protection.enabled', Value: 'false' },
+        { Key: 'routing.http2.enabled', Value: 'true' },
+      ],
+    };
+    expect(classifyResource(res(T, declared), liveAll, emptySchema)).toEqual([]);
+  });
+});

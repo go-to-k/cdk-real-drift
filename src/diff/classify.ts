@@ -19,7 +19,6 @@ import {
   isStringlyEqualScalar,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
-  projectLiveToDeclaredSubset,
   sortUnorderedObjectArray,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
@@ -158,11 +157,16 @@ export function classifyResource(
     // drift; a genuine rule change still differs after the sort.
     const unorderedObjArray = UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k);
     const declaredVal = unorderedObjArray ? sortUnorderedObjectArray(v) : v;
-    const liveSorted = unorderedObjArray ? sortUnorderedObjectArray(live[k]) : live[k];
-    // Identity-keyed attribute bags (R75: other bag-shaped props) — the template
-    // declares a SUBSET of the keys AWS returns; compare only the declared keys so
-    // the extra live attributes are not false drift on the whole list.
-    const liveVal = projectLiveToDeclaredSubset(declaredVal, liveSorted);
+    const liveVal = unorderedObjArray ? sortUnorderedObjectArray(live[k]) : live[k];
+    // R95: the live side is compared in FULL — no subset projection. An R75
+    // generic `projectLiveToDeclaredSubset` used to drop live elements whose
+    // identity key was not declared, to mute the extra default attributes ELB
+    // returns. But that ALSO silently dropped genuine out-of-band ADDITIONS to any
+    // identity-keyed array — a console-added Tag, an extra CloudFront Origin — which
+    // a drift tool must never hide (fail-closed: report, do not suppress). The ELB
+    // attribute bags are handled above by ELB_ATTRIBUTE_BAGS (R78, compare BY KEY),
+    // which subsumes the projection for the one type that needed it; the corpus
+    // confirms no other type relied on it.
     for (const d of calculateResourceDrift({ [k]: declaredVal }, { [k]: liveVal })) {
       // a bare name declared for a field AWS returns as the full ARN is not drift
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default

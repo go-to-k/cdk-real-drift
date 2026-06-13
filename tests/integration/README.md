@@ -350,6 +350,18 @@ then accept -> `check --fail` CLEAN.
 cd harvest5 && npm install && bash verify-harvest5.sh
 ```
 
+## mutation-tags
+
+Guards the R95 fix (a console-ADDED tag must be DETECTED, not subset-projected
+away). Deploy a bucket with one declared tag, accept CLEAN, ADD a second tag out of
+band (a Key the template never declared, via the Resource Groups Tagging API so the
+aws:* system tags survive), and assert `check --fail` reports it. Before R95 the
+added tag was silently dropped.
+
+```bash
+cd mutation-tags && npm install && bash verify.sh
+```
+
 ## mutation-arrays
 
 The highest-yield false-NEGATIVE hunt: properties whose normalizer sorts or
