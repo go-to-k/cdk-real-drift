@@ -36,12 +36,14 @@ These do NOT run in CI (they need credentials and mutate a real account):
 - **Before every release** (the `/verify-pr` gate): run EVERY fixture —
   `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh` +
   `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`, `atdefault`,
-  `noise`, `readgap`.
+  `noise`, `readgap`, and the false-positive matrix (`dynamodb`, `sqs`,
+  `securitygroup`, `cloudwatch-alarm`, `stepfunctions`, `ssm`, `eventbridge`,
+  `cognito`).
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
-  `src/commands/gather.ts`: run at least `basic` + `revert` + `noise` (the
-  false-positive guard — `noise` asserts tricky declared values normalize equal to
-  live, never a false declared drift) (and `policies` if `writers.ts` changed;
-  `harvest3` for the multi-type Cloud Control revert matrix) before merging.
+  `src/commands/gather.ts`: run at least `basic` + `revert` + `noise` + the
+  false-positive matrix (below — each asserts tricky declared values normalize
+  equal to live, never a false declared drift) (and `policies` if `writers.ts`
+  changed; `harvest3` for the multi-type Cloud Control revert matrix) before merging.
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
 - **After changing** `KNOWN_DEFAULTS` (`src/normalize/noise.ts`) or the
@@ -197,6 +199,28 @@ readGap is informational, not drift). The cleanup trap force-deletes the secret.
 
 ```bash
 cd readgap && bash verify.sh
+```
+
+## false-positive matrix
+
+Eight focused fixtures (R88), each the same shape as `noise`: deploy a resource that
+DECLARES a property whose live AWS form is textually different but semantically
+equal, then assert `check --fail` exits `0` with no baseline — zero false declared
+drift. They target the specific normalization classes most likely to regress:
+
+| fixture            | resource             | noise-prone declared property (class)                                  |
+| ------------------ | -------------------- | ---------------------------------------------------------------------- |
+| `dynamodb`         | DynamoDB Table       | KeySchema / AttributeDefinitions / GSIs (ordered arrays), tags         |
+| `sqs`              | SQS Queue + DLQ      | RedrivePolicy (object↔JSON-string, R75), numeric attributes            |
+| `securitygroup`    | EC2 SecurityGroup    | ingress/egress rules (unordered arrays of CIDR rule objects)           |
+| `cloudwatch-alarm` | CloudWatch Alarm     | Dimensions (unordered `{Name,Value}` array — NOT Key/Id-keyed)         |
+| `stepfunctions`    | Step Functions SM    | DefinitionString (JSON string, R75) + auto-role policy                 |
+| `ssm`              | SSM Document + Param | Document Content (object↔JSON-string, R75)                             |
+| `eventbridge`      | EventBridge Rule     | EventPattern (object↔JSON-string), Targets array + queue policy        |
+| `cognito`          | Cognito Pool/Client  | OAuth/ExplicitAuthFlows (unordered enums, R74), UserPoolGroup id (R84) |
+
+```bash
+cd dynamodb && bash verify.sh   # …and likewise for each fixture above
 ```
 
 ## harvest

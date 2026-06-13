@@ -718,3 +718,140 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 });
+
+describe('unordered-array declared false positives (R88, found by the wave-2 integ fixtures)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+  const declaredTiers = (
+    rt: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource(res(rt, declared), live, emptySchema)
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  describe('DynamoDB AttributeDefinitions / KeySchema (AttributeName identity, R88)', () => {
+    const T = 'AWS::DynamoDB::Table';
+    const declared = {
+      AttributeDefinitions: [
+        { AttributeName: 'pk', AttributeType: 'S' },
+        { AttributeName: 'sk', AttributeType: 'S' },
+        { AttributeName: 'gsi1pk', AttributeType: 'S' },
+        { AttributeName: 'gsi1sk', AttributeType: 'N' },
+      ],
+    };
+
+    it('AWS returning the attributes in a different order is NOT drift', () => {
+      const live = {
+        AttributeDefinitions: [
+          { AttributeName: 'gsi1pk', AttributeType: 'S' },
+          { AttributeName: 'gsi1sk', AttributeType: 'N' },
+          { AttributeName: 'pk', AttributeType: 'S' },
+          { AttributeName: 'sk', AttributeType: 'S' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine attribute TYPE change still surfaces', () => {
+      const live = {
+        AttributeDefinitions: [
+          { AttributeName: 'pk', AttributeType: 'N' }, // S -> N
+          { AttributeName: 'sk', AttributeType: 'S' },
+          { AttributeName: 'gsi1pk', AttributeType: 'S' },
+          { AttributeName: 'gsi1sk', AttributeType: 'N' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('EC2 SecurityGroup ingress (identity-less object array, R88)', () => {
+    const T = 'AWS::EC2::SecurityGroup';
+    const declared = {
+      SecurityGroupIngress: [
+        { CidrIp: '10.0.0.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443, Description: 'a' },
+        { CidrIp: '10.0.1.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443, Description: 'b' },
+        {
+          CidrIp: '192.168.0.0/16',
+          IpProtocol: 'tcp',
+          FromPort: 22,
+          ToPort: 22,
+          Description: 'ssh',
+        },
+      ],
+    };
+
+    it('AWS returning the same rules in a different order is NOT drift', () => {
+      const live = {
+        SecurityGroupIngress: [
+          {
+            CidrIp: '192.168.0.0/16',
+            IpProtocol: 'tcp',
+            FromPort: 22,
+            ToPort: 22,
+            Description: 'ssh',
+          },
+          {
+            CidrIp: '10.0.0.0/24',
+            IpProtocol: 'tcp',
+            FromPort: 443,
+            ToPort: 443,
+            Description: 'a',
+          },
+          {
+            CidrIp: '10.0.1.0/24',
+            IpProtocol: 'tcp',
+            FromPort: 443,
+            ToPort: 443,
+            Description: 'b',
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine rule change (a port) still surfaces', () => {
+      const live = {
+        SecurityGroupIngress: [
+          {
+            CidrIp: '10.0.0.0/24',
+            IpProtocol: 'tcp',
+            FromPort: 443,
+            ToPort: 443,
+            Description: 'a',
+          },
+          {
+            CidrIp: '10.0.1.0/24',
+            IpProtocol: 'tcp',
+            FromPort: 8443,
+            ToPort: 8443,
+            Description: 'b',
+          }, // 443 -> 8443
+          {
+            CidrIp: '192.168.0.0/16',
+            IpProtocol: 'tcp',
+            FromPort: 22,
+            ToPort: 22,
+            Description: 'ssh',
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+});
