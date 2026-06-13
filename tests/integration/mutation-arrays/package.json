@@ -1,0 +1,8 @@
+{
+  "name": "cdk-real-drift-integ-mutation-arrays",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Array/policy mutation (false-negative / over-suppression) integration test for cdk-real-drift (R94). Run via verify.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}

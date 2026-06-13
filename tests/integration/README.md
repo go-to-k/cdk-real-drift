@@ -350,6 +350,20 @@ then accept -> `check --fail` CLEAN.
 cd harvest5 && npm install && bash verify-harvest5.sh
 ```
 
+## mutation-arrays
+
+The highest-yield false-NEGATIVE hunt: properties whose normalizer sorts or
+canonicalizes an array/policy (the class where the R88 bugs lived). Deploy an IAM
+role with a named inline policy, a SecurityGroup with two ingress rules, and a WAFv2
+IPSet with two addresses; accept CLEAN; then ADD one element to each out of band (a
+policy Action, an ingress rule, an IP address) and assert `check --fail` DETECTS
+every one — proving the normalization does not OVER-suppress and silently hide a
+real change. Run after changing `src/normalize/**`.
+
+```bash
+cd mutation-arrays && npm install && bash verify.sh
+```
+
 ## revert-multi
 
 Exercises the one AWS-mutating path across five types via Cloud Control
