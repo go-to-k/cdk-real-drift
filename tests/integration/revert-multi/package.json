@@ -1,0 +1,8 @@
+{
+  "name": "cdk-real-drift-integ-revert-multi",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Multi-type revert (Cloud Control UpdateResource convergence) integration test for cdk-real-drift (R92). Run via verify.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}
