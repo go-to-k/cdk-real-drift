@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::SSM::PatchBaseline model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Patch",
+    "resourceType": "AWS::SSM::PatchBaseline",
+    "physicalId": "pb-0dc7b8f7d8aa1a1a3",
+    "constructPath": "CdkrdIntegHarvest6/Patch",
+    "declared": {
+      "ApprovalRules": {
+        "PatchRules": [
+          {
+            "ApproveAfterDays": 7,
+            "ComplianceLevel": "HIGH",
+            "PatchFilterGroup": {
+              "PatchFilters": [
+                {
+                  "Key": "CLASSIFICATION",
+                  "Values": ["Security"]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "Name": "cdkrd-harvest6",
+      "OperatingSystem": "AMAZON_LINUX_2"
+    }
+  },
+  "liveRaw": {
+    "OperatingSystem": "AMAZON_LINUX_2",
+    "RejectedPatchesAction": "ALLOW_AS_DEPENDENCY",
+    "ApprovedPatchesComplianceLevel": "UNSPECIFIED",
+    "ApprovedPatchesEnableNonSecurity": false,
+    "Id": "pb-0dc7b8f7d8aa1a1a3",
+    "DefaultBaseline": false,
+    "ApprovalRules": {
+      "PatchRules": [
+        {
+          "EnableNonSecurity": false,
+          "PatchFilterGroup": {
+            "PatchFilters": [
+              {
+                "Values": ["Security"],
+                "Key": "CLASSIFICATION"
+              }
+            ]
+          },
+          "ApproveAfterDays": 7,
+          "ComplianceLevel": "HIGH"
+        }
+      ]
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Patch",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["OperatingSystem"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["OperatingSystem"],
+    "defaults": {
+      "DefaultBaseline": false,
+      "OperatingSystem": "WINDOWS",
+      "RejectedPatchesAction": "ALLOW_AS_DEPENDENCY",
+      "ApprovedPatchesComplianceLevel": "UNSPECIFIED",
+      "ApprovedPatchesEnableNonSecurity": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

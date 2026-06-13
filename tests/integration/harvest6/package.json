@@ -1,0 +1,13 @@
+{
+  "name": "cdk-real-drift-integ-harvest6",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Corpus-harvest fixture wave 6: ECS TaskDef / CodeBuild / WAFv2 IPSet+RuleGroup / SSM MaintenanceWindow+PatchBaseline / Lambda Url / Cognito UserPoolGroup / EC2 LaunchTemplate+PrefixList / ApiGateway UsagePlan+ApiKey / Pipes Pipe. Run via verify-harvest6.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module",
+  "packageManager": "npm@11.17.0"
+}

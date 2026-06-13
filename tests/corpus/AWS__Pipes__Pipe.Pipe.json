@@ -1,0 +1,84 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::Pipes::Pipe model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "Pipe",
+    "resourceType": "AWS::Pipes::Pipe",
+    "physicalId": "cdkrd-harvest6",
+    "constructPath": "CdkrdIntegHarvest6/Pipe",
+    "declared": {
+      "Name": "cdkrd-harvest6",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc",
+      "Source": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+      "SourceParameters": {
+        "SqsQueueParameters": {
+          "BatchSize": 1
+        }
+      },
+      "Target": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT"
+    }
+  },
+  "liveRaw": {
+    "Target": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+    "DesiredState": "RUNNING",
+    "StateReason": "USER_INITIATED",
+    "CurrentState": "RUNNING",
+    "CreationTime": "2026-06-13T09:30:56Z",
+    "LastModifiedTime": "2026-06-13T09:31:25Z",
+    "Arn": "arn:aws:pipes:us-east-1:111111111111:pipe/cdkrd-harvest6",
+    "EnrichmentParameters": {},
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc",
+    "Source": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreationTime", "CurrentState", "LastModifiedTime", "StateReason"],
+    "writeOnly": ["SourceParameters", "TargetParameters"],
+    "createOnly": ["Name", "Source"],
+    "readOnlyPaths": ["Arn", "CreationTime", "CurrentState", "LastModifiedTime", "StateReason"],
+    "writeOnlyPaths": ["SourceParameters", "TargetParameters"],
+    "createOnlyPaths": [
+      "Name",
+      "Source",
+      "SourceParameters.ActiveMQBrokerParameters.QueueName",
+      "SourceParameters.DynamoDBStreamParameters.StartingPosition",
+      "SourceParameters.KinesisStreamParameters.StartingPosition",
+      "SourceParameters.KinesisStreamParameters.StartingPositionTimestamp",
+      "SourceParameters.ManagedStreamingKafkaParameters.ConsumerGroupID",
+      "SourceParameters.ManagedStreamingKafkaParameters.StartingPosition",
+      "SourceParameters.ManagedStreamingKafkaParameters.TopicName",
+      "SourceParameters.RabbitMQBrokerParameters.QueueName",
+      "SourceParameters.RabbitMQBrokerParameters.VirtualHost",
+      "SourceParameters.SelfManagedKafkaParameters.AdditionalBootstrapServers",
+      "SourceParameters.SelfManagedKafkaParameters.ConsumerGroupID",
+      "SourceParameters.SelfManagedKafkaParameters.StartingPosition",
+      "SourceParameters.SelfManagedKafkaParameters.TopicName"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Pipe",
+      "resourceType": "AWS::Pipes::Pipe",
+      "path": "SourceParameters",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Pipe"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pipe",
+      "resourceType": "AWS::Pipes::Pipe",
+      "path": "DesiredState",
+      "actual": "RUNNING",
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Pipe"
+    }
+  ]
+}

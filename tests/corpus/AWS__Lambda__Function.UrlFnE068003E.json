@@ -1,0 +1,107 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::Lambda::Function model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "UrlFnE068003E",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+    "constructPath": "CdkrdIntegHarvest6/UrlFn",
+    "declared": {
+      "Code": {
+        "ZipFile": "exports.handler = async () => ({ statusCode: 200, body: 'ok' });"
+      },
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-UrlFnServiceRole8FBBFD8A-O0fAhbiRABr7",
+      "Runtime": "nodejs20.x"
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-UrlFnServiceRole8FBBFD8A-O0fAhbiRABr7",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+    "Runtime": "nodejs20.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "UrlFnE068003E",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "UrlFnE068003E",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz"
+      },
+      "physicalId": "CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+      "constructPath": "CdkrdIntegHarvest6/UrlFn"
+    }
+  ]
+}

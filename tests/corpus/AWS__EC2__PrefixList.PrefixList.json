@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::EC2::PrefixList model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "PrefixList",
+    "resourceType": "AWS::EC2::PrefixList",
+    "physicalId": "pl-09cc92c7a277bdc87",
+    "constructPath": "CdkrdIntegHarvest6/PrefixList",
+    "declared": {
+      "AddressFamily": "IPv4",
+      "Entries": [
+        {
+          "Cidr": "10.0.0.0/16",
+          "Description": "vpc-a"
+        }
+      ],
+      "MaxEntries": 5,
+      "PrefixListName": "cdkrd-harvest6"
+    }
+  },
+  "liveRaw": {
+    "MaxEntries": 5,
+    "OwnerId": "111111111111",
+    "PrefixListId": "pl-09cc92c7a277bdc87",
+    "Version": 1,
+    "PrefixListName": "cdkrd-harvest6",
+    "Entries": [
+      {
+        "Description": "vpc-a",
+        "Cidr": "10.0.0.0/16"
+      }
+    ],
+    "AddressFamily": "IPv4",
+    "Arn": "arn:aws:ec2:us-east-1:111111111111:prefix-list/pl-09cc92c7a277bdc87",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "PrefixList",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "OwnerId", "PrefixListId", "Version"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "OwnerId", "PrefixListId", "Version"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

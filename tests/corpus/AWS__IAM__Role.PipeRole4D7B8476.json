@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::IAM::Role model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "PipeRole4D7B8476",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc",
+    "constructPath": "CdkrdIntegHarvest6/PipeRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "pipes.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    },
+    "siblingPolicyNames": ["PipeRoleDefaultPolicy84F54597"]
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc",
+    "Description": "",
+    "Policies": [
+      {
+        "PolicyName": "PipeRoleDefaultPolicy84F54597",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"],
+              "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+              "Effect": "Allow"
+            },
+            {
+              "Action": "sqs:SendMessage",
+              "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "pipes.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc",
+    "RoleId": "AROAXXXJN2LNS3H5AO65W"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

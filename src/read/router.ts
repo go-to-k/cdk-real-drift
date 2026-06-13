@@ -29,6 +29,7 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // ApiGatewayV2, R77 AppConfig). An unresolved parent → fall back to the bare
   // physical id (CC then reports an honest ValidationException skip).
   'AWS::Cognito::UserPoolClient': compositeWith('UserPoolId'),
+  'AWS::Cognito::UserPoolGroup': compositeWith('UserPoolId'),
   'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),

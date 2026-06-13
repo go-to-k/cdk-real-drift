@@ -1,0 +1,101 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::SQS::Queue model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "PipeDstD49C8EAB",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+    "constructPath": "CdkrdIntegHarvest6/PipeDst",
+    "declared": {}
+  },
+  "liveRaw": {
+    "SqsManagedSseEnabled": true,
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "DelaySeconds": 0,
+    "MessageRetentionPeriod": 345600,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 30,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+    "QueueName": "CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PipeDstD49C8EAB",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+      "constructPath": "CdkrdIntegHarvest6/PipeDst"
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::WAFv2::RuleGroup model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "RuleGroup",
+    "resourceType": "AWS::WAFv2::RuleGroup",
+    "physicalId": "cdkrd-harvest6|70aed863-bb66-4369-b0cb-7c3a94f54a37|REGIONAL",
+    "constructPath": "CdkrdIntegHarvest6/RuleGroup",
+    "declared": {
+      "Capacity": 10,
+      "Name": "cdkrd-harvest6",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "block-large-bodies",
+          "Priority": 1,
+          "Statement": {
+            "SizeConstraintStatement": {
+              "ComparisonOperator": "GT",
+              "FieldToMatch": {
+                "Body": {}
+              },
+              "Size": 8192,
+              "TextTransformations": [
+                {
+                  "Priority": 0,
+                  "Type": "NONE"
+                }
+              ]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "blockLargeBodies",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdHarvest6",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "Scope": "REGIONAL",
+    "Capacity": 10,
+    "AvailableLabels": [],
+    "Id": "70aed863-bb66-4369-b0cb-7c3a94f54a37",
+    "ConsumedLabels": [],
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/rulegroup/cdkrd-harvest6/70aed863-bb66-4369-b0cb-7c3a94f54a37",
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 1,
+        "Statement": {
+          "SizeConstraintStatement": {
+            "ComparisonOperator": "GT",
+            "TextTransformations": [
+              {
+                "Type": "NONE",
+                "Priority": 0
+              }
+            ],
+            "Size": 8192,
+            "FieldToMatch": {
+              "Body": {}
+            }
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "blockLargeBodies",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "block-large-bodies"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdHarvest6",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:rulegroup:cdkrd-harvest6:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest6/824af380-670a-11f1-bfbb-0e7af627f0fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest6",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RuleGroup",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-harvest6"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": [
+      "Arn",
+      "AvailableLabels.*.Name",
+      "ConsumedLabels.*.Name",
+      "Id",
+      "LabelNamespace"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

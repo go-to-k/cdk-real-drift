@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest6 fixture, R84): fresh-deploy AWS::IAM::Policy model — a common CFn type the corpus had not seen before R84. A change in this case's expected means the normalize/classify semantics for this type changed.",
+  "resource": {
+    "logicalId": "PipeRoleDefaultPolicy84F54597",
+    "resourceType": "AWS::IAM::Policy",
+    "physicalId": "Cdkrd-PipeR-5STgDF94FHik",
+    "constructPath": "CdkrdIntegHarvest6/PipeRole/DefaultPolicy",
+    "declared": {
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"],
+            "Effect": "Allow",
+            "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V"
+          },
+          {
+            "Action": "sqs:SendMessage",
+            "Effect": "Allow",
+            "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "PolicyName": "PipeRoleDefaultPolicy84F54597",
+      "Roles": ["CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc"]
+    }
+  },
+  "liveRaw": {
+    "PolicyName": "PipeRoleDefaultPolicy84F54597",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"],
+          "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+          "Effect": "Allow"
+        },
+        {
+          "Action": "sqs:SendMessage",
+          "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest6-PipeDstD49C8EAB-UUESETBv6IoT",
+          "Effect": "Allow"
+        }
+      ]
+    },
+    "Roles": ["CdkrdIntegHarvest6-PipeRole4D7B8476-Jch6NsBZxbOc"]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
