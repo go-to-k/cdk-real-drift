@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest4 + R79 AutoScaling CC-identifier adapter): fresh-deploy AWS::ApplicationAutoScaling::ScalingPolicy model — now READABLE via the PolicyARN|ScalableDimension composite (ScalableDimension parsed from ScalingTargetId; was a CC ValidationException skip before R79). ScalingTargetId is a readGap; ResourceId/ScalableDimension/ServiceNamespace are honest UNRECORDED inventory. A change in this case's expected means normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "ReadTargetReadUtil26E9C51F",
+    "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
+    "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+    "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil",
+    "declared": {
+      "PolicyName": "CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+      "PolicyType": "TargetTrackingScaling",
+      "ScalingTargetId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G|dynamodb:table:ReadCapacityUnits|dynamodb",
+      "TargetTrackingScalingPolicyConfiguration": {
+        "PredefinedMetricSpecification": {
+          "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+        },
+        "ScaleInCooldown": 60,
+        "ScaleOutCooldown": 60,
+        "TargetValue": 70
+      }
+    }
+  },
+  "liveRaw": {
+    "PolicyType": "TargetTrackingScaling",
+    "ResourceId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G",
+    "PolicyName": "CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+    "ServiceNamespace": "dynamodb",
+    "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+    "TargetTrackingScalingPolicyConfiguration": {
+      "ScaleOutCooldown": 60,
+      "TargetValue": 70,
+      "ScaleInCooldown": 60,
+      "PredefinedMetricSpecification": {
+        "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+      }
+    },
+    "Arn": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["ScalingTargetId"],
+    "createOnly": [
+      "PolicyName",
+      "ResourceId",
+      "ScalableDimension",
+      "ScalingTargetId",
+      "ServiceNamespace"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "ScalingTargetId",
+      "TargetTrackingScalingPolicyConfiguration.PredefinedMetricSpecification.ResourceLabel"
+    ],
+    "createOnlyPaths": [
+      "PolicyName",
+      "ResourceId",
+      "ScalableDimension",
+      "ScalingTargetId",
+      "ServiceNamespace"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ReadTargetReadUtil26E9C51F",
+      "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "path": "ScalingTargetId",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReadTargetReadUtil26E9C51F",
+      "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "path": "ResourceId",
+      "actual": "table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G",
+      "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReadTargetReadUtil26E9C51F",
+      "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "path": "ServiceNamespace",
+      "actual": "dynamodb",
+      "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReadTargetReadUtil26E9C51F",
+      "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "path": "ScalableDimension",
+      "actual": "dynamodb:table:ReadCapacityUnits",
+      "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
+    }
+  ]
+}

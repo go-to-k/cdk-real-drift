@@ -85,11 +85,13 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    the CC primaryIdentifier (AppSync GraphQLApi ARN vs ApiId; and the
    `${parent}|${child}` composites — Cognito UserPoolClient, ApiGatewayV2
    Stage/Route/Integration (R76), AppConfig Environment/ConfigurationProfile (R77)
-   — all built by the shared `compositeWith(parentKey)` helper) —
-   `CC_IDENTIFIER_ADAPTERS` in router.ts maps those without leaving the CC read
-   path, which is strictly cheaper than an SDK override (no new dependency, no
-   projection). Prefer an adapter over an override whenever the only gap is the
-   identifier shape.
+   — all built by the shared `compositeWith(parentKey)` helper; plus
+   ApplicationAutoScaling ScalingPolicy (R79), whose `${PolicyARN}|${dimension}`
+   identifier needs the ScalableDimension parsed out of the resolved
+   ScalingTargetId — `CC_IDENTIFIER_ADAPTERS` in router.ts maps those without
+   leaving the CC read path, which is strictly cheaper than an SDK override (no
+   new dependency, no projection). Prefer an adapter over an override whenever the
+   only gap is the identifier shape.
 4. **The deployed template, not synth, is the declared baseline.** So un-deployed
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
