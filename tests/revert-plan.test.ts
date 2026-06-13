@@ -179,6 +179,51 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.kind).toBe('sdk');
   });
 
+  it('R78: an ELB attribute-bag drift routes to kind=sdk and carries attributeKey on the op', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+          physicalId: 'arn:aws:elasticloadbalancing:us-east-1:1:loadbalancer/app/x/abc',
+          path: 'LoadBalancerAttributes',
+          attributeKey: 'idle_timeout.timeout_seconds',
+          desired: '120',
+          actual: '300',
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      attributeKey: 'idle_timeout.timeout_seconds',
+      value: '120',
+    });
+  });
+
+  it('R78: two attribute drifts on one LB collapse into ONE sdk item with two ops', () => {
+    const lb = (attributeKey: string, desired: string): Finding =>
+      F({
+        tier: 'declared',
+        resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+        physicalId: 'arn:...:loadbalancer/app/x/abc',
+        path: 'LoadBalancerAttributes',
+        attributeKey,
+        desired,
+      });
+    const plan = buildRevertPlan(
+      [lb('idle_timeout.timeout_seconds', '120'), lb('deletion_protection.enabled', 'false')],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops.map((o) => o.attributeKey)).toEqual([
+      'idle_timeout.timeout_seconds',
+      'deletion_protection.enabled',
+    ]);
+  });
+
   it('Lambda Permission + Budgets Budget stay not-revertable (no SDK writer)', () => {
     const plan = buildRevertPlan(
       [

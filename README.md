@@ -355,7 +355,9 @@ covers them. If you scope tighter, the calls are:
 plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 `sns:SetTopicAttributes`, `sqs:SetQueueAttributes`, `iam:PutRolePolicy` /
 `DeleteRolePolicy` / `PutUserPolicy` / `PutGroupPolicy`,
-`iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`.
+`iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`,
+`elasticloadbalancing:ModifyLoadBalancerAttributes` /
+`ModifyTargetGroupAttributes`.
 
 **If you never run `revert`, cdkrd needs no write permissions at all.**
 

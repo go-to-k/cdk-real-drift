@@ -423,7 +423,13 @@ only when non-zero — unrecorded values are named as such, never folded into
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
     PolicyName, driven by the op's `value` + `prior`) — a CC `remove /Policies`
     would also wipe the sibling-managed DefaultPolicy entries that classify
-    filtered OUT of the finding (§6). Scoped to the EXACT top-level path: deeper
+    filtered OUT of the finding (§6). The ELB attribute bags
+    (`LoadBalancerAttributes` / `TargetGroupAttributes`) revert per attribute via
+    `ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes` (R78): classify
+    emits one declared finding per changed Key (`Finding.attributeKey`), and the
+    writer sends ONLY those `Key=Value`s — a CC index patch would misalign against
+    the full live bag (the template declares a subset) and exceed ELB's
+    20-attribute-per-call cap. Scoped to the EXACT top-level path: deeper
     `Policies.*` declared drift still patches via CC. A resource with both kinds
     of findings splits into one `cc` item and one `sdk` item.
 - **Not revertable (reported honestly, never silently skipped)**:

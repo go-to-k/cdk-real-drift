@@ -60,7 +60,11 @@ export function formatFinding(f: Finding): string {
   // and style.* is the identity when stdout is not a TTY, so piped output and
   // unit-test assertions see plain text)
   const id = f.constructPath ?? f.logicalId;
-  let s = `${f.path ? `${id}.${f.path}` : id} (${f.resourceType})`;
+  // R78: an ELB attribute-bag drift names the changed attribute by Key
+  // (LoadBalancerAttributes[idle_timeout.timeout_seconds]) rather than a bare
+  // array index, so the report points at the exact setting.
+  const pathDisplay = f.attributeKey ? `${f.path}[${f.attributeKey}]` : f.path;
+  let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared')
     s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;

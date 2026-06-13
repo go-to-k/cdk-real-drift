@@ -207,15 +207,16 @@ Route53 SDK reader's AliasTarget path live) + TXT record, Cognito
 IdentityPool, DynamoDB Application Auto Scaling (ScalableTarget +
 target-tracking policy), SSM Document, HTTP API with an explicit throttled
 stage, ECR with a lifecycle policy. Same two harvest invariants, plus a
-subset-projection detection check: the declared `idle_timeout` lives inside
-the `{Key,Value}[]` LoadBalancerAttributes bag — the template declares 2 of
-~23 attributes — so an out-of-band change to it must surface as exactly ONE
-declared drift (without the R75 projection the whole list reports). This
-fixture does NOT `revert` the bag: reverting an identity-keyed attribute bag
-needs a Key-based Cloud Control patch (the index-based JSON patch misaligns
-and ELB caps a modify at 20 attributes) — tracked separately; the revert
-write path itself is covered by the `revert` / `policies` / `harvest3`
-fixtures. `CDKRD_HARVEST4_KEEP=1` keeps the stack for debug iteration.
+Key-scoped attribute-bag detect-and-revert: the declared `idle_timeout`
+lives inside the `{Key,Value}[]` LoadBalancerAttributes bag — the template
+declares 2 of ~23 attributes — so an out-of-band change to it must surface
+as exactly ONE declared drift named by Key
+(`LoadBalancerAttributes[idle_timeout.timeout_seconds]`). `revert --yes`
+then restores it via the ELB SDK writer (`ModifyLoadBalancerAttributes`
+with only the declared Key=Value, NOT a Cloud Control index patch — which
+misaligns against the full live bag and exceeds ELB's 20-attribute cap,
+R78), confirmed by a direct ELBv2 read. `CDKRD_HARVEST4_KEEP=1` keeps the
+stack for debug iteration.
 
 ```bash
 cd harvest4 && npm install && bash verify-harvest4.sh

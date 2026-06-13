@@ -22,6 +22,11 @@
 //     filters/types on write. Too divergent from the reader to revert safely ->
 //     left not-revertable.
 import {
+  ElasticLoadBalancingV2Client,
+  ModifyLoadBalancerAttributesCommand,
+  ModifyTargetGroupAttributesCommand,
+} from '@aws-sdk/client-elastic-load-balancing-v2';
+import {
   CreatePolicyVersionCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
@@ -187,6 +192,38 @@ const writeIamRoleInlinePolicies: SdkWriter = async (ctx, ops) => {
   }
 };
 
+// ELB attribute bags (LoadBalancerAttributes / TargetGroupAttributes), reverted
+// PER ATTRIBUTE via Modify*AttributesCommand instead of a whole-property Cloud
+// Control patch (R78): the CC index patch misaligns against the full live bag
+// (~23 entries) and ELB rejects a modify carrying >20 attributes. Each op carries
+// the changed attribute's Key (op.attributeKey) and the desired Value (op.value),
+// so we send ONLY the declared attributes — a partial, merge-style update that
+// leaves every other live attribute untouched. The ELB physical id IS the ARN.
+const elbAttributeOps = (ops: PatchOp[]): { Key: string; Value: string }[] =>
+  ops
+    .filter((o) => o.attributeKey !== undefined)
+    .map((o) => ({ Key: o.attributeKey as string, Value: String(o.value) }));
+
+const writeElbLoadBalancerAttributes: SdkWriter = async (ctx, ops) => {
+  const arn = str(ctx.physicalId);
+  if (!arn) throw new Error('cannot resolve load balancer arn for revert');
+  const attrs = elbAttributeOps(ops);
+  if (attrs.length === 0) return;
+  await new ElasticLoadBalancingV2Client({ region: ctx.region }).send(
+    new ModifyLoadBalancerAttributesCommand({ LoadBalancerArn: arn, Attributes: attrs })
+  );
+};
+
+const writeElbTargetGroupAttributes: SdkWriter = async (ctx, ops) => {
+  const arn = str(ctx.physicalId);
+  if (!arn) throw new Error('cannot resolve target group arn for revert');
+  const attrs = elbAttributeOps(ops);
+  if (attrs.length === 0) return;
+  await new ElasticLoadBalancingV2Client({ region: ctx.region }).send(
+    new ModifyTargetGroupAttributesCommand({ TargetGroupArn: arn, Attributes: attrs })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
@@ -201,6 +238,12 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 // drift at Policies.0...) still go through Cloud Control as before.
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': {
+    LoadBalancerAttributes: writeElbLoadBalancerAttributes,
+  },
+  'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    TargetGroupAttributes: writeElbTargetGroupAttributes,
+  },
 };
 
 /** Resolve the SDK writer for a kind='sdk' revert item: the whole-type writer, or

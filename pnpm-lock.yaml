@@ -29,6 +29,9 @@ importers:
       '@aws-sdk/client-ec2':
         specifier: ^3.1066.0
         version: 3.1066.0
+      '@aws-sdk/client-elastic-load-balancing-v2':
+        specifier: ^3.1068.0
+        version: 3.1068.0
       '@aws-sdk/client-glue':
         specifier: ^3.1066.0
         version: 3.1066.0
@@ -251,8 +254,8 @@ packages:
     resolution: {integrity: sha512-CicH09fzNKRXFlYVET8QtaDoFqCRU8SyhB878xIBtB1NcXS6pE7w4hJlgCDD8Xh1eum6A9RxMqwnjUbBVx7ISw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-elastic-load-balancing-v2@3.1066.0':
-    resolution: {integrity: sha512-GueaFkX+am1wZvFmpPIpjHD2ky4z4xY7miLzGXMdmbQ3zBsw3ilmvrPITPnbE89idw01rCw2wcDBGdRjhgugPg==}
+  '@aws-sdk/client-elastic-load-balancing-v2@3.1068.0':
+    resolution: {integrity: sha512-itFsCad2P278FiIQDeIcGz8g7CITQUHjOwCtla/vW4/DLtDggg2noy/tzIffOspEgkKvA0Dh9Q9czij1v1fvtQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-glue@3.1066.0':
@@ -3342,7 +3345,7 @@ snapshots:
       '@aws-sdk/client-ec2': 3.1066.0
       '@aws-sdk/client-ecr': 3.1066.0
       '@aws-sdk/client-ecs': 3.1066.0
-      '@aws-sdk/client-elastic-load-balancing-v2': 3.1066.0
+      '@aws-sdk/client-elastic-load-balancing-v2': 3.1068.0
       '@aws-sdk/client-iam': 3.1066.0
       '@aws-sdk/client-kms': 3.1066.0
       '@aws-sdk/client-lambda': 3.1066.0
@@ -3580,7 +3583,7 @@ snapshots:
       '@smithy/types': 4.14.3
       tslib: 2.8.1
 
-  '@aws-sdk/client-elastic-load-balancing-v2@3.1066.0':
+  '@aws-sdk/client-elastic-load-balancing-v2@3.1068.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
