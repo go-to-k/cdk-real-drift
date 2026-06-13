@@ -53,8 +53,8 @@
       "tier": "undeclared",
       "logicalId": "ApiANYpingPingA3011524",
       "resourceType": "AWS::ApiGatewayV2::Integration",
-      "path": "TimeoutInMillis",
-      "actual": 30000,
+      "path": "IntegrationMethod",
+      "actual": "POST",
       "physicalId": "qf0uwiu",
       "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping"
     },
@@ -62,8 +62,8 @@
       "tier": "undeclared",
       "logicalId": "ApiANYpingPingA3011524",
       "resourceType": "AWS::ApiGatewayV2::Integration",
-      "path": "IntegrationMethod",
-      "actual": "POST",
+      "path": "TimeoutInMillis",
+      "actual": 30000,
       "physicalId": "qf0uwiu",
       "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping/Ping"
     }

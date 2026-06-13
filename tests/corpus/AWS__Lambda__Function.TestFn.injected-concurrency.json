@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (lambda integ run): a real default-config Node Lambda; with the R66+R70 KNOWN_DEFAULTS the only survivors are the deliberately INJECTED ReservedConcurrentExecutions=1 and the per-function LoggingConfig (LogGroup name is function-specific \u2014 deliberately not blanket-suppressed).",
+  "description": "RECORDED LIVE (lambda integ run): a real default-config Node Lambda; with the R66+R70 KNOWN_DEFAULTS the only survivors are the deliberately INJECTED ReservedConcurrentExecutions=1 and the per-function LoggingConfig (LogGroup name is function-specific — deliberately not blanket-suppressed).",
   "resource": {
     "logicalId": "TestFn04335C60",
     "resourceType": "AWS::Lambda::Function",
@@ -94,11 +94,80 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TestFn04335C60",
       "resourceType": "AWS::Lambda::Function",
-      "path": "ReservedConcurrentExecutions",
-      "actual": 1,
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
       "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
       "constructPath": "CdkRealDriftIntegLambda/TestFn"
     },
@@ -111,6 +180,15 @@
         "LogFormat": "Text",
         "LogGroup": "/aws/lambda/CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92"
       },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "ReservedConcurrentExecutions",
+      "actual": 1,
       "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
       "constructPath": "CdkRealDriftIntegLambda/TestFn"
     }

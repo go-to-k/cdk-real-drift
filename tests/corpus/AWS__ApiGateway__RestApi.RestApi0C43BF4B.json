@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ApiGateway::RestApi model; surviving raw-classify findings locked as-is (ApiKeySourceType, EndpointConfiguration, SecurityPolicy). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ApiGateway::RestApi model; surviving raw-classify findings locked as-is (ApiKeySourceType, EndpointConfiguration, SecurityPolicy). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "RestApi0C43BF4B",
     "resourceType": "AWS::ApiGateway::RestApi",
@@ -77,15 +77,6 @@
       "tier": "undeclared",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
-      "path": "SecurityPolicy",
-      "actual": "TLS_1_0",
-      "physicalId": "84xvb60zri",
-      "constructPath": "CdkrdIntegHarvest/RestApi"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "RestApi0C43BF4B",
-      "resourceType": "AWS::ApiGateway::RestApi",
       "path": "ApiKeySourceType",
       "actual": "HEADER",
       "physicalId": "84xvb60zri",
@@ -100,6 +91,15 @@
         "IpAddressType": "ipv4",
         "Types": ["EDGE"]
       },
+      "physicalId": "84xvb60zri",
+      "constructPath": "CdkrdIntegHarvest/RestApi"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "RestApi0C43BF4B",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
       "physicalId": "84xvb60zri",
       "constructPath": "CdkrdIntegHarvest/RestApi"
     }

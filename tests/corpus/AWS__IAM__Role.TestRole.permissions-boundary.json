@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (iam integ run): the README headline use case \u2014 an out-of-band PermissionsBoundary attached to a real CDK role surfaces as the ONLY finding, while the sibling DefaultPolicy reflection, trust-policy canonicalization, and IAM KNOWN_DEFAULTS all stay quiet.",
+  "description": "RECORDED LIVE (iam integ run): the README headline use case — an out-of-band PermissionsBoundary attached to a real CDK role surfaces as the ONLY finding, while the sibling DefaultPolicy reflection, trust-policy canonicalization, and IAM KNOWN_DEFAULTS all stay quiet.",
   "resource": {
     "logicalId": "TestRole6C9272DF",
     "resourceType": "AWS::IAM::Role",
@@ -76,6 +76,24 @@
     "kmsAliasTargets": {}
   },
   "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TestRole6C9272DF",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+      "constructPath": "CdkRealDriftIntegIam/TestRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestRole6C9272DF",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
+      "constructPath": "CdkRealDriftIntegIam/TestRole"
+    },
     {
       "tier": "undeclared",
       "logicalId": "TestRole6C9272DF",

@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::IAM::Role with deep declared config classifies as recorded (none \u2014 fully CLEAN). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::IAM::Role with deep declared config classifies as recorded (none — fully CLEAN). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "WorkerServiceRole8543584E",
     "resourceType": "AWS::IAM::Role",
@@ -90,5 +90,33 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WorkerServiceRole8543584E",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkrdIntegHarvest2-WorkerServiceRole8543584E-0AiwQinXEmwk",
+      "constructPath": "CdkrdIntegHarvest2/Worker/ServiceRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WorkerServiceRole8543584E",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkrdIntegHarvest2-WorkerServiceRole8543584E-0AiwQinXEmwk",
+      "constructPath": "CdkrdIntegHarvest2/Worker/ServiceRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WorkerServiceRole8543584E",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest2-WorkerServiceRole8543584E-0AiwQinXEmwk",
+      "constructPath": "CdkrdIntegHarvest2/Worker/ServiceRole"
+    }
+  ]
 }

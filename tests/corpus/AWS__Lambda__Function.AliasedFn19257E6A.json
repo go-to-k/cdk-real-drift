@@ -92,6 +92,84 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasedFn19257E6A",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "AliasedFn19257E6A",
       "resourceType": "AWS::Lambda::Function",

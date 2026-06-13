@@ -78,5 +78,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Runbook",
+      "resourceType": "AWS::SSM::Document",
+      "path": "DocumentFormat",
+      "actual": "JSON",
+      "physicalId": "CdkrdIntegHarvest4-Runbook-EFhGaKUli3ve",
+      "constructPath": "CdkrdIntegHarvest4/Runbook"
+    }
+  ]
 }

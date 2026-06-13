@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::DynamoDB::Table with deep declared config classifies as recorded (undeclared:WarmThroughput). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::DynamoDB::Table with deep declared config classifies as recorded (undeclared:WarmThroughput). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "OrdersA9B65338",
     "resourceType": "AWS::DynamoDB::Table",

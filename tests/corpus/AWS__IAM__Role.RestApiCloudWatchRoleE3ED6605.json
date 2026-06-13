@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is (none \u2014 fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::IAM::Role model; surviving raw-classify findings locked as-is (none — fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "RestApiCloudWatchRoleE3ED6605",
     "resourceType": "AWS::IAM::Role",
@@ -78,5 +78,33 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RestApiCloudWatchRoleE3ED6605",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkrdIntegHarvest-RestApiCloudWatchRoleE3ED6605-WsT5GXX6pADn",
+      "constructPath": "CdkrdIntegHarvest/RestApi/CloudWatchRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RestApiCloudWatchRoleE3ED6605",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkrdIntegHarvest-RestApiCloudWatchRoleE3ED6605-WsT5GXX6pADn",
+      "constructPath": "CdkrdIntegHarvest/RestApi/CloudWatchRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RestApiCloudWatchRoleE3ED6605",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest-RestApiCloudWatchRoleE3ED6605-WsT5GXX6pADn",
+      "constructPath": "CdkrdIntegHarvest/RestApi/CloudWatchRole"
+    }
+  ]
 }

@@ -32,5 +32,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FnUrl",
+      "resourceType": "AWS::Lambda::Url",
+      "path": "InvokeMode",
+      "actual": "BUFFERED",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest6-UrlFnE068003E-K1YnoUoQKhJz",
+      "constructPath": "CdkrdIntegHarvest6/FnUrl"
+    }
+  ]
 }

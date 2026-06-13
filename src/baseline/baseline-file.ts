@@ -298,7 +298,10 @@ export function applyBaseline(
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
   const kept: Finding[] = [];
   for (const f of findings) {
-    if (f.tier !== 'undeclared') {
+    // atDefault is reconciled alongside undeclared (R86): a value the user already
+    // accepted is suppressed whichever tier it lands in today, so a baseline entry
+    // whose live value is now classified at-default does NOT read as "removed".
+    if (f.tier !== 'undeclared' && f.tier !== 'atDefault') {
       kept.push(f);
       continue;
     }
@@ -308,6 +311,14 @@ export function applyBaseline(
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
     if (entry && baselineValueMatches(entry.value, f.actual)) continue; // accepted, unchanged
+    if (f.tier === 'atDefault') {
+      // No (or a non-matching) accepted entry: the value still equals a known AWS
+      // default (the equality gate proved it), so it stays folded inventory — never
+      // drift, never unrecorded. A genuine change away from the default would not
+      // match a default and would arrive as tier 'undeclared', handled below.
+      kept.push(f);
+      continue;
+    }
     if (entry) {
       kept.push(f); // recorded value changed -> drift
     } else if (complete.has(f.logicalId)) {
@@ -320,9 +331,13 @@ export function applyBaseline(
       kept.push({ ...f, unrecorded: true }); // never decided -> not drift
     }
   }
-  // removed: accepted entries whose path is no longer present in any current undeclared finding
+  // removed: accepted entries whose path is no longer present in any current undeclared
+  // OR at-default finding (R86: an accepted value reclassified at-default is still
+  // present, not removed).
   const currentPaths = new Set(
-    findings.filter((f) => f.tier === 'undeclared').map((f) => `${f.logicalId}.${f.path}`)
+    findings
+      .filter((f) => f.tier === 'undeclared' || f.tier === 'atDefault')
+      .map((f) => `${f.logicalId}.${f.path}`)
   );
   for (const a of accepted) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;

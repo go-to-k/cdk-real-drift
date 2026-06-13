@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::EC2::Subnet with deep declared config classifies as recorded (undeclared:AvailabilityZoneId, undeclared:PrivateDnsNameOptionsOnLaunch, unresolved:AvailabilityZone). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::EC2::Subnet with deep declared config classifies as recorded (undeclared:AvailabilityZoneId, undeclared:PrivateDnsNameOptionsOnLaunch, unresolved:AvailabilityZone). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
     "resourceType": "AWS::EC2::Subnet",
@@ -138,14 +138,6 @@
   },
   "expected": [
     {
-      "tier": "unresolved",
-      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
-      "resourceType": "AWS::EC2::Subnet",
-      "path": "AvailabilityZone",
-      "physicalId": "subnet-0b456bc01025cb129",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
       "resourceType": "AWS::EC2::Subnet",
@@ -164,6 +156,14 @@
         "HostnameType": "ip-name",
         "EnableResourceNameDnsAAAARecord": false
       },
+      "physicalId": "subnet-0b456bc01025cb129",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZone",
       "physicalId": "subnet-0b456bc01025cb129",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
     }

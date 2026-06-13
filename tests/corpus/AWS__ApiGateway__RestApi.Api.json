@@ -62,15 +62,6 @@
       "tier": "undeclared",
       "logicalId": "Api",
       "resourceType": "AWS::ApiGateway::RestApi",
-      "path": "SecurityPolicy",
-      "actual": "TLS_1_0",
-      "physicalId": "plg2s0yj0k",
-      "constructPath": "CdkrdIntegHarvest6/Api"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Api",
-      "resourceType": "AWS::ApiGateway::RestApi",
       "path": "ApiKeySourceType",
       "actual": "HEADER",
       "physicalId": "plg2s0yj0k",
@@ -85,6 +76,15 @@
         "IpAddressType": "ipv4",
         "Types": ["EDGE"]
       },
+      "physicalId": "plg2s0yj0k",
+      "constructPath": "CdkrdIntegHarvest6/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Api",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
       "physicalId": "plg2s0yj0k",
       "constructPath": "CdkrdIntegHarvest6/Api"
     }

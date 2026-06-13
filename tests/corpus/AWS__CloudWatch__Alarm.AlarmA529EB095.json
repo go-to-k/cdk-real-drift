@@ -63,5 +63,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AlarmA529EB095",
+      "resourceType": "AWS::CloudWatch::Alarm",
+      "path": "ActionsEnabled",
+      "actual": true,
+      "physicalId": "CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0",
+      "constructPath": "CdkrdIntegHarvest5/AlarmA"
+    }
+  ]
 }

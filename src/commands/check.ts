@@ -74,15 +74,26 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
 // explicitly instead of the generic "either way" clause.
 export function firstRunPrompt(
   stackName: string,
-  undeclaredCount: number,
+  recordableCount: number,
+  atDefaultCount = 0,
   declaredDriftCount = 0
 ): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
   const declaredNote =
     declaredDriftCount > 0
       ? `Also found ${declaredDriftCount} declared-side drift(s) — reported below whichever you choose.`
       : 'Declared-side drift is reported either way.';
+  // The "found N" count is the COMPLETE undeclared inventory (R86): the values that
+  // actually diverge PLUS the ones sitting at a known AWS default. The at-default
+  // remainder is folded in the report, so name it here too instead of letting the
+  // user wonder why "found 113" but only a couple are listed. Accept records only the
+  // recordable (diverging) ones — at-default values are held by the equality gate.
+  const total = recordableCount + atDefaultCount;
+  const split =
+    atDefaultCount > 0
+      ? `${atDefaultCount} sit at a known AWS default (folded below); ${recordableCount} look like real out-of-band edits`
+      : 'typically AWS defaults, but out-of-band edits hide among them';
   return {
-    message: `${stackName}: no baseline yet — found ${undeclaredCount} live value(s) not declared in your template (typically AWS defaults, but out-of-band edits hide among them). ${declaredNote} What do you want to do?`,
+    message: `${stackName}: no baseline yet — found ${total} live value(s) not declared in your template (${split}). ${declaredNote} What do you want to do?`,
     // Accept-ALL first (R52, user decision): it is the overwhelmingly common
     // first-run choice, and the cost of an accidental Enter is one git-tracked
     // file — reviewable and revertible, nothing written to AWS. "Show first"
@@ -90,7 +101,7 @@ export function firstRunPrompt(
     options: [
       {
         value: 'acceptAll',
-        label: `Accept ALL ${undeclaredCount} into the baseline now, without reviewing them`,
+        label: `Accept ALL ${recordableCount} into the baseline now, without reviewing them`,
       },
       {
         value: 'show',
@@ -260,12 +271,22 @@ export async function runCheck(args: string[]): Promise<number> {
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
       if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive()) {
         const acceptable = applyIgnores(findings, stackName, config);
-        const undeclaredCount = acceptable.filter((f) => f.tier === 'undeclared').length;
+        // recordable = real diverging undeclared values (what accept records); the
+        // atDefault tier is folded inventory, never recorded (R86). Prompt only when
+        // there is something to record — a stack whose only undeclared values are at
+        // their AWS default is reported (CLEAN + folded info), not interrupted.
+        const recordableCount = acceptable.filter((f) => f.tier === 'undeclared').length;
+        const atDefaultCount = acceptable.filter((f) => f.tier === 'atDefault').length;
         const declaredDriftCount = acceptable.filter(
           (f) => f.tier === 'declared' || f.tier === 'deleted'
         ).length;
-        if (undeclaredCount > 0) {
-          const prompt = firstRunPrompt(stackName, undeclaredCount, declaredDriftCount);
+        if (recordableCount > 0) {
+          const prompt = firstRunPrompt(
+            stackName,
+            recordableCount,
+            atDefaultCount,
+            declaredDriftCount
+          );
           const choice = await select({
             message: prompt.message,
             options: prompt.options,
@@ -314,6 +335,9 @@ export async function runCheck(args: string[]): Promise<number> {
       let code = report(reconciled, `${stackName} (${region})`, {
         json: a.json,
         verbose: a.verbose,
+        // --show-all is inventory mode: list every undeclared value, including the
+        // ones at an AWS default (otherwise folded to a count) (R86).
+        expandAtDefault: a.showAll,
       });
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 

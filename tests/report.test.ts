@@ -238,6 +238,57 @@ describe('report', () => {
     });
   });
 
+  describe('R86 atDefault tier (undeclared values at a known AWS default — folded, never drift)', () => {
+    const AD = (path = 'P'): Finding => ({
+      tier: 'atDefault',
+      logicalId: 'L',
+      resourceType: 'AWS::Lambda::Function',
+      path,
+      actual: { Mode: 'PassThrough' },
+    });
+
+    it('folds into the info: footer and never sets exit 1 (CLEAN)', () => {
+      const { code, text } = run([AD('TracingConfig'), AD('PackageType')]);
+      expect(code).toBe(0);
+      expect(text).toMatch(/^result: CLEAN$/m);
+      expect(text).toContain(
+        'info: atDefault=2 (undeclared values matching a known AWS default — not drift)'
+      );
+      // never listed in the body by default, and never a drift section
+      expect(text).not.toContain('[AT AWS DEFAULT');
+      expect(text).not.toContain('TracingConfig =');
+    });
+
+    it('a real undeclared value is listed in the body while at-default values stay folded', () => {
+      const { code, text } = run([U('RealEdit'), AD('TracingConfig'), AD('PackageType')]);
+      // U() is unrecorded (not drift) → CLEAN, but the real value is shown; defaults fold
+      expect(code).toBe(0);
+      expect(text).toContain('[UNRECORDED: 1]');
+      expect(text).toContain('L.RealEdit');
+      expect(text).toContain('atDefault=2');
+      expect(text).not.toContain('[AT AWS DEFAULT');
+    });
+
+    it('--verbose expands atDefault to a full section with each value shown', () => {
+      const { text } = run([AD('TracingConfig')], { verbose: true });
+      expect(text).toContain('[AT AWS DEFAULT: 1]');
+      expect(text).toContain('L.TracingConfig (AWS::Lambda::Function) = {"Mode":"PassThrough"}');
+      expect(text).not.toContain('info:');
+    });
+
+    it('--show-all (expandAtDefault) expands ONLY atDefault; other info tiers stay folded', () => {
+      const { text } = run(
+        [
+          AD('TracingConfig'),
+          { ...F('skipped'), note: 'custom resource', resourceType: 'Custom::X' },
+        ],
+        { expandAtDefault: true }
+      );
+      expect(text).toContain('[AT AWS DEFAULT: 1]'); // expanded
+      expect(text).toContain('info: skipped=1'); // still folded
+    });
+  });
+
   describe('R37 spacing', () => {
     const skipped: Finding = {
       tier: 'skipped',

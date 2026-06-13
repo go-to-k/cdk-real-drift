@@ -26,15 +26,22 @@
     "readOnlyPaths": ["Arn"],
     "writeOnlyPaths": [],
     "createOnlyPaths": ["FunctionName"],
-    "defaults": { "PackageType": "Zip" }
+    "defaults": {
+      "PackageType": "Zip"
+    }
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": [
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "Handler",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Role",
+      "path": "PackageType",
+      "actual": "Zip",
       "physicalId": "corpus-handler"
     },
     {
@@ -43,6 +50,13 @@
       "resourceType": "AWS::Lambda::Function",
       "path": "ReservedConcurrentExecutions",
       "actual": 5,
+      "physicalId": "corpus-handler"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "Handler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Role",
       "physicalId": "corpus-handler"
     }
   ]

@@ -336,6 +336,26 @@
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
+      "path": "DeletionProtection",
+      "actual": "INACTIVE",
+      "physicalId": "us-east-1_Ifea0bzss",
+      "constructPath": "CdkrdIntegHarvest3/Users"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Users0A0EEA89",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "EmailConfiguration",
+      "actual": {
+        "EmailSendingAccount": "COGNITO_DEFAULT"
+      },
+      "physicalId": "us-east-1_Ifea0bzss",
+      "constructPath": "CdkrdIntegHarvest3/Users"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Users0A0EEA89",
+      "resourceType": "AWS::Cognito::UserPool",
       "path": "MfaConfiguration",
       "actual": "OFF",
       "physicalId": "us-east-1_Ifea0bzss",
@@ -574,24 +594,6 @@
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "UserPoolTier",
-      "actual": "ESSENTIALS",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Users0A0EEA89",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "DeletionProtection",
-      "actual": "INACTIVE",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Users0A0EEA89",
-      "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolName",
       "actual": "Users0A0EEA89-RYUoEBfJwQHo",
       "physicalId": "us-east-1_Ifea0bzss",
@@ -601,10 +603,8 @@
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "EmailConfiguration",
-      "actual": {
-        "EmailSendingAccount": "COGNITO_DEFAULT"
-      },
+      "path": "UserPoolTier",
+      "actual": "ESSENTIALS",
       "physicalId": "us-east-1_Ifea0bzss",
       "constructPath": "CdkrdIntegHarvest3/Users"
     }

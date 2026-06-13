@@ -51,24 +51,6 @@
       "tier": "undeclared",
       "logicalId": "MatrixQueueEEAE6F08",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
-      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "MatrixQueueEEAE6F08",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "ReceiveMessageWaitTimeSeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
-      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "MatrixQueueEEAE6F08",
-      "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
       "actual": 0,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
@@ -89,6 +71,24 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
       "actual": "CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
       "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
     }

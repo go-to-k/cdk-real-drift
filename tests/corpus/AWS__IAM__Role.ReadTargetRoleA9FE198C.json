@@ -57,5 +57,33 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ReadTargetRoleA9FE198C",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkrdIntegHarvest4-ReadTargetRoleA9FE198C-PjhZAE0bBV4v",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReadTargetRoleA9FE198C",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkrdIntegHarvest4-ReadTargetRoleA9FE198C-PjhZAE0bBV4v",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReadTargetRoleA9FE198C",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest4-ReadTargetRoleA9FE198C-PjhZAE0bBV4v",
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget/Role"
+    }
+  ]
 }

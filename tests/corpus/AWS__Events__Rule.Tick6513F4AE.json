@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::Events::Rule model; surviving raw-classify findings locked as-is (none \u2014 fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::Events::Rule model; surviving raw-classify findings locked as-is (none — fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Tick6513F4AE",
     "resourceType": "AWS::Events::Rule",
@@ -63,5 +63,15 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Tick6513F4AE",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkrdIntegHarvest-Tick6513F4AE-chVZMFro0x9U",
+      "constructPath": "CdkrdIntegHarvest/Tick"
+    }
+  ]
 }

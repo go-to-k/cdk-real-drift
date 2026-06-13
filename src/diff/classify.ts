@@ -210,8 +210,21 @@ export function classifyResource(
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
     // already stripped from `live` by writeOnlyPaths above, so it cannot reach here
     // (the old guard was dead code for top-level keys).
-    if (k in schema.defaults && deepEqual(v, schema.defaults[k])) continue;
-    if (k in knownDef && deepEqual(v, knownDef[k])) continue;
+    // A live value EQUAL to a known AWS default is the `atDefault` tier (R86): still
+    // surfaced (folded, never dropped — the report shows the complete undeclared
+    // count and --show-all/--verbose lists them), but informational, not drift, and
+    // not recorded by accept. The equality gate means an out-of-band change away from
+    // the default no longer matches here and falls through to the `undeclared` tier.
+    if (
+      (k in schema.defaults && deepEqual(v, schema.defaults[k])) ||
+      (k in knownDef && deepEqual(v, knownDef[k]))
+    ) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // Pure structural noise (NOT a config value at default) — dropped outright: AWS
+    // managed `aws:*` tags, the resource's own physical id echoed back as a property,
+    // and trivially-empty {}/[]. These carry no inventory value, so they are not folded.
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v)) continue;

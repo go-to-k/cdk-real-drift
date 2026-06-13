@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::CloudWatch::Dashboard model; surviving raw-classify findings locked as-is (none \u2014 fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::CloudWatch::Dashboard model; surviving raw-classify findings locked as-is (none — fully CLEAN). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Board47D7A2D0",
     "resourceType": "AWS::CloudWatch::Dashboard",

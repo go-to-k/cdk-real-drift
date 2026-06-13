@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 \u2014 richly-declared wave): AWS::Events::Rule with deep declared config classifies as recorded (none \u2014 fully CLEAN). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::Events::Rule with deep declared config classifies as recorded (none — fully CLEAN). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "Forward9800F3B2",
     "resourceType": "AWS::Events::Rule",
@@ -76,5 +76,15 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Forward9800F3B2",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkrdIntegHarvest2-Forward9800F3B2-0WDy4EkYHPmy",
+      "constructPath": "CdkrdIntegHarvest2/Forward"
+    }
+  ]
 }

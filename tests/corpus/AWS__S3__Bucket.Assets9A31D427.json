@@ -114,22 +114,16 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Assets9A31D427",
       "resourceType": "AWS::S3::Bucket",
-      "path": "OwnershipControls",
-      "actual": {
-        "Rules": [
-          {
-            "ObjectOwnership": "BucketOwnerEnforced"
-          }
-        ]
-      },
+      "path": "AbacStatus",
+      "actual": "Disabled",
       "physicalId": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
       "constructPath": "CdkrdIntegCloudfront/Assets"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Assets9A31D427",
       "resourceType": "AWS::S3::Bucket",
       "path": "BucketEncryption",
@@ -143,6 +137,21 @@
             "ServerSideEncryptionByDefault": {
               "SSEAlgorithm": "AES256"
             }
+          }
+        ]
+      },
+      "physicalId": "cdkrdintegcloudfront-assets9a31d427-1zofo9zaqpfh",
+      "constructPath": "CdkrdIntegCloudfront/Assets"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Assets9A31D427",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
           }
         ]
       },

@@ -62,11 +62,23 @@ describe('firstRunPrompt (R45 — the no-baseline decision must be informed)', (
   });
 
   it('declared-side drift present → the prompt says it was FOUND, with its count (R51)', () => {
-    const { message } = firstRunPrompt('ApiStack', 113, 3);
+    const { message } = firstRunPrompt('ApiStack', 113, 0, 3);
     expect(message).toContain(
       'Also found 3 declared-side drift(s) — reported below whichever you choose.'
     );
     expect(message).not.toContain('either way'); // the generic clause is replaced, not appended
+  });
+
+  it('the "found N" count is the COMPLETE inventory; at-default values are named + folded, Accept ALL records only the diverging ones (R86)', () => {
+    const { message, options } = firstRunPrompt('ApiStack', 7, 152);
+    // total = recordable + atDefault, the user-meaningful "everything not in your template"
+    expect(message).toContain('found 159 live value(s) not declared in your template');
+    expect(message).toContain('152 sit at a known AWS default (folded below)');
+    expect(message).toContain('7 look like real out-of-band edits');
+    expect(message).not.toContain('typically AWS defaults'); // the generic clause is replaced when we know the split
+    // accept records the diverging ones only — the at-default remainder is held by the equality gate
+    const bulk = options.find((o) => o.value === 'acceptAll')!;
+    expect(bulk.label).toContain('Accept ALL 7');
   });
 
   it('no declared-side drift → the generic either-way clause (R51)', () => {

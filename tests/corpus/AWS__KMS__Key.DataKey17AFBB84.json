@@ -78,6 +78,42 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeySpec",
+      "actual": "SYMMETRIC_DEFAULT",
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeyUsage",
+      "actual": "ENCRYPT_DECRYPT",
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "MultiRegion",
+      "actual": false,
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DataKey17AFBB84",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Origin",
+      "actual": "AWS_KMS",
+      "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
+      "constructPath": "CdkrdIntegHarvest3/DataKey"
+    },
+    {
       "tier": "readGap",
       "logicalId": "DataKey17AFBB84",
       "resourceType": "AWS::KMS::Key",

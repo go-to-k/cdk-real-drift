@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::StepFunctions::StateMachine model; surviving raw-classify findings locked as-is (EncryptionConfiguration, LoggingConfiguration, StateMachineName, StateMachineType). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::StepFunctions::StateMachine model; surviving raw-classify findings locked as-is (EncryptionConfiguration, LoggingConfiguration, StateMachineName, StateMachineType). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "FlowA74D6E88",
     "resourceType": "AWS::StepFunctions::StateMachine",

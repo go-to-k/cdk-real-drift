@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ECR::Repository model; surviving raw-classify findings locked as-is (EmptyOnDelete, EncryptionConfiguration, ImageTagMutability). A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
+  "description": "RECORDED LIVE (harvest fixture, R71): fresh-deploy AWS::ECR::Repository model; surviving raw-classify findings locked as-is (EmptyOnDelete, EncryptionConfiguration, ImageTagMutability). A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
     "logicalId": "Images2D38C313",
     "resourceType": "AWS::ECR::Repository",
@@ -76,7 +76,7 @@
       "logicalId": "Images2D38C313",
       "resourceType": "AWS::ECR::Repository",
       "path": "EmptyOnDelete",
-      "note": "write-only \u2014 cannot be read back",
+      "note": "write-only — cannot be read back",
       "physicalId": "cdkrdintegharvest-images2d38c313-8s5jtwfzwsmg",
       "constructPath": "CdkrdIntegHarvest/Images"
     },

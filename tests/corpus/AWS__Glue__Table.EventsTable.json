@@ -39,7 +39,11 @@
     "createOnlyPaths": ["DatabaseName"],
     "defaults": {}
   },
-  "opts": { "accountId": "111111111111", "region": "us-east-1", "kmsAliasTargets": {} },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
   "expected": [
     {
       "tier": "declared",

@@ -52,5 +52,33 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixLogsDDD521D9",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "BearerTokenAuthenticationEnabled",
+      "actual": false,
+      "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+      "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixLogsDDD521D9",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+      "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixLogsDDD521D9",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "LogGroupClass",
+      "actual": "STANDARD",
+      "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
+      "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
+    }
+  ]
 }
