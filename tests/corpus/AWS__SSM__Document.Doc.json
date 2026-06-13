@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Doc",
+    "resourceType": "AWS::SSM::Document",
+    "physicalId": "cdkrd-integ-doc",
+    "constructPath": "CdkRealDriftIntegSsm/Doc",
+    "declared": {
+      "Content": {
+        "schemaVersion": "2.2",
+        "description": "cdk-real-drift integ document",
+        "mainSteps": [
+          {
+            "action": "aws:runShellScript",
+            "name": "run",
+            "inputs": {
+              "runCommand": ["echo hello"]
+            }
+          }
+        ]
+      },
+      "DocumentType": "Command",
+      "Name": "cdkrd-integ-doc"
+    }
+  },
+  "liveRaw": {
+    "DocumentFormat": "JSON",
+    "Content": "{\n  \"schemaVersion\" : \"2.2\",\n  \"description\" : \"cdk-real-drift integ document\",\n  \"mainSteps\" : [ {\n    \"inputs\" : {\n      \"runCommand\" : [ \"echo hello\" ]\n    },\n    \"name\" : \"run\",\n    \"action\" : \"aws:runShellScript\"\n  } ]\n}",
+    "DocumentType": "Command",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSsm/30805150-6726-11f1-9d16-12be47f86c4d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSsm",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Doc",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-doc"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["Attachments", "UpdateMethod"],
+    "createOnly": [
+      "Attachments",
+      "Content",
+      "DocumentFormat",
+      "DocumentType",
+      "Name",
+      "Requires",
+      "TargetType",
+      "VersionName"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["Attachments", "UpdateMethod"],
+    "createOnlyPaths": [
+      "Attachments",
+      "Content",
+      "DocumentFormat",
+      "DocumentType",
+      "Name",
+      "Requires",
+      "TargetType",
+      "VersionName"
+    ],
+    "defaults": {
+      "DocumentFormat": "JSON",
+      "UpdateMethod": "Replace"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Doc",
+      "resourceType": "AWS::SSM::Document",
+      "path": "DocumentFormat",
+      "actual": "JSON",
+      "physicalId": "cdkrd-integ-doc",
+      "constructPath": "CdkRealDriftIntegSsm/Doc"
+    }
+  ]
+}

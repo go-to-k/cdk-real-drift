@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TargetPolicyDC4F1B6B",
+    "resourceType": "AWS::SQS::QueuePolicy",
+    "physicalId": "CdkRealDriftIntegEvents-TargetPolicyDC4F1B6B-BRkWFRS1GXo3",
+    "constructPath": "CdkRealDriftIntegEvents/Target/Policy",
+    "declared": {
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": ["sqs:SendMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
+            "Condition": {
+              "ArnEquals": {
+                "aws:SourceArn": "arn:aws:events:us-east-1:111111111111:rule/CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU"
+              }
+            },
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "events.amazonaws.com"
+            },
+            "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Queues": [
+        "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe"
+      ]
+    }
+  },
+  "liveRaw": {
+    "Queues": [
+      "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe"
+    ],
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "events.amazonaws.com"
+          },
+          "Action": ["sqs:SendMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
+          "Resource": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+          "Condition": {
+            "ArnEquals": {
+              "aws:SourceArn": "arn:aws:events:us-east-1:111111111111:rule/CdkRealDriftIntegEvents-Rule4C995B7F-onmWJJClRIjU"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}
