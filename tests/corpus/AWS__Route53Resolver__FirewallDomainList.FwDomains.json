@@ -1,0 +1,84 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FwDomains",
+    "resourceType": "AWS::Route53Resolver::FirewallDomainList",
+    "physicalId": "rslvr-fdl-fae10c927473462b",
+    "constructPath": "CdkdriftIntegHarvest8/FwDomains",
+    "declared": {
+      "Domains": ["example.com", "test.example.org"],
+      "Name": "cdkrd-integ-fw"
+    }
+  },
+  "liveRaw": {
+    "Status": "COMPLETE",
+    "CreationTime": "2026-06-13T13:09:36.559903485Z",
+    "ManagedOwnerName": "NA",
+    "ModificationTime": "2026-06-13T13:10:30.643877921Z",
+    "Id": "rslvr-fdl-fae10c927473462b",
+    "Arn": "arn:aws:route53resolver:us-east-1:111111111111:firewall-domain-list/rslvr-fdl-fae10c927473462b",
+    "CreatorRequestId": "e886f2bf-f35c-4e45-1f4c-eddeb875f054",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest8",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest8/19b5c920-6729-11f1-9ba5-0e26a0c940e7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "FwDomains",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-fw",
+    "DomainCount": 2,
+    "StatusMessage": "Finished domain list update"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CreationTime",
+      "CreatorRequestId",
+      "DomainCount",
+      "Id",
+      "ManagedOwnerName",
+      "ModificationTime",
+      "Status",
+      "StatusMessage"
+    ],
+    "writeOnly": ["DomainFileUrl", "Domains"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "CreationTime",
+      "CreatorRequestId",
+      "DomainCount",
+      "Id",
+      "ManagedOwnerName",
+      "ModificationTime",
+      "Status",
+      "StatusMessage"
+    ],
+    "writeOnlyPaths": ["DomainFileUrl", "Domains"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "FwDomains",
+      "resourceType": "AWS::Route53Resolver::FirewallDomainList",
+      "path": "Domains",
+      "note": "write-only — cannot be read back",
+      "physicalId": "rslvr-fdl-fae10c927473462b",
+      "constructPath": "CdkdriftIntegHarvest8/FwDomains"
+    }
+  ]
+}

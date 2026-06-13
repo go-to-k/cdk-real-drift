@@ -1,0 +1,632 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Pool88FC4FF9F",
+    "resourceType": "AWS::Cognito::UserPool",
+    "physicalId": "us-east-1_BUaNF3GfH",
+    "constructPath": "CdkdriftIntegHarvest8/Pool8",
+    "declared": {
+      "AccountRecoverySetting": {
+        "RecoveryMechanisms": [
+          {
+            "Name": "verified_phone_number",
+            "Priority": 1
+          },
+          {
+            "Name": "verified_email",
+            "Priority": 2
+          }
+        ]
+      },
+      "AdminCreateUserConfig": {
+        "AllowAdminCreateUserOnly": true
+      },
+      "EmailVerificationMessage": "The verification code to your new account is {####}",
+      "EmailVerificationSubject": "Verify your new account",
+      "SmsVerificationMessage": "The verification code to your new account is {####}",
+      "VerificationMessageTemplate": {
+        "DefaultEmailOption": "CONFIRM_WITH_CODE",
+        "EmailMessage": "The verification code to your new account is {####}",
+        "EmailSubject": "Verify your new account",
+        "SmsMessage": "The verification code to your new account is {####}"
+      }
+    }
+  },
+  "liveRaw": {
+    "UserPoolTags": {
+      "aws:cloudformation:stack-name": "CdkdriftIntegHarvest8",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest8/19b5c920-6729-11f1-9ba5-0e26a0c940e7",
+      "aws:cloudformation:logical-id": "Pool88FC4FF9F"
+    },
+    "Policies": {
+      "PasswordPolicy": {
+        "RequireNumbers": true,
+        "MinimumLength": 8,
+        "TemporaryPasswordValidityDays": 7,
+        "RequireUppercase": true,
+        "RequireLowercase": true,
+        "RequireSymbols": true
+      },
+      "SignInPolicy": {
+        "AllowedFirstAuthFactors": ["PASSWORD"]
+      }
+    },
+    "VerificationMessageTemplate": {
+      "EmailMessage": "The verification code to your new account is {####}",
+      "SmsMessage": "The verification code to your new account is {####}",
+      "EmailSubject": "Verify your new account",
+      "DefaultEmailOption": "CONFIRM_WITH_CODE"
+    },
+    "ProviderURL": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_BUaNF3GfH",
+    "MfaConfiguration": "OFF",
+    "Schema": [
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "profile"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "address"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "10",
+          "MaxLength": "10"
+        },
+        "Required": false,
+        "Name": "birthdate"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "gender"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "preferred_username"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Number",
+        "Required": false,
+        "NumberAttributeConstraints": {
+          "MinValue": "0"
+        },
+        "Name": "updated_at"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "website"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "picture"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {},
+        "Required": false,
+        "Name": "identities"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": false,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "1",
+          "MaxLength": "2048"
+        },
+        "Required": true,
+        "Name": "sub"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "phone_number"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Boolean",
+        "Required": false,
+        "Name": "phone_number_verified"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "zoneinfo"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "locale"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "email"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Boolean",
+        "Required": false,
+        "Name": "email_verified"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "given_name"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "family_name"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "middle_name"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "name"
+      },
+      {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
+        },
+        "Required": false,
+        "Name": "nickname"
+      }
+    ],
+    "AdminCreateUserConfig": {
+      "UnusedAccountValidityDays": 7,
+      "AllowAdminCreateUserOnly": true
+    },
+    "UserPoolTier": "ESSENTIALS",
+    "DeletionProtection": "INACTIVE",
+    "UserPoolName": "Pool88FC4FF9F-jVGU9rNojAd7",
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_BUaNF3GfH",
+    "UserPoolId": "us-east-1_BUaNF3GfH",
+    "UserAttributeUpdateSettings": {
+      "AttributesRequireVerificationBeforeUpdate": []
+    },
+    "EmailConfiguration": {
+      "EmailSendingAccount": "COGNITO_DEFAULT"
+    },
+    "AliasAttributes": [],
+    "EmailVerificationSubject": "Verify your new account",
+    "LambdaConfig": {},
+    "Arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_BUaNF3GfH",
+    "UsernameAttributes": [],
+    "AutoVerifiedAttributes": [],
+    "EmailVerificationMessage": "The verification code to your new account is {####}",
+    "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+        {
+          "Priority": 1,
+          "Name": "verified_phone_number"
+        },
+        {
+          "Priority": 2,
+          "Name": "verified_email"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "ProviderName", "ProviderURL", "UserPoolId"],
+    "writeOnly": ["EnabledMfas"],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "ProviderName", "ProviderURL", "UserPoolId"],
+    "writeOnlyPaths": ["EnabledMfas"],
+    "createOnlyPaths": [],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Policies",
+      "actual": {
+        "PasswordPolicy": {
+          "RequireNumbers": true,
+          "MinimumLength": 8,
+          "TemporaryPasswordValidityDays": 7,
+          "RequireUppercase": true,
+          "RequireLowercase": true,
+          "RequireSymbols": true
+        },
+        "SignInPolicy": {
+          "AllowedFirstAuthFactors": ["PASSWORD"]
+        }
+      },
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "MfaConfiguration",
+      "actual": "OFF",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema",
+      "actual": [
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "profile"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "address"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "10",
+            "MaxLength": "10"
+          },
+          "Required": false,
+          "Name": "birthdate"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "gender"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "preferred_username"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "Number",
+          "Required": false,
+          "NumberAttributeConstraints": {
+            "MinValue": "0"
+          },
+          "Name": "updated_at"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "website"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "picture"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {},
+          "Required": false,
+          "Name": "identities"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": false,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "1",
+            "MaxLength": "2048"
+          },
+          "Required": true,
+          "Name": "sub"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "phone_number"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "Boolean",
+          "Required": false,
+          "Name": "phone_number_verified"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "zoneinfo"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "locale"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "email"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "Boolean",
+          "Required": false,
+          "Name": "email_verified"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "given_name"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "family_name"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "middle_name"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "name"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "nickname"
+        }
+      ],
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "UserPoolTier",
+      "actual": "ESSENTIALS",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "DeletionProtection",
+      "actual": "INACTIVE",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "UserPoolName",
+      "actual": "Pool88FC4FF9F-jVGU9rNojAd7",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "EmailConfiguration",
+      "actual": {
+        "EmailSendingAccount": "COGNITO_DEFAULT"
+      },
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    }
+  ]
+}

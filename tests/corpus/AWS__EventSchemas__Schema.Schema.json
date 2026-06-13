@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Schema",
+    "resourceType": "AWS::EventSchemas::Schema",
+    "physicalId": "arn:aws:schemas:us-east-1:111111111111:schema/cdkrd-integ-registry/cdkrd-integ-schema",
+    "constructPath": "CdkdriftIntegHarvest7/Schema",
+    "declared": {
+      "Content": "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"e\",\"version\":\"1.0.0\"},\"paths\":{}}",
+      "RegistryName": "cdkrd-integ-registry",
+      "SchemaName": "cdkrd-integ-schema",
+      "Type": "OpenApi3"
+    }
+  },
+  "liveRaw": {
+    "LastModified": "2026-06-13T13:04:28Z",
+    "Type": "OpenApi3",
+    "SchemaVersion": "1",
+    "Content": "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"e\",\"version\":\"1.0.0\"},\"paths\":{}}",
+    "RegistryName": "cdkrd-integ-registry",
+    "VersionCreatedDate": "2026-06-13T13:04:28Z",
+    "SchemaArn": "arn:aws:schemas:us-east-1:111111111111:schema/cdkrd-integ-registry/cdkrd-integ-schema",
+    "SchemaName": "cdkrd-integ-schema"
+  },
+  "schema": {
+    "readOnly": ["LastModified", "SchemaArn", "SchemaVersion", "VersionCreatedDate"],
+    "writeOnly": [],
+    "createOnly": ["RegistryName", "SchemaName"],
+    "readOnlyPaths": ["LastModified", "SchemaArn", "SchemaVersion", "VersionCreatedDate"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RegistryName", "SchemaName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

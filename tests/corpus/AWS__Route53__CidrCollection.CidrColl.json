@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CidrColl",
+    "resourceType": "AWS::Route53::CidrCollection",
+    "physicalId": "2acf608a-b4df-8ecd-a13a-bb592f59f11c",
+    "constructPath": "CdkdriftIntegHarvest7/CidrColl",
+    "declared": {
+      "Locations": [
+        {
+          "CidrList": ["10.0.0.0/24"],
+          "LocationName": "loc1"
+        }
+      ],
+      "Name": "cdkrd-integ-cidr"
+    }
+  },
+  "liveRaw": {
+    "Locations": [
+      {
+        "CidrList": ["10.0.0.0/24"],
+        "LocationName": "loc1"
+      }
+    ],
+    "Id": "2acf608a-b4df-8ecd-a13a-bb592f59f11c",
+    "Arn": "arn:aws:route53:::cidrcollection/2acf608a-b4df-8ecd-a13a-bb592f59f11c",
+    "Name": "cdkrd-integ-cidr"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Oidc",
+    "resourceType": "AWS::IAM::OIDCProvider",
+    "physicalId": "arn:aws:iam::111111111111:oidc-provider/oidc.cdkrd-integ-test.example.com",
+    "constructPath": "CdkdriftIntegHarvest8/Oidc",
+    "declared": {
+      "ClientIdList": ["sts.amazonaws.com"],
+      "ThumbprintList": ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"],
+      "Url": "https://oidc.cdkrd-integ-test.example.com"
+    }
+  },
+  "liveRaw": {
+    "ClientIdList": ["sts.amazonaws.com"],
+    "ThumbprintList": ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"],
+    "Arn": "arn:aws:iam::111111111111:oidc-provider/oidc.cdkrd-integ-test.example.com",
+    "Url": "https://oidc.cdkrd-integ-test.example.com",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Url"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Url"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

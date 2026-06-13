@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "QueryDef",
+    "resourceType": "AWS::Logs::QueryDefinition",
+    "physicalId": "83554b47-e42f-4621-a263-5c7441f50ff7",
+    "constructPath": "CdkdriftIntegHarvest7/QueryDef",
+    "declared": {
+      "Name": "cdkrd-integ-query",
+      "QueryString": "fields @timestamp, @message | sort @timestamp desc | limit 20"
+    }
+  },
+  "liveRaw": {
+    "Parameters": [],
+    "QueryString": "fields @timestamp, @message | sort @timestamp desc | limit 20",
+    "LogGroupNames": [],
+    "QueryLanguage": "CWLI",
+    "QueryDefinitionId": "83554b47-e42f-4621-a263-5c7441f50ff7",
+    "Name": "cdkrd-integ-query"
+  },
+  "schema": {
+    "readOnly": ["QueryDefinitionId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["QueryDefinitionId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {
+      "QueryLanguage": "CWLI"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "QueryDef",
+      "resourceType": "AWS::Logs::QueryDefinition",
+      "path": "QueryLanguage",
+      "actual": "CWLI",
+      "physicalId": "83554b47-e42f-4621-a263-5c7441f50ff7",
+      "constructPath": "CdkdriftIntegHarvest7/QueryDef"
+    }
+  ]
+}

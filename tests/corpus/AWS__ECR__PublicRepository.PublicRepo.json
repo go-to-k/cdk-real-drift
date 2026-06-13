@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PublicRepo",
+    "resourceType": "AWS::ECR::PublicRepository",
+    "physicalId": "cdkrd-integ-pub",
+    "constructPath": "CdkdriftIntegHarvest8/PublicRepo",
+    "declared": {
+      "RepositoryName": "cdkrd-integ-pub"
+    }
+  },
+  "liveRaw": {
+    "RepositoryName": "cdkrd-integ-pub",
+    "Arn": "arn:aws:ecr-public::111111111111:repository/cdkrd-integ-pub",
+    "RepositoryCatalogData": {},
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest8",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest8/19b5c920-6729-11f1-9ba5-0e26a0c940e7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "PublicRepo",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["RepositoryName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RepositoryName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

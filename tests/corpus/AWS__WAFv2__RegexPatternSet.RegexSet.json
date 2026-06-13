@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RegexSet",
+    "resourceType": "AWS::WAFv2::RegexPatternSet",
+    "physicalId": "RegexSet-CTQHtT5iegpr|86885cf4-7aa6-4169-92a4-c9d9ac32aed5|REGIONAL",
+    "constructPath": "CdkdriftIntegHarvest7/RegexSet",
+    "declared": {
+      "RegularExpressionList": ["^test.*", "admin"],
+      "Scope": "REGIONAL"
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "RegularExpressionList": ["^test.*", "admin"],
+    "Scope": "REGIONAL",
+    "Id": "86885cf4-7aa6-4169-92a4-c9d9ac32aed5",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/regexpatternset/RegexSet-CTQHtT5iegpr/86885cf4-7aa6-4169-92a4-c9d9ac32aed5",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest7/60f88ad0-6728-11f1-851e-12bc8aa3685f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest7",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RegexSet",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "RegexSet-CTQHtT5iegpr"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "RegexSet",
+      "resourceType": "AWS::WAFv2::RegexPatternSet",
+      "path": "Name",
+      "actual": "RegexSet-CTQHtT5iegpr",
+      "physicalId": "RegexSet-CTQHtT5iegpr|86885cf4-7aa6-4169-92a4-c9d9ac32aed5|REGIONAL",
+      "constructPath": "CdkdriftIntegHarvest7/RegexSet"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiGET9257B917",
+    "resourceType": "AWS::ApiGateway::Method",
+    "physicalId": "38w1jnsg0j|1pd9ky6ghl|GET",
+    "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET",
+    "declared": {
+      "AuthorizationType": "NONE",
+      "HttpMethod": "GET",
+      "Integration": {
+        "IntegrationResponses": [
+          {
+            "StatusCode": "200"
+          }
+        ],
+        "RequestTemplates": {
+          "application/json": "{\"statusCode\": 200}"
+        },
+        "Type": "MOCK"
+      },
+      "MethodResponses": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "ResourceId": "1pd9ky6ghl",
+      "RestApiId": "38w1jnsg0j"
+    }
+  },
+  "liveRaw": {
+    "MethodResponses": [
+      {
+        "StatusCode": "200"
+      }
+    ],
+    "Integration": {
+      "CacheNamespace": "1pd9ky6ghl",
+      "Type": "MOCK",
+      "IntegrationResponses": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "RequestTemplates": {
+        "application/json": "{\"statusCode\": 200}"
+      },
+      "ResponseTransferMode": "BUFFERED",
+      "TimeoutInMillis": 29000,
+      "PassthroughBehavior": "WHEN_NO_MATCH"
+    },
+    "ResourceId": "1pd9ky6ghl",
+    "RestApiId": "38w1jnsg0j",
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["HttpMethod", "ResourceId", "RestApiId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HttpMethod", "ResourceId", "RestApiId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

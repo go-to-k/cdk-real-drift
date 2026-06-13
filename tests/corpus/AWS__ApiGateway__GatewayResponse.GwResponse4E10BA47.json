@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GwResponse4E10BA47",
+    "resourceType": "AWS::ApiGateway::GatewayResponse",
+    "physicalId": "38w1jnsg0j:DEFAULT_4XX",
+    "constructPath": "CdkdriftIntegHarvest8/GwResponse",
+    "declared": {
+      "ResponseType": "DEFAULT_4XX",
+      "RestApiId": "38w1jnsg0j"
+    }
+  },
+  "liveRaw": {
+    "ResponseTemplates": {
+      "application/json": "{\"message\":$context.error.messageString}"
+    },
+    "ResponseParameters": {},
+    "RestApiId": "38w1jnsg0j",
+    "Id": "38w1jnsg0j:DEFAULT_4XX",
+    "ResponseType": "DEFAULT_4XX"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ResponseType", "RestApiId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResponseType", "RestApiId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "GwResponse4E10BA47",
+      "resourceType": "AWS::ApiGateway::GatewayResponse",
+      "path": "ResponseTemplates",
+      "actual": {
+        "application/json": "{\"message\":$context.error.messageString}"
+      },
+      "physicalId": "38w1jnsg0j:DEFAULT_4XX",
+      "constructPath": "CdkdriftIntegHarvest8/GwResponse"
+    }
+  ]
+}

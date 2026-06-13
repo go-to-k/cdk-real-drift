@@ -1,0 +1,94 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiCloudWatchRole73EC6FC4",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+    "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "apigateway.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "ManagedPolicyArns": [
+        "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+      ]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "ManagedPolicyArns": [
+      "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+    ],
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "apigateway.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+    "RoleId": "AROAXXXJN2LN5AUI4EUCF"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiCloudWatchRole73EC6FC4",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+      "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiCloudWatchRole73EC6FC4",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+      "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiCloudWatchRole73EC6FC4",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
+      "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole"
+    }
+  ]
+}
