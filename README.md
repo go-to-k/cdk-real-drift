@@ -35,13 +35,16 @@ $ npx cdkrd check ApiStack
 result: 1 drift(s) (undeclared=1)
 ```
 
-| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
-| ------------------------------------------------------------------- | :-----: | :-------------------------------: |
-| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
-| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
-| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
-| **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
+| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection | `driftctl` | `terraform plan` |
+| ------------------------------------------------------------------- | :-----: | :-------------------------------: | :--------: | :--------------: |
+| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |     ✅     |        ✅        |
+| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |     ❌     |        ❌        |
+| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |     ❌     |  ✅ `apply`      |
+| **Revert** undeclared drift                                         |   ✅    |                ❌                 |     ❌     |        ❌        |
+| **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |     ❌     |        ❌        |
+
+Every tool reads only what's in the template/state — so the **undeclared** rows
+are blank everywhere but `cdkrd`. That row is the whole reason it exists.
 
 ## Quick start
 
