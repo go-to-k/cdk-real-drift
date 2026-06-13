@@ -178,6 +178,41 @@ describe('readLive (CC identifier adapters, R74)', () => {
     );
     expect(sent()).toBe('env1');
   });
+
+  // R79: ApplicationAutoScaling ScalingPolicy [Arn, ScalableDimension] — the
+  // dimension is parsed from the resolved ScalingTargetId (the ScalableTarget
+  // physical id `resourceId|scalableDimension|serviceNamespace`).
+  it('ScalingPolicy: composes PolicyARN|ScalableDimension from ScalingTargetId', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    const policyArn =
+      'arn:aws:autoscaling:us-east-1:1:scalingPolicy:abc:resource/dynamodb/table/T:policyName/p';
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApplicationAutoScaling::ScalingPolicy',
+        physicalId: policyArn,
+        declared: { ScalingTargetId: 'table/T|dynamodb:table:ReadCapacityUnits|dynamodb' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe(`${policyArn}|dynamodb:table:ReadCapacityUnits`);
+  });
+
+  it('ScalingPolicy: an unresolved ScalingTargetId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApplicationAutoScaling::ScalingPolicy',
+        physicalId: 'arn:x',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('arn:x');
+  });
 });
 
 describe('readLive (custom resources short-circuit, R26)', () => {

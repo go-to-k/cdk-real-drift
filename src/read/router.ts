@@ -34,7 +34,28 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),
   'AWS::AppConfig::Environment': compositeWith('ApplicationId'),
   'AWS::AppConfig::ConfigurationProfile': compositeWith('ApplicationId'),
+  // ApplicationAutoScaling ScalingPolicy: primaryIdentifier is [Arn,
+  // ScalableDimension]. The CFn physical id IS the PolicyARN, but ScalableDimension
+  // is not a direct ScalingPolicy property — it rides on the resolved
+  // `ScalingTargetId` (= the ScalableTarget physical id, formatted
+  // `resourceId|scalableDimension|serviceNamespace`). Verified live (R79): the
+  // PolicyARN was a CC ValidationException skip until paired with its dimension.
+  'AWS::ApplicationAutoScaling::ScalingPolicy': scalingPolicyComposite,
 };
+
+// `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
+// dimension from the resolved ScalingTargetId (`resourceId|dimension|namespace`).
+// undefined when the target ref did not resolve (→ honest skip).
+function scalingPolicyComposite(
+  pid: string,
+  declared: Record<string, unknown>
+): string | undefined {
+  if (pid.includes('|')) return pid; // already composite — never double-suffix
+  const targetId = declared.ScalingTargetId;
+  if (typeof targetId !== 'string') return undefined;
+  const dimension = targetId.split('|')[1];
+  return dimension ? `${pid}|${dimension}` : undefined;
+}
 
 // Build a `${declared[parentKey]}|${physicalId}` composite CC identifier, or
 // undefined when the parent ref did not resolve (→ honest skip). Never
