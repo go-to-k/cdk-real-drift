@@ -235,6 +235,21 @@ destroy each take minutes. `CDKRD_CLOUDFRONT_KEEP=1` keeps the stack.
 cd cloudfront && npm install && bash verify-cloudfront.sh
 ```
 
+## harvest5
+
+Wave 5 of the corpus harvest (R77): long-tail family breadth — AppConfig
+(application + environment + configuration profile + deployment strategy),
+EventBridge Connection + ApiDestination + Archive, Glue Job + Trigger,
+Lambda Function + Alias, IAM InstanceProfile, Route53 HealthCheck, a
+CloudWatch CompositeAlarm over two child alarms, an EXPRESS StateMachine,
+and an SSM Parameter. All cheap and fast — no VPC, no NAT, no slow
+resources. Same two harvest invariants: fresh deploy = ZERO declared drift,
+then accept -> `check --fail` CLEAN.
+
+```bash
+cd harvest5 && npm install && bash verify-harvest5.sh
+```
+
 ## revert
 
 A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the

@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::AppConfig::ConfigurationProfile model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "CfgProfile",
+    "resourceType": "AWS::AppConfig::ConfigurationProfile",
+    "physicalId": "77exss1",
+    "constructPath": "CdkrdIntegHarvest5/CfgProfile",
+    "declared": {
+      "ApplicationId": "h0s9fpf",
+      "LocationUri": "hosted",
+      "Name": "flags",
+      "Type": "AWS.AppConfig.FeatureFlags"
+    }
+  },
+  "liveRaw": {
+    "ConfigurationProfileId": "77exss1",
+    "LocationUri": "hosted",
+    "Type": "AWS.AppConfig.FeatureFlags",
+    "ApplicationId": "h0s9fpf",
+    "Tags": [
+      {
+        "Value": "CfgProfile",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "flags"
+  },
+  "schema": {
+    "readOnly": ["ConfigurationProfileId", "KmsKeyArn"],
+    "writeOnly": ["DeletionProtectionCheck"],
+    "createOnly": ["ApplicationId", "LocationUri", "Type"],
+    "readOnlyPaths": ["ConfigurationProfileId", "KmsKeyArn"],
+    "writeOnlyPaths": ["DeletionProtectionCheck"],
+    "createOnlyPaths": ["ApplicationId", "LocationUri", "Type"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

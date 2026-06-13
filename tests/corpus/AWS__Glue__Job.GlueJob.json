@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Glue::Job model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "GlueJob",
+    "resourceType": "AWS::Glue::Job",
+    "physicalId": "cdkrd-harvest5",
+    "constructPath": "CdkrdIntegHarvest5/GlueJob",
+    "declared": {
+      "Command": {
+        "Name": "pythonshell",
+        "PythonVersion": "3.9",
+        "ScriptLocation": "s3://aws-glue-scripts/noop.py"
+      },
+      "GlueVersion": "4.0",
+      "MaxCapacity": 0.0625,
+      "Name": "cdkrd-harvest5",
+      "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest5-GlueRoleDEDFFD2C-ogFxtucP6XBp"
+    }
+  },
+  "liveRaw": {
+    "MaxRetries": 0,
+    "Role": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest5-GlueRoleDEDFFD2C-ogFxtucP6XBp",
+    "JobMode": "SCRIPT",
+    "Command": {
+      "PythonVersion": "3.9",
+      "ScriptLocation": "s3://aws-glue-scripts/noop.py",
+      "Name": "pythonshell"
+    },
+    "Timeout": 2880,
+    "AllocatedCapacity": 0,
+    "GlueVersion": "4.0",
+    "ExecutionProperty": {
+      "MaxConcurrentRuns": 1
+    },
+    "JobRunQueuingEnabled": false,
+    "Name": "cdkrd-harvest5",
+    "MaxCapacity": 0.0625
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxRetries",
+      "actual": 0,
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "JobMode",
+      "actual": "SCRIPT",
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "Timeout",
+      "actual": 2880,
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "AllocatedCapacity",
+      "actual": 0,
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "ExecutionProperty",
+      "actual": {
+        "MaxConcurrentRuns": 1
+      },
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    }
+  ]
+}

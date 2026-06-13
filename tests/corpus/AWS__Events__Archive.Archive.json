@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Events::Archive model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Archive",
+    "resourceType": "AWS::Events::Archive",
+    "physicalId": "Archive-nfIRYcKHPQ9i",
+    "constructPath": "CdkrdIntegHarvest5/Archive",
+    "declared": {
+      "Description": "cdkrd harvest5 archive",
+      "RetentionDays": 1,
+      "SourceArn": "arn:aws:events:us-east-1:111111111111:event-bus/default"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd harvest5 archive",
+    "SourceArn": "arn:aws:events:us-east-1:111111111111:event-bus/default",
+    "ArchiveName": "Archive-nfIRYcKHPQ9i",
+    "RetentionDays": 1,
+    "Arn": "arn:aws:events:us-east-1:111111111111:archive/Archive-nfIRYcKHPQ9i"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ArchiveName", "SourceArn"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ArchiveName", "SourceArn"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

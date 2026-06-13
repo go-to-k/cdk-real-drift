@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Lambda::Version model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
+    "resourceType": "AWS::Lambda::Version",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
+    "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion",
+    "declared": {
+      "FunctionName": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye"
+    }
+  },
+  "liveRaw": {
+    "FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
+    "FunctionName": "CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye",
+    "Description": "",
+    "RuntimePolicy": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Version": "1",
+    "CodeSha256": "pYaOwiRWhhzD/erZKRp1WZbhCcuhmh7CovRZdCS9P3w="
+  },
+  "schema": {
+    "readOnly": ["FunctionArn", "Version"],
+    "writeOnly": [],
+    "createOnly": [
+      "CodeSha256",
+      "Description",
+      "FunctionName",
+      "ProvisionedConcurrencyConfig",
+      "RuntimePolicy"
+    ],
+    "readOnlyPaths": ["FunctionArn", "Version"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CodeSha256",
+      "Description",
+      "FunctionName",
+      "ProvisionedConcurrencyConfig",
+      "RuntimePolicy"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
+      "resourceType": "AWS::Lambda::Version",
+      "path": "RuntimePolicy",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
+      "resourceType": "AWS::Lambda::Version",
+      "path": "CodeSha256",
+      "actual": "pYaOwiRWhhzD/erZKRp1WZbhCcuhmh7CovRZdCS9P3w=",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
+      "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion"
+    }
+  ]
+}

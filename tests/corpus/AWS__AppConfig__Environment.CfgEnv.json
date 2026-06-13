@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::AppConfig::Environment model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "CfgEnv",
+    "resourceType": "AWS::AppConfig::Environment",
+    "physicalId": "935m375",
+    "constructPath": "CdkrdIntegHarvest5/CfgEnv",
+    "declared": {
+      "ApplicationId": "h0s9fpf",
+      "Description": "cdkrd harvest5 env",
+      "Name": "prod"
+    }
+  },
+  "liveRaw": {
+    "EnvironmentId": "935m375",
+    "Description": "cdkrd harvest5 env",
+    "ApplicationId": "h0s9fpf",
+    "Tags": [
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CfgEnv",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "prod"
+  },
+  "schema": {
+    "readOnly": ["EnvironmentId"],
+    "writeOnly": ["DeletionProtectionCheck"],
+    "createOnly": ["ApplicationId"],
+    "readOnlyPaths": ["EnvironmentId"],
+    "writeOnlyPaths": ["DeletionProtectionCheck"],
+    "createOnlyPaths": ["ApplicationId"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

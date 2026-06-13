@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::Events::Connection model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Conn",
+    "resourceType": "AWS::Events::Connection",
+    "physicalId": "Conn-L4BxGdJVCL8Z",
+    "constructPath": "CdkrdIntegHarvest5/Conn",
+    "declared": {
+      "AuthParameters": {
+        "ApiKeyAuthParameters": {
+          "ApiKeyName": "x-api-key",
+          "ApiKeyValue": "cdkrd-harvest5-key"
+        }
+      },
+      "AuthorizationType": "API_KEY"
+    }
+  },
+  "liveRaw": {
+    "SecretArn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:events!connection/Conn-L4BxGdJVCL8Z/9005698e-2b50-4522-b629-31f4f8897768-DmqVmO",
+    "AuthParameters": {
+      "ApiKeyAuthParameters": {
+        "ApiKeyName": "x-api-key"
+      }
+    },
+    "Arn": "arn:aws:events:us-east-1:111111111111:connection/Conn-L4BxGdJVCL8Z/3f826775-e72f-4e64-8ccf-f25357750c6a",
+    "ArnForPolicy": "arn:aws:events:us-east-1:111111111111:connection/Conn-L4BxGdJVCL8Z",
+    "AuthorizationType": "API_KEY",
+    "Name": "Conn-L4BxGdJVCL8Z"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ArnForPolicy", "SecretArn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "ArnForPolicy",
+      "AuthParameters.ConnectivityParameters.ResourceParameters.ResourceAssociationArn",
+      "InvocationConnectivityParameters.ResourceParameters.ResourceAssociationArn",
+      "SecretArn"
+    ],
+    "writeOnlyPaths": [
+      "AuthParameters.ApiKeyAuthParameters.ApiKeyValue",
+      "AuthParameters.BasicAuthParameters.Password",
+      "AuthParameters.InvocationHttpParameters",
+      "AuthParameters.OAuthParameters.ClientParameters.ClientSecret",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.BodyParameters",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.HeaderParameters",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.QueryStringParameters"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

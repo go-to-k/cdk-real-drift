@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::SSM::Parameter model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Param165332EC",
+    "resourceType": "AWS::SSM::Parameter",
+    "physicalId": "/cdkrd/harvest5/config",
+    "constructPath": "CdkrdIntegHarvest5/Param",
+    "declared": {
+      "Description": "cdkrd harvest5 parameter",
+      "Name": "/cdkrd/harvest5/config",
+      "Type": "String",
+      "Value": "enabled"
+    }
+  },
+  "liveRaw": {
+    "Type": "String",
+    "Value": "enabled",
+    "DataType": "text",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdIntegHarvest5",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+      "aws:cloudformation:logical-id": "Param165332EC"
+    },
+    "Name": "/cdkrd/harvest5/config"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["AllowedPattern", "Description", "Policies", "Tier"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["AllowedPattern", "Description", "Policies", "Tier"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Param165332EC",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "Description",
+      "note": "write-only — cannot be read back",
+      "physicalId": "/cdkrd/harvest5/config",
+      "constructPath": "CdkrdIntegHarvest5/Param"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Param165332EC",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "DataType",
+      "actual": "text",
+      "physicalId": "/cdkrd/harvest5/config",
+      "constructPath": "CdkrdIntegHarvest5/Param"
+    }
+  ]
+}

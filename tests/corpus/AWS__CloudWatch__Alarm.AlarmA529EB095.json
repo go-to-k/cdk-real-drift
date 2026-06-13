@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::CloudWatch::Alarm model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "AlarmA529EB095",
+    "resourceType": "AWS::CloudWatch::Alarm",
+    "physicalId": "CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0",
+    "constructPath": "CdkrdIntegHarvest5/AlarmA",
+    "declared": {
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "EvaluationPeriods": 1,
+      "MetricName": "Errors",
+      "Namespace": "cdkrd/harvest5/a",
+      "Period": 300,
+      "Statistic": "Average",
+      "Threshold": 1,
+      "TreatMissingData": "notBreaching"
+    }
+  },
+  "liveRaw": {
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "TreatMissingData": "notBreaching",
+    "Period": 300,
+    "EvaluationPeriods": 1,
+    "Namespace": "cdkrd/harvest5/a",
+    "OKActions": [],
+    "AlarmActions": [],
+    "MetricName": "Errors",
+    "ActionsEnabled": true,
+    "AlarmName": "CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0",
+    "Statistic": "Average",
+    "InsufficientDataActions": [],
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "AlarmA529EB095",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Threshold": 1
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["AlarmName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AlarmName"],
+    "defaults": {
+      "ActionsEnabled": true
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": []
+}

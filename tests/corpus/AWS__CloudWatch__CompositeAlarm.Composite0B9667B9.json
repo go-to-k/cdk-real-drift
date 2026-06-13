@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::CloudWatch::CompositeAlarm model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Composite0B9667B9",
+    "resourceType": "AWS::CloudWatch::CompositeAlarm",
+    "physicalId": "CdkrdIntegHarvest5Composite92749298",
+    "constructPath": "CdkrdIntegHarvest5/Composite",
+    "declared": {
+      "AlarmName": "CdkrdIntegHarvest5Composite92749298",
+      "AlarmRule": "(ALARM(\"arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0\") OR ALARM(\"arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5-AlarmB163AF7E7-1S6WkdFYC6eR\"))"
+    }
+  },
+  "liveRaw": {
+    "AlarmActions": [],
+    "ActionsEnabled": true,
+    "AlarmName": "CdkrdIntegHarvest5Composite92749298",
+    "AlarmRule": "(ALARM(\"arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5-AlarmA529EB095-04aR0ogtAti0\") OR ALARM(\"arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5-AlarmB163AF7E7-1S6WkdFYC6eR\"))",
+    "InsufficientDataActions": [],
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkrdIntegHarvest5Composite92749298",
+    "OKActions": [],
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest5/631b6a70-66de-11f1-9f71-12359b386d2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdIntegHarvest5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Composite0B9667B9",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["AlarmName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AlarmName"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Composite0B9667B9",
+      "resourceType": "AWS::CloudWatch::CompositeAlarm",
+      "path": "ActionsEnabled",
+      "actual": true,
+      "physicalId": "CdkrdIntegHarvest5Composite92749298",
+      "constructPath": "CdkrdIntegHarvest5/Composite"
+    }
+  ]
+}

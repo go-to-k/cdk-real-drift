@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (harvest5 fixture, R77): fresh-deploy AWS::IAM::InstanceProfile model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "Profile6F32097C",
+    "resourceType": "AWS::IAM::InstanceProfile",
+    "physicalId": "CdkrdIntegHarvest5-Profile6F32097C-4qYS2ADwUrG5",
+    "constructPath": "CdkrdIntegHarvest5/Profile",
+    "declared": {
+      "Roles": ["CdkrdIntegHarvest5-Ec2Role2FD9A272-QoFsnMoLFRBK"]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "InstanceProfileName": "CdkrdIntegHarvest5-Profile6F32097C-4qYS2ADwUrG5",
+    "Roles": ["CdkrdIntegHarvest5-Ec2Role2FD9A272-QoFsnMoLFRBK"],
+    "Arn": "arn:aws:iam::111111111111:instance-profile/CdkrdIntegHarvest5-Profile6F32097C-4qYS2ADwUrG5"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["InstanceProfileName", "Path"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["InstanceProfileName", "Path"],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Profile6F32097C",
+      "resourceType": "AWS::IAM::InstanceProfile",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkrdIntegHarvest5-Profile6F32097C-4qYS2ADwUrG5",
+      "constructPath": "CdkrdIntegHarvest5/Profile"
+    }
+  ]
+}

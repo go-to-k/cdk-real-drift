@@ -153,6 +153,31 @@ describe('readLive (CC identifier adapters, R74)', () => {
     );
     expect(sent()).toBe('api456|route789');
   });
+
+  // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].
+  for (const t of ['AWS::AppConfig::Environment', 'AWS::AppConfig::ConfigurationProfile']) {
+    it(`${t}: builds the ApplicationId|<child> composite identifier`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: 'envOrProfile1', declared: { ApplicationId: 'app99' } }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('app99|envOrProfile1');
+    });
+  }
+
+  it('AppConfig Environment: an unresolved ApplicationId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::AppConfig::Environment', physicalId: 'env1', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('env1');
+  });
 });
 
 describe('readLive (custom resources short-circuit, R26)', () => {

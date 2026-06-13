@@ -82,12 +82,14 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    while the count grows only a few types per new dogfood; revisit it if a single
    new stack adds many overrides at once (= the generic claim is breaking). A
    second, smaller gap class is CC IDENTIFIERS: some types' CFn physical id is not
-   the CC primaryIdentifier (AppSync GraphQLApi ARN vs ApiId, Cognito
-   UserPoolClient composite, ApiGatewayV2 Stage/Route/Integration `ApiId|<child>`
-   composites — R76) — `CC_IDENTIFIER_ADAPTERS` in router.ts maps those without
-   leaving the CC read path, which is strictly cheaper than an SDK override (no
-   new dependency, no projection). Prefer an adapter over an override whenever the
-   only gap is the identifier shape.
+   the CC primaryIdentifier (AppSync GraphQLApi ARN vs ApiId; and the
+   `${parent}|${child}` composites — Cognito UserPoolClient, ApiGatewayV2
+   Stage/Route/Integration (R76), AppConfig Environment/ConfigurationProfile (R77)
+   — all built by the shared `compositeWith(parentKey)` helper) —
+   `CC_IDENTIFIER_ADAPTERS` in router.ts maps those without leaving the CC read
+   path, which is strictly cheaper than an SDK override (no new dependency, no
+   projection). Prefer an adapter over an override whenever the only gap is the
+   identifier shape.
 4. **The deployed template, not synth, is the declared baseline.** So un-deployed
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
