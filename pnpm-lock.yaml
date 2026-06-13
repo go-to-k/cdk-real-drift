@@ -26,6 +26,9 @@ importers:
       '@aws-sdk/client-cloudwatch-logs':
         specifier: ^3.1066.0
         version: 3.1066.0
+      '@aws-sdk/client-codebuild':
+        specifier: ^3.1068.0
+        version: 3.1068.0
       '@aws-sdk/client-ec2':
         specifier: ^3.1066.0
         version: 3.1066.0
@@ -234,8 +237,8 @@ packages:
     resolution: {integrity: sha512-yJEixTEkz3JoDLbalcjmPcki3+M1gARBr+/bxmp5RfudI1t1S8l+180MG3C5qHOUgG5cx1sv7yWBJtQ7lsdRNQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-codebuild@3.1066.0':
-    resolution: {integrity: sha512-1A4inLmed1eONfQr8EfHw2iqwTMZtN4zpn95k6JnBQaz/OOB/yHBYoD5ssvw3sjIW3UTdkVz9QQTLOiUZvLtVg==}
+  '@aws-sdk/client-codebuild@3.1068.0':
+    resolution: {integrity: sha512-bImvmwJN7Fio2efS6K9OZQROxechi6hYbelYiBqTp0WJKoWE0WdAcsnEI0g5LG4yutFbpQNRyQrEvv7lTAu8pA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-cognito-identity@3.1066.0':
@@ -3341,7 +3344,7 @@ snapshots:
       '@aws-sdk/client-cloudcontrol': 3.1066.0
       '@aws-sdk/client-cloudformation': 3.1066.0
       '@aws-sdk/client-cloudwatch-logs': 3.1066.0
-      '@aws-sdk/client-codebuild': 3.1066.0
+      '@aws-sdk/client-codebuild': 3.1068.0
       '@aws-sdk/client-ec2': 3.1066.0
       '@aws-sdk/client-ecr': 3.1066.0
       '@aws-sdk/client-ecs': 3.1066.0
@@ -3517,7 +3520,7 @@ snapshots:
       '@smithy/types': 4.14.3
       tslib: 2.8.1
 
-  '@aws-sdk/client-codebuild@3.1066.0':
+  '@aws-sdk/client-codebuild@3.1068.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0

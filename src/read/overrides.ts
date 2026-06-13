@@ -7,6 +7,7 @@
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
@@ -417,7 +418,64 @@ const readSchedulerSchedule: OverrideReader = async ({ physicalId, declared, reg
   };
 };
 
+// AWS::CodeBuild::Project — Cloud Control GetResource throws
+// UnsupportedActionException (R84/R85, observed live on the harvest6 fixture).
+// Read via CodeBuild BatchGetProjects — the CFn physical id IS the project name.
+// Maps the camelCase SDK Project back to the CFn PascalCase shape, projecting
+// ONLY CFn-modeled props (Arn / Created / LastModified / Badge URL are
+// AWS-managed noise). The declared compare is subset-based, so nested fields the
+// template never set are ignored; an absent project returns undefined (-> skip).
+const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.Name);
+  if (!name) return undefined;
+  const c = new CodeBuildClient({ region, ...READ_RETRY });
+  const r = await c.send(new BatchGetProjectsCommand({ names: [name] }));
+  const p = r.projects?.[0];
+  if (!p) return undefined;
+  const model: Record<string, unknown> = { Name: p.name };
+  if (p.serviceRole !== undefined) model.ServiceRole = p.serviceRole;
+  if (p.description !== undefined) model.Description = p.description;
+  if (p.timeoutInMinutes !== undefined) model.TimeoutInMinutes = p.timeoutInMinutes;
+  if (p.queuedTimeoutInMinutes !== undefined)
+    model.QueuedTimeoutInMinutes = p.queuedTimeoutInMinutes;
+  if (p.encryptionKey !== undefined) model.EncryptionKey = p.encryptionKey;
+  const src = p.source;
+  if (src)
+    model.Source = {
+      ...(src.type !== undefined && { Type: src.type }),
+      ...(src.location !== undefined && { Location: src.location }),
+      ...(src.buildspec !== undefined && { BuildSpec: src.buildspec }),
+      ...(src.gitCloneDepth !== undefined && { GitCloneDepth: src.gitCloneDepth }),
+    };
+  const art = p.artifacts;
+  if (art)
+    model.Artifacts = {
+      ...(art.type !== undefined && { Type: art.type }),
+      ...(art.location !== undefined && { Location: art.location }),
+    };
+  const env = p.environment;
+  if (env)
+    model.Environment = {
+      ...(env.type !== undefined && { Type: env.type }),
+      ...(env.computeType !== undefined && { ComputeType: env.computeType }),
+      ...(env.image !== undefined && { Image: env.image }),
+      ...(env.privilegedMode !== undefined && { PrivilegedMode: env.privilegedMode }),
+      ...(env.imagePullCredentialsType !== undefined && {
+        ImagePullCredentialsType: env.imagePullCredentialsType,
+      }),
+      ...(env.environmentVariables !== undefined && {
+        EnvironmentVariables: env.environmentVariables.map((v) => ({
+          Name: v.name,
+          Value: v.value,
+          ...(v.type !== undefined && { Type: v.type }),
+        })),
+      }),
+    };
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::CodeBuild::Project': readCodeBuildProject,
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,
   'AWS::SQS::QueuePolicy': readSqsQueuePolicy,
