@@ -46,6 +46,13 @@ These do NOT run in CI (they need credentials and mutate a real account):
   changed; `harvest3` for the multi-type Cloud Control revert matrix) before merging.
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
+- **After changing nested-undeclared detection** (`collectNestedUndeclared` in
+  `src/diff/classify.ts`) or the revert nested guard (`src/revert/plan.ts`): run
+  `dynamodb/verify-nested.sh` — it deploys a table whose GSI and PITR config
+  materialize nested undeclared values (R96/R98), asserts the `info: nested=N`
+  fold + `--show-all` expansion live, then mutates the undeclared
+  `RecoveryPeriodInDays` out of band and asserts the drift is detected and
+  reported NOT-revertable (R99).
 - **After changing** `KNOWN_DEFAULTS` (`src/normalize/noise.ts`) or the
   `atDefault` fold: run `atdefault` — it asserts the hand-written default shapes
   still match live Cloud Control output (a shape mismatch would resurface the
