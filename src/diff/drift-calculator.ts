@@ -38,8 +38,10 @@ function diffAt(
 ): void {
   if (deepEqual(sv, av)) return;
   if (isPlainObject(sv) && isPlainObject(av) && !Array.isArray(sv) && !Array.isArray(av)) {
-    // Subset semantics: only walk keys present in the desired (state) side, so
-    // AWS-added keys the template never set are not reported as drift.
+    // Subset semantics: only walk keys present in the desired (state) side, so an
+    // AWS-added nested key the template never set is not a DECLARED-side change here.
+    // (R96: such live-only nested keys are instead caught by classify's
+    // `collectNestedUndeclared` as nested UNDECLARED findings — folded, baseline-able.)
     for (const key of Object.keys(sv)) {
       const childPath = `${path}.${key}`;
       if (isIgnoredPath(childPath, ignorePaths)) continue;

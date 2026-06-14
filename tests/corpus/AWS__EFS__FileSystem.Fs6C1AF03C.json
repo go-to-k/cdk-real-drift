@@ -64,17 +64,10 @@
       "tier": "undeclared",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "KmsKeyId",
-      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
-      "physicalId": "fs-0d81f40b7a880b7ae",
-      "constructPath": "CdkdriftIntegHarvest9/Fs"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Fs6C1AF03C",
-      "resourceType": "AWS::EFS::FileSystem",
-      "path": "PerformanceMode",
-      "actual": "generalPurpose",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
       "physicalId": "fs-0d81f40b7a880b7ae",
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     },
@@ -93,8 +86,8 @@
       "tier": "undeclared",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "ThroughputMode",
-      "actual": "bursting",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
       "physicalId": "fs-0d81f40b7a880b7ae",
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     },
@@ -102,10 +95,17 @@
       "tier": "undeclared",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "BackupPolicy",
-      "actual": {
-        "Status": "DISABLED"
-      },
+      "path": "PerformanceMode",
+      "actual": "generalPurpose",
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "ThroughputMode",
+      "actual": "bursting",
       "physicalId": "fs-0d81f40b7a880b7ae",
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     }

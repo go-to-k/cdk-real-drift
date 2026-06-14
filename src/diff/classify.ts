@@ -44,6 +44,27 @@ const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   typeof (t as { Key?: unknown }).Key === 'string' &&
   'Value' in (t as object);
 
+// R96: recurse two plain objects (the declared and live sides of a property) and
+// emit each LIVE-only nested key — a sub-key present in live but never declared, at
+// any depth. Arrays are not descended (their element identity/order is handled by the
+// declared compare + canonicalizers); only nested OBJECTS are walked. Pure: the
+// caller decides suppression and finding shape.
+const isNestedObject = (x: unknown): x is Record<string, unknown> =>
+  x !== null && typeof x === 'object' && !Array.isArray(x);
+function collectNestedUndeclared(
+  declaredVal: unknown,
+  liveVal: unknown,
+  path: string,
+  emit: (path: string, value: unknown) => void
+): void {
+  if (!isNestedObject(declaredVal) || !isNestedObject(liveVal)) return;
+  for (const [k, val] of Object.entries(liveVal)) {
+    const childPath = `${path}.${k}`;
+    if (k in declaredVal) collectNestedUndeclared(declaredVal[k], val, childPath, emit);
+    else emit(childPath, val);
+  }
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -242,6 +263,29 @@ export function classifyResource(
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v)) continue;
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
+  }
+
+  // Nested undeclared (R96): the Cloud Control read returns the FULL live model, so a
+  // live SUB-key inside a DECLARED object that the template never set is just as
+  // undeclared as a top-level one — recurse the declared∩live objects and emit each
+  // live-only nested key (dotted path). Same noise suppression as the top-level loop
+  // (trivially-empty / aws:* tags). These flow through the usual undeclared→baseline
+  // machinery, just `nested`-flagged so the report can fold them (the live model
+  // carries many nested AWS defaults): folded inventory on a first run, recorded by
+  // accept, and a later out-of-band change to one surfaces as drift vs the baseline.
+  for (const [k, dv] of Object.entries(declared)) {
+    if (dv === UNRESOLVED || hasUnresolved(dv) || !(k in live)) continue;
+    collectNestedUndeclared(dv, live[k], k, (path, value) => {
+      if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
+      findings.push({
+        tier: 'undeclared',
+        logicalId,
+        resourceType,
+        path,
+        actual: value,
+        nested: true,
+      });
+    });
   }
 
   // attach physicalId (for revert) + construct path (display) onto every finding

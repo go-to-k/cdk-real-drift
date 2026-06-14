@@ -248,6 +248,16 @@
       },
       "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
       "constructPath": "CdkrdIntegHarvest2/Archive"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ArchiveDA4CB258",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "LifecycleConfiguration.TransitionDefaultMinimumObjectSize",
+      "actual": "all_storage_classes_128K",
+      "nested": true,
+      "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
+      "constructPath": "CdkrdIntegHarvest2/Archive"
     }
   ]
 }

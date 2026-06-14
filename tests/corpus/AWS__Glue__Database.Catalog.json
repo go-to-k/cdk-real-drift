@@ -58,5 +58,23 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Catalog",
+      "resourceType": "AWS::Glue::Database",
+      "path": "DatabaseInput.CreateTableDefaultPermissions",
+      "actual": [
+        {
+          "Permissions": ["ALL"],
+          "Principal": {
+            "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+          }
+        }
+      ],
+      "nested": true,
+      "physicalId": "cdkrd_harvest_db",
+      "constructPath": "CdkrdIntegHarvest/Catalog"
+    }
+  ]
 }

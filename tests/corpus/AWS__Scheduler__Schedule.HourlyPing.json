@@ -70,6 +70,19 @@
       "actual": "UTC",
       "physicalId": "CdkrdIntegHarvest3-HourlyPing-1FRBZJC1OF6LB",
       "constructPath": "CdkrdIntegHarvest3/HourlyPing"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HourlyPing",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "Target.RetryPolicy",
+      "actual": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "nested": true,
+      "physicalId": "CdkrdIntegHarvest3-HourlyPing-1FRBZJC1OF6LB",
+      "constructPath": "CdkrdIntegHarvest3/HourlyPing"
     }
   ]
 }

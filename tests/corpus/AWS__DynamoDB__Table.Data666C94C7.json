@@ -174,6 +174,16 @@
       "tier": "undeclared",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::DynamoDB::Table",
+      "path": "PointInTimeRecoverySpecification.RecoveryPeriodInDays",
+      "actual": 35,
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDynamoDB-Data666C94C7-C09XWQ7XMDHF",
+      "constructPath": "CdkRealDriftIntegDynamoDB/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::Table",
       "path": "WarmThroughput",
       "actual": {
         "ReadUnitsPerSecond": 12000,

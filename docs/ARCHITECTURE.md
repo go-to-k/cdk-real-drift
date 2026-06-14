@@ -167,12 +167,15 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 5. classify (tier)       deleted | declared | undeclared | atDefault | readGap | unresolved | skipped
                          (atDefault = undeclared but EQUAL to a known AWS default —
                          folded, never drift, never recorded; R86)
+                         (undeclared also carries a nested:true flag for a live
+                         sub-key inside a declared object the template never set; R96)
 6. baseline filter       applyBaseline(): undeclared findings already accepted → drop;
                          atDefault reconciled too (an accepted value now at-default is
                          suppressed, not a false "removed since accept")
 7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
                          1 bullet/tier when 2+; --verbose expands, --show-all expands
-                         atDefault only); --json carries all findings; worst exit across stacks
+                         atDefault + nested undeclared); --json carries all findings;
+                         worst exit across stacks
 ```
 
 The two-pass structure (PR "resolve Fn::GetAtt against live attributes") is what
@@ -286,6 +289,12 @@ all live changes
   − per-type unordered OBJECT-array sets (EC2 SecurityGroup ingress/egress rules — no identity field, R88) → both sides sorted by canonical JSON (UNORDERED_OBJECT_ARRAY_PROPS / sortUnorderedObjectArray)
   − sibling AWS::IAM::Policy entries in a role's Policies → filtered BY NAME (see below)
   = undeclared residual                → the unique signal
+      ├─ top-level: a live property the template never declared
+      └─ nested (R96): a live SUB-key inside a DECLARED object never set by it
+         (recursed by classify's collectNestedUndeclared, dotted path, flagged
+         nested:true) — folded in the report by default (the live model carries many
+         nested AWS defaults), expanded by --show-all/--verbose, recorded by accept
+         like any undeclared value so a later out-of-band change to it surfaces
 ```
 
 **The four false-positive classes found by dogfooding** (8 real cdkd fixtures —

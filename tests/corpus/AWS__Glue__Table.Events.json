@@ -79,5 +79,26 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Events",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Retention",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_harvest_events",
+      "constructPath": "CdkrdIntegHarvest/Events"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Events",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.StorageDescriptor.NumberOfBuckets",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_harvest_events",
+      "constructPath": "CdkrdIntegHarvest/Events"
+    }
+  ]
 }

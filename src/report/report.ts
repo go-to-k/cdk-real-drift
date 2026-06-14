@@ -129,6 +129,15 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
 
   const byTier = (t: Tier) => findings.filter((f) => f.tier === t && !f.unrecorded);
   const unrecordedItems = findings.filter((f) => f.unrecorded === true);
+  // R96: a NESTED unrecorded value (a live sub-key inside a DECLARED object the
+  // template never set) folds by default — the live model carries many nested AWS
+  // defaults, so listing them all would re-flood the first run R86 worked to quiet.
+  // Top-level unrecorded values still list in full in [UNRECORDED]; the nested ones
+  // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
+  // accept records them, so a later out-of-band change to one surfaces as drift.
+  const expandNested = !!opts.verbose || !!opts.expandAtDefault;
+  const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
+  const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
@@ -161,7 +170,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // hiding them would defeat the differentiator), but kept OUT of the verdict.
   if (
     section(
-      unrecordedItems,
+      unrecordedShown,
       'UNRECORDED',
       'not declared in your template; not in the baseline yet — accept to record',
       style.undeclaredTier,
@@ -210,6 +219,11 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       return items.length ? summaryFor(t, items) : null;
     })
     .filter((s): s is string => s !== null);
+  // R96: the folded nested-unrecorded count joins the info: footer (--show-all lists them).
+  if (nestedFolded.length > 0)
+    summaries.push(
+      `nested=${nestedFolded.length} (undeclared values nested in a declared object — accept to record; --show-all to list)`
+    );
   if (summaries.length === 1) {
     log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));
   } else if (summaries.length > 1) {

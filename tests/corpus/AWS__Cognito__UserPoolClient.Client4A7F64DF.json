@@ -82,8 +82,8 @@
       "tier": "undeclared",
       "logicalId": "Client4A7F64DF",
       "resourceType": "AWS::Cognito::UserPoolClient",
-      "path": "RefreshTokenValidity",
-      "actual": 30,
+      "path": "EnableTokenRevocation",
+      "actual": true,
       "physicalId": "mr9u1vrva41nona9of2rfctdi",
       "constructPath": "CdkRealDriftIntegCognito/Client"
     },
@@ -91,8 +91,8 @@
       "tier": "undeclared",
       "logicalId": "Client4A7F64DF",
       "resourceType": "AWS::Cognito::UserPoolClient",
-      "path": "EnableTokenRevocation",
-      "actual": true,
+      "path": "RefreshTokenValidity",
+      "actual": 30,
       "physicalId": "mr9u1vrva41nona9of2rfctdi",
       "constructPath": "CdkRealDriftIntegCognito/Client"
     }
