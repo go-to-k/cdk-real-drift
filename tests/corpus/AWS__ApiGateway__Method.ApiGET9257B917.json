@@ -69,5 +69,46 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiGET9257B917",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.CacheNamespace",
+      "actual": "1pd9ky6ghl",
+      "nested": true,
+      "physicalId": "38w1jnsg0j|1pd9ky6ghl|GET",
+      "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiGET9257B917",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.PassthroughBehavior",
+      "actual": "WHEN_NO_MATCH",
+      "nested": true,
+      "physicalId": "38w1jnsg0j|1pd9ky6ghl|GET",
+      "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiGET9257B917",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.ResponseTransferMode",
+      "actual": "BUFFERED",
+      "nested": true,
+      "physicalId": "38w1jnsg0j|1pd9ky6ghl|GET",
+      "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiGET9257B917",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.TimeoutInMillis",
+      "actual": 29000,
+      "nested": true,
+      "physicalId": "38w1jnsg0j|1pd9ky6ghl|GET",
+      "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
+    }
+  ]
 }

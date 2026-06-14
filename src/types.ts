@@ -32,6 +32,12 @@ export interface Finding {
   // this Key=Value via ModifyLoadBalancerAttributes (a Cloud Control index patch
   // would misalign against the full live bag and exceed ELB's 20-attribute cap).
   attributeKey?: string;
+  // undeclared tier only (R96): the value is a live SUB-key inside a DECLARED object
+  // that the template never set (a nested undeclared property, dotted path). Detected
+  // by recursing the declared/live objects. Reported folded by default (the live
+  // model carries many nested AWS defaults), expanded by --show-all; recorded by
+  // accept like any undeclared value, so a later out-of-band change to it surfaces.
+  nested?: boolean;
 }
 
 export interface SchemaInfo {

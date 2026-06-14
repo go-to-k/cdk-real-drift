@@ -105,24 +105,6 @@
       "tier": "undeclared",
       "logicalId": "VpcS3Endpoint4A3DE4B5",
       "resourceType": "AWS::EC2::VPCEndpoint",
-      "path": "IpAddressType",
-      "actual": "ipv4",
-      "physicalId": "vpce-010c0956e4433b47b",
-      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "VpcS3Endpoint4A3DE4B5",
-      "resourceType": "AWS::EC2::VPCEndpoint",
-      "path": "ServiceRegion",
-      "actual": "us-east-1",
-      "physicalId": "vpce-010c0956e4433b47b",
-      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "VpcS3Endpoint4A3DE4B5",
-      "resourceType": "AWS::EC2::VPCEndpoint",
       "path": "DnsOptions",
       "actual": {
         "PrivateDnsOnlyForInboundResolverEndpoint": "NotSpecified",
@@ -130,6 +112,15 @@
         "DnsRecordIpType": "service-defined",
         "PrivateDnsPreference": "VERIFIED_DOMAINS_ONLY"
       },
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "IpAddressType",
+      "actual": "ipv4",
       "physicalId": "vpce-010c0956e4433b47b",
       "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
     },
@@ -149,6 +140,15 @@
         ],
         "Version": "2008-10-17"
       },
+      "physicalId": "vpce-010c0956e4433b47b",
+      "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "VpcS3Endpoint4A3DE4B5",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "ServiceRegion",
+      "actual": "us-east-1",
       "physicalId": "vpce-010c0956e4433b47b",
       "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
     }

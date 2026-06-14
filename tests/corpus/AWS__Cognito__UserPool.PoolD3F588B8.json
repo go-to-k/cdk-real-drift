@@ -336,6 +336,16 @@
       "tier": "undeclared",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
+      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
+      "actual": 7,
+      "nested": true,
+      "physicalId": "us-east-1_4tB3jYmmc",
+      "constructPath": "CdkrdIntegHarvest6/Pool"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "PoolD3F588B8",
+      "resourceType": "AWS::Cognito::UserPool",
       "path": "DeletionProtection",
       "actual": "INACTIVE",
       "physicalId": "us-east-1_4tB3jYmmc",

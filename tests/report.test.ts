@@ -358,3 +358,31 @@ describe('report', () => {
     });
   });
 });
+
+describe('R96 nested unrecorded folding', () => {
+  const NU = (path: string, nested?: boolean): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'L',
+    resourceType: 'T',
+    path,
+    actual: 1,
+    unrecorded: true,
+    ...(nested ? { nested: true } : {}),
+  });
+  it('nested unrecorded folds into info:, top-level lists in [UNRECORDED]', () => {
+    const { text } = run([NU('TopLevel'), NU('Conf.A', true), NU('Conf.B', true)]);
+    expect(text).toContain('[UNRECORDED: 1]');
+    expect(text).toContain('L.TopLevel');
+    expect(text).toContain('nested=2');
+    expect(text).not.toContain('Conf.A');
+  });
+  it('--show-all expands nested into the body (no fold line)', () => {
+    const { text } = run([NU('Conf.A', true)], { expandAtDefault: true });
+    expect(text).toContain('L.Conf.A');
+    expect(text).not.toContain('nested=1');
+  });
+  it('--verbose also expands nested', () => {
+    const { text } = run([NU('Conf.A', true)], { verbose: true });
+    expect(text).toContain('L.Conf.A');
+  });
+});

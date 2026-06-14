@@ -336,6 +336,16 @@
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
+      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
+      "actual": 3,
+      "nested": true,
+      "physicalId": "us-east-1_Ifea0bzss",
+      "constructPath": "CdkrdIntegHarvest3/Users"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Users0A0EEA89",
+      "resourceType": "AWS::Cognito::UserPool",
       "path": "DeletionProtection",
       "actual": "INACTIVE",
       "physicalId": "us-east-1_Ifea0bzss",
@@ -358,6 +368,18 @@
       "resourceType": "AWS::Cognito::UserPool",
       "path": "MfaConfiguration",
       "actual": "OFF",
+      "physicalId": "us-east-1_Ifea0bzss",
+      "constructPath": "CdkrdIntegHarvest3/Users"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Users0A0EEA89",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Policies.SignInPolicy",
+      "actual": {
+        "AllowedFirstAuthFactors": ["PASSWORD"]
+      },
+      "nested": true,
       "physicalId": "us-east-1_Ifea0bzss",
       "constructPath": "CdkrdIntegHarvest3/Users"
     },

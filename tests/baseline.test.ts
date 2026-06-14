@@ -509,3 +509,29 @@ describe('baseline', () => {
     });
   });
 });
+
+describe('nested undeclared through the baseline (R96)', () => {
+  const nf = (path: string, val: unknown): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'L',
+    resourceType: 'T',
+    path,
+    actual: val,
+    nested: true,
+  });
+  it('no baseline -> nested undeclared is unrecorded inventory (folded downstream)', () => {
+    const out = applyBaseline([nf('Conf.X', 'default')], undefined);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Conf.X', unrecorded: true });
+  });
+  it('accepted + unchanged -> suppressed (CLEAN)', () => {
+    const b = baseline([{ logicalId: 'L', resourceType: 'T', path: 'Conf.X', value: 'default' }]);
+    expect(applyBaseline([nf('Conf.X', 'default')], b)).toEqual([]);
+  });
+  it('accepted then a nested value CHANGES out of band -> drift (the depth differentiator)', () => {
+    const b = baseline([{ logicalId: 'L', resourceType: 'T', path: 'Conf.X', value: 'default' }]);
+    const out = applyBaseline([nf('Conf.X', 'EDITED')], b);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Conf.X' });
+    expect(out[0]!.unrecorded).toBeUndefined(); // it is drift, not unrecorded
+  });
+});

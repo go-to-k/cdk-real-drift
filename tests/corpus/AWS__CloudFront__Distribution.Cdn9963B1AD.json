@@ -196,5 +196,48 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cdn9963B1AD",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.OriginGroups",
+      "actual": {
+        "Quantity": 0,
+        "Items": []
+      },
+      "nested": true,
+      "physicalId": "E2WBGYTS0T0BVH",
+      "constructPath": "CdkrdIntegCloudfront/Cdn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cdn9963B1AD",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Restrictions",
+      "actual": {
+        "GeoRestriction": {
+          "Locations": [],
+          "RestrictionType": "none"
+        }
+      },
+      "nested": true,
+      "physicalId": "E2WBGYTS0T0BVH",
+      "constructPath": "CdkrdIntegCloudfront/Cdn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cdn9963B1AD",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.ViewerCertificate",
+      "actual": {
+        "SslSupportMethod": "vip",
+        "MinimumProtocolVersion": "TLSv1",
+        "CloudFrontDefaultCertificate": true
+      },
+      "nested": true,
+      "physicalId": "E2WBGYTS0T0BVH",
+      "constructPath": "CdkrdIntegCloudfront/Cdn"
+    }
+  ]
 }

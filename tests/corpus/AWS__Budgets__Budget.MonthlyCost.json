@@ -64,6 +64,15 @@
       "path": "NotificationsWithSubscribers",
       "note": "declared but not returned by live read",
       "physicalId": "MonthlyCost-us-east-1-1679810595490-abcDEFghij"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "MonthlyCost",
+      "resourceType": "AWS::Budgets::Budget",
+      "path": "Budget.BudgetName",
+      "actual": "MonthlyCost-us-east-1-1679810595490-abcDEFghij",
+      "nested": true,
+      "physicalId": "MonthlyCost-us-east-1-1679810595490-abcDEFghij"
     }
   ]
 }

@@ -73,6 +73,16 @@
       "tier": "undeclared",
       "logicalId": "Build",
       "resourceType": "AWS::CodeBuild::Project",
+      "path": "Environment.ImagePullCredentialsType",
+      "actual": "CODEBUILD",
+      "nested": true,
+      "physicalId": "cdkrd-harvest6",
+      "constructPath": "CdkrdIntegHarvest6/Build"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Build",
+      "resourceType": "AWS::CodeBuild::Project",
       "path": "QueuedTimeoutInMinutes",
       "actual": 480,
       "physicalId": "cdkrd-harvest6",

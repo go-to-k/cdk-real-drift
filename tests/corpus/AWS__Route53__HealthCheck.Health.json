@@ -47,5 +47,16 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Health",
+      "resourceType": "AWS::Route53::HealthCheck",
+      "path": "HealthCheckConfig.EnableSNI",
+      "actual": true,
+      "nested": true,
+      "physicalId": "fc5f8fb0-4e1a-49d2-9491-17730c70f226",
+      "constructPath": "CdkrdIntegHarvest5/Health"
+    }
+  ]
 }

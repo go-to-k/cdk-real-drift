@@ -60,5 +60,16 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Plan",
+      "resourceType": "AWS::ApiGateway::UsagePlan",
+      "path": "Quota.Offset",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "6aiqlx",
+      "constructPath": "CdkrdIntegHarvest6/Plan"
+    }
+  ]
 }

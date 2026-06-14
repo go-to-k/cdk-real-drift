@@ -86,5 +86,36 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "RestApiGET0F59260B",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.CacheNamespace",
+      "actual": "6pva1vasg4",
+      "nested": true,
+      "physicalId": "84xvb60zri|6pva1vasg4|GET",
+      "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "RestApiGET0F59260B",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.ResponseTransferMode",
+      "actual": "BUFFERED",
+      "nested": true,
+      "physicalId": "84xvb60zri|6pva1vasg4|GET",
+      "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "RestApiGET0F59260B",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.TimeoutInMillis",
+      "actual": 29000,
+      "nested": true,
+      "physicalId": "84xvb60zri|6pva1vasg4|GET",
+      "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
+    }
+  ]
 }

@@ -935,3 +935,64 @@ describe('identity-keyed array ADDITIONS are detected, not subset-projected away
     expect(classifyResource(res(T, declared), liveAll, emptySchema)).toEqual([]);
   });
 });
+
+describe('nested undeclared detection (R96 — the differentiator at depth)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+  const f = (rt: string, d: Record<string, unknown>, l: Record<string, unknown>) =>
+    classifyResource(res(rt, d), l, emptySchema);
+
+  it('a live sub-key inside a DECLARED object the template never set is nested undeclared', () => {
+    const out = f(
+      'AWS::X::Y',
+      { Conf: { Level: 'INFO' } },
+      { Conf: { Level: 'INFO', Destination: 's3' } }
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Conf.Destination', nested: true });
+  });
+
+  it('detects nested undeclared at ANY depth (A.B.D)', () => {
+    const out = f('AWS::X::Y', { A: { B: { C: 1 } } }, { A: { B: { C: 1, D: 2 } } });
+    expect(out.some((x) => x.tier === 'undeclared' && x.path === 'A.B.D' && x.nested)).toBe(true);
+  });
+
+  it('a CHANGE to a declared nested field is DECLARED drift, not nested-undeclared', () => {
+    const out = f('AWS::X::Y', { Conf: { Level: 'INFO' } }, { Conf: { Level: 'CHANGED' } });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      tier: 'declared',
+      path: 'Conf.Level',
+      desired: 'INFO',
+      actual: 'CHANGED',
+    });
+    expect(out[0]!.nested).toBeUndefined();
+  });
+
+  it('does NOT descend arrays (element identity/order handled elsewhere)', () => {
+    const out = f('AWS::X::Y', { Items: [{ Id: 'a' }] }, { Items: [{ Id: 'a', Extra: 9 }] });
+    expect(out.filter((x) => x.nested)).toEqual([]);
+  });
+
+  it('nested trivially-empty / aws:* values are suppressed like top-level', () => {
+    const out = f('AWS::X::Y', { Conf: { A: 1 } }, { Conf: { A: 1, EmptyList: [], EmptyObj: {} } });
+    expect(out.filter((x) => x.nested)).toEqual([]);
+  });
+
+  it('no nested findings when the live object adds nothing beyond declared', () => {
+    expect(f('AWS::X::Y', { Conf: { A: 1 } }, { Conf: { A: 1 } })).toEqual([]);
+  });
+});

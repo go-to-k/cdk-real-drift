@@ -67,8 +67,8 @@
       "tier": "atDefault",
       "logicalId": "ApiCloudWatchRole73EC6FC4",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
       "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole"
     },
@@ -85,8 +85,8 @@
       "tier": "atDefault",
       "logicalId": "ApiCloudWatchRole73EC6FC4",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkdriftIntegHarvest8-ApiCloudWatchRole73EC6FC4-L4x1jhdWNeUT",
       "constructPath": "CdkdriftIntegHarvest8/Api/CloudWatchRole"
     }

@@ -67,6 +67,16 @@
       "note": "declared but not returned by live read",
       "physicalId": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
       "constructPath": "main-CostCheck/CfnBudgetCostForDaily"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "CfnBudgetCostForDaily",
+      "resourceType": "AWS::Budgets::Budget",
+      "path": "Budget.BudgetName",
+      "actual": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
+      "nested": true,
+      "physicalId": "CfnBudgetCostForDaily-us-east-1-1679810595264-2BgFDrBokvWD",
+      "constructPath": "main-CostCheck/CfnBudgetCostForDaily"
     }
   ]
 }

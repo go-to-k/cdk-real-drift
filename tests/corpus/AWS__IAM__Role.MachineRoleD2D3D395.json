@@ -73,8 +73,8 @@
       "tier": "atDefault",
       "logicalId": "MachineRoleD2D3D395",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
       "constructPath": "CdkRealDriftIntegSfn/Machine/Role"
     },
@@ -91,8 +91,8 @@
       "tier": "atDefault",
       "logicalId": "MachineRoleD2D3D395",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkRealDriftIntegSfn-MachineRoleD2D3D395-zOEgphaTlAY7",
       "constructPath": "CdkRealDriftIntegSfn/Machine/Role"
     }
