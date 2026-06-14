@@ -406,3 +406,101 @@ describe('property-scoped SDK writer routing (IAM Role inline Policies)', () => 
     );
   });
 });
+
+describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => {
+  it('R98 identity-keyed array-element nested value (accepted then changed) -> notRevertable, never a malformed pointer', () => {
+    // path `Origins[id].ConnectionTimeout` would become the bogus pointer
+    // `/Origins[id]/ConnectionTimeout` (bracket is not RFC6902) if it reached revertOp.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::CloudFront::Distribution',
+      path: 'DistributionConfig.Origins[o1].ConnectionTimeout',
+      actual: 60,
+      nested: true,
+    });
+    const b = baseline([
+      {
+        logicalId: 'R',
+        resourceType: 'AWS::CloudFront::Distribution',
+        path: 'DistributionConfig.Origins[o1].ConnectionTimeout',
+        value: 10,
+      },
+    ]);
+    const plan = buildRevertPlan([f], b);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+  });
+
+  it('R96 dotted object-nested value -> notRevertable (fragile deep patch)', () => {
+    const f = F({ tier: 'undeclared', path: 'Conf.Destination', actual: 's3', nested: true });
+    const b = baseline([
+      { logicalId: 'R', resourceType: 'AWS::S3::Bucket', path: 'Conf.Destination', value: 'old' },
+    ]);
+    const plan = buildRevertPlan([f], b);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+  });
+
+  it('nested guard fires by PATH SHAPE even without the flag (baseline value removed since accept)', () => {
+    // applyBaseline reconstructs a "removed since accept" finding WITHOUT Finding.nested
+    // (baseline-file.ts), but it keeps the nested path — the path-shape guard still catches it.
+    const f = F({
+      tier: 'undeclared',
+      path: 'DistributionConfig.Origins[o1].ConnectionTimeout',
+      desired: 10,
+      actual: undefined,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+  });
+
+  it('--remove-unaccepted does NOT override the nested guard', () => {
+    const f = F({
+      tier: 'undeclared',
+      path: 'Conf.Destination',
+      actual: 's3',
+      nested: true,
+      unrecorded: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]), { removeUnaccepted: true });
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+  });
+
+  it('a TOP-LEVEL undeclared value (single-key path) is still revertable — guard does not over-fire', () => {
+    const f = F({
+      tier: 'undeclared',
+      path: 'AccelerateConfiguration',
+      actual: { AccelerationStatus: 'Enabled' },
+    });
+    const b = baseline([
+      {
+        logicalId: 'R',
+        resourceType: 'AWS::S3::Bucket',
+        path: 'AccelerateConfiguration',
+        value: { AccelerationStatus: 'Suspended' },
+      },
+    ]);
+    const plan = buildRevertPlan([f], b);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.notRevertable).toHaveLength(0);
+  });
+
+  it('a DECLARED drift with a dotted path is still revertable (guard is scoped to undeclared)', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          path: 'VersioningConfiguration.Status',
+          desired: 'Enabled',
+          actual: 'Suspended',
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.notRevertable).toHaveLength(0);
+  });
+});

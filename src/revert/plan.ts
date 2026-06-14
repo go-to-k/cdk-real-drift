@@ -101,6 +101,28 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // Nested undeclared values (R96/R98) are detect/accept-only, NOT revertable. Their
+    // path addresses a sub-key INSIDE a declared object or array element — dotted
+    // (`Conf.Destination`) or, for an identity-keyed array element, `Prop[<id>].sub`.
+    // `toPointer` builds a flat RFC6902 pointer by splitting on '.', so the bracket
+    // form yields the malformed `/Prop[<id>]/sub` (the bracket is not RFC6902 and the
+    // CC patch would target a literal key, not the array element). Even the dotted form
+    // is a fragile deep patch (the same reason R78 abandoned index-based array patches).
+    // These are overwhelmingly AWS-materialized defaults — report + baseline them, and
+    // fix any real divergence in your IaC or by re-accepting the live value. Detect by
+    // PATH SHAPE, not Finding.nested: a baseline value REMOVED since accept is
+    // reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested path. A
+    // top-level undeclared path is a single key (never contains '.'/'['), and declared
+    // drift is a different tier — so this never blocks a top-level revert.
+    if (f.tier === 'undeclared' && (f.nested || f.path.includes('.') || f.path.includes('['))) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'nested undeclared value — detect/accept only, not revertable',
+      });
+      continue;
+    }
     if (!DRIFT_TIERS.has(f.tier)) continue; // only declared/undeclared are drift to revert
     if (!f.physicalId) {
       notRevertable.push({
