@@ -394,6 +394,10 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
     so `revert` refuses: accept them if the live values are right, or opt into
     removal with `--remove-unaccepted`;
   - a `deleted` resource (recreate it with `cdk deploy`);
+  - **nested undeclared values** (a sub-key inside a property you declared, incl.
+    inside an identity-keyed array element) — detect/accept-only: a flat patch
+    can't safely target a deep sub-field, so fix any real divergence in your IaC
+    or re-accept the live value;
   - **create-only** properties (changing them requires resource replacement);
   - toggle-style properties with no "absent" state (e.g. S3 transfer acceleration
     is only `Enabled`/`Suspended`);
