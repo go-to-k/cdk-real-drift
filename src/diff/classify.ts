@@ -13,6 +13,7 @@ import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   CASE_INSENSITIVE_PATHS,
   isAllAwsTags,
+  identityField,
   isCaseInsensitiveScalarEqual,
   isEqualUnorderedScalarSet,
   isJsonStringStructEqual,
@@ -44,11 +45,18 @@ const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   typeof (t as { Key?: unknown }).Key === 'string' &&
   'Value' in (t as object);
 
-// R96: recurse two plain objects (the declared and live sides of a property) and
-// emit each LIVE-only nested key — a sub-key present in live but never declared, at
-// any depth. Arrays are not descended (their element identity/order is handled by the
-// declared compare + canonicalizers); only nested OBJECTS are walked. Pure: the
-// caller decides suppression and finding shape.
+// R96/R98: recurse the declared and live sides of a property and emit each LIVE-only
+// nested key — a sub-key present in live but never declared, at any depth.
+//   - Plain objects (R96): walk every live key; recurse where declared, emit otherwise.
+//   - Identity-keyed object arrays (R98: Tags/Origins/AttributeDefinitions/…): align
+//     elements BY identity value (not position — canonicalization may sort the side
+//     with an extra sub-key elsewhere) and recurse into each MATCHED pair, so a
+//     live-only sub-field inside a declared element is caught (path `Prop[<id>].sub`).
+//     A whole live-only ELEMENT (no declared match) is left to the declared compare,
+//     not emitted here. Identity-LESS arrays (no shared Key/Id/AttributeName/IndexName,
+//     e.g. SecurityGroup rules) are NOT descended — their elements can't be matched
+//     reliably, so descending risks false positives.
+// Pure: the caller decides suppression and finding shape.
 const isNestedObject = (x: unknown): x is Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x);
 function collectNestedUndeclared(
@@ -57,6 +65,19 @@ function collectNestedUndeclared(
   path: string,
   emit: (path: string, value: unknown) => void
 ): void {
+  if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
+    if (declaredVal.length === 0 || liveVal.length === 0) return;
+    const idf = identityField(declaredVal);
+    if (!idf || identityField(liveVal) !== idf) return;
+    const liveById = new Map<string, Record<string, unknown>>();
+    for (const el of liveVal) if (isNestedObject(el)) liveById.set(String(el[idf]), el);
+    for (const dEl of declaredVal) {
+      if (!isNestedObject(dEl)) continue;
+      const match = liveById.get(String(dEl[idf]));
+      if (match) collectNestedUndeclared(dEl, match, `${path}[${String(dEl[idf])}]`, emit);
+    }
+    return;
+  }
   if (!isNestedObject(declaredVal) || !isNestedObject(liveVal)) return;
   for (const [k, val] of Object.entries(liveVal)) {
     const childPath = `${path}.${k}`;

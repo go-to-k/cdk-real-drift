@@ -290,11 +290,15 @@ all live changes
   − sibling AWS::IAM::Policy entries in a role's Policies → filtered BY NAME (see below)
   = undeclared residual                → the unique signal
       ├─ top-level: a live property the template never declared
-      └─ nested (R96): a live SUB-key inside a DECLARED object never set by it
+      └─ nested (R96/R98): a live SUB-key inside a DECLARED object not set by it
          (recursed by classify's collectNestedUndeclared, dotted path, flagged
          nested:true) — folded in the report by default (the live model carries many
          nested AWS defaults), expanded by --show-all/--verbose, recorded by accept
-         like any undeclared value so a later out-of-band change to it surfaces
+         like any undeclared value so a later out-of-band change to it surfaces.
+         R98 extends the recursion into the MATCHED elements of identity-keyed object
+         arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
+         value and a live-only sub-field inside a declared element is caught too
+         (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended
 ```
 
 **The four false-positive classes found by dogfooding** (8 real cdkd fixtures —
