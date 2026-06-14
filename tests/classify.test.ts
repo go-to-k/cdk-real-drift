@@ -995,4 +995,29 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
   it('no nested findings when the live object adds nothing beyond declared', () => {
     expect(f('AWS::X::Y', { Conf: { A: 1 } }, { Conf: { A: 1 } })).toEqual([]);
   });
+
+  it('a nested READ-ONLY path (stripped from live) is NOT surfaced as nested undeclared', () => {
+    // deepStripPaths(live, readOnlyPaths) runs BEFORE the nested recursion, so a
+    // managed read-only sub-field never reaches collectNestedUndeclared. Pin that
+    // interaction: without the strip this would be a false `Conf.Arn` nested finding.
+    const schema: SchemaInfo = { ...emptySchema, readOnlyPaths: ['Conf.Arn'] };
+    const out = classifyResource(
+      res('AWS::X::Y', { Conf: { A: 1 } }),
+      { Conf: { A: 1, Arn: 'arn:aws:x:::managed' } },
+      schema
+    );
+    expect(out.filter((x) => x.nested)).toEqual([]);
+  });
+
+  it('a nested WRITE-ONLY path (stripped from both sides) is NOT surfaced as nested undeclared', () => {
+    // writeOnly is stripped from BOTH declared and live (cannot be read back), so a
+    // nested secret AWS never returns must not appear as drift on either side.
+    const schema: SchemaInfo = { ...emptySchema, writeOnlyPaths: ['Conf.Secret'] };
+    const out = classifyResource(
+      res('AWS::X::Y', { Conf: { A: 1 } }),
+      { Conf: { A: 1, Secret: 'shh' } },
+      schema
+    );
+    expect(out.filter((x) => x.nested)).toEqual([]);
+  });
 });
