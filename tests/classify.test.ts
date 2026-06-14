@@ -982,9 +982,40 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
     expect(out[0]!.nested).toBeUndefined();
   });
 
-  it('does NOT descend arrays (element identity/order handled elsewhere)', () => {
+  it('descends identity-keyed array elements (R98): a live sub-field in a declared element is nested undeclared', () => {
     const out = f('AWS::X::Y', { Items: [{ Id: 'a' }] }, { Items: [{ Id: 'a', Extra: 9 }] });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Items[a].Extra', nested: true });
+  });
+
+  it('R98: matches array elements BY identity, not position (order differs after canonicalization)', () => {
+    const out = f(
+      'AWS::X::Y',
+      { Items: [{ Id: 'a' }, { Id: 'b' }] },
+      { Items: [{ Id: 'b' }, { Id: 'a', Extra: 9 }] }
+    );
+    expect(out.filter((x) => x.nested).map((x) => x.path)).toEqual(['Items[a].Extra']);
+  });
+
+  it('R98: a whole live-only ELEMENT is NOT emitted as nested (left to the declared compare)', () => {
+    const out = f('AWS::X::Y', { Items: [{ Id: 'a' }] }, { Items: [{ Id: 'a' }, { Id: 'b' }] });
     expect(out.filter((x) => x.nested)).toEqual([]);
+  });
+
+  it('R98: identity-LESS object arrays are NOT descended (elements cannot be matched)', () => {
+    // No Key/Id/AttributeName/IndexName on the elements → no reliable alignment.
+    const out = f(
+      'AWS::X::Y',
+      { Rules: [{ Port: 80 }] },
+      { Rules: [{ Port: 80, Description: 'added' }] }
+    );
+    expect(out.filter((x) => x.nested)).toEqual([]);
+  });
+
+  it('R98: a CHANGE to a declared field inside an array element is declared drift, not nested', () => {
+    const out = f('AWS::X::Y', { Items: [{ Id: 'a', V: 1 }] }, { Items: [{ Id: 'a', V: 2 }] });
+    expect(out.filter((x) => x.nested)).toEqual([]);
+    expect(out.some((x) => x.tier === 'declared')).toBe(true);
   });
 
   it('nested trivially-empty / aws:* values are suppressed like top-level', () => {

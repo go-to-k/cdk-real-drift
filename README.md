@@ -307,10 +307,12 @@ that folds everything informational.
     `--show-all` lists them.
   - **`nested`** — undeclared values that live as a **sub-key inside a property
     you _did_ declare** (e.g. you set a cache behavior but never its
-    `SmoothStreaming`, which AWS materializes underneath). The live model carries
-    many of these, so they fold to a count; `accept` records them like any
-    undeclared value (so a later out-of-band change to one surfaces), and
-    `--show-all` / `--verbose` list them.
+    `SmoothStreaming`, which AWS materializes underneath) — including inside the
+    elements of an identity-keyed array you declared (a CloudFront `Origins[<id>]`
+    gaining a `ConnectionTimeout`, a DynamoDB GSI gaining `WarmThroughput`). The
+    live model carries many of these, so they fold to a count; `accept` records
+    them like any undeclared value (so a later out-of-band change to one surfaces),
+    and `--show-all` / `--verbose` list them.
   - **`readGap` / `unresolved` / `skipped` / `ignored`** — values cdkrd can't
     confidently compare, reported honestly rather than guessed (never false drift).
 

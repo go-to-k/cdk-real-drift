@@ -170,6 +170,19 @@
       },
       "physicalId": "CdkrdIntegHarvest2-OrdersA9B65338-1T3GPTWJ10CC0",
       "constructPath": "CdkrdIntegHarvest2/Orders"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "OrdersA9B65338",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "GlobalSecondaryIndexes[byStatus].WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "nested": true,
+      "physicalId": "CdkrdIntegHarvest2-OrdersA9B65338-1T3GPTWJ10CC0",
+      "constructPath": "CdkrdIntegHarvest2/Orders"
     }
   ]
 }

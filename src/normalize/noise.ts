@@ -138,7 +138,10 @@ function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
 // than the template declares them (a positional diff otherwise reports false drift on
 // every element). Both are set-like identities, not order-significant.
 const IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName'] as const;
-function identityField(arr: unknown[]): string | undefined {
+// Exported for classify's nested-undeclared array descent (R98): an identity-keyed
+// object array (Tags/Origins/AttributeDefinitions/…) can be aligned element-by-element
+// by its identity value, so a live-only SUB-key inside a declared element is detected.
+export function identityField(arr: unknown[]): string | undefined {
   return IDENTITY_FIELDS.find((f) =>
     arr.every(
       (t) => t && typeof t === 'object' && typeof (t as Record<string, unknown>)[f] === 'string'
