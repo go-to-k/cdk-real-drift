@@ -382,7 +382,9 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
    HTTP-method enum sets (CloudFront `AllowedMethods` / `CachedMethods`) are unordered;
    positional diff flagged them. Fix: `canonicalizeIdArraysDeep` (sort arrays whose
    every element is an AWS id `subnet-…`/`sg-…`, an ARN, or an HTTP verb; plain scalar
-   lists untouched).
+   lists untouched). EXCEPTION: a list containing a Lambda layer-version ARN
+   (`…:lambda:…:layer:…`) is order-SIGNIFICANT (later layers overlay earlier), so it is
+   left unsorted — a genuine `Layers` reorder surfaces as drift, not a false negative.
 3. **name ↔ ARN (bidirectional)** — CDK declares a bare name (Lambda
    EventSourceMapping/Permission `FunctionName`, ECS `Service.Cluster`) and AWS returns
    the full ARN; OR the reverse — the template resolves a `Fn::GetAtt` to an ARN
