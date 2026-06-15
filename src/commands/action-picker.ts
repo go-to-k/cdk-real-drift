@@ -3,8 +3,14 @@
 // The bulk options (Record all / Ignore all / Revert all) apply ONE action to every
 // applicable finding. When a stack mixes findings that each deserve a different verb,
 // this picker assigns an action PER finding in a single screen:
-//   ↑↓ = move · space = cycle the focused row's action · → = set every row to the
-//   focused row's action · enter = apply
+//   ↑↓ = move · space = cycle the focused row's action · → = set every VISIBLE row to
+//   the focused row's action · type = filter rows by label · ⌫ = clear filter · enter = apply
+// Type-to-filter (R132): with many findings the target property is hard to spot, so any
+// printable character narrows the visible rows to those whose label contains the typed
+// text (case-insensitive); the chosen actions on hidden rows are PRESERVED (actions stay
+// indexed by ORIGINAL row). → then applies only to the visible (filtered) set, making
+// "filter to Tags, → record" a targeted bulk-apply. Movement is arrows-only — j/k are
+// freed up as filter input.
 // There is deliberately no ← (the bulk-multiselect uses ←/→ for none/all; here → is
 // the only bulk key and space cycles, so the two prompts stay key-consistent without
 // ← meaning two different things). Each row cycles through only the actions that APPLY
@@ -50,13 +56,32 @@ export function cycleAction(current: FindingAction, applicable: FindingAction[])
   return ring[(i + 1) % ring.length] ?? 'skip';
 }
 
-/** Set every row to `action` where that action applies to the row, else `skip`
- *  (the → "all to focused" bulk key). Pure + exported. */
-export function setAllToAction(
+/** Set every VISIBLE row to `action` where that action applies (else `skip`); rows NOT in
+ *  `visible` keep their current action. The → key scopes to the current filter, so → after
+ *  typing a filter is a targeted bulk-apply over just the matched rows. With `visible` =
+ *  every index (no filter) this is the plain "all to focused". Pure + exported. */
+export function setVisibleToAction(
   rows: { applicable: FindingAction[] }[],
+  actions: FindingAction[],
+  visible: number[],
   action: FindingAction
 ): FindingAction[] {
-  return rows.map((r) => (action === 'skip' || r.applicable.includes(action) ? action : 'skip'));
+  const vis = new Set(visible);
+  return rows.map((r, i) => {
+    if (!vis.has(i)) return actions[i] ?? 'skip';
+    return action === 'skip' || r.applicable.includes(action) ? action : 'skip';
+  });
+}
+
+/** Original-row indices whose label contains `filter` (case-insensitive, trimmed). An empty
+ *  filter returns every index. Backs the picker's type-to-filter: the visible set is derived,
+ *  so hidden rows never lose their chosen action (actions stay keyed by original index).
+ *  Pure + exported. */
+export function filterRows(rows: { label: string }[], filter: string): number[] {
+  const all = rows.map((_, i) => i);
+  const f = filter.trim().toLowerCase();
+  if (!f) return all;
+  return all.filter((i) => (rows[i]?.label ?? '').toLowerCase().includes(f));
 }
 
 const CHIP_WIDTH = 6; // max action label length ('record'/'ignore'/'revert')
@@ -79,7 +104,7 @@ export function actionChip(action: FindingAction): string {
  *  The action picker only runs inside check's interactive flow, where Esc returns to
  *  the action menu — so `esc = back` (R130). */
 export function actionPickerHint(): string {
-  return '↑↓ = move · space = cycle · → = all to focused · enter = apply · esc = back';
+  return 'type = filter · ↑↓ = move · space = cycle · → = all (filtered) · ⌫ = clear · enter = apply · esc = back';
 }
 
 /**
@@ -138,14 +163,30 @@ export function renderPickerFrame(
   rows: PickerRow[],
   actions: FindingAction[],
   cursor: number,
-  done: boolean
+  done: boolean,
+  filter = '',
+  visible?: number[]
 ): string {
   if (done) return `${S_BAR_START}  ${message}\n${S_BAR}  ${summarizeChoices(actions)}`;
+  const vis = visible ?? rows.map((_, i) => i);
   const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.infoTier(actionPickerHint())}`;
-  const body = rows
-    .map((row, i) => `${S_BAR}  ${formatActionRow(row.label, actions[i] ?? 'skip', i === cursor)}`)
-    .join('\n');
-  return `${header}\n${body}\n${S_BAR_END}`;
+  // Show the active filter (and a match count) so the narrowing is visible; the row body is
+  // the visible subset, with the cursor an index INTO that subset (vi), pointing at the
+  // original row visible[vi].
+  const filterLine =
+    filter.trim().length > 0
+      ? `${S_BAR}  ${style.cursor(`filter: ${filter}`)}${style.infoTier(` (${vis.length} match${vis.length === 1 ? '' : 'es'})`)}`
+      : undefined;
+  const body =
+    vis.length === 0
+      ? `${S_BAR}  ${style.infoTier(`(no rows match "${filter.trim()}" — ⌫ to clear)`)}`
+      : vis
+          .map(
+            (origIdx, vi) =>
+              `${S_BAR}  ${formatActionRow(rows[origIdx]?.label ?? '', actions[origIdx] ?? 'skip', vi === cursor)}`
+          )
+          .join('\n');
+  return [header, filterLine, body, S_BAR_END].filter((l) => l !== undefined).join('\n');
 }
 
 /**
@@ -159,7 +200,8 @@ export async function actionPicker(
   rows: PickerRow[]
 ): Promise<FindingAction[] | undefined> {
   const actions: FindingAction[] = rows.map(() => 'skip');
-  let cursor = 0;
+  let cursor = 0; // index INTO the visible subset, not into `rows`
+  let filter = '';
   const prompt = new Prompt<FindingAction[]>(
     {
       render() {
@@ -168,25 +210,52 @@ export async function actionPicker(
           rows,
           actions,
           cursor,
-          this.state === 'submit' || this.state === 'cancel'
+          this.state === 'submit' || this.state === 'cancel',
+          filter,
+          filterRows(rows, filter)
         );
       },
     },
     false
   );
   prompt.value = actions;
-  prompt.on('key', (_char, info) => {
+  prompt.on('key', (char, info) => {
     const name = info?.name;
-    if (name === 'up' || name === 'k') cursor = (cursor - 1 + rows.length) % rows.length;
-    else if (name === 'down' || name === 'j') cursor = (cursor + 1) % rows.length;
-    else if (name === 'space') {
-      actions[cursor] = cycleAction(actions[cursor] ?? 'skip', rows[cursor]?.applicable ?? []);
-      prompt.value = [...actions];
+    const visible = filterRows(rows, filter); // current matched original-row indices
+    const focused = visible[cursor]; // the original row the cursor points at (or undefined)
+    // Movement is arrows-only — j/k are filter input now. Cursor wraps within the visible set.
+    if (name === 'up') {
+      if (visible.length > 0) cursor = (cursor - 1 + visible.length) % visible.length;
+    } else if (name === 'down') {
+      if (visible.length > 0) cursor = (cursor + 1) % visible.length;
+    } else if (name === 'space') {
+      if (focused !== undefined) {
+        actions[focused] = cycleAction(actions[focused] ?? 'skip', rows[focused]?.applicable ?? []);
+        prompt.value = [...actions];
+      }
     } else if (name === 'right') {
-      const target = actions[cursor] ?? 'skip';
-      const next = setAllToAction(rows, target);
-      for (let i = 0; i < actions.length; i++) actions[i] = next[i] ?? 'skip';
-      prompt.value = [...actions];
+      // bulk-apply the focused action to the VISIBLE (filtered) rows only
+      if (focused !== undefined) {
+        const next = setVisibleToAction(rows, actions, visible, actions[focused] ?? 'skip');
+        for (let i = 0; i < actions.length; i++) actions[i] = next[i] ?? 'skip';
+        prompt.value = [...actions];
+      }
+    } else if (name === 'backspace' || name === 'delete') {
+      if (filter.length > 0) {
+        filter = filter.slice(0, -1);
+        cursor = 0;
+      }
+    } else if (
+      // any other single printable character (not space — that cycles) is filter input
+      typeof char === 'string' &&
+      char.length === 1 &&
+      char >= ' ' &&
+      char !== ' ' &&
+      !info?.ctrl &&
+      !info?.meta
+    ) {
+      filter += char;
+      cursor = 0;
     }
   });
   const result = await prompt.prompt();
