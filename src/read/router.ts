@@ -35,6 +35,32 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),
   'AWS::AppConfig::Environment': compositeWith('ApplicationId'),
   'AWS::AppConfig::ConfigurationProfile': compositeWith('ApplicationId'),
+  // ApiGateway v1 (REST) parent-first composites `[RestApiId, <child>]` and Cognito
+  // `[UserPoolId, <child>]` — same parent-first `|` shape as above. The CFn physical
+  // id is only the child (Model→Name, RequestValidator→RequestValidatorId,
+  // Resource→ResourceId, Stage→StageName, UserPoolDomain→Domain,
+  // UserPoolResourceServer→Identifier); the parent comes from the resolved declared
+  // Ref. All verified live (R129): the bare child id reads as a ValidationException /
+  // not-found skip until paired with its parent. (ApiGateway::Method needs NO adapter
+  // — its CFn physical id is ALREADY the full `RestApiId|ResourceId|HttpMethod`.)
+  'AWS::ApiGateway::Model': compositeWith('RestApiId'),
+  'AWS::ApiGateway::RequestValidator': compositeWith('RestApiId'),
+  'AWS::ApiGateway::Resource': compositeWith('RestApiId'),
+  'AWS::ApiGateway::Stage': compositeWith('RestApiId'),
+  'AWS::Cognito::UserPoolDomain': compositeWith('UserPoolId'),
+  'AWS::Cognito::UserPoolResourceServer': compositeWith('UserPoolId'),
+  // ApiGateway::Deployment is the odd one out: its primaryIdentifier is
+  // `[DeploymentId, RestApiId]` — CHILD first (verified live R129: `RestApiId|DeploymentId`
+  // returns not-found; only `DeploymentId|RestApiId` reads). The CFn physical id is the
+  // DeploymentId; RestApiId comes from the resolved declared Ref. Not `compositeWith`
+  // (parent-first); this is child-first like ECS Service.
+  'AWS::ApiGateway::Deployment': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const restApiId = declared.RestApiId;
+    return typeof restApiId === 'string' && restApiId.length > 0
+      ? `${pid}|${restApiId}`
+      : undefined;
+  },
   // ApplicationAutoScaling ScalingPolicy: primaryIdentifier is [Arn,
   // ScalableDimension]. The CFn physical id IS the PolicyARN, but ScalableDimension
   // is not a direct ScalingPolicy property — it rides on the resolved

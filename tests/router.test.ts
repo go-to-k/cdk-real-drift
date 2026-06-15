@@ -199,6 +199,80 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('api456|route789');
   });
 
+  // R129: ApiGateway v1 (REST) parent-first [RestApiId, <child>] + Cognito
+  // [UserPoolId, <child>] composites — verified live (skipped 7 -> 0 on the ccadapters
+  // fixture). The CFn physical id carries only the child; the parent is the resolved Ref.
+  for (const t of [
+    'AWS::ApiGateway::Model',
+    'AWS::ApiGateway::RequestValidator',
+    'AWS::ApiGateway::Resource',
+    'AWS::ApiGateway::Stage',
+  ]) {
+    it(`${t}: builds the RestApiId|<child> composite identifier`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: 'child123', declared: { RestApiId: 'api456' } }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('api456|child123');
+    });
+  }
+
+  for (const t of ['AWS::Cognito::UserPoolDomain', 'AWS::Cognito::UserPoolResourceServer']) {
+    it(`${t}: builds the UserPoolId|<child> composite identifier`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: 'child123', declared: { UserPoolId: 'us-east-1_AbC' } }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('us-east-1_AbC|child123');
+    });
+  }
+
+  it('ApiGateway Model: an unresolved RestApiId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ApiGateway::Model', physicalId: 'm1', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('m1');
+  });
+
+  // R129: ApiGateway::Deployment is CHILD-first [DeploymentId, RestApiId] — verified
+  // live that `RestApiId|DeploymentId` returns not-found; only `DeploymentId|RestApiId`
+  // reads. The CFn physical id is the DeploymentId.
+  it('ApiGateway Deployment: builds the DeploymentId|RestApiId composite — child FIRST', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::Deployment',
+        physicalId: 'dep123',
+        declared: { RestApiId: 'api456' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('dep123|api456');
+  });
+
+  it('ApiGateway Deployment: an unresolved RestApiId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ApiGateway::Deployment', physicalId: 'dep123', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('dep123');
+  });
+
   // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].
   for (const t of ['AWS::AppConfig::Environment', 'AWS::AppConfig::ConfigurationProfile']) {
     it(`${t}: builds the ApplicationId|<child> composite identifier`, async () => {
