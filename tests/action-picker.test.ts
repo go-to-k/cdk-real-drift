@@ -7,9 +7,10 @@ import {
   type FindingAction,
   formatActionRow,
   groupByAction,
+  filterRows,
   type PickerRow,
   renderPickerFrame,
-  setAllToAction,
+  setVisibleToAction,
   summarizeChoices,
 } from '../src/commands/action-picker.js';
 import type { Finding } from '../src/types.js';
@@ -71,21 +72,54 @@ describe('cycleAction', () => {
   });
 });
 
-describe('setAllToAction (the → bulk key)', () => {
+describe('setVisibleToAction (the → bulk key, scoped to the visible/filtered set)', () => {
   const rows = [
     { applicable: ['record', 'ignore', 'revert'] as FindingAction[] }, // undeclared
     { applicable: ['revert', 'ignore'] as FindingAction[] }, // declared
   ];
-  it('sets every row that supports the action, skips the rest', () => {
+  const ALL = [0, 1];
+  const start: FindingAction[] = ['skip', 'skip'];
+  it('with every index visible, sets every row that supports the action, skips the rest', () => {
     // 'record' applies only to the undeclared row → declared row falls back to skip
-    expect(setAllToAction(rows, 'record')).toEqual(['record', 'skip']);
-    // 'ignore' applies to both
-    expect(setAllToAction(rows, 'ignore')).toEqual(['ignore', 'ignore']);
-    // 'revert' applies to both
-    expect(setAllToAction(rows, 'revert')).toEqual(['revert', 'revert']);
+    expect(setVisibleToAction(rows, start, ALL, 'record')).toEqual(['record', 'skip']);
+    expect(setVisibleToAction(rows, start, ALL, 'ignore')).toEqual(['ignore', 'ignore']);
+    expect(setVisibleToAction(rows, start, ALL, 'revert')).toEqual(['revert', 'revert']);
   });
-  it('skip sets every row to skip', () => {
-    expect(setAllToAction(rows, 'skip')).toEqual(['skip', 'skip']);
+  it('skip sets every visible row to skip', () => {
+    expect(setVisibleToAction(rows, ['record', 'revert'], ALL, 'skip')).toEqual(['skip', 'skip']);
+  });
+  it('rows NOT in the visible set keep their current action (filtered bulk-apply)', () => {
+    // only row 0 visible → row 1 retains its prior 'revert'
+    expect(setVisibleToAction(rows, ['skip', 'revert'], [0], 'ignore')).toEqual([
+      'ignore',
+      'revert',
+    ]);
+    // only row 1 visible, 'record' doesn't apply there → row 1 becomes skip, row 0 untouched
+    expect(setVisibleToAction(rows, ['record', 'ignore'], [1], 'record')).toEqual([
+      'record',
+      'skip',
+    ]);
+  });
+});
+
+describe('filterRows (type-to-filter visible set)', () => {
+  const rows: PickerRow[] = [
+    { label: 'Api/Bucket.Tags', applicable: ['record'] },
+    { label: 'Api/Queue.Tags', applicable: ['record'] },
+    { label: 'Api/Role.PermissionsBoundary', applicable: ['revert'] },
+  ];
+  it('empty (or whitespace) filter returns every index', () => {
+    expect(filterRows(rows, '')).toEqual([0, 1, 2]);
+    expect(filterRows(rows, '   ')).toEqual([0, 1, 2]);
+  });
+  it('matches the label case-insensitively, returning ORIGINAL indices', () => {
+    expect(filterRows(rows, 'tags')).toEqual([0, 1]);
+    expect(filterRows(rows, 'TAGS')).toEqual([0, 1]);
+    expect(filterRows(rows, 'role')).toEqual([2]);
+    expect(filterRows(rows, 'bucket')).toEqual([0]);
+  });
+  it('no match returns an empty list', () => {
+    expect(filterRows(rows, 'zzz')).toEqual([]);
   });
 });
 
@@ -112,8 +146,9 @@ describe('summarizeChoices', () => {
 });
 
 describe('actionPickerHint', () => {
-  it('names the keys (move / cycle / all / apply)', () => {
+  it('names the keys (filter / move / cycle / all / apply)', () => {
     const h = actionPickerHint();
+    expect(h).toContain('filter'); // R132: type-to-filter
     expect(h).toContain('space');
     expect(h).toContain('→');
     expect(h).toContain('enter');
@@ -165,6 +200,24 @@ describe('renderPickerFrame (the prompt frame — render logic exercised without
     const frame = renderPickerFrame('pick:', rows, ['record', 'ignore'], 0, true);
     expect(frame).toContain('1 record · 1 ignore');
     expect(frame).not.toContain('A.x');
+  });
+
+  it('with a filter, shows the filter line + only the visible rows; cursor indexes the subset', () => {
+    // filter matches only row 1 (B.y); visible=[1], cursor=0 points at the original row 1
+    const frame = renderPickerFrame('m', rows, ['skip', 'revert'], 0, false, 'b.y', [1]);
+    expect(frame).toContain('filter: b.y');
+    expect(frame).toContain('1 match'); // match count, singular
+    expect(frame).toContain('B.y');
+    expect(frame).not.toContain('A.x'); // filtered out
+    expect(frame.split('❯').length - 1).toBe(1); // the single visible row is focused
+  });
+
+  it('a filter with no matches shows a no-rows hint and no row pointer', () => {
+    const frame = renderPickerFrame('m', rows, ['skip', 'skip'], 0, false, 'zzz', []);
+    expect(frame).toContain('no rows match');
+    expect(frame).not.toContain('A.x');
+    expect(frame).not.toContain('B.y');
+    expect(frame.split('❯').length - 1).toBe(0);
   });
 });
 
