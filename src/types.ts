@@ -42,6 +42,22 @@ export interface Finding {
   // expanded by --show-all; recorded by record like any undeclared value, so a later
   // out-of-band change to it surfaces.
   nested?: boolean;
+  // undeclared tier only (R128): a recorded undeclared identity-keyed object array
+  // (e.g. an IAM Role's inline Policies keyed by PolicyName) whose value CHANGED vs
+  // the baseline — set by applyBaseline for the REPORT only. The finding still names
+  // the whole-array path (so record keeps snapshotting the whole array and the
+  // property never un-records); this just describes WHICH element(s) differ so the
+  // report shows the delta, not the full array dump. See `identityArrayDelta`.
+  arrayDelta?: ArrayDelta;
+}
+
+// Element-level delta of a recorded-but-changed undeclared identity-keyed object
+// array (R128). DISPLAY metadata only: the finding stays at the whole-array path.
+export interface ArrayDelta {
+  identityField: string; // the field the elements were aligned by (e.g. 'PolicyName')
+  added: { id: string; value: unknown }[]; // live elements with no baseline match
+  removed: { id: string; value: unknown }[]; // baseline elements gone from live
+  changed: { id: string; recorded: unknown; actual: unknown }[]; // matched id, content differs
 }
 
 export interface SchemaInfo {
