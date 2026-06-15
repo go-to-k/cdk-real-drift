@@ -287,20 +287,21 @@ export async function runCheck(args: string[]): Promise<number> {
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
       if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive()) {
         const acceptable = applyIgnores(findings, stackName, config);
-        // recordable = undeclared values accept would record (top-level + nested).
-        // atDefault/generated are folded inventory, never recorded. Prompt only when
-        // there is something to record — a stack whose only undeclared values are at
-        // an AWS default / auto-generated is reported (CLEAN + folded info), not
-        // interrupted. The prompt splits `standout` (top-level, listed) from `nested`
-        // (folded) so it never calls the 50+ folded nested values "edits" (R105).
+        // The pre-report bulk-accept prompt fires ONLY when something STANDS OUT
+        // (R108): a top-level undeclared value the report would list as [UNRECORDED].
+        // When standout = 0 the only undeclared values are folded (nested) or pure
+        // inventory (atDefault/generated), so "Show first" would reveal an empty body
+        // — confusing. We skip straight to the report; the post-report "unrecorded
+        // values found — Accept/Nothing" prompt still offers to baseline the folded
+        // nested values, so nothing is lost. `standout` splits from `nested` so the
+        // prompt never calls the 50+ folded nested values "edits" (R105).
         const undeclared = acceptable.filter((f) => f.tier === 'undeclared');
         const standoutCount = undeclared.filter((f) => !f.nested).length;
         const nestedCount = undeclared.length - standoutCount;
-        const recordableCount = undeclared.length;
         const declaredDriftCount = acceptable.filter(
           (f) => f.tier === 'declared' || f.tier === 'deleted'
         ).length;
-        if (recordableCount > 0) {
+        if (standoutCount > 0) {
           const prompt = firstRunPrompt(stackName, {
             standout: standoutCount,
             nested: nestedCount,
