@@ -362,6 +362,15 @@ describe('mergeIgnoreRules', () => {
     const r = mergeIgnoreRules([], [a, b, c]);
     expect(r.merged).toEqual([b, c, a]); // A.x(no-stack) < A.x(stack:Prod*) < Z.x
   });
+
+  it('sorts byte-stably (uppercase before lowercase), not locale-dependently', () => {
+    // config.json is git-committed, so its order must be byte-stable across machines/
+    // locales. Byte order puts 'B' (0x42) before 'a' (0x61); localeCompare would group
+    // case-insensitively and (in most locales) emit a.x before B.y — locale-dependent
+    // churn. Asserting the byte order pins the deterministic, non-locale comparator.
+    const r = mergeIgnoreRules([], [p('a.x'), p('B.y')]);
+    expect(r.merged).toEqual([p('B.y'), p('a.x')]);
+  });
 });
 
 describe('addIgnoreRules', () => {

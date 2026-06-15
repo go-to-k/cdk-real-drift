@@ -205,6 +205,54 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
   });
 });
 
+describe('revertSelectOptions / filterRevertPlan distinguish ELB attribute-bag ops', () => {
+  // Every ELB attribute-bag op shares ONE op.path (/LoadBalancerAttributes) and is
+  // distinguished only by its attributeKey. The multiselect row key must include the
+  // attributeKey, else all bag attributes collapse to one row and toggle together —
+  // the user can't deselect a single attribute.
+  const plan: RevertPlan = {
+    items: [
+      {
+        logicalId: 'LB',
+        displayId: 'Stack/LB',
+        resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+        physicalId: 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/x/y',
+        kind: 'sdk',
+        ops: [
+          {
+            op: 'add',
+            path: '/LoadBalancerAttributes',
+            attributeKey: 'idle_timeout.timeout_seconds',
+            value: '120',
+            human: 'idle_timeout.timeout_seconds -> 120',
+          },
+          {
+            op: 'add',
+            path: '/LoadBalancerAttributes',
+            attributeKey: 'deletion_protection.enabled',
+            value: 'true',
+            human: 'deletion_protection.enabled -> true',
+          },
+        ],
+      },
+    ],
+    notRevertable: [],
+  };
+
+  it('emits a DISTINCT multiselect value per attribute (not collapsed to one)', () => {
+    const opts = revertSelectOptions(plan);
+    expect(opts).toHaveLength(2);
+    expect(new Set(opts.map((o) => o.value)).size).toBe(2);
+  });
+
+  it('filterRevertPlan can keep just ONE attribute of the bag', () => {
+    const opts = revertSelectOptions(plan);
+    const filtered = filterRevertPlan(plan, new Set([opts[0]!.value]));
+    expect(filtered.items[0]!.ops).toHaveLength(1);
+    expect(filtered.items[0]!.ops[0]!.attributeKey).toBe('idle_timeout.timeout_seconds');
+  });
+});
+
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
   // findings-only params: every path under test returns BEFORE any AWS client is
   // used — either nothing is revertable, or --dry-run returns at the preview branch.

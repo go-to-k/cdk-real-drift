@@ -155,12 +155,17 @@ export function mergeIgnoreRules(
     if (have.has(key)) alreadyPresent.push(rule);
     else added.push(rule);
   }
+  // Byte-stable comparator (NOT localeCompare): `config.json` is git-committed, so
+  // its order must be identical across machines/locales — the same requirement
+  // `baseline-file.ts`'s `sortRecorded` meets with the same `<`/`>` comparator.
+  // localeCompare is ICU/locale-dependent and would churn the committed file's diff.
+  const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
   const byKey = new Map([...existing, ...added].map((r) => [ruleKey(r), r]));
   const merged = [...byKey.values()].sort(
     (a, b) =>
-      a.path.localeCompare(b.path) ||
-      (a.stack ?? '').localeCompare(b.stack ?? '') ||
-      (a.region ?? '').localeCompare(b.region ?? '')
+      cmp(a.path, b.path) ||
+      cmp(a.stack ?? '', b.stack ?? '') ||
+      cmp(a.region ?? '', b.region ?? '')
   );
   return { merged, added, alreadyPresent };
 }
