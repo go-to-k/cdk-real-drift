@@ -23,17 +23,24 @@ reimplement `cdk diff`. The full design, rationale, and pipeline are in
 terse companion and [docs/redesign-notes.md](docs/redesign-notes.md) for
 pre-publication decisions).
 
-## The 3-Verb Model
+## The 4-Verb Model
 
 ```bash
 node dist/cli.js check  [<stack>...] [--all]   # detect drift (read-only)
-node dist/cli.js record [<stack>...] [--all]   # record current state into the baseline file
+node dist/cli.js record [<stack>...] [--all]   # snapshot undeclared state into the baseline file (KEEPS watching)
+node dist/cli.js ignore [<stack>...] [--all]   # stop reporting chosen drift via .cdkrd/config.json (STOPS watching)
 node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to AWS (confirms)
 ```
 
-- `check` and `record` never write to AWS (`record` writes only the baseline file).
-  `revert` is the one AWS-mutating verb and always confirms first (`--dry-run` to
-  preview, `--yes`/`-y` to skip the prompt).
+- `check`, `record`, and `ignore` never write to AWS (`record` writes only the
+  baseline file; `ignore` writes only `.cdkrd/config.json`). `revert` is the one
+  AWS-mutating verb and always confirms first (`--dry-run` to preview, `--yes`/`-y`
+  to skip the prompt).
+- **`record` vs `ignore`** (the one invariant): `record` snapshots undeclared state
+  and KEEPS watching — a later change re-surfaces as drift. `ignore` writes a path
+  rule (declared OR undeclared) and STOPS watching — the property is re-tagged
+  `ignored` and never reported again. `record` is undeclared-only; `ignore` is
+  symmetric with revert (it is the only in-tool way to accept a DECLARED drift).
 - With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`)
   and every stack it defines is targeted. A stack arg containing `*`/`?` is a glob.
 - Key flags: `--region`, `--profile`, `--app`, `-c/--context key=value`, `--json`,
@@ -87,7 +94,8 @@ source changes before telling the user to test.
 Terse per-dir map — defer to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the
 detail:
 
-- `commands/` — the 3 verb entry points (check/record/revert) + stack resolution.
+- `commands/` — the 4 verb entry points (check/record/ignore/revert) + stack
+  resolution + the shared per-stack actions (`stack-actions.ts`).
 - `desired/` — declared "intent": deployed-template fetch + CFn template adapter.
 - `read/` — live state read routing: Cloud Control API → SDK overrides for CC-gap
   types (`overrides.ts` / `SDK_OVERRIDES`).
@@ -101,6 +109,8 @@ detail:
 - `synth/` — CDK app synthesis (`@aws-cdk/toolkit-lib`) for stack discovery +
   construct-path display.
 - `baseline/` — the `.cdkrd/<stack>.<accountId>.<region>.json` baseline file I/O.
+- `config/` — the `.cdkrd/config.json` ignore-rule read (`applyIgnores`) + write
+  (`addIgnoreRules`, used by the `ignore` verb).
 - `report/` — text + JSON output rendering.
 
 ## Workflow Rules

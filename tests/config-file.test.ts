@@ -1,12 +1,15 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { buildRecorded } from '../src/baseline/baseline-file.js';
 import {
+  addIgnoreRules,
   applyIgnores,
   type CdkrdConfig,
+  ignoreRuleFor,
   loadConfig,
+  mergeIgnoreRules,
   parseIgnoreRule,
 } from '../src/config/config-file.js';
 import { buildRevertPlan } from '../src/revert/plan.js';
@@ -217,5 +220,107 @@ describe('loadConfig', () => {
   it('unknown key alongside a valid one → still throws, listing only the unknown', async () => {
     await write('{ "ignore": [], "concurency": 4 }');
     await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "concurency"/);
+  });
+});
+
+describe('ignoreRuleFor', () => {
+  it('prefers the friendly constructPath when present (naturally stack-scoped)', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ApiRole1234ABCD',
+      constructPath: 'MyStack/ApiRole',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    expect(ignoreRuleFor(f)).toBe('MyStack/ApiRole.Policies');
+  });
+
+  it('falls back to logicalId when constructPath is absent (non-CDK stack)', () => {
+    expect(ignoreRuleFor(declared('ApiRole', 'Policies'))).toBe('ApiRole.Policies');
+  });
+
+  it('omits the trailing dot for a resource-level (empty path) finding', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'Svc',
+      resourceType: 'AWS::ECS::Service',
+      path: '',
+    };
+    expect(ignoreRuleFor(f)).toBe('Svc');
+  });
+});
+
+describe('mergeIgnoreRules', () => {
+  it('unions new rules, sorts stably, and reports what was added', () => {
+    const r = mergeIgnoreRules(['B.x'], ['A.y', 'C.z']);
+    expect(r.merged).toEqual(['A.y', 'B.x', 'C.z']);
+    expect(r.added).toEqual(['A.y', 'C.z']);
+    expect(r.alreadyPresent).toEqual([]);
+  });
+
+  it('drops rules already present (idempotent) and de-dupes the incoming list', () => {
+    const r = mergeIgnoreRules(['A.y'], ['A.y', 'B.x', 'B.x']);
+    expect(r.merged).toEqual(['A.y', 'B.x']);
+    expect(r.added).toEqual(['B.x']);
+    expect(r.alreadyPresent).toEqual(['A.y']);
+  });
+
+  it('all-already-present → no additions, merged equals existing (sorted)', () => {
+    const r = mergeIgnoreRules(['B.x', 'A.y'], ['A.y']);
+    expect(r.added).toEqual([]);
+    expect(r.alreadyPresent).toEqual(['A.y']);
+    expect(r.merged).toEqual(['A.y', 'B.x']);
+  });
+});
+
+describe('addIgnoreRules', () => {
+  let dir: string;
+  let prevCwd: string;
+  beforeEach(async () => {
+    prevCwd = process.cwd();
+    dir = await mkdtemp(join(tmpdir(), 'cdkrd-addign-'));
+    process.chdir(dir);
+  });
+  afterEach(async () => {
+    process.chdir(prevCwd);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('creates .cdkrd/config.json (and the dir) when absent', async () => {
+    const r = await addIgnoreRules(['Svc.DesiredCount']);
+    expect(r.added).toEqual(['Svc.DesiredCount']);
+    expect(r.path).toBe('.cdkrd/config.json');
+    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8'))).toEqual({
+      ignore: ['Svc.DesiredCount'],
+    });
+  });
+
+  it('appends to an existing config, preserving prior rules (sorted union)', async () => {
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile('.cdkrd/config.json', '{ "ignore": ["Zeta.x"] }', 'utf8');
+    const r = await addIgnoreRules(['Alpha.y']);
+    expect(r.added).toEqual(['Alpha.y']);
+    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
+      'Alpha.y',
+      'Zeta.x',
+    ]);
+  });
+
+  it('all-already-present → leaves the file byte-for-byte untouched', async () => {
+    await mkdir('.cdkrd', { recursive: true });
+    const original = '{"ignore":["A.y"]}';
+    await writeFile('.cdkrd/config.json', original, 'utf8');
+    const r = await addIgnoreRules(['A.y']);
+    expect(r.added).toEqual([]);
+    expect(r.alreadyPresent).toEqual(['A.y']);
+    // not rewritten — the original (compact) bytes survive
+    expect(await readFile('.cdkrd/config.json', 'utf8')).toBe(original);
+  });
+
+  it('writes pretty JSON with a trailing newline (reviewable git diff)', async () => {
+    await addIgnoreRules(['Svc.DesiredCount']);
+    const raw = await readFile('.cdkrd/config.json', 'utf8');
+    expect(raw).toBe(`{\n  "ignore": [\n    "Svc.DesiredCount"\n  ]\n}\n`);
   });
 });

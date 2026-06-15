@@ -82,7 +82,10 @@ NEW (cdkd does NOT have these):
 - **schema-strip** — `describe-type` readOnly/writeOnly → strip set (cdkd hand-codes per-provider instead; this is our differentiator: less per-type code)
 - **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
-- **baseline file I/O** — git-committed JSON
+- **baseline file I/O** — git-committed JSON (the `record` verb; KEEPS watching)
+- **config ignore rules** — git-committed `.cdkrd/config.json`; the `ignore` verb
+  appends path rules (declared OR undeclared) that re-tag findings to `ignored`
+  and STOP watching (the `.driftignore` / `ignore_changes` analogue)
 - **report** — tiered text + JSON
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 
@@ -90,6 +93,6 @@ NEW (cdkd does NOT have these):
 
 - Phase 2: build MVP here (private repo). DONE.
 - Phase 3 (current): dogfood broadly on varied real stacks; tune normalizers;
-  land revert. See [redesign-notes.md](redesign-notes.md) for the check/record/
-  revert model adopted before publication.
+  land revert. See [redesign-notes.md](redesign-notes.md) for the
+  check/record/ignore/revert model adopted before publication.
 - Phase 4: publish + blog announce (the single public launch).

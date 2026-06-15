@@ -1,16 +1,21 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   CloudControlClient,
   GetResourceCommand,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { mockClient } from 'aws-sdk-client-mock';
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { baselinePath } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
+  ignoreSelectMessage,
+  ignoreStack,
   recordScopeNote,
   recordSelectMessage,
   recordStack,
@@ -613,7 +618,96 @@ describe('recordScopeNote (R117 — record records undeclared only; say so where
     expect(note).toContain('ApiStack');
     expect(note).toContain('2 declared/deleted drift NOT approved');
     expect(note).toContain('undeclared state into the baseline only');
+    // resolution now includes `cdkrd ignore` (declared drift is ignorable in-tool)
+    expect(note).toContain('cdkrd ignore');
     expect(note).toMatch(/cdkrd revert|cdk deploy/);
+  });
+});
+
+describe('ignoreSelectMessage', () => {
+  it('is a one-line header naming the stack + that it writes config.json', () => {
+    const msg = ignoreSelectMessage('ApiStack');
+    expect(msg).toContain('ApiStack');
+    expect(msg).toContain('config.json');
+    expect(msg).not.toContain('\n');
+  });
+});
+
+describe('ignoreStack (PR-B — write config.json ignore rules; declared + undeclared)', () => {
+  let dir: string;
+  let prevCwd: string;
+  beforeEach(async () => {
+    prevCwd = process.cwd();
+    dir = await mkdtemp(join(tmpdir(), 'cdkrd-ignst-'));
+    process.chdir(dir);
+  });
+  afterEach(async () => {
+    process.chdir(prevCwd);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('no declared/undeclared findings → nothing to ignore, no file written', async () => {
+    const deleted: Finding = {
+      tier: 'deleted',
+      logicalId: 'B',
+      resourceType: 'AWS::S3::Bucket',
+      path: '',
+    };
+    const r = await ignoreStack({
+      stackName: 'S',
+      findings: [deleted],
+      yes: true,
+      interactive: false,
+    });
+    expect(r).toEqual({ wrote: false, refused: false, added: 0 });
+    expect(existsSync('.cdkrd/config.json')).toBe(false);
+  });
+
+  it('yes:false + interactive:false → refuses (a required decision, like record)', async () => {
+    const errs: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((m?: unknown) => {
+      errs.push(String(m));
+    });
+    try {
+      const r = await ignoreStack({
+        stackName: 'S',
+        findings: [declared()],
+        yes: false,
+        interactive: false,
+      });
+      expect(r).toEqual({ wrote: false, refused: true, added: 0 });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(existsSync('.cdkrd/config.json')).toBe(false);
+    expect(errs.join('\n')).toContain('ignore needs a decision');
+  });
+
+  it('yes:true → writes a rule for every declared + undeclared finding', async () => {
+    const r = await ignoreStack({
+      stackName: 'S',
+      findings: [declared(), undeclared()],
+      yes: true,
+      interactive: false,
+    });
+    expect(r.wrote).toBe(true);
+    expect(r.added).toBe(2);
+    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
+      'B.AccelerateConfiguration',
+      'B.VersioningConfiguration',
+    ]);
+  });
+
+  it('yes:true is idempotent — re-ignoring already-present rules writes nothing new', async () => {
+    await ignoreStack({ stackName: 'S', findings: [declared()], yes: true, interactive: false });
+    const r = await ignoreStack({
+      stackName: 'S',
+      findings: [declared()],
+      yes: true,
+      interactive: false,
+    });
+    expect(r.wrote).toBe(false);
+    expect(r.added).toBe(0);
   });
 });
 
