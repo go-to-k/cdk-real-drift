@@ -203,7 +203,7 @@ when drift remains after it.
 | `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` / CFn drift detection for the declared side                       |
 | `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`        |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                      |
-| `--remove-unaccepted`      | (revert) REMOVE unrecorded values — never accepted (default: refuse; accept the ones that are right instead)                  |
+| `--remove-unaccepted`      | (revert) REMOVE unrecorded values in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them as opt-in REMOVE  |
 | `--yes` / `-y`             | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
@@ -218,8 +218,10 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   writes nothing — the drift still stands and stays reported.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write:
   RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
-  (deleting a live value that is not in the baseline) start **unselected** and
-  are labeled `(REMOVE)` — removal is an explicit per-item choice. A final
+  (deleting a live value not in your template — a standout `[UNRECORDED]` value, or
+  one not in the baseline) start **unselected** and are labeled `(REMOVE)` —
+  removal is an explicit per-item choice (R113: no `--remove-unaccepted` needed in a
+  prompt, since the unselected row IS the consent). A final
   confirm states exactly how many selected op(s) will be written. `--yes`
   skips both and applies the full plan.
 - **`accept`** shows a multiselect of only the **delta** from the existing
