@@ -47,6 +47,27 @@ interface ClassifyOpts {
   accountId: string;
   region: string;
   kmsAliasTargets: Record<string, string>;
+  oaiCanonicalIds: Record<string, string>;
+}
+
+// CloudFront legacy OAI id -> S3CanonicalUserId, harvested from the stack's own
+// OAI resources' live attributes (both are readOnly attrs the CC-API read already
+// returned — no extra AWS call). Lets classify reconcile the two equivalent OAI
+// principal forms in a resource policy (see rewriteOaiPrincipalsDeep). Empty when
+// the stack declares no OAI.
+const OAI_TYPE = 'AWS::CloudFront::CloudFrontOriginAccessIdentity';
+function buildOaiCanonicalIds(desired: Desired): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== OAI_TYPE) continue;
+    const live = desired.ctx.liveAttrs[r.logicalId];
+    const id = live?.Id;
+    const canonical = live?.S3CanonicalUserId;
+    if (typeof id === 'string' && id && typeof canonical === 'string' && canonical) {
+      map[id] = canonical;
+    }
+  }
+  return map;
 }
 
 // Turn ONE resource's read into findings: no-physical-id / deleted / skipped
@@ -152,7 +173,8 @@ export async function gatherFindings(
   const kmsAliasTargets = desired.resources.some((r) => usesManagedKmsAlias(r.declared))
     ? await fetchManagedAliasTargets(region)
     : {};
-  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
+  const oaiCanonicalIds = buildOaiCanonicalIds(desired);
+  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
   // CDKRD_CORPUS_DIR records every readable resource as a golden-corpus case
@@ -224,7 +246,10 @@ export async function regatherTouched(
   const kmsAliasTargets = targets.some((r) => usesManagedKmsAlias(r.declared))
     ? await fetchManagedAliasTargets(region)
     : {};
-  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets };
+  // Built from desired.ctx.liveAttrs (populated by the original gather), so the OAI
+  // map is complete even though regather only re-reads the touched resources.
+  const oaiCanonicalIds = buildOaiCanonicalIds(desired);
+  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
 
   const fresh: Finding[] = [];
   for (const r of targets) {

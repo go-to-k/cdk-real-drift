@@ -1052,3 +1052,77 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
     expect(out.filter((x) => x.nested)).toEqual([]);
   });
 });
+
+describe('CloudFront OAI S3 BucketPolicy principal (real-AWS reproduced false positive)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+  };
+  const OAI_ID = 'EM4A89W3GHI3';
+  const CANON =
+    '9f136d368cf2e7a1231ec86b0e9fba1753e7182eda536b6294f93d5667ce29f71f5d58bb774dbb93d4a89e7b2c1a3c4e';
+  const userArn = `arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${OAI_ID}`;
+  // declared = CDK grantRead(oai): CanonicalUser carries the resolved S3CanonicalUserId
+  const declared: DesiredResource = {
+    logicalId: 'AssetsPolicy',
+    resourceType: 'AWS::S3::BucketPolicy',
+    physicalId: 'bucket',
+    declared: {
+      Bucket: 'bucket',
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          { Effect: 'Allow', Action: 's3:GetObject', Principal: { CanonicalUser: CANON } },
+        ],
+      },
+    },
+  };
+  // live = GetBucketPolicy: S3 returns the equivalent cloudfront:user ARN form
+  const liveRaw = {
+    Bucket: 'bucket',
+    PolicyDocument: {
+      Version: '2012-10-17',
+      Statement: [{ Effect: 'Allow', Action: 's3:GetObject', Principal: { AWS: userArn } }],
+    },
+  };
+
+  it('fires a false declared drift WITHOUT the resolved OAI map (documents the bug)', () => {
+    const out = classifyResource(declared, liveRaw, bare);
+    expect(out.some((f) => f.tier === 'declared')).toBe(true);
+  });
+
+  it('is CLEAN with the resolved OAI map (the fix)', () => {
+    const out = classifyResource(declared, liveRaw, bare, {
+      oaiCanonicalIds: { [OAI_ID]: CANON },
+    });
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([]);
+    expect(out.filter((f) => f.tier === 'undeclared')).toEqual([]);
+  });
+
+  it('still reports a repoint to a DIFFERENT OAI even with a map', () => {
+    const otherLive = {
+      Bucket: 'bucket',
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 's3:GetObject',
+            Principal: {
+              AWS: 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity OTHEROAI999',
+            },
+          },
+        ],
+      },
+    };
+    const out = classifyResource(declared, otherLive, bare, {
+      oaiCanonicalIds: { [OAI_ID]: CANON },
+    });
+    expect(out.some((f) => f.tier === 'declared')).toBe(true);
+  });
+});

@@ -73,7 +73,7 @@ describe('corpus recording (R63)', () => {
       resource,
       { A: 'arn:aws:iam::123456789012:role/r' },
       schema,
-      { accountId: '123456789012', region: 'us-east-1', kmsAliasTargets: {} },
+      { accountId: '123456789012', region: 'us-east-1', kmsAliasTargets: {}, oaiCanonicalIds: {} },
       findings
     );
     // sanitized EVERYWHERE, consistently (inputs, opts, and expected findings)
