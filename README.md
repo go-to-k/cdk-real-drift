@@ -104,8 +104,9 @@ ApiStack: drift found — what do you want to do?
 - **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared
   _or_ undeclared) stops being reported entirely. Stops watching.
 - **Decide per finding** opens a picker to assign a different action to each
-  finding (↑↓ move · space cycles the row's actions · → applies the focused
-  action to all · enter applies).
+  finding. On a stack with many findings, **just start typing to filter** the rows
+  by name (↑↓ move · space cycles the row's actions · → applies the focused action
+  to every _visible_ row · ⌫ clears the filter · enter applies · esc backs out).
 - **Revert all** shows a plan, lets you pick which op(s) to write, confirms, then
   writes the desired values back to AWS:
 
@@ -252,18 +253,21 @@ per finding / Nothing` inline (shown above). Each option appears only when it
   applies (no Revert if nothing is revertable; "Decide per finding" only with >1
   finding). `Nothing` is the default; Enter keeps plain-check behavior. Every
   option runs exactly the same code as the standalone commands — including the
-  per-finding picker, which passes each verb just the subset you chose. Skipped
-  under `--json`, `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert
-  confirmation writes nothing — the drift still stands and stays reported.
-- **`revert`** shows the plan, then a multiselect of the op(s) to write:
-  RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
-  (deleting a live value not in your template — a standout `[Not Recorded]` value, or
-  one not in the baseline) start **unselected** and are labeled `(REMOVE)` —
-  removal is an explicit per-item choice (R113: no `--remove-unrecorded` needed in a
-  prompt, since the unselected row IS the consent). In the multiselect, **space**
-  toggles the row, **→** selects all, **←** clears all, **enter** confirms. A final
-  confirm states exactly how many selected op(s) will be written. `--yes`
-  skips both and applies the full plan.
+  per-finding picker, which passes each verb just the subset you chose. After a
+  **Record** or **Ignore**, the menu **re-appears** for any drift that action
+  could not resolve (e.g. a declared drift still standing after you recorded the
+  undeclared values), so you can revert or ignore the remainder in the same run —
+  no need to re-run `check`. Skipped under `--json`, `--show-all`,
+  `--pre-deploy`, and `--fail`. Aborting the Revert confirmation writes nothing
+  — the drift still stands and stays reported.
+- **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every
+  op starts unselected** — `revert` is the one command that writes to AWS, so
+  nothing is pre-armed; you opt in to each write explicitly. REMOVE ops (deleting
+  a live value not in your template — a standout `[Not Recorded]` value, or one
+  not in the baseline) are labeled `(REMOVE)` so a destructive delete stays
+  visible. In the multiselect, **space** toggles the row, **→** selects all, **←**
+  clears all, **enter** confirms. A final confirm states exactly how many selected
+  op(s) will be written. `--yes` skips both and applies the full plan.
 - **`record`** shows a multiselect of only the **delta** from the existing
   baseline (new + changed undeclared values, all pre-selected); already-recorded
   unchanged values are auto-kept and surfaced with a
