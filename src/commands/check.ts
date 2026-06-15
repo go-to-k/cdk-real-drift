@@ -71,12 +71,16 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
 // only the top-level diverging values (`standout`) list as [UNRECORDED]. The old
 // prompt called the whole recordable set "real out-of-band edits", which counted
 // the 50+ folded nested values as edits — overstating wildly (the bug that
-// confused the first-run user). Now the prompt names `standout` as what stands
-// out, states the folded remainder separately, and frames the run as baseline
-// SETUP rather than a findings list.
+// confused the first-run user). The prompt names `standout` as what stands out
+// and states the folded remainder in one parenthetical.
+//
+// Terse (R106): kept to a SINGLE line — the old multi-sentence framing ("this run
+// SETS UP your baseline … from the next run check reports only what changes") was
+// a wall nobody read. That context now lives in the option labels + the README.
 //
 // declaredDrift (R51): declared-side drift (declared/deleted tier) is reported
-// regardless of the baseline choice; when present, say so explicitly.
+// regardless of the baseline choice; mention it only when present (R106 dropped
+// the generic "reported either way" clause from the common no-declared-drift path).
 export interface FirstRunCounts {
   standout: number; // top-level undeclared — listed in [UNRECORDED]; the values that stand out
   nested?: number; // nested undeclared — folded in the report, but recorded by accept
@@ -91,29 +95,21 @@ export function firstRunPrompt(
   const { standout, nested = 0, atDefault = 0, generated = 0, declaredDrift = 0 } = counts;
   const recordable = standout + nested; // what Accept records (atDefault/generated never are)
   const folded = nested + atDefault + generated; // not listed in the report by default
-  const total = standout + folded;
-  const declaredNote =
-    declaredDrift > 0
-      ? `Also found ${declaredDrift} declared-side drift(s) — reported below whichever you choose.`
-      : 'Declared-side drift is reported either way.';
-  // The "stand out" number is the one the user should react to — it matches the
-  // [UNRECORDED: N] section. The folded remainder is named so "found N" never reads
-  // as "N problems found".
+  // Terse (R106): the old message was a 5-sentence wall the user wouldn't read.
+  // Keep ONE line — the signal (`standout`, matching [UNRECORDED]) + the folded
+  // remainder in a parenthetical; the "what a baseline is / what accept does"
+  // context lives in the option labels and the README, not here.
   const standoutClause =
     standout > 0
-      ? `${standout} stand out as possible out-of-band edits`
-      : 'none stand out as out-of-band edits';
-  const foldedClause =
-    folded > 0
-      ? `, the other ${folded} fold as AWS defaults / auto-generated / nested sub-keys`
-      : '';
+      ? `${standout} value(s) stand out as possible out-of-band edits`
+      : 'nothing stands out as an out-of-band edit';
+  const foldedClause = folded > 0 ? ` (${folded} fold as defaults/generated/nested)` : '';
+  // declared-side drift is reported regardless of the choice; mention it ONLY when
+  // present (the old generic "reported either way" was noise on the common path).
+  const declaredClause =
+    declaredDrift > 0 ? ` — plus ${declaredDrift} declared-side drift(s), reported below` : '';
   return {
-    message:
-      `${stackName}: no baseline yet — this first run SETS UP your baseline ` +
-      `(without one, check can't tell deploy-state from a later drift). Found ${total} ` +
-      `live value(s) not declared in your template: ${standoutClause}${foldedClause}. ` +
-      `${declaredNote} Accept records the current state (${recordable} value(s)) as your ` +
-      `baseline — from the next run, check reports only what changes. What do you want to do?`,
+    message: `${stackName}: no baseline yet — ${standoutClause}${foldedClause}${declaredClause}.`,
     // Accept-ALL first (R52, user decision): it is the overwhelmingly common
     // first-run choice, and the cost of an accidental Enter is one git-tracked
     // file — reviewable and revertible, nothing written to AWS. "Show first"
@@ -121,11 +117,11 @@ export function firstRunPrompt(
     options: [
       {
         value: 'acceptAll',
-        label: `Accept ALL ${recordable} into the baseline now, without reviewing them`,
+        label: `Accept all ${recordable} into the baseline now (no review)`,
       },
       {
         value: 'show',
-        label: 'Show them first — you can still accept (selectively) right after the report',
+        label: 'Show first, then accept selectively',
       },
     ],
   };
