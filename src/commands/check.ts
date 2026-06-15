@@ -27,6 +27,7 @@ import { gatherFindings } from './gather.js';
 import {
   acceptStack,
   availableActions,
+  includeUnacceptedRemovals,
   resolveInteractiveRevertExit,
   revertStack,
 } from './stack-actions.js';
@@ -259,7 +260,14 @@ export async function runCheck(args: string[]): Promise<number> {
         !a.fail &&
         isInteractive()
       ) {
-        const actions = availableActions(reconciled, baseline, schemas, a.removeUnaccepted);
+        // R113: offer Revert when standout undeclared can be REMOVED interactively
+        // (the multiselect gates per-item), matching what revertStack will plan.
+        const actions = availableActions(
+          reconciled,
+          baseline,
+          schemas,
+          includeUnacceptedRemovals(a.removeUnaccepted, isInteractive(), a.yes)
+        );
         if (actions.accept || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
           if (actions.accept)

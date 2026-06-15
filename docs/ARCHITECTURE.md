@@ -444,15 +444,18 @@ only when non-zero — unrecorded values are named as such, never folded into
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an out-of-band _addition_ that appeared since a
   snapshot-complete accept reverts by REMOVAL).
-- **Unrecorded safety guard (R62, generalizing the old no-baseline guard)**: a value
+- **Unrecorded safety guard (R62, relaxed for interactive prompts by R113)**: a value
   the user never decided on (no baseline entry, resource never snapshot-complete —
   which includes every undeclared value on a no-baseline stack) is reported as
   `notRevertable` (`unrecorded — accept it if the live value is right, or
---remove-unaccepted to remove it`) rather than removed. The
-  subtractive noise model's failure mode in `check` is "the report is noisy"; the
-  un-guarded revert mirror of that would be **destructive** (a bulk REMOVE of every
-  undecided value that slipped through subtraction). Declared drift is always
-  revertable (the template is its source, independent of any baseline). For
+--remove-unaccepted to remove it`) **in a no-prompt run** (`--yes` or non-TTY) —
+  there the un-guarded revert mirror would be **destructive** (a bulk REMOVE of every
+  undecided value that slipped through subtraction). But in a gated interactive
+  prompt (TTY, no `--yes`) the standout undeclared values ARE surfaced as opt-in
+  REMOVE rows (`includeUnacceptedRemovals`, R113): the multiselect's unselected-by-
+  default rows are the per-item consent the flag provides, so listing them — like
+  declared drift — is consistent with showing them as `[UNRECORDED]`, and no flag is
+  needed. Declared drift is always revertable (the template is its source). For
   unrecorded values this guard outranks the create-only guard (R35): the fundamental
   blocker is "no revert target exists" — a "requires replacement" reason would
   mis-direct. The guard's wording is a FORK, not a sequence (R55): `accept`

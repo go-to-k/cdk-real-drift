@@ -17,11 +17,28 @@ import {
   filterRevertPlan,
   formatPlan,
   formatSurvivingDrift,
+  includeUnacceptedRemovals,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
   revertSelectOptions,
   revertStack,
 } from '../src/commands/stack-actions.js';
+
+describe('includeUnacceptedRemovals (R113 — surface undeclared REMOVE in a gated prompt)', () => {
+  it('the explicit --remove-unaccepted flag always includes removals', () => {
+    expect(includeUnacceptedRemovals(true, false, false)).toBe(true);
+    expect(includeUnacceptedRemovals(true, true, true)).toBe(true); // even with --yes
+  });
+  it('interactive without --yes includes them (the multiselect gates per-item)', () => {
+    expect(includeUnacceptedRemovals(false, true, false)).toBe(true);
+  });
+  it('--yes (no multiselect to gate) requires the explicit flag', () => {
+    expect(includeUnacceptedRemovals(false, true, true)).toBe(false);
+  });
+  it('non-interactive (CI/pipe) requires the explicit flag', () => {
+    expect(includeUnacceptedRemovals(false, false, false)).toBe(false);
+  });
+});
 import type { RevertPlan } from '../src/revert/plan.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
