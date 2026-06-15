@@ -51,6 +51,12 @@ These do NOT run in CI (they need credentials and mutate a real account):
   its composite `[ServiceArn, Cluster]` identifier (not skipped), then drifts
   `DesiredCount` and asserts the revert SUCCEEDS without dropping the write-only
   `VolumeConfigurations` (R102).
+- **After changing** the Tags revert path (`tagPreservingOps` in `src/revert/plan.ts`,
+  `awsManagedTags` in `src/normalize/noise.ts`, or `liveByLogical` plumbing in
+  `src/commands/gather.ts`): run `sns-topic-tags-revert` — it deploys an SNS Topic
+  (which AWS auto-tags with `aws:cloudformation:*`), records a baseline, adds a USER
+  tag out of band, then asserts `revert` REMOVES the user tag while PRESERVING the
+  `aws:*` managed tags (AWS rejects any write that drops an `aws:`-prefixed key, R131).
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
 - **After changing nested-undeclared detection** (`collectNestedUndeclared` in
