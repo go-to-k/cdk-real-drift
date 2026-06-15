@@ -19,13 +19,18 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 export async function applyRevertItem(
   cc: CloudControlClient,
-  item: RevertItem
+  item: RevertItem,
+  // The Cloud Control resource identifier. Defaults to the CFn physical id, but
+  // composite-identifier types (e.g. AWS::ECS::Service = `${ServiceArn}|${Cluster}`)
+  // need the same adapted identifier the READ path uses — the caller resolves it via
+  // CC_IDENTIFIER_ADAPTERS and passes it here, else UpdateResource ValidationExceptions.
+  identifier: string = item.physicalId
 ): Promise<ApplyResult> {
   try {
     const res = await cc.send(
       new UpdateResourceCommand({
         TypeName: item.resourceType,
-        Identifier: item.physicalId,
+        Identifier: identifier,
         PatchDocument: toPatchDocument(item),
       })
     );

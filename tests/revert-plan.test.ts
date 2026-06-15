@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
-import { buildRevertPlan, toPatchDocument } from '../src/revert/plan.js';
+import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
+import { buildRevertPlan, toPatchDocument, writeOnlyReincludeOps } from '../src/revert/plan.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
+
+const schemaWithWriteOnly = (...names: string[]): SchemaInfo => ({
+  readOnly: new Set<string>(),
+  writeOnly: new Set(names),
+  createOnly: new Set<string>(),
+  readOnlyPaths: [],
+  writeOnlyPaths: names,
+  createOnlyPaths: [],
+  defaults: {},
+});
 
 const schemaWithCreateOnly = (type: string, ...names: string[]): Map<string, SchemaInfo> =>
   new Map([
@@ -502,5 +513,57 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     );
     expect(plan.items).toHaveLength(1);
     expect(plan.notRevertable).toHaveLength(0);
+  });
+});
+
+describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd #812)', () => {
+  const declared = { DesiredCount: 0, VolumeConfigurations: [{ Name: 'ebs-data' }] };
+  const schema = schemaWithWriteOnly('VolumeConfigurations');
+
+  it('re-includes a declared write-only top-level prop the patch does not touch', () => {
+    const ops = writeOnlyReincludeOps(declared, schema, [
+      { op: 'add', path: '/DesiredCount', value: 0, human: '' },
+    ]);
+    expect(ops).toEqual([
+      {
+        op: 'add',
+        path: '/VolumeConfigurations',
+        value: [{ Name: 'ebs-data' }],
+        human:
+          'VolumeConfigurations -> re-include write-only (Cloud Control read-modify-write contract)',
+      },
+    ]);
+  });
+
+  it('does NOT duplicate a write-only prop the patch already targets', () => {
+    const ops = writeOnlyReincludeOps(declared, schema, [
+      { op: 'add', path: '/VolumeConfigurations', value: [], human: '' },
+    ]);
+    expect(ops).toEqual([]);
+  });
+
+  it('skips an UNRESOLVED write-only value (cannot send a sentinel)', () => {
+    const ops = writeOnlyReincludeOps({ VolumeConfigurations: UNRESOLVED }, schema, []);
+    expect(ops).toEqual([]);
+  });
+
+  it('skips a write-only value that contains a nested UNRESOLVED intrinsic', () => {
+    const ops = writeOnlyReincludeOps(
+      { VolumeConfigurations: [{ Name: 'x', RoleArn: UNRESOLVED }] },
+      schema,
+      []
+    );
+    expect(ops).toEqual([]);
+  });
+
+  it('ignores declared props that are NOT write-only', () => {
+    const ops = writeOnlyReincludeOps({ DesiredCount: 0 }, schema, []);
+    expect(ops).toEqual([]);
+  });
+
+  it('no-op when schema has no write-only props, or declared/schema missing', () => {
+    expect(writeOnlyReincludeOps(declared, schemaWithWriteOnly(), [])).toEqual([]);
+    expect(writeOnlyReincludeOps(undefined, schema, [])).toEqual([]);
+    expect(writeOnlyReincludeOps(declared, undefined, [])).toEqual([]);
   });
 });

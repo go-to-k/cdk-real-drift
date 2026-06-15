@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-ecs-writeonly",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture reproducing the Cloud-Control write-only-property drop on revert (ECS Service managed EBS volume). Run via repro.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

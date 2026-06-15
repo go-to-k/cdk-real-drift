@@ -88,10 +88,14 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    — all built by the shared `compositeWith(parentKey)` helper; plus
    ApplicationAutoScaling ScalingPolicy (R79), whose `${PolicyARN}|${dimension}`
    identifier needs the ScalableDimension parsed out of the resolved
-   ScalingTargetId — `CC_IDENTIFIER_ADAPTERS` in router.ts maps those without
-   leaving the CC read path, which is strictly cheaper than an SDK override (no
-   new dependency, no projection). Prefer an adapter over an override whenever the
-   only gap is the identifier shape.
+   ScalingTargetId; plus ECS Service (R102), whose `[ServiceArn, Cluster]`
+   composite is the SERVICE arn FIRST then the cluster (`${physicalId}|${Cluster}`
+   — the inverse of `compositeWith`'s parent-first order) — `CC_IDENTIFIER_ADAPTERS`
+   in router.ts maps those without leaving the CC read path, which is strictly
+   cheaper than an SDK override (no new dependency, no projection). The same adapter
+   resolves the revert UpdateResource identifier (stack-actions.ts), not just the
+   read. Prefer an adapter over an override whenever the only gap is the identifier
+   shape.
 4. **The deployed template, not synth, is the declared baseline.** So un-deployed
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
@@ -103,6 +107,12 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
 6. **Revert via the same generic CC write path** (UpdateResource) + thin SDK writers,
    not a per-type provider fleet. _Is generic revert safe/complete enough, or are the
    not-revertable gaps (toggle props, add/remove-statement types) too sharp an edge?_
+   One sharp edge is closed (R102): Cloud Control applies the patch read-modify-write,
+   and read handlers cannot return write-only properties, so a minimal patch dropped
+   them (cdkd #812 — reverting any prop on an ECS Service with a managed EBS volume
+   lost the write-only `VolumeConfigurations` and UpdateService hard-failed). The
+   revert now re-includes every fully-resolved declared write-only top-level prop the
+   patch does not already touch (`writeOnlyReincludeOps` in plan.ts).
 
 If these six bets are right, the tool is right. The rest of this document is how each
 is realized in code.

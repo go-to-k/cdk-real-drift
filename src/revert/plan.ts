@@ -10,6 +10,7 @@
 // Not revertable: readGap / unresolved / skipped, and (v1) the SDK-override
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
+import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
@@ -239,6 +240,45 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
     prior: f.actual,
     human: `${f.path} -> remove (undeclared, not in baseline)`,
   };
+}
+
+// Cloud Control applies an UpdateResource patch read-modify-write: it reads the
+// current model, applies the patch, and hands the result to the provider's update
+// handler. Read handlers CANNOT return write-only properties, so any write-only
+// property absent from the patch vanishes from the desired state on every CC-routed
+// update (cdkd #812). For most types the loss is silent; some hard-fail — e.g.
+// reverting any property on an AWS::ECS::Service with a managed EBS volume drops the
+// write-only `VolumeConfigurations` and UpdateService rejects with "Task definition
+// has configuredAtLaunch volume but no volume configuration provided at runtime".
+//
+// Re-include every TOP-LEVEL write-only property present (and fully resolved) in the
+// declared model that the patch does not already touch — restoring the CC
+// read-modify-write contract. Only `cc`-kind items need this (SDK writers don't
+// read-modify-write through Cloud Control). An UNRESOLVED declared value is skipped
+// (we cannot send a sentinel); the patch then omits it exactly as before, so this
+// never makes a borderline revert WORSE than today.
+export function writeOnlyReincludeOps(
+  declared: Record<string, unknown> | undefined,
+  schema: SchemaInfo | undefined,
+  existingOps: PatchOp[]
+): PatchOp[] {
+  if (!declared || !schema || schema.writeOnly.size === 0) return [];
+  const touched = new Set(existingOps.map((o) => o.path));
+  const ops: PatchOp[] = [];
+  for (const k of Object.keys(declared)) {
+    if (!schema.writeOnly.has(k)) continue;
+    const pointer = toPointer(k);
+    if (touched.has(pointer)) continue;
+    const value = declared[k];
+    if (value === UNRESOLVED || hasUnresolved(value)) continue;
+    ops.push({
+      op: 'add',
+      path: pointer,
+      value,
+      human: `${k} -> re-include write-only (Cloud Control read-modify-write contract)`,
+    });
+  }
+  return ops;
 }
 
 /** Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control. */

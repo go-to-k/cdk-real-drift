@@ -119,6 +119,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('client123');
   });
 
+  it('ECS Service: builds the composite ServiceArn|Cluster identifier — service FIRST (R102)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ECS::Service',
+        physicalId: 'arn:aws:ecs:us-east-1:111111111111:service/my-cluster/my-svc',
+        declared: { Cluster: 'my-cluster' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('arn:aws:ecs:us-east-1:111111111111:service/my-cluster/my-svc|my-cluster');
+  });
+
+  it('ECS Service: an unresolved Cluster falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ECS::Service',
+        physicalId: 'arn:aws:ecs:us-east-1:111111111111:service/my-cluster/my-svc',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('arn:aws:ecs:us-east-1:111111111111:service/my-cluster/my-svc');
+  });
+
   it('types without an adapter keep the physical id as the identifier', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(cc as unknown as CloudControlClient, res(), 'us-east-1', '1');
