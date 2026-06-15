@@ -223,6 +223,16 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
       op: 'add',
       path: pointer,
       value: f.desired,
+      // Carry the current live value as `prior`, exactly like the undeclared branches
+      // below. A property-scoped SDK writer that reverts PER ENTRY needs it:
+      // `writeIamRoleInlinePolicies` deletes every inline policy present in `prior`
+      // that the declared `value` no longer keeps. Without `prior` a declared
+      // `/Policies` drift (a rogue inline policy added out of band → whole-array drift)
+      // would re-PUT the declared policies but NEVER delete the rogue one — a silent,
+      // security-relevant incomplete revert. Cloud Control serialization ignores
+      // `prior`, and the ELB attribute-bag writers key off `attributeKey`, so this is
+      // inert for them.
+      prior: f.actual,
       ...(f.attributeKey !== undefined && { attributeKey: f.attributeKey }),
       human: `${f.path}${f.attributeKey ? `[${f.attributeKey}]` : ''} -> deployed-template value`,
     };

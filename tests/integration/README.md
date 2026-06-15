@@ -173,6 +173,21 @@ sibling `AWS::IAM::Policy`):
 cd iam && bash verify-inline-policy.sh
 ```
 
+### iam / verify-declared-inline-revert.sh
+
+A third `iam` script (its own stack `CdkRealDriftIntegIamDeclared`, a role that
+DECLARES an inline policy) covering the DECLARED-side revert: a rogue inline
+policy added out-of-band makes the live `Policies` a length-2 array vs the
+declared length-1, a DECLARED whole-array drift. `revert --yes` must DELETE only
+the rogue and keep the declared policy — which needs the declared revert op to
+carry the live value as `prior` (without it the rogue survived: a silent,
+security-relevant incomplete revert). PASS confirms rogue gone + declared policy
+intact + `check` CLEAN.
+
+```bash
+cd iam && bash verify-declared-inline-revert.sh
+```
+
 ### iam / verify-sibling-policy-doc.sh
 
 A third `iam` script proving there is **no false-negative** when the sibling

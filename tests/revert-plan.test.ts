@@ -71,6 +71,34 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('declared drift carries the live value as `prior` (per-entry SDK writers need it)', () => {
+    // A declared /Policies drift on an IAM Role (a rogue inline policy added out of
+    // band → whole-array drift) must carry the live array as `prior` so
+    // writeIamRoleInlinePolicies can DELETE the rogue entry, not just re-PUT the
+    // declared ones. Before the fix the declared op had no `prior` → silent incomplete
+    // revert (the rogue policy survived).
+    const declaredPolicies = [{ PolicyName: 'P', PolicyDocument: { Statement: [] } }];
+    const livePolicies = [
+      { PolicyName: 'P', PolicyDocument: { Statement: [] } },
+      { PolicyName: 'rogue', PolicyDocument: { Statement: [] } },
+    ];
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      desired: declaredPolicies,
+      actual: livePolicies,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Policies',
+      value: declaredPolicies,
+      prior: livePolicies,
+    });
+  });
+
   it('undeclared drift with an recorded prior value -> add op restoring the baseline value', () => {
     const f = F({
       tier: 'undeclared',
