@@ -52,7 +52,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
   it('undeclared DRIFT and UNRECORDED coexist as separate sections (partial baseline)', () => {
     const { code, text } = run([F('undeclared'), U('Q')]);
     expect(code).toBe(1);
-    expect(text).toContain('[UNDECLARED DRIFT: 1]');
+    expect(text).toContain('[CFn-UNDECLARED DRIFT: 1]');
     expect(text).toContain('[UNRECORDED: 1]');
     expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 undeclared to review');
   });
@@ -83,7 +83,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
   it('untagged undeclared (recorded value changed / appeared since record) is drift as before', () => {
     const { code, text } = run([F('undeclared')]);
     expect(code).toBe(1);
-    expect(text).toContain('[UNDECLARED DRIFT: 1]');
+    expect(text).toContain('[CFn-UNDECLARED DRIFT: 1]');
   });
 });
 
@@ -123,7 +123,7 @@ describe('report', () => {
   it('section header carries the count INSIDE the brackets, note outside (R48)', () => {
     const { text } = run([F('undeclared'), F('declared', 'Q')]);
     expect(text).toContain(
-      '[UNDECLARED DRIFT: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)'
+      '[CFn-UNDECLARED DRIFT: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)'
     );
     // declared is now anchored to the deployed CloudFormation template (CFn-) so it
     // can't be misread as "in my CDK code" or "in the .cdkrd baseline"
@@ -375,7 +375,7 @@ describe('report', () => {
       const lines = run([F('declared'), F('undeclared', 'Q')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
       expect(lines[1]).toMatch(/^\[CFn-DECLARED DRIFT: 1\]/);
-      const undeclaredIdx = lines.findIndex((l) => l.startsWith('[UNDECLARED'));
+      const undeclaredIdx = lines.findIndex((l) => l.startsWith('[CFn-UNDECLARED'));
       expect(lines[undeclaredIdx - 1]).toBe(''); // grouping blank between sections
     });
 

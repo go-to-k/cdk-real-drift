@@ -23,7 +23,7 @@ import { style } from './style.js';
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'DELETED',
   declared: 'CFn-DECLARED DRIFT',
-  undeclared: 'UNDECLARED DRIFT',
+  undeclared: 'CFn-UNDECLARED DRIFT',
   atDefault: 'AT AWS DEFAULT',
   generated: 'AWS GENERATED',
   ignored: 'IGNORED',
@@ -99,8 +99,12 @@ export function formatFinding(f: Finding): string {
 // section-title color by tier: deleted/declared = red (drift), undeclared =
 // yellow (the differentiator), informational tiers = dim.
 function tierStyle(t: Tier): (s: string) => string {
-  if (t === 'undeclared') return style.undeclaredTier;
-  if (t === 'deleted' || t === 'declared') return style.driftTier;
+  // All three DRIFT tiers are RED — they are drift (exit-affecting). undeclared was
+  // previously yellow (undeclaredTier), which collided with the [UNRECORDED] section
+  // (also yellow) and made a real undeclared DRIFT look identical to a not-drift
+  // unrecorded value. Yellow (undeclaredTier) is now reserved for UNRECORDED / "to
+  // review" — so colour alone separates drift (red) from to-review (yellow). R125.
+  if (t === 'deleted' || t === 'declared' || t === 'undeclared') return style.driftTier;
   return style.infoTier;
 }
 
@@ -218,7 +222,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
         : 'run cdkrd record';
     resultBody =
       `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
-      ` + ${unrecordedShown.length} undeclared to review` +
+      ` + ${style.undeclaredTier(`${unrecordedShown.length} undeclared to review`)}` +
       style.infoTier(` (${foldedHint})`);
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count

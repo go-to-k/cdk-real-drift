@@ -138,10 +138,11 @@ lives per stack/account/region; the `ignore` rules live once, app-wide, in
 `.cdkrd/config.json` (`config/config-file.ts` — `addIgnoreRules` writes,
 `applyIgnores` reads).
 
-In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121):
-after reporting it prompts `Record all / Revert all / Ignore all / Decide per
-finding / Nothing` (each bulk option shown only when ≥1 finding can take it;
-"Decide per finding" only when >1 finding is decidable). The bulk options apply one
+In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121/R125):
+after reporting it prompts `Nothing / Record all / Revert all / Ignore all / Decide
+per finding` (Nothing is FIRST so the safe no-op is the default cursor; each bulk
+option shown only when ≥1 finding can take it; "Decide per finding" only when >1
+finding is decidable). A cancelled sub-prompt (Esc) returns to this menu (R125). The bulk options apply one
 action to every applicable finding (each leads to that verb's own multiselect);
 "Decide per finding" opens the per-finding **action picker**
 ([action-picker.ts](../src/commands/action-picker.ts) — `↑↓` move, `space` cycle
@@ -234,9 +235,10 @@ checked.
   - **stack-actions.ts** — the per-stack record/ignore/revert actions shared by the
     standalone verbs and check's interactive prompt (`recordStack` / `ignoreStack` /
     `revertStack`), so they can never diverge.
-  - **interactive-resolve.ts** — check's after-report resolution (R28/R121): the
-    top-level select (Record all / Revert all / Ignore all / Decide per finding /
-    Nothing) and the per-finding dispatch into the stack actions; returns the
+  - **interactive-resolve.ts** — check's after-report resolution (R28/R121/R125): the
+    top-level select (Nothing first as the safe default, then Record all / Revert all /
+    Ignore all / Decide per finding) looped so a cancelled sub-prompt returns to the
+    menu (Esc = back), and the per-finding dispatch into the stack actions; returns the
     re-evaluated exit code.
   - **action-picker.ts** — the per-finding action picker (R121), built on `@clack/core`'s
     base `Prompt` to bind `↑↓` / `space` (cycle) / `→` (all to focused) / `enter`.
@@ -711,8 +713,8 @@ never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick record it is still every value the
 user did not pick. They render as their own `[UNRECORDED: N]` section (note:
-`not drift — undeclared and not in the baseline yet; record to record`) alongside
-any real `[UNDECLARED DRIFT]` section, are excluded from the verdict and the
+`not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to
+track it`) alongside any real `[CFn-UNDECLARED DRIFT]` section, are excluded from the verdict and the
 `--fail` exit, and the `result:` line carries the count + the way out
 (`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
 when some fold; R112). When BOTH a drift section and a standout `[UNRECORDED]`
