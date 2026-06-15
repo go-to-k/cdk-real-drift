@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-demo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Demo stack + GIF recording kit for cdk-real-drift (see demo/README.md).",
+  "type": "module",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  }
+}
