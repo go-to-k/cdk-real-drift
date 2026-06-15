@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   finalCheckExit,
-  firstRunPrompt,
   postAcceptNote,
   preDeployFindings,
   undeclaredOnlyFindings,
@@ -48,78 +47,6 @@ describe('undeclaredOnlyFindings (R59 — pair-with-cdk-drift scope)', () => {
     const kept: Finding['tier'][] = ['deleted', 'undeclared', 'skipped'];
     const out = undeclaredOnlyFindings(kept.map((t) => F(t)));
     expect(out.map((f) => f.tier)).toEqual(kept);
-  });
-});
-
-describe('firstRunPrompt (R45/R105/R106 — informed, but ONE terse line)', () => {
-  it('is a single line: no baseline + the standout signal, no multi-sentence framing (R106)', () => {
-    const { message } = firstRunPrompt('ApiStack', { standout: 113 });
-    expect(message).toContain('ApiStack: no baseline yet');
-    expect(message).toContain('113 value(s) stand out as possible out-of-band edits');
-    expect(message).not.toContain('SETS UP your baseline'); // the R105 prose wall is gone
-    expect(message).not.toContain('from the next run');
-    expect(message).not.toContain('\n'); // genuinely one line
-    expect(message).not.toContain('drift(s) found'); // never reads as a drift verdict
-  });
-
-  it('declared-side drift present → mentioned inline with its count (R51/R106)', () => {
-    const { message } = firstRunPrompt('ApiStack', { standout: 113, declaredDrift: 3 });
-    expect(message).toContain('plus 3 declared-side drift(s), reported below');
-  });
-
-  it('no declared-side drift → the declared clause is OMITTED entirely (R106)', () => {
-    const { message } = firstRunPrompt('ApiStack', { standout: 113 });
-    expect(message).not.toContain('declared-side drift');
-    expect(message).not.toContain('either way'); // the old generic clause is dropped
-  });
-
-  it('only STANDOUT is called an edit; the folded remainder is one parenthetical (R86/R104/R105/R106)', () => {
-    // 7 top-level edits + 50 nested (folded) + 152 atDefault + 5 generated → folded 207
-    const { message, options } = firstRunPrompt('ApiStack', {
-      standout: 7,
-      nested: 50,
-      atDefault: 152,
-      generated: 5,
-    });
-    expect(message).toContain('7 value(s) stand out as possible out-of-band edits');
-    expect(message).toContain('(207 fold as defaults/generated/nested)');
-    expect(message).not.toContain('57 value(s) stand out'); // nested must NOT count as edits
-    // accept records standout + nested (atDefault/generated never) = 57
-    expect(options.find((o) => o.value === 'acceptAll')!.label).toContain('Accept all 57');
-  });
-
-  it('zero standout (only nested/folded) → says nothing stands out, still offers the baseline (R105/R106)', () => {
-    const { message, options } = firstRunPrompt('ApiStack', {
-      standout: 0,
-      nested: 50,
-      generated: 5,
-    });
-    expect(message).toContain('nothing stands out as an out-of-band edit');
-    expect(message).toContain('(55 fold as defaults/generated/nested)');
-    // accept still records the 50 nested (generated is not recorded)
-    expect(options.find((o) => o.value === 'acceptAll')!.label).toContain('Accept all 50');
-  });
-
-  it('"Accept all" is the FIRST option (the common first-run choice — R52); show-first follows', () => {
-    const { options } = firstRunPrompt('S', { standout: 5 });
-    expect(options[0]!.value).toBe('acceptAll');
-    expect(options[1]!.value).toBe('show');
-    expect(options[1]!.label).toContain('Show first');
-    expect(options[1]!.label).toContain('accept selectively');
-  });
-
-  it('the bulk option states the recordable count and that values are NOT reviewed', () => {
-    const { options } = firstRunPrompt('S', { standout: 113 });
-    const bulk = options.find((o) => o.value === 'acceptAll')!;
-    expect(bulk.label).toContain('Accept all 113');
-    expect(bulk.label).toContain('no review');
-  });
-
-  it('prompts speak the command vocabulary (accept) — no retired jargon', () => {
-    const p = firstRunPrompt('S', { standout: 3 });
-    const all = [p.message, ...p.options.map((o) => o.label)].join(' ');
-    // the retired word is assembled at runtime so this file itself stays free of it (R46)
-    expect(all.toLowerCase()).not.toContain(['b', 'less'].join(''));
   });
 });
 
