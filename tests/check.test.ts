@@ -6,6 +6,7 @@ import {
 } from '../src/commands/check.js';
 import {
   buildResolveOptions,
+  keyOf,
   postRecordNote,
   resolveMenuMessage,
 } from '../src/commands/interactive-resolve.js';
@@ -147,5 +148,36 @@ describe('finalCheckExit (R53 — report-only by default, --fail opts into exit 
   it('errors (2) ALWAYS propagate, with or without --fail', () => {
     expect(finalCheckExit(2, false)).toBe(2);
     expect(finalCheckExit(2, true)).toBe(2);
+  });
+});
+
+describe('keyOf (per-finding identity — ELB attribute-bag collision guard)', () => {
+  const elb = (attributeKey: string): Finding => ({
+    tier: 'declared',
+    logicalId: 'LB',
+    resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+    path: 'LoadBalancerAttributes',
+    attributeKey,
+    desired: 'x',
+    actual: 'y',
+  });
+
+  it('gives two attributes of one bag DISTINCT keys (same logicalId+path)', () => {
+    const a = elb('idle_timeout.timeout_seconds');
+    const b = elb('deletion_protection.enabled');
+    expect(keyOf(a)).not.toBe(keyOf(b));
+  });
+
+  it('selecting one attribute does NOT re-admit the other (the revert-skip safety bug)', () => {
+    const a = elb('idle_timeout.timeout_seconds');
+    const b = elb('deletion_protection.enabled');
+    const chosen = new Set([keyOf(a)]); // user picked revert for `a`, skip for `b`
+    const readmitted = [a, b].filter((f) => chosen.has(keyOf(f)));
+    expect(readmitted).toEqual([a]); // ONLY a — b (skipped) is not reverted
+  });
+
+  it('a finding without attributeKey keeps the bare logicalId::path key', () => {
+    const f: Finding = { tier: 'undeclared', logicalId: 'R', resourceType: 'T', path: 'P' };
+    expect(keyOf(f)).toBe('R::P');
   });
 });

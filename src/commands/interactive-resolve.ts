@@ -73,7 +73,15 @@ export function postRecordNote(remainingUndeclared: number, remainingDeclared: n
 }
 
 // Identity shared by raw and reconciled findings (one property of one resource).
-const keyOf = (f: Finding): string => `${f.logicalId}::${f.path}`;
+// Includes `attributeKey` so the ELB attribute-bag findings — which all share one
+// logicalId+path (`LoadBalancerAttributes`) and differ only by attributeKey — get
+// DISTINCT keys. Without it, choosing `revert` for one bag attribute and `skip` for
+// another in the per-finding picker collapses both to one key, and the
+// `p.findings.filter(keyOf ∈ revertKeys)` re-admit in perFinding then reverts the
+// SKIPPED attribute too — an unintended AWS write. Mirrors revertOpKey in
+// stack-actions.ts (same fix, same reason). Exported for the collision unit test.
+export const keyOf = (f: Finding): string =>
+  `${f.logicalId}::${f.path}${f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''}`;
 
 // The tier tag shown on each picker row. Anchors the vocabulary to its source so
 // "declared" is never misread as the .cdkrd baseline: CFn-declared = in the deployed
@@ -84,8 +92,14 @@ const tierTag = (f: Finding): string =>
     ? 'CFn-declared'
     : `CFn-undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
 
+// Show `attributeKey` (e.g. `LoadBalancerAttributes[idle_timeout.timeout_seconds]`)
+// so ELB attribute-bag rows are distinguishable in the picker — without it the bag's
+// rows render identically and the user can't tell which attribute they're deciding
+// on (mirrors report.ts's `path[attributeKey]`).
 const pickerLabel = (f: Finding): string =>
-  `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}  (${tierTag(f)})`;
+  `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}${
+    f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''
+  }  (${tierTag(f)})`;
 
 /**
  * Re-evaluate check's exit WITHOUT re-reading AWS: reload the (possibly just-written)
