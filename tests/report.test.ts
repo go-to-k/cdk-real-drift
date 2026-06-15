@@ -123,9 +123,13 @@ describe('report', () => {
   it('section header carries the count INSIDE the brackets, note outside (R48)', () => {
     const { text } = run([F('undeclared'), F('declared', 'Q')]);
     expect(text).toContain(
-      '[UNDECLARED DRIFT: 1] (not declared in your template — the differentiator)'
+      '[UNDECLARED DRIFT: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)'
     );
-    expect(text).toContain('[DECLARED DRIFT: 1]'); // no note for declared
+    // declared is now anchored to the deployed CloudFormation template (CFn-) so it
+    // can't be misread as "in my CDK code" or "in the .cdkrd baseline"
+    expect(text).toContain(
+      '[CFn-DECLARED DRIFT: 1] (declared in your CloudFormation template — the live value differs)'
+    );
     // the old bare-digit-right-of-bracket form is gone
     expect(text).not.toMatch(/\] \d/);
   });
@@ -362,7 +366,7 @@ describe('report', () => {
     it('drift: first section directly under the header; blank line BEFORE result: (R48)', () => {
       const lines = run([F('declared')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
-      expect(lines[1]).toBe('[DECLARED DRIFT: 1]'); // no stray blank after the header
+      expect(lines[1]).toMatch(/^\[CFn-DECLARED DRIFT: 1\]/); // no stray blank after the header
       const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
       expect(lines[resultIdx - 1]).toBe(''); // the verdict is separated from the section above
     });
@@ -370,7 +374,7 @@ describe('report', () => {
     it('two drift sections: blank BETWEEN them, none after the header (R48)', () => {
       const lines = run([F('declared'), F('undeclared', 'Q')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
-      expect(lines[1]).toBe('[DECLARED DRIFT: 1]');
+      expect(lines[1]).toMatch(/^\[CFn-DECLARED DRIFT: 1\]/);
       const undeclaredIdx = lines.findIndex((l) => l.startsWith('[UNDECLARED'));
       expect(lines[undeclaredIdx - 1]).toBe(''); // grouping blank between sections
     });

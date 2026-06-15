@@ -22,7 +22,7 @@ import { style } from './style.js';
 
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'DELETED',
-  declared: 'DECLARED DRIFT',
+  declared: 'CFn-DECLARED DRIFT',
   undeclared: 'UNDECLARED DRIFT',
   atDefault: 'AT AWS DEFAULT',
   generated: 'AWS GENERATED',
@@ -32,9 +32,15 @@ const TIER_NAMES: Record<Tier, string> = {
   skipped: 'SKIPPED',
 };
 // Explanation printed after the bracketed name+count, outside the brackets.
+// The notes anchor the THREE sources cdkrd touches, so "declared" is never misread as
+// "in my CDK code" or "in the .cdkrd baseline": (1) the DEPLOYED CloudFormation template
+// (declared/undeclared), (2) the live resource (undeclared = live-only), (3) the .cdkrd
+// baseline file (recorded/unrecorded — a separate axis).
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
-  undeclared: 'not declared in your template — the differentiator',
+  declared: 'declared in your CloudFormation template — the live value differs',
+  undeclared:
+    'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
   atDefault: 'undeclared, but the live value matches a known AWS default — not drift',
   generated: 'auto-generated identifier not in your template (AWS-assigned at deploy) — not drift',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
@@ -181,7 +187,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     section(
       unrecordedShown,
       'UNRECORDED',
-      'not drift — undeclared and not in the baseline yet; record to record',
+      'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
       style.undeclaredTier,
       driftSections > 0
     )

@@ -74,10 +74,17 @@ export function postRecordNote(remainingUndeclared: number, remainingDeclared: n
 // Identity shared by raw and reconciled findings (one property of one resource).
 const keyOf = (f: Finding): string => `${f.logicalId}::${f.path}`;
 
+// The tier tag shown on each picker row. Anchors the vocabulary to its source so
+// "declared" is never misread as the .cdkrd baseline: CFn-declared = in the deployed
+// CloudFormation template; undeclared = live-only (not in the template); `unrecorded`
+// is the separate baseline-file axis.
+const tierTag = (f: Finding): string =>
+  f.tier === 'declared'
+    ? 'CFn-declared'
+    : `undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
+
 const pickerLabel = (f: Finding): string =>
-  `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}  (${f.tier}${
-    f.unrecorded ? ', unrecorded' : ''
-  })`;
+  `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}  (${tierTag(f)})`;
 
 /**
  * Re-evaluate check's exit WITHOUT re-reading AWS: reload the (possibly just-written)
@@ -112,7 +119,8 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
   if (actions.record)
     options.push({
       value: 'record-all',
-      label: 'Record all undeclared — snapshot into the baseline (keeps watching)',
+      label:
+        'Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
     });
   if (actions.revert)
     options.push({ value: 'revert-all', label: 'Revert all — write the desired values to AWS' });
