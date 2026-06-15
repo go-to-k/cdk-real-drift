@@ -1,0 +1,154 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ResponseHeadersPolicy13DBF9E0",
+    "resourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+    "physicalId": "21c47aa9-ed87-401f-8062-6772b6117b53",
+    "constructPath": "CdkdriftIntegHarvest10/ResponseHeadersPolicy",
+    "declared": {
+      "ResponseHeadersPolicyConfig": {
+        "Comment": "cdkrd harvest response headers policy",
+        "CorsConfig": {
+          "AccessControlAllowCredentials": false,
+          "AccessControlAllowHeaders": {
+            "Items": ["*"]
+          },
+          "AccessControlAllowMethods": {
+            "Items": ["GET", "POST"]
+          },
+          "AccessControlAllowOrigins": {
+            "Items": ["https://example.com"]
+          },
+          "AccessControlExposeHeaders": {
+            "Items": ["*"]
+          },
+          "AccessControlMaxAgeSec": 600,
+          "OriginOverride": true
+        },
+        "CustomHeadersConfig": {
+          "Items": [
+            {
+              "Header": "x-cdkrd",
+              "Override": true,
+              "Value": "harvest"
+            }
+          ]
+        },
+        "Name": "cdkrd-resp",
+        "SecurityHeadersConfig": {
+          "ContentTypeOptions": {
+            "Override": true
+          },
+          "FrameOptions": {
+            "FrameOption": "DENY",
+            "Override": true
+          },
+          "ReferrerPolicy": {
+            "Override": true,
+            "ReferrerPolicy": "no-referrer"
+          },
+          "StrictTransportSecurity": {
+            "AccessControlMaxAgeSec": 31536000,
+            "IncludeSubdomains": true,
+            "Override": true
+          },
+          "XSSProtection": {
+            "ModeBlock": true,
+            "Override": true,
+            "Protection": true
+          }
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "LastModifiedTime": "2026-06-15T14:53:08.676Z",
+    "Id": "21c47aa9-ed87-401f-8062-6772b6117b53",
+    "ResponseHeadersPolicyConfig": {
+      "Comment": "cdkrd harvest response headers policy",
+      "SecurityHeadersConfig": {
+        "ContentSecurityPolicy": {},
+        "FrameOptions": {
+          "FrameOption": "DENY",
+          "Override": true
+        },
+        "ContentTypeOptions": {
+          "Override": true
+        },
+        "StrictTransportSecurity": {
+          "AccessControlMaxAgeSec": 31536000,
+          "IncludeSubdomains": true,
+          "Override": true
+        },
+        "XSSProtection": {
+          "Override": true,
+          "Protection": true,
+          "ModeBlock": true
+        },
+        "ReferrerPolicy": {
+          "Override": true,
+          "ReferrerPolicy": "no-referrer"
+        }
+      },
+      "CorsConfig": {
+        "AccessControlAllowCredentials": false,
+        "AccessControlAllowHeaders": {
+          "Items": ["*"]
+        },
+        "OriginOverride": true,
+        "AccessControlAllowMethods": {
+          "Items": ["GET", "POST"]
+        },
+        "AccessControlExposeHeaders": {
+          "Items": ["*"]
+        },
+        "AccessControlAllowOrigins": {
+          "Items": ["https://example.com"]
+        },
+        "AccessControlMaxAgeSec": 600
+      },
+      "CustomHeadersConfig": {
+        "Items": [
+          {
+            "Header": "x-cdkrd",
+            "Value": "harvest",
+            "Override": true
+          }
+        ]
+      },
+      "Name": "cdkrd-resp"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

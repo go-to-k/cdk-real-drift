@@ -206,6 +206,16 @@ describe('classifyResource regressions (dogfood false-positive classes)', () => 
       0
     );
   });
+
+  it('PEM EncodedKey trailing-newline round-trip is not drift; a changed key is (R125)', () => {
+    // CloudFront PublicKey: the declared PEM has no trailing newline, but
+    // GetPublicKey returns the same body with one appended after the END marker.
+    const pem = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqAQAB\n-----END PUBLIC KEY-----';
+    const d = { PublicKeyConfig: { EncodedKey: pem } };
+    expect(declaredPaths(d, { PublicKeyConfig: { EncodedKey: `${pem}\n` } })).toEqual([]);
+    const other = '-----BEGIN PUBLIC KEY-----\nMIIBIjANDIFFERENT\n-----END PUBLIC KEY-----';
+    expect(declaredPaths(d, { PublicKeyConfig: { EncodedKey: other } }).length).toBeGreaterThan(0);
+  });
 });
 
 describe('classifyResource post-revert phantom drift (R46)', () => {
