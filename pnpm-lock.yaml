@@ -62,6 +62,9 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.1065.0
         version: 3.1066.0
+      '@clack/core':
+        specifier: ^1.4.1
+        version: 1.4.1
       '@clack/prompts':
         specifier: ^1.5.1
         version: 1.5.1

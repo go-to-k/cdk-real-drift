@@ -71,6 +71,7 @@
     "@aws-sdk/client-scheduler": "^3.1067.0",
     "@aws-sdk/client-sns": "^3.1065.0",
     "@aws-sdk/client-sqs": "^3.1065.0",
+    "@clack/core": "^1.4.1",
     "@clack/prompts": "^1.5.1",
     "picocolors": "^1.1.1",
     "yaml": "^2.9.0"
