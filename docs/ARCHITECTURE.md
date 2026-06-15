@@ -384,8 +384,12 @@ sibling **PolicyNames** (`collectRolesWithSiblingPolicies`,
 [template-adapter.ts](../src/desired/template-adapter.ts)) and classify drops only
 the live entries matching those names — the residual (rogue inline policies)
 surfaces as undeclared drift. A sibling `PolicyName` the resolver can't evaluate
-statically falls back to suppressing the whole property for that role (fail-safe:
-no false positives over an unidentifiable sibling entry).
+statically (an `Fn::Sub`/`Fn::Join` name, or none) now **fails OPEN** (R111): the
+role keeps its whole live `Policies`, so a rogue out-of-band policy is never hidden
+— the sibling-managed entries merely surface as undeclared (baseline-able once).
+The old fallback DELETED the property, which also hid out-of-band additions on a
+security-relevant resource (the dangerous DROP class, R95); a visible one-time
+false positive is the right trade against a silent false negative.
 
 **The `isTrivialEmpty` asymmetry (intentional trade-off).** An undeclared value that
 is `false`, `''`, `[]`, or an object whose every value is itself trivially empty

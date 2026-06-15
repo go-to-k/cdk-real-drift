@@ -145,19 +145,22 @@ export function classifyResource(
   // AWS::IAM::Policy resource, which reflects into the role's live Policies). Drop
   // ONLY the live entries owned by a sibling — their content drift is the sibling
   // resource's own finding — so an out-of-band inline policy added to the role
-  // still surfaces (as undeclared, or inside the declared compare). 'unresolved'
-  // (a sibling PolicyName we cannot resolve statically) falls back to suppressing
-  // the whole property: no false positives over an unidentifiable sibling entry.
+  // still surfaces (as undeclared, or inside the declared compare).
+  //
+  // R111 fail-open: when a sibling PolicyName cannot be resolved statically (an
+  // Fn::Sub/Fn::Join name, or none), `siblingPolicyNames` is 'unresolved' and we
+  // do NOT filter at all. The old fallback DELETED the whole live Policies — which
+  // also hid any out-of-band inline policy added directly to the role: a silent
+  // false negative on a security-relevant resource (the dangerous DROP class, R95).
+  // Now the unresolved role keeps its live Policies, so a rogue policy is NEVER
+  // hidden; the sibling-managed entries surface as undeclared (baseline-able once).
+  // We trade a one-time, VISIBLE false positive for never hiding a real change.
   const sibling = resource.siblingPolicyNames;
-  if (sibling !== undefined && 'Policies' in live) {
-    if (sibling === 'unresolved') {
-      if (!('Policies' in declared)) delete live.Policies;
-    } else if (Array.isArray(live.Policies)) {
-      const names = new Set<unknown>(sibling);
-      live.Policies = live.Policies.filter(
-        (p) => !(p && typeof p === 'object' && names.has((p as Record<string, unknown>).PolicyName))
-      );
-    }
+  if (sibling !== undefined && sibling !== 'unresolved' && Array.isArray(live.Policies)) {
+    const names = new Set<unknown>(sibling);
+    live.Policies = live.Policies.filter(
+      (p) => !(p && typeof p === 'object' && names.has((p as Record<string, unknown>).PolicyName))
+    );
   }
 
   // declared drift (A3: declared key absent in live = read gap, not drift).
