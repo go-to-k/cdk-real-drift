@@ -129,6 +129,31 @@ describe('noise suppressors', () => {
     expect(canonicalizeIdArraysDeep(['GET', 'CUSTOM'])).toEqual(['GET', 'CUSTOM']);
   });
 
+  it('canonicalizeIdArraysDeep: does NOT sort the order-significant Lambda Layers ARN list', () => {
+    // Lambda Function.Layers is order-significant (later layers overlay earlier).
+    // The generic ARN sort would suppress a genuine reorder — a false negative.
+    const layersA = [
+      'arn:aws:lambda:us-east-1:123456789012:layer:libA:3',
+      'arn:aws:lambda:us-east-1:123456789012:layer:libB:1',
+    ];
+    const layersB = [
+      'arn:aws:lambda:us-east-1:123456789012:layer:libB:1',
+      'arn:aws:lambda:us-east-1:123456789012:layer:libA:3',
+    ];
+    // each side is preserved verbatim (NOT sorted) ...
+    expect(canonicalizeIdArraysDeep({ Layers: layersA })).toEqual({ Layers: layersA });
+    expect(canonicalizeIdArraysDeep({ Layers: layersB })).toEqual({ Layers: layersB });
+    // ... so a reorder stays distinguishable (would surface as drift)
+    expect(canonicalizeIdArraysDeep({ Layers: layersA })).not.toEqual(
+      canonicalizeIdArraysDeep({ Layers: layersB })
+    );
+    // a NON-layer ARN list (e.g. SecurityGroupIds) still sorts as before
+    expect(canonicalizeIdArraysDeep(['arn:aws:s3:::b', 'arn:aws:s3:::a']) as string[]).toEqual([
+      'arn:aws:s3:::a',
+      'arn:aws:s3:::b',
+    ]);
+  });
+
   it('isStringlyEqualScalar: a primitive equals its String() form, real drift kept', async () => {
     const { isStringlyEqualScalar } = await import('../src/normalize/noise.js');
     expect(isStringlyEqualScalar(true, 'true')).toBe(true);

@@ -557,10 +557,27 @@ const isIdLike = (s: unknown): boolean =>
 const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 const isHttpMethod = (s: unknown): boolean => typeof s === 'string' && HTTP_METHODS.has(s);
 
+// THE one known order-SIGNIFICANT id/ARN array: AWS::Lambda::Function.Layers is a
+// list of layer-version ARNs where order is meaningful — later layers overlay files
+// from earlier ones, so swapping two layers changes the function's merged content.
+// Every other id/ARN array (SubnetIds, SecurityGroupIds, …) is a set, so the generic
+// sort above is safe; a layer ARN is uniquely shaped
+// (`arn:aws…:lambda:<region>:<acct>:layer:<name>:<version>`), so detect it by shape
+// and leave any array containing one UNSORTED — an out-of-band layer reorder then
+// surfaces as drift instead of being silently suppressed (the false negative the
+// blanket sort otherwise produced). Same content-based, no-per-type-table philosophy.
+const LAMBDA_LAYER_ARN_RE = /^arn:aws[a-z-]*:lambda:[^:]*:\d*:layer:/;
+const hasOrderSignificantId = (arr: unknown[]): boolean =>
+  arr.some((s) => typeof s === 'string' && LAMBDA_LAYER_ARN_RE.test(s));
+
 export function canonicalizeIdArraysDeep(v: unknown): unknown {
   if (Array.isArray(v)) {
     const mapped = v.map(canonicalizeIdArraysDeep);
-    if (mapped.length > 1 && (mapped.every(isIdLike) || mapped.every(isHttpMethod)))
+    if (
+      mapped.length > 1 &&
+      !hasOrderSignificantId(mapped) &&
+      (mapped.every(isIdLike) || mapped.every(isHttpMethod))
+    )
       return [...(mapped as string[])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     return mapped;
   }
