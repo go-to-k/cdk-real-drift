@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 tests/integration/*/package-lock.json
+demo/package-lock.json
 
 # Build output
 dist/

@@ -23,8 +23,7 @@ $ npx cdk drift ApiStack
 `cdkrd` reads the **full** live resource model and subtracts everything
 explainable — the same change shows up:
 
-<!-- demo GIF (record on publish):
-     cdk drift (clean) -> console change -> cdkrd check finds it -> revert -->
+![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
 
 ```console
 $ npx cdkrd check ApiStack
@@ -34,6 +33,8 @@ $ npx cdkrd check ApiStack
 
 result: 1 drift(s) (undeclared=1)
 ```
+
+_The GIF is regenerated with [`demo/`](demo/) (`bash demo/setup.sh` → `vhs demo/cdkrd.tape`)._
 
 | Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
 | ------------------------------------------------------------------- | :-----: | :-------------------------------: |
