@@ -18,6 +18,7 @@ import {
   isEqualUnorderedScalarSet,
   isJsonStringStructEqual,
   isStringlyEqualScalar,
+  isGeneratedName,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   resolveGeneratedDefault,
@@ -297,6 +298,15 @@ export function classifyResource(
     // the physical-id-substituted template, so an out-of-band edit (a different
     // LogFormat, say) no longer matches and falls through to `undeclared` below.
     if (k in genDef && deepEqual(v, genDef[k])) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // R107: a scalar value that IS this resource's generated NAME from an ARN physical
+    // id (the ARN's name segment — a topic's TopicName, a state machine's
+    // StateMachineName) is the same `generated` tier — folded, never drift, never
+    // recorded — for ANY type, without a per-type GENERATED_DEFAULTS entry. The bare
+    // physical-id echo (value === physicalId) is left to the structural drop below.
+    if (isGeneratedName(v, physicalId)) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }

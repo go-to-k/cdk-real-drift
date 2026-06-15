@@ -83,7 +83,7 @@
       "constructPath": "CdkRealDriftIntegSqs/Main"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Main54E5BC70",
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
