@@ -21,6 +21,19 @@ export interface GatherResult {
   desired: Desired;
   findings: Finding[];
   schemas: Map<string, SchemaInfo>; // resourceType -> schema (so revert can honor createOnly)
+  // logicalId -> the UN-stripped live model (CC GetResource / SDK override read), kept so
+  // the revert write path can see live-only data the compare-side strips — notably the
+  // `aws:*` managed tags `stripAwsTagsDeep` removes, which a Tags revert must preserve on
+  // the WRITE side (tagPreservingOps). Resources with no readable live model are absent.
+  liveByLogical: Map<string, Record<string, unknown>>;
+}
+
+// Project the per-resource live reads into the logicalId -> live-model map carried on
+// GatherResult (only the resources that actually read back a model).
+function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string, unknown>> {
+  const out = new Map<string, Record<string, unknown>>();
+  for (const [logicalId, read] of reads) if (read.live) out.set(logicalId, read.live);
+  return out;
 }
 
 // Regions already warned about a denied kms:ListAliases — the warning is one-per-region
@@ -215,7 +228,7 @@ export async function gatherFindings(
       );
     }
   }
-  return { desired, findings, schemas };
+  return { desired, findings, schemas, liveByLogical: liveModelMap(reads) };
 }
 
 /**
@@ -273,5 +286,9 @@ export async function regatherTouched(
   for (const r of targets) {
     fresh.push(...(await classifyRead(cfn, r, reads.get(r.logicalId), schemas, classifyOpts)));
   }
+  // Refresh the live-model map for the re-read resources (so a follow-up tag-preserving
+  // revert sees the post-revert managed-tag set), mirroring the findings carry-forward.
+  for (const [logicalId, read] of reads)
+    if (read.live) gathered.liveByLogical.set(logicalId, read.live);
   return [...gathered.findings.filter((f) => !touched.has(f.logicalId)), ...fresh];
 }

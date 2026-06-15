@@ -672,6 +672,23 @@ export function isTrivialEmpty(v: unknown): boolean {
   return false;
 }
 
+// The AWS-managed (`aws:*`) tag ELEMENTS of a {Key,Value}[] tag list — the exact
+// inverse of what `stripAwsTagsDeep` drops. AWS forbids an external write that
+// removes or re-asserts an `aws:`-prefixed tag key ("aws: prefixed tag key names
+// are not allowed for external use"), so a Tags REVERT must carry these forward
+// untouched (the revert only ever changes the USER tags). Returns [] for a
+// non-list / a list with no managed tags. Used by the revert plan's tag-op guard.
+export function awsManagedTags(v: unknown): { Key: string }[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(
+    (t): t is { Key: string } =>
+      !!t &&
+      typeof t === 'object' &&
+      typeof (t as { Key?: unknown }).Key === 'string' &&
+      (t as { Key: string }).Key.startsWith('aws:')
+  );
+}
+
 // A2: AWS-managed (aws:*) tags only. Handles BOTH the {Key,Value}[] list shape
 // (most types) AND the key->value map shape (e.g. AWS::SSM::Parameter.Tags).
 export function isAllAwsTags(v: unknown): boolean {

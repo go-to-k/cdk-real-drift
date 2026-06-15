@@ -11,6 +11,7 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
+import { awsManagedTags } from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
@@ -293,6 +294,51 @@ export function writeOnlyReincludeOps(
     });
   }
   return ops;
+}
+
+// Cloud Control applies a `/Tags` patch read-modify-write: it reads the live model
+// (which AWS augments with `aws:cloudformation:*` / `aws:*` managed tags), applies the
+// patch, then hands the result to the provider's update handler. The handler diffs the
+// resulting tag set against the live set and UNtags whatever is gone — so a bare
+// `remove /Tags` (or an `add /Tags` whose value omits the managed tags) tells the
+// provider to drop the `aws:*` tags too, which AWS hard-rejects: "aws: prefixed tag key
+// names are not allowed for external use" (reproduced live reverting an out-of-band tag
+// on an AWS::SNS::Topic). cdkrd strips `aws:*` tags from the COMPARE side
+// (stripAwsTagsDeep), so the finding value never carries them; the revert must re-attach
+// them on the WRITE side. For any cc-kind op on the top-level `/Tags` pointer, rewrite it
+// to an `add /Tags` whose value is the intended user tags MERGED WITH the live `aws:*`
+// tags — so the provider leaves the managed tags untouched and only the user tag changes.
+// A `remove` becomes `add []`-of-managed-only; an `add` keeps its value plus the managed
+// tags. With no managed tags present (or no live model) the op is returned unchanged, so
+// this never alters a tag revert that wasn't at risk. Only `/Tags` LIST-shaped values are
+// handled (the {Key,Value}[] shape awsManagedTags understands); nested tag paths are
+// already not-revertable (isNestedUndeclared), so only the top-level pointer can appear.
+const TAGS_POINTER = '/Tags';
+function asTagList(v: unknown): unknown[] {
+  return Array.isArray(v) ? v : [];
+}
+export function tagPreservingOps(
+  ops: PatchOp[],
+  liveRaw: Record<string, unknown> | undefined
+): PatchOp[] {
+  const managed = awsManagedTags(liveRaw?.['Tags']);
+  if (managed.length === 0) return ops; // nothing managed to protect — leave ops as-is
+  return ops.map((op) => {
+    if (op.path !== TAGS_POINTER) return op;
+    // user (non-managed) tags the revert wants to KEEP: an `add` keeps its value's
+    // tags, a `remove` keeps none — either way, drop any aws:* entry from the value
+    // (it should never carry one, but be defensive — same per-element predicate as
+    // awsManagedTags) and re-attach the live managed set.
+    const userTags =
+      op.op === 'add' ? asTagList(op.value).filter((t) => awsManagedTags([t]).length === 0) : [];
+    return {
+      op: 'add',
+      path: TAGS_POINTER,
+      value: [...userTags, ...managed],
+      ...(op.prior !== undefined && { prior: op.prior }),
+      human: `${op.human} (preserving aws:* managed tags)`,
+    };
+  });
 }
 
 /** Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control. */

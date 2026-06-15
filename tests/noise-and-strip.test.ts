@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
 import {
+  awsManagedTags,
   canonicalizeIdArraysDeep,
   canonicalizeTagListsDeep,
   isAllAwsTags,
@@ -171,6 +172,24 @@ describe('noise suppressors', () => {
     ).toBe(true);
     expect(isAllAwsTags({ 'aws:x': '1', Team: 'a' })).toBe(false);
     expect(isAllAwsTags({})).toBe(false);
+  });
+
+  it('awsManagedTags: returns ONLY the aws:* {Key,Value} entries (inverse of stripAwsTagsDeep)', () => {
+    expect(
+      awsManagedTags([
+        { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+        { Key: 'TestAddedTag', Value: 'AAA' },
+        { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+      ])
+    ).toEqual([
+      { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+      { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+    ]);
+    // no managed tags -> [], non-list -> [], empty -> []
+    expect(awsManagedTags([{ Key: 'Team', Value: 'a' }])).toEqual([]);
+    expect(awsManagedTags(undefined)).toEqual([]);
+    expect(awsManagedTags('nope')).toEqual([]);
+    expect(awsManagedTags([])).toEqual([]);
   });
 
   it('IAM Role known defaults present', () => {

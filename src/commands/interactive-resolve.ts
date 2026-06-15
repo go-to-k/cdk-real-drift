@@ -43,6 +43,7 @@ export interface ResolveParams {
   reconciled: Finding[]; // baseline + ignore applied (exactly what the report showed)
   baseline: BaselineFile | undefined;
   schemas: Map<string, SchemaInfo>;
+  liveByLogical: Map<string, Record<string, unknown>>; // logicalId -> live model, for tag-preserving revert
   config: CdkrdConfig;
   code: number; // pre-prompt exit (1 = drift, else 0)
   yes: boolean;
@@ -214,7 +215,12 @@ async function revertAll(p: ResolveParams): Promise<number | null> {
   const outcome = await revertStack({
     stackName: p.stackName,
     region: p.region,
-    gathered: { desired: p.desired, findings: p.findings, schemas: p.schemas },
+    gathered: {
+      desired: p.desired,
+      findings: p.findings,
+      schemas: p.schemas,
+      liveByLogical: p.liveByLogical,
+    },
     baseline: p.baseline,
     config: p.config,
     dryRun: false,
@@ -272,6 +278,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<numbe
         desired: p.desired,
         findings: p.findings.filter((f) => revertKeys.has(keyOf(f))),
         schemas: p.schemas,
+        liveByLogical: p.liveByLogical,
       },
       baseline: p.baseline,
       config: p.config,
