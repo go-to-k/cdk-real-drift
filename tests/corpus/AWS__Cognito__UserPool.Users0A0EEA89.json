@@ -372,7 +372,7 @@
       "constructPath": "CdkrdIntegHarvest3/Users"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Policies.SignInPolicy",

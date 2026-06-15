@@ -81,7 +81,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Events",
       "resourceType": "AWS::Glue::Table",
       "path": "TableInput.Retention",
@@ -91,7 +91,7 @@
       "constructPath": "CdkrdIntegHarvest/Events"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Events",
       "resourceType": "AWS::Glue::Table",
       "path": "TableInput.StorageDescriptor.NumberOfBuckets",

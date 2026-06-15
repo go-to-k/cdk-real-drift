@@ -168,6 +168,93 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
+// Cloud Control read returns the full live model, so a config-dense type's
+// DECLARED parent property (CloudFront DistributionConfig, ApiGateway Method
+// Integration, Glue TableInput, …) comes back carrying many sub-keys AWS
+// materialized as documented defaults the user never set. R103's
+// `schema.defaultPaths` folds the ones the CFn schema annotates with `default`;
+// the schema annotates very few, so the rest flood a first run as `undeclared`
+// (nested) noise. This table is the hand-coded equivalent for the nested paths
+// the schema does NOT annotate — exactly what KNOWN_DEFAULTS is for top-level
+// keys, lifted to dotted paths.
+//
+// Keyed BY DOTTED PATH with `*` for array elements, matching the shape the
+// classify nested loop computes (`path.replace(/\[[^\]]*\]/g, '.*')`) and the
+// shape `schema.defaultPaths` already uses, so both sources read through one
+// lookup. The VALUE is the exact emitted live value: a leaf scalar when the
+// parent array/object is declared and only a sub-leaf is live-only, or the whole
+// sub-object when an entire sub-key is live-only. Every entry below was OBSERVED
+// verbatim in the golden corpus.
+//
+// Equality-gated exactly like KNOWN_DEFAULTS: a value folds to `atDefault` ONLY
+// when it deep-equals the listed default, so an out-of-band change away from the
+// default no longer matches and falls through to a real `undeclared` finding;
+// `atDefault` is still surfaced (folded into the report footer, listed by
+// --show-all), never dropped and never recorded by accept. Resource-/account-/
+// throughput-specific values are deliberately EXCLUDED (genuine inventory, not
+// constants): ApiGateway Method `Integration.CacheNamespace` (a generated id),
+// Budgets `Budget.BudgetName` (a generated name), DynamoDB GSI `*.WarmThroughput`
+// (mirrors the table's provisioned throughput, not a constant).
+export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  'AWS::ApiGateway::Method': {
+    'Integration.PassthroughBehavior': 'WHEN_NO_MATCH',
+    'Integration.ResponseTransferMode': 'BUFFERED',
+    'Integration.TimeoutInMillis': 29000,
+  },
+  'AWS::ApiGateway::UsagePlan': {
+    'Quota.Offset': 0,
+  },
+  'AWS::CloudFront::Distribution': {
+    'DistributionConfig.OriginGroups': { Quantity: 0, Items: [] },
+    'DistributionConfig.Origins.*.ConnectionAttempts': 3,
+    'DistributionConfig.Origins.*.ConnectionTimeout': 10,
+    'DistributionConfig.Origins.*.CustomOriginConfig.HTTPPort': 80,
+    'DistributionConfig.Origins.*.CustomOriginConfig.HTTPSPort': 443,
+    'DistributionConfig.Origins.*.CustomOriginConfig.OriginKeepaliveTimeout': 5,
+    'DistributionConfig.Origins.*.S3OriginConfig.OriginReadTimeout': 30,
+    'DistributionConfig.Restrictions': {
+      GeoRestriction: { Locations: [], RestrictionType: 'none' },
+    },
+    'DistributionConfig.ViewerCertificate': {
+      SslSupportMethod: 'vip',
+      MinimumProtocolVersion: 'TLSv1',
+      CloudFrontDefaultCertificate: true,
+    },
+  },
+  'AWS::CodeBuild::Project': {
+    'Environment.ImagePullCredentialsType': 'CODEBUILD',
+  },
+  'AWS::Cognito::UserPool': {
+    'AdminCreateUserConfig.UnusedAccountValidityDays': 7,
+    'Policies.SignInPolicy': { AllowedFirstAuthFactors: ['PASSWORD'] },
+  },
+  'AWS::DynamoDB::Table': {
+    'PointInTimeRecoverySpecification.RecoveryPeriodInDays': 35,
+  },
+  'AWS::Glue::Database': {
+    'DatabaseInput.CreateTableDefaultPermissions': [
+      {
+        Permissions: ['ALL'],
+        Principal: { DataLakePrincipalIdentifier: 'IAM_ALLOWED_PRINCIPALS' },
+      },
+    ],
+  },
+  'AWS::Glue::Table': {
+    'TableInput.Retention': 0,
+    'TableInput.StorageDescriptor.NumberOfBuckets': 0,
+  },
+  'AWS::Route53::HealthCheck': {
+    'HealthCheckConfig.EnableSNI': true,
+  },
+  'AWS::S3::Bucket': {
+    'LifecycleConfiguration.TransitionDefaultMinimumObjectSize': 'all_storage_classes_128K',
+  },
+  'AWS::Scheduler::Schedule': {
+    'Target.RetryPolicy': { MaximumEventAgeInSeconds: 86400, MaximumRetryAttempts: 185 },
+  },
+};
+
 // AWS/CDK auto-GENERATED values keyed by the resource's CFn-assigned physical id.
 // Unlike KNOWN_DEFAULTS (static values), each entry may interpolate the live
 // physical id via two placeholders, substituted by resolveGeneratedDefault before

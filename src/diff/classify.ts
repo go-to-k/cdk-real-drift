@@ -20,6 +20,7 @@ import {
   isStringlyEqualScalar,
   isGeneratedName,
   isTrivialEmpty,
+  KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   resolveGeneratedDefault,
   sortUnorderedObjectArray,
@@ -333,15 +334,19 @@ export function classifyResource(
   // element identity (`Prop[<id>].sub`); the schema keys it with a `*` wildcard, so
   // normalize `[<id>]` -> `.*` before the lookup. Equality-gated: a value changed
   // AWAY from its default no longer matches and falls back to `undeclared`.
+  // R108: KNOWN_DEFAULT_PATHS is the hand-coded twin for the nested service defaults
+  // the CFn schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read
+  // through the SAME wildcard lookup, equality-gated identically.
+  const knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
   for (const [k, dv] of Object.entries(declared)) {
     if (dv === UNRESOLVED || hasUnresolved(dv) || !(k in live)) continue;
     collectNestedUndeclared(dv, live[k], k, (path, value) => {
       if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
       const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
-      const tier =
-        schemaPath in schema.defaultPaths && deepEqual(value, schema.defaultPaths[schemaPath])
-          ? 'atDefault'
-          : 'undeclared';
+      const atDefault =
+        (schemaPath in schema.defaultPaths && deepEqual(value, schema.defaultPaths[schemaPath])) ||
+        (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
+      const tier = atDefault ? 'atDefault' : 'undeclared';
       findings.push({ tier, logicalId, resourceType, path, actual: value, nested: true });
     });
   }

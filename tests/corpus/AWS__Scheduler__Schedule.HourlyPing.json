@@ -72,7 +72,7 @@
       "constructPath": "CdkrdIntegHarvest3/HourlyPing"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HourlyPing",
       "resourceType": "AWS::Scheduler::Schedule",
       "path": "Target.RetryPolicy",

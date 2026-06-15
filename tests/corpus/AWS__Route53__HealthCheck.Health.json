@@ -49,7 +49,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Health",
       "resourceType": "AWS::Route53::HealthCheck",
       "path": "HealthCheckConfig.EnableSNI",

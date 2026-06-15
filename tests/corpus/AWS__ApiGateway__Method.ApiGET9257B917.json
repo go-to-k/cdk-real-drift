@@ -81,7 +81,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiGET9257B917",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.PassthroughBehavior",
@@ -91,7 +91,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiGET9257B917",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.ResponseTransferMode",
@@ -101,7 +101,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Api/Default/GET"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiGET9257B917",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.TimeoutInMillis",

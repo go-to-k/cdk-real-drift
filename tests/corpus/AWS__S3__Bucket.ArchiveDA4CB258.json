@@ -250,7 +250,7 @@
       "constructPath": "CdkrdIntegHarvest2/Archive"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ArchiveDA4CB258",
       "resourceType": "AWS::S3::Bucket",
       "path": "LifecycleConfiguration.TransitionDefaultMinimumObjectSize",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
-import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
+import { KNOWN_DEFAULT_PATHS, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
 function tiers(findings: Finding[]) {
@@ -1221,6 +1221,86 @@ describe('nested atDefault folding (R103 — schema defaults at depth)', () => {
       schema({ 'Conf.Timeout': 30 })
     );
     expect(out.find((x) => x.path === 'Conf.Other')?.tier).toBe('undeclared');
+  });
+});
+
+describe('nested KNOWN_DEFAULT_PATHS folding (R108 — hand-coded nested service defaults)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const bare = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+
+  // Build {declared, live} from a dotted KNOWN_DEFAULT_PATHS key so the nested loop
+  // fires: every intermediate object/array is DECLARED on both sides (an array
+  // element carries an `Id` identity so the loop aligns it), and only the final
+  // sub-key is live-only — exactly the shape the corpus exhibits. A `*` segment
+  // becomes a one-element identity-keyed array.
+  function buildNested(
+    segments: string[],
+    value: unknown
+  ): [Record<string, unknown>, Record<string, unknown>] {
+    const [head, ...rest] = segments;
+    if (rest.length === 0) return [{}, { [head!]: value }];
+    if (rest[0] === '*') {
+      const [d, l] = buildNested(rest.slice(1), value);
+      return [{ [head!]: [{ Id: 'x', ...d }] }, { [head!]: [{ Id: 'x', ...l }] }];
+    }
+    const [d, l] = buildNested(rest, value);
+    return [{ [head!]: d }, { [head!]: l }];
+  }
+  const emittedPath = (schemaPath: string): string => schemaPath.replaceAll('.*.', '[x].');
+
+  it('EVERY entry FOLDS its exact nested default to the atDefault tier (never drift, never dropped)', () => {
+    for (const [resourceType, defs] of Object.entries(KNOWN_DEFAULT_PATHS)) {
+      for (const [path, value] of Object.entries(defs)) {
+        const [declared, live] = buildNested(path.split('.'), structuredClone(value));
+        const findings = classifyResource(bare(resourceType, declared), live, emptySchema);
+        const f = findings.find((x) => x.path === emittedPath(path));
+        expect(f, `${resourceType} :: ${path}`).toBeDefined();
+        expect(f, `${resourceType} :: ${path}`).toMatchObject({ tier: 'atDefault', nested: true });
+      }
+    }
+  });
+
+  it('a nested value CHANGED away from its known default surfaces as undeclared (equality-gated)', () => {
+    const out = classifyResource(
+      bare('AWS::ApiGateway::Method', { Integration: {} }),
+      { Integration: { TimeoutInMillis: 5000 } },
+      emptySchema
+    );
+    expect(out.find((x) => x.path === 'Integration.TimeoutInMillis')?.tier).toBe('undeclared');
+  });
+
+  it('the SAME nested key on an UNLISTED resource type is not folded', () => {
+    const out = classifyResource(
+      bare('AWS::Other::Thing', { Integration: {} }),
+      { Integration: { TimeoutInMillis: 29000 } },
+      emptySchema
+    );
+    expect(out.find((x) => x.path === 'Integration.TimeoutInMillis')?.tier).toBe('undeclared');
+  });
+
+  it('an array-element nested default folds via the live [<id>] -> * normalization', () => {
+    const out = classifyResource(
+      bare('AWS::CloudFront::Distribution', { DistributionConfig: { Origins: [{ Id: 'o1' }] } }),
+      { DistributionConfig: { Origins: [{ Id: 'o1', ConnectionAttempts: 3 }] } },
+      emptySchema
+    );
+    expect(
+      out.find((x) => x.path === 'DistributionConfig.Origins[o1].ConnectionAttempts')?.tier
+    ).toBe('atDefault');
   });
 });
 
