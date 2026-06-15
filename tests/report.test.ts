@@ -19,14 +19,24 @@ function run(findings: Finding[], opts: Parameters<typeof report>[2] = {}) {
 const U = (path = 'P'): Finding => ({ ...F('undeclared', path), unrecorded: true });
 
 describe('report unrecorded findings (R60/R62 — per finding: never decided is inventory, not drift)', () => {
-  it('unrecorded findings render as [UNRECORDED: N] and do NOT count as drift', () => {
+  it('unrecorded findings render as [UNRECORDED: N], labelled "not drift", and do NOT count as drift', () => {
     const { code, text } = run([U(), U('Q')]);
     expect(code).toBe(0);
     expect(text).toContain('[UNRECORDED: 2]');
-    expect(text).toContain('not in the baseline yet — accept to record');
+    expect(text).toContain('not drift —'); // R112: the section says so up front
     expect(text).not.toContain('UNDECLARED DRIFT');
     expect(text).toContain(
       'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd accept)'
+    );
+  });
+
+  it('result note names the shown/folded split so the section count and total reconcile (R112)', () => {
+    // 2 standout (shown in [UNRECORDED: 2]) + 3 nested (folded) = 5 total
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const { text } = run([U(), U('Q'), nested('a'), nested('b'), nested('c')]);
+    expect(text).toContain('[UNRECORDED: 2]'); // only the standout are listed
+    expect(text).toContain(
+      'result: CLEAN — 5 unrecorded value(s) await a baseline (2 shown, 3 folded; run cdkrd accept)'
     );
   });
 

@@ -669,10 +669,11 @@ never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick accept it is still every value the
 user did not pick. They render as their own `[UNRECORDED: N]` section (note:
-`not in the baseline yet — accept to record`) alongside any real
-`[UNDECLARED DRIFT]` section, are excluded from the verdict and the `--fail`
-exit, and the `result:` line carries the count + the way out
-(`— N unrecorded value(s) await a baseline (run cdkrd accept)`). Declared and
+`not drift — undeclared and not in the baseline yet; accept to record`) alongside
+any real `[UNDECLARED DRIFT]` section, are excluded from the verdict and the
+`--fail` exit, and the `result:` line carries the count + the way out
+(`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd accept)`
+when some fold; R112). Declared and
 deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`unrecorded values found — what do
 you want to do?`) so "show them first" keeps its promise of a selective accept.

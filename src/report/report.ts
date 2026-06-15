@@ -181,7 +181,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     section(
       unrecordedShown,
       'UNRECORDED',
-      'not declared in your template; not in the baseline yet — accept to record',
+      'not drift — undeclared and not in the baseline yet; accept to record',
       style.undeclaredTier,
       driftSections > 0
     )
@@ -198,11 +198,17 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   const verdict =
     drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
   // unrecorded values are stated NEXT TO the verdict (not as drift): the count
-  // and the way out, in one place (R60).
+  // and the way out, in one place (R60). The total counts ALL unrecorded values
+  // but the [UNRECORDED] section lists only the standout (non-folded) ones, so name
+  // the split (R112) — otherwise "25 await a baseline" reads as a mismatch against a
+  // visible "[UNRECORDED: 2]".
+  const unrecordedFoldedCount = unrecordedItems.length - unrecordedShown.length;
   const unrecordedNote =
     unrecordedItems.length > 0
       ? style.infoTier(
-          ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
+          unrecordedFoldedCount > 0
+            ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd accept)`
+            : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
         )
       : '';
   // A blank line before the verdict ONLY when drift sections were printed — it must
