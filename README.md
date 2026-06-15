@@ -35,13 +35,24 @@ $ npx cdkrd check ApiStack
 result: 1 drift(s) (undeclared=1)
 ```
 
-| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
-| ------------------------------------------------------------------- | :-----: | :-------------------------------: |
-| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
-| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
-| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
-| **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
+Every other drift tool compares only the properties that appear in your IaC
+(template / state / provider schema), so a change to a setting you never declared
+is invisible to all of them — that is the row that sets `cdkrd` apart:
+
+| Capability                                                           | `cdkrd` | `cdk drift` / CFn drift | `driftctl` | `terraform plan` |
+| -------------------------------------------------------------------- | :-----: | :---------------------: | :--------: | :--------------: |
+| Detect drift on **declared** properties (incl. out-of-band deletes)  |   ✅    |           ✅            |     ✅     |        ✅        |
+| Detect drift on **undeclared** properties (settings not in your IaC) |   ✅    |           ❌            |     ❌     |        ❌        |
+| **Revert** declared drift                                            |   ✅    |           ✅            |     ❌     |        ✅        |
+| **Revert** undeclared drift                                          |   ✅    |           ❌            |     ❌     |        ❌        |
+| **Accept** drift into a git-committed, reviewable file               |   ✅    |           ❌            |     ⚠️     |        ❌        |
+
+- **Revert**: `cdk deploy --revert-drift` (declared only); `terraform apply`
+  reconciles only attributes Terraform manages, so a setting outside the
+  resource's managed attributes is the same blind spot as the undeclared row.
+- **Accept (⚠️)**: `driftctl` is detect-only and offers ignore-rules rather
+  than a reviewed, committed baseline; it is also no longer actively
+  maintained — listed here as the closest Terraform-side analogue.
 
 ## Quick start
 
