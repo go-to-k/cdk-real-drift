@@ -49,7 +49,7 @@
       "constructPath": "CdkrdIntegHarvest5/Param"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Param165332EC",
       "resourceType": "AWS::SSM::Parameter",
       "path": "DataType",

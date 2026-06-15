@@ -53,7 +53,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FlagC3248847",
       "resourceType": "AWS::SSM::Parameter",
       "path": "DataType",

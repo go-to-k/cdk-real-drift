@@ -80,7 +80,7 @@
       "constructPath": "CdkrdIntegHarvest2/Events"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EventsD32975C2",
       "resourceType": "AWS::Kinesis::Stream",
       "path": "MaxRecordSizeInKiB",

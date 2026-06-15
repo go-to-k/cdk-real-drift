@@ -414,6 +414,13 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t('EXPRESS').undeclared).toEqual(['StateMachineType']);
   });
 
+  it('R105: DynamoDB BillingMode PROVISIONED folds, PAY_PER_REQUEST surfaces', () => {
+    const t = (v: string) =>
+      tiers(classifyResource(bare('AWS::DynamoDB::Table'), { BillingMode: v }, emptySchema));
+    expect(t('PROVISIONED').atDefault).toEqual(['BillingMode']);
+    expect(t('PAY_PER_REQUEST').undeclared).toEqual(['BillingMode']);
+  });
+
   // R74: the declared loop's trivially-empty rule — CDK Trail synthesizes
   // `EventSelectors: []`, CloudTrail materializes the default management
   // selector; that pair must not be drift, but everything around it must stay.

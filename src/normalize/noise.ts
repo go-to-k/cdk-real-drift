@@ -134,6 +134,38 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       EnableResourceNameDnsAAAARecord: false,
     },
   },
+  // R105 (second dogfood-audit wave): more top-level constant service defaults
+  // (same exclusions as R104 — no names/ids/ARNs, no region-/account-specific
+  // values, no large/evolving config blobs like Athena WorkGroupConfiguration).
+  'AWS::ApiGatewayV2::Api': {
+    RouteSelectionExpression: '$request.method $request.path',
+  },
+  'AWS::ApiGatewayV2::Integration': {
+    ConnectionType: 'INTERNET',
+    TimeoutInMillis: 30000,
+  },
+  'AWS::CodeBuild::Project': {
+    TimeoutInMinutes: 60,
+    QueuedTimeoutInMinutes: 480,
+  },
+  'AWS::DynamoDB::Table': {
+    BillingMode: 'PROVISIONED',
+  },
+  'AWS::ECR::Repository': {
+    EncryptionConfiguration: { EncryptionType: 'AES256' },
+  },
+  'AWS::Kinesis::Stream': {
+    MaxRecordSizeInKiB: 1024,
+  },
+  'AWS::SSM::Parameter': {
+    DataType: 'text',
+  },
+  'AWS::StepFunctions::Activity': {
+    EncryptionConfiguration: { Type: 'AWS_OWNED_KEY' },
+  },
+  'AWS::SNS::Subscription': {
+    FilterPolicyScope: 'MessageAttributes',
+  },
 };
 
 // AWS/CDK auto-GENERATED values keyed by the resource's CFn-assigned physical id.
