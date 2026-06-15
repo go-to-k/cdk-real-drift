@@ -64,7 +64,12 @@ export interface CorpusCase {
     createOnlyPaths: string[];
     defaults: Record<string, unknown>;
   };
-  opts: { accountId: string; region: string; kmsAliasTargets: Record<string, string> };
+  opts: {
+    accountId: string;
+    region: string;
+    kmsAliasTargets: Record<string, string>;
+    oaiCanonicalIds: Record<string, string>;
+  };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
 
@@ -89,7 +94,12 @@ export function buildCorpusCase(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
   schema: SchemaInfo,
-  opts: { accountId: string; region: string; kmsAliasTargets: Record<string, string> },
+  opts: {
+    accountId: string;
+    region: string;
+    kmsAliasTargets: Record<string, string>;
+    oaiCanonicalIds: Record<string, string>;
+  },
   findings: Finding[]
 ): CorpusCase {
   const c: CorpusCase = {

@@ -96,6 +96,76 @@ export function canonicalizePolicy(doc: Record<string, unknown>): Record<string,
   return out;
 }
 
+// A CloudFront legacy Origin Access Identity (OAI) grant can be written two
+// equivalent ways in a resource policy principal:
+//   declared (CDK `grantRead(oai)`): { CanonicalUser: <oai S3CanonicalUserId> }
+//   live (S3 GetBucketPolicy / SNS / SQS read-back): AWS normalizes it to
+//     { AWS: "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity <oaiId>" }
+// The two carry DIFFERENT tokens — the S3 canonical-user-id hex vs the OAI id —
+// so a string diff fires a false declared drift on the bucket policy. We reconcile
+// them by rewriting the `cloudfront:user` ARN form to the CanonicalUser form, using
+// a resolved `oaiId -> S3CanonicalUserId` map (built in gather.ts from the stack's
+// own OAI resources' live attributes — no extra AWS call). Applied to BOTH sides so
+// either declaration style normalizes to the same canonical token; an empty/missing
+// map is a no-op (the false positive simply remains rather than hiding real drift).
+// An OAI id we cannot resolve is left as-is — never silently equated, so repointing
+// a bucket policy to a DIFFERENT, unknown OAI is still reported.
+const OAI_USER_ARN_RE =
+  /^arn:aws[a-z-]*:iam::cloudfront:user\/CloudFront Origin Access Identity (.+)$/;
+
+function rewriteOaiPrincipal(
+  principal: Record<string, unknown>,
+  oaiCanonicalIds: Record<string, string>
+): Record<string, unknown> {
+  const awsRaw = principal.AWS;
+  if (awsRaw === undefined) return principal;
+  const awsArr = Array.isArray(awsRaw) ? awsRaw : [awsRaw];
+  const remainingAws: unknown[] = [];
+  const resolvedCanonical: string[] = [];
+  for (const entry of awsArr) {
+    const oaiId = typeof entry === 'string' ? OAI_USER_ARN_RE.exec(entry)?.[1] : undefined;
+    const canonical = oaiId ? oaiCanonicalIds[oaiId] : undefined;
+    if (canonical) resolvedCanonical.push(canonical);
+    else remainingAws.push(entry);
+  }
+  if (resolvedCanonical.length === 0) return principal; // nothing matched/resolved
+  const out: Record<string, unknown> = { ...principal };
+  if (remainingAws.length === 0) delete out.AWS;
+  else out.AWS = remainingAws.length === 1 ? remainingAws[0] : remainingAws;
+  const existing =
+    out.CanonicalUser === undefined
+      ? []
+      : Array.isArray(out.CanonicalUser)
+        ? out.CanonicalUser
+        : [out.CanonicalUser];
+  const merged = [...existing, ...resolvedCanonical];
+  out.CanonicalUser = merged.length === 1 ? merged[0] : merged;
+  return out;
+}
+
+/** Walk a value, rewriting every policy-statement `Principal`/`NotPrincipal` that
+ *  grants a CloudFront OAI via its `cloudfront:user` ARN into the equivalent
+ *  `CanonicalUser` form (see `rewriteOaiPrincipal`). No-op when the map is empty. */
+export function rewriteOaiPrincipalsDeep(
+  v: unknown,
+  oaiCanonicalIds: Record<string, string>
+): unknown {
+  if (oaiCanonicalIds === undefined || Object.keys(oaiCanonicalIds).length === 0) return v;
+  if (Array.isArray(v)) return v.map((x) => rewriteOaiPrincipalsDeep(x, oaiCanonicalIds));
+  if (isObj(v)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if ((k === 'Principal' || k === 'NotPrincipal') && isObj(val)) {
+        out[k] = rewriteOaiPrincipal(val, oaiCanonicalIds);
+      } else {
+        out[k] = rewriteOaiPrincipalsDeep(val, oaiCanonicalIds);
+      }
+    }
+    return out;
+  }
+  return v;
+}
+
 // Canonicalize an embedded JSON string (e.g. ECR LifecyclePolicyText) so that
 // pretty-printed vs minified vs key-reordered forms compare equal.
 function canonicalizeJsonText(s: string): string {

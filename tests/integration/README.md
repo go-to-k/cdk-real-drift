@@ -38,7 +38,7 @@ These do NOT run in CI (they need credentials and mutate a real account):
   `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`, `atdefault`,
   `noise`, `readgap`, and the false-positive matrix (`dynamodb`, `sqs`,
   `securitygroup`, `cloudwatch-alarm`, `stepfunctions`, `ssm`, `eventbridge`,
-  `cognito`).
+  `cognito`, `cloudfront-oai`).
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
   `src/commands/gather.ts`: run at least `basic` + `revert` + `noise` + the
   false-positive matrix (below — each asserts tricky declared values normalize
@@ -224,10 +224,10 @@ cd mutation-multi && npm install && bash verify.sh
 
 ## false-positive matrix
 
-Eight focused fixtures (R88), each the same shape as `noise`: deploy a resource that
+Nine focused fixtures (R88), each the same shape as `noise`: deploy a resource that
 DECLARES a property whose live AWS form is textually different but semantically
-equal, then assert `check --fail` exits `0` with no baseline — zero false declared
-drift. They target the specific normalization classes most likely to regress:
+equal, then assert `check` reports no false declared drift. They target the specific
+normalization classes most likely to regress:
 
 | fixture            | resource             | noise-prone declared property (class)                                  |
 | ------------------ | -------------------- | ---------------------------------------------------------------------- |
@@ -239,6 +239,7 @@ drift. They target the specific normalization classes most likely to regress:
 | `ssm`              | SSM Document + Param | Document Content (object↔JSON-string, R75)                             |
 | `eventbridge`      | EventBridge Rule     | EventPattern (object↔JSON-string), Targets array + queue policy        |
 | `cognito`          | Cognito Pool/Client  | OAuth/ExplicitAuthFlows (unordered enums, R74), UserPoolGroup id (R84) |
+| `cloudfront-oai`   | S3 BucketPolicy/OAI  | OAI principal (`CanonicalUser` hex vs `cloudfront:user` ARN) (R101)     |
 
 ```bash
 cd dynamodb && bash verify.sh   # …and likewise for each fixture above

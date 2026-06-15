@@ -27,6 +27,7 @@ import {
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
+import { rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
@@ -94,19 +95,26 @@ export function classifyResource(
     accountId?: string;
     region?: string;
     kmsAliasTargets?: Record<string, string>; // alias/aws/* -> target key id, for strict KMS match
+    oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
 
-  // strip AWS-managed fields + drop aws:* tag elements (live-only), then run the
-  // shared canonicalization pipeline (policy docs + tag lists + id arrays) on both
-  // sides so reordering / scalar-vs-array is not false drift. The pipeline is shared
-  // with baseline-file.ts so baseline values normalize identically (see pipeline.ts).
+  // strip AWS-managed fields + drop aws:* tag elements (live-only), then reconcile
+  // CloudFront OAI principals (cloudfront:user ARN <-> CanonicalUser; no-op without
+  // a resolved map) on BOTH sides, then run the shared canonicalization pipeline
+  // (policy docs + tag lists + id arrays) so reordering / scalar-vs-array / OAI
+  // principal-form is not false drift. The pipeline is shared with baseline-file.ts
+  // so baseline values normalize identically (see pipeline.ts).
+  const oaiMap = opts.oaiCanonicalIds ?? {};
   const live = canonicalizeForCompare(
-    stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw))
+    rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap)
   ) as Record<string, unknown>;
-  const declared = canonicalizeForCompare(declaredIn) as Record<string, unknown>;
+  const declared = canonicalizeForCompare(rewriteOaiPrincipalsDeep(declaredIn, oaiMap)) as Record<
+    string,
+    unknown
+  >;
   // R11: a declared TOP-LEVEL write-only key is about to be stripped from `declared`
   // (below). Surface it as ONE readGap finding FIRST so it is never silently dropped
   // — the informational tier exists precisely for "declared but unreadable" props.
