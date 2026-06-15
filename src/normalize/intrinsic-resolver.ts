@@ -9,8 +9,29 @@ import type { ResolverContext } from '../types.js';
 export const UNRESOLVED = Symbol('unresolved');
 export const NOVALUE = Symbol('novalue');
 
+// CloudFormation dynamic-reference pattern: `{{resolve:<service>:<reference-key>}}`
+// where <service> is one of ssm / ssm-secure / secretsmanager. These are resolved by
+// CFn at deploy time to a live SSM/Secrets value, so a declared scalar carrying the
+// raw token can never equal the resolved live value — it must be treated as
+// UNRESOLVED. Anchored to the whole string so an arbitrary value that merely contains
+// the substring is not swallowed (a genuine declared value is never muted by accident).
+const DYNAMIC_REFERENCE_RE = /^\{\{resolve:(ssm|ssm-secure|secretsmanager):[\s\S]+\}\}$/;
+export function isDynamicReference(v: string): boolean {
+  return DYNAMIC_REFERENCE_RE.test(v);
+}
+
 export function resolve(node: unknown, ctx: ResolverContext): unknown {
   if (Array.isArray(node)) return node.map((n) => resolve(n, ctx));
+  // A CloudFormation DYNAMIC REFERENCE (`{{resolve:ssm:…}}`,
+  // `{{resolve:ssm-secure:…}}`, `{{resolve:secretsmanager:…}}`) is a deploy-time
+  // string substitution: CFn replaces it with the live SSM parameter / secret value
+  // while creating the resource, so the deployed template still carries the literal
+  // `{{resolve:…}}` token but the live resource holds the resolved value (e.g. an
+  // RDS MasterUsername declared as `{{resolve:secretsmanager:…:username::}}` reads
+  // back as `admin`). cdkrd cannot — and must not — fetch the secret to resolve it,
+  // so the declared side is unknowable: mark UNRESOLVED so the path is skipped, the
+  // same fail-closed treatment as Fn::GetAtt, never reported as false drift.
+  if (typeof node === 'string' && isDynamicReference(node)) return UNRESOLVED;
   if (node === null || typeof node !== 'object') return node;
   const obj = node as Record<string, unknown>;
   const keys = Object.keys(obj);
@@ -38,7 +59,12 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         if (!Array.isArray(resolved)) return UNRESOLVED;
         const parts = resolved.filter((p) => p !== NOVALUE);
         if (parts.some((p) => p === UNRESOLVED)) return UNRESOLVED;
-        return parts.join(delim);
+        const joined = parts.join(delim);
+        // CDK frequently ASSEMBLES a dynamic reference with Fn::Join (e.g. an RDS
+        // MasterUsername = Join("", ["{{resolve:secretsmanager:", Ref(secret),
+        // ":SecretString:username::}}"])); once joined the result is a deploy-time
+        // dynamic reference cdkrd cannot resolve — UNRESOLVED, never false drift.
+        return isDynamicReference(joined) ? UNRESOLVED : joined;
       }
       case 'Fn::Select': {
         if (!Array.isArray(v)) return UNRESOLVED;
@@ -216,7 +242,10 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
     }
     return String(r);
   });
-  return unresolved ? UNRESOLVED : out;
+  if (unresolved) return UNRESOLVED;
+  // an Fn::Sub may also ASSEMBLE a dynamic reference (`{{resolve:…}}`) — the
+  // assembled token is deploy-time-resolved and unknowable, so UNRESOLVED.
+  return isDynamicReference(out) ? UNRESOLVED : out;
 }
 
 export function hasUnresolved(v: unknown): boolean {

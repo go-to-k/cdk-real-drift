@@ -1452,3 +1452,64 @@ describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `genera
     expect(out).toEqual([]); // dropped, not generated
   });
 });
+
+// R130: RDS DBInstance fresh-deploy false positives observed in harvest13 — a declared
+// EngineVersion track resolved to its full patch, and a MasterUsername declared as a
+// secretsmanager dynamic reference resolved to the live username. Neither is drift.
+describe('classifyResource RDS version-track + dynamic-reference (R130)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const declaredPaths = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  it('EngineVersion "8.0" resolved to live "8.0.45" is NOT declared drift', () => {
+    expect(
+      declaredPaths('AWS::RDS::DBInstance', { EngineVersion: '8.0' }, { EngineVersion: '8.0.45' })
+    ).toEqual([]);
+  });
+
+  it('a genuine EngineVersion track change IS declared drift', () => {
+    expect(
+      declaredPaths('AWS::RDS::DBInstance', { EngineVersion: '8.1' }, { EngineVersion: '8.0.45' })
+    ).toEqual(['EngineVersion']);
+  });
+
+  it('the version-prefix rule is gated to RDS — same shape on another type is drift', () => {
+    expect(declaredPaths('AWS::Other::Thing', { Version: '8.0' }, { Version: '8.0.45' })).toEqual([
+      'Version',
+    ]);
+  });
+
+  it('MasterUsername resolved to UNRESOLVED (dynamic ref) is unresolved, not declared drift', () => {
+    // loadDesired resolves the {{resolve:secretsmanager:…}} dynamic reference to
+    // UNRESOLVED; classify then emits an `unresolved` finding, never `declared`.
+    const out = classifyResource(
+      {
+        logicalId: 'R',
+        resourceType: 'AWS::RDS::DBInstance',
+        physicalId: 'p',
+        declared: { MasterUsername: UNRESOLVED },
+      },
+      { MasterUsername: 'admin' },
+      bare
+    );
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([]);
+    expect(out.filter((f) => f.tier === 'unresolved').map((f) => f.path)).toEqual([
+      'MasterUsername',
+    ]);
+  });
+});

@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ServerlessCache",
+    "resourceType": "AWS::ElastiCache::ServerlessCache",
+    "physicalId": "cdkrd-h13-cache",
+    "constructPath": "CdkdriftIntegHarvest13/ServerlessCache",
+    "declared": {
+      "Description": "cdkrd harvest serverless cache",
+      "Engine": "valkey",
+      "MajorEngineVersion": "8",
+      "SecurityGroupIds": ["sg-07b60bc03638dae90"],
+      "ServerlessCacheName": "cdkrd-h13-cache",
+      "SubnetIds": ["subnet-0dac033c17999097f", "subnet-08feaa0f8d2cc9744"]
+    }
+  },
+  "liveRaw": {
+    "Status": "available",
+    "Description": "cdkrd harvest serverless cache",
+    "CreateTime": "2026-06-15T15:59:14.092Z",
+    "SecurityGroupIds": ["sg-07b60bc03638dae90"],
+    "SubnetIds": ["subnet-08feaa0f8d2cc9744", "subnet-0dac033c17999097f"],
+    "DailySnapshotTime": "05:30",
+    "ReaderEndpoint": {
+      "Address": "cdkrd-h13-cache-jzgy0l.serverless.use1.cache.amazonaws.com",
+      "Port": "6380"
+    },
+    "SnapshotRetentionLimit": 0,
+    "FullEngineVersion": "8.1",
+    "Endpoint": {
+      "Address": "cdkrd-h13-cache-jzgy0l.serverless.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "ServerlessCacheName": "cdkrd-h13-cache",
+    "MajorEngineVersion": "8",
+    "ARN": "arn:aws:elasticache:us-east-1:111111111111:serverlesscache:cdkrd-h13-cache",
+    "Engine": "valkey",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["ARN", "CreateTime", "FullEngineVersion", "Status"],
+    "writeOnly": ["FinalSnapshotName", "SnapshotArnsToRestore"],
+    "createOnly": ["KmsKeyId", "ServerlessCacheName", "SnapshotArnsToRestore", "SubnetIds"],
+    "readOnlyPaths": [
+      "ARN",
+      "CreateTime",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "FullEngineVersion",
+      "ReaderEndpoint.Address",
+      "ReaderEndpoint.Port",
+      "Status"
+    ],
+    "writeOnlyPaths": ["FinalSnapshotName", "SnapshotArnsToRestore"],
+    "createOnlyPaths": ["KmsKeyId", "ServerlessCacheName", "SnapshotArnsToRestore", "SubnetIds"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ServerlessCache",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "DailySnapshotTime",
+      "actual": "05:30",
+      "physicalId": "cdkrd-h13-cache",
+      "constructPath": "CdkdriftIntegHarvest13/ServerlessCache"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ServerlessCache",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdkrd-h13-cache",
+      "constructPath": "CdkdriftIntegHarvest13/ServerlessCache"
+    }
+  ]
+}
