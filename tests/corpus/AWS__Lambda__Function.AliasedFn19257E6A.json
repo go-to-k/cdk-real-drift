@@ -170,7 +170,7 @@
       "constructPath": "CdkrdIntegHarvest5/AliasedFn"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "AliasedFn19257E6A",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

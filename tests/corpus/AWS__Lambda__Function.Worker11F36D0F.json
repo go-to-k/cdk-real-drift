@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::Lambda::Function with deep declared config classifies as recorded (undeclared:LoggingConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::Lambda::Function with deep declared config classifies as recorded (generated:LoggingConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "Worker11F36D0F",
     "resourceType": "AWS::Lambda::Function",
@@ -165,7 +165,7 @@
       "constructPath": "CdkrdIntegHarvest2/Worker"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Worker11F36D0F",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

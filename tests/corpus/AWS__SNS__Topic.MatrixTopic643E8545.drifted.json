@@ -57,7 +57,7 @@
       "constructPath": "CdkrdIntegHarvest3/MatrixTopic"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "MatrixTopic643E8545",
       "resourceType": "AWS::SNS::Topic",
       "path": "TopicName",

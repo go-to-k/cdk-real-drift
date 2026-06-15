@@ -170,7 +170,7 @@
       "constructPath": "CdkrdIntegHarvest6/UrlFn"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "UrlFnE068003E",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

@@ -308,6 +308,14 @@ that folds everything informational.
     declared property that equals the schema's `default` for that path folds here
     too (so config-dense types like CloudFront, whose schema annotates dozens of
     nested defaults, don't drown the report in `nested` inventory).
+  - **`generated`** — undeclared values that are the **name or identifier AWS/CDK
+    minted for the resource**, not anything you set: a topic's auto-generated
+    `TopicName`, a Lambda's default `LoggingConfig` whose `LogGroup` is named after
+    the generated function name. Keyed off the resource's physical id, so they
+    appear on every first run yet you never chose (and often cannot edit) them.
+    Folded to a count like `atDefault`, equality-gated against the physical-id
+    template (change one out of band — say a `LogFormat: JSON` — and it re-surfaces
+    as real undeclared drift); never recorded by `accept`. `--verbose` lists them.
   - **`nested`** — undeclared values that live as a **sub-key inside a property
     you _did_ declare** (e.g. you set a cache behavior but never its
     `SmoothStreaming`, which AWS materializes underneath) — including inside the

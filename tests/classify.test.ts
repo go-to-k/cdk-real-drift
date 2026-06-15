@@ -14,6 +14,7 @@ function tiers(findings: Finding[]) {
     declared: by('declared'),
     undeclared: by('undeclared'),
     atDefault: by('atDefault'),
+    generated: by('generated'),
     readGap: by('readGap'),
     unresolved: by('unresolved'),
   };
@@ -1193,5 +1194,90 @@ describe('nested atDefault folding (R103 — schema defaults at depth)', () => {
       schema({ 'Conf.Timeout': 30 })
     );
     expect(out.find((x) => x.path === 'Conf.Other')?.tier).toBe('undeclared');
+  });
+});
+
+// GENERATED_DEFAULTS: an undeclared live value equal to the AWS/CDK auto-generated
+// value for THIS resource (its minted physical name, or a default-named log group
+// derived from the physical id) folds to the `generated` tier — never undeclared,
+// never drift. Equality-gated against the physical-id-substituted template.
+describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `generated`', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (
+    resourceType: string,
+    physicalId: string | undefined,
+    declared: Record<string, unknown> = {}
+  ): DesiredResource => ({ logicalId: 'L', resourceType, physicalId, declared });
+
+  it('SNS TopicName equal to the generated name segment of the ARN physical id folds', () => {
+    const arn = 'arn:aws:sns:ap-northeast-1:111122223333:Stack-TopicABC123-9F16VRgpExOs';
+    const out = classifyResource(
+      res('AWS::SNS::Topic', arn),
+      { TopicName: 'Stack-TopicABC123-9F16VRgpExOs' },
+      emptySchema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'generated', path: 'TopicName' });
+  });
+
+  it('Lambda default LoggingConfig whose LogGroup is named after the function physical id folds', () => {
+    const fn = 'Stack-HandlerABC123-d8tC4w62HoBi';
+    const out = classifyResource(
+      res('AWS::Lambda::Function', fn),
+      { LoggingConfig: { LogFormat: 'Text', LogGroup: `/aws/lambda/${fn}` } },
+      emptySchema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'generated', path: 'LoggingConfig' });
+  });
+
+  it('an out-of-band edit inside the generated value (LogFormat → JSON) no longer matches → undeclared', () => {
+    const fn = 'Stack-HandlerABC123-d8tC4w62HoBi';
+    const out = classifyResource(
+      res('AWS::Lambda::Function', fn),
+      { LoggingConfig: { LogFormat: 'JSON', LogGroup: `/aws/lambda/${fn}` } },
+      emptySchema
+    );
+    expect(tiers(out).undeclared).toEqual(['LoggingConfig']);
+    expect(tiers(out).generated).toEqual([]);
+  });
+
+  it('a TopicName NOT matching the physical id stays undeclared (a real out-of-band name)', () => {
+    const out = classifyResource(
+      res('AWS::SNS::Topic', 'arn:aws:sns:us-east-1:111122223333:Stack-TopicABC123-xyz'),
+      { TopicName: 'totally-different-name' },
+      emptySchema
+    );
+    expect(tiers(out).undeclared).toEqual(['TopicName']);
+  });
+
+  it('with no physical id the template cannot resolve, so the value stays undeclared', () => {
+    const out = classifyResource(
+      res('AWS::SNS::Topic', undefined),
+      { TopicName: 'Stack-TopicABC123-9F16VRgpExOs' },
+      emptySchema
+    );
+    expect(tiers(out).undeclared).toEqual(['TopicName']);
+    expect(tiers(out).generated).toEqual([]);
+  });
+
+  it('a declared property is never reclassified as generated (declared side wins)', () => {
+    const arn = 'arn:aws:sns:us-east-1:111122223333:Stack-TopicABC123-9F16VRgpExOs';
+    const out = classifyResource(
+      res('AWS::SNS::Topic', arn, { TopicName: 'Stack-TopicABC123-9F16VRgpExOs' }),
+      { TopicName: 'Stack-TopicABC123-9F16VRgpExOs' },
+      emptySchema
+    );
+    // declared + equal live → no finding at all (not generated, not drift)
+    expect(out).toEqual([]);
   });
 });

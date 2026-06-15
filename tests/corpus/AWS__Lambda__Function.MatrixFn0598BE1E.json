@@ -159,7 +159,7 @@
       "constructPath": "CdkrdIntegHarvest3/MatrixFn"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "MatrixFn0598BE1E",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

@@ -289,6 +289,34 @@ describe('report', () => {
     });
   });
 
+  describe('generated tier (AWS/CDK auto-generated names/identifiers — folded, never drift)', () => {
+    const G = (path = 'TopicName'): Finding => ({
+      tier: 'generated',
+      logicalId: 'L',
+      resourceType: 'AWS::SNS::Topic',
+      path,
+      actual: 'Stack-TopicABC123-9F16VRgpExOs',
+    });
+
+    it('folds into the info: footer with a plain-English label and never sets exit 1', () => {
+      const { code, text } = run([G('TopicName'), G('LoggingConfig')]);
+      expect(code).toBe(0);
+      expect(text).toMatch(/^result: CLEAN$/m);
+      expect(text).toContain(
+        'info: generated=2 (undeclared AWS/CDK auto-generated names or identifiers — not drift)'
+      );
+      expect(text).not.toContain('[AWS GENERATED');
+      expect(text).not.toContain('TopicName =');
+    });
+
+    it('--verbose expands generated to a full section showing each value', () => {
+      const { text } = run([G('TopicName')], { verbose: true });
+      expect(text).toContain('[AWS GENERATED: 1]');
+      expect(text).toContain('L.TopicName (AWS::SNS::Topic) = "Stack-TopicABC123-9F16VRgpExOs"');
+      expect(text).not.toContain('info:');
+    });
+  });
+
   describe('R37 spacing', () => {
     const skipped: Finding = {
       tier: 'skipped',

@@ -172,7 +172,7 @@
       "constructPath": "CdkRealDriftIntegLambda/TestFn"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "TestFn04335C60",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

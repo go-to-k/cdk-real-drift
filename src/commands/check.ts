@@ -34,11 +34,12 @@ import {
 } from './stack-actions.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
-// undeclared tier is meaningless against a synth (not deployed) declared set, so
-// it is excluded. --declared-only reuses the same filter against the DEPLOYED
-// template (R59). Exported (pure) so the contract is unit-tested.
+// undeclared tier (and its `generated` sibling — an undeclared-side classification)
+// is meaningless against a synth (not deployed) declared set, so it is excluded.
+// --declared-only reuses the same filter against the DEPLOYED template (R59).
+// Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
-  return findings.filter((f) => f.tier !== 'undeclared');
+  return findings.filter((f) => f.tier !== 'undeclared' && f.tier !== 'generated');
 }
 
 // --undeclared-only (R59): the declared-side comparison is delegated to

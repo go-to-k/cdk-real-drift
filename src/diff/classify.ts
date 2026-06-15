@@ -20,6 +20,7 @@ import {
   isStringlyEqualScalar,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
+  resolveGeneratedDefault,
   sortUnorderedObjectArray,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
@@ -162,6 +163,11 @@ export function classifyResource(
   // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
   // so it cannot reach this loop (the old guard was dead code for top-level keys).
   const knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
+  // AWS/CDK-generated values for THIS resource (its minted name, a default log group
+  // derived from the physical id), with the live physical id substituted in — keyed
+  // by property, consulted by the undeclared loop below. Empty when the type has no
+  // template or the physical id is unknown.
+  const genDef = resolveGeneratedDefault(resourceType, physicalId) ?? {};
   for (const [k, v] of Object.entries(declared)) {
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
@@ -283,6 +289,15 @@ export function classifyResource(
       (k in knownDef && deepEqual(v, knownDef[k]))
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // A live value EQUAL to the AWS/CDK-generated value for this resource (its minted
+    // physical name, a default-named log group) is the `generated` tier: folded
+    // inventory like atDefault, never drift, never recorded. Equality-gated against
+    // the physical-id-substituted template, so an out-of-band edit (a different
+    // LogFormat, say) no longer matches and falls through to `undeclared` below.
+    if (k in genDef && deepEqual(v, genDef[k])) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }
     // Pure structural noise (NOT a config value at default) — dropped outright: AWS
