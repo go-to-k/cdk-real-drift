@@ -385,22 +385,29 @@ export function applyBaseline(
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
     if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
+    if (entry) {
+      // recorded value CHANGED -> drift. This takes PRIORITY over the at-default fold
+      // below: a recorded NON-default value reset out of band to the AWS default is a
+      // real out-of-band change (e.g. an undeclared MaxSessionDuration recorded at 7200,
+      // reset to the 3600 default), so it must surface as drift, not be folded away as
+      // inventory. classify tagged today's at-default value `atDefault`, which is NOT a
+      // drift tier — force `undeclared` so the changed-from-baseline value is counted as
+      // drift. For an identity-keyed object array (IAM inline Policies, …) attach the
+      // element-level delta so the report shows WHICH element changed (R128, display-only;
+      // the finding still names the whole-array path, so record/revert are unaffected).
+      const delta = identityArrayDelta(canonicalizeForCompare(entry.value), f.actual);
+      kept.push({ ...f, tier: 'undeclared', ...(delta && { arrayDelta: delta }) });
+      continue;
+    }
     if (f.tier === 'atDefault') {
-      // No (or a non-matching) recorded entry: the value still equals a known AWS
-      // default (the equality gate proved it), so it stays folded inventory — never
-      // drift, never unrecorded. A genuine change away from the default would not
-      // match a default and would arrive as tier 'undeclared', handled below.
+      // No recorded entry and the value equals a known AWS default (the equality gate
+      // proved it): folded inventory — never drift, never unrecorded. A genuine change
+      // away from the default would not match a default and arrives as tier
+      // 'undeclared', handled below.
       kept.push(f);
       continue;
     }
-    if (entry) {
-      // recorded value changed -> drift. For an identity-keyed object array (IAM
-      // inline Policies, …) attach the element-level delta so the report shows WHICH
-      // element changed rather than the whole array (R128). Display-only: the finding
-      // still names the whole-array path, so record/revert are unaffected.
-      const delta = identityArrayDelta(canonicalizeForCompare(entry.value), f.actual);
-      kept.push(delta ? { ...f, arrayDelta: delta } : f);
-    } else if (complete.has(f.logicalId)) {
+    if (complete.has(f.logicalId)) {
       // the record snapshot covered this whole resource, so this value is new
       kept.push({
         ...f,
@@ -424,9 +431,19 @@ export function applyBaseline(
   // starts declaring them). Collect them and emit ONE folded summary line (the `info:`
   // footer pattern), so a `revert` touching a single op no longer prints 20+ unrelated
   // lines. The fix is the same for every caller: re-run `record` to re-snapshot.
+  // A resource that was SKIPPED this run (CC-API gap / transient read error / no
+  // physical id — gather emits a `skipped` finding) was NOT observed, so its baseline
+  // values are unknown, NOT removed. Excluding it prevents a transient skip from
+  // flooding the report with false "baseline value removed since record" drift (its
+  // values still exist; we just couldn't read them this run). `deleted` is left as a
+  // genuine removal — those values really are gone.
+  const skippedLogical = new Set(
+    findings.filter((f) => f.tier === 'skipped').map((f) => f.logicalId)
+  );
   const promotedStale: string[] = [];
   for (const a of recorded) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
+    if (skippedLogical.has(a.logicalId)) continue; // unread this run -> not "removed"
     // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
       promotedStale.push(`${a.logicalId}.${a.path}`);
