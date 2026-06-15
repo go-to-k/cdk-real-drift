@@ -6,7 +6,6 @@
 // exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
 // suppressed. Errors always exit 2. The exit is the worst across all checked
 // stacks.
-import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -24,13 +23,7 @@ import { synthApp } from '../synth/synth.js';
 import type { Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
-import {
-  recordStack,
-  availableActions,
-  includeUnrecordedRemovals,
-  resolveInteractiveRevertExit,
-  revertStack,
-} from './stack-actions.js';
+import { resolveInteractively } from './interactive-resolve.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
 // undeclared tier (and its `generated` sibling — an undeclared-side classification)
@@ -51,26 +44,6 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   return findings.filter(
     (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
   );
-}
-
-/**
- * Closing note after an interactive record inside `check` (R52). A PARTIAL
- * record used to end with `baseline written: ...` and a silent failure-looking
- * exit. State plainly what remains; the exit story itself is R53's: check is
- * report-only (exit 0 on drift) unless --fail, and the interactive prompts
- * never fire in fail mode, so this note never coexists with a drift exit.
- */
-export function postRecordNote(remainingUndeclared: number, remainingDeclared: number): string {
-  if (remainingDeclared > 0) {
-    const alsoUndeclared =
-      remainingUndeclared > 0
-        ? ` ${remainingUndeclared} unrecorded value(s) also stay reported.`
-        : '';
-    return `record succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
-  }
-  if (remainingUndeclared > 0)
-    return `record succeeded — ${remainingUndeclared} unrecorded value(s) stay reported from the next check on.`;
-  return 'stack is now CLEAN.';
 }
 
 /**
@@ -246,12 +219,13 @@ export async function runCheck(args: string[]): Promise<number> {
       });
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 
-      // R28: drift found in a TTY → offer record / revert / nothing inline, instead
-      // of making the user re-run a separate command. Skipped for --json (machine
-      // output), --show-all (baseline not applied — record would mean something else),
-      // and --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED
-      // values do not set code 1 (R60) but still deserve the prompt — "show them
-      // first" promises a selective record right after the report.
+      // R28 (extended R121): drift found in a TTY → offer to resolve it inline
+      // (Record all / Revert all / Ignore all / Decide per finding / Nothing) instead
+      // of making the user re-run a separate verb. Skipped for --json (machine output),
+      // --show-all (baseline not applied — record would mean something else), and
+      // --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED values do
+      // not set code 1 (R60) but still deserve the prompt. The whole resolution flow
+      // lives in interactive-resolve.ts; it returns the re-evaluated exit code.
       if (
         (code === 1 || hasUnrecorded) &&
         !a.json &&
@@ -260,89 +234,20 @@ export async function runCheck(args: string[]): Promise<number> {
         !a.fail &&
         isInteractive()
       ) {
-        // R113: offer Revert when standout undeclared can be REMOVED interactively
-        // (the multiselect gates per-item), matching what revertStack will plan.
-        const actions = availableActions(
+        code = await resolveInteractively({
+          stackName,
+          region,
+          desired,
+          findings,
           reconciled,
           baseline,
           schemas,
-          includeUnrecordedRemovals(a.removeUnrecorded, isInteractive(), a.yes)
-        );
-        if (actions.record || actions.revert) {
-          const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
-          if (actions.record)
-            options.push({
-              value: 'record',
-              label: 'Record — snapshot the current undeclared state into the baseline',
-            });
-          if (actions.revert)
-            options.push({
-              value: 'revert',
-              label: 'Revert — write the desired values back to AWS',
-            });
-          const choice = await select({
-            message:
-              code === 1
-                ? `${stackName}: drift found — what do you want to do?`
-                : `${stackName}: unrecorded values found — what do you want to do?`,
-            options,
-            initialValue: 'nothing',
-          });
-          if (!isCancel(choice) && choice === 'record') {
-            // record records UNDECLARED only; recordStack emits the
-            // "declared/deleted drift NOT approved" scope note after the write (R117),
-            // so both `cdkrd record` and this interactive path warn consistently.
-            const result = await recordStack({
-              stackName,
-              region,
-              desired,
-              findings: applyIgnores(findings, stackName, config),
-              yes: a.yes,
-              interactive: isInteractive(),
-            });
-            if (result.wrote) {
-              // re-evaluate exit WITHOUT re-querying AWS: re-apply the new baseline to
-              // the findings we already have (ignores re-applied so the exit matches).
-              const nb = await loadBaseline(stackName, desired.accountId, region);
-              const reEvaluated = applyIgnores(
-                applyBaseline(findings, nb, {
-                  declaredByLogical: declaredKeysByLogical(desired.resources),
-                }),
-                stackName,
-                config
-              );
-              // R52 (user decision): a successful interactive record is a SUCCESS
-              // for THIS run — deliberately-unselected undeclared values do not
-              // fail this exit (they surface from the next check on; this path is
-              // TTY-only so no CI contract is touched). Declared/deleted drift is
-              // outside record's reach and keeps exit 1.
-              const remainingDeclared = reEvaluated.filter(
-                (f) => f.tier === 'declared' || f.tier === 'deleted'
-              ).length;
-              const remainingUndeclared = reEvaluated.filter((f) => f.tier === 'undeclared').length;
-              code = remainingDeclared > 0 ? 1 : 0;
-              console.error(
-                `note: ${stackName}: ${postRecordNote(remainingUndeclared, remainingDeclared)}`
-              );
-            }
-          } else if (!isCancel(choice) && choice === 'revert') {
-            const outcome = await revertStack({
-              stackName,
-              region,
-              gathered: { desired, findings, schemas },
-              baseline,
-              config,
-              dryRun: false,
-              yes: a.yes,
-              removeUnrecorded: a.removeUnrecorded,
-              verbose: a.verbose,
-              interactive: isInteractive(),
-            });
-            // R30: an aborted confirm did NOT write to AWS, so the drift still
-            // stands — keep the pre-revert exit 1 (symmetric with "Nothing").
-            code = resolveInteractiveRevertExit(code, outcome);
-          }
-        }
+          config,
+          code,
+          yes: a.yes,
+          removeUnrecorded: a.removeUnrecorded,
+          verbose: a.verbose,
+        });
       }
       if (code === 1) anyDrift = true;
       worst = Math.max(worst, finalCheckExit(code, a.fail));

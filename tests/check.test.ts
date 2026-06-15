@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   finalCheckExit,
-  postRecordNote,
   preDeployFindings,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
+import { postRecordNote } from '../src/commands/interactive-resolve.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
