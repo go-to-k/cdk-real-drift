@@ -58,11 +58,11 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[UNRECORDED: 2] (not declared in your template; not in the baseline yet — accept to record)
+[UNRECORDED: 2] (not drift — undeclared and not in the baseline yet; accept to record)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: CLEAN — 42 unrecorded value(s) await a baseline (run cdkrd accept)
+result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; run cdkrd accept)
 info:
   - atDefault=40 (undeclared values matching a known AWS default — not drift)
   ...
