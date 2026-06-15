@@ -322,9 +322,16 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
     expect(tiers(findings).undeclared).toEqual(['Policies']);
   });
 
-  it("'unresolved' sibling names fall back to suppressing the whole property", () => {
+  it("'unresolved' sibling names FAIL OPEN: live Policies surface (a rogue policy is never hidden) (R111)", () => {
+    // the old behavior deleted the whole property, which also hid an out-of-band
+    // inline policy on the role — a silent false negative. Now the Policies surface
+    // as undeclared (the sibling-managed entries are baseline-able once, but the
+    // rogue one is reported), so a security-relevant change is never dropped.
     const findings = classifyResource(role('unresolved'), { Policies: [sibling, rogue] }, noSchema);
-    expect(findings).toEqual([]);
+    expect(tiers(findings).undeclared).toEqual(['Policies']);
+    const f = findings.find((x) => x.path === 'Policies')!;
+    // the rogue entry must be present in the surfaced value
+    expect(JSON.stringify(f.actual)).toContain('rogue');
   });
 
   it('declared role Policies + sibling entries in live: the sibling entry is not false declared drift', () => {
