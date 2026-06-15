@@ -87,6 +87,7 @@ describe('regatherTouched (R44 — scoped post-revert convergence re-gather)', (
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const ctx = (): ResolverContext => ({
     params: {},

@@ -58,6 +58,7 @@ describe('corpus recording (R63)', () => {
       writeOnlyPaths: [],
       createOnlyPaths: [],
       defaults: {},
+      defaultPaths: {},
     };
     const findings: Finding[] = [
       {

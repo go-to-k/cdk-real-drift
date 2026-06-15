@@ -65,6 +65,12 @@ These do NOT run in CI (they need credentials and mutate a real account):
   still match live Cloud Control output (a shape mismatch would resurface the
   value as real undeclared drift) and that a value changed away from its default
   still surfaces.
+- **After changing** the nested-schema-default extraction (`collectDefaultPaths`
+  in `src/schema/schema-strip.ts`) or the nested `atDefault` fold
+  (`src/diff/classify.ts`): run `cloudfront-atdefault` — it deploys a CloudFront
+  Distribution and asserts its schema-annotated nested defaults
+  (`CustomOriginConfig.HTTPSPort`/`OriginReadTimeout`, `PriceClass`, …) fold as
+  `atDefault` rather than `undeclared` (R103). CloudFront deploy/destroy are slow.
 - Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
   never concurrently.
 - **After changing exit-code or baseline semantics** (report-only/--fail, the

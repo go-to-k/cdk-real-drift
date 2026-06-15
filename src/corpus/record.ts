@@ -63,6 +63,7 @@ export interface CorpusCase {
     writeOnlyPaths: string[];
     createOnlyPaths: string[];
     defaults: Record<string, unknown>;
+    defaultPaths: Record<string, unknown>;
   };
   opts: {
     accountId: string;
@@ -123,6 +124,7 @@ export function buildCorpusCase(
       writeOnlyPaths: [...schema.writeOnlyPaths].sort(),
       createOnlyPaths: [...schema.createOnlyPaths].sort(),
       defaults: schema.defaults,
+      defaultPaths: schema.defaultPaths,
     },
     opts,
     expected: findings,
@@ -140,6 +142,7 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
     writeOnlyPaths: [...s.writeOnlyPaths],
     createOnlyPaths: [...s.createOnlyPaths],
     defaults: s.defaults,
+    defaultPaths: s.defaultPaths ?? {},
   };
 }
 

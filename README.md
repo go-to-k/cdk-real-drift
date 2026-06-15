@@ -304,7 +304,10 @@ that folds everything informational.
     `TracingConfig: PassThrough`, a bucket's default Block Public Access). The bulk
     of a first run, folded to a count so the body shows only what actually
     diverges. Equality-gated: a change away from the default still surfaces, and
-    `--show-all` lists them.
+    `--show-all` lists them. Applies at **any depth** — a value nested inside a
+    declared property that equals the schema's `default` for that path folds here
+    too (so config-dense types like CloudFront, whose schema annotates dozens of
+    nested defaults, don't drown the report in `nested` inventory).
   - **`nested`** — undeclared values that live as a **sub-key inside a property
     you _did_ declare** (e.g. you set a cache behavior but never its
     `SmoothStreaming`, which AWS materializes underneath) — including inside the

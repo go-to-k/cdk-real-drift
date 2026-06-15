@@ -12,6 +12,7 @@ const schemaWithWriteOnly = (...names: string[]): SchemaInfo => ({
   writeOnlyPaths: names,
   createOnlyPaths: [],
   defaults: {},
+  defaultPaths: {},
 });
 
 const schemaWithCreateOnly = (type: string, ...names: string[]): Map<string, SchemaInfo> =>
@@ -26,6 +27,7 @@ const schemaWithCreateOnly = (type: string, ...names: string[]): Map<string, Sch
         writeOnlyPaths: [],
         createOnlyPaths: names,
         defaults: {},
+        defaultPaths: {},
       },
     ],
   ]);

@@ -13,6 +13,7 @@ const EMPTY: SchemaInfo = {
   writeOnlyPaths: [],
   createOnlyPaths: [],
   defaults: {},
+  defaultPaths: {},
 };
 
 export async function getSchemaInfo(
@@ -42,6 +43,45 @@ function pointerToDotted(p: string): string {
   return p.replace(/^\/properties\//, '').replace(/\//g, '.');
 }
 
+// Unlike readOnly/writeOnly/createOnly (CFn pre-flattens those into pointer
+// arrays), nested `default` annotations live inline on the property schemas
+// (incl. inside `definitions`, reached via `$ref`). Walk the schema resolving
+// local `#/definitions/...` refs and collect every `default` keyed by its dotted
+// path — array `items` contribute a `*` segment, matching the readOnlyPaths
+// convention and the `[id]`->`*`-normalized live finding paths. The per-branch
+// `seen` ref-set breaks recursive definitions (a $ref cannot expand inside its
+// own descent). Best-effort: only `properties` + `items` are descended (not
+// oneOf/anyOf/allOf), so a missed default just stays `undeclared` — never a false
+// positive.
+type SchemaNode = {
+  $ref?: string;
+  default?: unknown;
+  properties?: Record<string, SchemaNode>;
+  items?: SchemaNode;
+};
+function collectDefaultPaths(
+  definitions: Record<string, SchemaNode>,
+  properties: Record<string, SchemaNode>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
+    if (!node || typeof node !== 'object') return;
+    if (node.$ref) {
+      const name = node.$ref.replace('#/definitions/', '');
+      if (seen.has(name)) return; // recursive definition — stop
+      walk(definitions[name], path, new Set(seen).add(name));
+      return;
+    }
+    if ('default' in node && path) out[path] = node.default;
+    if (node.properties)
+      for (const [k, child] of Object.entries(node.properties))
+        walk(child, path ? `${path}.${k}` : k, seen);
+    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+  };
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  return out;
+}
+
 /** Exported for unit testing without an AWS call. */
 export function parseSchema(schemaJson: string): SchemaInfo {
   const schema = JSON.parse(schemaJson) as {
@@ -49,7 +89,8 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     writeOnlyProperties?: string[];
     createOnlyProperties?: string[];
     conditionalCreateOnlyProperties?: string[];
-    properties?: Record<string, { default?: unknown }>;
+    properties?: Record<string, SchemaNode>;
+    definitions?: Record<string, SchemaNode>;
   };
   const dotted = (arr: string[] | undefined): string[] => (arr ?? []).map(pointerToDotted);
   const topLevel = (paths: string[]): Set<string> => new Set(paths.filter((p) => !p.includes('.')));
@@ -65,6 +106,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   for (const [k, def] of Object.entries(schema.properties ?? {})) {
     if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
   }
+  const defaultPaths = collectDefaultPaths(schema.definitions ?? {}, schema.properties ?? {});
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
@@ -73,5 +115,6 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     writeOnlyPaths,
     createOnlyPaths,
     defaults,
+    defaultPaths,
   };
 }

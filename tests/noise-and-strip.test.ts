@@ -249,4 +249,43 @@ describe('parseSchema', () => {
     expect(info.createOnlyPaths).toContain('Nested.Key');
     expect(info.createOnlyPaths).toContain('AvailabilityZone');
   });
+
+  it('R103: extracts nested defaults through $ref + arrays into defaultPaths', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        properties: {
+          TopWithDefault: { default: 7 },
+          Config: { $ref: '#/definitions/Config' },
+        },
+        definitions: {
+          Config: {
+            type: 'object',
+            properties: {
+              Origins: { type: 'array', items: { $ref: '#/definitions/Origin' } },
+              Comment: { type: 'string', default: '' },
+            },
+          },
+          Origin: {
+            type: 'object',
+            properties: {
+              Port: { type: 'integer', default: 80 },
+              Nested: { $ref: '#/definitions/Origin' }, // recursive — must not loop
+            },
+          },
+        },
+      })
+    );
+    // array items contribute a '*' segment, matching readOnlyPaths + live finding paths
+    expect(info.defaultPaths['Config.Origins.*.Port']).toBe(80);
+    expect(info.defaultPaths['Config.Comment']).toBe('');
+    expect(info.defaultPaths['TopWithDefault']).toBe(7);
+    // the self-referential `Nested` ($ref Origin) is already on the descent's seen-set,
+    // so it is NOT expanded — the recursion guard prevents an infinite walk.
+    expect(info.defaultPaths).not.toHaveProperty('Config.Origins.*.Nested.Port');
+  });
+
+  it('R103: a schema with no nested defaults yields an empty defaultPaths (minus top-level)', () => {
+    const info = parseSchema(JSON.stringify({ properties: { A: {}, B: { default: 1 } } }));
+    expect(info.defaultPaths).toEqual({ B: 1 });
+  });
 });
