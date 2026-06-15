@@ -44,6 +44,13 @@ These do NOT run in CI (they need credentials and mutate a real account):
   false-positive matrix (below — each asserts tricky declared values normalize
   equal to live, never a false declared drift) (and `policies` if `writers.ts`
   changed; `harvest3` for the multi-type Cloud Control revert matrix) before merging.
+- **After changing** the CC identifier adapters (`CC_IDENTIFIER_ADAPTERS` in
+  `src/read/router.ts`) or the revert write-only re-inclusion
+  (`writeOnlyReincludeOps` in `src/revert/plan.ts`): run `ecs-writeonly` — it
+  deploys an ECS Service with a managed EBS volume, asserts the service is READ via
+  its composite `[ServiceArn, Cluster]` identifier (not skipped), then drifts
+  `DesiredCount` and asserts the revert SUCCEEDS without dropping the write-only
+  `VolumeConfigurations` (R102).
 - **After changing** `src/diff/**` or `src/baseline/**`: run
   `basic/verify-mutation-matrix.sh` (the drift-direction matrix) before merging.
 - **After changing nested-undeclared detection** (`collectNestedUndeclared` in
