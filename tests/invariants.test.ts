@@ -95,6 +95,7 @@ const EMPTY_SCHEMA: SchemaInfo = {
   writeOnlyPaths: [],
   createOnlyPaths: [],
   defaults: {},
+  defaultPaths: {},
 };
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);

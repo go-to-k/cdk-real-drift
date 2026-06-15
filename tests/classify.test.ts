@@ -28,6 +28,7 @@ describe('classifyResource (the heart)', () => {
     writeOnlyPaths: ['AssumeRolePolicyDocument'],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const resource: DesiredResource = {
     logicalId: 'Role',
@@ -101,6 +102,7 @@ describe('classifyResource account/region-scoped ARN identity (R10)', () => {
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res: DesiredResource = {
     logicalId: 'Fn',
@@ -147,6 +149,7 @@ describe('classifyResource regressions (dogfood false-positive classes)', () => 
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'R',
@@ -213,6 +216,7 @@ describe('classifyResource post-revert phantom drift (R46)', () => {
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'R',
@@ -272,6 +276,7 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const DOC = {
     Version: '2012-10-17',
@@ -338,6 +343,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const bare = (resourceType: string): DesiredResource => ({
     logicalId: 'L',
@@ -530,6 +536,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'L',
@@ -728,6 +735,7 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'L',
@@ -865,6 +873,7 @@ describe('identity-keyed array ADDITIONS are detected, not subset-projected away
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'L',
@@ -945,6 +954,7 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
     logicalId: 'L',
@@ -1062,6 +1072,7 @@ describe('CloudFront OAI S3 BucketPolicy principal (real-AWS reproduced false po
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   };
   const OAI_ID = 'EM4A89W3GHI3';
   const CANON =
@@ -1124,5 +1135,63 @@ describe('CloudFront OAI S3 BucketPolicy principal (real-AWS reproduced false po
       oaiCanonicalIds: { [OAI_ID]: CANON },
     });
     expect(out.some((f) => f.tier === 'declared')).toBe(true);
+  });
+});
+
+describe('nested atDefault folding (R103 — schema defaults at depth)', () => {
+  const schema = (defaultPaths: Record<string, unknown>): SchemaInfo => ({
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths,
+  });
+  const res = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType: 'AWS::X::Y',
+    physicalId: 'p',
+    declared,
+  });
+
+  it('a nested live value EQUAL to its schema default folds as atDefault, not undeclared', () => {
+    const out = classifyResource(
+      res({ Conf: { A: 1 } }),
+      { Conf: { A: 1, Timeout: 30 } },
+      schema({ 'Conf.Timeout': 30 })
+    );
+    const f = out.find((x) => x.path === 'Conf.Timeout');
+    expect(f?.tier).toBe('atDefault');
+    expect(f?.nested).toBe(true);
+  });
+
+  it('a nested value CHANGED away from its schema default stays undeclared (surfaces)', () => {
+    const out = classifyResource(
+      res({ Conf: { A: 1 } }),
+      { Conf: { A: 1, Timeout: 99 } },
+      schema({ 'Conf.Timeout': 30 })
+    );
+    expect(out.find((x) => x.path === 'Conf.Timeout')?.tier).toBe('undeclared');
+  });
+
+  it('an array-element nested default folds: the live [<id>] path normalizes to the schema * key', () => {
+    const out = classifyResource(
+      res({ Origins: [{ Id: 'o1' }] }),
+      { Origins: [{ Id: 'o1', Port: 80 }] },
+      schema({ 'Origins.*.Port': 80 })
+    );
+    const f = out.find((x) => x.path === 'Origins[o1].Port');
+    expect(f?.tier).toBe('atDefault');
+  });
+
+  it('a nested value with NO schema default stays undeclared', () => {
+    const out = classifyResource(
+      res({ Conf: { A: 1 } }),
+      { Conf: { A: 1, Other: 5 } },
+      schema({ 'Conf.Timeout': 30 })
+    );
+    expect(out.find((x) => x.path === 'Conf.Other')?.tier).toBe('undeclared');
   });
 });

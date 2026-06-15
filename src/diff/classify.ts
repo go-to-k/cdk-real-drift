@@ -302,18 +302,22 @@ export function classifyResource(
   // machinery, just `nested`-flagged so the report can fold them (the live model
   // carries many nested AWS defaults): folded inventory on a first run, recorded by
   // accept, and a later out-of-band change to one surfaces as drift vs the baseline.
+  // R103: a nested value EQUAL to the schema's `default` at that path is the
+  // `atDefault` tier (mirrors the top-level atDefault), so config-dense types stop
+  // drowning the report in materialized defaults. Live array-element paths carry the
+  // element identity (`Prop[<id>].sub`); the schema keys it with a `*` wildcard, so
+  // normalize `[<id>]` -> `.*` before the lookup. Equality-gated: a value changed
+  // AWAY from its default no longer matches and falls back to `undeclared`.
   for (const [k, dv] of Object.entries(declared)) {
     if (dv === UNRESOLVED || hasUnresolved(dv) || !(k in live)) continue;
     collectNestedUndeclared(dv, live[k], k, (path, value) => {
       if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
-      findings.push({
-        tier: 'undeclared',
-        logicalId,
-        resourceType,
-        path,
-        actual: value,
-        nested: true,
-      });
+      const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
+      const tier =
+        schemaPath in schema.defaultPaths && deepEqual(value, schema.defaultPaths[schemaPath])
+          ? 'atDefault'
+          : 'undeclared';
+      findings.push({ tier, logicalId, resourceType, path, actual: value, nested: true });
     });
   }
 

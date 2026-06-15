@@ -51,6 +51,7 @@ export interface SchemaInfo {
   writeOnlyPaths: string[]; // full dotted paths incl '*' wildcard (skip from compare, any depth)
   createOnlyPaths: string[]; // full dotted paths incl '*' wildcard (revert is impossible — replacement)
   defaults: Record<string, unknown>; // top-level schema `default` values
+  defaultPaths: Record<string, unknown>; // schema `default` values at ANY depth, dotted-path keyed ('*' for array items)
 }
 
 export interface ResolverContext {

@@ -267,6 +267,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     writeOnlyPaths: [],
     createOnlyPaths: [],
     defaults: {},
+    defaultPaths: {},
   } as SchemaInfo;
 
   // One bucket with declared VersioningConfiguration drift (the declared() fixture).

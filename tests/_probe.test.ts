@@ -9,6 +9,7 @@ const schema: SchemaInfo = {
   writeOnlyPaths: [],
   createOnlyPaths: [],
   defaults: {},
+  defaultPaths: {},
 };
 const res = (rt: string, declared: Record<string, unknown>): DesiredResource => ({
   logicalId: 'L',

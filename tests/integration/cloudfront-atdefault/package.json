@@ -1,0 +1,8 @@
+{
+  "name": "cdk-real-drift-integ-cloudfront-atdefault",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture asserting CloudFront nested schema defaults fold as atDefault (R103). Run via verify.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}
