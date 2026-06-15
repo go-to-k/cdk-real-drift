@@ -62,7 +62,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Act869B7EB7",
       "resourceType": "AWS::StepFunctions::Activity",
       "path": "EncryptionConfiguration",

@@ -87,7 +87,7 @@
       "constructPath": "CdkrdIntegHarvest/HttpApi"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HttpApi",
       "resourceType": "AWS::ApiGatewayV2::Api",
       "path": "RouteSelectionExpression",

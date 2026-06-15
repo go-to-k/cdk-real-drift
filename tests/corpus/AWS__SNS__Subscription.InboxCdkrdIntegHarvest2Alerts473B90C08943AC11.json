@@ -58,7 +58,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxCdkrdIntegHarvest2Alerts473B90C08943AC11",
       "resourceType": "AWS::SNS::Subscription",
       "path": "FilterPolicyScope",
