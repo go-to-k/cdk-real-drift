@@ -17,6 +17,7 @@ import {
   isCaseInsensitiveScalarEqual,
   isEqualUnorderedScalarSet,
   isJsonStringStructEqual,
+  isPemEqual,
   isStringlyEqualScalar,
   isGeneratedName,
   isTrivialEmpty,
@@ -240,6 +241,10 @@ export function classifyResource(
       // A declared object whose live form is the same value as a JSON STRING
       // (R75: SSM Document.Content) — equal after parse, key-order-insensitive.
       if (isJsonStringStructEqual(d.stateValue, d.awsValue)) continue;
+      // A PEM-armored value (R125: CloudFront PublicKey EncodedKey) that
+      // round-trips with only surrounding-whitespace differences — AWS appends a
+      // trailing newline after the END marker — is not drift.
+      if (isPemEqual(d.stateValue, d.awsValue)) continue;
       // Per-type case-insensitive scalar paths (R75: Route53 AliasTarget.DNSName
       // — the ALB's generated DNS name is mixed-case declared, lowercase live).
       if (

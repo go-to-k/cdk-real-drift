@@ -492,6 +492,22 @@ export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 }
 
+// PEM-armored values (R125: CloudFront PublicKey EncodedKey; certificate/key
+// bodies generally) round-trip through AWS with surrounding whitespace added or
+// dropped — most commonly a trailing newline the service appends after the
+// `-----END …-----` line. Whitespace around a PEM block carries no meaning, so
+// two PEM-armored scalars are equal once outer whitespace is trimmed and line
+// endings normalized. BOTH sides must be PEM-armored (a BEGIN and an END marker),
+// so a genuine key/certificate change still differs and non-PEM strings are never
+// touched — same equality-gated, fail-closed philosophy as the helpers above.
+const PEM_RE = /-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/;
+export function isPemEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (!PEM_RE.test(a) || !PEM_RE.test(b)) return false;
+  const norm = (s: string): string => s.replace(/\r\n/g, '\n').trim();
+  return norm(a) === norm(b);
+}
+
 // AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, AvailabilityZones,
 // VPCSecurityGroups, ...) are UNORDERED sets too, but unlike tags their elements
 // are bare scalars, so the tag canonicalizer doesn't touch them and a positional

@@ -4,6 +4,7 @@ import {
   canonicalizeIdArraysDeep,
   canonicalizeTagListsDeep,
   isAllAwsTags,
+  isPemEqual,
   isTrivialEmpty,
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
@@ -208,6 +209,22 @@ describe('noise suppressors', () => {
     expect(stripAwsTagsDeep({ Nested: { Tags: { 'aws:cf': '1', Team: 'a' } } })).toEqual({
       Nested: { Tags: { Team: 'a' } },
     });
+  });
+
+  it('isPemEqual: trailing-newline / CRLF differences on a PEM block are not drift (R125)', () => {
+    const key = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqAQAB\n-----END PUBLIC KEY-----';
+    // CloudFront PublicKey EncodedKey: AWS appends a trailing newline on read
+    expect(isPemEqual(key, `${key}\n`)).toBe(true);
+    expect(isPemEqual(`  ${key}\n\n`, key)).toBe(true); // surrounding whitespace
+    expect(isPemEqual(key.replace(/\n/g, '\r\n'), key)).toBe(true); // CRLF normalize
+    // a genuinely different key body still differs (fail-closed)
+    const other = '-----BEGIN PUBLIC KEY-----\nMIIBIjANDIFFERENT\n-----END PUBLIC KEY-----';
+    expect(isPemEqual(key, other)).toBe(false);
+    // both sides must be PEM-armored — a plain string is never folded
+    expect(isPemEqual('hello\n', 'hello')).toBe(false);
+    expect(isPemEqual(key, 'hello')).toBe(false);
+    // non-strings never match
+    expect(isPemEqual(1, 1)).toBe(false);
   });
 });
 

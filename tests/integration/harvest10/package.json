@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-harvest10",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Corpus-harvest CDK app wave 10 (uncovered config-dense CFn types) for cdk-real-drift. Run via verify-harvest10.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}
