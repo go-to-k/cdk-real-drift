@@ -502,7 +502,7 @@ only when non-zero — unrecorded values are named as such, never folded into
   prompt (TTY, no `--yes`) the standout undeclared values ARE surfaced as opt-in
   REMOVE rows (`includeUnrecordedRemovals`, R113): the multiselect's unselected-by-
   default rows are the per-item consent the flag provides, so listing them — like
-  declared drift — is consistent with showing them as `[UNRECORDED]`, and no flag is
+  declared drift — is consistent with showing them as `[Not Recorded]`, and no flag is
   needed. Declared drift is always revertable (the template is its source). For
   unrecorded values this guard outranks the create-only guard (R35): the fundamental
   blocker is "no revert target exists" — a "requires replacement" reason would
@@ -701,7 +701,7 @@ folded into an `info:` footer (per-tier counts + a reason breakdown, e.g.
 line when one tier is present, one bullet line per tier (with a single
 `--verbose` hint) when 2+; `--verbose` expands them to full lists; 0-count
 tiers are never printed. Section headers carry the count INSIDE the brackets
-(`[CFn-Declared DRIFT: 3]`, the explanatory note outside) — a bare digit right of
+(`[CFn-Declared Drift: 3]`, the explanatory note outside) — a bare digit right of
 `]` read as noise (R48). No blank line precedes the header; the FIRST drift
 section follows the header directly, later sections get a grouping blank, and
 `result:` gets a blank line before it ONLY when a drift section was printed —
@@ -719,12 +719,12 @@ ENTRY is the contract that defines undeclared drift; a value with no entry on a
 never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick record it is still every value the
-user did not pick. They render as their own `[UNRECORDED: N]` section (note:
+user did not pick. They render as their own `[Not Recorded: N]` section (note:
 `not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to
-track it`) alongside any real `[CFn-Undeclared DRIFT]` section, are excluded from the verdict and the
+track it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
 `--fail` exit, and the `result:` line carries the count + the way out
 (`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
-when some fold; R112). When BOTH a drift section and a standout `[UNRECORDED]`
+when some fold; R112). When BOTH a drift section and a standout `[Not Recorded]`
 section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
 visible blocks, so the line switches to a combined findings count counting only
 what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 undeclared to

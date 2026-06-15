@@ -34,7 +34,7 @@ Two properties of that state follow immediately:
 - **It is the definition of undeclared drift.** Undeclared "drift" is only
   meaningful relative to an recorded reference. With no reference there is
   nothing to violate — which is exactly why a value you never recorded renders
-  as `[UNRECORDED]`, not drift (R60; per VALUE since R62 — a partial record
+  as `[Not Recorded]`, not drift (R60; per VALUE since R62 — a partial record
   leaves the unpicked values unrecorded rather than flipping them to drift).
 
 ## 2. Why schema defaults cannot substitute
@@ -159,7 +159,7 @@ The file does not cost the first-run experience:
 
 - The **first `check` needs no file** and is fully functional: the declared and
   deleted tiers are stateless (template vs live) and fail the run from run #1;
-  the undeclared tier shows as `[UNRECORDED: N]` with the record path spelled
+  the undeclared tier shows as `[Not Recorded: N]` with the record path spelled
   out (R49/R60).
 - The baseline is **never hand-authored** — it is the machine-recorded byproduct
   of one human decision (the interactive record after the first check, or

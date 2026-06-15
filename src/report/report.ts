@@ -20,19 +20,22 @@
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
+// Section headers are Title Case (not all-caps) — uniform and readable, and crucially
+// so `CFn-Declared Drift` vs `CFn-Undeclared Drift`, which share the `CFn-` prefix, the
+// ` Drift` suffix, and the same red colour, read as distinct WORDS at a glance instead
+// of two near-identical all-caps tokens (R130 dogfood). `CFn` / `AWS` stay as the
+// acronyms they are. The not-in-baseline section is `[Not Recorded]` (literal below),
+// which ties directly to the `cdkrd record` verb.
 const TIER_NAMES: Record<Tier, string> = {
-  deleted: 'DELETED',
-  // Mixed case (not all-caps) so DECLARED vs UNDECLARED — which share the `CFn-` prefix
-  // and ` DRIFT` suffix and the same red colour — read as distinct words at a glance
-  // instead of two near-identical all-caps tokens (R130 dogfood).
-  declared: 'CFn-Declared DRIFT',
-  undeclared: 'CFn-Undeclared DRIFT',
-  atDefault: 'AT AWS DEFAULT',
-  generated: 'AWS GENERATED',
-  ignored: 'IGNORED',
-  readGap: 'READ GAP',
-  unresolved: 'UNRESOLVED',
-  skipped: 'SKIPPED',
+  deleted: 'Deleted',
+  declared: 'CFn-Declared Drift',
+  undeclared: 'CFn-Undeclared Drift',
+  atDefault: 'At AWS Default',
+  generated: 'AWS Generated',
+  ignored: 'Ignored',
+  readGap: 'Read Gap',
+  unresolved: 'Unresolved',
+  skipped: 'Skipped',
 };
 // Explanation printed after the bracketed name+count, outside the brackets.
 // The notes anchor the THREE sources cdkrd touches, so "declared" is never misread as
@@ -215,7 +218,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   if (
     section(
       unrecordedShown,
-      'UNRECORDED',
+      'Not Recorded',
       'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
       style.undeclaredTier,
       driftSections > 0
