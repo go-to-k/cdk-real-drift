@@ -20,6 +20,7 @@ export interface Style {
   actual: (s: string) => string; // actual = value (what it really is)
   ok: (s: string) => string; // reverted: / baseline written:
   fail: (s: string) => string; // FAILED:
+  cursor: (s: string) => string; // the focused row in an interactive multiselect
 }
 
 /** Build the palette on top of a picocolors instance (identity when disabled). */
@@ -35,6 +36,7 @@ export function makeStyle(c: ReturnType<typeof pc.createColors>): Style {
     actual: c.red,
     ok: c.green,
     fail: (s) => c.bold(c.red(s)),
+    cursor: c.cyan,
   };
 }
 
