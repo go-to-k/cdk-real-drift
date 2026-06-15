@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vite-plus/test';
 // means non-TTY since R58) so its semantics can never fork per command.
 const COMMAND_FILES = [
   '../src/commands/check.ts',
-  '../src/commands/accept.ts',
+  '../src/commands/record.ts',
   '../src/commands/revert.ts',
   '../src/commands/stack-actions.ts',
 ];

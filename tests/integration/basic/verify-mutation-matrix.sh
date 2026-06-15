@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 # cdk-real-drift mutation-matrix integration test (real AWS) — R64.
 #
-# False-NEGATIVE coverage: after a full accept (snapshot-complete baseline),
+# False-NEGATIVE coverage: after a full record (snapshot-complete baseline),
 # walk one resource through every drift DIRECTION the model distinguishes and
 # assert each one is detected, named, and resolvable back to CLEAN:
 #
 #   M1 declared-change    versioning Enabled -> Suspended   resolve: revert
-#   M2 undeclared-add     acceleration appears (R62:        resolve: accept
-#                         "appeared since accept" on a
+#   M2 undeclared-add     acceleration appears (R62:        resolve: record
+#                         "appeared since record" on a
 #                         snapshot-complete resource)
-#   M3 undeclared-change  accepted acceleration value flips resolve: accept
-#   M4 undeclared-add     out-of-band CORS config appears   resolve: accept
-#   M5 value-remove       accepted CORS deleted ->          resolve: accept
-#                         "baseline value removed since accept"
+#   M3 undeclared-change  recorded acceleration value flips resolve: record
+#   M4 undeclared-add     out-of-band CORS config appears   resolve: record
+#   M5 value-remove       recorded CORS deleted ->          resolve: record
+#                         "baseline value removed since record"
 #
 # M4/M5 use CORS, not tags (first live run, R68): put-bucket-tagging REPLACES
 # the whole TagSet and S3 refuses to drop the CFn-applied aws:* system tags
 # ("System tags cannot be removed by requester") — CORS has no system-managed
 # entries to collide with.
 #
-# Each mutation ends back at CLEAN, so the matrix also exercises the accept
+# Each mutation ends back at CLEAN, so the matrix also exercises the record
 # delta loop (R39) and the declared revert path once. Reuses the `basic`
 # fixture/stack; run sequentially with the other basic scripts, never
 # concurrently. Tip: CDKRD_CORPUS_DIR=/tmp/corpus records every check here as
@@ -75,8 +75,8 @@ BUCKET="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --re
   --query "StackResources[?ResourceType=='AWS::S3::Bucket'].PhysicalResourceId" --output text)"
 [ -n "$BUCKET" ] || fail "could not resolve bucket physical id"
 
-echo "=== full accept (snapshot-complete baseline) + CLEAN ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== full record (snapshot-complete baseline) + CLEAN ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 expect_clean "baseline"
 
 echo "=== M1 declared-change: suspend versioning (template says Enabled) ==="
@@ -86,32 +86,32 @@ expect_drift "M1" "DECLARED DRIFT" "VersioningConfiguration"
 $CLI revert "$STACK" --region "$REGION" --yes || fail "M1 revert"
 expect_clean "M1"
 
-echo "=== M2 undeclared-add: acceleration appears after a complete accept (R62) ==="
+echo "=== M2 undeclared-add: acceleration appears after a complete record (R62) ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "M2 inject"
-expect_drift "M2" "UNDECLARED DRIFT" "AccelerateConfiguration" "appeared since accept"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "M2 accept"
+expect_drift "M2" "UNDECLARED DRIFT" "AccelerateConfiguration" "appeared since record"
+$CLI record "$STACK" --region "$REGION" --yes || fail "M2 record"
 expect_clean "M2"
 
-echo "=== M3 undeclared-change: accepted acceleration value flips ==="
+echo "=== M3 undeclared-change: recorded acceleration value flips ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Suspended --region "$REGION" || fail "M3 inject"
 expect_drift "M3" "UNDECLARED DRIFT" "AccelerateConfiguration"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "M3 accept"
+$CLI record "$STACK" --region "$REGION" --yes || fail "M3 record"
 expect_clean "M3"
 
 echo "=== M4 undeclared-add: out-of-band CORS configuration ==="
 aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration \
   '{"CORSRules":[{"AllowedMethods":["GET"],"AllowedOrigins":["https://example.com"]}]}' \
   || fail "M4 inject"
-expect_drift "M4" "UNDECLARED DRIFT" "CorsConfiguration" "appeared since accept"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "M4 accept"
+expect_drift "M4" "UNDECLARED DRIFT" "CorsConfiguration" "appeared since record"
+$CLI record "$STACK" --region "$REGION" --yes || fail "M4 record"
 expect_clean "M4"
 
-echo "=== M5 value-remove: the accepted CORS configuration disappears ==="
+echo "=== M5 value-remove: the recorded CORS configuration disappears ==="
 aws s3api delete-bucket-cors --bucket "$BUCKET" --region "$REGION" || fail "M5 inject"
-expect_drift "M5" "UNDECLARED DRIFT" "CorsConfiguration" "baseline value removed since accept"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "M5 accept"
+expect_drift "M5" "UNDECLARED DRIFT" "CorsConfiguration" "baseline value removed since record"
+$CLI record "$STACK" --region "$REGION" --yes || fail "M5 record"
 expect_clean "M5"
 
 echo "INTEG PASS"

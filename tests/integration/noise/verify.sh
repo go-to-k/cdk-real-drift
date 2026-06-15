@@ -11,7 +11,7 @@
 # The assertion is the strong one: WITHOUT any baseline, `check --fail` must exit
 # 0 — there is no declared drift to find, because every declared value normalizes
 # equal to live. (Undeclared/at-default values are not drift and never fail.) Then
-# accept + check stays CLEAN.
+# record + check stays CLEAN.
 #
 # A cleanup trap destroys even on failure, so a failed run leaves no orphans.
 #
@@ -51,9 +51,9 @@ rc=${PIPESTATUS[0]}
 grep -q "DECLARED DRIFT" /tmp/cdkrd-noise-pre.out \
   && fail "a declared property was wrongly reported as drift (false positive)"
 
-echo "=== accept then check must stay CLEAN ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== record then check must stay CLEAN ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after accept"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after record"
 
 echo "INTEG PASS"

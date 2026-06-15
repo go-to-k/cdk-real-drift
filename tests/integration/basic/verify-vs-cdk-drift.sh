@@ -36,11 +36,11 @@ BUCKET="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --re
   --query "StackResources[?ResourceType=='AWS::S3::Bucket'].PhysicalResourceId" --output text)"
 [ -n "$BUCKET" ] || fail "no bucket physical id"
 
-# Undeclared DRIFT is defined against an accepted baseline (R60/R62): without
+# Undeclared DRIFT is defined against an recorded baseline (R60/R62): without
 # one, an injected value is UNRECORDED — reported, but exit 0 even with --fail.
 # The first live run (R70) failed exactly here; the script predated R60.
-echo "=== accept (snapshot-complete baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail accept
+echo "=== record (snapshot-complete baseline) ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail record
 
 echo "=== inject UNDECLARED drift (enable transfer acceleration) ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \

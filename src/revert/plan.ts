@@ -1,12 +1,12 @@
 // Build a revert plan from drift findings (pure — no AWS). Revert writes the
 // DESIRED value back to AWS:
 //   declared drift   -> the deployed-template value (finding.desired)
-//   undeclared drift -> the baseline value if accepted before (restore), else
-//                       REMOVE (the value appeared since a snapshot-complete accept)
+//   undeclared drift -> the baseline value if recorded before (restore), else
+//                       REMOVE (the value appeared since a snapshot-complete record)
 //   removed-undeclared (baseline value gone) -> re-add the baseline value
 // UNRECORDED values (R62: no baseline entry, resource never snapshot-complete)
 // are not drift and have no revert target — notRevertable unless
-// --remove-unaccepted explicitly turns them into REMOVE ops.
+// --remove-unrecorded explicitly turns them into REMOVE ops.
 // Not revertable: readGap / unresolved / skipped, and (v1) the SDK-override
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
@@ -68,7 +68,7 @@ export interface RevertOptions {
   // UNRECORDED undeclared values are removed only if this is set. Without it they
   // are reported as notRevertable (a bulk REMOVE of every undecided value that
   // slipped through noise subtraction would be destructive — fail-safe instead).
-  removeUnaccepted?: boolean;
+  removeUnrecorded?: boolean;
   // resourceType -> schema, so create-only property drift is reported as
   // notRevertable up front (an in-place patch would fail at apply time).
   schemas?: Map<string, SchemaInfo>;
@@ -87,7 +87,7 @@ export function buildRevertPlan(
 ): RevertPlan {
   const itemsByLogical = new Map<string, RevertItem>();
   const notRevertable: NotRevertable[] = [];
-  const accepted = baseline?.accepted ?? [];
+  const recorded = baseline?.recorded ?? [];
 
   for (const f of findings) {
     const displayId = f.constructPath ?? f.logicalId;
@@ -102,7 +102,7 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // Nested undeclared values (R96/R98) are detect/accept-only, NOT revertable. Their
+    // Nested undeclared values (R96/R98) are detect/record-only, NOT revertable. Their
     // path addresses a sub-key INSIDE a declared object or array element — dotted
     // (`Conf.Destination`) or, for an identity-keyed array element, `Prop[<id>].sub`.
     // `toPointer` builds a flat RFC6902 pointer by splitting on '.', so the bracket
@@ -110,8 +110,8 @@ export function buildRevertPlan(
     // CC patch would target a literal key, not the array element). Even the dotted form
     // is a fragile deep patch (the same reason R78 abandoned index-based array patches).
     // These are overwhelmingly AWS-materialized defaults — report + baseline them, and
-    // fix any real divergence in your IaC or by re-accepting the live value. Detect by
-    // PATH SHAPE, not Finding.nested: a baseline value REMOVED since accept is
+    // fix any real divergence in your IaC or by re-recording the live value. Detect by
+    // PATH SHAPE, not Finding.nested: a baseline value REMOVED since record is
     // reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested path. A
     // top-level undeclared path is a single key (never contains '.'/'['), and declared
     // drift is a different tier — so this never blocks a top-level revert.
@@ -120,7 +120,7 @@ export function buildRevertPlan(
         displayId,
         resourceType: f.resourceType,
         path: f.path,
-        reason: 'nested undeclared value — detect/accept only, not revertable',
+        reason: 'nested undeclared value — detect/record only, not revertable',
       });
       continue;
     }
@@ -147,19 +147,19 @@ export function buildRevertPlan(
     // UNRECORDED values (R62): the user never decided on them, so a default plan
     // would otherwise REMOVE every such value (the subtractive model's failure
     // mode is "check is noisy", but the revert mirror of that is destructive).
-    // Refuse unless --remove-unaccepted. Evaluated BEFORE the create-only guard
+    // Refuse unless --remove-unrecorded. Evaluated BEFORE the create-only guard
     // (R35): the fundamental blocker is "no revert target exists".
-    // The reason wording is a FORK, not a sequence (R55): "accept first, then
-    // revert" reads as if accept were a step toward reverting THESE values, but
-    // accepting them endorses them (they leave the report entirely) — accept is
-    // for values that are RIGHT; --remove-unaccepted is for values that are WRONG.
-    if (f.tier === 'undeclared' && f.unrecorded && !opts.removeUnaccepted) {
+    // The reason wording is a FORK, not a sequence (R55): "record first, then
+    // revert" reads as if record were a step toward reverting THESE values, but
+    // recording them endorses them (they leave the report entirely) — record is
+    // for values that are RIGHT; --remove-unrecorded is for values that are WRONG.
+    if (f.tier === 'undeclared' && f.unrecorded && !opts.removeUnrecorded) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
         path: f.path,
         reason:
-          'unrecorded — accept it if the live value is right, or --remove-unaccepted to remove it',
+          'unrecorded — record it if the live value is right, or --remove-unrecorded to remove it',
       });
       continue;
     }
@@ -182,7 +182,7 @@ export function buildRevertPlan(
       !SDK_WRITERS[f.resourceType] && SDK_PROP_WRITERS[f.resourceType]?.[f.path] !== undefined;
     const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] || propScoped ? 'sdk' : 'cc';
 
-    const op = revertOp(f, accepted);
+    const op = revertOp(f, recorded);
     const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
     const item =
       itemsByLogical.get(key) ??
@@ -201,7 +201,7 @@ export function buildRevertPlan(
   return { items: [...itemsByLogical.values()], notRevertable };
 }
 
-function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
+function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
   const pointer = toPointer(f.path);
   if (f.tier === 'declared') {
     return {
@@ -212,10 +212,10 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
       human: `${f.path}${f.attributeKey ? `[${f.attributeKey}]` : ''} -> deployed-template value`,
     };
   }
-  // undeclared: accepted before? restore that value; else it is a new addition -> remove.
+  // undeclared: recorded before? restore that value; else it is a new addition -> remove.
   // `prior` carries the finding's current live value for property-scoped SDK
   // writers (per-entry revert); Cloud Control serialization ignores it.
-  const wasAccepted = accepted.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+  const wasRecorded = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
   if (f.actual === undefined && f.desired !== undefined) {
     // removed-undeclared finding: re-add the baseline value
     return {
@@ -225,11 +225,11 @@ function revertOp(f: Finding, accepted: BaselineFile['accepted']): PatchOp {
       human: `${f.path} -> restore baseline value`,
     };
   }
-  if (wasAccepted) {
+  if (wasRecorded) {
     return {
       op: 'add',
       path: pointer,
-      value: wasAccepted.value,
+      value: wasRecorded.value,
       prior: f.actual,
       human: `${f.path} -> baseline value`,
     };

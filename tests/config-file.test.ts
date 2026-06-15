@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
-import { buildAccepted } from '../src/baseline/baseline-file.js';
+import { buildRecorded } from '../src/baseline/baseline-file.js';
 import {
   applyIgnores,
   type CdkrdConfig,
@@ -152,13 +152,13 @@ describe('applyIgnores', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
-  it('ignored undeclared is not offered to accept (buildAccepted excludes it)', () => {
+  it('ignored undeclared is not offered to record (buildRecorded excludes it)', () => {
     const ignored = applyIgnores(
       [undeclared('MyTable', 'ProvisionedThroughput')],
       'S',
       cfg(['*.ProvisionedThroughput'])
     );
-    expect(buildAccepted(ignored)).toHaveLength(0);
+    expect(buildRecorded(ignored)).toHaveLength(0);
   });
 });
 

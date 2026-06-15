@@ -9,7 +9,7 @@
 # Asserts the full live chain:
 #   1. baseline-free check FOLDS nested into the info: footer (`nested=N`), exit 0;
 #   2. --show-all expands BOTH the R98 bracketed path and the R96 dotted path;
-#   3. accept --yes then check --fail is CLEAN (accept records the nested values);
+#   3. record --yes then check --fail is CLEAN (record records the nested values);
 #   4. a REAL out-of-band mutation of the undeclared RecoveryPeriodInDays (35 -> 20
 #      via update-continuous-backups) surfaces as an undeclared DRIFT (check --fail
 #      exits 1) on the nested path — proving the baseline gate works at depth;
@@ -68,15 +68,15 @@ grep -qE "GlobalSecondaryIndexes\[gsi1\]\.WarmThroughput" /tmp/cdkrd-nested-2.ou
 grep -qE "PointInTimeRecoverySpecification\.RecoveryPeriodInDays" /tmp/cdkrd-nested-2.out \
   || fail "expected the R96 object-nested path PointInTimeRecoverySpecification.RecoveryPeriodInDays"
 
-echo "=== 3. accept then check --fail must be CLEAN ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
-$CLI check "$STACK" --region "$REGION" --fail || fail "expected CLEAN after accept"
+echo "=== 3. record then check --fail must be CLEAN ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
+$CLI check "$STACK" --region "$REGION" --fail || fail "expected CLEAN after record"
 
 echo "=== 4. REAL mutation: change the undeclared RecoveryPeriodInDays 35 -> 20 ==="
 aws dynamodb update-continuous-backups --table-name "$TABLE" --region "$REGION" \
   --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true,RecoveryPeriodInDays=20 \
   >/dev/null || fail "update-continuous-backups mutation failed"
-# the nested undeclared value now diverges from the accepted baseline -> drift
+# the nested undeclared value now diverges from the recorded baseline -> drift
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-nested-4.out
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected exit 1 (nested undeclared drift) after the mutation"
 grep -qE "PointInTimeRecoverySpecification\.RecoveryPeriodInDays" /tmp/cdkrd-nested-4.out \

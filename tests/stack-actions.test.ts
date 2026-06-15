@@ -11,33 +11,33 @@ import { baselinePath } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
-  acceptScopeNote,
-  acceptSelectMessage,
-  acceptStack,
+  recordScopeNote,
+  recordSelectMessage,
+  recordStack,
   availableActions,
   filterRevertPlan,
   formatPlan,
   formatSurvivingDrift,
-  includeUnacceptedRemovals,
+  includeUnrecordedRemovals,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
   revertSelectOptions,
   revertStack,
 } from '../src/commands/stack-actions.js';
 
-describe('includeUnacceptedRemovals (R113 — surface undeclared REMOVE in a gated prompt)', () => {
-  it('the explicit --remove-unaccepted flag always includes removals', () => {
-    expect(includeUnacceptedRemovals(true, false, false)).toBe(true);
-    expect(includeUnacceptedRemovals(true, true, true)).toBe(true); // even with --yes
+describe('includeUnrecordedRemovals (R113 — surface undeclared REMOVE in a gated prompt)', () => {
+  it('the explicit --remove-unrecorded flag always includes removals', () => {
+    expect(includeUnrecordedRemovals(true, false, false)).toBe(true);
+    expect(includeUnrecordedRemovals(true, true, true)).toBe(true); // even with --yes
   });
   it('interactive without --yes includes them (the multiselect gates per-item)', () => {
-    expect(includeUnacceptedRemovals(false, true, false)).toBe(true);
+    expect(includeUnrecordedRemovals(false, true, false)).toBe(true);
   });
   it('--yes (no multiselect to gate) requires the explicit flag', () => {
-    expect(includeUnacceptedRemovals(false, true, true)).toBe(false);
+    expect(includeUnrecordedRemovals(false, true, true)).toBe(false);
   });
   it('non-interactive (CI/pipe) requires the explicit flag', () => {
-    expect(includeUnacceptedRemovals(false, false, false)).toBe(false);
+    expect(includeUnrecordedRemovals(false, false, false)).toBe(false);
   });
 });
 import type { RevertPlan } from '../src/revert/plan.js';
@@ -70,46 +70,46 @@ const deleted = (): Finding => ({
   physicalId: 'b-phys',
 });
 
-const baselineWith = (entries: BaselineFile['accepted']): BaselineFile => ({
+const baselineWith = (entries: BaselineFile['recorded']): BaselineFile => ({
   schemaVersion: 1,
   stackName: 's',
   region: 'r',
   accountId: '111122223333',
   capturedAt: '',
   templateHash: '',
-  accepted: entries,
+  recorded: entries,
 });
 
 describe('availableActions (R28 interactive choice logic)', () => {
-  it('declared-only → Accept hidden (cannot accept declared), Revert shown', () => {
+  it('declared-only → Record hidden (cannot record declared), Revert shown', () => {
     expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
-      accept: false,
+      record: false,
       revert: true,
     });
   });
 
-  it('unrecorded-only → Accept shown, Revert hidden (no recorded state to restore, R62)', () => {
+  it('unrecorded-only → Record shown, Revert hidden (no recorded state to restore, R62)', () => {
     // applyBaseline tags entry-less values on never-complete resources as unrecorded
     expect(
       availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, false)
     ).toEqual({
-      accept: true,
+      record: true,
       revert: false,
     });
   });
 
-  it('unrecorded-only with --remove-unaccepted → Revert becomes available', () => {
+  it('unrecorded-only with --remove-unrecorded → Revert becomes available', () => {
     expect(
       availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, true)
     ).toEqual({
-      accept: true,
+      record: true,
       revert: true,
     });
   });
 
-  it('deleted-only → neither (deleted is not revertable, nothing to accept)', () => {
+  it('deleted-only → neither (deleted is not revertable, nothing to record)', () => {
     expect(availableActions([deleted()], undefined, NO_SCHEMAS, false)).toEqual({
-      accept: false,
+      record: false,
       revert: false,
     });
   });
@@ -123,9 +123,9 @@ describe('availableActions (R28 interactive choice logic)', () => {
         value: { AccelerationStatus: 'Suspended' },
       },
     ]);
-    // undeclared is accepted-then-changed → revertable to the baseline value; declared → revertable
+    // undeclared is recorded-then-changed → revertable to the baseline value; declared → revertable
     expect(availableActions([declared(), undeclared()], b, NO_SCHEMAS, false)).toEqual({
-      accept: true,
+      record: true,
       revert: true,
     });
   });
@@ -184,21 +184,21 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
     }
   });
 
-  it('unrecordedGuidance explains the accept-vs-remove FORK, not a sequence (R55/R62)', () => {
+  it('unrecordedGuidance explains the record-vs-remove FORK, not a sequence (R55/R62)', () => {
     const plan: RevertPlan = { items: [], notRevertable: [nr('unrecorded — x')] };
     const lines = formatPlan('MyStack', 'r', plan, { unrecordedGuidance: true });
     expect(lines[1]).toBe(
-      '\nnote: MyStack has unrecorded value(s) — never accepted, so there is no recorded state to restore.'
+      '\nnote: MyStack has unrecorded value(s) — never recorded, so there is no recorded state to restore.'
     );
-    expect(lines[2]).toContain('If the live values are RIGHT, accept them');
-    expect(lines[3]).toContain('REMOVED, re-run revert with --remove-unaccepted');
+    expect(lines[2]).toContain('If the live values are RIGHT, record them');
+    expect(lines[3]).toContain('REMOVED, re-run revert with --remove-unrecorded');
   });
 });
 
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
   // findings-only params: every path under test returns BEFORE any AWS client is
   // used — either nothing is revertable, or --dry-run returns at the preview branch.
-  type Overrides = { removeUnaccepted?: boolean; dryRun?: boolean };
+  type Overrides = { removeUnrecorded?: boolean; dryRun?: boolean };
   const params = (findings: Finding[], over: Overrides = {}) => ({
     stackName: 's',
     region: 'r',
@@ -211,7 +211,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     config: { ignore: [] },
     dryRun: over.dryRun ?? false,
     yes: true,
-    removeUnaccepted: over.removeUnaccepted ?? false,
+    removeUnrecorded: over.removeUnrecorded ?? false,
     verbose: false,
     interactive: true, // these paths return before any confirm (yes:true); value is irrelevant
   });
@@ -255,22 +255,22 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(outcome).toEqual({ exit: 1, aborted: false });
     const out = logs.join('\n');
     expect(out).toContain(
-      'note: s has unrecorded value(s) — never accepted, so there is no recorded state to restore.'
+      'note: s has unrecorded value(s) — never recorded, so there is no recorded state to restore.'
     );
-    expect(out).toContain('NOT revertable: 1 (unrecorded — accept it if the live value is right');
+    expect(out).toContain('NOT revertable: 1 (unrecorded — record it if the live value is right');
     expect(out).toContain('nothing revertable — 1 unrecorded value(s) remain.');
   });
 
-  it('--remove-unaccepted: unrecorded note is suppressed; the plan removes the value', async () => {
+  it('--remove-unrecorded: unrecorded note is suppressed; the plan removes the value', async () => {
     // dry-run returns at the preview branch (no AWS write). The note would contradict
     // a plan that DOES remove the value, so it must not appear (R35 review).
     const { outcome, logs } = await captured([undeclared()], {
-      removeUnaccepted: true,
+      removeUnrecorded: true,
       dryRun: true,
     });
     expect(outcome).toEqual({ exit: 0, aborted: false });
     const out = logs.join('\n');
-    expect(out).not.toContain('has unrecorded value(s) — never accepted');
+    expect(out).not.toContain('has unrecorded value(s) — never recorded');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
   });
@@ -327,7 +327,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     config: { ignore: [] },
     dryRun: false,
     yes: true,
-    removeUnaccepted: false,
+    removeUnrecorded: false,
     verbose: false,
     interactive: false, // yes:true — no confirm prompt is reached
     convergeRetryDelayMs: 0, // do not sleep for real in tests
@@ -399,7 +399,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
   });
 });
 
-describe('acceptStack non-interactive refusal (R38)', () => {
+describe('recordStack non-interactive refusal (R38)', () => {
   it('yes:false + interactive:false + undeclared present → refuses, writes nothing, errors', async () => {
     // Unique account/region so no baseline file exists on disk for this stack.
     const desired = {
@@ -418,7 +418,7 @@ describe('acceptStack non-interactive refusal (R38)', () => {
       errs.push(String(m));
     });
     try {
-      const result = await acceptStack({
+      const result = await recordStack({
         stackName: desired.stackName,
         region: desired.region,
         desired,
@@ -432,11 +432,11 @@ describe('acceptStack non-interactive refusal (R38)', () => {
     }
     expect(existsSync(path)).toBe(false); // no baseline written
     expect(errs.join('\n')).toContain(
-      'error: accept needs a decision — pass --yes to accept ALL undeclared values, or run interactively'
+      'error: record needs a decision — pass --yes to record ALL undeclared values, or run interactively'
     );
   });
 
-  it('yes:true → accepts ALL undeclared values with no prompt (regression)', async () => {
+  it('yes:true → records ALL undeclared values with no prompt (regression)', async () => {
     const desired = {
       stackName: 'R38YesStack',
       region: 'r38-yes-region',
@@ -449,19 +449,19 @@ describe('acceptStack non-interactive refusal (R38)', () => {
     if (existsSync(path)) rmSync(path);
 
     try {
-      const result = await acceptStack({
+      const result = await recordStack({
         stackName: desired.stackName,
         region: desired.region,
         desired,
         findings: [undeclared()],
         yes: true,
-        interactive: false, // ignored when yes:true — --yes accepts all regardless
+        interactive: false, // ignored when yes:true — --yes records all regardless
       });
       expect(result).toEqual({ wrote: true, refused: false });
       expect(existsSync(path)).toBe(true);
       const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
-      // the full undeclared set is accepted (no selective multiselect under --yes)
-      expect(written.accepted).toEqual([
+      // the full undeclared set is recorded (no selective multiselect under --yes)
+      expect(written.recorded).toEqual([
         {
           logicalId: 'B',
           resourceType: 'AWS::S3::Bucket',
@@ -591,10 +591,10 @@ describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () 
   });
 });
 
-describe('acceptSelectMessage (R49, R116 — bulkMultiselect renders the key hints now)', () => {
+describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hints now)', () => {
   it('is the one-line prompt header only (the space/→/←/enter hints live in bulkMultiselect)', () => {
-    const msg = acceptSelectMessage('ApiStack');
-    expect(msg).toContain('ApiStack: select undeclared value(s) to accept');
+    const msg = recordSelectMessage('ApiStack');
+    expect(msg).toContain('ApiStack: select undeclared value(s) to record');
     expect(msg).toContain('unselected stay reported');
     // the hint line moved into bulkMultiselect's render — the header is now single-line
     expect(msg).not.toContain('\n');
@@ -602,14 +602,14 @@ describe('acceptSelectMessage (R49, R116 — bulkMultiselect renders the key hin
   });
 });
 
-describe('acceptScopeNote (R117 — accept records undeclared only; say so wherever it runs)', () => {
+describe('recordScopeNote (R117 — record records undeclared only; say so wherever it runs)', () => {
   it('returns undefined when there is no declared/deleted drift (nothing left unapproved)', () => {
-    expect(acceptScopeNote('ApiStack', [undeclared(), undeclared()])).toBeUndefined();
-    expect(acceptScopeNote('ApiStack', [])).toBeUndefined();
+    expect(recordScopeNote('ApiStack', [undeclared(), undeclared()])).toBeUndefined();
+    expect(recordScopeNote('ApiStack', [])).toBeUndefined();
   });
 
   it('names the declared/deleted count and that it was NOT approved + how to resolve', () => {
-    const note = acceptScopeNote('ApiStack', [declared(), deleted(), undeclared()]);
+    const note = recordScopeNote('ApiStack', [declared(), deleted(), undeclared()]);
     expect(note).toContain('ApiStack');
     expect(note).toContain('2 declared/deleted drift NOT approved');
     expect(note).toContain('undeclared state into the baseline only');

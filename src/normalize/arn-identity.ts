@@ -1,4 +1,4 @@
-// Name <-> ARN identity normalization. Many AWS fields accept a bare resource
+// Name <-> ARN identity normalization. Many AWS fields record a bare resource
 // NAME on input but AWS stores + returns the full ARN (Lambda
 // EventSourceMapping.FunctionName / Lambda Permission.FunctionName / ECS
 // Service.Cluster, etc.). A positional string diff then reports false drift:
@@ -12,7 +12,7 @@
 // never hides a real drift to a DIFFERENT name (the suffix must match exactly).
 //
 // BIDIRECTIONAL: the bare name may be on EITHER side. `desired=name, actual=ARN`
-// occurs when AWS stores the full ARN for a name-accepting input (Lambda
+// occurs when AWS stores the full ARN for a name-recording input (Lambda
 // EventSourceMapping.FunctionName, ECS Service.Cluster, ...); `desired=ARN,
 // actual=name` occurs the other way (AWS::Lambda::Url.TargetFunctionArn: the template
 // resolves Fn::GetAtt to the function ARN, but the live read returns the bare name).

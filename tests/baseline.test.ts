@@ -1,18 +1,20 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vite-plus/test';
 import {
-  acceptedKey,
+  recordedKey,
   applyBaseline,
   type BaselineFile,
   baselinePath,
-  buildAccepted,
+  buildRecorded,
   checkBaselineAccount,
   computeCompleteResources,
   hashTemplate,
-  selectAccepted,
-  splitAcceptedByBaseline,
+  loadBaseline,
+  selectRecorded,
+  splitRecordedByBaseline,
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
   writeBaseline,
@@ -28,7 +30,7 @@ const undeclared = (logicalId: string, path: string, value: unknown): Finding =>
   actual: value,
 });
 
-function baseline(accepted: BaselineFile['accepted'], accountId = '111122223333'): BaselineFile {
+function baseline(recorded: BaselineFile['recorded'], accountId = '111122223333'): BaselineFile {
   return {
     schemaVersion: 1,
     stackName: 's',
@@ -36,7 +38,7 @@ function baseline(accepted: BaselineFile['accepted'], accountId = '111122223333'
     accountId,
     capturedAt: '',
     templateHash: '',
-    accepted,
+    recorded,
   };
 }
 
@@ -55,18 +57,18 @@ describe('baseline', () => {
     });
   });
 
-  it('buildAccepted captures only undeclared findings', () => {
+  it('buildRecorded captures only undeclared findings', () => {
     const findings: Finding[] = [
       undeclared('A', 'P', [1]),
       { tier: 'declared', logicalId: 'B', resourceType: 'T', path: 'Q', desired: 1, actual: 2 },
       { tier: 'skipped', logicalId: 'C', resourceType: 'T', path: '' },
     ];
-    expect(buildAccepted(findings)).toEqual([
+    expect(buildRecorded(findings)).toEqual([
       { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: [1] },
     ]);
   });
 
-  describe('selectAccepted (selective accept)', () => {
+  describe('selectRecorded (selective record)', () => {
     const findings: Finding[] = [
       undeclared('A', 'P', [1]),
       undeclared('B', 'Q', 'x'),
@@ -75,22 +77,22 @@ describe('baseline', () => {
 
     it('returns only the entries whose key is in the selected set', () => {
       expect(
-        selectAccepted(findings, new Set([acceptedKey({ logicalId: 'B', path: 'Q' })]))
+        selectRecorded(findings, new Set([recordedKey({ logicalId: 'B', path: 'Q' })]))
       ).toEqual([{ logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'x' }]);
     });
 
     it('empty selection -> []', () => {
-      expect(selectAccepted(findings, new Set())).toEqual([]);
+      expect(selectRecorded(findings, new Set())).toEqual([]);
     });
 
-    it('all selected -> equals buildAccepted output', () => {
-      const all = new Set(buildAccepted(findings).map(acceptedKey));
-      expect(selectAccepted(findings, all)).toEqual(buildAccepted(findings));
+    it('all selected -> equals buildRecorded output', () => {
+      const all = new Set(buildRecorded(findings).map(recordedKey));
+      expect(selectRecorded(findings, all)).toEqual(buildRecorded(findings));
     });
   });
 
-  describe('splitAcceptedByBaseline (delta-only accept, R39)', () => {
-    const accepted = [
+  describe('splitRecordedByBaseline (delta-only record, R39)', () => {
+    const recorded = [
       { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }, // unchanged
       { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' }, // changed value
       { logicalId: 'C', resourceType: 'AWS::X::Y', path: 'R', value: 1 }, // new path
@@ -102,7 +104,7 @@ describe('baseline', () => {
         { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'old-val' },
         // C.R absent from baseline => new
       ]);
-      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
+      const { unchanged, changed } = splitRecordedByBaseline(recorded, b);
       expect(unchanged).toEqual([
         { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
       ]);
@@ -113,8 +115,8 @@ describe('baseline', () => {
     });
 
     it('R6 regression: a baseline value in an OLDER canonical form is still unchanged', () => {
-      // accepted under an OLDER rule set: IAM policy Action stored as a scalar; the current
-      // canonical value (from buildAccepted) is the sorted-array form. canonicalizeForCompare
+      // recorded under an OLDER rule set: IAM policy Action stored as a scalar; the current
+      // canonical value (from buildRecorded) is the sorted-array form. canonicalizeForCompare
       // folds them together, so this must bucket as unchanged (not changed).
       const b = baseline([
         {
@@ -132,28 +134,28 @@ describe('baseline', () => {
           value: { Statement: [{ Effect: 'Allow', Action: ['s3:Get'] }] }, // canonical array
         },
       ];
-      const { unchanged, changed } = splitAcceptedByBaseline(current, b);
+      const { unchanged, changed } = splitRecordedByBaseline(current, b);
       expect(unchanged).toHaveLength(1);
       expect(changed).toHaveLength(0);
     });
 
-    it('no baseline -> everything is changed (the true first accept)', () => {
-      const { unchanged, changed } = splitAcceptedByBaseline(accepted, undefined);
+    it('no baseline -> everything is changed (the true first record)', () => {
+      const { unchanged, changed } = splitRecordedByBaseline(recorded, undefined);
       expect(unchanged).toEqual([]);
-      expect(changed).toEqual(accepted);
+      expect(changed).toEqual(recorded);
     });
 
     it('no new/changed -> changed empty, all unchanged (the refresh path)', () => {
-      const b = baseline(accepted.map((e) => ({ ...e })));
-      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
-      expect(unchanged).toEqual(accepted);
+      const b = baseline(recorded.map((e) => ({ ...e })));
+      const { unchanged, changed } = splitRecordedByBaseline(recorded, b);
+      expect(unchanged).toEqual(recorded);
       expect(changed).toEqual([]);
     });
 
     it('final written set = unchanged + selected (an unselected new entry is excluded)', () => {
-      // emulate acceptStack's composition: auto-kept unchanged + user-picked changed.
+      // emulate recordStack's composition: auto-kept unchanged + user-picked changed.
       const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
-      const { unchanged, changed } = splitAcceptedByBaseline(accepted, b);
+      const { unchanged, changed } = splitRecordedByBaseline(recorded, b);
       // user selects only B.Q (the changed value), leaves the new C.R unselected
       const selected = changed.filter((e) => e.logicalId === 'B');
       const written = [...unchanged, ...selected];
@@ -161,12 +163,12 @@ describe('baseline', () => {
         { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] },
         { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 'new-val' },
       ]);
-      // the unselected new path C.R is NOT accepted
+      // the unselected new path C.R is NOT recorded
       expect(written.some((e) => e.logicalId === 'C')).toBe(false);
     });
   });
 
-  it('applyBaseline suppresses an accepted undeclared value (-> CLEAN)', () => {
+  it('applyBaseline suppresses an recorded undeclared value (-> CLEAN)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     expect(applyBaseline([undeclared('A', 'P', ['x'])], b)).toEqual([]);
   });
@@ -196,10 +198,10 @@ describe('baseline', () => {
       expect(out[0]!.unrecorded).toBeUndefined();
     });
 
-    it('a value the user accepted that is now classified at-default is SUPPRESSED, not reported as removed (the live regression)', () => {
-      // baseline accepted Encryption=<AES256>; today classify tags it atDefault (it now
+    it('a value the user recorded that is now classified at-default is SUPPRESSED, not reported as removed (the live regression)', () => {
+      // baseline recorded Encryption=<AES256>; today classify tags it atDefault (it now
       // matches a known default). It must vanish (already decided), and must NOT appear
-      // as "baseline value removed since accept".
+      // as "baseline value removed since record".
       const b = baseline([
         {
           logicalId: 'Bkt',
@@ -214,7 +216,7 @@ describe('baseline', () => {
   });
 
   it('re-canonicalizes the baseline value before compare (old unsorted form still matches)', () => {
-    // accepted under an OLDER rule set: tag list stored UNSORTED
+    // recorded under an OLDER rule set: tag list stored UNSORTED
     const b = baseline([
       {
         logicalId: 'A',
@@ -261,23 +263,23 @@ describe('baseline', () => {
     expect(out[0]).toMatchObject({ tier: 'undeclared', unrecorded: true });
   });
 
-  describe('per-entry classification (R62 — unrecorded vs appeared-since-accept)', () => {
-    const v2 = (accepted: BaselineFile['accepted'], completeResources: string[]): BaselineFile => ({
-      ...baseline(accepted),
+  describe('per-entry classification (R62 — unrecorded vs appeared-since-record)', () => {
+    const v2 = (recorded: BaselineFile['recorded'], completeResources: string[]): BaselineFile => ({
+      ...baseline(recorded),
       schemaVersion: 2,
       completeResources,
     });
 
-    it('entry-less value on a snapshot-COMPLETE resource -> drift, noted as appeared since accept', () => {
+    it('entry-less value on a snapshot-COMPLETE resource -> drift, noted as appeared since record', () => {
       const b = v2([], ['A']);
       const out = applyBaseline([undeclared('A', 'NEW', 1)], b);
       expect(out).toHaveLength(1);
-      expect(out[0]).toMatchObject({ tier: 'undeclared', note: 'appeared since accept' });
+      expect(out[0]).toMatchObject({ tier: 'undeclared', note: 'appeared since record' });
       expect(out[0]!.unrecorded).toBeUndefined();
     });
 
     it('entry-less value on a NOT-complete resource -> unrecorded, even though the file exists', () => {
-      // the cherry-pick case: accepting one value on B must not flip A's values to drift
+      // the cherry-pick case: recording one value on B must not flip A's values to drift
       const b = v2([{ logicalId: 'B', resourceType: 'AWS::X::Y', path: 'P', value: 1 }], ['B']);
       const out = applyBaseline([undeclared('A', 'NEW', 1)], b);
       expect(out[0]).toMatchObject({ unrecorded: true });
@@ -290,15 +292,15 @@ describe('baseline', () => {
       expect(out[0]!.unrecorded).toBeUndefined();
     });
 
-    it('appends the appeared-since-accept note after an existing note', () => {
+    it('appends the appeared-since-record note after an existing note', () => {
       const b = v2([], ['A']);
       const f = { ...undeclared('A', 'NEW', 1), note: 'prior' };
       const out = applyBaseline([f], b);
-      expect(out[0]!.note).toBe('prior; appeared since accept');
+      expect(out[0]!.note).toBe('prior; appeared since record');
     });
   });
 
-  describe('computeCompleteResources (R62 — what the accept snapshot covered)', () => {
+  describe('computeCompleteResources (R62 — what the record snapshot covered)', () => {
     it('covered, uncovered, unread, and clean resources bucket correctly', () => {
       const findings: Finding[] = [
         undeclared('Covered', 'P', 1),
@@ -306,20 +308,20 @@ describe('baseline', () => {
         { tier: 'skipped', logicalId: 'Unread', resourceType: 'T', path: '' },
         { tier: 'deleted', logicalId: 'Gone', resourceType: 'T', path: '' },
       ];
-      const accepted = [{ logicalId: 'Covered', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
+      const recorded = [{ logicalId: 'Covered', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
       expect(
         computeCompleteResources(
           ['Covered', 'Uncovered', 'Unread', 'Gone', 'Clean'],
           findings,
-          accepted
+          recorded
         )
       ).toEqual(['Clean', 'Covered']); // sorted; Uncovered/Unread/Gone excluded
     });
 
-    it('a resource with one of two values accepted is NOT complete', () => {
+    it('a resource with one of two values recorded is NOT complete', () => {
       const findings = [undeclared('A', 'P', 1), undeclared('A', 'Q', 2)];
-      const accepted = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
-      expect(computeCompleteResources(['A'], findings, accepted)).toEqual([]);
+      const recorded = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
+      expect(computeCompleteResources(['A'], findings, recorded)).toEqual([]);
     });
 
     it('ignored-tier values do not block completeness (visible, deliberately ruled out)', () => {
@@ -355,18 +357,18 @@ describe('baseline', () => {
     });
   });
 
-  it('reports a baseline value that was removed since accept', () => {
+  it('reports a baseline value that was removed since record', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const out = applyBaseline([], b); // nothing undeclared now
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
       tier: 'undeclared',
       path: 'P',
-      note: 'baseline value removed since accept',
+      note: 'baseline value removed since record',
     });
   });
 
-  it('does NOT report a removal when the accepted path was promoted into the template', () => {
+  it('does NOT report a removal when the recorded path was promoted into the template', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const warnings: string[] = [];
     const out = applyBaseline([], b, {
@@ -377,23 +379,23 @@ describe('baseline', () => {
     expect(warnings[0]).toContain('now declared in the template');
   });
 
-  it('still reports a removal when the accepted path is genuinely gone (not declared)', () => {
+  it('still reports a removal when the recorded path is genuinely gone (not declared)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ note: 'baseline value removed since accept' });
+    expect(out[0]).toMatchObject({ note: 'baseline value removed since record' });
   });
 
   describe('writeBaselineFile (deterministic order, R40)', () => {
-    // capturedAt is fixed so the only variable across writes is the accepted order.
-    const entry = (logicalId: string, path: string): BaselineFile['accepted'][number] => ({
+    // capturedAt is fixed so the only variable across writes is the recorded order.
+    const entry = (logicalId: string, path: string): BaselineFile['recorded'][number] => ({
       logicalId,
       resourceType: 'AWS::X::Y',
       path,
       value: [logicalId, path],
     });
-    const withOrder = (accepted: BaselineFile['accepted']): BaselineFile => ({
-      ...baseline(accepted),
+    const withOrder = (recorded: BaselineFile['recorded']): BaselineFile => ({
+      ...baseline(recorded),
       capturedAt: '2026-06-12T00:00:00.000Z',
     });
 
@@ -418,17 +420,17 @@ describe('baseline', () => {
       expect(a).toBe(b);
     });
 
-    it('writes accepted sorted lexicographically by (logicalId, path)', async () => {
+    it('writes recorded sorted lexicographically by (logicalId, path)', async () => {
       const out = await writeInTmp(withOrder([entry('B', 'q'), entry('A', 'p'), entry('A', 'a')]));
       const parsed = JSON.parse(out) as BaselineFile;
-      expect(parsed.accepted.map((e) => `${e.logicalId}.${e.path}`)).toEqual(['A.a', 'A.p', 'B.q']);
+      expect(parsed.recorded.map((e) => `${e.logicalId}.${e.path}`)).toEqual(['A.a', 'A.p', 'B.q']);
     });
 
-    it('does not mutate the caller-supplied accepted array', async () => {
-      const accepted = [entry('B', 'q'), entry('A', 'p')];
-      const snapshot = accepted.map((e) => e.logicalId);
-      await writeInTmp(withOrder(accepted));
-      expect(accepted.map((e) => e.logicalId)).toEqual(snapshot);
+    it('does not mutate the caller-supplied recorded array', async () => {
+      const recorded = [entry('B', 'q'), entry('A', 'p')];
+      const snapshot = recorded.map((e) => e.logicalId);
+      await writeInTmp(withOrder(recorded));
+      expect(recorded.map((e) => e.logicalId)).toEqual(snapshot);
     });
 
     it('writes completeResources sorted (byte-stable, R62)', async () => {
@@ -444,7 +446,7 @@ describe('baseline', () => {
       process.chdir(dir);
       try {
         const findings = [undeclared('A', 'P', 1), undeclared('B', 'Q', 2)];
-        // selective accept: only A.P — so A is complete, B is not, Clean trivially is
+        // selective record: only A.P — so A is complete, B is not, Clean trivially is
         const { path } = await writeBaseline(
           's',
           'r',
@@ -457,6 +459,38 @@ describe('baseline', () => {
         const parsed = JSON.parse(await readFile(path, 'utf8')) as BaselineFile;
         expect(parsed.schemaVersion).toBe(2);
         expect(parsed.completeResources).toEqual(['A', 'Clean']);
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('loadBaseline back-compat (accept→record field rename)', () => {
+    it('reads a pre-rename baseline that stored entries under the old `accepted` key', async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const p = baselinePath('s', '111122223333', 'r');
+        await mkdir(dirname(p), { recursive: true });
+        // an OLD baseline (field `accepted`, no `recorded`)
+        const legacy = {
+          schemaVersion: 2,
+          stackName: 's',
+          region: 'r',
+          accountId: '111122223333',
+          capturedAt: '2026-01-01T00:00:00Z',
+          templateHash: 'sha256:x',
+          accepted: [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }],
+        };
+        await writeFile(p, JSON.stringify(legacy), 'utf8');
+        const loaded = await loadBaseline('s', '111122223333', 'r');
+        expect(loaded?.recorded).toEqual([
+          { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 },
+        ]);
+        // the legacy key is not carried forward
+        expect((loaded as unknown as { accepted?: unknown }).accepted).toBeUndefined();
       } finally {
         process.chdir(cwd);
         await rm(dir, { recursive: true, force: true });
@@ -523,11 +557,11 @@ describe('nested undeclared through the baseline (R96)', () => {
     const out = applyBaseline([nf('Conf.X', 'default')], undefined);
     expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Conf.X', unrecorded: true });
   });
-  it('accepted + unchanged -> suppressed (CLEAN)', () => {
+  it('recorded + unchanged -> suppressed (CLEAN)', () => {
     const b = baseline([{ logicalId: 'L', resourceType: 'T', path: 'Conf.X', value: 'default' }]);
     expect(applyBaseline([nf('Conf.X', 'default')], b)).toEqual([]);
   });
-  it('accepted then a nested value CHANGES out of band -> drift (the depth differentiator)', () => {
+  it('recorded then a nested value CHANGES out of band -> drift (the depth differentiator)', () => {
     const b = baseline([{ logicalId: 'L', resourceType: 'T', path: 'Conf.X', value: 'default' }]);
     const out = applyBaseline([nf('Conf.X', 'EDITED')], b);
     expect(out).toHaveLength(1);

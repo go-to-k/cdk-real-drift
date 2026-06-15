@@ -287,7 +287,7 @@ export function classifyResource(
     // A live value EQUAL to a known AWS default is the `atDefault` tier (R86): still
     // surfaced (folded, never dropped — the report shows the complete undeclared
     // count and --show-all/--verbose lists them), but informational, not drift, and
-    // not recorded by accept. The equality gate means an out-of-band change away from
+    // not recorded by record. The equality gate means an out-of-band change away from
     // the default no longer matches here and falls through to the `undeclared` tier.
     if (
       (k in schema.defaults && deepEqual(v, schema.defaults[k])) ||
@@ -330,7 +330,7 @@ export function classifyResource(
   // (trivially-empty / aws:* tags). These flow through the usual undeclared→baseline
   // machinery, just `nested`-flagged so the report can fold them (the live model
   // carries many nested AWS defaults): folded inventory on a first run, recorded by
-  // accept, and a later out-of-band change to one surfaces as drift vs the baseline.
+  // record, and a later out-of-band change to one surfaces as drift vs the baseline.
   // R103: a nested value EQUAL to the schema's `default` at that path is the
   // `atDefault` tier (mirrors the top-level atDefault), so config-dense types stop
   // drowning the report in materialized defaults. Live array-element paths carry the

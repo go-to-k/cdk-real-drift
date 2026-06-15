@@ -1,7 +1,7 @@
 // Tiny shared CLI arg parser (no dependency).
 
 // The complete known-option surface. parseCommonArgs is shared by all three
-// verbs, so verb-specific flags (--dry-run) are accepted here and interpreted
+// verbs, so verb-specific flags (--dry-run) are recorded here and interpreted
 // by the verb. Anything NOT listed is a fail-fast error — a typo'd flag must
 // never silently turn its value into a positional stack name (cdkrd has an
 // AWS-mutating verb, so a misparse can target the wrong stacks).
@@ -16,7 +16,7 @@ const BOOLEAN_FLAGS = new Set([
   '--undeclared-only',
   '--declared-only',
   '--dry-run',
-  '--remove-unaccepted',
+  '--remove-unrecorded',
   '--verbose',
   '-v',
 ]);
@@ -47,7 +47,7 @@ export interface CommonArgs {
   // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
   // check REPORTS drift but exits 0 (report-only).
   fail: boolean;
-  removeUnaccepted: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
+  removeUnrecorded: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
 }
 
@@ -74,7 +74,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
       stackNames.push(a);
       continue;
     }
-    // Accept `--flag=value` (and `-a=value`) like the cdk CLI / yargs do. Split on
+    // Record `--flag=value` (and `-a=value`) like the cdk CLI / yargs do. Split on
     // the FIRST '=' only so `--context=env=prod` keeps the value "env=prod" whole.
     const eq = a.indexOf('=');
     const flag = eq > 0 ? a.slice(0, eq) : a;
@@ -141,7 +141,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     preDeploy: has('--pre-deploy'),
     undeclaredOnly: has('--undeclared-only'),
     declaredOnly: has('--declared-only'),
-    removeUnaccepted: has('--remove-unaccepted'),
+    removeUnrecorded: has('--remove-unrecorded'),
     verbose: has('--verbose') || has('-v'),
   };
 }

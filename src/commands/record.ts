@@ -1,15 +1,15 @@
-// `cdkrd accept [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
+// `cdkrd record [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
-// git-committed baselines; no AWS writes. The per-stack accept flow lives in
+// git-committed baselines; no AWS writes. The per-stack record flow lives in
 // stack-actions.ts (shared with check's interactive prompt, R28).
 import { isStackNotDeployed } from '../aws-errors.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
-import { acceptStack } from './stack-actions.js';
+import { recordStack } from './stack-actions.js';
 
-export async function runAccept(args: string[]): Promise<number> {
+export async function runRecord(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (a.profile) process.env.AWS_PROFILE = a.profile;
 
@@ -29,7 +29,7 @@ export async function runAccept(args: string[]): Promise<number> {
     return 2;
   }
   if (stacks.length === 0) {
-    console.error('note: the CDK app defines no stacks — nothing to accept');
+    console.error('note: the CDK app defines no stacks — nothing to record');
     return 0;
   }
 
@@ -44,9 +44,9 @@ export async function runAccept(args: string[]): Promise<number> {
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       const { desired, findings } = await gatherFindings(stackName, region);
-      // ignore rules re-tag matching undeclared findings out of the accept set, so an
-      // externally-managed property is never accepted (and never re-detected).
-      const result = await acceptStack({
+      // ignore rules re-tag matching undeclared findings out of the record set, so an
+      // externally-managed property is never recorded (and never re-detected).
+      const result = await recordStack({
         stackName,
         region,
         desired,
@@ -54,11 +54,11 @@ export async function runAccept(args: string[]): Promise<number> {
         yes: a.yes,
         interactive: isInteractive(),
       });
-      // a non-interactive accept that needed a decision but had no --yes refuses (R38)
+      // a non-interactive record that needed a decision but had no --yes refuses (R38)
       if (result.refused) worst = Math.max(worst, 2);
     } catch (e) {
       if (isStackNotDeployed(e)) {
-        console.error(`note: ${stackName}: not deployed yet — nothing to accept`);
+        console.error(`note: ${stackName}: not deployed yet — nothing to record`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);

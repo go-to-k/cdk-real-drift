@@ -1,9 +1,9 @@
 // Git-committed project config: .cdkrd/config.json (cwd-relative, loaded once per run).
 //
 // Kept SEPARATE from the per-stack baseline file on purpose:
-//   1. the baseline is a machine-generated artifact that `accept` (writeBaseline)
+//   1. the baseline is a machine-generated artifact that `record` (writeBaseline)
 //      rewrites WHOLESALE every time — hand-written ignore rules would be erased on
-//      every accept (and a carry-over special case would be an accident magnet);
+//      every record (and a carry-over special case would be an accident magnet);
 //   2. ignore rules express an APP-WIDE intent ("this property is managed by an
 //      external system"), not a per-stack/account/region fact, so they should live
 //      once, not be duplicated into every baseline.
@@ -11,8 +11,8 @@
 // The only field today is `ignore`: path-level rules for properties an external
 // system legitimately keeps rewriting (Application Auto Scaling moving an ECS
 // Service DesiredCount, DynamoDB autoscaled capacity, externally-managed Lambda
-// reserved concurrency). Without this, `accept` (a value snapshot) would re-detect
-// and force a re-accept every time the value moves — an infinite loop. This is the
+// reserved concurrency). Without this, `record` (a value snapshot) would re-detect
+// and force a re-record every time the value moves — an infinite loop. This is the
 // `.driftignore` / Terraform `ignore_changes` equivalent. The file is an extension
 // point: future settings (concurrency, etc.) can be added here.
 

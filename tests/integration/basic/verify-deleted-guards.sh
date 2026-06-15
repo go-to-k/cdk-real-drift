@@ -4,7 +4,7 @@
 # `basic` / `revert` verify.sh do not:
 #   R2  revert guard: on a stack with NO baseline, undeclared drift is reported
 #       as NOT revertable (refuses a destructive bulk removal) unless
-#       --remove-unaccepted is passed; declared drift IS revertable regardless.
+#       --remove-unrecorded is passed; declared drift IS revertable regardless.
 #   R1  deleted tier: a resource deleted out of band is reported in the `deleted`
 #       tier (exit 1 under --fail) and is NOT revertable (recreate via
 #       cdk deploy).
@@ -40,7 +40,7 @@ echo "bucket=$BUCKET"
 
 # -------- R2: revert guard on a stack with NO baseline --------
 # Inject BOTH a declared drift (suspend versioning, template says Enabled) and an
-# undeclared drift (enable transfer acceleration). Do NOT `accept` -> no baseline.
+# undeclared drift (enable transfer acceleration). Do NOT `record` -> no baseline.
 echo "=== R2: inject declared + undeclared drift, NO baseline ==="
 aws s3api put-bucket-versioning --bucket "$BUCKET" \
   --versioning-configuration Status=Suspended --region "$REGION" || fail "inject versioning"
@@ -57,10 +57,10 @@ grep -q "AccelerateConfiguration.*unrecorded" /tmp/cdkrd-guard-noremove.out \
 grep -q "VersioningConfiguration" /tmp/cdkrd-guard-noremove.out \
   || fail "R2: declared versioning drift should be in the plan"
 
-echo "=== R2: --remove-unaccepted opts in to removing the undeclared value ==="
-$CLI revert "$STACK" --region "$REGION" --dry-run --remove-unaccepted | tee /tmp/cdkrd-guard-remove.out
+echo "=== R2: --remove-unrecorded opts in to removing the undeclared value ==="
+$CLI revert "$STACK" --region "$REGION" --dry-run --remove-unrecorded | tee /tmp/cdkrd-guard-remove.out
 grep -qE "would apply [1-9][0-9]* op" /tmp/cdkrd-guard-remove.out \
-  || fail "R2: --remove-unaccepted should plan op(s) including the undeclared removal"
+  || fail "R2: --remove-unrecorded should plan op(s) including the undeclared removal"
 
 # -------- R1: deleted tier --------
 echo "=== R1: delete the bucket out of band ==="

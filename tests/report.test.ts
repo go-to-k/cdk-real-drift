@@ -26,7 +26,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(text).toContain('not drift —'); // R112: the section says so up front
     expect(text).not.toContain('UNDECLARED DRIFT');
     expect(text).toContain(
-      'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd accept)'
+      'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd record)'
     );
   });
 
@@ -36,7 +36,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const { text } = run([U(), U('Q'), nested('a'), nested('b'), nested('c')]);
     expect(text).toContain('[UNRECORDED: 2]'); // only the standout are listed
     expect(text).toContain(
-      'result: CLEAN — 5 unrecorded value(s) await a baseline (2 shown, 3 folded; run cdkrd accept)'
+      'result: CLEAN — 5 unrecorded value(s) await a baseline (2 shown, 3 folded; run cdkrd record)'
     );
   });
 
@@ -63,7 +63,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
     expect(code).toBe(1);
     expect(text).toContain(
-      'result: 2 findings — 1 drift (declared=1) + 1 undeclared to review (2 folded; run cdkrd accept)'
+      'result: 2 findings — 1 drift (declared=1) + 1 undeclared to review (2 folded; run cdkrd record)'
     );
   });
 
@@ -80,7 +80,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(parsed.findings[0].unrecorded).toBe(true);
   });
 
-  it('untagged undeclared (recorded value changed / appeared since accept) is drift as before', () => {
+  it('untagged undeclared (recorded value changed / appeared since record) is drift as before', () => {
     const { code, text } = run([F('undeclared')]);
     expect(code).toBe(1);
     expect(text).toContain('[UNDECLARED DRIFT: 1]');

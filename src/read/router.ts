@@ -43,7 +43,7 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // PolicyARN was a CC ValidationException skip until paired with its dimension.
   'AWS::ApplicationAutoScaling::ScalingPolicy': scalingPolicyComposite,
   // ECS Service primaryIdentifier is [ServiceArn, Cluster] — the SERVICE arn FIRST,
-  // then the cluster (verified live R102: either the cluster name OR arn is accepted
+  // then the cluster (verified live R102: either the cluster name OR arn is recorded
   // for the second segment; the reverse order is rejected). The CFn physical id is
   // the service ARN; the cluster comes from the resolved declared `Cluster` ref. Not
   // `compositeWith` (that is parent-first); ECS is child(service)-first.
