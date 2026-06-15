@@ -357,7 +357,9 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
    **strict**: the live key must be the alias's managed key, so a customer-managed key
    swapped in out of band (a security-relevant change) IS reported as drift. Without
    `kms:ListAliases` it falls back to the shape-based collapse (noise, never a false
-   positive).
+   positive) — but `gather` then prints a one-line per-region warning
+   (`kmsListAliasesDeniedWarning`, deduped via a process-lifetime region set), so the
+   degraded coverage (blind to a key swap) is surfaced rather than silent (R115).
 
 > Classes 1 & 3 are a latent risk in any AWS-snapshot diff; they were also
 > back-ported to **cdkd** (PR #802, merged) since cdkd's `drift-calculator` shared

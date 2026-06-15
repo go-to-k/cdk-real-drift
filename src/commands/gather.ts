@@ -7,7 +7,11 @@ import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { classifyResource } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
-import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../read/kms-aliases.js';
+import {
+  fetchManagedAliasTargets,
+  kmsListAliasesDeniedWarning,
+  usesManagedKmsAlias,
+} from '../read/kms-aliases.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import { readLive, type ReadResult } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
@@ -18,6 +22,11 @@ export interface GatherResult {
   findings: Finding[];
   schemas: Map<string, SchemaInfo>; // resourceType -> schema (so revert can honor createOnly)
 }
+
+// Regions already warned about a denied kms:ListAliases — the warning is one-per-region
+// (a multi-stack run in the same region should not repeat it). Process-lifetime (matches
+// the per-region alias cache in kms-aliases.ts).
+const kmsDeniedWarned = new Set<string>();
 
 // Bounded-concurrency live-read pool (pull-next-when-free): serial reads cost
 // ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
@@ -168,11 +177,18 @@ export async function gatherFindings(
 
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from
-  // a customer-managed key swapped in out of band. Missing kms:ListAliases -> {} (the
-  // classifier falls back to the conservative shape-based match).
-  const kmsAliasTargets = desired.resources.some((r) => usesManagedKmsAlias(r.declared))
-    ? await fetchManagedAliasTargets(region)
-    : {};
+  // a customer-managed key swapped in out of band. Missing kms:ListAliases -> empty +
+  // denied (the classifier falls back to the conservative shape-based match) — and we
+  // WARN once per region, because that fallback is BLIND to a customer-key swap (R115).
+  let kmsAliasTargets: Record<string, string> = {};
+  if (desired.resources.some((r) => usesManagedKmsAlias(r.declared))) {
+    const resolved = await fetchManagedAliasTargets(region);
+    kmsAliasTargets = resolved.targets;
+    if (resolved.denied && !kmsDeniedWarned.has(region)) {
+      kmsDeniedWarned.add(region);
+      console.error(kmsListAliasesDeniedWarning(region));
+    }
+  }
   const oaiCanonicalIds = buildOaiCanonicalIds(desired);
   const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
 
@@ -243,8 +259,10 @@ export async function regatherTouched(
   for (const r of targets) {
     if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
   }
+  // Re-check path (revert convergence): reuse the cached targets; the denial warning,
+  // if any, already fired in the primary gather, so just take the resolved map.
   const kmsAliasTargets = targets.some((r) => usesManagedKmsAlias(r.declared))
-    ? await fetchManagedAliasTargets(region)
+    ? (await fetchManagedAliasTargets(region)).targets
     : {};
   // Built from desired.ctx.liveAttrs (populated by the original gather), so the OAI
   // map is complete even though regather only re-reads the touched resources.
