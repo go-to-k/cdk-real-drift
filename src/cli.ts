@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// cdk-real-drift CLI entry. Dispatches: check | record | revert (+ help/version).
-// check/record never write to AWS (record writes only the baseline FILE);
-// revert is the one AWS-mutating command.
+// cdk-real-drift CLI entry. Dispatches: check | record | ignore | revert (+ help/version).
+// check/record/ignore never write to AWS (record writes only the baseline FILE; ignore
+// writes only .cdkrd/config.json); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
 import { runRecord } from './commands/record.js';
+import { runIgnore } from './commands/ignore.js';
 import { runCheck } from './commands/check.js';
 import { runRevert } from './commands/revert.js';
 
@@ -13,6 +14,9 @@ properties that 'cdk drift' / CloudFormation drift detection never see.
 USAGE
   cdkrd check  [<stack>...]   detect drift (read-only)
   cdkrd record [<stack>...]   snapshot current undeclared state into the baseline
+                              — KEEPS watching (re-surfaces if the value changes)
+  cdkrd ignore [<stack>...]   stop reporting the chosen drift (writes config.json)
+                              — STOPS watching (declared or undeclared)
   cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
   cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
@@ -46,18 +50,21 @@ OPTIONS
   --dry-run                   (revert) print the plan; make no changes
   --remove-unrecorded         (revert) REMOVE unrecorded values (never recorded;
                               default: refuse — record the ones that are right)
-  --yes, -y                   skip confirmation (revert) / overwrite notice (record)
+  --yes, -y                   skip confirmation (revert) / overwrite notice (record) /
+                              ignore ALL shown drift without the multiselect (ignore)
   --help, -h    --version, -v
 
-  Automation: check --fail / record --yes / revert --yes (or --dry-run); non-TTY
-  runs never prompt.
+  Automation: check --fail / record --yes / ignore --yes / revert --yes (or
+  --dry-run); non-TTY runs never prompt.
 
 EXIT CODES
   check:  0 = clean (or drift without --fail)   1 = drift (--fail)   2 = error
   record: 0 = written   2 = error/refused
+  ignore: 0 = rule(s) written / nothing to ignore   2 = error/refused
   revert: 0 = converged/aborted   1 = drift remains   2 = error/apply failure
 
-The baseline lives at .cdkrd/<stack>.<accountId>.<region>.json — commit it; review its diff in PRs.`;
+The baseline lives at .cdkrd/<stack>.<accountId>.<region>.json — commit it; review its
+diff in PRs. Ignore rules live in .cdkrd/config.json — also git-committed.`;
 
 function version(): string {
   try {
@@ -88,6 +95,8 @@ async function main(argv: string[]): Promise<number> {
       return runCheck(rest);
     case 'record':
       return runRecord(rest);
+    case 'ignore':
+      return runIgnore(rest);
     case 'revert':
       return runRevert(rest);
     default:

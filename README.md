@@ -111,7 +111,7 @@ verifying convergence (re-reading 1 resource(s))...
 ApiStack: CLEAN after revert.
 ```
 
-`record` and `revert` also exist as standalone commands; in CI, run
+`record`, `ignore`, and `revert` also exist as standalone commands; in CI, run
 `npx cdkrd check --fail`.
 
 Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
@@ -119,13 +119,22 @@ Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
 
 ## How it works
 
-After `check` finds drift, the human decision is binary, and the verbs mirror it:
+After `check` finds drift, you decide what each finding means — and the verbs mirror
+the choice:
 
-| verb           | meaning                                                | writes               |
-| -------------- | ------------------------------------------------------ | -------------------- |
-| `cdkrd check`  | find drift                                             | nothing              |
-| `cdkrd record` | "this state is RIGHT" — record it in the baseline file | a git file only      |
-| `cdkrd revert` | "this state is WRONG" — write the desired value back   | AWS (plan + confirm) |
+| verb           | meaning                                                       | writes                     |
+| -------------- | ------------------------------------------------------------- | -------------------------- |
+| `cdkrd check`  | find drift                                                    | nothing                    |
+| `cdkrd record` | "this undeclared state is the norm — tell me if it _changes_" | a git file (baseline)      |
+| `cdkrd ignore` | "stop reporting this property, ever"                          | a git file (`config.json`) |
+| `cdkrd revert` | "this state is WRONG" — write the desired value back          | AWS (plan + confirm)       |
+
+The one distinction to keep straight: **`record` keeps watching** (it snapshots
+the current undeclared value and re-surfaces drift if that value later changes),
+while **`ignore` stops watching** (it writes a path rule — declared _or_
+undeclared — and the property is never reported again). `record` is
+undeclared-only; `ignore` is the only in-tool way to accept a **declared** drift
+without editing code or reverting.
 
 - **Declared** properties are compared against the **deployed template** — no
   baseline involved, drift is detected from the first run.
@@ -174,6 +183,7 @@ tells cdkrd which stacks to look at.
 | --------------------------- | ---------------------------------------------------------------------- |
 | `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
 | `cdkrd record [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
+| `cdkrd ignore [<stack>...]` | stop reporting chosen drift via `.cdkrd/config.json` (CI: `--yes`)     |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
 **Exit codes:** `check` is **report-only by default** — drift prints but exits
@@ -287,9 +297,10 @@ baseline.
 
 Some properties are _legitimately_ rewritten by another system — Application
 Auto Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity.
-An recorded snapshot would re-flag every move. List those paths in a git-committed
-`.cdkrd/config.json` instead (strict JSON — no comments or trailing commas, and
-unknown keys are rejected so a typo can't silently disable your rules):
+A recorded snapshot would re-flag every move. Run **`cdkrd ignore`** to pick the
+drift to suppress (it appends exact rules to the file for you), or hand-edit the
+git-committed `.cdkrd/config.json` (strict JSON — no comments or trailing commas,
+and unknown keys are rejected so a typo can't silently disable your rules):
 
 ```json
 {
@@ -297,12 +308,13 @@ unknown keys are rejected so a typo can't silently disable your rules):
 }
 ```
 
-Rules glob (`*` / `?`) against either `<logicalId>.<path>` or the friendly
-`<constructPath>.<path>` (e.g. `MyStack/ApiRole.Policies`); prefix with
-`<stack glob>:` to scope to matching stacks; a parent rule covers child paths.
-Matching findings move to the informational `ignored` tier — still visible under
-`--verbose`, never exit-affecting, and excluded from `revert` plans and `record`.
-A **deleted resource is never ignorable**.
+`cdkrd ignore` writes an exact `<constructPath>.<path>` rule (or `<logicalId>.<path>`
+on a non-CDK stack). Hand-authored rules can additionally glob (`*` / `?`) against
+either form, and a `<stack glob>:` prefix scopes a rule to matching stacks; a
+parent rule covers child paths. Matching findings move to the informational
+`ignored` tier — still visible under `--verbose`, never exit-affecting, and
+excluded from `revert` plans and `record`. A **deleted resource is never
+ignorable**.
 
 ## Output
 

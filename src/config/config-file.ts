@@ -16,7 +16,8 @@
 // `.driftignore` / Terraform `ignore_changes` equivalent. The file is an extension
 // point: future settings (concurrency, etc.) can be added here.
 
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { matchesGlob } from '../commands/glob-match.js';
 import type { Finding } from '../types.js';
 
@@ -61,6 +62,67 @@ export async function loadConfig(): Promise<CdkrdConfig> {
   if (!Array.isArray(ignore) || !ignore.every((x) => typeof x === 'string'))
     throw new Error(`${CONFIG_PATH}: "ignore" must be an array of strings`);
   return { ignore: ignore as string[] };
+}
+
+/**
+ * The exact ignore rule the `ignore` verb writes for a finding (no glob, no `:`
+ * stack scope — the hand-authored forms in `parseIgnoreRule` stay manual, R-PR-B).
+ * Prefer the human-friendly `<constructPath>.<path>` when present (CDK stacks): it is
+ * what `cdk-local` targets on and it embeds the stack name, so it is naturally
+ * stack-scoped and readable in the git-committed config diff. Falls back to
+ * `<logicalId>.<path>`, which is ALWAYS present (the CloudFormation key) so a rule is
+ * always writable even on a non-CDK / metadata-stripped stack. Pure + exported so the
+ * choice is unit-tested; `applyIgnores` matches on EITHER target, so both forms work.
+ */
+export function ignoreRuleFor(finding: Finding): string {
+  const id = finding.constructPath ?? finding.logicalId;
+  return finding.path ? `${id}.${finding.path}` : id;
+}
+
+/**
+ * Union new rules into an existing rule list: dedupe, drop already-present ones,
+ * keep a stable (sorted) order so the committed `config.json` diff is reviewable and
+ * order-independent. Pure + exported — the IO wrapper `addIgnoreRules` is a thin shell
+ * over this so the merge logic is unit-tested without touching the filesystem.
+ */
+export function mergeIgnoreRules(
+  existing: string[],
+  incoming: string[]
+): { merged: string[]; added: string[]; alreadyPresent: string[] } {
+  const have = new Set(existing);
+  const added: string[] = [];
+  const alreadyPresent: string[] = [];
+  // dedupe the incoming list against itself too (a stack can surface the same rule twice)
+  const seen = new Set<string>();
+  for (const rule of incoming) {
+    if (seen.has(rule)) continue;
+    seen.add(rule);
+    if (have.has(rule)) alreadyPresent.push(rule);
+    else added.push(rule);
+  }
+  const merged = [...new Set([...existing, ...added])].sort((a, b) => a.localeCompare(b));
+  return { merged, added, alreadyPresent };
+}
+
+/**
+ * Append ignore rules to `.cdkrd/config.json` (cwd-relative), creating the file (and
+ * the `.cdkrd/` dir) if absent. Idempotent: rules already present are reported, not
+ * duplicated. Loads through `loadConfig` first so a malformed config fails fast rather
+ * than being silently overwritten. Returns the path + what changed so the caller can
+ * report it. The only mutating entry point for config (parallel to `writeBaseline`).
+ */
+export async function addIgnoreRules(
+  newRules: string[]
+): Promise<{ path: string; added: string[]; alreadyPresent: string[] }> {
+  const config = await loadConfig();
+  const { merged, added, alreadyPresent } = mergeIgnoreRules(config.ignore, newRules);
+  // Only touch disk when something actually changed — an all-already-present run leaves
+  // the file (and its git status) untouched.
+  if (added.length > 0) {
+    await mkdir(dirname(CONFIG_PATH), { recursive: true });
+    await writeFile(CONFIG_PATH, `${JSON.stringify({ ...config, ignore: merged }, null, 2)}\n`);
+  }
+  return { path: CONFIG_PATH, added, alreadyPresent };
 }
 
 interface IgnoreRule {

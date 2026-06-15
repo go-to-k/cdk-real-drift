@@ -119,14 +119,24 @@ is realized in code.
 
 ## 2. The three-verb model
 
-Detect-only is not the identity. After `check`, the human decision is binary, and
-the verbs mirror it (see [redesign-notes.md](redesign-notes.md) Decision 1):
+Detect-only is not the identity. After `check`, you decide what each finding
+means, and the verbs mirror the choice (see [redesign-notes.md](redesign-notes.md)
+Decision 1):
 
-| verb           | meaning                                                            | writes          |
-| -------------- | ------------------------------------------------------------------ | --------------- |
-| `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing         |
-| `cdkrd record` | "current state is RIGHT" — record it in the baseline file          | git file only   |
-| `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
+| verb           | meaning                                                            | writes              |
+| -------------- | ------------------------------------------------------------------ | ------------------- |
+| `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing             |
+| `cdkrd record` | "this undeclared state is the norm" — snapshot it; KEEP watching   | git file (baseline) |
+| `cdkrd ignore` | "stop reporting this property" (declared or undeclared); STOP      | git file (config)   |
+| `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed)     |
+
+`record` (undeclared-only, keeps watching: a later change to the snapshotted
+value re-surfaces as drift) and `ignore` (declared OR undeclared, stops watching:
+re-tags the finding `ignored` forever) are the two non-AWS resolutions; `ignore`
+is the only in-tool way to accept a **declared** drift. The `record` baseline
+lives per stack/account/region; the `ignore` rules live once, app-wide, in
+`.cdkrd/config.json` (`config/config-file.ts` — `addIgnoreRules` writes,
+`applyIgnores` reads).
 
 In a TTY, `check` makes that binary decision **inline** (R28): after reporting drift
 it prompts `Nothing / Record / Revert` and branches into the SAME per-stack code as
@@ -206,10 +216,13 @@ checked.
 
 ## 4. Module map (`src/`)
 
-- **cli.ts** — entry; dispatch check/record/revert (+ help/version). **cli-args.ts** —
-  zero-dep arg parser → `CommonArgs`.
+- **cli.ts** — entry; dispatch check/record/ignore/revert (+ help/version).
+  **cli-args.ts** — zero-dep arg parser → `CommonArgs`.
 - **commands/**
-  - **check.ts / record.ts / revert.ts** — the three verbs.
+  - **check.ts / record.ts / ignore.ts / revert.ts** — the four verbs.
+  - **stack-actions.ts** — the per-stack record/ignore/revert actions shared by the
+    standalone verbs and check's interactive prompt (`recordStack` / `ignoreStack` /
+    `revertStack`), so they can never diverge.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
   - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).
