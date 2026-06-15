@@ -141,3 +141,21 @@ core thesis is unchanged.
   would re-flood with exactly the `false`/empty noise the subtractive model exists
   to remove, drowning the real signal. The recorded-then-changed-to-empty case is
   still caught by baseline removal-detection, which is the case that matters.
+
+- **Reclassifying sibling-managed role policies as DECLARED to match `cdk drift`.**
+  When a role's grants come from a sibling `AWS::IAM::Policy` (the CDK DefaultPolicy
+  from `addToPolicy`, or an explicit `iam.Policy({ roles: [...] })`), the role's own
+  template has no `Policies` key, so cdkrd classifies an out-of-band inline policy on
+  the role as **undeclared**. `cdk drift` instead resolves the sibling into the role's
+  _effective_ `Policies` and reports such an addition as **declared** `/Policies/N`
+  drift. Tempting to match it. Rejected: it is a label-only difference with **no
+  coverage gap**, proven from both sides by live integ —
+  `iam/verify-inline-policy.sh` (a rogue inline policy added next to the sibling IS
+  detected as undeclared, and is revertable per-name) and
+  `iam/verify-sibling-policy-doc.sh` (an out-of-band edit to the sibling's OWN
+  document IS detected as CFn-declared drift on the `AWS::IAM::Policy` resource
+  itself). So nothing is missed either way. Reclassifying would require IAM-specific
+  logic to merge sibling policy documents into the role's effective `Policies` —
+  per-type special-casing against the generic subtractive model — and "undeclared" is
+  the more faithful label anyway: the role template genuinely does not declare those
+  policies, and seeing what the template never declared is cdkrd's differentiator.
