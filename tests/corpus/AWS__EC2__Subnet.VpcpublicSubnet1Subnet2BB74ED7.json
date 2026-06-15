@@ -131,7 +131,7 @@
       "constructPath": "CdkRealDriftIntegSg/Vpc/publicSubnet1/Subnet"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "VpcpublicSubnet1Subnet2BB74ED7",
       "resourceType": "AWS::EC2::Subnet",
       "path": "PrivateDnsNameOptionsOnLaunch",

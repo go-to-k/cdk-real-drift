@@ -394,6 +394,26 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ).toEqual(['GuardrailPolicies']);
   });
 
+  it('R104: an SQS default value folds; a changed one surfaces', () => {
+    const t = (live: Record<string, unknown>) =>
+      tiers(classifyResource(bare('AWS::SQS::Queue'), live, emptySchema));
+    expect(t({ VisibilityTimeout: 30 }).atDefault).toEqual(['VisibilityTimeout']);
+    expect(t({ VisibilityTimeout: 60 }).undeclared).toEqual(['VisibilityTimeout']);
+  });
+
+  it('R104: StateMachineType STANDARD folds, EXPRESS stays undeclared (equality-gated curation)', () => {
+    const t = (v: string) =>
+      tiers(
+        classifyResource(
+          bare('AWS::StepFunctions::StateMachine'),
+          { StateMachineType: v },
+          emptySchema
+        )
+      );
+    expect(t('STANDARD').atDefault).toEqual(['StateMachineType']);
+    expect(t('EXPRESS').undeclared).toEqual(['StateMachineType']);
+  });
+
   // R74: the declared loop's trivially-empty rule — CDK Trail synthesizes
   // `EventSelectors: []`, CloudTrail materializes the default management
   // selector; that pair must not be drift, but everything around it must stay.

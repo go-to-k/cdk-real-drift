@@ -35,7 +35,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
@@ -53,7 +53,7 @@
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "MessageRetentionPeriod",
@@ -71,7 +71,7 @@
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "ReceiveMessageWaitTimeSeconds",
@@ -80,7 +80,7 @@
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "SqsManagedSseEnabled",
@@ -89,7 +89,7 @@
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",

@@ -190,7 +190,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "EnablePrefixForIpv6SourceNat",
@@ -199,7 +199,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "IpAddressType",

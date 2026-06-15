@@ -75,7 +75,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FlowA74D6E88",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "EncryptionConfiguration",
@@ -86,7 +86,7 @@
       "constructPath": "CdkrdIntegHarvest/Flow"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FlowA74D6E88",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "LoggingConfiguration",
@@ -107,7 +107,7 @@
       "constructPath": "CdkrdIntegHarvest/Flow"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FlowA74D6E88",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "StateMachineType",

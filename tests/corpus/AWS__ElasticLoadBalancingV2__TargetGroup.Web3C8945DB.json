@@ -162,7 +162,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "HealthCheckEnabled",
@@ -171,7 +171,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "HealthCheckPort",
@@ -180,7 +180,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "HealthCheckProtocol",
@@ -189,7 +189,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "HealthCheckTimeoutSeconds",
@@ -198,7 +198,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "IpAddressType",
@@ -207,7 +207,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "Matcher",
@@ -227,7 +227,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "ProtocolVersion",
@@ -236,7 +236,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "UnhealthyThresholdCount",

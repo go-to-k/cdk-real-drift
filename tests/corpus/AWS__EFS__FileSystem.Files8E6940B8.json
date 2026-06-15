@@ -72,7 +72,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "BackupPolicy",
@@ -83,7 +83,7 @@
       "constructPath": "CdkrdIntegHarvest4/Files"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "FileSystemProtection",
@@ -103,7 +103,7 @@
       "constructPath": "CdkrdIntegHarvest4/Files"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "ThroughputMode",

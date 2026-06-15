@@ -78,6 +78,62 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       },
     ],
   },
+  // R104 (dogfood noise audit across the harvest fixtures): top-level service
+  // defaults AWS materializes that the CFn schema does NOT annotate as `default`
+  // (so the schema-driven R103 fold can't reach them). All OBSERVED on real
+  // default-config resources; equality-gated, so a value set away from the default
+  // still surfaces. Resource-/account-/region-specific values (names, ARNs, ids,
+  // VpcId, KmsKeyId, NetworkBorderGroup, …) are deliberately NOT listed — those are
+  // genuine undeclared inventory, not defaults.
+  'AWS::SQS::Queue': {
+    DelaySeconds: 0,
+    VisibilityTimeout: 30,
+    MessageRetentionPeriod: 345600,
+    ReceiveMessageWaitTimeSeconds: 0,
+    SqsManagedSseEnabled: true,
+    FifoThroughputLimit: 'perQueue', // FIFO queues only
+    DeduplicationScope: 'queue', // FIFO queues only
+  },
+  'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    HealthCheckEnabled: true,
+    HealthCheckPort: 'traffic-port',
+    HealthCheckProtocol: 'HTTP',
+    HealthCheckTimeoutSeconds: 5,
+    UnhealthyThresholdCount: 2,
+    ProtocolVersion: 'HTTP1',
+    IpAddressType: 'ipv4',
+    Matcher: { HttpCode: '200' },
+  },
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': {
+    IpAddressType: 'ipv4',
+    EnablePrefixForIpv6SourceNat: 'off',
+  },
+  'AWS::EC2::NatGateway': {
+    ConnectivityType: 'public',
+    AvailabilityMode: 'zonal',
+  },
+  'AWS::EFS::FileSystem': {
+    ThroughputMode: 'bursting',
+    BackupPolicy: { Status: 'DISABLED' },
+    FileSystemProtection: { ReplicationOverwriteProtection: 'ENABLED' },
+  },
+  'AWS::StepFunctions::StateMachine': {
+    StateMachineType: 'STANDARD',
+    LoggingConfiguration: { IncludeExecutionData: false, Level: 'OFF' },
+    EncryptionConfiguration: { Type: 'AWS_OWNED_KEY' },
+  },
+  'AWS::ApiGateway::RestApi': {
+    ApiKeySourceType: 'HEADER',
+    SecurityPolicy: 'TLS_1_0',
+    EndpointConfiguration: { IpAddressType: 'ipv4', Types: ['EDGE'] },
+  },
+  'AWS::EC2::Subnet': {
+    PrivateDnsNameOptionsOnLaunch: {
+      EnableResourceNameDnsARecord: false,
+      HostnameType: 'ip-name',
+      EnableResourceNameDnsAAAARecord: false,
+    },
+  },
 };
 
 // AWS/CDK auto-GENERATED values keyed by the resource's CFn-assigned physical id.
