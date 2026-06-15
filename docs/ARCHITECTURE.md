@@ -177,9 +177,11 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 5. classify (tier)       deleted | declared | undeclared | atDefault | generated | readGap | unresolved | skipped
                          (atDefault = undeclared but EQUAL to a known AWS default —
                          folded, never drift, never recorded; R86)
-                         (generated = undeclared but EQUAL to the AWS/CDK auto-generated
-                         value for THIS resource — its minted physical name, or a
-                         default LoggingConfig log group derived from the physical id;
+                         (generated = undeclared (absent from the template) but EQUAL to the
+                         identifier AWS auto-assigns for THIS resource at deploy — its minted
+                         physical name, or a default LoggingConfig log group derived from the
+                         physical id. NOT "CDK generated it into the template" — that would be
+                         declared; this tier is precisely the values your template never set;
                          folded like atDefault, never drift, never recorded; R104)
                          (undeclared also carries a nested:true flag for a live
                          sub-key inside a declared object the template never set; R96)
@@ -291,8 +293,10 @@ all live changes
     inventory but lists only the values that actually diverge. Equality-gated: change
     one away from its default and it re-tags as real undeclared drift. (`--show-all` /
     `--verbose` expand the fold to the full list; accept never records an atDefault.)
-  − AWS/CDK auto-generated values (a topic's minted TopicName, a Lambda's default
-    LoggingConfig log group) → tagged "generated" (R104): folded into the info: footer
+  − auto-generated identifiers AWS assigns at deploy and absent from the template
+    (a topic's minted TopicName, a Lambda's default LoggingConfig log group; if a name
+    were in the template it would be declared, never reaching here) → tagged "generated"
+    (R104): folded into the info: footer
     like atDefault, equality-gated against the physical-id-substituted template; never
     drift, never recorded by accept. (`GENERATED_DEFAULTS` / `resolveGeneratedDefault`.)
   − pure structural noise (aws:* tags, physical-id echo, trivially-empty {}/[]) → dropped
@@ -676,8 +680,13 @@ user did not pick. They render as their own `[UNRECORDED: N]` section (note:
 any real `[UNDECLARED DRIFT]` section, are excluded from the verdict and the
 `--fail` exit, and the `result:` line carries the count + the way out
 (`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd accept)`
-when some fold; R112). Declared and
-deleted drift still report and fail normally. The interactive after-report
+when some fold; R112). When BOTH a drift section and a standout `[UNRECORDED]`
+section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
+visible blocks, so the line switches to a combined findings count counting only
+what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 undeclared to
+review (23 folded; run cdkrd accept)` — keeping the red drift verdict intact
+(R114); single-category runs keep their plain `CLEAN` / `N drift(s)` verdict.
+Declared and deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`unrecorded values found — what do
 you want to do?`) so "show them first" keeps its promise of a selective accept.
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
