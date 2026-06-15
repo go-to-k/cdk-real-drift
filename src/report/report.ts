@@ -36,9 +36,9 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   undeclared: 'not declared in your template — the differentiator',
   atDefault: 'undeclared, but the live value matches a known AWS default — not drift',
-  generated: 'undeclared, but an AWS/CDK auto-generated name or identifier — not drift',
+  generated: 'auto-generated identifier not in your template (AWS-assigned at deploy) — not drift',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
-  readGap: 'declared but not returned by live read — not drift',
+  readGap: "declared, but AWS doesn't return it on read so cdkrd can't verify it — not drift",
   unresolved: 'declared paths needing GetAtt — skipped, not drift',
   skipped: 'CC API unsupported / no physical id',
 };
@@ -194,26 +194,50 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   const driftCounts = DRIFT_TIERS.filter((t) => byTier(t).length > 0)
     .map((t) => `${t}=${byTier(t).length}`)
     .join(' ');
-  // the verdict is the one line that must stand out: green CLEAN / red drift count
-  const verdict =
-    drifted === 0 ? style.clean('CLEAN') : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
-  // unrecorded values are stated NEXT TO the verdict (not as drift): the count
-  // and the way out, in one place (R60). The total counts ALL unrecorded values
-  // but the [UNRECORDED] section lists only the standout (non-folded) ones, so name
-  // the split (R112) — otherwise "25 await a baseline" reads as a mismatch against a
-  // visible "[UNRECORDED: 2]".
   const unrecordedFoldedCount = unrecordedItems.length - unrecordedShown.length;
-  const unrecordedNote =
-    unrecordedItems.length > 0
-      ? style.infoTier(
-          unrecordedFoldedCount > 0
-            ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd accept)`
-            : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
-        )
-      : '';
+  // R114: when DRIFT and standout UNRECORDED values are BOTH visible, a lone
+  // "1 drift(s)" verdict reads as a mismatch against the 2+ printed blocks (the user
+  // sees [DECLARED DRIFT: 1] + [UNRECORDED: 2] but a single "1 drift"). Combine them
+  // under one findings count — `N findings — X drift (...) + Y undeclared to review` —
+  // keeping the red drift verdict and its breakdown so exit-1 stays legible, and
+  // counting only what is SHOWN (folded values are not findings, just a parenthetical).
+  // The combined framing fires ONLY in this mixed case; single-category runs keep their
+  // natural verdict (CLEAN / N drift / inventory note) — the mismatch can't arise there.
+  const mixed = drifted > 0 && unrecordedShown.length > 0;
+  let resultBody: string;
+  if (mixed) {
+    const foldedHint =
+      unrecordedFoldedCount > 0
+        ? `${unrecordedFoldedCount} folded; run cdkrd accept`
+        : 'run cdkrd accept';
+    resultBody =
+      `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
+      ` + ${unrecordedShown.length} undeclared to review` +
+      style.infoTier(` (${foldedHint})`);
+  } else {
+    // the verdict is the one line that must stand out: green CLEAN / red drift count
+    const verdict =
+      drifted === 0
+        ? style.clean('CLEAN')
+        : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
+    // unrecorded values are stated NEXT TO the verdict (not as drift): the count
+    // and the way out, in one place (R60). The total counts ALL unrecorded values
+    // but the [UNRECORDED] section lists only the standout (non-folded) ones, so name
+    // the split (R112) — otherwise "25 await a baseline" reads as a mismatch against a
+    // visible "[UNRECORDED: 2]".
+    const unrecordedNote =
+      unrecordedItems.length > 0
+        ? style.infoTier(
+            unrecordedFoldedCount > 0
+              ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd accept)`
+              : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
+          )
+        : '';
+    resultBody = `${verdict}${unrecordedNote}`;
+  }
   // A blank line before the verdict ONLY when drift sections were printed — it must
   // not read as a member of the last section (R48); a CLEAN stack stays 3 lines.
-  log((driftSections > 0 ? '\n' : '') + `result: ${verdict}${unrecordedNote}`);
+  log((driftSections > 0 ? '\n' : '') + `result: ${resultBody}`);
   // INFORMATIONAL tiers: footer below result. Each tier is either EXPANDED to a full
   // section or FOLDED into the `info:` summary. --verbose expands all of them;
   // --show-all expands ONLY atDefault (inventory mode lists every undeclared value but
@@ -228,7 +252,19 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     if (t === 'atDefault')
       return `atDefault=${items.length} (undeclared values matching a known AWS default — not drift)`;
     if (t === 'generated')
-      return `generated=${items.length} (undeclared AWS/CDK auto-generated names or identifiers — not drift)`;
+      return `generated=${items.length} (auto-generated identifiers not in your template, AWS-assigned at deploy — not drift)`;
+    // readGap is jargon ("not returned by live read"): spell out that these are declared
+    // values cdkrd could not VERIFY because AWS does not return them on read, and split
+    // the cause (write-only props are never readable by design vs simply not returned).
+    if (t === 'readGap') {
+      const writeOnly = items.filter((f) => (f.note ?? '').includes('write-only')).length;
+      const notReturned = items.length - writeOnly;
+      const parts = [
+        ...(notReturned > 0 ? [`${notReturned} not returned by AWS`] : []),
+        ...(writeOnly > 0 ? [`${writeOnly} write-only`] : []),
+      ];
+      return `readGap=${items.length} (declared but unverifiable — AWS doesn't return them on read, not drift: ${parts.join(', ')})`;
+    }
     return `${t}=${items.length} (${groupReasons(items)})`;
   };
   const summaries = INFO_TIERS.filter((t) => !isExpanded(t))

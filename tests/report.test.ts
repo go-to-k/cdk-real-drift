@@ -43,7 +43,9 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
   it('declared drift still fails, with unrecorded values noted beside the verdict', () => {
     const { code, text } = run([F('declared'), U('Q')]);
     expect(code).toBe(1);
-    expect(text).toContain('result: 1 drift(s) (declared=1) — 1 unrecorded value(s)');
+    // R114: drift + standout unrecorded both visible -> combined findings framing so
+    // the verdict matches the printed blocks (was a lone "1 drift(s)" beside 2 sections).
+    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 undeclared to review');
     expect(text).not.toContain('undeclared=1'); // unrecorded never appears as a drift count
   });
 
@@ -52,7 +54,17 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(code).toBe(1);
     expect(text).toContain('[UNDECLARED DRIFT: 1]');
     expect(text).toContain('[UNRECORDED: 1]');
-    expect(text).toContain('result: 1 drift(s) (undeclared=1) — 1 unrecorded value(s)');
+    expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 undeclared to review');
+  });
+
+  it('mixed findings line counts only SHOWN unrecorded; folded ones stay a parenthetical (R114)', () => {
+    // 1 declared drift + 1 standout unrecorded (shown) + 2 nested unrecorded (folded)
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
+    expect(code).toBe(1);
+    expect(text).toContain(
+      'result: 2 findings — 1 drift (declared=1) + 1 undeclared to review (2 folded; run cdkrd accept)'
+    );
   });
 
   it('deleted still fails alongside unrecorded values (a gone resource is drift, baseline or not)', () => {
@@ -183,7 +195,9 @@ describe('report', () => {
       const lines = text.split('\n');
       const infoIdx = lines.indexOf('info:');
       expect(infoIdx).toBeGreaterThan(-1);
-      expect(lines[infoIdx + 1]).toBe('  - readGap=1 (write-only 1)');
+      expect(lines[infoIdx + 1]).toBe(
+        "  - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)"
+      );
       expect(lines[infoIdx + 2]).toMatch(
         /^ {2}- skipped=2 \(.*custom resource 1.*override target unresolved 1.*\)$/
       );
@@ -313,7 +327,7 @@ describe('report', () => {
       expect(code).toBe(0);
       expect(text).toMatch(/^result: CLEAN$/m);
       expect(text).toContain(
-        'info: generated=2 (undeclared AWS/CDK auto-generated names or identifiers — not drift)'
+        'info: generated=2 (auto-generated identifiers not in your template, AWS-assigned at deploy — not drift)'
       );
       expect(text).not.toContain('[AWS GENERATED');
       expect(text).not.toContain('TopicName =');

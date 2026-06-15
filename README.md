@@ -352,7 +352,7 @@ text.
 
 result: 1 drift(s) (declared=1)
 info:
-  - readGap=1 (write-only 1)
+  - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)
   - skipped=2 (custom resource 2)
   run with --verbose for the list
 ```
