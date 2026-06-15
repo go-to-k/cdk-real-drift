@@ -90,6 +90,120 @@ describe('policy canonicalization', () => {
     const mini = '{"rules":[{"b":2,"a":1}]}';
     expect(normalizePoliciesDeep(pretty)).toBe(normalizePoliciesDeep(mini));
   });
+
+  // Condition canonicalization: an IAM condition key's value is an unordered SET
+  // of strings written as a scalar or an array; IAM treats both forms identically
+  // and AWS may store/return either, in any order. Without canonicalization a
+  // reordered multi-value condition, or a scalar-declared single value AWS stores
+  // as a one-element array, fires a false declared drift.
+  it('treats a reordered multi-value Condition as equal', () => {
+    const a = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceArn': ['arnA', 'arnB'] } },
+        },
+      ],
+    });
+    const b = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceArn': ['arnB', 'arnA'] } },
+        },
+      ],
+    });
+    expect(deepEqual(a, b)).toBe(true);
+  });
+
+  it('treats a scalar Condition value and its one-element-array form as equal', () => {
+    const a = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '123456789012' } },
+        },
+      ],
+    });
+    const b = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': ['123456789012'] } },
+        },
+      ],
+    });
+    expect(deepEqual(a, b)).toBe(true);
+  });
+
+  it('is order-independent across Condition operator keys', () => {
+    const a = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:x': '1' },
+            Bool: { 'aws:SecureTransport': 'true' },
+          },
+        },
+      ],
+    });
+    const b = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: {
+            Bool: { 'aws:SecureTransport': 'true' },
+            StringEquals: { 'aws:x': '1' },
+          },
+        },
+      ],
+    });
+    expect(deepEqual(a, b)).toBe(true);
+  });
+
+  it('still reports a GENUINE Condition value change (no over-suppression)', () => {
+    const a = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceArn': ['arnA', 'arnB'] } },
+        },
+      ],
+    });
+    const b = canonicalizePolicy({
+      Statement: [
+        {
+          Effect: 'Allow',
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceArn': ['arnA', 'arnC'] } },
+        },
+      ],
+    });
+    expect(deepEqual(a, b)).toBe(false);
+  });
+
+  it('leaves a non-object Condition value untouched (defensive)', () => {
+    const out = canonicalizePolicy({
+      Statement: [{ Effect: 'Allow', Action: 's3:*', Resource: '*', Condition: 'weird' }],
+    });
+    expect((out.Statement as any[])[0].Condition).toBe('weird');
+  });
 });
 
 describe('CloudFront OAI principal reconciliation (rewriteOaiPrincipalsDeep)', () => {

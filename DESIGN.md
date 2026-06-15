@@ -80,7 +80,7 @@ COPY (low coupling, verified):
 NEW (cdkd does NOT have these):
 
 - **schema-strip** — `describe-type` readOnly/writeOnly → strip set (cdkd hand-codes per-provider instead; this is our differentiator: less per-type code)
-- **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
+- **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN + Condition value-set canonicalize (scalar/array unify + sort) (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON (the `record` verb; KEEPS watching)
 - **config ignore rules** — git-committed `.cdkrd/config.json`; the `ignore` verb
