@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CustomerGateway",
+    "resourceType": "AWS::EC2::CustomerGateway",
+    "physicalId": "cgw-08bf6786817853b83",
+    "constructPath": "CdkdriftIntegHarvest12/CustomerGateway",
+    "declared": {
+      "BgpAsn": 65000,
+      "IpAddress": "203.0.113.1",
+      "Type": "ipsec.1"
+    }
+  },
+  "liveRaw": {
+    "Type": "ipsec.1",
+    "CustomerGatewayId": "cgw-08bf6786817853b83",
+    "IpAddress": "203.0.113.1",
+    "BgpAsn": 65000,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest12/213374f0-68d1-11f1-9c57-0ed4a5a45445",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest12",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CustomerGateway",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CustomerGatewayId"],
+    "writeOnly": [],
+    "createOnly": ["BgpAsn", "BgpAsnExtended", "CertificateArn", "DeviceName", "IpAddress", "Type"],
+    "readOnlyPaths": ["CustomerGatewayId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "BgpAsn",
+      "BgpAsnExtended",
+      "CertificateArn",
+      "DeviceName",
+      "IpAddress",
+      "Type"
+    ],
+    "defaults": {
+      "BgpAsn": 65000
+    },
+    "defaultPaths": {
+      "BgpAsn": 65000
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

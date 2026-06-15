@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RedshiftParameterGroup",
+    "resourceType": "AWS::Redshift::ClusterParameterGroup",
+    "physicalId": "cdkdriftintegharvest12-redshiftparametergroup-d1dimezborsk",
+    "constructPath": "CdkdriftIntegHarvest12/RedshiftParameterGroup",
+    "declared": {
+      "Description": "cdkrd harvest redshift parameter group",
+      "ParameterGroupFamily": "redshift-1.0",
+      "Parameters": [
+        {
+          "ParameterName": "enable_user_activity_logging",
+          "ParameterValue": "true"
+        },
+        {
+          "ParameterName": "require_ssl",
+          "ParameterValue": "true"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd harvest redshift parameter group",
+    "Parameters": [
+      {
+        "ParameterValue": "true",
+        "ParameterName": "enable_user_activity_logging"
+      },
+      {
+        "ParameterValue": "true",
+        "ParameterName": "require_ssl"
+      }
+    ],
+    "ParameterGroupName": "cdkdriftintegharvest12-redshiftparametergroup-d1dimezborsk",
+    "ParameterGroupFamily": "redshift-1.0",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

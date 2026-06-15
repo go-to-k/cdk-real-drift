@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DhcpOptions",
+    "resourceType": "AWS::EC2::DHCPOptions",
+    "physicalId": "dopt-085ea6f2134772132",
+    "constructPath": "CdkdriftIntegHarvest12/DhcpOptions",
+    "declared": {
+      "DomainName": "cdkrd.internal",
+      "DomainNameServers": ["10.0.0.2"],
+      "NtpServers": ["169.254.169.123"]
+    }
+  },
+  "liveRaw": {
+    "NtpServers": ["169.254.169.123"],
+    "DhcpOptionsId": "dopt-085ea6f2134772132",
+    "DomainName": "cdkrd.internal",
+    "DomainNameServers": ["10.0.0.2"],
+    "Tags": [
+      {
+        "Value": "DhcpOptions",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest12",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest12/213374f0-68d1-11f1-9c57-0ed4a5a45445",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["DhcpOptionsId"],
+    "writeOnly": [],
+    "createOnly": [
+      "DomainName",
+      "DomainNameServers",
+      "Ipv6AddressPreferredLeaseTime",
+      "NetbiosNameServers",
+      "NetbiosNodeType",
+      "NtpServers"
+    ],
+    "readOnlyPaths": ["DhcpOptionsId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DomainName",
+      "DomainNameServers",
+      "Ipv6AddressPreferredLeaseTime",
+      "NetbiosNameServers",
+      "NetbiosNodeType",
+      "NtpServers"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
