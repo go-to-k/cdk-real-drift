@@ -418,13 +418,18 @@ export function applyBaseline(
       .filter((f) => f.tier === 'undeclared' || f.tier === 'atDefault')
       .map((f) => `${f.logicalId}.${f.path}`)
   );
+  // R134: baseline entries promoted into the template since record are a "clean up your
+  // baseline" nudge, NOT drift — but emitting one note PER entry floods the output (a
+  // config-dense stack can have dozens, e.g. every Lambda's LoggingConfig.* once CDK
+  // starts declaring them). Collect them and emit ONE folded summary line (the `info:`
+  // footer pattern), so a `revert` touching a single op no longer prints 20+ unrelated
+  // lines. The fix is the same for every caller: re-run `record` to re-snapshot.
+  const promotedStale: string[] = [];
   for (const a of recorded) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
-      opts.warn?.(
-        `note: ${a.logicalId}.${a.path}: baseline entry is now declared in the template — re-run \`cdkrd record\` to clean it up.`
-      );
+      promotedStale.push(`${a.logicalId}.${a.path}`);
       continue;
     }
     kept.push({
@@ -437,7 +442,20 @@ export function applyBaseline(
       note: 'baseline value removed since record',
     });
   }
+  if (promotedStale.length > 0) opts.warn?.(formatPromotedStaleNote(promotedStale));
   return kept;
+}
+
+/**
+ * The folded one-line note for baseline entries now declared in the template (R134). One
+ * line with a count instead of one line per entry; `record` re-snapshots to clear them.
+ * Pure + exported for unit tests.
+ */
+export function formatPromotedStaleNote(paths: string[]): string {
+  const n = paths.length;
+  const subject = n === 1 ? `baseline entry (${paths[0]}) is` : `${n} baseline entries are`;
+  const them = n === 1 ? 'it' : 'them';
+  return `note: ${subject} now declared in the template — re-run \`cdkrd record\` to clean ${them} up.`;
 }
 
 /** logicalId -> set of declared top-level keys, for applyBaseline's promotion check. */
