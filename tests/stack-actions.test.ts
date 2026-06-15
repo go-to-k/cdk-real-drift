@@ -575,12 +575,14 @@ describe('revertSelectOptions / filterRevertPlan (R57 — pick what to revert)',
     notRevertable: [],
   });
 
-  it('RESTORE ops are pre-selected; REMOVE ops start unselected with a (REMOVE) label', () => {
+  it('R137: EVERY op starts UNSELECTED (revert writes to AWS — nothing pre-armed)', () => {
     const options = revertSelectOptions(plan());
     expect(options).toHaveLength(3);
-    expect(options[0]).toMatchObject({ selected: true });
+    // RESTORE ops (declared/baseline) are no longer pre-selected …
+    expect(options[0]).toMatchObject({ selected: false });
     expect(options[0]!.label).toBe('Stack/Rule: State -> deployed-template value');
-    expect(options[1]).toMatchObject({ selected: true });
+    expect(options[1]).toMatchObject({ selected: false });
+    // … and REMOVE ops stay unselected, still carrying the (REMOVE) label.
     const remove = options[2]!;
     expect(remove.selected).toBe(false);
     expect(remove.label).toContain('(REMOVE)');
