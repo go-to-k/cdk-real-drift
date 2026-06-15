@@ -289,11 +289,9 @@ export async function runCheck(args: string[]): Promise<number> {
             initialValue: 'nothing',
           });
           if (!isCancel(choice) && choice === 'accept') {
-            // accept records UNDECLARED only; warn if declared/deleted drift remains
-            if (reconciled.some((f) => f.tier === 'declared' || f.tier === 'deleted'))
-              console.error(
-                `note: ${stackName}: accept records the undeclared state only — declared/deleted drift remains (fix the code or choose Revert).`
-              );
+            // accept records UNDECLARED only; acceptStack emits the
+            // "declared/deleted drift NOT approved" scope note after the write (R117),
+            // so both `cdkrd accept` and this interactive path warn consistently.
             const result = await acceptStack({
               stackName,
               region,

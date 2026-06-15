@@ -11,6 +11,7 @@ import { baselinePath } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
+  acceptScopeNote,
   acceptSelectMessage,
   acceptStack,
   availableActions,
@@ -598,6 +599,21 @@ describe('acceptSelectMessage (R49, R116 — bulkMultiselect renders the key hin
     // the hint line moved into bulkMultiselect's render — the header is now single-line
     expect(msg).not.toContain('\n');
     expect(msg).not.toContain('toggle all');
+  });
+});
+
+describe('acceptScopeNote (R117 — accept records undeclared only; say so wherever it runs)', () => {
+  it('returns undefined when there is no declared/deleted drift (nothing left unapproved)', () => {
+    expect(acceptScopeNote('ApiStack', [undeclared(), undeclared()])).toBeUndefined();
+    expect(acceptScopeNote('ApiStack', [])).toBeUndefined();
+  });
+
+  it('names the declared/deleted count and that it was NOT approved + how to resolve', () => {
+    const note = acceptScopeNote('ApiStack', [declared(), deleted(), undeclared()]);
+    expect(note).toContain('ApiStack');
+    expect(note).toContain('2 declared/deleted drift NOT approved');
+    expect(note).toContain('undeclared state into the baseline only');
+    expect(note).toMatch(/cdkrd revert|cdk deploy/);
   });
 });
 
