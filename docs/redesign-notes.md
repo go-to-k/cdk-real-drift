@@ -40,7 +40,11 @@ Safety:
 
 `check` with no baseline on a TTY interactively offers: "No baseline found —
 accept the current state now? [Y/n]" (CI / non-TTY keeps the note-only behavior).
-Interactive prompts use `@clack/prompts` (same stack as cdk-local).
+Interactive prompts use `@clack/prompts` (same stack as cdk-local). The accept /
+revert multiselect uses `@clack/core`'s low-level `MultiSelectPrompt` directly (via
+`src/commands/bulk-multiselect.ts`) so it can bind the bulk keys the high-level
+wrapper hides — space toggles, → selects all, ← clears all — mirroring cdk-local's
+target picker (R116).
 
 ## Decision 4 — flag cleanup
 

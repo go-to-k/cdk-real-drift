@@ -213,6 +213,7 @@ checked.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
   - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).
+  - **bulk-multiselect.ts** — the accept/revert multiselect, built on `@clack/core`'s `MultiSelectPrompt` so it can bind bulk keys the high-level wrapper hides (space = toggle, → = all, ← = none, enter = confirm; mirrors cdk-local's target picker, R116). `bulkSelectValues` / `bulkSelectHint` are pure + unit-tested.
 - **desired/** — the "intent" side
   - **template-adapter.ts** — `loadDesired()`: deployed (or `--pre-deploy` synth) template + phys-ids + params → resolved `DesiredResource[]`. Builds `ResolverContext`.
   - **yaml-cfn.ts** — CFn-flavored YAML/JSON template parser.

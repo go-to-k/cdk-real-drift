@@ -590,15 +590,14 @@ describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () 
   });
 });
 
-describe('acceptSelectMessage (R49 — multiselect key hints)', () => {
-  it('spells out the clack keys: space / a / i / enter (clack shows no hints by default)', () => {
+describe('acceptSelectMessage (R49, R116 — bulkMultiselect renders the key hints now)', () => {
+  it('is the one-line prompt header only (the space/→/←/enter hints live in bulkMultiselect)', () => {
     const msg = acceptSelectMessage('ApiStack');
     expect(msg).toContain('ApiStack: select undeclared value(s) to accept');
     expect(msg).toContain('unselected stay reported');
-    expect(msg).toContain('space = toggle');
-    expect(msg).toContain('a = toggle all');
-    expect(msg).toContain('i = invert');
-    expect(msg).toContain('enter = confirm');
+    // the hint line moved into bulkMultiselect's render — the header is now single-line
+    expect(msg).not.toContain('\n');
+    expect(msg).not.toContain('toggle all');
   });
 });
 

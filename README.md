@@ -221,7 +221,8 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   (deleting a live value not in your template — a standout `[UNRECORDED]` value, or
   one not in the baseline) start **unselected** and are labeled `(REMOVE)` —
   removal is an explicit per-item choice (R113: no `--remove-unaccepted` needed in a
-  prompt, since the unselected row IS the consent). A final
+  prompt, since the unselected row IS the consent). In the multiselect, **space**
+  toggles the row, **→** selects all, **←** clears all, **enter** confirms. A final
   confirm states exactly how many selected op(s) will be written. `--yes`
   skips both and applies the full plan.
 - **`accept`** shows a multiselect of only the **delta** from the existing
