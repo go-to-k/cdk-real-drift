@@ -58,17 +58,21 @@ UNRECORDED values (they are not drift — there is nothing to compare them to
 yet):
 
 ```console
-ApiStack: no baseline yet — found 42 live value(s) not declared in your
-template (40 sit at a known AWS default (folded below); 2 look like real
-out-of-band edits). Declared-side drift is reported either way. What do you
-want to do?
+ApiStack: no baseline yet — this first run SETS UP your baseline (without one,
+check can't tell deploy-state from a later drift). Found 42 live value(s) not
+declared in your template: 2 stand out as possible out-of-band edits, the other
+40 fold as AWS defaults / auto-generated / nested sub-keys. Declared-side drift
+is reported either way. Accept records the current state (2 value(s)) as your
+baseline — from the next run, check reports only what changes. What do you want
+to do?
   ❯ Accept ALL 2 into the baseline now, without reviewing them
     Show them first — you can still accept (selectively) right after the report
 ```
 
-The count is the **complete** undeclared inventory, but the report lists only the
-handful that actually diverge — defaults you never touched fold into a single
-`info: atDefault=40 (…)` line (`--show-all` expands it). Accept writes
+The count is the **complete** undeclared inventory, but only the handful that
+**stand out** are listed — AWS defaults, auto-generated names/identifiers, and
+nested sub-keys you never touched fold into the `info:` footer (`atDefault=` /
+`generated=` / `nested=`, `--show-all` expands them). Accept writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
 AWS** — commit it; from here on `check` reports CLEAN until reality changes.
 (Declared drift is detected from the very first run, baseline or not.)
