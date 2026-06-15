@@ -29,7 +29,7 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-UNDECLARED DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
+[CFn-Undeclared DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)
@@ -299,7 +299,7 @@ incident shows up before `cdk deploy` silently reverts it:
 $ npx cdkrd check --pre-deploy
 (--pre-deploy) comparing live state against the LOCAL synth template
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-DECLARED DRIFT: 1]
+[CFn-Declared DRIFT: 1]
   ApiStack/Api/Handler.MemorySize (AWS::Lambda::Function)
       desired=1024
       actual =2048
@@ -390,7 +390,7 @@ text.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-DECLARED DRIFT: 1]
+[CFn-Declared DRIFT: 1]
   ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"

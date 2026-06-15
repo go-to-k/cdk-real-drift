@@ -24,7 +24,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(code).toBe(0);
     expect(text).toContain('[UNRECORDED: 2]');
     expect(text).toContain('not drift —'); // R112: the section says so up front
-    expect(text).not.toContain('UNDECLARED DRIFT');
+    expect(text).not.toContain('Undeclared DRIFT');
     expect(text).toContain(
       'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd record)'
     );
@@ -52,7 +52,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
   it('undeclared DRIFT and UNRECORDED coexist as separate sections (partial baseline)', () => {
     const { code, text } = run([F('undeclared'), U('Q')]);
     expect(code).toBe(1);
-    expect(text).toContain('[CFn-UNDECLARED DRIFT: 1]');
+    expect(text).toContain('[CFn-Undeclared DRIFT: 1]');
     expect(text).toContain('[UNRECORDED: 1]');
     expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 undeclared to review');
   });
@@ -83,7 +83,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
   it('untagged undeclared (recorded value changed / appeared since record) is drift as before', () => {
     const { code, text } = run([F('undeclared')]);
     expect(code).toBe(1);
-    expect(text).toContain('[CFn-UNDECLARED DRIFT: 1]');
+    expect(text).toContain('[CFn-Undeclared DRIFT: 1]');
   });
 });
 
@@ -116,19 +116,19 @@ describe('report', () => {
 
   it('text mode groups by tier with counts', () => {
     const { text } = run([F('undeclared')]);
-    expect(text).toContain('UNDECLARED DRIFT');
+    expect(text).toContain('Undeclared DRIFT');
     expect(text).toContain('result:');
   });
 
   it('section header carries the count INSIDE the brackets, note outside (R48)', () => {
     const { text } = run([F('undeclared'), F('declared', 'Q')]);
     expect(text).toContain(
-      '[CFn-UNDECLARED DRIFT: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)'
+      '[CFn-Undeclared DRIFT: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)'
     );
     // declared is now anchored to the deployed CloudFormation template (CFn-) so it
     // can't be misread as "in my CDK code" or "in the .cdkrd baseline"
     expect(text).toContain(
-      '[CFn-DECLARED DRIFT: 1] (declared in your CloudFormation template — the live value differs)'
+      '[CFn-Declared DRIFT: 1] (declared in your CloudFormation template — the live value differs)'
     );
     // the old bare-digit-right-of-bracket form is gone
     expect(text).not.toMatch(/\] \d/);
@@ -153,6 +153,36 @@ describe('report', () => {
     expect(text).toContain('+ [aaa]');
     // the whole-array dump (the other element) is NOT shown — only the delta
     expect(text).not.toContain('"PolicyName":"keep"');
+  });
+
+  it('R130 puts a changed element id, baseline and actual on their own aligned lines', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Role',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{ PolicyName: 'p', v: 2 }],
+      arrayDelta: {
+        identityField: 'PolicyName',
+        added: [{ id: 'add', value: { PolicyName: 'add' } }],
+        changed: [
+          { id: 'p', recorded: { PolicyName: 'p', v: 1 }, actual: { PolicyName: 'p', v: 2 } },
+        ],
+        removed: [{ id: 'gone', value: { PolicyName: 'gone' } }],
+      },
+    };
+    const lines = run([f]).text.split('\n');
+    // the marker line carries only the id; value(s) follow on their own indented lines
+    expect(lines).toContain('      ~ [p]');
+    const bIdx = lines.findIndex((l) => l.includes('baseline=') && l.includes('"v":1'));
+    const aIdx = lines.findIndex((l) => l.includes('actual  =') && l.includes('"v":2'));
+    expect(bIdx).toBeGreaterThan(-1);
+    expect(aIdx).toBe(bIdx + 1); // actual directly under baseline
+    // padded so the '=' aligns (len('baseline') === 'actual  '.length)
+    expect(lines[bIdx]?.indexOf('=')).toBe(lines[aIdx]?.indexOf('='));
+    // added shows actual only; removed shows baseline only
+    expect(lines).toContain('      + [add]');
+    expect(lines).toContain('      - [gone]');
   });
 
   it('shows the CDK construct path instead of the logical id when present', () => {
@@ -180,7 +210,7 @@ describe('report', () => {
 
     it('does NOT print a 0-count tier header (CLEAN stack is compact)', () => {
       const { text } = run([reason('readGap', 'write-only — cannot be read back')]);
-      expect(text).not.toContain('DECLARED DRIFT');
+      expect(text).not.toContain('Declared DRIFT');
       expect(text).not.toContain('UNDECLARED');
       expect(text).not.toContain('DELETED');
     });
@@ -254,8 +284,8 @@ describe('report', () => {
     });
 
     it('drift tiers stay fully detailed regardless of verbose', () => {
-      expect(run([F('declared')]).text).toContain('DECLARED DRIFT');
-      expect(run([F('declared')], { verbose: true }).text).toContain('DECLARED DRIFT');
+      expect(run([F('declared')]).text).toContain('Declared DRIFT');
+      expect(run([F('declared')], { verbose: true }).text).toContain('Declared DRIFT');
     });
 
     it('no info: line when there are no informational findings', () => {
@@ -387,7 +417,7 @@ describe('report', () => {
     it('drift: first section directly under the header; blank line BEFORE result: (R48)', () => {
       const lines = run([F('declared')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
-      expect(lines[1]).toMatch(/^\[CFn-DECLARED DRIFT: 1\]/); // no stray blank after the header
+      expect(lines[1]).toMatch(/^\[CFn-Declared DRIFT: 1\]/); // no stray blank after the header
       const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
       expect(lines[resultIdx - 1]).toBe(''); // the verdict is separated from the section above
     });
@@ -395,8 +425,8 @@ describe('report', () => {
     it('two drift sections: blank BETWEEN them, none after the header (R48)', () => {
       const lines = run([F('declared'), F('undeclared', 'Q')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
-      expect(lines[1]).toMatch(/^\[CFn-DECLARED DRIFT: 1\]/);
-      const undeclaredIdx = lines.findIndex((l) => l.startsWith('[CFn-UNDECLARED'));
+      expect(lines[1]).toMatch(/^\[CFn-Declared DRIFT: 1\]/);
+      const undeclaredIdx = lines.findIndex((l) => l.startsWith('[CFn-Undeclared'));
       expect(lines[undeclaredIdx - 1]).toBe(''); // grouping blank between sections
     });
 

@@ -701,7 +701,7 @@ folded into an `info:` footer (per-tier counts + a reason breakdown, e.g.
 line when one tier is present, one bullet line per tier (with a single
 `--verbose` hint) when 2+; `--verbose` expands them to full lists; 0-count
 tiers are never printed. Section headers carry the count INSIDE the brackets
-(`[DECLARED DRIFT: 3]`, the explanatory note outside) — a bare digit right of
+(`[CFn-Declared DRIFT: 3]`, the explanatory note outside) — a bare digit right of
 `]` read as noise (R48). No blank line precedes the header; the FIRST drift
 section follows the header directly, later sections get a grouping blank, and
 `result:` gets a blank line before it ONLY when a drift section was printed —
@@ -721,7 +721,7 @@ tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick record it is still every value the
 user did not pick. They render as their own `[UNRECORDED: N]` section (note:
 `not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to
-track it`) alongside any real `[CFn-UNDECLARED DRIFT]` section, are excluded from the verdict and the
+track it`) alongside any real `[CFn-Undeclared DRIFT]` section, are excluded from the verdict and the
 `--fail` exit, and the `result:` line carries the count + the way out
 (`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
 when some fold; R112). When BOTH a drift section and a standout `[UNRECORDED]`

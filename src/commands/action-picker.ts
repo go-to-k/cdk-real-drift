@@ -75,9 +75,11 @@ export function actionChip(action: FindingAction): string {
   return `[ ${center(action, CHIP_WIDTH)} ]`;
 }
 
-/** The dim key-hint line shown under the message. Pure + exported for unit tests. */
+/** The dim key-hint line shown under the message. Pure + exported for unit tests.
+ *  The action picker only runs inside check's interactive flow, where Esc returns to
+ *  the action menu — so `esc = back` (R130). */
 export function actionPickerHint(): string {
-  return '↑↓ = move · space = cycle · → = all to focused · enter = apply';
+  return '↑↓ = move · space = cycle · → = all to focused · enter = apply · esc = back';
 }
 
 /**

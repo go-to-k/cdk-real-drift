@@ -50,6 +50,7 @@ describe('bulkSelectHint', () => {
     expect(h).toContain('→');
     expect(h).toContain('←');
     expect(h).toContain('enter');
+    expect(h).toContain('esc'); // R130: Esc cancels (returns to the menu in check's interactive flow)
     expect(h).not.toContain('toggle all'); // the discoverable-but-cryptic `a`/`i` are gone
   });
 });

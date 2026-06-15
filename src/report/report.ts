@@ -22,8 +22,11 @@ import { style } from './style.js';
 
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'DELETED',
-  declared: 'CFn-DECLARED DRIFT',
-  undeclared: 'CFn-UNDECLARED DRIFT',
+  // Mixed case (not all-caps) so DECLARED vs UNDECLARED — which share the `CFn-` prefix
+  // and ` DRIFT` suffix and the same red colour — read as distinct words at a glance
+  // instead of two near-identical all-caps tokens (R130 dogfood).
+  declared: 'CFn-Declared DRIFT',
+  undeclared: 'CFn-Undeclared DRIFT',
   atDefault: 'AT AWS DEFAULT',
   generated: 'AWS GENERATED',
   ignored: 'IGNORED',
@@ -100,15 +103,21 @@ export function formatFinding(f: Finding): string {
   return s;
 }
 
-// R128: render an identity-keyed array delta as one indented line per changed element
+// R128/R130: render an identity-keyed array delta as one block per changed element
 // (added / changed / removed), keyed by its identity value — far more legible than a
-// 200-char whole-array dump when only one element of many differs from the baseline.
+// whole-array dump when only one element of many differs. The element id sits on its
+// own marker line (+ added / ~ changed / - removed); the baseline / actual value(s)
+// follow on their own indented lines (mirrors the declared tier's desired/actual
+// layout — `baseline`/`actual` are padded so the `=` aligns), so two long policy
+// documents are read top-to-bottom instead of wrapping on one line (R130).
 function formatArrayDelta(d: ArrayDelta): string {
+  // 8 = len('baseline'); pad 'actual' to match so the '=' column lines up.
+  const baseline = (v: unknown): string => `\n          baseline=${style.desired(j(v))}`;
+  const actual = (v: unknown): string => `\n          actual  =${style.actual(j(v))}`;
   let s = ` — ${d.identityField}-keyed element(s) changed vs .cdkrd baseline:`;
-  for (const a of d.added) s += `\n      + [${a.id}] = ${style.actual(j(a.value))}`;
-  for (const c of d.changed)
-    s += `\n      ~ [${c.id}] baseline=${style.desired(j(c.recorded))} actual=${style.actual(j(c.actual))}`;
-  for (const r of d.removed) s += `\n      - [${r.id}] = ${style.desired(j(r.value))}`;
+  for (const a of d.added) s += `\n      + [${a.id}]${actual(a.value)}`;
+  for (const c of d.changed) s += `\n      ~ [${c.id}]${baseline(c.recorded)}${actual(c.actual)}`;
+  for (const r of d.removed) s += `\n      - [${r.id}]${baseline(r.value)}`;
   return s;
 }
 
