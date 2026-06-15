@@ -138,11 +138,22 @@ lives per stack/account/region; the `ignore` rules live once, app-wide, in
 `.cdkrd/config.json` (`config/config-file.ts` — `addIgnoreRules` writes,
 `applyIgnores` reads).
 
-In a TTY, `check` makes that binary decision **inline** (R28): after reporting drift
-it prompts `Nothing / Record / Revert` and branches into the SAME per-stack code as
-`record` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
-as `recordStack` / `revertStack`, so the interactive flow and the single-verb commands
-can never diverge). Default is `Nothing` (plain-check behaviour); skipped under
+In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121):
+after reporting it prompts `Record all / Revert all / Ignore all / Decide per
+finding / Nothing` (each bulk option shown only when ≥1 finding can take it;
+"Decide per finding" only when >1 finding is decidable). The bulk options apply one
+action to every applicable finding (each leads to that verb's own multiselect);
+"Decide per finding" opens the per-finding **action picker**
+([action-picker.ts](../src/commands/action-picker.ts) — `↑↓` move, `space` cycle
+the focused row's applicable actions, `→` set every row to the focused action,
+`enter` apply). Every path branches into the SAME per-stack code as the standalone verbs
+(`recordStack` / `ignoreStack` / `revertStack` in
+[stack-actions.ts](../src/commands/stack-actions.ts), driven by
+[interactive-resolve.ts](../src/commands/interactive-resolve.ts)), so the interactive
+flow and `cdkrd record/ignore/revert` can never diverge — the per-finding path passes
+each verb the chosen subset (`preselectedKeys` for record, a findings filter +
+`autoSelectAll` for revert) so the verb skips its own selection prompt but keeps its
+AWS-write confirm. Default is `Nothing` (plain-check behaviour); skipped under
 `--json` / `--show-all` / `--pre-deploy` / `--fail` / non-TTY. Aborting the Revert
 confirmation keeps the pre-revert drift state — no AWS write happened, so the
 drift still stands and stays reported (symmetric with `Nothing`); `revertStack`
@@ -223,6 +234,14 @@ checked.
   - **stack-actions.ts** — the per-stack record/ignore/revert actions shared by the
     standalone verbs and check's interactive prompt (`recordStack` / `ignoreStack` /
     `revertStack`), so they can never diverge.
+  - **interactive-resolve.ts** — check's after-report resolution (R28/R121): the
+    top-level select (Record all / Revert all / Ignore all / Decide per finding /
+    Nothing) and the per-finding dispatch into the stack actions; returns the
+    re-evaluated exit code.
+  - **action-picker.ts** — the per-finding action picker (R121), built on `@clack/core`'s
+    base `Prompt` to bind `↑↓` / `space` (cycle) / `→` (all to focused) / `enter`.
+    `applicableActions` / `cycleAction` / `setAllToAction` / `groupByAction` are pure +
+    unit-tested.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
   - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).

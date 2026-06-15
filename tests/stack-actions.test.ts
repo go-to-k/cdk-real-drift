@@ -10,7 +10,7 @@ import {
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
-import { baselinePath } from '../src/baseline/baseline-file.js';
+import { baselinePath, buildRecorded, recordedKey } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
@@ -86,19 +86,21 @@ const baselineWith = (entries: BaselineFile['recorded']): BaselineFile => ({
 });
 
 describe('availableActions (R28 interactive choice logic)', () => {
-  it('declared-only → Record hidden (cannot record declared), Revert shown', () => {
+  it('declared-only → Record hidden (cannot record declared), Ignore + Revert shown', () => {
     expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
       record: false,
+      ignore: true,
       revert: true,
     });
   });
 
-  it('unrecorded-only → Record shown, Revert hidden (no recorded state to restore, R62)', () => {
+  it('unrecorded-only → Record + Ignore shown, Revert hidden (no recorded state to restore, R62)', () => {
     // applyBaseline tags entry-less values on never-complete resources as unrecorded
     expect(
       availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, false)
     ).toEqual({
       record: true,
+      ignore: true,
       revert: false,
     });
   });
@@ -108,18 +110,20 @@ describe('availableActions (R28 interactive choice logic)', () => {
       availableActions([{ ...undeclared(), unrecorded: true }], undefined, NO_SCHEMAS, true)
     ).toEqual({
       record: true,
+      ignore: true,
       revert: true,
     });
   });
 
-  it('deleted-only → neither (deleted is not revertable, nothing to record)', () => {
+  it('deleted-only → none (deleted is not revertable, not ignorable, nothing to record)', () => {
     expect(availableActions([deleted()], undefined, NO_SCHEMAS, false)).toEqual({
       record: false,
+      ignore: false,
       revert: false,
     });
   });
 
-  it('mixed declared + undeclared (with baseline making undeclared revertable) → both', () => {
+  it('mixed declared + undeclared (with baseline making undeclared revertable) → all', () => {
     const b = baselineWith([
       {
         logicalId: 'B',
@@ -131,6 +135,7 @@ describe('availableActions (R28 interactive choice logic)', () => {
     // undeclared is recorded-then-changed → revertable to the baseline value; declared → revertable
     expect(availableActions([declared(), undeclared()], b, NO_SCHEMAS, false)).toEqual({
       record: true,
+      ignore: true,
       revert: true,
     });
   });
@@ -475,6 +480,49 @@ describe('recordStack non-interactive refusal (R38)', () => {
         },
       ]);
     } finally {
+      if (existsSync(path)) rmSync(path);
+    }
+  });
+});
+
+describe('recordStack preselectedKeys (R121 — per-finding path skips the multiselect)', () => {
+  it('records exactly the preselected undeclared values, no prompt', async () => {
+    const desired = {
+      stackName: 'R121Stack',
+      region: 'r121-region',
+      accountId: '999988887777',
+      resources: [],
+      rawTemplate: '{}',
+      ctx: {},
+    } as unknown as Desired;
+    const path = baselinePath(desired.stackName, desired.accountId, desired.region);
+    if (existsSync(path)) rmSync(path);
+
+    const a = undeclared(); // logicalId B, path AccelerateConfiguration
+    const b: Finding = { ...undeclared(), path: 'OwnershipControls', actual: { Rules: [] } };
+    // pick only `a`
+    const keyA = recordedKey(buildRecorded([a])[0]!);
+
+    const errs: string[] = [];
+    const spy = vi
+      .spyOn(console, 'error')
+      .mockImplementation((m?: unknown) => void errs.push(String(m)));
+    try {
+      const result = await recordStack({
+        stackName: desired.stackName,
+        region: desired.region,
+        desired,
+        findings: [a, b],
+        yes: false,
+        interactive: true,
+        preselectedKeys: new Set([keyA]),
+      });
+      expect(result).toEqual({ wrote: true, refused: false });
+      const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
+      // only `a` recorded; `b` stays unrecorded (was not preselected)
+      expect(written.recorded.map((e) => e.path)).toEqual(['AccelerateConfiguration']);
+    } finally {
+      spy.mockRestore();
       if (existsSync(path)) rmSync(path);
     }
   });

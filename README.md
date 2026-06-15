@@ -68,8 +68,10 @@ info:
   ...
 
 ApiStack: unrecorded values found — what do you want to do?
+    Record all undeclared — snapshot into the baseline (keeps watching)
+    Ignore all — stop reporting it (writes .cdkrd/config.json)
+    Decide per finding — pick an action for each
   ❯ Nothing (decide later)
-    Record — record current state into the baseline
 ```
 
 The report always prints **first**, so you see the standout values before deciding
@@ -88,14 +90,22 @@ reports it and asks right there:
 
 ```console
 ApiStack: drift found — what do you want to do?
+    Record all undeclared — snapshot into the baseline (keeps watching)
+    Revert all — write the desired values to AWS
+    Ignore all — stop reporting it (writes .cdkrd/config.json)
+    Decide per finding — pick an action for each
   ❯ Nothing (decide later)
-    Record — record current state into the baseline (a git file; nothing written to AWS)
-    Revert — write the desired value back to AWS
 ```
 
-- **Record** records the value in the baseline, so `check` stays CLEAN until it
-  changes again (a multiselect lets you record some and keep reporting others).
-- **Revert** shows a plan, lets you pick which op(s) to write, confirms, then
+- **Record all** records the undeclared values in the baseline, so `check` stays
+  CLEAN until they change again (a multiselect lets you record some and keep
+  reporting others). Keeps watching.
+- **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared
+  _or_ undeclared) stops being reported entirely. Stops watching.
+- **Decide per finding** opens a picker to assign a different action to each
+  finding (↑↓ move · space cycles the row's actions · → applies the focused
+  action to all · enter applies).
+- **Revert all** shows a plan, lets you pick which op(s) to write, confirms, then
   writes the desired values back to AWS:
 
 ```console
@@ -221,11 +231,14 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
 
 ### Interactive prompts (TTY only — CI is never prompted)
 
-- **`check` with drift** offers `Nothing / Record / Revert` inline (shown above).
-  `Nothing` is the default; Enter keeps plain-check behavior. Record and Revert
-  run exactly the same code as the standalone commands. Skipped under `--json`,
-  `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert confirmation
-  writes nothing — the drift still stands and stays reported.
+- **`check` with drift** offers `Record all / Revert all / Ignore all / Decide
+per finding / Nothing` inline (shown above). Each option appears only when it
+  applies (no Revert if nothing is revertable; "Decide per finding" only with >1
+  finding). `Nothing` is the default; Enter keeps plain-check behavior. Every
+  option runs exactly the same code as the standalone commands — including the
+  per-finding picker, which passes each verb just the subset you chose. Skipped
+  under `--json`, `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert
+  confirmation writes nothing — the drift still stands and stays reported.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write:
   RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
   (deleting a live value not in your template — a standout `[UNRECORDED]` value, or
