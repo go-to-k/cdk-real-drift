@@ -32,9 +32,12 @@ export function bulkSelectValues(options: { value: string }[], action: 'all' | '
   return action === 'all' ? options.map((o) => o.value) : [];
 }
 
-/** The dim key-hint line shown under the message. Pure + exported for unit tests. */
+/** The dim key-hint line shown under the message. Pure + exported for unit tests.
+ *  `esc = cancel` is listed last (R130): Esc aborts the prompt — in check's interactive
+ *  flow that returns to the action menu, in a standalone `record`/`ignore` it cancels
+ *  the command; either way the selection is discarded, so `cancel` is accurate in both. */
 export function bulkSelectHint(): string {
-  return 'space = toggle · → = all · ← = none · enter = confirm';
+  return 'space = toggle · → = all · ← = none · enter = confirm · esc = cancel';
 }
 
 type Opt = { value: string; label: string };

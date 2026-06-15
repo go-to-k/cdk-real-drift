@@ -20,16 +20,22 @@
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
+// Section headers are Title Case (not all-caps) — uniform and readable, and crucially
+// so `CFn-Declared Drift` vs `CFn-Undeclared Drift`, which share the `CFn-` prefix, the
+// ` Drift` suffix, and the same red colour, read as distinct WORDS at a glance instead
+// of two near-identical all-caps tokens (R130 dogfood). `CFn` / `AWS` stay as the
+// acronyms they are. The not-in-baseline section is `[Not Recorded]` (literal below),
+// which ties directly to the `cdkrd record` verb.
 const TIER_NAMES: Record<Tier, string> = {
-  deleted: 'DELETED',
-  declared: 'CFn-DECLARED DRIFT',
-  undeclared: 'CFn-UNDECLARED DRIFT',
-  atDefault: 'AT AWS DEFAULT',
-  generated: 'AWS GENERATED',
-  ignored: 'IGNORED',
-  readGap: 'READ GAP',
-  unresolved: 'UNRESOLVED',
-  skipped: 'SKIPPED',
+  deleted: 'Deleted',
+  declared: 'CFn-Declared Drift',
+  undeclared: 'CFn-Undeclared Drift',
+  atDefault: 'At AWS Default',
+  generated: 'AWS Generated',
+  ignored: 'Ignored',
+  readGap: 'Read Gap',
+  unresolved: 'Unresolved',
+  skipped: 'Skipped',
 };
 // Explanation printed after the bracketed name+count, outside the brackets.
 // The notes anchor the THREE sources cdkrd touches, so "declared" is never misread as
@@ -100,15 +106,21 @@ export function formatFinding(f: Finding): string {
   return s;
 }
 
-// R128: render an identity-keyed array delta as one indented line per changed element
+// R128/R130: render an identity-keyed array delta as one block per changed element
 // (added / changed / removed), keyed by its identity value — far more legible than a
-// 200-char whole-array dump when only one element of many differs from the baseline.
+// whole-array dump when only one element of many differs. The element id sits on its
+// own marker line (+ added / ~ changed / - removed); the baseline / actual value(s)
+// follow on their own indented lines (mirrors the declared tier's desired/actual
+// layout — `baseline`/`actual` are padded so the `=` aligns), so two long policy
+// documents are read top-to-bottom instead of wrapping on one line (R130).
 function formatArrayDelta(d: ArrayDelta): string {
+  // 8 = len('baseline'); pad 'actual' to match so the '=' column lines up.
+  const baseline = (v: unknown): string => `\n          baseline=${style.desired(j(v))}`;
+  const actual = (v: unknown): string => `\n          actual  =${style.actual(j(v))}`;
   let s = ` — ${d.identityField}-keyed element(s) changed vs .cdkrd baseline:`;
-  for (const a of d.added) s += `\n      + [${a.id}] = ${style.actual(j(a.value))}`;
-  for (const c of d.changed)
-    s += `\n      ~ [${c.id}] baseline=${style.desired(j(c.recorded))} actual=${style.actual(j(c.actual))}`;
-  for (const r of d.removed) s += `\n      - [${r.id}] = ${style.desired(j(r.value))}`;
+  for (const a of d.added) s += `\n      + [${a.id}]${actual(a.value)}`;
+  for (const c of d.changed) s += `\n      ~ [${c.id}]${baseline(c.recorded)}${actual(c.actual)}`;
+  for (const r of d.removed) s += `\n      - [${r.id}]${baseline(r.value)}`;
   return s;
 }
 
@@ -206,7 +218,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   if (
     section(
       unrecordedShown,
-      'UNRECORDED',
+      'Not Recorded',
       'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
       style.undeclaredTier,
       driftSections > 0

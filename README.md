@@ -29,7 +29,7 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-UNDECLARED DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
+[CFn-Undeclared Drift: 1] (live-only — not in your CloudFormation template; the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)
@@ -58,7 +58,7 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[UNRECORDED: 2] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
+[Not Recorded: 2] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
@@ -256,7 +256,7 @@ per finding / Nothing` inline (shown above). Each option appears only when it
   confirmation writes nothing — the drift still stands and stays reported.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write:
   RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
-  (deleting a live value not in your template — a standout `[UNRECORDED]` value, or
+  (deleting a live value not in your template — a standout `[Not Recorded]` value, or
   one not in the baseline) start **unselected** and are labeled `(REMOVE)` —
   removal is an explicit per-item choice (R113: no `--remove-unrecorded` needed in a
   prompt, since the unselected row IS the consent). In the multiselect, **space**
@@ -299,7 +299,7 @@ incident shows up before `cdk deploy` silently reverts it:
 $ npx cdkrd check --pre-deploy
 (--pre-deploy) comparing live state against the LOCAL synth template
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-DECLARED DRIFT: 1]
+[CFn-Declared Drift: 1]
   ApiStack/Api/Handler.MemorySize (AWS::Lambda::Function)
       desired=1024
       actual =2048
@@ -351,7 +351,7 @@ that folds everything informational.
 
 - **Drift tiers** — `deleted` / `declared` / `undeclared` — are always listed in
   full and drive the `--fail` exit. They are the point.
-- **`[UNRECORDED: N]`** — undeclared values you have not recorded yet. Listed in
+- **`[Not Recorded: N]`** — undeclared values you have not recorded yet. Listed in
   full, but not drift (there is nothing to compare them to): they never fail the
   build, and `result:` points you at `cdkrd record`. Once a resource is fully
   snapshotted, a value that _appears_ later is real drift (`appeared since record`).
@@ -390,7 +390,7 @@ text.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-DECLARED DRIFT: 1]
+[CFn-Declared Drift: 1]
   ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"

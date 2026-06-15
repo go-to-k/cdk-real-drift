@@ -117,6 +117,7 @@ describe('actionPickerHint', () => {
     expect(h).toContain('space');
     expect(h).toContain('→');
     expect(h).toContain('enter');
+    expect(h).toContain('esc'); // R130: Esc returns to the action menu
   });
 });
 
