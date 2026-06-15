@@ -1,7 +1,7 @@
 // `cdkrd check [<stack>...] [--region r] [--profile p] [--app ...] [-c k=v]
 //             [--json] [--fail] [--show-all]`
 // Read-only. Reports drift per stack; undeclared findings are filtered against the
-// baseline file (if present) so a stack with an accepted baseline reports CLEAN.
+// baseline file (if present) so a stack with an recorded baseline reports CLEAN.
 // Exit (R53, the `cdk diff --fail` convention): report-only by default — drift
 // exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
 // suppressed. Errors always exit 2. The exit is the worst across all checked
@@ -25,9 +25,9 @@ import type { Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import {
-  acceptStack,
+  recordStack,
   availableActions,
-  includeUnacceptedRemovals,
+  includeUnrecordedRemovals,
   resolveInteractiveRevertExit,
   revertStack,
 } from './stack-actions.js';
@@ -54,22 +54,22 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
 }
 
 /**
- * Closing note after an interactive accept inside `check` (R52). A PARTIAL
- * accept used to end with `baseline written: ...` and a silent failure-looking
+ * Closing note after an interactive record inside `check` (R52). A PARTIAL
+ * record used to end with `baseline written: ...` and a silent failure-looking
  * exit. State plainly what remains; the exit story itself is R53's: check is
  * report-only (exit 0 on drift) unless --fail, and the interactive prompts
  * never fire in fail mode, so this note never coexists with a drift exit.
  */
-export function postAcceptNote(remainingUndeclared: number, remainingDeclared: number): string {
+export function postRecordNote(remainingUndeclared: number, remainingDeclared: number): string {
   if (remainingDeclared > 0) {
     const alsoUndeclared =
       remainingUndeclared > 0
-        ? ` ${remainingUndeclared} unaccepted value(s) also stay reported.`
+        ? ` ${remainingUndeclared} unrecorded value(s) also stay reported.`
         : '';
-    return `accept succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
+    return `record succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
   }
   if (remainingUndeclared > 0)
-    return `accept succeeded — ${remainingUndeclared} unaccepted value(s) stay reported from the next check on.`;
+    return `record succeeded — ${remainingUndeclared} unrecorded value(s) stay reported from the next check on.`;
   return 'stack is now CLEAN.';
 }
 
@@ -172,7 +172,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // ONLY meaningful signal is declared drift the next deploy would clobber. The
       // undeclared tier is "live minus declared" — with a synth declared set its
       // meaning silently shifts, so we drop it and do NOT touch the baseline at all
-      // (no accept offer, no baseline load — which would also wrongly hash the synth
+      // (no record offer, no baseline load — which would also wrongly hash the synth
       // template). See ARCHITECTURE §13-2.
       if (a.preDeploy) {
         const declaredOnly = preDeployFindings(findings);
@@ -201,29 +201,29 @@ export async function runCheck(args: string[]): Promise<number> {
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
       if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
-      // schema-v1 baseline: no completeResources — appeared-since-accept values
-      // read as unrecorded until the next accept upgrades the file (R62)
+      // schema-v1 baseline: no completeResources — appeared-since-record values
+      // read as unrecorded until the next record upgrades the file (R62)
       if (baseline && !a.json) warnBaselineSchemaV1(baseline, stackName);
-      // First run (no baseline): R110 removed the pre-report "Accept ALL sight-unseen"
+      // First run (no baseline): R110 removed the pre-report "Record ALL sight-unseen"
       // prompt (R45/R52). It buried the very values it flagged as possible out-of-band
       // edits — pressing Enter recorded them into the baseline BEFORE the user ever saw
       // them, and the report then suppressed them, so a real edit could vanish in one
       // keystroke. Now the report ALWAYS prints first; the post-report prompt below
-      // ("unrecorded values found — Accept/Revert/Nothing") offers a SELECTIVE accept
+      // ("unrecorded values found — Record/Revert/Nothing") offers a SELECTIVE record
       // after the user has seen the standout values. Folding (atDefault/generated/
-      // nested) keeps that list short, so the old bulk-accept-to-avoid-scrolling
-      // rationale no longer applies. `cdkrd accept` still writes a baseline directly.
+      // nested) keeps that list short, so the old bulk-record-to-avoid-scrolling
+      // rationale no longer applies. `cdkrd record` still writes a baseline directly.
       // applyBaseline classifies per ENTRY (R62): matching entries are suppressed,
       // changed values are drift, entry-less values are drift only on a
-      // snapshot-complete resource (appeared since accept) and UNRECORDED
+      // snapshot-complete resource (appeared since record) and UNRECORDED
       // otherwise — including the whole no-baseline first run (R60). The report
       // renders unrecorded values as [UNRECORDED: N], excludes them from the
-      // verdict/exit, and points at `cdkrd accept` on the result line.
+      // verdict/exit, and points at `cdkrd record` on the result line.
       // --show-all keeps its raw inventory semantics: the baseline is bypassed
       // entirely (no suppression, no unrecorded tagging). --declared-only also
       // bypasses it ("undeclared values are not compared"): with the undeclared
       // tier filtered out, applyBaseline's removal pass would mis-read EVERY
-      // accepted entry as `baseline value removed since accept` (latent in R59).
+      // recorded entry as `baseline value removed since record` (latent in R59).
       const reconciled = applyIgnores(
         a.showAll || a.declaredOnly
           ? findings
@@ -246,12 +246,12 @@ export async function runCheck(args: string[]): Promise<number> {
       });
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 
-      // R28: drift found in a TTY → offer accept / revert / nothing inline, instead
+      // R28: drift found in a TTY → offer record / revert / nothing inline, instead
       // of making the user re-run a separate command. Skipped for --json (machine
-      // output), --show-all (baseline not applied — accept would mean something else),
+      // output), --show-all (baseline not applied — record would mean something else),
       // and --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED
       // values do not set code 1 (R60) but still deserve the prompt — "show them
-      // first" promises a selective accept right after the report.
+      // first" promises a selective record right after the report.
       if (
         (code === 1 || hasUnrecorded) &&
         !a.json &&
@@ -266,14 +266,14 @@ export async function runCheck(args: string[]): Promise<number> {
           reconciled,
           baseline,
           schemas,
-          includeUnacceptedRemovals(a.removeUnaccepted, isInteractive(), a.yes)
+          includeUnrecordedRemovals(a.removeUnrecorded, isInteractive(), a.yes)
         );
-        if (actions.accept || actions.revert) {
+        if (actions.record || actions.revert) {
           const options = [{ value: 'nothing', label: 'Nothing (decide later)' }];
-          if (actions.accept)
+          if (actions.record)
             options.push({
-              value: 'accept',
-              label: 'Accept — record current state into the baseline',
+              value: 'record',
+              label: 'Record — snapshot the current undeclared state into the baseline',
             });
           if (actions.revert)
             options.push({
@@ -288,11 +288,11 @@ export async function runCheck(args: string[]): Promise<number> {
             options,
             initialValue: 'nothing',
           });
-          if (!isCancel(choice) && choice === 'accept') {
-            // accept records UNDECLARED only; acceptStack emits the
+          if (!isCancel(choice) && choice === 'record') {
+            // record records UNDECLARED only; recordStack emits the
             // "declared/deleted drift NOT approved" scope note after the write (R117),
-            // so both `cdkrd accept` and this interactive path warn consistently.
-            const result = await acceptStack({
+            // so both `cdkrd record` and this interactive path warn consistently.
+            const result = await recordStack({
               stackName,
               region,
               desired,
@@ -311,18 +311,18 @@ export async function runCheck(args: string[]): Promise<number> {
                 stackName,
                 config
               );
-              // R52 (user decision): a successful interactive accept is a SUCCESS
+              // R52 (user decision): a successful interactive record is a SUCCESS
               // for THIS run — deliberately-unselected undeclared values do not
               // fail this exit (they surface from the next check on; this path is
               // TTY-only so no CI contract is touched). Declared/deleted drift is
-              // outside accept's reach and keeps exit 1.
+              // outside record's reach and keeps exit 1.
               const remainingDeclared = reEvaluated.filter(
                 (f) => f.tier === 'declared' || f.tier === 'deleted'
               ).length;
               const remainingUndeclared = reEvaluated.filter((f) => f.tier === 'undeclared').length;
               code = remainingDeclared > 0 ? 1 : 0;
               console.error(
-                `note: ${stackName}: ${postAcceptNote(remainingUndeclared, remainingDeclared)}`
+                `note: ${stackName}: ${postRecordNote(remainingUndeclared, remainingDeclared)}`
               );
             }
           } else if (!isCancel(choice) && choice === 'revert') {
@@ -334,7 +334,7 @@ export async function runCheck(args: string[]): Promise<number> {
               config,
               dryRun: false,
               yes: a.yes,
-              removeUnaccepted: a.removeUnaccepted,
+              removeUnrecorded: a.removeUnrecorded,
               verbose: a.verbose,
               interactive: isInteractive(),
             });

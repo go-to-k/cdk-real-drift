@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cdk-real-drift multi-type MUTATION integration test (real AWS, R91).
 #
-# The false-NEGATIVE guard: deploy 5 types, accept (baseline CLEAN), then change one
+# The false-NEGATIVE guard: deploy 5 types, record (baseline CLEAN), then change one
 # declared property on each out of band and assert `check --fail` DETECTS every one.
 # A normalizer that wrongly collapses a real change would make cdkrd miss it and
 # report CLEAN — this catches that. A cleanup trap destroys even on failure.
@@ -36,10 +36,10 @@ echo "=== build cdk-real-drift ==="
 echo "=== deploy fixture ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
 
-echo "=== accept then check must be CLEAN ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== record then check must be CLEAN ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after accept"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after record"
 
 echo "=== mutate one declared property on each type out of band ==="
 Q="$(phys AWS::SQS::Queue)";        [ -n "$Q" ] || fail "no queue url"

@@ -63,12 +63,12 @@ for p in PublicAccessBlockConfiguration BucketEncryption TracingConfig; do
   grep -q "$p" /tmp/cdkrd-atdef-showall.out || fail "$p missing from the --show-all inventory"
 done
 
-echo "=== accept (write baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== record (write baseline) ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 
-echo "=== check should be CLEAN right after accept (at-default values fold, not drift) ==="
+echo "=== check should be CLEAN right after record (at-default values fold, not drift) ==="
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after accept"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after record"
 
 # ---- 4: the equality gate has teeth — mutate an at-default value away from default ----
 echo "=== mutate Lambda TracingConfig PassThrough -> Active (out of band) ==="

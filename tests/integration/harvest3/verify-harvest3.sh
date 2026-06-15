@@ -6,7 +6,7 @@
 #      Firehose, SES, Cloud Map, AppSync, CloudTrail, AWS Backup):
 #      1. baseline-free `check` — a FRESH deploy must classify with ZERO
 #         declared drift across every type, exit 0;
-#      2. `accept --yes` then `check --fail` — CLEAN across every type.
+#      2. `record --yes` then `check --fail` — CLEAN across every type.
 #   B. MULTI-TYPE REVERT MATRIX (first live proof beyond S3): mutate the
 #      declared value of five Cloud-Control-routed resources out-of-band
 #      (Lambda MemorySize, SQS VisibilityTimeout, Logs RetentionInDays,
@@ -66,10 +66,10 @@ rc=${PIPESTATUS[0]}
 grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
-echo "=== A2. accept + check --fail must be CLEAN across every type ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== A2. record + check --fail must be CLEAN across every type ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after accept"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after record"
 
 echo "=== B1. resolve matrix physical ids ==="
 FN_NAME="$(phys AWS::Lambda::Function MatrixFn)"

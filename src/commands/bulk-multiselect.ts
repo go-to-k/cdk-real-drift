@@ -1,4 +1,4 @@
-// Interactive multi-select with BULK keys, shared by accept + revert (R116).
+// Interactive multi-select with BULK keys, shared by record + revert (R116).
 //
 // The high-level `@clack/prompts` multiselect only exposes `a` (toggle all) / `i`
 // (invert) for bulk selection, hidden behind a dim hint and easy to miss. Mirroring

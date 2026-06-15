@@ -3,7 +3,7 @@
 # SDK_WRITERS end-to-end (src/revert/writers.ts):
 #   AWS::S3::BucketPolicy / AWS::SNS::TopicPolicy / AWS::SQS::QueuePolicy /
 #   AWS::IAM::Policy / AWS::IAM::ManagedPolicy
-# Flow: deploy -> accept (baseline) -> check CLEAN -> inject a "CdkrdInjected"
+# Flow: deploy -> record (baseline) -> check CLEAN -> inject a "CdkrdInjected"
 # statement into every policy document out-of-band -> check DETECTS 5 declared
 # drifts -> revert --yes (SDK writers) -> check CLEAN -> AWS direct reads confirm
 # the injected statement is GONE while the declared one survived -> destroy.
@@ -59,10 +59,10 @@ done
 QUEUE_ARN="$(aws sqs get-queue-attributes --queue-url "$QUEUE_URL" --attribute-names QueueArn \
   --region "$REGION" --query 'Attributes.QueueArn' --output text)"
 
-echo "=== accept (baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail accept
+echo "=== record (baseline) ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail record
 echo "=== check CLEAN ==="
-$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after record"
 
 echo "=== inject a CdkrdInjected statement into all 5 policy documents ==="
 # S3 bucket policy (Deny is always writable under BlockPublicPolicy; harmless action)

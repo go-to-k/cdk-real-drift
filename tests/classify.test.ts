@@ -637,10 +637,9 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         { LoadBalancerAttributes: drifted },
         emptySchema
       ).filter((f) => f.tier === 'declared');
-      expect(declaredF.map((f) => f.attributeKey).sort()).toEqual([
-        'deletion_protection.enabled',
-        'idle_timeout.timeout_seconds',
-      ]);
+      expect(
+        declaredF.map((f) => f.attributeKey).sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+      ).toEqual(['deletion_protection.enabled', 'idle_timeout.timeout_seconds']);
       expect(declaredF.every((f) => f.path === 'LoadBalancerAttributes')).toBe(true);
     });
 

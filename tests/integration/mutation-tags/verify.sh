@@ -2,18 +2,18 @@
 # cdk-real-drift tag-addition mutation integration test (real AWS, R95).
 # Guards the R95 fix: a console-ADDED tag (a Key the template never declared) must be
 # DETECTED, not silently dropped by subset projection. Deploy a bucket with one
-# declared tag, accept CLEAN, add a second tag out of band, assert check detects it.
+# declared tag, record CLEAN, add a second tag out of band, assert check detects it.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$(cd "$HERE/../../.." && pwd)"; cd "$HERE"
 STACK=CdkRealDriftIntegMutationTags; REGION="${AWS_REGION:-us-east-1}"; CLI="node $ROOT/dist/cli.js"
 cleanup() { echo "--- cleanup ---"; npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true; rm -rf .cdkrd cdk.out; }
 trap cleanup EXIT
 fail() { echo "INTEG FAIL: $*"; exit 1; }
-echo "=== build + deploy + accept ==="
+echo "=== build + deploy + record ==="
 (cd "$ROOT" && vp run build) || fail "build"
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
-$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after record"
 echo "=== add a tag out of band (a Key the template never declared) ==="
 B="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --region "$REGION" --query "StackResources[?ResourceType=='AWS::S3::Bucket'].PhysicalResourceId" --output text)"
 [ -n "$B" ] || fail "no bucket"

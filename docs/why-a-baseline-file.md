@@ -28,13 +28,13 @@ changes_. That mode is, by definition, a remembered value — i.e. state.
 
 Two properties of that state follow immediately:
 
-- **It cannot be recomputed.** Acceptance is a human judgment about the live
+- **It cannot be recomputed.** Recordance is a human judgment about the live
   value; it is not derivable from template + schema + live, because live is the
   thing being judged.
 - **It is the definition of undeclared drift.** Undeclared "drift" is only
-  meaningful relative to an accepted reference. With no reference there is
-  nothing to violate — which is exactly why a value you never accepted renders
-  as `[UNRECORDED]`, not drift (R60; per VALUE since R62 — a partial accept
+  meaningful relative to an recorded reference. With no reference there is
+  nothing to violate — which is exactly why a value you never recorded renders
+  as `[UNRECORDED]`, not drift (R60; per VALUE since R62 — a partial record
   leaves the unpicked values unrecorded rather than flipping them to drift).
 
 ## 2. Why schema defaults cannot substitute
@@ -96,7 +96,7 @@ nothing. Additions are visible statelessly — a meaningful value exists and
 survives the subtraction. Losses are not. The asymmetry points the blind side
 precisely at the security-relevant direction (§2's disable cases). The only
 mechanism that catches a loss is **baseline removal-detection** — "a value
-present at `accept` has disappeared" — and that requires the recorded value.
+present at `record` has disappeared" — and that requires the recorded value.
 
 ## 4. Why revert needs the baseline
 
@@ -105,16 +105,16 @@ possible restore target. Without it, undeclared revert degrades to "remove /
 reset toward the default", which breaks in two ways:
 
 - **It cannot restore, only bulldoze.** A console-set logging destination that
-  someone later changes should revert to the _accepted_ destination; a
+  someone later changes should revert to the _recorded_ destination; a
   reset-to-default "revert" turns logging off entirely.
 - **It proposes actively harmful operations.** Every environment-legitimate
   deviation (§2) doubles as a standing offer to "fix" it — e.g. setting
   `Encrypted: false` across an encryption-by-default account.
 
 It also cannot distinguish "changed out of band yesterday" from "has been this
-way since before cdkrd existed" — reverting the latter bulldozes accepted
+way since before cdkrd existed" — reverting the latter bulldozes recorded
 reality. This is exactly why the existing no-baseline guard marks undeclared
-findings `notRevertable` and why `--remove-unaccepted` is an explicit opt-in:
+findings `notRevertable` and why `--remove-unrecorded` is an explicit opt-in:
 the guard is the temporary form of a blindness that would become permanent
 without the file.
 
@@ -126,8 +126,8 @@ stored:
 
 **Store values there → it's the baseline, relocated badly.** config.json is
 hand-written JSONC (comments included) and stable; the baseline is rewritten
-wholesale by every `accept`. Merging them means either machine writes erase
-human edits and comments, or `accept` churns a hand-edited file on every run.
+wholesale by every `record`. Merging them means either machine writes erase
+human edits and comments, or `record` churns a hand-edited file on every run.
 And the scopes differ: an ignore rule is app-wide intent ("autoscaling owns
 `DesiredCount` everywhere"), while a baseline entry is a per-stack × account ×
 region **fact** — the filename `<stack>.<accountId>.<region>.json` is the
@@ -140,15 +140,15 @@ value, so it can only express "never look at X again" (mode two of §1). Ignorin
 `*.Encrypted` to silence the encryption-by-default noise makes the tool blind to
 encryption being disabled. And the review artifact degrades: a PR adding
 `ignore *.PermissionsBoundary` records that watching stopped, but not _which_
-boundary ARN was deemed acceptable — exactly the information a security review
+boundary ARN was deemed recordable — exactly the information a security review
 needs.
 
 ## 6. Why a git-committed file (vs DynamoDB / SSM / AWS Config)
 
 Given that state must exist (§1), it could live in AWS-side storage. It is a
-git-committed file instead because acceptance is a **contract about acceptable
-real state**: committing it makes every acceptance a reviewable PR diff
-alongside the IaC it protects ("we now accept value V for X" — value-level,
+git-committed file instead because recordance is a **contract about recordable
+real state**: committing it makes every recordance a reviewable PR diff
+alongside the IaC it protects ("we now record value V for X" — value-level,
 auditable, blame-able). It also keeps the project tenets: no extra
 infrastructure, no AWS Config dependency, and the contract is readable in review
 without AWS access.
@@ -159,17 +159,17 @@ The file does not cost the first-run experience:
 
 - The **first `check` needs no file** and is fully functional: the declared and
   deleted tiers are stateless (template vs live) and fail the run from run #1;
-  the undeclared tier shows as `[UNRECORDED: N]` with the accept path spelled
+  the undeclared tier shows as `[UNRECORDED: N]` with the record path spelled
   out (R49/R60).
 - The baseline is **never hand-authored** — it is the machine-recorded byproduct
-  of one human decision (the interactive accept after the first check, or
-  `cdkrd accept`).
+  of one human decision (the interactive record after the first check, or
+  `cdkrd record`).
 
 So zero-CONFIG holds for the product's whole life (config.json stays optional),
 while zero-STATE is impossible only for the undeclared tier — because without an
-accepted reference, "undeclared drift" has no definition (§1). Designs that
+recorded reference, "undeclared drift" has no definition (§1). Designs that
 claim otherwise just relocate the state somewhere worse: Terraform relocates it
-into a state file that self-updates on the next `apply` with no human accept
+into a state file that self-updates on the next `apply` with no human record
 gate (§8), and schema-comparison pretends AWS wrote the state, when 99% of it
 was never written (§2).
 
@@ -191,11 +191,11 @@ The accurate, narrower claim — and the actual contrast with `cdkrd`:
    planned actions, plan reports "No changes" and exits 0 (`-detailed-exitcode`
    included). `Optional+Computed` attributes — the AWS provider's idiom for
    "unset means AWS/external decides" — never produce planned actions.
-2. **Silent auto-acceptance.** The next `apply` (or refresh write) absorbs the
+2. **Silent auto-recordance.** The next `apply` (or refresh write) absorbs the
    new live value into state and the notice disappears. Terraform's state IS a
-   baseline — but a self-updating one, with no human accept gate and no
-   reviewable diff of "what we now accept". `cdkrd`'s baseline moves only when a
-   human runs `accept`, and the move is a PR diff.
+   baseline — but a self-updating one, with no human record gate and no
+   reviewable diff of "what we now record". `cdkrd`'s baseline moves only when a
+   human runs `record`, and the move is a PR diff.
 3. **Undeclared sub-resources are fully invisible.** The AWS provider models
    many properties as separate resources (`aws_s3_bucket_ownership_controls`,
    `aws_s3_bucket_public_access_block`, `aws_iam_role_policy`, ...). Never
@@ -204,7 +204,7 @@ The accurate, narrower claim — and the actual contrast with `cdkrd`:
 
 ## 9. What a stateless `cdkrd` would be
 
-Dropping the third mode ("accept this value, alarm when it changes") removes
+Dropping the third mode ("record this value, alarm when it changes") removes
 the need for the file entirely — and produces a coherent, smaller product:
 declared/deleted drift detection plus an undeclared _inventory_ with ignore
 rules. The honest degradation table:
@@ -212,11 +212,11 @@ rules. The honest degradation table:
 | capability                               | with baseline                           | stateless (config.json only)                          |
 | ---------------------------------------- | --------------------------------------- | ----------------------------------------------------- |
 | declared / deleted drift                 | works, fails the run                    | unchanged — works, fails the run                      |
-| undeclared change detection              | alarm on change from the accepted value | gone — existence inventory only                       |
+| undeclared change detection              | alarm on change from the recorded value | gone — existence inventory only                       |
 | new vs always-been-there                 | distinguished (vs baseline)             | indistinguishable                                     |
 | loss of a good value (disable direction) | removal-detection alarms                | invisible (the §3 blind spot)                         |
-| undeclared revert                        | restore the accepted value              | remove/reset only — can't restore; proposes harm (§4) |
-| acceptance record                        | reviewable value-level PR diff          | "stopped watching X" only                             |
+| undeclared revert                        | restore the recorded value              | remove/reset only — can't restore; proposes harm (§4) |
+| recordance record                        | reviewable value-level PR diff          | "stopped watching X" only                             |
 
 That product no longer answers this project's thesis — the most dangerous
 direction (disabling security posture) becomes the least visible one — which is
@@ -227,5 +227,5 @@ why the baseline stays.
 The baseline is **the per-environment defaults database AWS never wrote**:
 14,691 top-level properties whose real, account-specific defaults exist only as
 service behavior, populated by observation (`check` reads the full live model)
-and ratified by a human (`accept`), one decision at a time, as a reviewable git
+and ratified by a human (`record`), one decision at a time, as a reviewable git
 artifact.

@@ -31,11 +31,11 @@ phys() {
     --query "StackResources[?ResourceType=='$1'].PhysicalResourceId" --output text
 }
 
-echo "=== build + deploy + accept (CLEAN baseline) ==="
+echo "=== build + deploy + record (CLEAN baseline) ==="
 (cd "$ROOT" && vp run build) || fail "build"
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
-$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after accept"
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
+$CLI check "$STACK" --region "$REGION" --fail; [ $? -eq 0 ] || fail "expected CLEAN after record"
 
 echo "=== add an element to each array/policy out of band ==="
 ROLE="$(phys AWS::IAM::Role)";          [ -n "$ROLE" ] || fail "no role"

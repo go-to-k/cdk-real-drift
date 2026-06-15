@@ -1,6 +1,6 @@
 // The shared value-canonicalization pipeline, used by BOTH the live/declared
 // comparison in classify.ts AND the baseline-value comparison in baseline-file.ts.
-// Keeping it in one place means a baseline accepted under an OLDER set of
+// Keeping it in one place means a baseline recorded under an OLDER set of
 // canonicalization rules still compares equal to the same live value under the
 // CURRENT rules — so adding a normalizer (we have added four already) never makes a
 // cdkrd version bump alone produce false drift on existing baselines.

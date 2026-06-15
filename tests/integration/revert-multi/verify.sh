@@ -2,7 +2,7 @@
 # cdk-real-drift multi-type REVERT integration test (real AWS, R92).
 #
 # Exercises the one AWS-mutating path across five types via Cloud Control
-# UpdateResource: deploy, accept (CLEAN baseline), change one declared property on
+# UpdateResource: deploy, record (CLEAN baseline), change one declared property on
 # each out of band, then `revert --yes` and assert the stack converges to CLEAN AND
 # every live value is restored to its template value. A cleanup trap destroys even
 # on failure.
@@ -33,11 +33,11 @@ phys() {
 echo "=== build cdk-real-drift ==="
 (cd "$ROOT" && vp run build) || fail "build"
 
-echo "=== deploy + accept (baseline CLEAN) ==="
+echo "=== deploy + record (baseline CLEAN) ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN right after accept"
+[ $? -eq 0 ] || fail "expected CLEAN right after record"
 
 echo "=== mutate one declared property on each type out of band ==="
 Q="$(phys AWS::SQS::Queue)";        [ -n "$Q" ] || fail "no queue url"

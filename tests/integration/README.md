@@ -9,13 +9,13 @@ Requires AWS credentials and a bootstrapped account (`cdk bootstrap`).
 ```bash
 cd basic
 npm install          # fixture's aws-cdk-lib + aws-cdk
-bash verify.sh       # deploy -> accept -> check CLEAN -> inject drift -> check DETECTS -> destroy
+bash verify.sh       # deploy -> record -> check CLEAN -> inject drift -> check DETECTS -> destroy
 ```
 
 `verify.sh` exits non-zero (and prints `INTEG FAIL: ...`) if any assertion fails;
 prints `INTEG PASS` on success.
 
-All accept/revert calls in the scripts pass `--yes`: since the interactive
+All record/revert calls in the scripts pass `--yes`: since the interactive
 prompts landed (R28/R38/R45), a write decision without `--yes` would refuse
 (exit 2) when stdin is not a TTY — and stop to wait for input when it is (R50).
 
@@ -82,7 +82,7 @@ These do NOT run in CI (they need credentials and mutate a real account):
 
 One versioned S3 bucket. Asserts:
 
-1. `accept` then `check` reports CLEAN (exit 0).
+1. `record` then `check` reports CLEAN (exit 0).
 2. After enabling transfer acceleration out-of-band (an **undeclared** change CFn
    drift would not catch), `check` reports drift (exit 1) and names
    `AccelerateConfiguration`.
@@ -94,7 +94,7 @@ tier and the `revert` guards:
 
 1. **R2 revert guard** — with NO baseline, `revert --dry-run` reports the
    undeclared value as `NOT revertable` (`unrecorded`, R62) while a declared drift
-   is still in the plan; `--remove-unaccepted` opts in to removing it.
+   is still in the plan; `--remove-unrecorded` opts in to removing it.
 2. **R1 deleted tier** — after deleting the bucket out of band, `check` reports the
    `deleted` tier (exit 1) and `revert --dry-run` reports it as not revertable
    (`deleted — recreate via cdk deploy`).
@@ -119,19 +119,19 @@ the signal to re-verify the README comparison-table claims.
 
 ### basic / verify-mutation-matrix.sh
 
-False-negative matrix (R64): after a FULL accept (snapshot-complete baseline),
+False-negative matrix (R64): after a FULL record (snapshot-complete baseline),
 one bucket is walked through every drift direction the model distinguishes;
 each must be detected, named, and resolved back to CLEAN:
 
 | #   | direction         | mutation                        | must name                            | resolve  |
 | --- | ----------------- | ------------------------------- | ------------------------------------ | -------- |
 | M1  | declared-change   | versioning suspended            | `VersioningConfiguration`            | `revert` |
-| M2  | undeclared-add    | acceleration appears            | `appeared since accept` (R62)        | `accept` |
-| M3  | undeclared-change | accepted acceleration flips     | `AccelerateConfiguration`            | `accept` |
-| M4  | undeclared-add    | out-of-band CORS config         | `CorsConfiguration` + `appeared since accept` | `accept` |
-| M5  | value-remove      | accepted CORS deleted           | `baseline value removed since accept`| `accept` |
+| M2  | undeclared-add    | acceleration appears            | `appeared since record` (R62)        | `record` |
+| M3  | undeclared-change | recorded acceleration flips     | `AccelerateConfiguration`            | `record` |
+| M4  | undeclared-add    | out-of-band CORS config         | `CorsConfiguration` + `appeared since record` | `record` |
+| M5  | value-remove      | recorded CORS deleted           | `baseline value removed since record`| `record` |
 
-Every mutation ends at CLEAN, so the script also exercises the accept delta
+Every mutation ends at CLEAN, so the script also exercises the record delta
 loop (R39) each round and the declared revert path once. (M4/M5 use CORS, not
 tags: S3 refuses a TagSet replacement that drops the CFn `aws:*` system tags —
 found on the first live run, R68.)
@@ -154,7 +154,7 @@ A second script in the `iam` fixture covering the sibling-DefaultPolicy blind
 spot end-to-end (an out-of-band inline policy on a role whose grants live in a
 sibling `AWS::IAM::Policy`):
 
-1. `accept` then `check` reports CLEAN — the sibling DefaultPolicy entry in the
+1. `record` then `check` reports CLEAN — the sibling DefaultPolicy entry in the
    role's live `Policies` is filtered by name, not reported as drift.
 2. After `put-role-policy` adds a rogue inline policy out-of-band, `check` reports
    `Policies` drift (exit 1) naming ONLY the rogue policy — the sibling entry does
@@ -178,7 +178,7 @@ L1 S3 bucket, whose undeclared properties all sit at a known AWS default):
    with `BlockedEncryptionTypes`) still match what Cloud Control returns; a mismatch
    would reclassify the value as real undeclared and surface it in the body.
 2. `--show-all` expands the fold and lists those same values under `AT AWS DEFAULT`.
-3. after `accept`, `check` is CLEAN (the at-default values fold, never recorded).
+3. after `record`, `check` is CLEAN (the at-default values fold, never recorded).
 4. mutating one at-default value away from its default (Lambda `TracingConfig`
    `PassThrough` → `Active`) makes `check` surface it as real drift — the fold
    never blinds cdkrd to an actual change (the equality gate has teeth).
@@ -224,7 +224,7 @@ cd readgap && bash verify.sh
 ## mutation-multi
 
 The false-NEGATIVE guard (the opposite of `noise` / the false-positive matrix).
-Deploys five types, accepts a CLEAN baseline, then changes one declared property on
+Deploys five types, records a CLEAN baseline, then changes one declared property on
 each out of band (SQS VisibilityTimeout, SNS DisplayName, Lambda Timeout, S3
 VersioningConfiguration, ECR ImageTagMutability) and asserts `check --fail` DETECTS
 every one. A normalizer that wrongly collapses a real change would make cdkrd miss
@@ -267,7 +267,7 @@ HTTP API, REST API, CodeBuild, IAM User, EIP, Glue Database+Table). Asserts:
 
 1. A FRESH deploy classifies with **zero declared drift** across every type
    (the cross-type false-positive test) and exits 0 (inventory is UNRECORDED).
-2. `accept --yes` then `check --fail` lands CLEAN across every type.
+2. `record --yes` then `check --fail` lands CLEAN across every type.
 
 Run with `CDKRD_CORPUS_DIR` to record one golden-corpus case per type — the
 fixture exists to convert one AWS round trip into permanent offline coverage.
@@ -286,7 +286,7 @@ WebACL with a managed rule group, ECS cluster (pulls in a full VPC: subnets,
 routes, NAT, IGW — all recorded), Kinesis with the aws-managed KMS alias
 (exercises the strict alias<->key-ARN match live). Asserts the same two
 invariants as `harvest`: fresh deploy = ZERO declared drift, then
-accept -> `check --fail` CLEAN.
+record -> `check --fail` CLEAN.
 
 ```bash
 cd harvest2 && npm install && bash verify-harvest2.sh
@@ -301,7 +301,7 @@ Wave 3 of the corpus harvest (R74), two jobs in one deploy:
   (group + schedule), Firehose delivery stream, SES configuration set,
   Cloud Map HTTP namespace, AppSync GraphQL API, CloudTrail trail, AWS
   Backup vault+plan. Same two harvest invariants: fresh deploy = ZERO
-  declared drift, then accept -> `check --fail` CLEAN.
+  declared drift, then record -> `check --fail` CLEAN.
 - **Multi-type revert matrix** — the first live proof of the Cloud Control
   write path beyond S3. Five CC-routed declared values are mutated
   out-of-band (Lambda `MemorySize`, SQS `VisibilityTimeout`, Logs
@@ -349,7 +349,7 @@ covered only by hand-written corpus seeds. Two origins (S3 with OAC + HTTP)
 and two behaviors so the Id-keyed Origins sort, the HTTP-method enum-set
 sort, and the cache-policy reference shapes all run against real data.
 Asserts the two harvest invariants (fresh deploy = ZERO declared drift,
-accept -> CLEAN). Kept separate from the harvest waves because deploy and
+record -> CLEAN). Kept separate from the harvest waves because deploy and
 destroy each take minutes. `CDKRD_CLOUDFRONT_KEEP=1` keeps the stack.
 
 ```bash
@@ -365,7 +365,7 @@ Lambda Function + Alias, IAM InstanceProfile, Route53 HealthCheck, a
 CloudWatch CompositeAlarm over two child alarms, an EXPRESS StateMachine,
 and an SSM Parameter. All cheap and fast — no VPC, no NAT, no slow
 resources. Same two harvest invariants: fresh deploy = ZERO declared drift,
-then accept -> `check --fail` CLEAN.
+then record -> `check --fail` CLEAN.
 
 ```bash
 cd harvest5 && npm install && bash verify-harvest5.sh
@@ -374,7 +374,7 @@ cd harvest5 && npm install && bash verify-harvest5.sh
 ## mutation-tags
 
 Guards the R95 fix (a console-ADDED tag must be DETECTED, not subset-projected
-away). Deploy a bucket with one declared tag, accept CLEAN, ADD a second tag out of
+away). Deploy a bucket with one declared tag, record CLEAN, ADD a second tag out of
 band (a Key the template never declared, via the Resource Groups Tagging API so the
 aws:* system tags survive), and assert `check --fail` reports it. Before R95 the
 added tag was silently dropped.
@@ -388,7 +388,7 @@ cd mutation-tags && npm install && bash verify.sh
 The highest-yield false-NEGATIVE hunt: properties whose normalizer sorts or
 canonicalizes an array/policy (the class where the R88 bugs lived). Deploy an IAM
 role with a named inline policy, a SecurityGroup with two ingress rules, and a WAFv2
-IPSet with two addresses; accept CLEAN; then ADD one element to each out of band (a
+IPSet with two addresses; record CLEAN; then ADD one element to each out of band (a
 policy Action, an ingress rule, an IP address) and assert `check --fail` DETECTS
 every one — proving the normalization does not OVER-suppress and silently hide a
 real change. Run after changing `src/normalize/**`.
@@ -400,7 +400,7 @@ cd mutation-arrays && npm install && bash verify.sh
 ## revert-multi
 
 Exercises the one AWS-mutating path across five types via Cloud Control
-UpdateResource. Deploy SQS / SNS / Lambda / S3 / ECR, accept a CLEAN baseline,
+UpdateResource. Deploy SQS / SNS / Lambda / S3 / ECR, record a CLEAN baseline,
 change one declared property on each out of band, then `revert --yes` and assert the
 stack converges to CLEAN AND every live value is restored to its template value
 (VisibilityTimeout 30, DisplayName, Timeout 10, VersioningConfiguration Enabled,
@@ -421,7 +421,7 @@ AnomalyDetector. Wave 8 — ApiGateway Model / RequestValidator / GatewayRespons
 (children of a RestApi), a Cognito UserPoolResourceServer, Route53 Resolver DNS
 firewall (FirewallDomainList + FirewallRuleGroup), an IAM OIDC provider, and a
 public ECR repository. Wave 9 — a single-AZ VPC carrying a NetworkAcl + entry, an S3 gateway VPC endpoint, and an EFS file system + access point. Same two harvest invariants (fresh deploy = ZERO declared
-drift, then accept -> `check --fail` CLEAN); the CC-unreadable types among them are
+drift, then record -> `check --fail` CLEAN); the CC-unreadable types among them are
 honestly `skipped` (not recorded, never false drift). Run with
 `CDKRD_CORPUS_DIR=<dir>` to record the readable types as golden cases.
 
@@ -432,9 +432,9 @@ cd harvest8 && npm install && CDKRD_CORPUS_DIR=../../corpus bash verify-harvest8
 
 ## revert
 
-A versioned S3 bucket. Enables acceleration, `accept`s (recording it in the
+A versioned S3 bucket. Enables acceleration, `record`s (recording it in the
 baseline), then injects a DECLARED drift (versioning suspended) + an UNDECLARED
-drift (acceleration suspended from its accepted Enabled), asserts `check` detects
+drift (acceleration suspended from its recorded Enabled), asserts `check` detects
 both, runs `cdkrd revert --yes`, and asserts `check` is CLEAN and AWS itself
 converged (versioning Enabled = template, acceleration Enabled = baseline value).
 Proves the Cloud Control `UpdateResource` write path end-to-end.
@@ -444,7 +444,7 @@ Proves the Cloud Control `UpdateResource` write path end-to-end.
 One resource per SDK writer (`SDK_WRITERS` in `src/revert/writers.ts`):
 `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
 `AWS::IAM::Policy` (standalone inline), `AWS::IAM::ManagedPolicy`. After
-accept + CLEAN, a `CdkrdInjected` statement is spliced into EVERY policy
+record + CLEAN, a `CdkrdInjected` statement is spliced into EVERY policy
 document out of band; asserts `check` reports all 5 declared drifts, `revert
 --yes` converges through all 5 writers, `check` is CLEAN again, and direct AWS
 reads confirm the injected statement is gone while the declared one survived

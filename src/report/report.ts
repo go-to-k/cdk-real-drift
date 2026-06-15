@@ -69,7 +69,7 @@ export interface ReportOptions {
 // baseline entry is the contract that defines undeclared drift, and with no
 // entry there is nothing to violate. They render as their own [UNRECORDED: N]
 // section, are excluded from the drift verdict/exit, and the result line points
-// at `cdkrd accept`.
+// at `cdkrd record`.
 
 export function formatFinding(f: Finding): string {
   // prefer the CDK construct path for the human-facing id; fall back to logical id
@@ -143,7 +143,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // defaults, so listing them all would re-flood the first run R86 worked to quiet.
   // Top-level unrecorded values still list in full in [UNRECORDED]; the nested ones
   // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
-  // accept records them, so a later out-of-band change to one surfaces as drift.
+  // record records them, so a later out-of-band change to one surfaces as drift.
   const expandNested = !!opts.verbose || !!opts.expandAtDefault;
   const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
   const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
@@ -181,7 +181,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     section(
       unrecordedShown,
       'UNRECORDED',
-      'not drift — undeclared and not in the baseline yet; accept to record',
+      'not drift — undeclared and not in the baseline yet; record to record',
       style.undeclaredTier,
       driftSections > 0
     )
@@ -208,8 +208,8 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   if (mixed) {
     const foldedHint =
       unrecordedFoldedCount > 0
-        ? `${unrecordedFoldedCount} folded; run cdkrd accept`
-        : 'run cdkrd accept';
+        ? `${unrecordedFoldedCount} folded; run cdkrd record`
+        : 'run cdkrd record';
     resultBody =
       `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
       ` + ${unrecordedShown.length} undeclared to review` +
@@ -229,8 +229,8 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       unrecordedItems.length > 0
         ? style.infoTier(
             unrecordedFoldedCount > 0
-              ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd accept)`
-              : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd accept)`
+              ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd record)`
+              : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd record)`
           )
         : '';
     resultBody = `${verdict}${unrecordedNote}`;
@@ -276,7 +276,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // R96: the folded nested-unrecorded count joins the info: footer (--show-all lists them).
   if (nestedFolded.length > 0)
     summaries.push(
-      `nested=${nestedFolded.length} (undeclared values nested in a declared object — accept to record; --show-all to list)`
+      `nested=${nestedFolded.length} (undeclared values nested in a declared object — record to record; --show-all to list)`
     );
   if (summaries.length === 1) {
     log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));

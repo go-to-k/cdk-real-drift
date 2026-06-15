@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   finalCheckExit,
-  postAcceptNote,
+  postRecordNote,
   preDeployFindings,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
@@ -50,25 +50,25 @@ describe('undeclaredOnlyFindings (R59 — pair-with-cdk-drift scope)', () => {
   });
 });
 
-describe('postAcceptNote (R52 — a partial accept is a SUCCESS, said plainly)', () => {
-  it('partial accept (undeclared remain) → success; remainder surfaces from the next check', () => {
-    const note = postAcceptNote(112, 0);
-    expect(note).toContain('accept succeeded');
-    expect(note).toContain('112 unaccepted value(s) stay reported from the next check on');
+describe('postRecordNote (R52 — a partial record is a SUCCESS, said plainly)', () => {
+  it('partial record (undeclared remain) → success; remainder surfaces from the next check', () => {
+    const note = postRecordNote(112, 0);
+    expect(note).toContain('record succeeded');
+    expect(note).toContain('112 unrecorded value(s) stay reported from the next check on');
   });
 
-  it('everything accepted → CLEAN', () => {
-    expect(postAcceptNote(0, 0)).toBe('stack is now CLEAN.');
+  it('everything recorded → CLEAN', () => {
+    expect(postRecordNote(0, 0)).toBe('stack is now CLEAN.');
   });
 
-  it("declared/deleted drift remains → named (outside accept's reach), undeclared remainder too", () => {
-    const note = postAcceptNote(112, 2);
+  it("declared/deleted drift remains → named (outside record's reach), undeclared remainder too", () => {
+    const note = postRecordNote(112, 2);
     expect(note).toContain('2 declared/deleted drift(s) remain un-addressed');
-    expect(note).toContain('112 unaccepted value(s) also stay reported');
+    expect(note).toContain('112 unrecorded value(s) also stay reported');
   });
 
   it('declared drift remains, nothing else → no undeclared clause', () => {
-    const note = postAcceptNote(0, 1);
+    const note = postRecordNote(0, 1);
     expect(note).toContain('declared/deleted drift(s) remain');
     expect(note).not.toContain('also stay reported');
   });

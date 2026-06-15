@@ -41,14 +41,14 @@ const F = (over: Partial<Finding>): Finding => ({
   ...over,
 });
 
-const baseline = (accepted: BaselineFile['accepted']): BaselineFile => ({
+const baseline = (recorded: BaselineFile['recorded']): BaselineFile => ({
   schemaVersion: 1,
   stackName: 's',
   region: 'r',
   accountId: '111122223333',
   capturedAt: '',
   templateHash: '',
-  accepted,
+  recorded,
 });
 
 describe('buildRevertPlan', () => {
@@ -65,7 +65,7 @@ describe('buildRevertPlan', () => {
     });
   });
 
-  it('undeclared drift with an accepted prior value -> add op restoring the baseline value', () => {
+  it('undeclared drift with an recorded prior value -> add op restoring the baseline value', () => {
     const f = F({
       tier: 'undeclared',
       path: 'AccelerateConfiguration',
@@ -87,7 +87,7 @@ describe('buildRevertPlan', () => {
     });
   });
 
-  it('appeared-since-accept undeclared drift (entry-less, NOT unrecorded) -> remove op', () => {
+  it('appeared-since-record undeclared drift (entry-less, NOT unrecorded) -> remove op', () => {
     // applyBaseline leaves a finding untagged only when its resource is
     // snapshot-complete — restoring the snapshot means removing the addition.
     const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
@@ -109,14 +109,14 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('unrecorded');
   });
 
-  it('--remove-unaccepted re-enables the remove op for unrecorded values', () => {
+  it('--remove-unrecorded re-enables the remove op for unrecorded values', () => {
     const f = F({
       tier: 'undeclared',
       path: 'OwnershipControls',
       actual: { Rules: [] },
       unrecorded: true,
     });
-    const plan = buildRevertPlan([f], undefined, { removeUnaccepted: true });
+    const plan = buildRevertPlan([f], undefined, { removeUnrecorded: true });
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
   });
 
@@ -250,9 +250,9 @@ describe('buildRevertPlan', () => {
     for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
   });
 
-  it('R35: UNRECORDED create-only value -> reason is unrecorded (accept is the route)', () => {
+  it('R35: UNRECORDED create-only value -> reason is unrecorded (record is the route)', () => {
     // the fundamental blocker is "no revert target" — a create-only reason would
-    // mis-direct the user toward replacement when `accept` records the value into the baseline
+    // mis-direct the user toward replacement when `record` records the value into the baseline
     const plan = buildRevertPlan(
       [F({ tier: 'undeclared', path: 'BucketName', actual: 'b', unrecorded: true })],
       undefined,
@@ -348,7 +348,7 @@ describe('property-scoped SDK writer routing (IAM Role inline Policies)', () => 
     });
   });
 
-  it('an accepted Policies finding -> add op with the baseline value AND prior (current live subset)', () => {
+  it('an recorded Policies finding -> add op with the baseline value AND prior (current live subset)', () => {
     const baselineValue = [{ PolicyName: 'rogue', PolicyDocument: { Version: 'old' } }];
     const plan = buildRevertPlan(
       [roleFinding()],
@@ -421,7 +421,7 @@ describe('property-scoped SDK writer routing (IAM Role inline Policies)', () => 
 });
 
 describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => {
-  it('R98 identity-keyed array-element nested value (accepted then changed) -> notRevertable, never a malformed pointer', () => {
+  it('R98 identity-keyed array-element nested value (recorded then changed) -> notRevertable, never a malformed pointer', () => {
     // path `Origins[id].ConnectionTimeout` would become the bogus pointer
     // `/Origins[id]/ConnectionTimeout` (bracket is not RFC6902) if it reached revertOp.
     const f = F({
@@ -455,8 +455,8 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
   });
 
-  it('nested guard fires by PATH SHAPE even without the flag (baseline value removed since accept)', () => {
-    // applyBaseline reconstructs a "removed since accept" finding WITHOUT Finding.nested
+  it('nested guard fires by PATH SHAPE even without the flag (baseline value removed since record)', () => {
+    // applyBaseline reconstructs a "removed since record" finding WITHOUT Finding.nested
     // (baseline-file.ts), but it keeps the nested path — the path-shape guard still catches it.
     const f = F({
       tier: 'undeclared',
@@ -469,7 +469,7 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
   });
 
-  it('--remove-unaccepted does NOT override the nested guard', () => {
+  it('--remove-unrecorded does NOT override the nested guard', () => {
     const f = F({
       tier: 'undeclared',
       path: 'Conf.Destination',
@@ -477,7 +477,7 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
       nested: true,
       unrecorded: true,
     });
-    const plan = buildRevertPlan([f], baseline([]), { removeUnaccepted: true });
+    const plan = buildRevertPlan([f], baseline([]), { removeUnrecorded: true });
     expect(plan.items).toHaveLength(0);
     expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
   });

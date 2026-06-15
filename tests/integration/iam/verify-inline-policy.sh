@@ -8,7 +8,7 @@
 # undeclared drift and REVERTED per-name — deleting only the rogue policy and
 # leaving the DefaultPolicy untouched.
 #
-#   deploy fixture -> accept (baseline) -> check CLEAN (sibling filtered)
+#   deploy fixture -> record (baseline) -> check CLEAN (sibling filtered)
 #   -> put-role-policy (rogue inline policy) -> check DETECTS Policies drift
 #   -> revert --yes -> rogue policy GONE, DefaultPolicy INTACT -> check CLEAN
 #
@@ -46,12 +46,12 @@ DEFAULT_POLICY="$(aws iam list-role-policies --role-name "$ROLE_NAME" --query 'P
 [ -n "$DEFAULT_POLICY" ] && [ "$DEFAULT_POLICY" != "None" ] || fail "fixture has no sibling DefaultPolicy"
 echo "role=$ROLE_NAME defaultPolicy=$DEFAULT_POLICY"
 
-echo "=== accept (write baseline) ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== record (write baseline) ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 
 echo "=== check should be CLEAN (sibling DefaultPolicy filtered, no false positive) ==="
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after accept — sibling DefaultPolicy leaked as drift?"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) right after record — sibling DefaultPolicy leaked as drift?"
 
 echo "=== inject undeclared drift (out-of-band inline policy next to the sibling) ==="
 aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name "$ROGUE" \

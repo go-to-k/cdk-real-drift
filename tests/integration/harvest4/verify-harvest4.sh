@@ -6,7 +6,7 @@
 #      Scaling, SSM Document, HTTP API explicit stage, ECR lifecycle policy):
 #      1. baseline-free `check` — fresh deploy must classify with ZERO
 #         declared drift, exit 0;
-#      2. `accept --yes` then `check --fail` — CLEAN across every type.
+#      2. `record --yes` then `check --fail` — CLEAN across every type.
 #   B. ALB ATTRIBUTE REVERT: the declared idle_timeout lives INSIDE the
 #      {Key,Value}[] LoadBalancerAttributes list — mutate it out of band
 #      (120 -> 300), `check` must name it as DECLARED drift, `revert --yes`
@@ -55,10 +55,10 @@ rc=${PIPESTATUS[0]}
 grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
-echo "=== A2. accept + check --fail must be CLEAN across every type ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== A2. record + check --fail must be CLEAN across every type ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after accept"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after record"
 
 echo "=== B1. mutate the declared ALB idle_timeout out of band (120 -> 300) ==="
 ALB_ARN="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --region "$REGION" \

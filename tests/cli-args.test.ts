@@ -37,14 +37,14 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S', '--yes']).yes).toBe(true);
     expect(parseCommonArgs(['S', '--pre-deploy']).preDeploy).toBe(true);
     expect(parseCommonArgs(['S']).preDeploy).toBe(false);
-    expect(parseCommonArgs(['S', '--remove-unaccepted']).removeUnaccepted).toBe(true);
-    expect(parseCommonArgs(['S']).removeUnaccepted).toBe(false);
+    expect(parseCommonArgs(['S', '--remove-unrecorded']).removeUnrecorded).toBe(true);
+    expect(parseCommonArgs(['S']).removeUnrecorded).toBe(false);
     expect(parseCommonArgs(['S', '--verbose']).verbose).toBe(true);
     expect(parseCommonArgs(['S', '-v']).verbose).toBe(true);
     expect(parseCommonArgs(['S']).verbose).toBe(false);
   });
 
-  it('accepts --dry-run as a known flag (interpreted by revert)', () => {
+  it('records --dry-run as a known flag (interpreted by revert)', () => {
     expect(parseCommonArgs(['S', '--dry-run']).stackNames).toEqual(['S']);
   });
 
@@ -123,7 +123,7 @@ describe('parseCommonArgs', () => {
     expect(a.stackNames).toEqual(['declared']); // a (oddly named) stack arg, not a tier
   });
 
-  it('accepts --flag=value form, equal to the space form (R41)', () => {
+  it('records --flag=value form, equal to the space form (R41)', () => {
     expect(parseCommonArgs(['--app=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
     expect(parseCommonArgs(['-a=cdk.out'])).toEqual(parseCommonArgs(['--app', 'cdk.out']));
     expect(parseCommonArgs(['MyStack', '--region=eu-west-1']).region).toBe('eu-west-1');

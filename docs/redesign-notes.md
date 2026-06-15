@@ -4,7 +4,7 @@ The repo is not published yet, so breaking changes the final tool needs are made
 now. Target = "detect drift INCLUDING undeclared CloudFormation properties, AND
 revert it, as an effortless / friendly CLI."
 
-## Decision 1 — three-verb model: check / accept / revert
+## Decision 1 — three-verb model: check / record / revert
 
 Detect-only is no longer the identity. After `check` finds drift, the human
 decision is binary, and the verbs mirror it:
@@ -12,13 +12,13 @@ decision is binary, and the verbs mirror it:
 | verb           | meaning                                                            | writes          |
 | -------------- | ------------------------------------------------------------------ | --------------- |
 | `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing         |
-| `cdkrd accept` | "current state is RIGHT" — record it in the baseline file          | git file only   |
+| `cdkrd record` | "current state is RIGHT" — record it in the baseline file          | git file only   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
 
 - declared drift reverts to the **deployed template** value.
 - undeclared drift reverts to the **baseline** value; an out-of-band ADDITION
   (e.g. a PermissionsBoundary nobody declared) reverts by REMOVAL.
-- `init` is removed (it duplicated accept; three verbs are the whole surface).
+- `init` is removed (it duplicated record; three verbs are the whole surface).
 
 ## Decision 2 — revert write path: Cloud Control UpdateResource (RFC6902)
 
@@ -39,8 +39,8 @@ Safety:
 ## Decision 3 — first-run UX
 
 `check` with no baseline on a TTY interactively offers: "No baseline found —
-accept the current state now? [Y/n]" (CI / non-TTY keeps the note-only behavior).
-Interactive prompts use `@clack/prompts` (same stack as cdk-local). The accept /
+record the current state now? [Y/n]" (CI / non-TTY keeps the note-only behavior).
+Interactive prompts use `@clack/prompts` (same stack as cdk-local). The record /
 revert multiselect uses `@clack/core`'s low-level `MultiSelectPrompt` directly (via
 `src/commands/bulk-multiselect.ts`) so it can bind the bulk keys the high-level
 wrapper hides — space toggles, → selects all, ← clears all — mirroring cdk-local's
@@ -49,7 +49,7 @@ target picker (R116).
 ## Decision 4 — flag cleanup
 
 - `--no-baseline` -> `--show-all` (inventory mode: ALL current undeclared values,
-  not just changes since accept).
+  not just changes since record).
 - `--region` no longer hard-defaults to us-east-1; resolve via the SDK default
   chain (env / profile) and fail with a clear message when unresolvable.
 
@@ -139,5 +139,5 @@ core thesis is unchanged.
   for nearly every unset option). One could argue inventory (`--show-all`) should
   show those so a user can see "feature X is explicitly off". Rejected: inventory
   would re-flood with exactly the `false`/empty noise the subtractive model exists
-  to remove, drowning the real signal. The accepted-then-changed-to-empty case is
+  to remove, drowning the real signal. The recorded-then-changed-to-empty case is
   still caught by baseline removal-detection, which is the case that matters.

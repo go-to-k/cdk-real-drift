@@ -1,7 +1,7 @@
 # cdk-real-drift (`cdkrd`)
 
 Drift detection for AWS CDK — including the **undeclared properties `cdk drift`
-can't see**. Detect it, accept it, or revert it.
+can't see**. Detect it, record it, or revert it.
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
@@ -41,7 +41,7 @@ result: 1 drift(s) (undeclared=1)
 | Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
 | **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
 | **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Accept** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
+| **Record** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
 
 ## Quick start
 
@@ -58,26 +58,26 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[UNRECORDED: 2] (not drift — undeclared and not in the baseline yet; accept to record)
+[UNRECORDED: 2] (not drift — undeclared and not in the baseline yet; record to record)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; run cdkrd accept)
+result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; run cdkrd record)
 info:
   - atDefault=40 (undeclared values matching a known AWS default — not drift)
   ...
 
 ApiStack: unrecorded values found — what do you want to do?
   ❯ Nothing (decide later)
-    Accept — record current state into the baseline
+    Record — record current state into the baseline
 ```
 
 The report always prints **first**, so you see the standout values before deciding
-(no blind bulk-accept). The count is the **complete** undeclared inventory, but
+(no blind bulk-record). The count is the **complete** undeclared inventory, but
 only the handful that **stand out** are listed — AWS defaults, auto-generated
 names/identifiers, and nested sub-keys you never touched fold into the `info:`
 footer (`atDefault=` / `generated=` / `nested=`, `--show-all` expands them).
-Choosing Accept opens a checklist (everything pre-selected — Enter to accept all,
+Choosing Record opens a checklist (everything pre-selected — Enter to record all,
 or deselect what you want to keep visible) and writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
 AWS** — commit it; from here on `check` reports CLEAN until reality changes.
@@ -89,12 +89,12 @@ reports it and asks right there:
 ```console
 ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
-    Accept — record current state into the baseline (a git file; nothing written to AWS)
+    Record — record current state into the baseline (a git file; nothing written to AWS)
     Revert — write the desired value back to AWS
 ```
 
-- **Accept** records the value in the baseline, so `check` stays CLEAN until it
-  changes again (a multiselect lets you accept some and keep reporting others).
+- **Record** records the value in the baseline, so `check` stays CLEAN until it
+  changes again (a multiselect lets you record some and keep reporting others).
 - **Revert** shows a plan, lets you pick which op(s) to write, confirms, then
   writes the desired values back to AWS:
 
@@ -111,7 +111,7 @@ verifying convergence (re-reading 1 resource(s))...
 ApiStack: CLEAN after revert.
 ```
 
-`accept` and `revert` also exist as standalone commands; in CI, run
+`record` and `revert` also exist as standalone commands; in CI, run
 `npx cdkrd check --fail`.
 
 Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
@@ -124,15 +124,15 @@ After `check` finds drift, the human decision is binary, and the verbs mirror it
 | verb           | meaning                                                | writes               |
 | -------------- | ------------------------------------------------------ | -------------------- |
 | `cdkrd check`  | find drift                                             | nothing              |
-| `cdkrd accept` | "this state is RIGHT" — record it in the baseline file | a git file only      |
+| `cdkrd record` | "this state is RIGHT" — record it in the baseline file | a git file only      |
 | `cdkrd revert` | "this state is WRONG" — write the desired value back   | AWS (plan + confirm) |
 
 - **Declared** properties are compared against the **deployed template** — no
   baseline involved, drift is detected from the first run.
 - **Undeclared** properties are compared against a **baseline** you record with
-  `accept`: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed
+  `record`: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed
   to git. A PR that changes it is a visible, reviewable change to "what real
-  state we accept". Account id and region are part of the filename, so the same
+  state we record". Account id and region are part of the filename, so the same
   stack deployed to several accounts never collides (gitignore personal-account
   baselines if you prefer).
 - There is **no watch-list to maintain**. Every `check` snapshots the full live
@@ -173,7 +173,7 @@ tells cdkrd which stacks to look at.
 | command                     | does                                                                   |
 | --------------------------- | ---------------------------------------------------------------------- |
 | `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
-| `cdkrd accept [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
+| `cdkrd record [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
 **Exit codes:** `check` is **report-only by default** — drift prints but exits
@@ -203,16 +203,16 @@ when drift remains after it.
 | `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` / CFn drift detection for the declared side                       |
 | `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`        |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                      |
-| `--remove-unaccepted`      | (revert) REMOVE unrecorded values in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them as opt-in REMOVE  |
-| `--yes` / `-y`             | skip confirmations (revert apply; accept records all without the multiselect)                                                 |
+| `--remove-unrecorded`      | (revert) REMOVE unrecorded values in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them as opt-in REMOVE  |
+| `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                 |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
 
 ### Interactive prompts (TTY only — CI is never prompted)
 
-- **`check` with drift** offers `Nothing / Accept / Revert` inline (shown above).
-  `Nothing` is the default; Enter keeps plain-check behavior. Accept and Revert
+- **`check` with drift** offers `Nothing / Record / Revert` inline (shown above).
+  `Nothing` is the default; Enter keeps plain-check behavior. Record and Revert
   run exactly the same code as the standalone commands. Skipped under `--json`,
   `--show-all`, `--pre-deploy`, and `--fail`. Aborting the Revert confirmation
   writes nothing — the drift still stands and stays reported.
@@ -220,31 +220,31 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   RESTORE ops (template / baseline values) are pre-selected, while REMOVE ops
   (deleting a live value not in your template — a standout `[UNRECORDED]` value, or
   one not in the baseline) start **unselected** and are labeled `(REMOVE)` —
-  removal is an explicit per-item choice (R113: no `--remove-unaccepted` needed in a
+  removal is an explicit per-item choice (R113: no `--remove-unrecorded` needed in a
   prompt, since the unselected row IS the consent). In the multiselect, **space**
   toggles the row, **→** selects all, **←** clears all, **enter** confirms. A final
   confirm states exactly how many selected op(s) will be written. `--yes`
   skips both and applies the full plan.
-- **`accept`** shows a multiselect of only the **delta** from the existing
-  baseline (new + changed undeclared values, all pre-selected); already-accepted
+- **`record`** shows a multiselect of only the **delta** from the existing
+  baseline (new + changed undeclared values, all pre-selected); already-recorded
   unchanged values are auto-kept and surfaced with a
-  `keeping N already-accepted unchanged value(s)` note. Deselect a suspicious one
-  and it stays reported by `check` — accept the intentional changes without
+  `keeping N already-recorded unchanged value(s)` note. Deselect a suspicious one
+  and it stays reported by `check` — record the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
-  `accept` records **undeclared** state only — it does not "approve everything".
+  `record` records **undeclared** state only — it does not "approve everything".
   Any **declared / deleted** drift (divergence from your template intent) is NOT
-  written to the baseline and cannot be silenced by it; `accept` prints a note
+  written to the baseline and cannot be silenced by it; `record` prints a note
   that it still stands, to be resolved with `revert` or `cdk deploy`.
 - **`check` with no baseline yet** asks what to do with the N undeclared values
-  it found: **accept ALL of them** into the baseline (the default — the common
+  it found: **record ALL of them** into the baseline (the default — the common
   first-run choice; it writes only a git-tracked file, nothing to AWS), or
-  **show them first** (the report prints, and a selective accept is offered
+  **show them first** (the report prints, and a selective record is offered
   right after it). With zero undeclared values there is nothing to decide, so
-  no prompt. After an interactive accept, a closing note states what remains:
-  a PARTIAL accept is a success — unselected values simply stay reported as
+  no prompt. After an interactive record, a closing note states what remains:
+  a PARTIAL record is a success — unselected values simply stay reported as
   UNRECORDED from the next `check` on (recording one value never flips the
   rest into drift) — and any remaining declared/deleted drift is named —
-  accept cannot address it (fix the code or choose Revert).
+  record cannot address it (fix the code or choose Revert).
 - A non-TTY run (CI, cron, pipes) never prompts: required write **decisions**
   without `--yes` error with exit 2 (the safe side). `--yes` alone in a TTY
   auto-approves confirmations only (select prompts still show).
@@ -287,7 +287,7 @@ baseline.
 
 Some properties are _legitimately_ rewritten by another system — Application
 Auto Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity.
-An accepted snapshot would re-flag every move. List those paths in a git-committed
+An recorded snapshot would re-flag every move. List those paths in a git-committed
 `.cdkrd/config.json` instead (strict JSON — no comments or trailing commas, and
 unknown keys are rejected so a typo can't silently disable your rules):
 
@@ -301,7 +301,7 @@ Rules glob (`*` / `?`) against either `<logicalId>.<path>` or the friendly
 `<constructPath>.<path>` (e.g. `MyStack/ApiRole.Policies`); prefix with
 `<stack glob>:` to scope to matching stacks; a parent rule covers child paths.
 Matching findings move to the informational `ignored` tier — still visible under
-`--verbose`, never exit-affecting, and excluded from `revert` plans and `accept`.
+`--verbose`, never exit-affecting, and excluded from `revert` plans and `record`.
 A **deleted resource is never ignorable**.
 
 ## Output
@@ -311,10 +311,10 @@ that folds everything informational.
 
 - **Drift tiers** — `deleted` / `declared` / `undeclared` — are always listed in
   full and drive the `--fail` exit. They are the point.
-- **`[UNRECORDED: N]`** — undeclared values you have not accepted yet. Listed in
+- **`[UNRECORDED: N]`** — undeclared values you have not recorded yet. Listed in
   full, but not drift (there is nothing to compare them to): they never fail the
-  build, and `result:` points you at `cdkrd accept`. Once a resource is fully
-  snapshotted, a value that _appears_ later is real drift (`appeared since accept`).
+  build, and `result:` points you at `cdkrd record`. Once a resource is fully
+  snapshotted, a value that _appears_ later is real drift (`appeared since record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
   - **`atDefault`** — undeclared values sitting at a known AWS default (a Lambda's
@@ -332,13 +332,13 @@ that folds everything informational.
     appear on every first run yet you never chose (and often cannot edit) them.
     Folded to a count like `atDefault`, equality-gated against the physical-id
     template (change one out of band — say a `LogFormat: JSON` — and it re-surfaces
-    as real undeclared drift); never recorded by `accept`. `--verbose` lists them.
+    as real undeclared drift); never recorded by `record`. `--verbose` lists them.
   - **`nested`** — undeclared values that live as a **sub-key inside a property
     you _did_ declare** (e.g. you set a cache behavior but never its
     `SmoothStreaming`, which AWS materializes underneath) — including inside the
     elements of an identity-keyed array you declared (a CloudFront `Origins[<id>]`
     gaining a `ConnectionTimeout`, a DynamoDB GSI gaining `WarmThroughput`). The
-    live model carries many of these, so they fold to a count; `accept` records
+    live model carries many of these, so they fold to a count; `record` records
     them like any undeclared value (so a later out-of-band change to one surfaces),
     and `--show-all` / `--verbose` list them.
   - **`readGap` / `unresolved` / `skipped` / `ignored`** — values cdkrd can't
@@ -376,11 +376,11 @@ API.
 
 ## IAM permissions
 
-`check` / `accept` are **read-only**. The AWS managed `ReadOnlyAccess` policy
+`check` / `record` are **read-only**. The AWS managed `ReadOnlyAccess` policy
 covers them. If you scope tighter, the calls are:
 
 <details>
-<summary>Minimal read permissions (check / accept)</summary>
+<summary>Minimal read permissions (check / record)</summary>
 
 - `cloudformation:GetTemplate`, `ListStackResources`, `DescribeStacks`,
   `DescribeType`; `ListExports` (only for templates using `Fn::ImportValue`)
@@ -418,15 +418,15 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   reported as informational, never guessed. You trade a little coverage for zero
   false drift.
 - **Revert cannot do everything.** Not revertable, and reported as such:
-  - **UNRECORDED values** (never accepted — including everything undeclared on
+  - **UNRECORDED values** (never recorded — including everything undeclared on
     a stack with no baseline yet) — there is no recorded state to write back,
-    so `revert` refuses: accept them if the live values are right, or opt into
-    removal with `--remove-unaccepted`;
+    so `revert` refuses: record them if the live values are right, or opt into
+    removal with `--remove-unrecorded`;
   - a `deleted` resource (recreate it with `cdk deploy`);
   - **nested undeclared values** (a sub-key inside a property you declared, incl.
-    inside an identity-keyed array element) — detect/accept-only: a flat patch
+    inside an identity-keyed array element) — detect/record-only: a flat patch
     can't safely target a deep sub-field, so fix any real divergence in your IaC
-    or re-accept the live value;
+    or re-record the live value;
   - **create-only** properties (changing them requires resource replacement);
   - toggle-style properties with no "absent" state (e.g. S3 transfer acceleration
     is only `Enabled`/`Suspended`);
@@ -483,17 +483,17 @@ covered in [docs/why-a-baseline-file.md](docs/why-a-baseline-file.md).
 **Why doesn't `--show-all` list a feature that is explicitly OFF?**
 Undeclared values that are `false`/empty are suppressed — AWS returns an
 "off/empty" value for nearly every unset option, and keeping them would flood
-the output. The case that matters is still caught: an accepted value that later
+the output. The case that matters is still caught: an recorded value that later
 flips to `false`/empty out of band is reported via baseline removal-detection.
 
 **A property keeps drifting because an autoscaler manages it — do I have to
-re-accept forever?**
+re-record forever?**
 No — list it in `.cdkrd/config.json`
 (see [Ignoring externally-managed properties](#ignoring-externally-managed-properties)).
 
 **Is it safe to run in CI / on production accounts?**
-`check` and `accept` make read-only AWS calls (plus a local baseline file write
-for `accept`). `revert` is the only mutating command; it never runs without
+`check` and `record` make read-only AWS calls (plus a local baseline file write
+for `record`). `revert` is the only mutating command; it never runs without
 `--yes` or an interactive confirmation, and `--dry-run` shows the plan without
 changes.
 

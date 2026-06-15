@@ -5,7 +5,7 @@
 // normalize/ layer exists to subtract. If any normalizer regresses, the declared
 // value diverges from live and `check` reports a FALSE declared drift. The test
 // deploys this and asserts `check --fail` exits 0 (zero false positives), then
-// `accept` + `check` stays CLEAN.
+// `record` + `check` stays CLEAN.
 //
 // Coverage (historical false-positive bugs in parentheses):
 //   - IAM inline policy with an `aws:SecureTransport` Condition key — must NOT be

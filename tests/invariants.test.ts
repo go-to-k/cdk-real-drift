@@ -3,13 +3,13 @@
 // no Math.random) and assert properties that must hold for EVERY input. These
 // catch whole CLASSES of bugs the example-based tests can't enumerate:
 //   1. self-compare is CLEAN     — classify(declared=X, live=X) yields nothing
-//   2. accept-all suppresses all — applyBaseline after a full accept leaves no
+//   2. record-all suppresses all — applyBaseline after a full record leaves no
 //                                  undeclared survivors (and no removals)
 //   3. canonicalization is IDEMPOTENT and never throws on weird shapes
 //   4. the strips never throw and never INVENT keys
 //   5. sanitizeAccountId is idempotent and shape-preserving
 import { describe, expect, it } from 'vite-plus/test';
-import { applyBaseline, buildAccepted } from '../src/baseline/baseline-file.js';
+import { applyBaseline, buildRecorded } from '../src/baseline/baseline-file.js';
 import { sanitizeAccountId } from '../src/corpus/record.js';
 import { classifyResource } from '../src/diff/classify.js';
 import { deepEqual } from '../src/diff/drift-calculator.js';
@@ -125,7 +125,7 @@ describe('generative invariants (R73)', () => {
     }
   });
 
-  it('2. accept-all suppresses ALL undeclared findings (and synthesizes no removals)', () => {
+  it('2. record-all suppresses ALL undeclared findings (and synthesizes no removals)', () => {
     for (const seed of SEEDS) {
       const model = genModel(seed);
       // every top-level key as an undeclared finding, values canonicalized the
@@ -150,7 +150,7 @@ describe('generative invariants (R73)', () => {
         accountId: 'a',
         capturedAt: '',
         templateHash: '',
-        accepted: buildAccepted(findings),
+        recorded: buildRecorded(findings),
         completeResources: ['L'],
       };
       const out = applyBaseline(structuredClone(findings), baseline);

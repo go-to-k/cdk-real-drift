@@ -54,8 +54,8 @@ security-relevant drift hides.**
 subset), and report everything that diverges — then make the noise tractable by
 _subtracting_ what's explainable (the template, the resource schema, AWS-managed
 fields, canonicalization) rather than by maintaining a hand-curated allow-list of
-"things worth watching." Give the result a baseline you accept and commit to git, so
-"what undeclared state we accept" becomes a reviewable artifact, and let the user
+"things worth watching." Give the result a baseline you record and commit to git, so
+"what undeclared state we record" becomes a reviewable artifact, and let the user
 `revert` the rest.
 
 **The bets a reviewer should pressure-test** (is this the right approach?):
@@ -100,7 +100,7 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    code edits never masquerade as drift; `--pre-deploy` is the opt-in inversion.
    _Right call, or do users actually expect code-vs-reality by default?_
 5. **Git-committed baseline as the undeclared contract.** Undeclared "drift" is only
-   drift relative to a human-accepted snapshot — the full rationale (why the state
+   drift relative to a human-recorded snapshot — the full rationale (why the state
    must exist, and why neither schema defaults nor `config.json` can replace it)
    is [why-a-baseline-file.md](why-a-baseline-file.md). _Is a committed file the
    right control surface, or does it become a rubber-stamp that hides real change?_
@@ -125,13 +125,13 @@ the verbs mirror it (see [redesign-notes.md](redesign-notes.md) Decision 1):
 | verb           | meaning                                                            | writes          |
 | -------------- | ------------------------------------------------------------------ | --------------- |
 | `cdkrd check`  | find drift (declared vs deployed template, undeclared vs baseline) | nothing         |
-| `cdkrd accept` | "current state is RIGHT" — record it in the baseline file          | git file only   |
+| `cdkrd record` | "current state is RIGHT" — record it in the baseline file          | git file only   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed) |
 
 In a TTY, `check` makes that binary decision **inline** (R28): after reporting drift
-it prompts `Nothing / Accept / Revert` and branches into the SAME per-stack code as
-`accept` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
-as `acceptStack` / `revertStack`, so the interactive flow and the single-verb commands
+it prompts `Nothing / Record / Revert` and branches into the SAME per-stack code as
+`record` / `revert` (extracted to [stack-actions.ts](../src/commands/stack-actions.ts)
+as `recordStack` / `revertStack`, so the interactive flow and the single-verb commands
 can never diverge). Default is `Nothing` (plain-check behaviour); skipped under
 `--json` / `--show-all` / `--pre-deploy` / `--fail` / non-TTY. Aborting the Revert
 confirmation keeps the pre-revert drift state — no AWS write happened, so the
@@ -185,9 +185,9 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                          folded like atDefault, never drift, never recorded; R104)
                          (undeclared also carries a nested:true flag for a live
                          sub-key inside a declared object the template never set; R96)
-6. baseline filter       applyBaseline(): undeclared findings already accepted → drop;
-                         atDefault reconciled too (an accepted value now at-default is
-                         suppressed, not a false "removed since accept")
+6. baseline filter       applyBaseline(): undeclared findings already recorded → drop;
+                         atDefault reconciled too (an recorded value now at-default is
+                         suppressed, not a false "removed since record")
 7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
                          1 bullet/tier when 2+; --verbose expands, --show-all expands
                          atDefault + nested undeclared); --json carries all findings;
@@ -206,14 +206,14 @@ checked.
 
 ## 4. Module map (`src/`)
 
-- **cli.ts** — entry; dispatch check/accept/revert (+ help/version). **cli-args.ts** —
+- **cli.ts** — entry; dispatch check/record/revert (+ help/version). **cli-args.ts** —
   zero-dep arg parser → `CommonArgs`.
 - **commands/**
-  - **check.ts / accept.ts / revert.ts** — the three verbs.
+  - **check.ts / record.ts / revert.ts** — the three verbs.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
   - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).
-  - **bulk-multiselect.ts** — the accept/revert multiselect, built on `@clack/core`'s `MultiSelectPrompt` so it can bind bulk keys the high-level wrapper hides (space = toggle, → = all, ← = none, enter = confirm; mirrors cdk-local's target picker, R116). `bulkSelectValues` / `bulkSelectHint` are pure + unit-tested.
+  - **bulk-multiselect.ts** — the record/revert multiselect, built on `@clack/core`'s `MultiSelectPrompt` so it can bind bulk keys the high-level wrapper hides (space = toggle, → = all, ← = none, enter = confirm; mirrors cdk-local's target picker, R116). `bulkSelectValues` / `bulkSelectHint` are pure + unit-tested.
 - **desired/** — the "intent" side
   - **template-adapter.ts** — `loadDesired()`: deployed (or `--pre-deploy` synth) template + phys-ids + params → resolved `DesiredResource[]`. Builds `ResolverContext`.
   - **yaml-cfn.ts** — CFn-flavored YAML/JSON template parser.
@@ -293,13 +293,13 @@ all live changes
     into the info: footer as a count, so the report states the COMPLETE undeclared
     inventory but lists only the values that actually diverge. Equality-gated: change
     one away from its default and it re-tags as real undeclared drift. (`--show-all` /
-    `--verbose` expand the fold to the full list; accept never records an atDefault.)
+    `--verbose` expand the fold to the full list; record never records an atDefault.)
   − auto-generated identifiers AWS assigns at deploy and absent from the template
     (a topic's minted TopicName, a Lambda's default LoggingConfig log group; if a name
     were in the template it would be declared, never reaching here) → tagged "generated"
     (R104): folded into the info: footer
     like atDefault, equality-gated against the physical-id-substituted template; never
-    drift, never recorded by accept. (`GENERATED_DEFAULTS` / `resolveGeneratedDefault`.)
+    drift, never recorded by record. (`GENERATED_DEFAULTS` / `resolveGeneratedDefault`.)
   − pure structural noise (aws:* tags, physical-id echo, trivially-empty {}/[]) → dropped
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
@@ -316,7 +316,7 @@ all live changes
       └─ nested (R96/R98): a live SUB-key inside a DECLARED object not set by it
          (recursed by classify's collectNestedUndeclared, dotted path, flagged
          nested:true) — folded in the report by default (the live model carries many
-         nested AWS defaults), expanded by --show-all/--verbose, recorded by accept
+         nested AWS defaults), expanded by --show-all/--verbose, recorded by record
          like any undeclared value so a later out-of-band change to it surfaces.
          R98 extends the recursion into the MATCHED elements of identity-keyed object
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
@@ -409,7 +409,7 @@ Lambda reports after a Cloud Control update — R46); arrays stay length-0-only.
 The cost: on the FIRST run / under `--show-all` (inventory), an explicitly-OFF
 feature is **not shown** (you can't see "encryption is false" in the inventory). The
 asymmetry is one-directional and self-correcting for the case that matters: once a
-non-trivial value is accepted and then changes to `false`/empty out of band, the
+non-trivial value is recorded and then changes to `false`/empty out of band, the
 baseline removal-detection (§8) DOES surface it. We deliberately do NOT skip
 `isTrivialEmpty` under `--show-all` — that would re-flood inventory with the very
 `false`/empty noise the subtractive model exists to remove. (Considered and rejected;
@@ -420,7 +420,7 @@ see [redesign-notes.md](redesign-notes.md).)
 [src/revert/](../src/revert/). `revert` builds a plan, prints it (revertable items
 always in full — per finding: path, current → target; NOT-revertable findings folded
 to one line per reason, `--verbose` for the full list — R35), then in a TTY shows a
-**multiselect of the op(s) to write** (R57 — symmetric with accept's multiselect:
+**multiselect of the op(s) to write** (R57 — symmetric with record's multiselect:
 RESTORE ops pre-selected; REMOVE ops, which DELETE a live value not in the
 baseline, start unselected and labeled `(REMOVE)` so removal stays an explicit
 per-item choice; picking nothing aborts), asks for confirmation with the selected
@@ -450,24 +450,24 @@ only when non-zero — unrecorded values are named as such, never folded into
 
 - **Targets**: declared drift → the **deployed-template** value; undeclared drift →
   the **baseline** value (an out-of-band _addition_ that appeared since a
-  snapshot-complete accept reverts by REMOVAL).
+  snapshot-complete record reverts by REMOVAL).
 - **Unrecorded safety guard (R62, relaxed for interactive prompts by R113)**: a value
   the user never decided on (no baseline entry, resource never snapshot-complete —
   which includes every undeclared value on a no-baseline stack) is reported as
-  `notRevertable` (`unrecorded — accept it if the live value is right, or
---remove-unaccepted to remove it`) **in a no-prompt run** (`--yes` or non-TTY) —
+  `notRevertable` (`unrecorded — record it if the live value is right, or
+--remove-unrecorded to remove it`) **in a no-prompt run** (`--yes` or non-TTY) —
   there the un-guarded revert mirror would be **destructive** (a bulk REMOVE of every
   undecided value that slipped through subtraction). But in a gated interactive
   prompt (TTY, no `--yes`) the standout undeclared values ARE surfaced as opt-in
-  REMOVE rows (`includeUnacceptedRemovals`, R113): the multiselect's unselected-by-
+  REMOVE rows (`includeUnrecordedRemovals`, R113): the multiselect's unselected-by-
   default rows are the per-item consent the flag provides, so listing them — like
   declared drift — is consistent with showing them as `[UNRECORDED]`, and no flag is
   needed. Declared drift is always revertable (the template is its source). For
   unrecorded values this guard outranks the create-only guard (R35): the fundamental
   blocker is "no revert target exists" — a "requires replacement" reason would
-  mis-direct. The guard's wording is a FORK, not a sequence (R55): `accept`
-  endorses the live value (it stops being drift entirely — accept is never a step
-  toward reverting that same value), while `--remove-unaccepted` removes it. When
+  mis-direct. The guard's wording is a FORK, not a sequence (R55): `record`
+  endorses the live value (it stops being drift entirely — record is never a step
+  toward reverting that same value), while `--remove-unrecorded` removes it. When
   the guard fires, the plan leads with a note spelling out that fork.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
@@ -516,32 +516,32 @@ This section is the mechanics. The design rationale — why the baseline must be
 state at all, and why neither schema defaults nor `.cdkrd/config.json` can
 replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 
-`accept` snapshots the current undeclared state into a **git-committed** file
+`record` snapshots the current undeclared state into a **git-committed** file
 `.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
 
 ```jsonc
 { "schemaVersion": 2, "stackName": "...", "region": "...",
   "accountId": "<aws account the baseline was captured in>",
   "capturedAt": "<iso>", "templateHash": "<hash of deployed template>",
-  "accepted": [ { "logicalId", "resourceType", "path", "value" }, ... ],
-  "completeResources": [ "<logicalIds the accept snapshot fully covered>" ] }
+  "recorded": [ { "logicalId", "resourceType", "path", "value" }, ... ],
+  "completeResources": [ "<logicalIds the record snapshot fully covered>" ] }
 ```
 
-**Per-entry classification (R62).** The unit of "accepted" is the ENTRY, not the
+**Per-entry classification (R62).** The unit of "recorded" is the ENTRY, not the
 file: an undeclared finding with a matching entry is suppressed; with an entry
 whose value differs it is **drift**; with NO entry it is drift only when its
-resource is in `completeResources` (the accept covered that whole resource, so
-the value **appeared since accept** — noted as such); on any other resource the
+resource is in `completeResources` (the record covered that whole resource, so
+the value **appeared since record** — noted as such); on any other resource the
 user never decided, so it is **UNRECORDED** (see §13). File existence alone
-decides nothing — a cherry-pick accept of one value must not flip the other
-hundred from unrecorded to drift, and `accept 0 → CI green / accept 1 → CI red`
+decides nothing — a cherry-pick record of one value must not flip the other
+hundred from unrecorded to drift, and `record 0 → CI green / record 1 → CI red`
 would be incoherent. `completeResources` is computed at write time (every
-undeclared finding of the resource is in `accepted`; zero findings = trivially
+undeclared finding of the resource is in `recorded`; zero findings = trivially
 complete; a `skipped`/`deleted` resource is never complete) and is **monotonic**
-across re-accepts (declining a newly-appeared value keeps it drift instead of
+across re-records (declining a newly-appeared value keeps it drift instead of
 demoting it back to unrecorded). A schema-v1 file (no `completeResources`) still
-loads — nothing is complete, so appeared-since-accept values read as unrecorded
-until the next `accept` upgrades the file (a stderr note says so).
+loads — nothing is complete, so appeared-since-record values read as unrecorded
+until the next `record` upgrades the file (a stderr note says so).
 
 `accountId` is in the **filename**, not just a field (R21): the same stack name
 deployed to dev + prod (the very common `env: { account: PERSONAL || SHARED }` CDK
@@ -549,39 +549,39 @@ pattern) gets one baseline file PER account, so they never collide and a
 personal-account run is not blocked by a committed shared-account baseline. Because
 the filename embeds the accountId — which only a gather (`DescribeStackResources`)
 resolves — `loadBaseline` is called AFTER the desired model is built (check was
-already gather-then-load; revert + accept's overwrite-check were reordered to match).
+already gather-then-load; revert + record's overwrite-check were reordered to match).
 The `accountId` FIELD remains as a **secondary guard** (`checkBaselineAccount`):
 a correctly-named file always matches, so it now only catches a file hand-copied or
 renamed to the wrong account's path (exit 2). A pre-release file with no `accountId`
-field only warns and is stamped on the next `accept`.
+field only warns and is stamped on the next `record`.
 
 > No legacy-path fallback: cdkrd is pre-release (unpublished), so the only old-style
 > `<stack>.<region>.json` files are local dogfood artifacts. They are simply not found
-> under the new path (→ "no baseline", run `accept`); delete them after re-accepting.
+> under the new path (→ "no baseline", run `record`); delete them after re-recording.
 
-When a baseline already exists, the interactive `accept` multiselect shows only the
-**delta** from it (`splitAcceptedByBaseline`) — new/changed undeclared values, where
+When a baseline already exists, the interactive `record` multiselect shows only the
+**delta** from it (`splitRecordedByBaseline`) — new/changed undeclared values, where
 "unchanged" reuses the same `baselineValueMatches` predicate as `applyBaseline`
-(R6 — canonicalized compare); already-accepted unchanged values are auto-kept (noted,
+(R6 — canonicalized compare); already-recorded unchanged values are auto-kept (noted,
 not re-confirmed) and a delta of zero just refreshes the file (R39).
 
-Committing it makes "what real state we accept" a visible, reviewable PR change.
+Committing it makes "what real state we record" a visible, reviewable PR change.
 With revert it is also the _source of the undeclared target value_, so it is
 structural, not optional. `check` filters undeclared findings against it
-(`applyBaseline`), so a stack with an accepted baseline reports CLEAN; `--show-all`
+(`applyBaseline`), so a stack with an recorded baseline reports CLEAN; `--show-all`
 ignores it.
 
 **Promotion into the template.** The recommended way to resolve undeclared drift is
-to _declare_ it in the CDK code. After that, the accepted path is no longer
+to _declare_ it in the CDK code. After that, the recorded path is no longer
 undeclared, so the naive removal check would mis-report it as "baseline value
-removed since accept". `applyBaseline` is passed the set of currently-declared keys per resource
+removed since record". `applyBaseline` is passed the set of currently-declared keys per resource
 (`declaredKeysByLogical`) and suppresses that false removal, emitting a one-line
-stderr note ("now declared in the template — re-run `cdkrd accept`") instead. So the
+stderr note ("now declared in the template — re-run `cdkrd record`") instead. So the
 behavior we recommend is never punished as drift.
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal
-note suggesting a re-`accept` (the accepted set may be stale). Skipped under
+note suggesting a re-`record` (the recorded set may be stale). Skipped under
 `--pre-deploy`, where the synth template legitimately differs from the deployed one.
 
 ## 9. Tier semantics (the output contract)
@@ -616,11 +616,11 @@ informational — surfaced, never silently dropped, but never false drift.
 
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —
 Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled
-capacity, externally-managed Lambda reserved concurrency. Because `accept` is a value
-snapshot, accepting such a property would re-detect and force a re-accept every time
+capacity, externally-managed Lambda reserved concurrency. Because `record` is a value
+snapshot, recording such a property would re-detect and force a re-record every time
 the value moves. Path-level ignore rules (the `.driftignore` / Terraform
 `ignore_changes` equivalent) live in a git-committed **`.cdkrd/config.json`** —
-deliberately separate from the baseline, which `accept` rewrites wholesale (a
+deliberately separate from the baseline, which `record` rewrites wholesale (a
 hand-written rule there would be erased), and because a rule is app-wide intent, not
 a per-stack/account fact:
 
@@ -635,7 +635,7 @@ a per-stack/account fact:
 
 `applyIgnores(findings, stackName, config)` ([src/config/config-file.ts](../src/config/config-file.ts))
 is a pure function applied right after `applyBaseline` everywhere (check / revert /
-accept / the interactive flow), so the tier is uniform across commands. It re-tags
+record / the interactive flow), so the tier is uniform across commands. It re-tags
 matching `declared` / `undeclared` findings to `ignored` (never `deleted` — a path
 rule must not silence a resource deletion; the already-informational tiers are left
 alone). Patterns glob (`*` / `?`) against EITHER `<logicalId>.<path>` OR (when present)
@@ -646,7 +646,7 @@ constructPath (`MyStack/ApiRole.Policies`) is the human-friendly id `cdk-local` 
 targets by, offered as an additional match target (it comes from optional
 `aws:cdk:path` Metadata, so it can't be the only key). A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
-Ignored findings drop out of the revert plan and the accept-set automatically
+Ignored findings drop out of the revert plan and the record-set automatically
 (neither acts on the `ignored` tier). A malformed `config.json` — invalid JSON,
 a wrong-typed `ignore`, or an unknown top-level key (R62: a typo like `"ignroe"`
 would otherwise load as an empty config and silently disable every rule) — fails
@@ -677,21 +677,21 @@ without any API call (note: `custom resource — no cloud-side model to read`).
 ENTRY is the contract that defines undeclared drift; a value with no entry on a
 never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
-undeclared value, and after a cherry-pick accept it is still every value the
+undeclared value, and after a cherry-pick record it is still every value the
 user did not pick. They render as their own `[UNRECORDED: N]` section (note:
-`not drift — undeclared and not in the baseline yet; accept to record`) alongside
+`not drift — undeclared and not in the baseline yet; record to record`) alongside
 any real `[UNDECLARED DRIFT]` section, are excluded from the verdict and the
 `--fail` exit, and the `result:` line carries the count + the way out
-(`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd accept)`
+(`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
 when some fold; R112). When BOTH a drift section and a standout `[UNRECORDED]`
 section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
 visible blocks, so the line switches to a combined findings count counting only
 what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 undeclared to
-review (23 folded; run cdkrd accept)` — keeping the red drift verdict intact
+review (23 folded; run cdkrd record)` — keeping the red drift verdict intact
 (R114); single-category runs keep their plain `CLEAN` / `N drift(s)` verdict.
 Declared and deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`unrecorded values found — what do
-you want to do?`) so "show them first" keeps its promise of a selective accept.
+you want to do?`) so "show them first" keeps its promise of a selective record.
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 bypasses the baseline entirely — no suppression and no unrecorded tagging (a
@@ -762,13 +762,13 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
   fictional names and are always safe). An intended behavior change updates a
   case's `expected` in the same PR, making the semantic change reviewable.
 - **Integration fixtures** under `tests/integration/{basic,iam,lambda,revert}` (real
-  CDK apps + `verify.sh`). The revert integ proves deploy → accept → out-of-band
+  CDK apps + `verify.sh`). The revert integ proves deploy → record → out-of-band
   change → check → `revert --yes` → CLEAN → AWS converged. The `basic` fixture also
   ships `verify-deleted-guards.sh`, which exercises the `deleted` tier (delete a
   resource out of band → reported + exit 1, not revertable) and the unrecorded
-  `revert` guard (unrecorded values refused unless `--remove-unaccepted`).
+  `revert` guard (unrecorded values refused unless `--remove-unrecorded`).
 - **Dogfood evidence**: 8 real cdkd fixtures run through `check --show-all` → fix →
-  `declared=0`, then `accept` → CLEAN, then destroy + orphan-verified. This is what
+  `declared=0`, then `record` → CLEAN, then destroy + orphan-verified. This is what
   surfaced the four false-positive classes.
 
 ## 13. Known limitations & open questions (review focus)
@@ -782,14 +782,14 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    includes the tests with node types. The 7 remaining are intentional `no-explicit-any`
    warnings (`Record<string, any>` in the template adapter) + `toThrow`-message vitest
    warnings — config sets `no-explicit-any` to `warn`, not `error`. _Open question for
-   review: tighten these to errors before launch, or accept as warnings?_
+   review: tighten these to errors before launch, or record as warnings?_
 2. **`--pre-deploy` semantics (RESOLVED)**: pre-deploy now reports **declared-side
    tiers only** (declared / deleted / readGap / unresolved / skipped) and excludes
    undeclared entirely — the undeclared tier is "live minus declared", so with a
    _synth_ declared set its meaning silently shifts (a prop deleted from code would
-   appear as undeclared). It also does NOT touch the baseline (no accept offer, no
+   appear as undeclared). It also does NOT touch the baseline (no record offer, no
    hash check against the synth template). The question "what undeclared state do we
-   accept" is only meaningful against the deployed template, so it is answered by a
+   record" is only meaningful against the deployed template, so it is answered by a
    normal `check`. pre-deploy answers exactly one question: what declared drift would
    the next `cdk deploy` clobber?
 3. **`unresolved` residual (narrowed)**: the resolver now also handles `Fn::FindInMap`
@@ -834,7 +834,7 @@ baseline-value re-canonicalization, large-stack `ListStackResources` + concurren
 reads, more fail-closed intrinsics (FindInMap / Split / ImportValue / Select-OOB /
 `${!Literal}`), strict managed-KMS-alias resolution, account/region-scoped ARN
 identity, write-only `readGap` surfacing, real Lambda-Permission values,
-declared-only `--pre-deploy`, and selective `accept`.
+declared-only `--pre-deploy`, and selective `record`.
 
 Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is in place too.
 

@@ -1,14 +1,14 @@
 // Git-committed baseline file: .cdkrd/<stack>.<accountId>.<region>.json
-// Stores the ACCEPTED undeclared property values (the only thing with no other
+// Stores the RECORDED undeclared property values (the only thing with no other
 // source of truth — declared desired comes live from GetTemplate).
 //
 // Undeclared classification is PER ENTRY, not per file (R62): an undeclared
 // finding with a matching entry is suppressed; with an entry whose value differs
 // it is drift; with NO entry it is drift only if its resource is listed in
-// `completeResources` (the accept snapshot covered that whole resource, so the
+// `completeResources` (the record snapshot covered that whole resource, so the
 // value APPEARED since) — otherwise the user never decided on it and it is
 // UNRECORDED, not drift. File existence alone decides nothing: a cherry-pick
-// accept of one value must not flip the other hundred from unrecorded to drift.
+// record of one value must not flip the other hundred from unrecorded to drift.
 //
 // The accountId is in the FILENAME (not just a field) so the same stack name
 // deployed to multiple accounts (the common `env: { account: PERSONAL || SHARED }`
@@ -24,7 +24,7 @@ import { deepEqual } from '../diff/drift-calculator.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { Finding } from '../types.js';
 
-export interface AcceptedEntry {
+export interface RecordedEntry {
   logicalId: string;
   resourceType: string;
   path: string;
@@ -38,13 +38,13 @@ export interface BaselineFile {
   accountId: string; // the AWS account the baseline was captured in (per-account guard)
   capturedAt: string;
   templateHash: string;
-  accepted: AcceptedEntry[];
-  // v2 (R62): logicalIds whose undeclared snapshot was COMPLETE at accept time —
-  // every undeclared value the resource then had is in `accepted` (a resource with
+  recorded: RecordedEntry[];
+  // v2 (R62): logicalIds whose undeclared snapshot was COMPLETE at record time —
+  // every undeclared value the resource then had is in `recorded` (a resource with
   // zero undeclared values is trivially complete). An entry-less undeclared value
-  // on a complete resource APPEARED since accept = drift; on any other resource it
+  // on a complete resource APPEARED since record = drift; on any other resource it
   // is UNRECORDED (never decided). Monotonic: once complete, a resource stays
-  // complete (declining to accept a new appeared value must not demote it back).
+  // complete (declining to record a new appeared value must not demote it back).
   completeResources?: string[];
 }
 
@@ -61,25 +61,32 @@ export async function loadBaseline(
   accountId: string,
   region: string
 ): Promise<BaselineFile | undefined> {
+  let raw: string;
   try {
-    return JSON.parse(
-      await readFile(baselinePath(stackName, accountId, region), 'utf8')
-    ) as BaselineFile;
+    raw = await readFile(baselinePath(stackName, accountId, region), 'utf8');
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw e;
   }
+  const parsed = JSON.parse(raw) as BaselineFile & { accepted?: RecordedEntry[] };
+  // Back-compat: baselines written before `accept` was renamed to `record` stored the
+  // entries under `accepted`; the field is now `recorded`. Read the old key so a
+  // committed baseline keeps loading — the next `record` rewrites it under `recorded`.
+  if (parsed.recorded === undefined && parsed.accepted !== undefined)
+    parsed.recorded = parsed.accepted;
+  delete parsed.accepted;
+  return parsed;
 }
 
-/** Deterministic order for `accepted` entries: lexicographic by (logicalId, path).
+/** Deterministic order for `recorded` entries: lexicographic by (logicalId, path).
  *  The single point where order is imposed — read/compare logic is order-independent,
  *  so this only affects the bytes on disk. Without it the entries inherit findings
  *  order (= template Resources order), so a pure CDK refactor that reorders construct
- *  definitions would produce a whole-file reordering diff on the next `accept` even
- *  though no accepted VALUE changed — breaking "the baseline PR diff = a review of the
- *  real state we accept". A non-locale comparator keeps it byte-stable across machines. */
-function sortAccepted(accepted: AcceptedEntry[]): AcceptedEntry[] {
-  return [...accepted].sort(
+ *  definitions would produce a whole-file reordering diff on the next `record` even
+ *  though no recorded VALUE changed — breaking "the baseline PR diff = a review of the
+ *  real state we record". A non-locale comparator keeps it byte-stable across machines. */
+function sortRecorded(recorded: RecordedEntry[]): RecordedEntry[] {
+  return [...recorded].sort(
     (a, b) =>
       (a.logicalId < b.logicalId ? -1 : a.logicalId > b.logicalId ? 1 : 0) ||
       (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
@@ -89,11 +96,11 @@ function sortAccepted(accepted: AcceptedEntry[]): AcceptedEntry[] {
 export async function writeBaselineFile(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
-  // sort at the write point (not per entry-generation path) so every caller — accept,
-  // selective accept, check's first-run offer — lands the same deterministic order.
+  // sort at the write point (not per entry-generation path) so every caller — record,
+  // selective record, check's first-run offer — lands the same deterministic order.
   const stable: BaselineFile = {
     ...b,
-    accepted: sortAccepted(b.accepted),
+    recorded: sortRecorded(b.recorded),
     ...(b.completeResources ? { completeResources: [...b.completeResources].sort() } : {}),
   };
   await writeFile(p, JSON.stringify(stable, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
@@ -101,26 +108,26 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
 }
 
 /**
- * Which resources the accept snapshot covered COMPLETELY (R62): every undeclared
- * finding of the resource is in `accepted` (zero undeclared findings = trivially
+ * Which resources the record snapshot covered COMPLETELY (R62): every undeclared
+ * finding of the resource is in `recorded` (zero undeclared findings = trivially
  * complete), and the resource was actually observed — a `skipped` (unread) or
  * `deleted` resource cannot be snapshot. Ignored-tier values do not block
  * completeness: they were visible and deliberately ruled out.
  * Monotonic via `previousComplete`: once complete, a resource stays complete
- * (declining to accept an appeared-since-accept value keeps it drift, instead of
+ * (declining to record an appeared-since-record value keeps it drift, instead of
  * demoting it back to unrecorded) — pruned to ids still in the template.
  */
 export function computeCompleteResources(
   allLogicalIds: string[],
   findings: Finding[],
-  accepted: AcceptedEntry[],
+  recorded: RecordedEntry[],
   previousComplete: string[] = []
 ): string[] {
-  const acceptedKeys = new Set(accepted.map(acceptedKey));
+  const recordedKeys = new Set(recorded.map(recordedKey));
   const blocked = new Set<string>();
   for (const f of findings) {
     if (f.tier === 'skipped' || f.tier === 'deleted') blocked.add(f.logicalId);
-    if (f.tier === 'undeclared' && !acceptedKeys.has(acceptedKey(f))) blocked.add(f.logicalId);
+    if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
   }
   const all = new Set(allLogicalIds);
   const complete = new Set(previousComplete.filter((id) => all.has(id)));
@@ -129,24 +136,24 @@ export function computeCompleteResources(
 }
 
 /** Write a baseline for a stack from a check run's findings + raw template.
- *  Shared by `accept` and `check`'s first-run interactive offer. Pass `accepted`
- *  to record a pre-filtered subset (selective accept); omit it to accept ALL
- *  undeclared findings (the default — same as `buildAccepted(findings)`).
+ *  Shared by `record` and `check`'s first-run interactive offer. Pass `recorded`
+ *  to record a pre-filtered subset (selective record); omit it to record ALL
+ *  undeclared findings (the default — same as `buildRecorded(findings)`).
  *  `opts.allLogicalIds` (the template's full resource list) feeds the
  *  completeResources computation — without it, resources with no findings at all
  *  (read clean) would be invisible here; `opts.previous` keeps completeness
- *  monotonic across re-accepts. */
+ *  monotonic across re-records. */
 export async function writeBaseline(
   stackName: string,
   region: string,
   accountId: string,
   findings: Finding[],
   rawTemplate: string,
-  accepted: AcceptedEntry[] = buildAccepted(findings),
+  recorded: RecordedEntry[] = buildRecorded(findings),
   opts: { allLogicalIds?: string[] | undefined; previous?: BaselineFile | undefined } = {}
 ): Promise<{ path: string; count: number }> {
   const allIds = opts.allLogicalIds ?? [
-    ...new Set([...findings.map((f) => f.logicalId), ...accepted.map((a) => a.logicalId)]),
+    ...new Set([...findings.map((f) => f.logicalId), ...recorded.map((a) => a.logicalId)]),
   ];
   const path = await writeBaselineFile({
     schemaVersion: 2,
@@ -155,15 +162,15 @@ export async function writeBaseline(
     accountId,
     capturedAt: new Date().toISOString(),
     templateHash: hashTemplate(rawTemplate),
-    accepted,
+    recorded,
     completeResources: computeCompleteResources(
       allIds,
       findings,
-      accepted,
+      recorded,
       opts.previous?.completeResources ?? []
     ),
   });
-  return { path, count: accepted.length };
+  return { path, count: recorded.length };
 }
 
 /**
@@ -172,7 +179,7 @@ export async function writeBaseline(
  * that was hand-copied or renamed to the wrong account's path (its `accountId`
  * field would then disagree with the filename it was loaded from). On a mismatch
  * this throws (caller surfaces exit 2). A pre-release file with no accountId field
- * only warns; the next `accept` stamps it.
+ * only warns; the next `record` stamps it.
  */
 export function checkBaselineAccount(
   baseline: BaselineFile,
@@ -182,7 +189,7 @@ export function checkBaselineAccount(
 ): void {
   if (!baseline.accountId) {
     warn(
-      `note: ${stackName}: baseline has no accountId (older file) — it will be stamped on the next \`cdkrd accept\`.`
+      `note: ${stackName}: baseline has no accountId (older file) — it will be stamped on the next \`cdkrd record\`.`
     );
     return;
   }
@@ -190,13 +197,13 @@ export function checkBaselineAccount(
     throw new Error(
       `baseline file for ${stackName} was captured in account ${baseline.accountId}, but the current account is ${currentAccountId} ` +
         '(the file was likely copied or renamed to the wrong account path). Baselines are per-account — ' +
-        "run `cdkrd accept` to write this account's own baseline file, or restore the correct file from git."
+        "run `cdkrd record` to write this account's own baseline file, or restore the correct file from git."
     );
   }
 }
 
-/** Build the accepted-undeclared set from a check run's findings. */
-export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
+/** Build the recorded-undeclared set from a check run's findings. */
+export function buildRecorded(findings: Finding[]): RecordedEntry[] {
   return findings
     .filter((f) => f.tier === 'undeclared')
     .map((f) => ({
@@ -207,15 +214,15 @@ export function buildAccepted(findings: Finding[]): AcceptedEntry[] {
     }));
 }
 
-/** Stable key uniquely identifying an undeclared finding / accepted entry, for
- *  selective accept (the multiselect maps its picks to these keys). */
-export function acceptedKey(e: { logicalId: string; path: string }): string {
+/** Stable key uniquely identifying an undeclared finding / recorded entry, for
+ *  selective record (the multiselect maps its picks to these keys). */
+export function recordedKey(e: { logicalId: string; path: string }): string {
   return `${e.logicalId}::${e.path}`;
 }
 
 /**
  * The single source of truth for "is this baseline value equal to the current
- * value?". `applyBaseline` (suppress vs surface) and `splitAcceptedByBaseline`
+ * value?". `applyBaseline` (suppress vs surface) and `splitRecordedByBaseline`
  * (unchanged vs changed) MUST share this exact predicate. The baseline value is
  * re-canonicalized through the CURRENT pipeline so a baseline written under older
  * normalization rules still matches today's canonical live value (R6) — the
@@ -229,23 +236,23 @@ export function baselineValueMatches(
 }
 
 /**
- * Split a freshly-built accepted set against the existing baseline into the values
+ * Split a freshly-built recorded set against the existing baseline into the values
  * a human must decide on (`changed` = new path OR value differs) and the values
- * already accepted and unchanged (`unchanged` = same logicalId+path AND value
+ * already recorded and unchanged (`unchanged` = same logicalId+path AND value
  * matches by `baselineValueMatches`). With no baseline EVERYTHING is `changed`
- * (the true first accept). Entries are matched against `entry.value` which comes
- * from `buildAccepted` (already canonical), so the predicate compares
+ * (the true first record). Entries are matched against `entry.value` which comes
+ * from `buildRecorded` (already canonical), so the predicate compares
  * canonical-vs-canonical, exactly like `applyBaseline`.
  */
-export function splitAcceptedByBaseline(
-  accepted: AcceptedEntry[],
+export function splitRecordedByBaseline(
+  recorded: RecordedEntry[],
   baseline: BaselineFile | undefined
-): { unchanged: AcceptedEntry[]; changed: AcceptedEntry[] } {
-  if (!baseline) return { unchanged: [], changed: [...accepted] };
-  const unchanged: AcceptedEntry[] = [];
-  const changed: AcceptedEntry[] = [];
-  for (const entry of accepted) {
-    const baselineEntry = baseline.accepted.find(
+): { unchanged: RecordedEntry[]; changed: RecordedEntry[] } {
+  if (!baseline) return { unchanged: [], changed: [...recorded] };
+  const unchanged: RecordedEntry[] = [];
+  const changed: RecordedEntry[] = [];
+  for (const entry of recorded) {
+    const baselineEntry = baseline.recorded.find(
       (a) => a.logicalId === entry.logicalId && a.path === entry.path
     );
     if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value))
@@ -255,14 +262,14 @@ export function splitAcceptedByBaseline(
   return { unchanged, changed };
 }
 
-/** Selective accept: build the accepted set from only the findings whose key is in
- *  `selectedKeys`. Empty set -> []; all keys -> equals buildAccepted(findings). */
-export function selectAccepted(findings: Finding[], selectedKeys: Set<string>): AcceptedEntry[] {
-  return buildAccepted(findings).filter((e) => selectedKeys.has(acceptedKey(e)));
+/** Selective record: build the recorded set from only the findings whose key is in
+ *  `selectedKeys`. Empty set -> []; all keys -> equals buildRecorded(findings). */
+export function selectRecorded(findings: Finding[], selectedKeys: Set<string>): RecordedEntry[] {
+  return buildRecorded(findings).filter((e) => selectedKeys.has(recordedKey(e)));
 }
 
 export interface ApplyBaselineOptions {
-  // logicalId -> set of currently-declared top-level keys. An accepted entry whose
+  // logicalId -> set of currently-declared top-level keys. An recorded entry whose
   // path is now DECLARED in the template is the recommended "promote undeclared
   // drift into code" workflow, NOT a removal — suppress the false removal finding.
   declaredByLogical?: Map<string, Set<string>>;
@@ -272,17 +279,17 @@ export interface ApplyBaselineOptions {
 const topSegment = (p: string): string => p.split('.')[0] ?? p;
 
 /**
- * Reconcile undeclared findings against the accepted baseline (per ENTRY, R62):
- *  - an undeclared finding matching an accepted entry (same value) is suppressed;
+ * Reconcile undeclared findings against the recorded baseline (per ENTRY, R62):
+ *  - an undeclared finding matching an recorded entry (same value) is suppressed;
  *  - an entry whose value changed survives as drift (the recorded contract was
  *    violated);
  *  - a finding with NO entry is drift only when its resource is snapshot-complete
- *    (`completeResources`) — the value APPEARED since accept; on any other
+ *    (`completeResources`) — the value APPEARED since record; on any other
  *    resource the user never decided on it, so it is tagged `unrecorded` (an
  *    inventory item, not drift — excluded from the verdict/exit downstream);
  *  - with NO baseline at all, every undeclared finding is unrecorded;
- *  - an accepted entry with NO corresponding current undeclared value is reported as
- *    a removal (drift in the other direction — something accepted disappeared),
+ *  - an recorded entry with NO corresponding current undeclared value is reported as
+ *    a removal (drift in the other direction — something recorded disappeared),
  *    UNLESS that path has since been DECLARED in the template (promotion to code —
  *    the workflow we recommend — which is noted, not flagged as drift).
  * Non-undeclared findings pass through untouched.
@@ -294,25 +301,25 @@ export function applyBaseline(
 ): Finding[] {
   if (!baseline)
     return findings.map((f) => (f.tier === 'undeclared' ? { ...f, unrecorded: true } : f));
-  const accepted = baseline.accepted;
+  const recorded = baseline.recorded;
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
   const kept: Finding[] = [];
   for (const f of findings) {
     // atDefault is reconciled alongside undeclared (R86): a value the user already
-    // accepted is suppressed whichever tier it lands in today, so a baseline entry
+    // recorded is suppressed whichever tier it lands in today, so a baseline entry
     // whose live value is now classified at-default does NOT read as "removed".
     if (f.tier !== 'undeclared' && f.tier !== 'atDefault') {
       kept.push(f);
       continue;
     }
-    const entry = accepted.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+    const entry = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
     // re-canonicalize the baseline value through the CURRENT pipeline before comparing
-    // (f.actual is already canonical from classify): a baseline accepted under older
+    // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
-    if (entry && baselineValueMatches(entry.value, f.actual)) continue; // accepted, unchanged
+    if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
     if (f.tier === 'atDefault') {
-      // No (or a non-matching) accepted entry: the value still equals a known AWS
+      // No (or a non-matching) recorded entry: the value still equals a known AWS
       // default (the equality gate proved it), so it stays folded inventory — never
       // drift, never unrecorded. A genuine change away from the default would not
       // match a default and would arrive as tier 'undeclared', handled below.
@@ -322,29 +329,29 @@ export function applyBaseline(
     if (entry) {
       kept.push(f); // recorded value changed -> drift
     } else if (complete.has(f.logicalId)) {
-      // the accept snapshot covered this whole resource, so this value is new
+      // the record snapshot covered this whole resource, so this value is new
       kept.push({
         ...f,
-        note: f.note ? `${f.note}; appeared since accept` : 'appeared since accept',
+        note: f.note ? `${f.note}; appeared since record` : 'appeared since record',
       });
     } else {
       kept.push({ ...f, unrecorded: true }); // never decided -> not drift
     }
   }
-  // removed: accepted entries whose path is no longer present in any current undeclared
-  // OR at-default finding (R86: an accepted value reclassified at-default is still
+  // removed: recorded entries whose path is no longer present in any current undeclared
+  // OR at-default finding (R86: an recorded value reclassified at-default is still
   // present, not removed).
   const currentPaths = new Set(
     findings
       .filter((f) => f.tier === 'undeclared' || f.tier === 'atDefault')
       .map((f) => `${f.logicalId}.${f.path}`)
   );
-  for (const a of accepted) {
+  for (const a of recorded) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
-    // promoted into the template since accept → not a removal, just stale baseline
+    // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
       opts.warn?.(
-        `note: ${a.logicalId}.${a.path}: baseline entry is now declared in the template — re-run \`cdkrd accept\` to clean it up.`
+        `note: ${a.logicalId}.${a.path}: baseline entry is now declared in the template — re-run \`cdkrd record\` to clean it up.`
       );
       continue;
     }
@@ -355,7 +362,7 @@ export function applyBaseline(
       path: a.path,
       desired: a.value,
       actual: undefined,
-      note: 'baseline value removed since accept',
+      note: 'baseline value removed since record',
     });
   }
   return kept;
@@ -371,7 +378,7 @@ export function declaredKeysByLogical(
 /**
  * Warn (never error) when the baseline predates snapshot tracking (schema v1, no
  * `completeResources`): nothing is snapshot-complete, so values that appeared
- * since accept read as UNRECORDED instead of drift until the next `accept`
+ * since record read as UNRECORDED instead of drift until the next `record`
  * upgrades the file (R62).
  */
 export function warnBaselineSchemaV1(
@@ -381,14 +388,14 @@ export function warnBaselineSchemaV1(
 ): void {
   if (baseline.completeResources === undefined) {
     warn(
-      `note: ${stackName}: baseline predates snapshot tracking — new out-of-band values read as unrecorded, not drift; re-run \`cdkrd accept\` to upgrade it.`
+      `note: ${stackName}: baseline predates snapshot tracking — new out-of-band values read as unrecorded, not drift; re-run \`cdkrd record\` to upgrade it.`
     );
   }
 }
 
 /**
  * Warn (never error) when the baseline was captured against a different template
- * version than the one now deployed — the accepted set may be stale. Skipped in
+ * version than the one now deployed — the recorded set may be stale. Skipped in
  * --pre-deploy mode (the synth template legitimately differs from the deployed one).
  */
 export function warnTemplateHashDrift(
@@ -400,7 +407,7 @@ export function warnTemplateHashDrift(
   if (!baseline.templateHash) return;
   if (baseline.templateHash !== hashTemplate(rawTemplate)) {
     warn(
-      `note: ${stackName}: baseline was captured against a different template version — consider re-running \`cdkrd accept\`.`
+      `note: ${stackName}: baseline was captured against a different template version — consider re-running \`cdkrd record\`.`
     );
   }
 }

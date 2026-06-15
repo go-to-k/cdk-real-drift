@@ -7,7 +7,7 @@
 #   1. fresh deploy classifies with ZERO declared drift (exit 0) — this
 #      stresses the Id-keyed Origins sort, the HTTP-method enum-set sort,
 #      and the policy-reference shapes against real data;
-#   2. accept --yes then check --fail lands CLEAN.
+#   2. record --yes then check --fail lands CLEAN.
 # Slow fixture (deploy/destroy take minutes each) — separate from the
 # harvest waves so their fast loop stays fast.
 #
@@ -51,9 +51,9 @@ rc=${PIPESTATUS[0]}
 grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
-echo "=== 2. accept + check --fail must be CLEAN ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== 2. record + check --fail must be CLEAN ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after accept"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after record"
 
 echo "INTEG PASS"

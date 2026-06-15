@@ -27,11 +27,11 @@ pre-publication decisions).
 
 ```bash
 node dist/cli.js check  [<stack>...] [--all]   # detect drift (read-only)
-node dist/cli.js accept [<stack>...] [--all]   # record current state into the baseline file
+node dist/cli.js record [<stack>...] [--all]   # record current state into the baseline file
 node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to AWS (confirms)
 ```
 
-- `check` and `accept` never write to AWS (`accept` writes only the baseline file).
+- `check` and `record` never write to AWS (`record` writes only the baseline file).
   `revert` is the one AWS-mutating verb and always confirms first (`--dry-run` to
   preview, `--yes`/`-y` to skip the prompt).
 - With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`)
@@ -48,7 +48,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based).
 - Baseline files live at `.cdkrd/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
-  we accept".
+  we record".
 
 ## Build and Test Commands
 
@@ -87,7 +87,7 @@ source changes before telling the user to test.
 Terse per-dir map — defer to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the
 detail:
 
-- `commands/` — the 3 verb entry points (check/accept/revert) + stack resolution.
+- `commands/` — the 3 verb entry points (check/record/revert) + stack resolution.
 - `desired/` — declared "intent": deployed-template fetch + CFn template adapter.
 - `read/` — live state read routing: Cloud Control API → SDK overrides for CC-gap
   types (`overrides.ts` / `SDK_OVERRIDES`).

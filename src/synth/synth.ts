@@ -1,5 +1,5 @@
 // Synthesize a CDK app via @aws-cdk/toolkit-lib (the same dependency cdk-local
-// uses) to discover stacks. Accepts a CDK app COMMAND (`node app.js`) or a
+// uses) to discover stacks. Records a CDK app COMMAND (`node app.js`) or a
 // pre-synthesized cloud-assembly DIRECTORY (`cdk.out`). Drift detection itself
 // does not need this — it is used for stack auto-discovery (and later clobber).
 import { existsSync, statSync } from 'node:fs';

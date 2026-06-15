@@ -1,4 +1,4 @@
-// Shared read+classify pipeline used by both `check` and `accept`.
+// Shared read+classify pipeline used by both `check` and `record`.
 
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
 import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
@@ -155,7 +155,7 @@ export async function gatherFindings(
   // Re-resolve EVERY resource's declared now that pass 1 populated all live
   // attributes, so Fn::GetAtt resolves. Hoisted out of pass 2 because pass 1.5
   // (below) needs the resolved declared. Mutated in place so downstream consumers
-  // (revert / accept) see the resolved view.
+  // (revert / record) see the resolved view.
   for (const r of desired.resources) {
     if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
   }

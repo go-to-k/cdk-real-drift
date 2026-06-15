@@ -191,7 +191,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // when it deep-equals the listed default, so an out-of-band change away from the
 // default no longer matches and falls through to a real `undeclared` finding;
 // `atDefault` is still surfaced (folded into the report footer, listed by
-// --show-all), never dropped and never recorded by accept. Resource-/account-/
+// --show-all), never dropped and never recorded by record. Resource-/account-/
 // throughput-specific values are deliberately EXCLUDED (genuine inventory, not
 // constants): ApiGateway Method `Integration.CacheNamespace` (a generated id),
 // Budgets `Budget.BudgetName` (a generated name), DynamoDB GSI `*.WarmThroughput`
@@ -269,7 +269,7 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
 // user never set and cannot meaningfully edit them. Classified as the `generated`
 // tier (folded inventory like atDefault), equality-gated exactly like KNOWN_DEFAULTS:
 // an out-of-band edit (a JSON LogFormat, say) no longer matches the substituted
-// template and falls through to a real `undeclared` finding. Never recorded by accept.
+// template and falls through to a real `undeclared` finding. Never recorded by record.
 // GENERATED_DEFAULTS only carries the STRUCTURED cases the general name rule below
 // (isGeneratedName) cannot express — e.g. a Lambda's default LoggingConfig OBJECT,
 // where the generated name is one sub-field of an object also containing a literal
@@ -511,7 +511,7 @@ const isIdLike = (s: unknown): boolean =>
 // HTTP-method enum sets (CloudFront DefaultCacheBehavior.AllowedMethods /
 // CachedMethods, ...) are UNORDERED: the template lists them in one order, AWS
 // returns them in another, so a positional diff reports false drift. The verb set
-// is closed and order-insensitive wherever AWS accepts it, so an array whose EVERY
+// is closed and order-insensitive wherever AWS records it, so an array whose EVERY
 // element is one of these verbs is safe to sort. (Same content-based philosophy as
 // isIdLike: no per-type table, just a value-shape test.)
 const HTTP_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);

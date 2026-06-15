@@ -5,7 +5,7 @@
 #   1. baseline-free `check` — a FRESH deploy must classify with ZERO declared
 #      drift across every type (the cross-type false-positive test), exit 0
 #      (everything undeclared is UNRECORDED);
-#   2. `accept --yes` then `check --fail` — the baseline round trip must land
+#   2. `record --yes` then `check --fail` — the baseline round trip must land
 #      CLEAN (exit 0) across every type;
 #   3. destroy. Nothing lingers (no KMS keys, secrets, or hosted zones).
 #
@@ -45,9 +45,9 @@ rc=${PIPESTATUS[0]}
 grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
-echo "=== accept + check --fail must be CLEAN across every type ==="
-$CLI accept "$STACK" --region "$REGION" --yes || fail "accept"
+echo "=== record + check --fail must be CLEAN across every type ==="
+$CLI record "$STACK" --region "$REGION" --yes || fail "record"
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after accept"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after record"
 
 echo "INTEG PASS"

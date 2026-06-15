@@ -11,7 +11,7 @@ A CDK-ecosystem drift detector. Superset of `cdk drift`: it also sees
 | source                                           | used for                      |
 | ------------------------------------------------ | ----------------------------- |
 | deployed CloudFormation template (`GetTemplate`) | declared-property drift       |
-| baseline snapshot file (last `accept`)           | undeclared-property drift     |
+| baseline snapshot file (last `record`)           | undeclared-property drift     |
 | code synth (`--pre-deploy` only)                 | clobber annotation (optional) |
 
 Declared drift compares against the **deployed** template (not code synth) — else
@@ -90,6 +90,6 @@ NEW (cdkd does NOT have these):
 
 - Phase 2: build MVP here (private repo). DONE.
 - Phase 3 (current): dogfood broadly on varied real stacks; tune normalizers;
-  land revert. See [redesign-notes.md](redesign-notes.md) for the check/accept/
+  land revert. See [redesign-notes.md](redesign-notes.md) for the check/record/
   revert model adopted before publication.
 - Phase 4: publish + blog announce (the single public launch).

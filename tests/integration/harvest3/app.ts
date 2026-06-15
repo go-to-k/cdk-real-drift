@@ -60,7 +60,7 @@ new Rule(stack, "MatrixRule", {
 });
 
 // ---- new service families (harvest-only: deploy -> zero declared drift ->
-// ---- accept -> CLEAN -> record corpus -> destroy)
+// ---- record -> CLEAN -> record corpus -> destroy)
 const pool = new UserPool(stack, "Users", {
   selfSignUpEnabled: false,
   accountRecovery: AccountRecovery.EMAIL_ONLY,
