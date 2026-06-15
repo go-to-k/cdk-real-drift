@@ -15,7 +15,6 @@ import {
   S_BAR,
   S_BAR_END,
   S_BAR_START,
-  S_CHECKBOX_ACTIVE,
   S_CHECKBOX_INACTIVE,
   S_CHECKBOX_SELECTED,
 } from '@clack/prompts';
@@ -41,6 +40,22 @@ export function bulkSelectHint(): string {
 type Opt = { value: string; label: string };
 
 /**
+ * One rendered row. The cursor row MUST be visually distinct or up/down navigation
+ * looks dead (R116 regression: `S_CHECKBOX_ACTIVE` and `S_CHECKBOX_INACTIVE` are the
+ * SAME glyph in clack — only colour told them apart — and a selected row always showed
+ * the filled box regardless of focus, so the cursor was invisible). A leading `❯`
+ * pointer marks the focused row even with NO_COLOR; with colour it is also cyan. Pure +
+ * exported so the "focused row differs from the rest" invariant is unit-tested. R118.
+ */
+export function formatRow(label: string, state: { active: boolean; selected: boolean }): string {
+  const pointer = state.active ? '❯' : ' ';
+  const box = state.selected ? S_CHECKBOX_SELECTED : S_CHECKBOX_INACTIVE;
+  const cell = `${pointer} ${box} ${label}`;
+  if (state.active) return style.cursor(cell);
+  return state.selected ? `${pointer} ${style.ok(box)} ${style.ok(label)}` : cell;
+}
+
+/**
  * Show the multi-select and return the picked values, or `undefined` on cancel
  * (Ctrl+C / Esc). `message` is the prompt header; the hint line is appended for you.
  */
@@ -58,15 +73,10 @@ export async function bulkMultiselect(
       }
       const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.infoTier(bulkSelectHint())}`;
       const selected = new Set(this.value ?? []);
-      const rows = this.options.map((opt, i) => {
-        const isSelected = selected.has(opt.value);
-        const box = isSelected
-          ? style.ok(S_CHECKBOX_SELECTED)
-          : i === this.cursor
-            ? S_CHECKBOX_ACTIVE
-            : S_CHECKBOX_INACTIVE;
-        return `${S_BAR}  ${box} ${isSelected ? style.ok(opt.label) : opt.label}`;
-      });
+      const rows = this.options.map(
+        (opt, i) =>
+          `${S_BAR}  ${formatRow(opt.label, { active: i === this.cursor, selected: selected.has(opt.value) })}`
+      );
       return `${header}\n${rows.join('\n')}\n${S_BAR_END}`;
     },
   });
