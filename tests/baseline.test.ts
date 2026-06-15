@@ -9,6 +9,7 @@ import {
   type BaselineFile,
   baselinePath,
   buildRecorded,
+  identityArrayDelta,
   checkBaselineAccount,
   computeCompleteResources,
   hashTemplate,
@@ -239,6 +240,75 @@ describe('baseline', () => {
   it('applyBaseline keeps a CHANGED undeclared value (= drift)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     expect(applyBaseline([undeclared('A', 'P', ['y'])], b)).toHaveLength(1);
+  });
+
+  describe('identityArrayDelta (R128 — element-level granularity for recorded arrays)', () => {
+    const p = (name: string, doc: unknown) => ({ PolicyName: name, PolicyDocument: doc });
+
+    it('returns undefined when not both arrays', () => {
+      expect(identityArrayDelta('x', ['y'])).toBeUndefined();
+      expect(identityArrayDelta([{ PolicyName: 'a' }], { PolicyName: 'a' })).toBeUndefined();
+    });
+
+    it('returns undefined when no shared unique identity field (whole-array fallback)', () => {
+      // objects with no Key/Id/PolicyName/Name -> cannot align
+      expect(identityArrayDelta([{ Effect: 'Allow' }], [{ Effect: 'Deny' }])).toBeUndefined();
+    });
+
+    it('returns undefined when a candidate identity is non-unique (avoid mis-aligned delta)', () => {
+      const rec = [p('dup', 1), p('dup', 2)];
+      const live = [p('dup', 1), p('dup', 3)];
+      expect(identityArrayDelta(rec, live)).toBeUndefined();
+    });
+
+    it('returns undefined for a pure reorder (nothing actually changed)', () => {
+      const rec = [p('a', 1), p('b', 2)];
+      const live = [p('b', 2), p('a', 1)];
+      expect(identityArrayDelta(rec, live)).toBeUndefined();
+    });
+
+    it('detects an ADDED element keyed by PolicyName (the user-hit case)', () => {
+      const rec = [p('a', 1)];
+      const live = [p('a', 1), p('aaa', 2)];
+      const d = identityArrayDelta(rec, live);
+      expect(d).toMatchObject({ identityField: 'PolicyName' });
+      expect(d?.added).toEqual([{ id: 'aaa', value: p('aaa', 2) }]);
+      expect(d?.changed).toEqual([]);
+      expect(d?.removed).toEqual([]);
+    });
+
+    it('detects a CHANGED element (same name, different document) — not missed', () => {
+      const rec = [p('a', { act: 's3:Get' })];
+      const live = [p('a', { act: 's3:*' })];
+      const d = identityArrayDelta(rec, live);
+      expect(d?.added).toEqual([]);
+      expect(d?.changed).toEqual([
+        { id: 'a', recorded: p('a', { act: 's3:Get' }), actual: p('a', { act: 's3:*' }) },
+      ]);
+    });
+
+    it('detects a REMOVED element', () => {
+      const rec = [p('a', 1), p('b', 2)];
+      const live = [p('a', 1)];
+      const d = identityArrayDelta(rec, live);
+      expect(d?.removed).toEqual([{ id: 'b', value: p('b', 2) }]);
+    });
+
+    it('applyBaseline attaches arrayDelta to a changed recorded array (display-only, path stays whole)', () => {
+      const b = baseline([
+        { logicalId: 'A', resourceType: 'AWS::IAM::Role', path: 'Policies', value: [p('a', 1)] },
+      ]);
+      const out = applyBaseline([undeclared('A', 'Policies', [p('a', 1), p('aaa', 2)])], b);
+      expect(out).toHaveLength(1);
+      expect(out[0].path).toBe('Policies'); // whole-array path preserved (record unaffected)
+      expect(out[0].arrayDelta?.added).toEqual([{ id: 'aaa', value: p('aaa', 2) }]);
+    });
+
+    it('applyBaseline leaves a changed scalar array without arrayDelta (whole-array fallback)', () => {
+      const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+      const out = applyBaseline([undeclared('A', 'P', ['y'])], b);
+      expect(out[0].arrayDelta).toBeUndefined();
+    });
   });
 
   it('applyBaseline keeps a NEW undeclared path (unrecorded on a never-complete resource), passes non-undeclared through', () => {

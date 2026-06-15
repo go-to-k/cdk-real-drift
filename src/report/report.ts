@@ -17,7 +17,7 @@
 // one-line-per-tier bullet list when 2+ (R37); `--verbose` expands them to full
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
-import type { Finding, Tier } from '../types.js';
+import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
 const TIER_NAMES: Record<Tier, string> = {
@@ -91,8 +91,24 @@ export function formatFinding(f: Finding): string {
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared')
     s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;
+  else if (f.tier === 'undeclared' && f.arrayDelta)
+    // R128: a recorded identity-keyed array changed — show the element delta, not the
+    // whole array dump (the property stays recorded; this is the WHICH-element view).
+    s += formatArrayDelta(f.arrayDelta);
   else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     s += ` = ${style.actual(j(f.actual))}`;
+  return s;
+}
+
+// R128: render an identity-keyed array delta as one indented line per changed element
+// (added / changed / removed), keyed by its identity value — far more legible than a
+// 200-char whole-array dump when only one element of many differs from the baseline.
+function formatArrayDelta(d: ArrayDelta): string {
+  let s = ` — ${d.identityField}-keyed element(s) changed vs .cdkrd baseline:`;
+  for (const a of d.added) s += `\n      + [${a.id}] = ${style.actual(j(a.value))}`;
+  for (const c of d.changed)
+    s += `\n      ~ [${c.id}] baseline=${style.desired(j(c.recorded))} actual=${style.actual(j(c.actual))}`;
+  for (const r of d.removed) s += `\n      - [${r.id}] = ${style.desired(j(r.value))}`;
   return s;
 }
 

@@ -22,7 +22,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
-import type { Finding } from '../types.js';
+import type { ArrayDelta, Finding } from '../types.js';
 
 export interface RecordedEntry {
   logicalId: string;
@@ -235,6 +235,73 @@ export function baselineValueMatches(
   return deepEqual(canonicalizeForCompare(baselineValue), currentCanonicalValue);
 }
 
+// Identity fields for the ELEMENT-LEVEL DELTA display only (R128) — deliberately
+// broader than classify's `IDENTITY_FIELDS` (which gate canonicalization + the R98
+// nested descent and so must stay corpus-validated). This set is consulted ONLY to
+// align a recorded-but-CHANGED undeclared array's elements for the report; the
+// finding is already drift either way, so a wider identity set here can only sharpen
+// what is shown and can NEVER create a false positive. `PolicyName` is the IAM Role
+// inline-Policies case the user hit; `Name` covers the common named-element array.
+const DELTA_IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName', 'PolicyName', 'Name'];
+
+const isPlainObjectArray = (arr: unknown[]): boolean =>
+  arr.length > 0 && arr.every((x) => x !== null && typeof x === 'object' && !Array.isArray(x));
+
+// Pick the first identity field that EVERY element on BOTH sides carries as a string
+// AND that is UNIQUE within each side. Uniqueness matters: a non-unique key would
+// collapse two distinct elements into one map entry and mis-describe the delta — so
+// fall back to the whole-array display (undefined) rather than show a wrong delta.
+function deltaIdentityField(a: unknown[], b: unknown[]): string | undefined {
+  if (!isPlainObjectArray(a) || !isPlainObjectArray(b)) return undefined;
+  return DELTA_IDENTITY_FIELDS.find((f) => {
+    const idsOf = (arr: unknown[]): string[] =>
+      arr
+        .map((x) => (x as Record<string, unknown>)[f])
+        .filter((v): v is string => typeof v === 'string');
+    const ia = idsOf(a);
+    const ib = idsOf(b);
+    return (
+      ia.length === a.length &&
+      ib.length === b.length &&
+      new Set(ia).size === ia.length &&
+      new Set(ib).size === ib.length
+    );
+  });
+}
+
+/**
+ * Element-level delta of a recorded-but-CHANGED undeclared identity-keyed object
+ * array (R128) — e.g. an IAM Role's inline Policies keyed by `PolicyName`. Computed
+ * for the REPORT only: the finding stays at the whole-array path, so `record` still
+ * snapshots the whole array (the property never un-records) and revert is unaffected;
+ * this just says WHICH element(s) differ so the report shows the delta instead of
+ * dumping the full array. Aligns by a unique identity field present on both sides,
+ * then deep-compares matched pairs (so a same-name-but-changed-document element IS
+ * still surfaced as `changed`, never missed). Returns undefined when the two sides
+ * are not both unique-identity-keyed object arrays, or when nothing actually differs
+ * after alignment (e.g. a pure reorder) — the caller then falls back to whole-array
+ * display.
+ */
+export function identityArrayDelta(recordedVal: unknown, liveVal: unknown): ArrayDelta | undefined {
+  if (!Array.isArray(recordedVal) || !Array.isArray(liveVal)) return undefined;
+  const idf = deltaIdentityField(recordedVal, liveVal);
+  if (!idf) return undefined;
+  const byId = (arr: unknown[]): Map<string, unknown> =>
+    new Map(arr.map((x) => [String((x as Record<string, unknown>)[idf]), x]));
+  const rec = byId(recordedVal);
+  const live = byId(liveVal);
+  const added: ArrayDelta['added'] = [];
+  const changed: ArrayDelta['changed'] = [];
+  const removed: ArrayDelta['removed'] = [];
+  for (const [id, v] of live) {
+    if (!rec.has(id)) added.push({ id, value: v });
+    else if (!deepEqual(rec.get(id), v)) changed.push({ id, recorded: rec.get(id), actual: v });
+  }
+  for (const [id, v] of rec) if (!live.has(id)) removed.push({ id, value: v });
+  if (added.length === 0 && changed.length === 0 && removed.length === 0) return undefined;
+  return { identityField: idf, added, removed, changed };
+}
+
 /**
  * Split a freshly-built recorded set against the existing baseline into the values
  * a human must decide on (`changed` = new path OR value differs) and the values
@@ -327,7 +394,12 @@ export function applyBaseline(
       continue;
     }
     if (entry) {
-      kept.push(f); // recorded value changed -> drift
+      // recorded value changed -> drift. For an identity-keyed object array (IAM
+      // inline Policies, …) attach the element-level delta so the report shows WHICH
+      // element changed rather than the whole array (R128). Display-only: the finding
+      // still names the whole-array path, so record/revert are unaffected.
+      const delta = identityArrayDelta(canonicalizeForCompare(entry.value), f.actual);
+      kept.push(delta ? { ...f, arrayDelta: delta } : f);
     } else if (complete.has(f.logicalId)) {
       // the record snapshot covered this whole resource, so this value is new
       kept.push({

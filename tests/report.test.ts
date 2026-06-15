@@ -134,6 +134,27 @@ describe('report', () => {
     expect(text).not.toMatch(/\] \d/);
   });
 
+  it('R128 renders an identity-keyed arrayDelta element-by-element, not the whole array', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Role',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{ PolicyName: 'keep' }, { PolicyName: 'aaa' }],
+      arrayDelta: {
+        identityField: 'PolicyName',
+        added: [{ id: 'aaa', value: { PolicyName: 'aaa' } }],
+        changed: [],
+        removed: [],
+      },
+    };
+    const { text } = run([f]);
+    expect(text).toContain('PolicyName-keyed element(s) changed vs .cdkrd baseline');
+    expect(text).toContain('+ [aaa]');
+    // the whole-array dump (the other element) is NOT shown — only the delta
+    expect(text).not.toContain('"PolicyName":"keep"');
+  });
+
   it('shows the CDK construct path instead of the logical id when present', () => {
     const f: Finding = {
       tier: 'undeclared',
