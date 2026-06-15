@@ -28,6 +28,7 @@ import {
   summarizeChoices,
 } from './action-picker.js';
 import {
+  type Actions,
   availableActions,
   ignoreStack,
   includeUnrecordedRemovals,
@@ -110,15 +111,34 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
   return remainingDeclared > 0 ? 1 : 0;
 }
 
-export async function resolveInteractively(p: ResolveParams): Promise<number> {
-  // Whether undeclared REMOVE ops belong in a revert plan — true in a gated TTY prompt.
-  const includeRemovals = includeUnrecordedRemovals(p.removeUnrecorded, true, p.yes);
-  const actions = availableActions(p.reconciled, p.baseline, p.schemas, includeRemovals);
-  if (!actions.record && !actions.ignore && !actions.revert) return p.code;
+/**
+ * Outcome of a sub-action (one menu choice carried out).
+ *  - `exit`: the exit contribution after the action.
+ *  - `awsMutated`: whether the action wrote to AWS (a revert ran). A NON-AWS action
+ *    (record/ignore) only writes the local baseline/config, so its effect is fully
+ *    re-derivable by reloading those files — the chain loop re-reconciles and re-shows
+ *    the menu so leftover drift it could not touch (e.g. a declared drift after Record)
+ *    is not a dead-end. An AWS-mutating action is TERMINAL: revert already re-checked
+ *    convergence against live AWS and returned its exit, and we deliberately do NOT
+ *    re-read AWS in the loop, so re-deriving from the (now stale) findings would be wrong.
+ * A `null` sub-action result means its prompt was cancelled (nothing happened) → re-show
+ * the SAME menu.
+ */
+interface SubResult {
+  exit: number;
+  awsMutated: boolean;
+}
 
-  const decidable = p.reconciled.filter((f) => applicableActions(f).length > 0);
-  // Nothing FIRST so the safe no-op is the top row AND the default cursor — Enter is a
-  // harmless exit, never an accidental write. The action options follow.
+/**
+ * Build the top-menu options for the current action surface (R133). Nothing is FIRST so
+ * the safe no-op is the top row AND the default cursor — Enter is a harmless exit, never
+ * an accidental write. "Decide per finding" appears only when >1 finding is decidable
+ * (with one, a bulk option already IS per-finding). Pure + exported for tests.
+ */
+export function buildResolveOptions(
+  actions: Actions,
+  decidableCount: number
+): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [
     { value: 'nothing', label: 'Nothing (decide later)' },
   ];
@@ -135,39 +155,78 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
       value: 'ignore-all',
       label: 'Ignore all — stop reporting it (writes .cdkrd/config.json)',
     });
-  if (decidable.length > 1)
+  if (decidableCount > 1)
     options.push({ value: 'per-finding', label: 'Decide per finding — pick an action for each' });
+  return options;
+}
 
-  // Loop so a CANCELLED sub-prompt (Esc) returns to this menu instead of exiting — a
-  // "back" affordance. A sub-action returns null when its prompt was cancelled (no AWS /
-  // baseline / config write happened, so re-showing the menu is side-effect-free);
-  // Esc / Nothing at THIS top menu exits with the pre-prompt code.
+/** The top-menu prompt, worded by the remaining exit state (drift vs unrecorded-only).
+ *  Pure + exported. */
+export function resolveMenuMessage(stackName: string, code: number): string {
+  return code === 1
+    ? `${stackName}: drift found — what do you want to do?`
+    : `${stackName}: unrecorded values found — what do you want to do?`;
+}
+
+export async function resolveInteractively(p: ResolveParams): Promise<number> {
+  const declaredByLogical = declaredKeysByLogical(p.desired.resources);
+  // Whether undeclared REMOVE ops belong in a revert plan — true in a gated TTY prompt.
+  const includeRemovals = includeUnrecordedRemovals(p.removeUnrecorded, true, p.yes);
+  // Chain state: a record/ignore mutates only local files, so after one runs we reload
+  // the baseline + config and RE-RECONCILE the raw findings — the menu re-shows with the
+  // leftover, addressable drift (R133). reconciled/baseline/config advance each iteration;
+  // code carries the exit forward.
+  let reconciled = p.reconciled;
+  let baseline = p.baseline;
+  let config = p.config;
+  let code = p.code;
+
+  // Loop so a CANCELLED sub-prompt (Esc) returns to this menu (a "back" affordance) AND so
+  // a COMPLETED non-AWS action re-shows the menu for any drift it could not resolve. Esc /
+  // Nothing at THIS top menu exits with the current code; the menu stops appearing once no
+  // action applies (e.g. the stack is clean, or only an AWS-mutating action ran).
   while (true) {
+    const actions = availableActions(reconciled, baseline, p.schemas, includeRemovals);
+    if (!actions.record && !actions.ignore && !actions.revert) return code;
+    const decidable = reconciled.filter((f) => applicableActions(f).length > 0);
+    const options = buildResolveOptions(actions, decidable.length);
+
     const choice = await select({
-      message:
-        p.code === 1
-          ? `${p.stackName}: drift found — what do you want to do?`
-          : `${p.stackName}: unrecorded values found — what do you want to do?`,
+      message: resolveMenuMessage(p.stackName, code),
       options,
       initialValue: 'nothing',
     });
-    if (isCancel(choice) || choice === 'nothing') return p.code;
+    if (isCancel(choice) || choice === 'nothing') return code;
 
-    let result: number | null;
-    if (choice === 'record-all') result = await recordAll(p);
-    else if (choice === 'ignore-all') result = await ignoreAll(p);
-    else if (choice === 'revert-all') result = await revertAll(p);
-    else if (choice === 'per-finding') result = await perFinding(p, decidable);
-    else result = p.code;
+    const cur: ResolveParams = { ...p, reconciled, baseline, config, code };
+    let result: SubResult | null;
+    if (choice === 'record-all') result = await recordAll(cur);
+    else if (choice === 'ignore-all') result = await ignoreAll(cur);
+    else if (choice === 'revert-all') result = await revertAll(cur);
+    else if (choice === 'per-finding') result = await perFinding(cur, decidable);
+    else result = { exit: code, awsMutated: false };
 
-    if (result === null) continue; // sub-prompt cancelled → back to the menu
-    return result;
+    if (result === null) continue; // sub-prompt cancelled → re-show the same menu
+    code = result.exit;
+    // An AWS-mutating action is terminal: convergence was already verified against live
+    // AWS inside revert, and we never re-read AWS here, so re-deriving from stale findings
+    // would be wrong. A non-AWS action (record/ignore) is fully re-derivable — reload the
+    // local files, re-reconcile, and loop so leftover drift re-surfaces in the menu.
+    if (result.awsMutated) return code;
+    baseline = await loadBaseline(p.stackName, p.desired.accountId, p.region);
+    config = await loadConfig();
+    reconciled = applyIgnores(
+      applyBaseline(p.findings, baseline, { declaredByLogical }),
+      p.stackName,
+      p.region,
+      config
+    );
   }
 }
 
 // record records UNDECLARED only; recordStack emits the "declared/deleted NOT approved"
 // scope note after the write (R117), so this path warns consistently with `cdkrd record`.
-async function recordAll(p: ResolveParams): Promise<number | null> {
+async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   const result = await recordStack({
     stackName: p.stackName,
     region: p.region,
@@ -196,10 +255,10 @@ async function recordAll(p: ResolveParams): Promise<number | null> {
   ).length;
   const remainingUndeclared = reEval.filter((f) => f.tier === 'undeclared').length;
   console.error(`note: ${p.stackName}: ${postRecordNote(remainingUndeclared, remainingDeclared)}`);
-  return remainingDeclared > 0 ? 1 : 0;
+  return { exit: remainingDeclared > 0 ? 1 : 0, awsMutated: false };
 }
 
-async function ignoreAll(p: ResolveParams): Promise<number | null> {
+async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
   // reconciled = the report's declared + undeclared findings; ignoreStack shows its own
   // multiselect (default all) when !yes, mirroring `cdkrd ignore`.
   const result = await ignoreStack({
@@ -210,10 +269,10 @@ async function ignoreAll(p: ResolveParams): Promise<number | null> {
   });
   // reconciled findings are all not-yet-ignored, so a completed run always writes a new
   // rule; !wrote means the multiselect was cancelled → back to the menu.
-  return result.wrote ? recomputeExit(p, new Set()) : null;
+  return result.wrote ? { exit: await recomputeExit(p, new Set()), awsMutated: false } : null;
 }
 
-async function revertAll(p: ResolveParams): Promise<number | null> {
+async function revertAll(p: ResolveParams): Promise<SubResult | null> {
   const outcome = await revertStack({
     stackName: p.stackName,
     region: p.region,
@@ -233,15 +292,16 @@ async function revertAll(p: ResolveParams): Promise<number | null> {
   });
   // R30: an aborted confirm wrote nothing — signal "back to the menu" (the drift still
   // stands; the caller keeps the pre-prompt code if the user then exits).
-  return outcome.aborted ? null : outcome.exit;
+  return outcome.aborted ? null : { exit: outcome.exit, awsMutated: true };
 }
 
-async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<number | null> {
+async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubResult | null> {
   const rows = decidable.map((f) => ({ label: pickerLabel(f), applicable: applicableActions(f) }));
   const chosen = await actionPicker(`${p.stackName}: assign an action to each finding`, rows);
   if (chosen === undefined) return null; // picker cancelled (Esc) → back to the menu
   const groups = groupByAction(decidable, chosen);
-  if (groups.record.length + groups.ignore.length + groups.revert.length === 0) return p.code;
+  if (groups.record.length + groups.ignore.length + groups.revert.length === 0)
+    return { exit: p.code, awsMutated: false };
 
   // record: the picker already chose which undeclared values — recordStack records
   // exactly those (preselectedKeys) while still auto-keeping the existing baseline.
@@ -299,5 +359,10 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<numbe
   console.error(
     `note: ${p.stackName}: per-finding decisions applied (${summarizeChoices(chosen)}).`
   );
-  return Math.max(await recomputeExit(p, revertResolved), revertExit);
+  return {
+    exit: Math.max(await recomputeExit(p, revertResolved), revertExit),
+    // per-finding is terminal only if it actually wrote to AWS (a revert ran); a
+    // record/ignore-only per-finding pass is re-derivable, so the menu re-shows.
+    awsMutated: groups.revert.length > 0,
+  };
 }

@@ -4,7 +4,12 @@ import {
   preDeployFindings,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
-import { postRecordNote } from '../src/commands/interactive-resolve.js';
+import {
+  buildResolveOptions,
+  postRecordNote,
+  resolveMenuMessage,
+} from '../src/commands/interactive-resolve.js';
+import type { Actions } from '../src/commands/stack-actions.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -71,6 +76,51 @@ describe('postRecordNote (R52 — a partial record is a SUCCESS, said plainly)',
     const note = postRecordNote(0, 1);
     expect(note).toContain('declared/deleted drift(s) remain');
     expect(note).not.toContain('also stay reported');
+  });
+});
+
+describe('buildResolveOptions (R133 — the chain menu surface)', () => {
+  const A = (over: Partial<Actions>): Actions => ({
+    record: false,
+    ignore: false,
+    revert: false,
+    ...over,
+  });
+  const values = (a: Actions, decidable: number): string[] =>
+    buildResolveOptions(a, decidable).map((o) => o.value);
+
+  it('Nothing is always FIRST (safe no-op as the default cursor)', () => {
+    expect(values(A({}), 0)[0]).toBe('nothing');
+    expect(values(A({ record: true, revert: true, ignore: true }), 5)[0]).toBe('nothing');
+  });
+
+  it('each bulk option appears only when its action applies', () => {
+    expect(values(A({ record: true }), 0)).toEqual(['nothing', 'record-all']);
+    expect(values(A({ revert: true }), 0)).toEqual(['nothing', 'revert-all']);
+    expect(values(A({ ignore: true }), 0)).toEqual(['nothing', 'ignore-all']);
+  });
+
+  it('order is record → revert → ignore after Nothing', () => {
+    expect(values(A({ record: true, revert: true, ignore: true }), 1)).toEqual([
+      'nothing',
+      'record-all',
+      'revert-all',
+      'ignore-all',
+    ]);
+  });
+
+  it('per-finding appears only when >1 finding is decidable', () => {
+    expect(values(A({ revert: true }), 1)).not.toContain('per-finding');
+    expect(values(A({ revert: true }), 2)).toContain('per-finding');
+  });
+});
+
+describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
+  it('code 1 (drift remains) says drift found', () => {
+    expect(resolveMenuMessage('S', 1)).toContain('drift found');
+  });
+  it('code 0 (only unrecorded) says unrecorded values found', () => {
+    expect(resolveMenuMessage('S', 0)).toContain('unrecorded values found');
   });
 });
 
