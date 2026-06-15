@@ -7,7 +7,7 @@ import {
   addIgnoreRules,
   applyIgnores,
   type CdkrdConfig,
-  type IgnoreEntry,
+  type IgnoreRuleObject,
   ignoreRuleFor,
   loadConfig,
   mergeIgnoreRules,
@@ -16,7 +16,12 @@ import {
 import { buildRevertPlan } from '../src/revert/plan.js';
 import type { Finding } from '../src/types.js';
 
-const cfg = (ignore: IgnoreEntry[]): CdkrdConfig => ({ ignore });
+const cfg = (ignore: IgnoreRuleObject[]): CdkrdConfig => ({ ignore });
+// terse unscoped rule: p('*.DesiredCount') === { path: '*.DesiredCount' }
+const p = (path: string, extra: Omit<IgnoreRuleObject, 'path'> = {}): IgnoreRuleObject => ({
+  path,
+  ...extra,
+});
 // region-agnostic wrapper for the many cases that don't exercise region scope (the
 // region-scoped tests call applyIgnores directly with an explicit region).
 const ign = (findings: Finding[], stackName: string, config: CdkrdConfig): Finding[] =>
@@ -40,10 +45,12 @@ const undeclared = (logicalId: string, path: string): Finding => ({
 });
 
 describe('parseIgnoreRule', () => {
-  it('bare string → unscoped rule (any stack, any region)', () => {
-    expect(parseIgnoreRule('*.DesiredCount')).toEqual({
+  it('path only → unscoped rule (any stack, any region)', () => {
+    expect(parseIgnoreRule({ path: '*.DesiredCount' })).toEqual({
       raw: '*.DesiredCount',
       pathPattern: '*.DesiredCount',
+      stackGlob: undefined,
+      regionGlob: undefined,
     });
   });
   it('object with stack → stack-scoped rule', () => {
@@ -79,7 +86,7 @@ describe('applyIgnores', () => {
   });
 
   it('exact match re-tags a declared finding to ignored with the rule in the note', () => {
-    const [f] = ign([declared('Svc', 'DesiredCount')], 'S', cfg(['Svc.DesiredCount']));
+    const [f] = ign([declared('Svc', 'DesiredCount')], 'S', cfg([p('Svc.DesiredCount')]));
     expect(f?.tier).toBe('ignored');
     expect(f?.note).toBe('ignored by config rule "Svc.DesiredCount"');
   });
@@ -88,7 +95,7 @@ describe('applyIgnores', () => {
     const out = ign(
       [declared('Service1234ABCD', 'DesiredCount'), declared('Other', 'Cpu')],
       'S',
-      cfg(['*.DesiredCount'])
+      cfg([p('*.DesiredCount')])
     );
     expect(out.map((f) => f.tier)).toEqual(['ignored', 'declared']);
   });
@@ -97,13 +104,13 @@ describe('applyIgnores', () => {
     const [f] = ign(
       [undeclared('MyTable', 'ProvisionedThroughput')],
       'S',
-      cfg(['*.ProvisionedThroughput'])
+      cfg([p('*.ProvisionedThroughput')])
     );
     expect(f?.tier).toBe('ignored');
   });
 
   it('parent-segment rule covers child paths', () => {
-    const [f] = ign([undeclared('Role', 'Policies.0.PolicyName')], 'S', cfg(['Role.Policies']));
+    const [f] = ign([undeclared('Role', 'Policies.0.PolicyName')], 'S', cfg([p('Role.Policies')]));
     expect(f?.tier).toBe('ignored');
   });
 
@@ -117,10 +124,10 @@ describe('applyIgnores', () => {
       actual: [{}],
     };
     // a rule written against the human-friendly path matches via constructPath…
-    expect(ign([f], 'MyStack', cfg(['MyStack/ApiRole.Policies']))[0]?.tier).toBe('ignored');
-    expect(ign([f], 'MyStack', cfg(['*/ApiRole.Policies']))[0]?.tier).toBe('ignored');
+    expect(ign([f], 'MyStack', cfg([p('MyStack/ApiRole.Policies')]))[0]?.tier).toBe('ignored');
+    expect(ign([f], 'MyStack', cfg([p('*/ApiRole.Policies')]))[0]?.tier).toBe('ignored');
     // …and the logicalId still works for the same finding (both targets are tried)
-    expect(ign([f], 'MyStack', cfg(['ApiRole*.Policies']))[0]?.tier).toBe('ignored');
+    expect(ign([f], 'MyStack', cfg([p('ApiRole*.Policies')]))[0]?.tier).toBe('ignored');
   });
 
   it('logicalId rule still matches when constructPath is absent (non-CDK stack)', () => {
@@ -131,17 +138,17 @@ describe('applyIgnores', () => {
       path: 'Policies',
       actual: [{}],
     };
-    expect(ign([f], 'RawCfnStack', cfg(['ApiRole.Policies']))[0]?.tier).toBe('ignored');
+    expect(ign([f], 'RawCfnStack', cfg([p('ApiRole.Policies')]))[0]?.tier).toBe('ignored');
   });
 
   it('stack-scoped object rule applies only to matching stack names', () => {
-    const rule = cfg([{ path: '*.DesiredCount', stack: 'Prod*' }]);
+    const rule = cfg([p('*.DesiredCount', { stack: 'Prod*' })]);
     expect(ign([declared('Svc', 'DesiredCount')], 'ProdApi', rule)[0]?.tier).toBe('ignored');
     expect(ign([declared('Svc', 'DesiredCount')], 'DevApi', rule)[0]?.tier).toBe('declared');
   });
 
   it('region-scoped object rule applies only in matching regions', () => {
-    const rule = cfg([{ path: '*.DesiredCount', region: 'us-*' }]);
+    const rule = cfg([p('*.DesiredCount', { region: 'us-*' })]);
     const f = () => [declared('Svc', 'DesiredCount')];
     expect(applyIgnores(f(), 'S', 'us-east-1', rule)[0]?.tier).toBe('ignored');
     expect(applyIgnores(f(), 'S', 'us-west-2', rule)[0]?.tier).toBe('ignored');
@@ -149,7 +156,7 @@ describe('applyIgnores', () => {
   });
 
   it('stack AND region scope must BOTH match (independent axes)', () => {
-    const rule = cfg([{ path: '*.DesiredCount', stack: 'Prod*', region: 'ap-northeast-1' }]);
+    const rule = cfg([p('*.DesiredCount', { stack: 'Prod*', region: 'ap-northeast-1' })]);
     const f = () => [declared('Svc', 'DesiredCount')];
     expect(applyIgnores(f(), 'ProdApi', 'ap-northeast-1', rule)[0]?.tier).toBe('ignored');
     expect(applyIgnores(f(), 'ProdApi', 'us-east-1', rule)[0]?.tier).toBe('declared'); // wrong region
@@ -161,7 +168,7 @@ describe('applyIgnores', () => {
       [declared('Svc', 'DesiredCount')],
       'S',
       'us-east-1',
-      cfg([{ path: '*.DesiredCount', region: 'us-*' }])
+      cfg([p('*.DesiredCount', { region: 'us-*' })])
     );
     expect(f?.note).toBe('ignored by config rule "*.DesiredCount (region:us-*)"');
   });
@@ -173,7 +180,7 @@ describe('applyIgnores', () => {
       resourceType: 'AWS::ECS::Service',
       path: '',
     };
-    expect(ign([del], 'S', cfg(['Svc*', '*']))[0]?.tier).toBe('deleted');
+    expect(ign([del], 'S', cfg([p('Svc*'), p('*')]))[0]?.tier).toBe('deleted');
   });
 
   it('leaves already-informational tiers (readGap/skipped/unresolved) untouched', () => {
@@ -183,11 +190,11 @@ describe('applyIgnores', () => {
       resourceType: 'AWS::ECS::Service',
       path: 'DesiredCount',
     };
-    expect(ign([rg], 'S', cfg(['*.DesiredCount']))[0]?.tier).toBe('readGap');
+    expect(ign([rg], 'S', cfg([p('*.DesiredCount')]))[0]?.tier).toBe('readGap');
   });
 
   it('ignored declared drops out of the revert plan', () => {
-    const ignored = ign([declared('Svc', 'DesiredCount')], 'S', cfg(['*.DesiredCount']));
+    const ignored = ign([declared('Svc', 'DesiredCount')], 'S', cfg([p('*.DesiredCount')]));
     const plan = buildRevertPlan(ignored, undefined);
     expect(plan.items).toHaveLength(0);
     expect(plan.notRevertable).toHaveLength(0);
@@ -197,7 +204,7 @@ describe('applyIgnores', () => {
     const ignored = ign(
       [undeclared('MyTable', 'ProvisionedThroughput')],
       'S',
-      cfg(['*.ProvisionedThroughput'])
+      cfg([p('*.ProvisionedThroughput')])
     );
     expect(buildRecorded(ignored)).toHaveLength(0);
   });
@@ -221,16 +228,16 @@ describe('loadConfig', () => {
     await writeFile('.cdkrd/config.json', content, 'utf8');
   };
 
-  it('absent file → empty config (backward compatible, no migration)', async () => {
+  it('absent file → empty config (no file, nothing to ignore)', async () => {
     expect(await loadConfig()).toEqual({ ignore: [] });
   });
 
-  it('valid config loads bare strings and scoped objects', async () => {
+  it('valid config loads object rules (unscoped + scoped)', async () => {
     await write(
-      '{ "ignore": ["*.DesiredCount", { "path": "*.Cpu", "stack": "Prod*", "region": "us-*" }] }'
+      '{ "ignore": [{ "path": "*.DesiredCount" }, { "path": "*.Cpu", "stack": "Prod*", "region": "us-*" }] }'
     );
     expect(await loadConfig()).toEqual({
-      ignore: ['*.DesiredCount', { path: '*.Cpu', stack: 'Prod*', region: 'us-*' }],
+      ignore: [{ path: '*.DesiredCount' }, { path: '*.Cpu', stack: 'Prod*', region: 'us-*' }],
     });
   });
 
@@ -245,13 +252,18 @@ describe('loadConfig', () => {
   });
 
   it('ignore not an array → throws', async () => {
-    await write('{ "ignore": "*.DesiredCount" }');
+    await write('{ "ignore": { "path": "x" } }');
     await expect(loadConfig()).rejects.toThrow(/"ignore" must be an array/);
   });
 
-  it('a non-string / non-object entry → throws', async () => {
+  it('a bare string entry → throws (every rule is an object now)', async () => {
+    await write('{ "ignore": ["*.DesiredCount"] }');
+    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be an object/);
+  });
+
+  it('a non-object entry → throws', async () => {
     await write('{ "ignore": [1] }');
-    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be a string or an object/);
+    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be an object/);
   });
 
   it('an object entry without "path" → throws', async () => {
@@ -270,12 +282,12 @@ describe('loadConfig', () => {
   });
 
   it('top-level array → throws (must be an object)', async () => {
-    await write('["*.DesiredCount"]');
+    await write('[{ "path": "*.DesiredCount" }]');
     await expect(loadConfig()).rejects.toThrow(/must be a JSON object/);
   });
 
   it('unknown key → throws (a typo like "ignroe" must not silently disable rules)', async () => {
-    await write('{ "ignroe": ["*.DesiredCount"] }');
+    await write('{ "ignroe": [{ "path": "*.DesiredCount" }] }');
     await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "ignroe" — known keys: "ignore"/);
   });
 
@@ -295,11 +307,11 @@ describe('ignoreRuleFor', () => {
       path: 'Policies',
       actual: [{}],
     };
-    expect(ignoreRuleFor(f)).toBe('MyStack/ApiRole.Policies');
+    expect(ignoreRuleFor(f)).toEqual({ path: 'MyStack/ApiRole.Policies' });
   });
 
   it('falls back to logicalId when constructPath is absent (non-CDK stack)', () => {
-    expect(ignoreRuleFor(declared('ApiRole', 'Policies'))).toBe('ApiRole.Policies');
+    expect(ignoreRuleFor(declared('ApiRole', 'Policies'))).toEqual({ path: 'ApiRole.Policies' });
   });
 
   it('omits the trailing dot for a resource-level (empty path) finding', () => {
@@ -309,38 +321,46 @@ describe('ignoreRuleFor', () => {
       resourceType: 'AWS::ECS::Service',
       path: '',
     };
-    expect(ignoreRuleFor(f)).toBe('Svc');
+    expect(ignoreRuleFor(f)).toEqual({ path: 'Svc' });
   });
 });
 
 describe('mergeIgnoreRules', () => {
   it('unions new rules, sorts stably, and reports what was added', () => {
-    const r = mergeIgnoreRules(['B.x'], ['A.y', 'C.z']);
-    expect(r.merged).toEqual(['A.y', 'B.x', 'C.z']);
-    expect(r.added).toEqual(['A.y', 'C.z']);
+    const r = mergeIgnoreRules([p('B.x')], [p('A.y'), p('C.z')]);
+    expect(r.merged).toEqual([p('A.y'), p('B.x'), p('C.z')]);
+    expect(r.added).toEqual([p('A.y'), p('C.z')]);
     expect(r.alreadyPresent).toEqual([]);
   });
 
   it('drops rules already present (idempotent) and de-dupes the incoming list', () => {
-    const r = mergeIgnoreRules(['A.y'], ['A.y', 'B.x', 'B.x']);
-    expect(r.merged).toEqual(['A.y', 'B.x']);
-    expect(r.added).toEqual(['B.x']);
-    expect(r.alreadyPresent).toEqual(['A.y']);
+    const r = mergeIgnoreRules([p('A.y')], [p('A.y'), p('B.x'), p('B.x')]);
+    expect(r.merged).toEqual([p('A.y'), p('B.x')]);
+    expect(r.added).toEqual([p('B.x')]);
+    expect(r.alreadyPresent).toEqual([p('A.y')]);
   });
 
   it('all-already-present → no additions, merged equals existing (sorted)', () => {
-    const r = mergeIgnoreRules(['B.x', 'A.y'], ['A.y']);
+    const r = mergeIgnoreRules([p('B.x'), p('A.y')], [p('A.y')]);
     expect(r.added).toEqual([]);
-    expect(r.alreadyPresent).toEqual(['A.y']);
-    expect(r.merged).toEqual(['A.y', 'B.x']);
+    expect(r.alreadyPresent).toEqual([p('A.y')]);
+    expect(r.merged).toEqual([p('A.y'), p('B.x')]);
   });
 
-  it('preserves existing scoped OBJECT entries (sorted strings lead, objects follow)', () => {
-    const obj = { path: '*.Cpu', region: 'us-*' };
-    const r = mergeIgnoreRules(['Zeta.x', obj], ['Alpha.y']);
-    // a bare string is never deduped against an object, so this is purely additive
-    expect(r.added).toEqual(['Alpha.y']);
-    expect(r.merged).toEqual(['Alpha.y', 'Zeta.x', obj]);
+  it('a scoped rule does NOT collide with the unscoped one for the same path', () => {
+    const scoped = p('*.Cpu', { region: 'us-*' });
+    const r = mergeIgnoreRules([p('*.Cpu')], [scoped]);
+    // same path, different scope → a distinct rule, purely additive
+    expect(r.added).toEqual([scoped]);
+    expect(r.merged).toEqual([p('*.Cpu'), scoped]); // both kept, sorted (path tie → unscoped first)
+  });
+
+  it('sorts by path, then stack, then region (deterministic, reviewable diff)', () => {
+    const a = p('Z.x');
+    const b = p('A.x', { region: 'us-*' }); // no stack → empty stack sorts first
+    const c = p('A.x', { stack: 'Prod*' });
+    const r = mergeIgnoreRules([], [a, b, c]);
+    expect(r.merged).toEqual([b, c, a]); // A.x(no-stack) < A.x(stack:Prod*) < Z.x
   });
 });
 
@@ -358,39 +378,53 @@ describe('addIgnoreRules', () => {
   });
 
   it('creates .cdkrd/config.json (and the dir) when absent', async () => {
-    const r = await addIgnoreRules(['Svc.DesiredCount']);
-    expect(r.added).toEqual(['Svc.DesiredCount']);
+    const r = await addIgnoreRules([p('Svc.DesiredCount')]);
+    expect(r.added).toEqual([p('Svc.DesiredCount')]);
     expect(r.path).toBe('.cdkrd/config.json');
     expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8'))).toEqual({
-      ignore: ['Svc.DesiredCount'],
+      ignore: [{ path: 'Svc.DesiredCount' }],
     });
   });
 
   it('appends to an existing config, preserving prior rules (sorted union)', async () => {
     await mkdir('.cdkrd', { recursive: true });
-    await writeFile('.cdkrd/config.json', '{ "ignore": ["Zeta.x"] }', 'utf8');
-    const r = await addIgnoreRules(['Alpha.y']);
-    expect(r.added).toEqual(['Alpha.y']);
+    await writeFile('.cdkrd/config.json', '{ "ignore": [{ "path": "Zeta.x" }] }', 'utf8');
+    const r = await addIgnoreRules([p('Alpha.y')]);
+    expect(r.added).toEqual([p('Alpha.y')]);
     expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
-      'Alpha.y',
-      'Zeta.x',
+      { path: 'Alpha.y' },
+      { path: 'Zeta.x' },
+    ]);
+  });
+
+  it('preserves a hand-authored scoped rule on append', async () => {
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile(
+      '.cdkrd/config.json',
+      '{ "ignore": [{ "path": "*.Cpu", "region": "us-*" }] }',
+      'utf8'
+    );
+    await addIgnoreRules([p('Alpha.y')]);
+    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
+      { path: '*.Cpu', region: 'us-*' },
+      { path: 'Alpha.y' },
     ]);
   });
 
   it('all-already-present → leaves the file byte-for-byte untouched', async () => {
     await mkdir('.cdkrd', { recursive: true });
-    const original = '{"ignore":["A.y"]}';
+    const original = '{"ignore":[{"path":"A.y"}]}';
     await writeFile('.cdkrd/config.json', original, 'utf8');
-    const r = await addIgnoreRules(['A.y']);
+    const r = await addIgnoreRules([p('A.y')]);
     expect(r.added).toEqual([]);
-    expect(r.alreadyPresent).toEqual(['A.y']);
+    expect(r.alreadyPresent).toEqual([p('A.y')]);
     // not rewritten — the original (compact) bytes survive
     expect(await readFile('.cdkrd/config.json', 'utf8')).toBe(original);
   });
 
   it('writes pretty JSON with a trailing newline (reviewable git diff)', async () => {
-    await addIgnoreRules(['Svc.DesiredCount']);
+    await addIgnoreRules([p('Svc.DesiredCount')]);
     const raw = await readFile('.cdkrd/config.json', 'utf8');
-    expect(raw).toBe(`{\n  "ignore": [\n    "Svc.DesiredCount"\n  ]\n}\n`);
+    expect(raw).toBe(`{\n  "ignore": [\n    {\n      "path": "Svc.DesiredCount"\n    }\n  ]\n}\n`);
   });
 });

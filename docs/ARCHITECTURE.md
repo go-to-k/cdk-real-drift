@@ -668,18 +668,19 @@ a per-stack/account fact:
 ```jsonc
 {
   "ignore": [
-    "*.DesiredCount", // bare string — any stack, any region, any logical id
+    { "path": "*.DesiredCount" }, // unscoped — any stack, any region, any logical id
     { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*" }, // stack-scoped
     { "path": "*.DesiredCount", "region": "us-*" }, // region-scoped (independent axis)
   ],
 }
 ```
 
-A rule is EITHER a bare string (unscoped) OR an object `{ path, stack?, region? }`
-that scopes the same `path` pattern; the string is shorthand for `{ path }`. Region
-is an independent axis from the stack name (the same stack name may be deployed to
-several regions, or matched by a `*` stack glob, and a property may legitimately
-drift in only one), so the current region is threaded in.
+Every rule is an object `{ path, stack?, region? }` (one uniform, self-labelling
+shape — no bare-string shorthand); `path` is the pattern, `stack` / `region` are
+optional scopes (absent = any). Region is an independent axis from the stack name
+(the same stack name may be deployed to several regions, or matched by a `*` stack
+glob, and a property may legitimately drift in only one), so the current region
+is threaded in.
 `applyIgnores(findings, stackName, region, config)`
 ([src/config/config-file.ts](../src/config/config-file.ts)) is a pure function
 applied right after `applyBaseline` everywhere (check / revert / record / the
