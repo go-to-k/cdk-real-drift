@@ -215,6 +215,23 @@ describe('baseline', () => {
       const out = applyBaseline([atDefault('Bkt', 'Encryption', { alg: 'AES256' })], b);
       expect(out).toEqual([]);
     });
+
+    it('a recorded NON-default value reset to the AWS default IS drift (not folded away)', () => {
+      // baseline recorded MaxSessionDuration=7200 (a tweak); someone resets it out of
+      // band to the 3600 default, which classify tags `atDefault`. Because the value
+      // CHANGED from the baseline, it must surface as drift — forced to tier
+      // `undeclared` so it is counted (atDefault is informational, not a drift tier).
+      const b = baseline([
+        { logicalId: 'A', resourceType: 'AWS::IAM::Role', path: 'MaxSessionDuration', value: 7200 },
+      ]);
+      const out = applyBaseline([atDefault('A', 'MaxSessionDuration', 3600)], b);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({
+        tier: 'undeclared',
+        path: 'MaxSessionDuration',
+        actual: 3600,
+      });
+    });
   });
 
   it('re-canonicalizes the baseline value before compare (old unsorted form still matches)', () => {
@@ -437,6 +454,23 @@ describe('baseline', () => {
       path: 'P',
       note: 'baseline value removed since record',
     });
+  });
+
+  it('does NOT report a removal for a resource SKIPPED this run (transient, not actually removed)', () => {
+    // 'A' has a recorded baseline value but its read was skipped this run (CC-API gap /
+    // transient error) -> gather emits a `skipped` finding. Its baseline values are
+    // unread, NOT removed, so they must not flood the report as false "removed" drift.
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const skipped: Finding = {
+      tier: 'skipped',
+      logicalId: 'A',
+      resourceType: 'AWS::X::Y',
+      path: '',
+    };
+    const out = applyBaseline([skipped], b);
+    expect(out.some((f) => f.note === 'baseline value removed since record')).toBe(false);
+    // the skipped finding itself passes through untouched
+    expect(out).toEqual([skipped]);
   });
 
   it('does NOT report a removal when the recorded path was promoted into the template', () => {
