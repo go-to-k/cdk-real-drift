@@ -58,15 +58,9 @@ UNRECORDED values (they are not drift — there is nothing to compare them to
 yet):
 
 ```console
-ApiStack: no baseline yet — this first run SETS UP your baseline (without one,
-check can't tell deploy-state from a later drift). Found 42 live value(s) not
-declared in your template: 2 stand out as possible out-of-band edits, the other
-40 fold as AWS defaults / auto-generated / nested sub-keys. Declared-side drift
-is reported either way. Accept records the current state (2 value(s)) as your
-baseline — from the next run, check reports only what changes. What do you want
-to do?
-  ❯ Accept ALL 2 into the baseline now, without reviewing them
-    Show them first — you can still accept (selectively) right after the report
+ApiStack: no baseline yet — 2 value(s) stand out as possible out-of-band edits (40 fold as defaults/generated/nested).
+  ❯ Accept all 2 into the baseline now (no review)
+    Show first, then accept selectively
 ```
 
 The count is the **complete** undeclared inventory, but only the handful that

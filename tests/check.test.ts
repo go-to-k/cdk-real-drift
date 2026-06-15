@@ -51,77 +51,68 @@ describe('undeclaredOnlyFindings (R59 — pair-with-cdk-drift scope)', () => {
   });
 });
 
-describe('firstRunPrompt (R45/R105 — the no-baseline decision must be informed, framed as baseline setup)', () => {
-  it('frames the run as baseline SETUP and does not read as a drift count (R49/R105)', () => {
+describe('firstRunPrompt (R45/R105/R106 — informed, but ONE terse line)', () => {
+  it('is a single line: no baseline + the standout signal, no multi-sentence framing (R106)', () => {
     const { message } = firstRunPrompt('ApiStack', { standout: 113 });
     expect(message).toContain('ApiStack: no baseline yet');
-    expect(message).toContain('this first run SETS UP your baseline');
-    expect(message).toContain('Found 113 live value(s) not declared in your template');
-    expect(message).toContain('113 stand out as possible out-of-band edits');
-    expect(message).toContain('Declared-side drift is reported either way');
-    expect(message).not.toContain('drift(s) found'); // it must never read as a drift verdict
+    expect(message).toContain('113 value(s) stand out as possible out-of-band edits');
+    expect(message).not.toContain('SETS UP your baseline'); // the R105 prose wall is gone
+    expect(message).not.toContain('from the next run');
+    expect(message).not.toContain('\n'); // genuinely one line
+    expect(message).not.toContain('drift(s) found'); // never reads as a drift verdict
   });
 
-  it('declared-side drift present → the prompt says it was FOUND, with its count (R51)', () => {
+  it('declared-side drift present → mentioned inline with its count (R51/R106)', () => {
     const { message } = firstRunPrompt('ApiStack', { standout: 113, declaredDrift: 3 });
-    expect(message).toContain(
-      'Also found 3 declared-side drift(s) — reported below whichever you choose.'
-    );
-    expect(message).not.toContain('either way'); // the generic clause is replaced, not appended
+    expect(message).toContain('plus 3 declared-side drift(s), reported below');
   });
 
-  it('the "found N" total is the COMPLETE inventory; only STANDOUT is called an edit, folded remainder named separately (R86/R104/R105)', () => {
-    // 7 top-level edits + 50 nested (folded) + 152 atDefault + 5 generated = 214 not-declared
+  it('no declared-side drift → the declared clause is OMITTED entirely (R106)', () => {
+    const { message } = firstRunPrompt('ApiStack', { standout: 113 });
+    expect(message).not.toContain('declared-side drift');
+    expect(message).not.toContain('either way'); // the old generic clause is dropped
+  });
+
+  it('only STANDOUT is called an edit; the folded remainder is one parenthetical (R86/R104/R105/R106)', () => {
+    // 7 top-level edits + 50 nested (folded) + 152 atDefault + 5 generated → folded 207
     const { message, options } = firstRunPrompt('ApiStack', {
       standout: 7,
       nested: 50,
       atDefault: 152,
       generated: 5,
     });
-    expect(message).toContain('Found 214 live value(s) not declared in your template');
-    // ONLY the 7 top-level values are called edits — the 50 nested are NOT (the R105 fix)
-    expect(message).toContain('7 stand out as possible out-of-band edits');
-    expect(message).toContain(
-      'the other 207 fold as AWS defaults / auto-generated / nested sub-keys'
-    );
-    expect(message).not.toContain('57 stand out'); // nested must NOT be counted as edits
+    expect(message).toContain('7 value(s) stand out as possible out-of-band edits');
+    expect(message).toContain('(207 fold as defaults/generated/nested)');
+    expect(message).not.toContain('57 value(s) stand out'); // nested must NOT count as edits
     // accept records standout + nested (atDefault/generated never) = 57
-    const bulk = options.find((o) => o.value === 'acceptAll')!;
-    expect(bulk.label).toContain('Accept ALL 57');
-    expect(message).toContain('Accept records the current state (57 value(s)) as your baseline');
+    expect(options.find((o) => o.value === 'acceptAll')!.label).toContain('Accept all 57');
   });
 
-  it('zero standout (only nested/folded) → says nothing stands out, still offers the baseline (R105)', () => {
+  it('zero standout (only nested/folded) → says nothing stands out, still offers the baseline (R105/R106)', () => {
     const { message, options } = firstRunPrompt('ApiStack', {
       standout: 0,
       nested: 50,
       generated: 5,
     });
-    expect(message).toContain('none stand out as out-of-band edits');
-    expect(message).toContain('Found 55 live value(s) not declared');
+    expect(message).toContain('nothing stands out as an out-of-band edit');
+    expect(message).toContain('(55 fold as defaults/generated/nested)');
     // accept still records the 50 nested (generated is not recorded)
-    expect(options.find((o) => o.value === 'acceptAll')!.label).toContain('Accept ALL 50');
+    expect(options.find((o) => o.value === 'acceptAll')!.label).toContain('Accept all 50');
   });
 
-  it('no declared-side drift → the generic either-way clause (R51)', () => {
-    const { message } = firstRunPrompt('ApiStack', { standout: 113 });
-    expect(message).toContain('Declared-side drift is reported either way.');
-    expect(message).not.toContain('Also found');
-  });
-
-  it('"Accept ALL" is the FIRST option (the common first-run choice — R52); show-first follows', () => {
+  it('"Accept all" is the FIRST option (the common first-run choice — R52); show-first follows', () => {
     const { options } = firstRunPrompt('S', { standout: 5 });
     expect(options[0]!.value).toBe('acceptAll');
     expect(options[1]!.value).toBe('show');
-    expect(options[1]!.label).toContain('Show them first');
-    expect(options[1]!.label).toContain('accept (selectively) right after');
+    expect(options[1]!.label).toContain('Show first');
+    expect(options[1]!.label).toContain('accept selectively');
   });
 
-  it('the bulk option states the recordable count and that values have NOT been reviewed', () => {
+  it('the bulk option states the recordable count and that values are NOT reviewed', () => {
     const { options } = firstRunPrompt('S', { standout: 113 });
     const bulk = options.find((o) => o.value === 'acceptAll')!;
-    expect(bulk.label).toContain('Accept ALL 113');
-    expect(bulk.label).toContain('without reviewing them');
+    expect(bulk.label).toContain('Accept all 113');
+    expect(bulk.label).toContain('no review');
   });
 
   it('prompts speak the command vocabulary (accept) — no retired jargon', () => {
