@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DeduplicationScope, undeclared:DelaySeconds, undeclared:FifoThroughputLimit, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, undeclared:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled, undeclared:VisibilityTimeout). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::SQS::Queue with deep declared config classifies as recorded (undeclared:DeduplicationScope, undeclared:DelaySeconds, undeclared:FifoThroughputLimit, undeclared:MaximumMessageSize, undeclared:MessageRetentionPeriod, generated:QueueName, undeclared:ReceiveMessageWaitTimeSeconds, undeclared:SqsManagedSseEnabled, undeclared:VisibilityTimeout). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "JobsDlqB53173A1",
     "resourceType": "AWS::SQS::Queue",
@@ -101,7 +101,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",

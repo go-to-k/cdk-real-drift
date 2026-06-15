@@ -183,12 +183,33 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // tier (folded inventory like atDefault), equality-gated exactly like KNOWN_DEFAULTS:
 // an out-of-band edit (a JSON LogFormat, say) no longer matches the substituted
 // template and falls through to a real `undeclared` finding. Never recorded by accept.
+// GENERATED_DEFAULTS only carries the STRUCTURED cases the general name rule below
+// (isGeneratedName) cannot express — e.g. a Lambda's default LoggingConfig OBJECT,
+// where the generated name is one sub-field of an object also containing a literal
+// default (LogFormat: 'Text'). A bare generated NAME echoed as a scalar property
+// (a topic's TopicName, a state machine's StateMachineName, a bucket's BucketName)
+// needs no entry — isGeneratedName folds it for ANY resource type.
 export const GENERATED_DEFAULTS: Record<string, Record<string, unknown>> = {
-  'AWS::SNS::Topic': { TopicName: '${PHYSICAL_NAME}' },
   'AWS::Lambda::Function': {
     LoggingConfig: { LogFormat: 'Text', LogGroup: '/aws/lambda/${PHYSICAL_NAME}' },
   },
 };
+
+// R107: a scalar property whose value IS this resource's generated NAME taken from
+// an ARN physical id — the ARN's trailing name segment (a topic's TopicName, a
+// state machine's StateMachineName). This is the identity AWS minted, never user
+// intent, and appears on every first run for any ARN-keyed auto-named type.
+// Generalizes the per-type GENERATED_DEFAULTS so such a type needs no table entry.
+// Deliberately EXCLUDES `value === physicalId` (the bare-id echo — e.g. a RoleName /
+// AlarmName whose physical id IS the name, or a property echoing the whole ARN):
+// that remains the long-standing structural-noise drop in classify, unchanged, so
+// this stays a narrow, additive rule (only the ARN name-segment case). Strict
+// equality + the hash suffix in a generated name make a coincidental user-value
+// match effectively impossible; a renamed/edited value simply won't match.
+export function isGeneratedName(value: unknown, physicalId: string | undefined): boolean {
+  if (typeof value !== 'string' || physicalId === undefined || value === physicalId) return false;
+  return value === physicalNameOf(physicalId);
+}
 
 function physicalNameOf(physicalId: string): string {
   const segs = physicalId.split(/[:/]/);

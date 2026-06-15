@@ -1307,4 +1307,52 @@ describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `genera
     // declared + equal live → no finding at all (not generated, not drift)
     expect(out).toEqual([]);
   });
+
+  // R107: the general name rule (isGeneratedName) folds a scalar generated name for
+  // ANY type, with no per-type GENERATED_DEFAULTS entry.
+  it('StepFunctions StateMachineName (no table entry) folds via the ARN name segment', () => {
+    const arn = 'arn:aws:states:us-east-1:111122223333:stateMachine:Stack-SMabc123-Xy7Z';
+    const out = classifyResource(
+      res('AWS::StepFunctions::StateMachine', arn),
+      { StateMachineName: 'Stack-SMabc123-Xy7Z' },
+      emptySchema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'generated', path: 'StateMachineName' });
+  });
+
+  it('a name whose value EQUALS the bare physical id (no ARN) stays the structural drop, not generated', () => {
+    // value === physicalId is the long-standing structural-noise drop (kept narrow):
+    // R107 only adds the ARN name-SEGMENT case, so this bare-id echo is dropped, not folded
+    const out = classifyResource(
+      res('AWS::IAM::Role', 'Stack-RoleABC123-K9pQ'),
+      { RoleName: 'Stack-RoleABC123-K9pQ' },
+      emptySchema
+    );
+    expect(out).toEqual([]); // dropped, neither generated nor undeclared
+  });
+
+  it('a non-name scalar that does NOT equal the physical name stays undeclared', () => {
+    const out = classifyResource(
+      res(
+        'AWS::StepFunctions::StateMachine',
+        'arn:aws:states:us-east-1:111122223333:stateMachine:Stack-SMabc123-Xy7Z'
+      ),
+      { LoggingConfiguration: { Level: 'ALL' } },
+      emptySchema
+    );
+    expect(tiers(out).undeclared).toEqual(['LoggingConfiguration']);
+    expect(tiers(out).generated).toEqual([]);
+  });
+
+  it('the exact full-id echo stays the structural drop (R107 only adds the name segment)', () => {
+    // value === the whole physical id (the resource ARN) is the structural drop, NOT
+    // the new ARN name-segment rule — keeps R107 narrow and corpus-stable
+    const out = classifyResource(
+      res('AWS::SNS::Topic', 'arn:aws:sns:us-east-1:111122223333:Stack-Topic-abc'),
+      { SomeArnProp: 'arn:aws:sns:us-east-1:111122223333:Stack-Topic-abc' },
+      emptySchema
+    );
+    expect(out).toEqual([]); // dropped, not generated
+  });
 });

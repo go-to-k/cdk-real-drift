@@ -61,7 +61,7 @@
       "constructPath": "CdkRealDriftIntegEvents/Target"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Target3191CF44",
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",

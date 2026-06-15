@@ -98,7 +98,7 @@
       "constructPath": "CdkrdIntegHarvest/Flow"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "FlowA74D6E88",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "StateMachineName",

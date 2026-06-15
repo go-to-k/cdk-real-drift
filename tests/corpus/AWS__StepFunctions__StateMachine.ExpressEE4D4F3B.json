@@ -84,7 +84,7 @@
       "constructPath": "CdkrdIntegHarvest5/Express"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ExpressEE4D4F3B",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "StateMachineName",

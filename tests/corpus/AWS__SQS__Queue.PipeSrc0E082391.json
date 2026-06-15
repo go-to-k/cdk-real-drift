@@ -62,7 +62,7 @@
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
