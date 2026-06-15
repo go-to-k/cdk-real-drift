@@ -26,12 +26,17 @@ import { gatherFindings } from './gather.js';
 import { resolveInteractively } from './interactive-resolve.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
-// undeclared tier (and its `generated` sibling — an undeclared-side classification)
-// is meaningless against a synth (not deployed) declared set, so it is excluded.
-// --declared-only reuses the same filter against the DEPLOYED template (R59).
-// Exported (pure) so the contract is unit-tested.
+// undeclared tier AND its undeclared-side siblings (`generated` and `atDefault` —
+// both classified only in classify's undeclared loops) are meaningless against a
+// synth (not deployed) declared set, so all three are excluded. --declared-only
+// reuses the same filter against the DEPLOYED template (R59) — its "undeclared
+// values are not compared" contract must hold for the `atDefault` footer too, else
+// `--declared-only` still prints an `At AWS Default (N)` line for values it claims
+// not to compare. Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
-  return findings.filter((f) => f.tier !== 'undeclared' && f.tier !== 'generated');
+  return findings.filter(
+    (f) => f.tier !== 'undeclared' && f.tier !== 'generated' && f.tier !== 'atDefault'
+  );
 }
 
 // --undeclared-only (R59): the declared-side comparison is delegated to
