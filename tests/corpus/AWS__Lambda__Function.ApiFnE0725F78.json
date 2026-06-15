@@ -170,7 +170,7 @@
       "constructPath": "CdkrdIntegHarvest4/ApiFn"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ApiFnE0725F78",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

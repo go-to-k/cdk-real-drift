@@ -25,6 +25,7 @@ const TIER_NAMES: Record<Tier, string> = {
   declared: 'DECLARED DRIFT',
   undeclared: 'UNDECLARED DRIFT',
   atDefault: 'AT AWS DEFAULT',
+  generated: 'AWS GENERATED',
   ignored: 'IGNORED',
   readGap: 'READ GAP',
   unresolved: 'UNRESOLVED',
@@ -35,6 +36,7 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   undeclared: 'not declared in your template — the differentiator',
   atDefault: 'undeclared, but the live value matches a known AWS default — not drift',
+  generated: 'undeclared, but an AWS/CDK auto-generated name or identifier — not drift',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
   readGap: 'declared but not returned by live read — not drift',
   unresolved: 'declared paths needing GetAtt — skipped, not drift',
@@ -46,7 +48,14 @@ const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
 // report states the complete undeclared count but lists only the values that actually
 // diverge, with the at-default remainder collapsed to a count (expanded by --verbose
 // or --show-all).
-const INFO_TIERS: Tier[] = ['atDefault', 'ignored', 'readGap', 'unresolved', 'skipped'];
+const INFO_TIERS: Tier[] = [
+  'atDefault',
+  'generated',
+  'ignored',
+  'readGap',
+  'unresolved',
+  'skipped',
+];
 
 export interface ReportOptions {
   json?: boolean;
@@ -76,7 +85,7 @@ export function formatFinding(f: Finding): string {
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared')
     s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;
-  else if (f.tier === 'undeclared' || f.tier === 'atDefault')
+  else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     s += ` = ${style.actual(j(f.actual))}`;
   return s;
 }
@@ -207,12 +216,15 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   const isExpanded = (t: Tier): boolean =>
     !!opts.verbose || (t === 'atDefault' && !!opts.expandAtDefault);
   for (const tier of INFO_TIERS) if (isExpanded(tier)) tierSection(tier, true);
-  const summaryFor = (t: Tier, items: Finding[]): string =>
-    // atDefault has a single cause (matches an AWS default), so the generic
-    // reason-breakdown would just echo the count — give it a plain-English label.
-    t === 'atDefault'
-      ? `atDefault=${items.length} (undeclared values matching a known AWS default — not drift)`
-      : `${t}=${items.length} (${groupReasons(items)})`;
+  const summaryFor = (t: Tier, items: Finding[]): string => {
+    // atDefault / generated each have a single cause, so the generic reason-breakdown
+    // would just echo the count — give them a plain-English label instead.
+    if (t === 'atDefault')
+      return `atDefault=${items.length} (undeclared values matching a known AWS default — not drift)`;
+    if (t === 'generated')
+      return `generated=${items.length} (undeclared AWS/CDK auto-generated names or identifiers — not drift)`;
+    return `${t}=${items.length} (${groupReasons(items)})`;
+  };
   const summaries = INFO_TIERS.filter((t) => !isExpanded(t))
     .map((t) => {
       const items = byTier(t);

@@ -174,9 +174,13 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                  Permission.FunctionName = GetAtt[fn, Arn]) — concurrent, once
    --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
-5. classify (tier)       deleted | declared | undeclared | atDefault | readGap | unresolved | skipped
+5. classify (tier)       deleted | declared | undeclared | atDefault | generated | readGap | unresolved | skipped
                          (atDefault = undeclared but EQUAL to a known AWS default —
                          folded, never drift, never recorded; R86)
+                         (generated = undeclared but EQUAL to the AWS/CDK auto-generated
+                         value for THIS resource — its minted physical name, or a
+                         default LoggingConfig log group derived from the physical id;
+                         folded like atDefault, never drift, never recorded; R104)
                          (undeclared also carries a nested:true flag for a live
                          sub-key inside a declared object the template never set; R96)
 6. baseline filter       applyBaseline(): undeclared findings already accepted → drop;
@@ -215,7 +219,7 @@ checked.
   - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission, Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets, **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group, **CodeBuild Project** via BatchGetProjects with a camelCase→CFn-PascalCase projection, R85).
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
-  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules). (R95 removed the generic `projectLiveToDeclaredSubset` — it silently dropped out-of-band ADDITIONS to identity-keyed arrays like Tags; ELB attribute bags keep subset behaviour via `ELB_ATTRIBUTE_BAGS` in classify.)
+  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS`, `GENERATED_DEFAULTS` + `resolveGeneratedDefault` (per-type auto-generated values templated on the physical id → `generated` tier; R104), **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `isJsonStringStructEqual` (object↔JSON-string), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules). (R95 removed the generic `projectLiveToDeclaredSubset` — it silently dropped out-of-band ADDITIONS to identity-keyed arrays like Tags; ELB attribute bags keep subset behaviour via `ELB_ATTRIBUTE_BAGS` in classify.)
   - **arn-identity.ts** — **`isArnNameMatch`** (bare name ↔ ARN), **`isManagedKmsAliasMatch`** (`alias/aws/*` ↔ key ARN).
   - **policy-canonical.ts** — IAM policy-doc canonicalization. **cc-api-strip.ts** — strip AWS-managed fields. **path-strip.ts** — schema readOnly/writeOnly path stripping (incl `*`).
 - **schema/schema-strip.ts** — `describe-type` → readOnly/writeOnly/defaults `SchemaInfo` (cached).
@@ -287,6 +291,10 @@ all live changes
     inventory but lists only the values that actually diverge. Equality-gated: change
     one away from its default and it re-tags as real undeclared drift. (`--show-all` /
     `--verbose` expand the fold to the full list; accept never records an atDefault.)
+  − AWS/CDK auto-generated values (a topic's minted TopicName, a Lambda's default
+    LoggingConfig log group) → tagged "generated" (R104): folded into the info: footer
+    like atDefault, equality-gated against the physical-id-substituted template; never
+    drift, never recorded by accept. (`GENERATED_DEFAULTS` / `resolveGeneratedDefault`.)
   − pure structural noise (aws:* tags, physical-id echo, trivially-empty {}/[]) → dropped
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)

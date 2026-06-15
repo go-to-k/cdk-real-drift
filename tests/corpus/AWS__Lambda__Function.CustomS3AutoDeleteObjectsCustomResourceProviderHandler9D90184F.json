@@ -156,7 +156,7 @@
       "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
       "resourceType": "AWS::Lambda::Function",
       "path": "LoggingConfig",

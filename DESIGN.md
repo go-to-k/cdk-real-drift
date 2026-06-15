@@ -32,10 +32,12 @@ un-deployed code edits would show as false "drift".
        sort, account-id<->root-ARN; Version kept only when declared — never fabricated)
      - aws:* tags (list + map); schema-defaults (at ANY depth, via $ref-resolved
        nested `default` extraction; R103) + per-type known-defaults are NOT dropped
-       but tagged `atDefault` (folded, never drift; R86)
+       but tagged `atDefault` (folded, never drift; R86); AWS/CDK auto-generated
+       values keyed by the resource's physical id (a topic's minted TopicName, a
+       Lambda's default LoggingConfig log group) are tagged `generated` (R104)
      - sibling AWS::IAM::Policy entries filtered BY NAME from a role's live
        Policies (an out-of-band inline policy next to them still reports)
-5. classify (tag):  declared | undeclared | atDefault | readGap | unresolved | skipped
+5. classify (tag):  declared | undeclared | atDefault | generated | readGap | unresolved | skipped
 6. report + exit code (report-only by default; --fail → 1 on drift; 2 error)
 ```
 

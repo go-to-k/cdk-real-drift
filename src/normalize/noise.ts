@@ -80,6 +80,63 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// AWS/CDK auto-GENERATED values keyed by the resource's CFn-assigned physical id.
+// Unlike KNOWN_DEFAULTS (static values), each entry may interpolate the live
+// physical id via two placeholders, substituted by resolveGeneratedDefault before
+// the equality gate:
+//   ${PHYSICAL_ID}   - the PhysicalResourceId verbatim (an ARN or a bare name,
+//                      depending on the resource type)
+//   ${PHYSICAL_NAME} - its trailing name segment (after the last ':' or '/'); for
+//                      an ARN physical id this is the bare resource name
+// These are the identifiers AWS minted for the resource, not user intent: a topic's
+// generated TopicName, a function's default LoggingConfig whose LogGroup is named
+// after the generated function name. They flood a first run as "undeclared" yet the
+// user never set and cannot meaningfully edit them. Classified as the `generated`
+// tier (folded inventory like atDefault), equality-gated exactly like KNOWN_DEFAULTS:
+// an out-of-band edit (a JSON LogFormat, say) no longer matches the substituted
+// template and falls through to a real `undeclared` finding. Never recorded by accept.
+export const GENERATED_DEFAULTS: Record<string, Record<string, unknown>> = {
+  'AWS::SNS::Topic': { TopicName: '${PHYSICAL_NAME}' },
+  'AWS::Lambda::Function': {
+    LoggingConfig: { LogFormat: 'Text', LogGroup: '/aws/lambda/${PHYSICAL_NAME}' },
+  },
+};
+
+function physicalNameOf(physicalId: string): string {
+  const segs = physicalId.split(/[:/]/);
+  return segs[segs.length - 1] || physicalId;
+}
+
+function substitutePhysical(value: unknown, id: string, name: string): unknown {
+  if (typeof value === 'string')
+    return value.split('${PHYSICAL_ID}').join(id).split('${PHYSICAL_NAME}').join(name);
+  if (Array.isArray(value)) return value.map((v) => substitutePhysical(v, id, name));
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        substitutePhysical(v, id, name),
+      ])
+    );
+  return value;
+}
+
+// Resolve the GENERATED_DEFAULTS template for a resource type against its live
+// physical id, returning the per-property expected values (placeholders filled) or
+// undefined when the type has no template / the physical id is unknown. The classify
+// undeclared loop then equality-gates a live value against `result[key]`.
+export function resolveGeneratedDefault(
+  resourceType: string,
+  physicalId: string | undefined
+): Record<string, unknown> | undefined {
+  const tmpl = GENERATED_DEFAULTS[resourceType];
+  if (!tmpl || physicalId === undefined) return undefined;
+  return substitutePhysical(tmpl, physicalId, physicalNameOf(physicalId)) as Record<
+    string,
+    unknown
+  >;
+}
+
 // Strip AWS-managed (aws:*) tag ELEMENTS from the live side so a declared tag
 // set (which never contains aws:* tags) compares equal to the live set (which
 // AWS augments with aws:cloudformation:* etc.). Handles {Key,Value}[] lists at
