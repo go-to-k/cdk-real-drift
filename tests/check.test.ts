@@ -20,8 +20,14 @@ const F = (tier: Finding['tier'], path = 'P'): Finding => ({
 });
 
 describe('preDeployFindings (--pre-deploy scope)', () => {
-  it('drops undeclared findings (meaningless against a synth declared set)', () => {
-    const out = preDeployFindings([F('declared'), F('undeclared'), F('undeclared', 'Q')]);
+  it('drops all undeclared-side tiers (undeclared / generated / atDefault)', () => {
+    const out = preDeployFindings([
+      F('declared'),
+      F('undeclared'),
+      F('generated'),
+      F('atDefault'),
+      F('undeclared', 'Q'),
+    ]);
     expect(out.map((f) => f.tier)).toEqual(['declared']);
   });
 
