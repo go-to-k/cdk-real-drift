@@ -1,7 +1,11 @@
 import { KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
-import { fetchManagedAliasTargets, usesManagedKmsAlias } from '../src/read/kms-aliases.js';
+import {
+  fetchManagedAliasTargets,
+  kmsListAliasesDeniedWarning,
+  usesManagedKmsAlias,
+} from '../src/read/kms-aliases.js';
 
 const kms = mockClient(KMSClient);
 beforeEach(() => kms.reset());
@@ -31,13 +35,27 @@ describe('fetchManagedAliasTargets', () => {
       })
       .resolves({ Aliases: [{ AliasName: 'alias/aws/s3', TargetKeyId: 'key-s3' }] });
     const out = await fetchManagedAliasTargets('us-west-2');
-    expect(out).toEqual({ 'alias/aws/rds': 'key-rds', 'alias/aws/s3': 'key-s3' });
+    expect(out).toEqual({
+      targets: { 'alias/aws/rds': 'key-rds', 'alias/aws/s3': 'key-s3' },
+      denied: false,
+    });
   });
 
-  it('returns {} (fall back) when ListAliases throws (e.g. missing kms:ListAliases)', async () => {
+  it('returns denied (empty targets) when ListAliases throws (e.g. missing kms:ListAliases)', async () => {
     kms
       .on(ListAliasesCommand)
       .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
-    expect(await fetchManagedAliasTargets('eu-central-1')).toEqual({});
+    // distinct region so the per-region cache from the success test above is not reused
+    expect(await fetchManagedAliasTargets('eu-central-1')).toEqual({ targets: {}, denied: true });
+  });
+});
+
+describe('kmsListAliasesDeniedWarning', () => {
+  it('names the region, the denied permission, and that a key-swap is NOT detected', () => {
+    const w = kmsListAliasesDeniedWarning('ap-northeast-1');
+    expect(w).toContain('ap-northeast-1');
+    expect(w).toContain('kms:ListAliases');
+    expect(w).toContain('will NOT be detected');
+    expect(w).toContain('Grant kms:ListAliases');
   });
 });

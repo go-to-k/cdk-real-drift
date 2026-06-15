@@ -389,8 +389,9 @@ covers them. If you scope tighter, the calls are:
   `route53:ListResourceRecordSets`, `glue:GetTable`, `logs:DescribeMetricFilters`,
   `scheduler:GetSchedule`
 - Optional: `kms:ListAliases` — enables strict verification that a declared
-  `alias/aws/*` key was not swapped for a customer-managed key (without it, that
-  case is conservatively suppressed)
+  `alias/aws/*` key was not swapped for a customer-managed key. Without it that
+  case is conservatively suppressed AND cdkrd prints a one-line warning per region
+  (the swap would otherwise go undetected), so the reduced coverage is never silent
 
 </details>
 
