@@ -492,6 +492,30 @@ export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 }
 
+// Per-type property paths where AWS RESOLVES a partial (major/minor) version the
+// template declares to the full patch version it actually provisions (R130: RDS
+// DBInstance `EngineVersion` declared `"8.0"` reads back `"8.0.45"`; the engine
+// auto-selects the latest patch within the declared track). The declared value is a
+// dotted-segment PREFIX of the live value — a deliberately narrow rule, NOT a generic
+// string prefix: both sides must be dot-separated version strings and the declared
+// segments must each EQUAL the leading live segments, so `"8.0"` matches `"8.0.45"`
+// but `"8.0"` never matches `"8.05"` (segment boundary) and `"8.1"` never matches
+// `"8.0.45"` (a genuine track change still differs). Observed-only entries; the drift
+// path is the dotted path from calculateResourceDrift.
+export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::RDS::DBInstance': new Set(['EngineVersion']),
+};
+export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
+  if (typeof declared !== 'string' || typeof live !== 'string') return false;
+  if (declared.length === 0 || live.length === 0) return false;
+  const dSegs = declared.split('.');
+  const lSegs = live.split('.');
+  // the declared track must be a leading run of segments of the live full version,
+  // and strictly shorter (an exact-equal value isn't drift and never reaches here).
+  if (dSegs.length >= lSegs.length) return false;
+  return dSegs.every((seg, i) => seg === lSegs[i]);
+}
+
 // PEM-armored values (R125: CloudFront PublicKey EncodedKey; certificate/key
 // bodies generally) round-trip through AWS with surrounding whitespace added or
 // dropped — most commonly a trailing newline the service appends after the

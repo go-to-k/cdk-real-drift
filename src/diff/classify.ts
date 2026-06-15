@@ -21,6 +21,7 @@ import {
   isStringlyEqualScalar,
   isGeneratedName,
   isTrivialEmpty,
+  isVersionPrefixMatch,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   resolveGeneratedDefault,
@@ -28,6 +29,7 @@ import {
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
   UNORDERED_OBJECT_ARRAY_PROPS,
+  VERSION_PREFIX_PATHS,
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
@@ -250,6 +252,14 @@ export function classifyResource(
       if (
         CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) &&
         isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type version-track paths (R130: RDS DBInstance EngineVersion) — a declared
+      // partial version (`"8.0"`) that AWS resolved to the full patch version it
+      // provisioned (`"8.0.45"`) is not drift; a genuine track change still differs.
+      if (
+        VERSION_PREFIX_PATHS[resourceType]?.has(d.path) &&
+        isVersionPrefixMatch(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type unordered scalar-array sets (R74: Cognito UserPoolClient OAuth

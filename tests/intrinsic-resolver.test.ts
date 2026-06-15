@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   hasUnresolved,
+  isDynamicReference,
   NOVALUE,
   resolve,
   resolveProperties,
@@ -149,5 +150,56 @@ describe('intrinsic resolver', () => {
     expect(hasUnresolved({ a: { b: [UNRESOLVED] } })).toBe(true);
     expect(hasUnresolved({ a: 1 })).toBe(false);
     expect(NOVALUE).toBeTypeOf('symbol');
+  });
+
+  // R130: a CloudFormation dynamic reference (`{{resolve:…}}`) is resolved by CFn at
+  // deploy time to a live SSM/Secrets value cdkrd cannot know, so the declared side is
+  // unknowable and must be UNRESOLVED (the same fail-closed treatment as Fn::GetAtt) —
+  // otherwise an RDS MasterUsername declared as a secretsmanager dynamic ref reports
+  // false drift against the resolved live `admin`.
+  it('R130: dynamic reference {{resolve:…}} → UNRESOLVED', () => {
+    const secret =
+      '{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:111111111111:secret:Db-abc:SecretString:username::}}';
+    expect(resolve(secret, ctx())).toBe(UNRESOLVED);
+    expect(resolve('{{resolve:ssm:/my/param:1}}', ctx())).toBe(UNRESOLVED);
+    expect(resolve('{{resolve:ssm-secure:/my/secure:5}}', ctx())).toBe(UNRESOLVED);
+    // nested inside a properties object, MasterUsername becomes UNRESOLVED
+    const props = resolveProperties({ MasterUsername: secret, Engine: 'mysql' }, ctx());
+    expect(props.MasterUsername).toBe(UNRESOLVED);
+    expect(props.Engine).toBe('mysql');
+  });
+
+  it('R130: an Fn::Join that ASSEMBLES a dynamic reference resolves to UNRESOLVED', () => {
+    // exactly how CDK synthesizes an RDS MasterUsername from a generated secret:
+    const join = {
+      'Fn::Join': [
+        '',
+        ['{{resolve:secretsmanager:', { Ref: 'MyBucket' }, ':SecretString:username::}}'],
+      ],
+    };
+    expect(resolve(join, ctx())).toBe(UNRESOLVED);
+    // and via Fn::Sub
+    expect(
+      resolve(
+        { 'Fn::Sub': '{{resolve:secretsmanager:${MyBucket}:SecretString:username::}}' },
+        ctx()
+      )
+    ).toBe(UNRESOLVED);
+    // a non-dynamic-reference Join still resolves normally
+    expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'Env' }]] }, ctx())).toBe('a-prod');
+  });
+
+  it('R130: isDynamicReference matches only real dynamic-reference tokens', () => {
+    expect(isDynamicReference('{{resolve:secretsmanager:my-secret:SecretString:user::}}')).toBe(
+      true
+    );
+    expect(isDynamicReference('{{resolve:ssm:/p:1}}')).toBe(true);
+    expect(isDynamicReference('{{resolve:ssm-secure:/p:1}}')).toBe(true);
+    // not a dynamic reference: plain values, other intrinsics, partial/embedded tokens
+    expect(isDynamicReference('admin')).toBe(false);
+    expect(isDynamicReference('{{resolve:other:x}}')).toBe(false);
+    expect(isDynamicReference('prefix-{{resolve:ssm:/p:1}}')).toBe(false);
+    expect(isDynamicReference('{{resolve:ssm:/p:1}}-suffix')).toBe(false);
+    expect(isDynamicReference('')).toBe(false);
   });
 });

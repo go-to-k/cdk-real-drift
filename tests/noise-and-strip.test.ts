@@ -6,8 +6,10 @@ import {
   isAllAwsTags,
   isPemEqual,
   isTrivialEmpty,
+  isVersionPrefixMatch,
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
+  VERSION_PREFIX_PATHS,
 } from '../src/normalize/noise.js';
 import { parseSchema } from '../src/schema/schema-strip.js';
 
@@ -304,5 +306,29 @@ describe('parseSchema', () => {
   it('R103: a schema with no nested defaults yields an empty defaultPaths (minus top-level)', () => {
     const info = parseSchema(JSON.stringify({ properties: { A: {}, B: { default: 1 } } }));
     expect(info.defaultPaths).toEqual({ B: 1 });
+  });
+
+  // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
+  // full patch `"8.0.45"`. A declared dotted-version that is a leading-segment PREFIX
+  // of the live full version is not drift; a genuine track change still differs.
+  it('R130: isVersionPrefixMatch matches a declared version track that is a segment prefix', () => {
+    expect(isVersionPrefixMatch('8.0', '8.0.45')).toBe(true);
+    expect(isVersionPrefixMatch('8', '8.0.45')).toBe(true);
+    expect(isVersionPrefixMatch('14.7', '14.7.2')).toBe(true);
+    // NOT a match: equal value (not drift, never reaches here), longer declared,
+    // segment-boundary lookalikes, a genuine track change, non-strings/empties.
+    expect(isVersionPrefixMatch('8.0.45', '8.0.45')).toBe(false); // equal → not a prefix
+    expect(isVersionPrefixMatch('8.0.45', '8.0')).toBe(false); // declared longer
+    expect(isVersionPrefixMatch('8.0', '8.05')).toBe(false); // segment boundary
+    expect(isVersionPrefixMatch('8.1', '8.0.45')).toBe(false); // different track
+    expect(isVersionPrefixMatch('8', '80.5')).toBe(false); // segment boundary
+    expect(isVersionPrefixMatch('', '8.0.45')).toBe(false);
+    expect(isVersionPrefixMatch('8.0', '')).toBe(false);
+    expect(isVersionPrefixMatch(8 as unknown, '8.0')).toBe(false); // non-string
+  });
+
+  it('R130: VERSION_PREFIX_PATHS gates the rule to RDS DBInstance EngineVersion only', () => {
+    expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('EngineVersion')).toBe(true);
+    expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('Engine')).toBe(false);
   });
 });
