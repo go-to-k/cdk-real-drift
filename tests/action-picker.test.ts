@@ -22,8 +22,24 @@ const F = (tier: Finding['tier']): Finding => ({
 });
 
 describe('applicableActions (cycle order mirrors the verbs scope)', () => {
-  it('undeclared → record, ignore, revert (destructive revert last)', () => {
+  it('undeclared (top-level) → record, ignore, revert (destructive revert last)', () => {
     expect(applicableActions(F('undeclared'))).toEqual(['record', 'ignore', 'revert']);
+  });
+  it('NESTED undeclared drops revert — it is detect/record-only (R99)', () => {
+    // dotted, bracketed, or flagged-nested undeclared → no revert offered (revert can't
+    // build a safe RFC6902 patch for a nested path), matching buildRevertPlan.
+    expect(applicableActions({ ...F('undeclared'), path: 'Origins.0.Timeout' })).toEqual([
+      'record',
+      'ignore',
+    ]);
+    expect(applicableActions({ ...F('undeclared'), path: 'Origins[o1].Timeout' })).toEqual([
+      'record',
+      'ignore',
+    ]);
+    expect(applicableActions({ ...F('undeclared'), path: 'P', nested: true })).toEqual([
+      'record',
+      'ignore',
+    ]);
   });
   it('declared → revert (the natural fix), ignore — never record', () => {
     expect(applicableActions(F('declared'))).toEqual(['revert', 'ignore']);

@@ -32,7 +32,6 @@ import {
   ignoreStack,
   includeUnrecordedRemovals,
   recordStack,
-  resolveInteractiveRevertExit,
   revertStack,
 } from './stack-actions.js';
 
@@ -81,7 +80,7 @@ const keyOf = (f: Finding): string => `${f.logicalId}::${f.path}`;
 const tierTag = (f: Finding): string =>
   f.tier === 'declared'
     ? 'CFn-declared'
-    : `undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
+    : `CFn-undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
 
 const pickerLabel = (f: Finding): string =>
   `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}  (${tierTag(f)})`;
@@ -115,7 +114,12 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
   const actions = availableActions(p.reconciled, p.baseline, p.schemas, includeRemovals);
   if (!actions.record && !actions.ignore && !actions.revert) return p.code;
 
-  const options: { value: string; label: string }[] = [];
+  const decidable = p.reconciled.filter((f) => applicableActions(f).length > 0);
+  // Nothing FIRST so the safe no-op is the top row AND the default cursor — Enter is a
+  // harmless exit, never an accidental write. The action options follow.
+  const options: { value: string; label: string }[] = [
+    { value: 'nothing', label: 'Nothing (decide later)' },
+  ];
   if (actions.record)
     options.push({
       value: 'record-all',
@@ -129,31 +133,39 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
       value: 'ignore-all',
       label: 'Ignore all — stop reporting it (writes .cdkrd/config.json)',
     });
-  const decidable = p.reconciled.filter((f) => applicableActions(f).length > 0);
   if (decidable.length > 1)
     options.push({ value: 'per-finding', label: 'Decide per finding — pick an action for each' });
-  options.push({ value: 'nothing', label: 'Nothing (decide later)' });
 
-  const choice = await select({
-    message:
-      p.code === 1
-        ? `${p.stackName}: drift found — what do you want to do?`
-        : `${p.stackName}: unrecorded values found — what do you want to do?`,
-    options,
-    initialValue: 'nothing',
-  });
-  if (isCancel(choice) || choice === 'nothing') return p.code;
+  // Loop so a CANCELLED sub-prompt (Esc) returns to this menu instead of exiting — a
+  // "back" affordance. A sub-action returns null when its prompt was cancelled (no AWS /
+  // baseline / config write happened, so re-showing the menu is side-effect-free);
+  // Esc / Nothing at THIS top menu exits with the pre-prompt code.
+  while (true) {
+    const choice = await select({
+      message:
+        p.code === 1
+          ? `${p.stackName}: drift found — what do you want to do?`
+          : `${p.stackName}: unrecorded values found — what do you want to do?`,
+      options,
+      initialValue: 'nothing',
+    });
+    if (isCancel(choice) || choice === 'nothing') return p.code;
 
-  if (choice === 'record-all') return recordAll(p);
-  if (choice === 'ignore-all') return ignoreAll(p);
-  if (choice === 'revert-all') return revertAll(p);
-  if (choice === 'per-finding') return perFinding(p, decidable);
-  return p.code;
+    let result: number | null;
+    if (choice === 'record-all') result = await recordAll(p);
+    else if (choice === 'ignore-all') result = await ignoreAll(p);
+    else if (choice === 'revert-all') result = await revertAll(p);
+    else if (choice === 'per-finding') result = await perFinding(p, decidable);
+    else result = p.code;
+
+    if (result === null) continue; // sub-prompt cancelled → back to the menu
+    return result;
+  }
 }
 
 // record records UNDECLARED only; recordStack emits the "declared/deleted NOT approved"
 // scope note after the write (R117), so this path warns consistently with `cdkrd record`.
-async function recordAll(p: ResolveParams): Promise<number> {
+async function recordAll(p: ResolveParams): Promise<number | null> {
   const result = await recordStack({
     stackName: p.stackName,
     region: p.region,
@@ -162,7 +174,9 @@ async function recordAll(p: ResolveParams): Promise<number> {
     yes: p.yes,
     interactive: true,
   });
-  if (!result.wrote) return p.code;
+  // !wrote in this interactive path means the multiselect was cancelled (nothing
+  // written) — signal "back to the menu" rather than exit.
+  if (!result.wrote) return null;
   // R52: a successful interactive record is a SUCCESS for THIS run — unselected
   // undeclared values surface from the next check on, not as a failure now. Declared/
   // deleted drift is outside record's reach and keeps exit 1. Say what remains plainly.
@@ -182,7 +196,7 @@ async function recordAll(p: ResolveParams): Promise<number> {
   return remainingDeclared > 0 ? 1 : 0;
 }
 
-async function ignoreAll(p: ResolveParams): Promise<number> {
+async function ignoreAll(p: ResolveParams): Promise<number | null> {
   // reconciled = the report's declared + undeclared findings; ignoreStack shows its own
   // multiselect (default all) when !yes, mirroring `cdkrd ignore`.
   const result = await ignoreStack({
@@ -191,10 +205,12 @@ async function ignoreAll(p: ResolveParams): Promise<number> {
     yes: p.yes,
     interactive: true,
   });
-  return result.wrote ? recomputeExit(p, new Set()) : p.code;
+  // reconciled findings are all not-yet-ignored, so a completed run always writes a new
+  // rule; !wrote means the multiselect was cancelled → back to the menu.
+  return result.wrote ? recomputeExit(p, new Set()) : null;
 }
 
-async function revertAll(p: ResolveParams): Promise<number> {
+async function revertAll(p: ResolveParams): Promise<number | null> {
   const outcome = await revertStack({
     stackName: p.stackName,
     region: p.region,
@@ -207,14 +223,15 @@ async function revertAll(p: ResolveParams): Promise<number> {
     verbose: p.verbose,
     interactive: true,
   });
-  // R30: an aborted confirm wrote nothing, so the drift still stands — keep exit 1.
-  return resolveInteractiveRevertExit(p.code, outcome);
+  // R30: an aborted confirm wrote nothing — signal "back to the menu" (the drift still
+  // stands; the caller keeps the pre-prompt code if the user then exits).
+  return outcome.aborted ? null : outcome.exit;
 }
 
-async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<number> {
+async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<number | null> {
   const rows = decidable.map((f) => ({ label: pickerLabel(f), applicable: applicableActions(f) }));
   const chosen = await actionPicker(`${p.stackName}: assign an action to each finding`, rows);
-  if (chosen === undefined) return p.code; // cancelled — nothing applied
+  if (chosen === undefined) return null; // picker cancelled (Esc) → back to the menu
   const groups = groupByAction(decidable, chosen);
   if (groups.record.length + groups.ignore.length + groups.revert.length === 0) return p.code;
 

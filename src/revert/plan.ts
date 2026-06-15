@@ -15,6 +15,20 @@ import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 
+/**
+ * A nested undeclared value (a live sub-key inside a declared object, R96/R98) is
+ * detect/record-only — never revertable (toPointer can't build a safe RFC6902 patch for
+ * a dotted/bracketed path; R99). Detected by PATH SHAPE, not just `Finding.nested`: a
+ * baseline value removed since record is reconstructed without the flag but keeps its
+ * nested path. A top-level undeclared path is a single key (no '.'/'['). Pure + exported
+ * so the interactive action picker offers `revert` ONLY where revert can actually run.
+ */
+export function isNestedUndeclared(f: Finding): boolean {
+  return (
+    f.tier === 'undeclared' && (Boolean(f.nested) || f.path.includes('.') || f.path.includes('['))
+  );
+}
+
 export interface PatchOp {
   op: 'add' | 'remove';
   path: string; // RFC6902 JSON pointer into the resource Properties model
@@ -115,7 +129,7 @@ export function buildRevertPlan(
     // reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested path. A
     // top-level undeclared path is a single key (never contains '.'/'['), and declared
     // drift is a different tier — so this never blocks a top-level revert.
-    if (f.tier === 'undeclared' && (f.nested || f.path.includes('.') || f.path.includes('['))) {
+    if (isNestedUndeclared(f)) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,

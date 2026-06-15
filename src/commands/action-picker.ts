@@ -15,6 +15,7 @@
 // and unit-tested; the prompt is a thin rendering/key shell.
 import { isCancel, Prompt } from '@clack/core';
 import { S_BAR, S_BAR_END, S_BAR_START } from '@clack/prompts';
+import { isNestedUndeclared } from '../revert/plan.js';
 import type { Finding } from '../types.js';
 import { style } from '../report/style.js';
 
@@ -25,14 +26,18 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
  * The actions that apply to a finding, in cycle order (EXCLUDING the always-present
  * `skip`). Mirrors the verbs' scope:
  *  - undeclared → record (snapshot the norm; gentlest, keeps watching), then ignore
- *    (stop watching), then revert (REMOVE the live value — destructive, so last);
+ *    (stop watching), then revert (REMOVE the live value — destructive, so last) —
+ *    BUT revert is dropped for a NESTED undeclared value, which is detect/record-only
+ *    (R99): offering it would let the user pick an action revert can't run;
  *  - declared → revert (restore the template intent — the natural fix), then ignore;
  *  - everything else (deleted / readGap / unresolved / atDefault / generated / skipped)
  *    has no in-tool action → an empty list, so it is not a decidable row.
- * Pure + exported.
+ * Pure + exported. `isNestedUndeclared` is the SAME predicate buildRevertPlan uses, so
+ * the picker's revert offer and revert's actual capability never diverge.
  */
 export function applicableActions(finding: Finding): FindingAction[] {
-  if (finding.tier === 'undeclared') return ['record', 'ignore', 'revert'];
+  if (finding.tier === 'undeclared')
+    return isNestedUndeclared(finding) ? ['record', 'ignore'] : ['record', 'ignore', 'revert'];
   if (finding.tier === 'declared') return ['revert', 'ignore'];
   return [];
 }

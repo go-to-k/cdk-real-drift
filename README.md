@@ -29,7 +29,7 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-[UNDECLARED DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
+[CFn-UNDECLARED DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)
@@ -68,10 +68,10 @@ info:
   ...
 
 ApiStack: unrecorded values found — what do you want to do?
+  ❯ Nothing (decide later)
     Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each
-  ❯ Nothing (decide later)
 ```
 
 The report always prints **first**, so you see the standout values before deciding
@@ -90,11 +90,11 @@ reports it and asks right there:
 
 ```console
 ApiStack: drift found — what do you want to do?
+  ❯ Nothing (decide later)
     Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert all — write the desired values to AWS
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each
-  ❯ Nothing (decide later)
 ```
 
 - **Record all** records the undeclared values in the baseline, so `check` stays
@@ -134,15 +134,15 @@ cdkrd compares the **live AWS resource** against your **CloudFormation template*
 vocabulary names exactly which of the three sources a finding relates to, so
 "declared" is never ambiguous:
 
-| term                       | source                                        | meaning                                                 |
-| -------------------------- | --------------------------------------------- | ------------------------------------------------------- |
-| **CFn-declared**           | your CloudFormation template                  | the property IS in the template; the live value drifted |
-| **undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
-| **recorded / unrecorded**  | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
+| term                           | source                                        | meaning                                                 |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
+| **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
+| **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
+| **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
 So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
-means the deployed **CloudFormation** template. `undeclared` and `unrecorded` are
-different axes (template vs baseline file), not synonyms.
+means the deployed **CloudFormation** template. `CFn-undeclared` and `unrecorded`
+are different axes (template vs baseline file), not synonyms.
 
 After `check` finds drift, you decide what each finding means — and the verbs mirror
 the choice:
