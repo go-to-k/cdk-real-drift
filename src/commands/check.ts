@@ -10,13 +10,11 @@ import { isCancel, select } from '@clack/prompts';
 import { isStackNotDeployed } from '../aws-errors.js';
 import {
   applyBaseline,
-  buildAccepted,
   checkBaselineAccount,
   declaredKeysByLogical,
   loadBaseline,
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
-  writeBaseline,
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
@@ -52,79 +50,6 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   return findings.filter(
     (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
   );
-}
-
-// The first-run (no-baseline) prompt (R45, reframed R105). The decision the user
-// is making is "record the current reality as my baseline?" — NOT "fix N problems".
-// Two facts the choice hinges on: how many values Accept-ALL records sight-unseen,
-// and that "Show first" is not a dead end (the report prints and a selective accept
-// follows). Accept-ALL is first/default since R52. Exported (pure) so the wording
-// contract is unit-tested.
-//
-// Wording (R49): "undeclared" is anchored to YOUR deployed (CDK/CloudFormation)
-// template; there is no cdkrd-side template, the baseline only filters what gets
-// REPORTED. The count is NOT a drift verdict.
-//
-// STANDOUT vs FOLDED (R105): the live model carries far more not-declared values
-// than the user ever edited — AWS defaults (atDefault), auto-generated identifiers
-// (generated, R104), and nested sub-keys (nested, R96) all FOLD in the report;
-// only the top-level diverging values (`standout`) list as [UNRECORDED]. The old
-// prompt called the whole recordable set "real out-of-band edits", which counted
-// the 50+ folded nested values as edits — overstating wildly (the bug that
-// confused the first-run user). The prompt names `standout` as what stands out
-// and states the folded remainder in one parenthetical.
-//
-// Terse (R106): kept to a SINGLE line — the old multi-sentence framing ("this run
-// SETS UP your baseline … from the next run check reports only what changes") was
-// a wall nobody read. That context now lives in the option labels + the README.
-//
-// declaredDrift (R51): declared-side drift (declared/deleted tier) is reported
-// regardless of the baseline choice; mention it only when present (R106 dropped
-// the generic "reported either way" clause from the common no-declared-drift path).
-export interface FirstRunCounts {
-  standout: number; // top-level undeclared — listed in [UNRECORDED]; the values that stand out
-  nested?: number; // nested undeclared — folded in the report, but recorded by accept
-  atDefault?: number; // undeclared at a known AWS default — folded, never recorded
-  generated?: number; // AWS/CDK auto-generated identifier — folded, never recorded
-  declaredDrift?: number; // declared/deleted drift — reported either way
-}
-export function firstRunPrompt(
-  stackName: string,
-  counts: FirstRunCounts
-): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
-  const { standout, nested = 0, atDefault = 0, generated = 0, declaredDrift = 0 } = counts;
-  const recordable = standout + nested; // what Accept records (atDefault/generated never are)
-  const folded = nested + atDefault + generated; // not listed in the report by default
-  // Terse (R106): the old message was a 5-sentence wall the user wouldn't read.
-  // Keep ONE line — the signal (`standout`, matching [UNRECORDED]) + the folded
-  // remainder in a parenthetical; the "what a baseline is / what accept does"
-  // context lives in the option labels and the README, not here.
-  const standoutClause =
-    standout > 0
-      ? `${standout} value(s) stand out as possible out-of-band edits`
-      : 'nothing stands out as an out-of-band edit';
-  const foldedClause = folded > 0 ? ` (${folded} fold as defaults/generated/nested)` : '';
-  // declared-side drift is reported regardless of the choice; mention it ONLY when
-  // present (the old generic "reported either way" was noise on the common path).
-  const declaredClause =
-    declaredDrift > 0 ? ` — plus ${declaredDrift} declared-side drift(s), reported below` : '';
-  return {
-    message: `${stackName}: no baseline yet — ${standoutClause}${foldedClause}${declaredClause}.`,
-    // Accept-ALL first (R52, user decision): it is the overwhelmingly common
-    // first-run choice, and the cost of an accidental Enter is one git-tracked
-    // file — reviewable and revertible, nothing written to AWS. "Show first"
-    // stays one arrow away for the careful path.
-    options: [
-      {
-        value: 'acceptAll',
-        label: `Accept all ${recordable} into the baseline now (no review)`,
-      },
-      {
-        value: 'show',
-        label: 'Show first, then accept selectively',
-      },
-    ],
-  };
 }
 
 /**
@@ -268,7 +193,7 @@ export async function runCheck(args: string[]): Promise<number> {
         continue;
       }
 
-      let baseline = a.showAll
+      const baseline = a.showAll
         ? undefined
         : await loadBaseline(stackName, desired.accountId, region);
       // per-account guard: a baseline captured in a different account is wrong here
@@ -278,58 +203,15 @@ export async function runCheck(args: string[]): Promise<number> {
       // schema-v1 baseline: no completeResources — appeared-since-accept values
       // read as unrecorded until the next accept upgrades the file (R62)
       if (baseline && !a.json) warnBaselineSchemaV1(baseline, stackName);
-      // First run: no baseline yet → choose between "report first" (the safe
-      // default — a selective accept is offered again right after the report) and
-      // a bulk accept of everything sight-unseen (R45). Ignore rules are applied
-      // BEFORE counting/accepting so the bulk path can never accept values the
-      // report would have re-tagged as ignored (same as the post-report accept).
-      // With ZERO undeclared values there is no decision worth interrupting for —
-      // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
-      if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive()) {
-        const acceptable = applyIgnores(findings, stackName, config);
-        // The pre-report bulk-accept prompt fires ONLY when something STANDS OUT
-        // (R108): a top-level undeclared value the report would list as [UNRECORDED].
-        // When standout = 0 the only undeclared values are folded (nested) or pure
-        // inventory (atDefault/generated), so "Show first" would reveal an empty body
-        // — confusing. We skip straight to the report; the post-report "unrecorded
-        // values found — Accept/Nothing" prompt still offers to baseline the folded
-        // nested values, so nothing is lost. `standout` splits from `nested` so the
-        // prompt never calls the 50+ folded nested values "edits" (R105).
-        const undeclared = acceptable.filter((f) => f.tier === 'undeclared');
-        const standoutCount = undeclared.filter((f) => !f.nested).length;
-        const nestedCount = undeclared.length - standoutCount;
-        const declaredDriftCount = acceptable.filter(
-          (f) => f.tier === 'declared' || f.tier === 'deleted'
-        ).length;
-        if (standoutCount > 0) {
-          const prompt = firstRunPrompt(stackName, {
-            standout: standoutCount,
-            nested: nestedCount,
-            atDefault: acceptable.filter((f) => f.tier === 'atDefault').length,
-            generated: acceptable.filter((f) => f.tier === 'generated').length,
-            declaredDrift: declaredDriftCount,
-          });
-          const choice = await select({
-            message: prompt.message,
-            options: prompt.options,
-            initialValue: 'acceptAll' as const,
-          });
-          if (!isCancel(choice) && choice === 'acceptAll') {
-            const { count } = await writeBaseline(
-              stackName,
-              region,
-              desired.accountId,
-              acceptable,
-              desired.rawTemplate,
-              buildAccepted(acceptable),
-              // full resource list so read-clean resources are snapshot-complete too (R62)
-              { allLogicalIds: desired.resources.map((r) => r.logicalId) }
-            );
-            console.error(`baseline written (${count} undeclared value(s) accepted) — commit it.`);
-            baseline = await loadBaseline(stackName, desired.accountId, region);
-          }
-        }
-      }
+      // First run (no baseline): R110 removed the pre-report "Accept ALL sight-unseen"
+      // prompt (R45/R52). It buried the very values it flagged as possible out-of-band
+      // edits — pressing Enter recorded them into the baseline BEFORE the user ever saw
+      // them, and the report then suppressed them, so a real edit could vanish in one
+      // keystroke. Now the report ALWAYS prints first; the post-report prompt below
+      // ("unrecorded values found — Accept/Revert/Nothing") offers a SELECTIVE accept
+      // after the user has seen the standout values. Folding (atDefault/generated/
+      // nested) keeps that list short, so the old bulk-accept-to-avoid-scrolling
+      // rationale no longer applies. `cdkrd accept` still writes a baseline directly.
       // applyBaseline classifies per ENTRY (R62): matching entries are suppressed,
       // changed values are drift, entry-less values are drift only on a
       // snapshot-complete resource (appeared since accept) and UNRECORDED

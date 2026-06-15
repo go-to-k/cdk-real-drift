@@ -53,20 +53,32 @@ npx cdkrd check                 # checks every stack your app defines
 ```
 
 **First run** — your template never pins every live value (AWS defaults,
-generated names), so `check` first asks you to record a baseline of those
-UNRECORDED values (they are not drift — there is nothing to compare them to
-yet):
+generated names), so the report lists the UNRECORDED values (they are not drift —
+there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
-ApiStack: no baseline yet — 2 value(s) stand out as possible out-of-band edits (40 fold as defaults/generated/nested).
-  ❯ Accept all 2 into the baseline now (no review)
-    Show first, then accept selectively
+=== cdkrd check: ApiStack (us-east-1) ===
+[UNRECORDED: 2] (not declared in your template; not in the baseline yet — accept to record)
+  ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
+  ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
+
+result: CLEAN — 42 unrecorded value(s) await a baseline (run cdkrd accept)
+info:
+  - atDefault=40 (undeclared values matching a known AWS default — not drift)
+  ...
+
+ApiStack: unrecorded values found — what do you want to do?
+  ❯ Nothing (decide later)
+    Accept — record current state into the baseline
 ```
 
-The count is the **complete** undeclared inventory, but only the handful that
-**stand out** are listed — AWS defaults, auto-generated names/identifiers, and
-nested sub-keys you never touched fold into the `info:` footer (`atDefault=` /
-`generated=` / `nested=`, `--show-all` expands them). Accept writes
+The report always prints **first**, so you see the standout values before deciding
+(no blind bulk-accept). The count is the **complete** undeclared inventory, but
+only the handful that **stand out** are listed — AWS defaults, auto-generated
+names/identifiers, and nested sub-keys you never touched fold into the `info:`
+footer (`atDefault=` / `generated=` / `nested=`, `--show-all` expands them).
+Choosing Accept opens a checklist (everything pre-selected — Enter to accept all,
+or deselect what you want to keep visible) and writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
 AWS** — commit it; from here on `check` reports CLEAN until reality changes.
 (Declared drift is detected from the very first run, baseline or not.)
