@@ -101,6 +101,7 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
       declaredByLogical: declaredKeysByLogical(p.desired.resources),
     }),
     p.stackName,
+    p.region,
     nc
   );
   const remainingDeclared = reEval.filter(
@@ -171,7 +172,7 @@ async function recordAll(p: ResolveParams): Promise<number | null> {
     stackName: p.stackName,
     region: p.region,
     desired: p.desired,
-    findings: applyIgnores(p.findings, p.stackName, p.config),
+    findings: applyIgnores(p.findings, p.stackName, p.region, p.config),
     yes: p.yes,
     interactive: true,
   });
@@ -187,6 +188,7 @@ async function recordAll(p: ResolveParams): Promise<number | null> {
       declaredByLogical: declaredKeysByLogical(p.desired.resources),
     }),
     p.stackName,
+    p.region,
     p.config
   );
   const remainingDeclared = reEval.filter(
@@ -249,7 +251,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<numbe
       stackName: p.stackName,
       region: p.region,
       desired: p.desired,
-      findings: applyIgnores(p.findings, p.stackName, p.config),
+      findings: applyIgnores(p.findings, p.stackName, p.region, p.config),
       yes: p.yes,
       interactive: true,
       preselectedKeys,

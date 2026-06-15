@@ -62,6 +62,7 @@ export async function runIgnore(args: string[]): Promise<number> {
           warn: console.error,
         }),
         stackName,
+        region,
         config
       );
       const result = await ignoreStack({

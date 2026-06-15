@@ -15,18 +15,44 @@
 // and force a re-record every time the value moves — an infinite loop. This is the
 // `.driftignore` / Terraform `ignore_changes` equivalent. The file is an extension
 // point: future settings (concurrency, etc.) can be added here.
+//
+// An ignore rule is EITHER a bare string (the unscoped common case — applies to any
+// stack in any region) OR an object that scopes the same path pattern to a stack
+// and/or a region (`{ "path": ..., "stack"?: ..., "region"?: ... }`). The string is
+// shorthand for `{ "path": <string> }`. Scoping by region matters because the same
+// stack name can be deployed to several regions (or matched by a `*` glob) and a
+// property may legitimately drift in only one — region is an independent axis from
+// the stack name (which often, but not always, already encodes the region). All
+// three of `path` / `stack` / `region` accept the same `*` / `?` glob.
+//   "ignore": [
+//     "ApiStack/ServiceRole.Policies",                              // any stack, any region
+//     { "path": "*.DesiredCount", "region": "us-*" },               // every us-* region
+//     { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*", "region": "ap-northeast-1" }
+//   ]
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { matchesGlob } from '../commands/glob-match.js';
 import type { Finding } from '../types.js';
 
+// A scoped ignore rule. `path` is the glob against "<logicalId>.<path>" /
+// "<constructPath>.<path>" (the same target as a bare-string rule); `stack` / `region`
+// are optional globs that further restrict WHERE the rule applies (absent = any).
+export interface IgnoreRuleObject {
+  path: string;
+  stack?: string;
+  region?: string;
+}
+// One entry of `config.ignore`: the bare-string shorthand or the scoped object form.
+export type IgnoreEntry = string | IgnoreRuleObject;
+
 export interface CdkrdConfig {
-  ignore: string[];
+  ignore: IgnoreEntry[];
 }
 
 const CONFIG_PATH = '.cdkrd/config.json';
 const KNOWN_KEYS = new Set(['ignore']);
+const RULE_OBJECT_KEYS = new Set(['path', 'stack', 'region']);
 
 /**
  * Load `.cdkrd/config.json` (cwd-relative). Absent file -> empty config (backward
@@ -59,16 +85,41 @@ export async function loadConfig(): Promise<CdkrdConfig> {
       `${CONFIG_PATH}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: ${[...KNOWN_KEYS].map((k) => `"${k}"`).join(', ')}`
     );
   const ignore = (parsed as Record<string, unknown>).ignore ?? [];
-  if (!Array.isArray(ignore) || !ignore.every((x) => typeof x === 'string'))
-    throw new Error(`${CONFIG_PATH}: "ignore" must be an array of strings`);
-  return { ignore: ignore as string[] };
+  if (!Array.isArray(ignore)) throw new Error(`${CONFIG_PATH}: "ignore" must be an array`);
+  ignore.forEach((entry, i) => validateIgnoreEntry(entry, i));
+  return { ignore: ignore as IgnoreEntry[] };
 }
 
 /**
- * The exact ignore rule the `ignore` verb writes for a finding (no glob, no `:`
- * stack scope — the hand-authored forms in `parseIgnoreRule` stay manual, R-PR-B).
- * Prefer the human-friendly `<constructPath>.<path>` when present (CDK stacks): it is
- * what `cdk-local` targets on and it embeds the stack name, so it is naturally
+ * Validate one `ignore` array entry: a string, or an object with a required string
+ * `path` and optional string `stack` / `region` (and no other keys — the same
+ * fail-fast typo guard as the unknown-top-level-key check, so a mistyped `"reigon"`
+ * is rejected rather than silently ignored, which would leave a property unscoped).
+ */
+function validateIgnoreEntry(entry: unknown, index: number): void {
+  const at = `${CONFIG_PATH}: "ignore"[${index}]`;
+  if (typeof entry === 'string') return;
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+    throw new Error(`${at} must be a string or an object`);
+  const obj = entry as Record<string, unknown>;
+  const unknown = Object.keys(obj).filter((k) => !RULE_OBJECT_KEYS.has(k));
+  if (unknown.length > 0)
+    throw new Error(
+      `${at}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "path", "stack", "region"`
+    );
+  if (typeof obj.path !== 'string')
+    throw new Error(`${at}: "path" is required and must be a string`);
+  for (const k of ['stack', 'region'] as const)
+    if (obj[k] !== undefined && typeof obj[k] !== 'string')
+      throw new Error(`${at}: "${k}" must be a string`);
+}
+
+/**
+ * The exact ignore rule the `ignore` verb writes for a finding — always the bare-string
+ * (unscoped) form; the SCOPED object form (`stack` / `region`) stays hand-authored, the
+ * same philosophy as before (the verb writes the simplest rule; narrowing is a manual
+ * edit). Prefer the human-friendly `<constructPath>.<path>` when present (CDK stacks): it
+ * is what `cdk-local` targets on and it embeds the stack name, so it is naturally
  * stack-scoped and readable in the git-committed config diff. Falls back to
  * `<logicalId>.<path>`, which is ALWAYS present (the CloudFormation key) so a rule is
  * always writable even on a non-CDK / metadata-stripped stack. Pure + exported so the
@@ -80,16 +131,21 @@ export function ignoreRuleFor(finding: Finding): string {
 }
 
 /**
- * Union new rules into an existing rule list: dedupe, drop already-present ones,
- * keep a stable (sorted) order so the committed `config.json` diff is reviewable and
- * order-independent. Pure + exported — the IO wrapper `addIgnoreRules` is a thin shell
- * over this so the merge logic is unit-tested without touching the filesystem.
+ * Union new (bare-string) rules into an existing rule list. Dedupe new strings against
+ * the existing STRING entries only (an object entry is a different, scoped rule — never
+ * deduped against a bare string); existing OBJECT entries are preserved untouched. Keep
+ * a stable order so the committed `config.json` diff is reviewable and order-independent:
+ * the string rules sort lexicographically and lead, the hand-authored objects keep their
+ * original relative order after them. Pure + exported — the IO wrapper `addIgnoreRules`
+ * is a thin shell over this so the merge logic is unit-tested without touching disk.
  */
 export function mergeIgnoreRules(
-  existing: string[],
+  existing: IgnoreEntry[],
   incoming: string[]
-): { merged: string[]; added: string[]; alreadyPresent: string[] } {
-  const have = new Set(existing);
+): { merged: IgnoreEntry[]; added: string[]; alreadyPresent: string[] } {
+  const existingStrings = existing.filter((e): e is string => typeof e === 'string');
+  const objects = existing.filter((e): e is IgnoreRuleObject => typeof e !== 'string');
+  const have = new Set(existingStrings);
   const added: string[] = [];
   const alreadyPresent: string[] = [];
   // dedupe the incoming list against itself too (a stack can surface the same rule twice)
@@ -100,8 +156,10 @@ export function mergeIgnoreRules(
     if (have.has(rule)) alreadyPresent.push(rule);
     else added.push(rule);
   }
-  const merged = [...new Set([...existing, ...added])].sort((a, b) => a.localeCompare(b));
-  return { merged, added, alreadyPresent };
+  const mergedStrings = [...new Set([...existingStrings, ...added])].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  return { merged: [...mergedStrings, ...objects], added, alreadyPresent };
 }
 
 /**
@@ -126,25 +184,30 @@ export async function addIgnoreRules(
 }
 
 interface IgnoreRule {
-  raw: string;
-  stackGlob?: string; // when set, the rule applies only to stacks whose name matches it
-  idPathPattern: string; // glob against "<logicalId>.<path>"
+  raw: string; // human-readable form for the "ignored by config rule ..." note
+  pathPattern: string; // glob against "<logicalId>.<path>" / "<constructPath>.<path>"
+  stackGlob?: string | undefined; // when set, the rule applies only to stacks whose name matches it
+  regionGlob?: string | undefined; // when set, the rule applies only in regions matching it
 }
 
 /**
- * Parse one ignore pattern. Two forms:
- *   "<logicalId>.<property path>"                  — any stack
- *   "<stack name glob>:<logicalId>.<property path>" — stack-scoped (`:` separator)
- * Both parts reuse the existing stack-name glob (`*` / `?`). Split on the FIRST `:`
- * so a path with no colon never accidentally becomes stack-scoped.
+ * Normalize one ignore entry into a matchable rule. A bare string is the unscoped
+ * common case (path pattern, any stack, any region). An object scopes the same path
+ * pattern by an optional `stack` and/or `region` glob. All three fields reuse the
+ * existing `*` / `?` glob. `raw` is a readable rendering for the report's "ignored by
+ * config rule …" note (the scoped object form shows its scope in parentheses).
  */
-export function parseIgnoreRule(pattern: string): IgnoreRule {
-  const colon = pattern.indexOf(':');
-  if (colon === -1) return { raw: pattern, idPathPattern: pattern };
+export function parseIgnoreRule(entry: IgnoreEntry): IgnoreRule {
+  if (typeof entry === 'string') return { raw: entry, pathPattern: entry };
+  const scope = [
+    entry.stack !== undefined ? `stack:${entry.stack}` : undefined,
+    entry.region !== undefined ? `region:${entry.region}` : undefined,
+  ].filter((s): s is string => s !== undefined);
   return {
-    raw: pattern,
-    stackGlob: pattern.slice(0, colon),
-    idPathPattern: pattern.slice(colon + 1),
+    raw: scope.length > 0 ? `${entry.path} (${scope.join(', ')})` : entry.path,
+    pathPattern: entry.path,
+    stackGlob: entry.stack,
+    regionGlob: entry.region,
   };
 }
 
@@ -180,10 +243,16 @@ function pathMatches(pattern: string, target: string): boolean {
  *     Metadata (absent on non-CDK stacks, disableable on CDK ones), so it is offered
  *     as an ADDITIONAL match target, never the only one — a rule written against it
  *     keeps working on CDK stacks while logicalId covers everything else.
+ *
+ * A scoped object rule additionally gates on `stack` and/or `region` globs (absent =
+ * any). `region` is an independent axis from the stack name: the same stack can be
+ * deployed to multiple regions (or be matched by a `*` stack glob), and a property may
+ * legitimately drift in only one — so the caller passes the current `region` here.
  */
 export function applyIgnores(
   findings: Finding[],
   stackName: string,
+  region: string,
   config: CdkrdConfig
 ): Finding[] {
   if (config.ignore.length === 0) return findings;
@@ -195,7 +264,8 @@ export function applyIgnores(
     const hit = rules.find(
       (r) =>
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&
-        targets.some((t) => pathMatches(r.idPathPattern, t))
+        (r.regionGlob === undefined || matchesGlob(r.regionGlob, region)) &&
+        targets.some((t) => pathMatches(r.pathPattern, t))
     );
     if (!hit) return f;
     return { ...f, tier: 'ignored', note: `ignored by config rule "${hit.raw}"` };

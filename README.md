@@ -332,17 +332,25 @@ and unknown keys are rejected so a typo can't silently disable your rules):
 
 ```json
 {
-  "ignore": ["*.DesiredCount", "Prod*:Fn*.ReservedConcurrentExecutions"]
+  "ignore": [
+    "*.DesiredCount",
+    { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*" },
+    { "path": "*.DesiredCount", "region": "us-*" }
+  ]
 }
 ```
 
-`cdkrd ignore` writes an exact `<constructPath>.<path>` rule (or `<logicalId>.<path>`
-on a non-CDK stack). Hand-authored rules can additionally glob (`*` / `?`) against
-either form, and a `<stack glob>:` prefix scopes a rule to matching stacks; a
-parent rule covers child paths. Matching findings move to the informational
-`ignored` tier — still visible under `--verbose`, never exit-affecting, and
-excluded from `revert` plans and `record`. A **deleted resource is never
-ignorable**.
+Each rule is **either** a bare string (the unscoped common case — applies to any
+stack in any region) **or** an object that scopes the same `path` pattern to a
+`stack` and/or a `region`. `cdkrd ignore` writes the bare-string form — an exact
+`<constructPath>.<path>` rule (or `<logicalId>.<path>` on a non-CDK stack); the
+scoped object form is a hand-edit. All three of `path` / `stack` / `region` accept
+the same `*` / `?` glob, and a parent `path` rule covers child paths. **Region is
+an independent axis** from the stack name: the same stack name can be deployed to
+several regions (or matched by a `*` stack glob) and a property may legitimately
+drift in only one. Matching findings move to the informational `ignored` tier —
+still visible under `--verbose`, never exit-affecting, and excluded from `revert`
+plans and `record`. A **deleted resource is never ignorable**.
 
 ## Output
 
