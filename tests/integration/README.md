@@ -167,6 +167,27 @@ sibling `AWS::IAM::Policy`):
 cd iam && bash verify-inline-policy.sh
 ```
 
+### iam / verify-sibling-policy-doc.sh
+
+A third `iam` script proving there is **no false-negative** when the sibling
+`AWS::IAM::Policy`'s OWN document is edited out-of-band. The role's by-name filter
+drops the sibling entry from the role's live `Policies` (so it never double-reports
+as undeclared) — the question was whether a change to the sibling's document then
+goes unnoticed. It does not:
+
+1. `record` then `check` is CLEAN (sibling filtered on the role; document matches).
+2. After `put-role-policy` rewrites the sibling's document out-of-band
+   (`s3:ListAllMyBuckets` → `s3:GetObject`), `check` reports it as **DECLARED** drift
+   on the `AWS::IAM::Policy` resource itself
+   (`TestRole/DefaultPolicy.PolicyDocument.Statement.0.Action`, exit 1) — the
+   resource's own declared check fires, and the role does NOT leak it as undeclared.
+3. `revert --yes` restores the declared document (`writeIamPolicy`), and `check` is
+   CLEAN again.
+
+```bash
+cd iam && bash verify-sibling-policy-doc.sh
+```
+
 ## atdefault
 
 Validates the R86 `atDefault` fold end-to-end (a default-config Lambda + a bare
