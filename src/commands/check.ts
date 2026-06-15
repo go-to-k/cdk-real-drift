@@ -54,47 +54,66 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   );
 }
 
-// The first-run (no-baseline) prompt (R45). The old Yes/No confirm hid the two
-// facts the decision hinges on: HOW MANY values "Yes" would accept sight-unseen,
-// and that "No" is not a dead end (the report prints first and a selective
-// accept is offered right after it). A select carries both in the option labels
-// themselves; Accept-ALL is first/default since R52 (see the options comment).
-// Exported (pure) so the wording contract is unit-tested.
+// The first-run (no-baseline) prompt (R45, reframed R105). The decision the user
+// is making is "record the current reality as my baseline?" — NOT "fix N problems".
+// Two facts the choice hinges on: how many values Accept-ALL records sight-unseen,
+// and that "Show first" is not a dead end (the report prints and a selective accept
+// follows). Accept-ALL is first/default since R52. Exported (pure) so the wording
+// contract is unit-tested.
 //
-// Wording (R49): "undeclared" must be anchored — it means "not declared in YOUR
-// deployed (CDK/CloudFormation) template"; there is no cdkrd-side template, and
-// the baseline only filters which of these get REPORTED. The count is also NOT
-// a drift count: on a first run these are typically AWS defaults the template
-// never pinned (with any real out-of-band edits hiding among them), so the
-// message says so instead of reading as "N problems found".
+// Wording (R49): "undeclared" is anchored to YOUR deployed (CDK/CloudFormation)
+// template; there is no cdkrd-side template, the baseline only filters what gets
+// REPORTED. The count is NOT a drift verdict.
 //
-// declaredDriftCount (R51): a user whose out-of-band edit hit a DECLARED
-// property sees a prompt that only talks about NOT-declared values and reads it
-// as "the tool missed my change". When declared-side drift exists (declared or
-// deleted tier — both are reported regardless of the baseline decision), say so
-// explicitly instead of the generic "either way" clause.
+// STANDOUT vs FOLDED (R105): the live model carries far more not-declared values
+// than the user ever edited — AWS defaults (atDefault), auto-generated identifiers
+// (generated, R104), and nested sub-keys (nested, R96) all FOLD in the report;
+// only the top-level diverging values (`standout`) list as [UNRECORDED]. The old
+// prompt called the whole recordable set "real out-of-band edits", which counted
+// the 50+ folded nested values as edits — overstating wildly (the bug that
+// confused the first-run user). Now the prompt names `standout` as what stands
+// out, states the folded remainder separately, and frames the run as baseline
+// SETUP rather than a findings list.
+//
+// declaredDrift (R51): declared-side drift (declared/deleted tier) is reported
+// regardless of the baseline choice; when present, say so explicitly.
+export interface FirstRunCounts {
+  standout: number; // top-level undeclared — listed in [UNRECORDED]; the values that stand out
+  nested?: number; // nested undeclared — folded in the report, but recorded by accept
+  atDefault?: number; // undeclared at a known AWS default — folded, never recorded
+  generated?: number; // AWS/CDK auto-generated identifier — folded, never recorded
+  declaredDrift?: number; // declared/deleted drift — reported either way
+}
 export function firstRunPrompt(
   stackName: string,
-  recordableCount: number,
-  atDefaultCount = 0,
-  declaredDriftCount = 0
+  counts: FirstRunCounts
 ): { message: string; options: { value: 'show' | 'acceptAll'; label: string }[] } {
+  const { standout, nested = 0, atDefault = 0, generated = 0, declaredDrift = 0 } = counts;
+  const recordable = standout + nested; // what Accept records (atDefault/generated never are)
+  const folded = nested + atDefault + generated; // not listed in the report by default
+  const total = standout + folded;
   const declaredNote =
-    declaredDriftCount > 0
-      ? `Also found ${declaredDriftCount} declared-side drift(s) — reported below whichever you choose.`
+    declaredDrift > 0
+      ? `Also found ${declaredDrift} declared-side drift(s) — reported below whichever you choose.`
       : 'Declared-side drift is reported either way.';
-  // The "found N" count is the COMPLETE undeclared inventory (R86): the values that
-  // actually diverge PLUS the ones sitting at a known AWS default. The at-default
-  // remainder is folded in the report, so name it here too instead of letting the
-  // user wonder why "found 113" but only a couple are listed. Accept records only the
-  // recordable (diverging) ones — at-default values are held by the equality gate.
-  const total = recordableCount + atDefaultCount;
-  const split =
-    atDefaultCount > 0
-      ? `${atDefaultCount} sit at a known AWS default (folded below); ${recordableCount} look like real out-of-band edits`
-      : 'typically AWS defaults, but out-of-band edits hide among them';
+  // The "stand out" number is the one the user should react to — it matches the
+  // [UNRECORDED: N] section. The folded remainder is named so "found N" never reads
+  // as "N problems found".
+  const standoutClause =
+    standout > 0
+      ? `${standout} stand out as possible out-of-band edits`
+      : 'none stand out as out-of-band edits';
+  const foldedClause =
+    folded > 0
+      ? `, the other ${folded} fold as AWS defaults / auto-generated / nested sub-keys`
+      : '';
   return {
-    message: `${stackName}: no baseline yet — found ${total} live value(s) not declared in your template (${split}). ${declaredNote} What do you want to do?`,
+    message:
+      `${stackName}: no baseline yet — this first run SETS UP your baseline ` +
+      `(without one, check can't tell deploy-state from a later drift). Found ${total} ` +
+      `live value(s) not declared in your template: ${standoutClause}${foldedClause}. ` +
+      `${declaredNote} Accept records the current state (${recordable} value(s)) as your ` +
+      `baseline — from the next run, check reports only what changes. What do you want to do?`,
     // Accept-ALL first (R52, user decision): it is the overwhelmingly common
     // first-run choice, and the cost of an accidental Enter is one git-tracked
     // file — reviewable and revertible, nothing written to AWS. "Show first"
@@ -102,7 +121,7 @@ export function firstRunPrompt(
     options: [
       {
         value: 'acceptAll',
-        label: `Accept ALL ${recordableCount} into the baseline now, without reviewing them`,
+        label: `Accept ALL ${recordable} into the baseline now, without reviewing them`,
       },
       {
         value: 'show',
@@ -272,22 +291,27 @@ export async function runCheck(args: string[]): Promise<number> {
       // no prompt (`cdkrd accept` still writes a baseline for a clean stack).
       if (!baseline && !a.showAll && !a.json && !a.fail && isInteractive()) {
         const acceptable = applyIgnores(findings, stackName, config);
-        // recordable = real diverging undeclared values (what accept records); the
-        // atDefault tier is folded inventory, never recorded (R86). Prompt only when
+        // recordable = undeclared values accept would record (top-level + nested).
+        // atDefault/generated are folded inventory, never recorded. Prompt only when
         // there is something to record — a stack whose only undeclared values are at
-        // their AWS default is reported (CLEAN + folded info), not interrupted.
-        const recordableCount = acceptable.filter((f) => f.tier === 'undeclared').length;
-        const atDefaultCount = acceptable.filter((f) => f.tier === 'atDefault').length;
+        // an AWS default / auto-generated is reported (CLEAN + folded info), not
+        // interrupted. The prompt splits `standout` (top-level, listed) from `nested`
+        // (folded) so it never calls the 50+ folded nested values "edits" (R105).
+        const undeclared = acceptable.filter((f) => f.tier === 'undeclared');
+        const standoutCount = undeclared.filter((f) => !f.nested).length;
+        const nestedCount = undeclared.length - standoutCount;
+        const recordableCount = undeclared.length;
         const declaredDriftCount = acceptable.filter(
           (f) => f.tier === 'declared' || f.tier === 'deleted'
         ).length;
         if (recordableCount > 0) {
-          const prompt = firstRunPrompt(
-            stackName,
-            recordableCount,
-            atDefaultCount,
-            declaredDriftCount
-          );
+          const prompt = firstRunPrompt(stackName, {
+            standout: standoutCount,
+            nested: nestedCount,
+            atDefault: acceptable.filter((f) => f.tier === 'atDefault').length,
+            generated: acceptable.filter((f) => f.tier === 'generated').length,
+            declaredDrift: declaredDriftCount,
+          });
           const choice = await select({
             message: prompt.message,
             options: prompt.options,
