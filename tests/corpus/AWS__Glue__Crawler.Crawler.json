@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Crawler",
+    "resourceType": "AWS::Glue::Crawler",
+    "physicalId": "cdkrd-crawler",
+    "constructPath": "CdkdriftIntegHarvest11/Crawler",
+    "declared": {
+      "Configuration": "{\"Version\":1,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}",
+      "DatabaseName": "cdkrd_db",
+      "Name": "cdkrd-crawler",
+      "RecrawlPolicy": {
+        "RecrawlBehavior": "CRAWL_EVERYTHING"
+      },
+      "Role": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest11-CrawlerRoleA9495AEE-8Ubamf7UE4OD",
+      "SchemaChangePolicy": {
+        "DeleteBehavior": "LOG",
+        "UpdateBehavior": "LOG"
+      },
+      "Targets": {
+        "S3Targets": [
+          {
+            "Path": "s3://cdkdriftintegharvest11-crawlerbucketc8cf2ecb-ytu9fjtcuzrc/data/"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "Role": "CdkdriftIntegHarvest11-CrawlerRoleA9495AEE-8Ubamf7UE4OD",
+    "Classifiers": [],
+    "SchemaChangePolicy": {
+      "UpdateBehavior": "LOG",
+      "DeleteBehavior": "LOG"
+    },
+    "Configuration": "{\"Version\":1.0,\"CrawlerOutput\":{\"Partitions\":{\"AddOrUpdateBehavior\":\"InheritFromTable\"}}}",
+    "LakeFormationConfiguration": {
+      "AccountId": "",
+      "UseLakeFormationCredentials": false
+    },
+    "RecrawlPolicy": {
+      "RecrawlBehavior": "CRAWL_EVERYTHING"
+    },
+    "DatabaseName": "cdkrd_db",
+    "Targets": {
+      "HudiTargets": [],
+      "S3Targets": [
+        {
+          "Path": "s3://cdkdriftintegharvest11-crawlerbucketc8cf2ecb-ytu9fjtcuzrc/data/",
+          "Exclusions": []
+        }
+      ],
+      "CatalogTargets": [],
+      "DeltaTargets": [],
+      "MongoDBTargets": [],
+      "JdbcTargets": [],
+      "DynamoDBTargets": [],
+      "IcebergTargets": []
+    },
+    "Tags": {},
+    "Name": "cdkrd-crawler"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

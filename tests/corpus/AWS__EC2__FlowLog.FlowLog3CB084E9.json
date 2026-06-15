@@ -1,0 +1,114 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FlowLog3CB084E9",
+    "resourceType": "AWS::EC2::FlowLog",
+    "physicalId": "fl-036ddfda22c64b9f1",
+    "constructPath": "CdkdriftIntegHarvest11/FlowLog/FlowLog",
+    "declared": {
+      "DeliverLogsPermissionArn": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest11-FlowLogIAMRoleDCBD2EB4-A1N3UUwf9Sl7",
+      "LogDestinationType": "cloud-watch-logs",
+      "LogGroupName": "CdkdriftIntegHarvest11-FlowLogGroup3E25AA51-k0tgRIrKmYgT",
+      "ResourceId": "vpc-08640d82f0e608130",
+      "ResourceType": "VPC",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkdriftIntegHarvest11/FlowLog"
+        }
+      ],
+      "TrafficType": "ALL"
+    }
+  },
+  "liveRaw": {
+    "LogFormat": "${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}",
+    "ResourceId": "vpc-08640d82f0e608130",
+    "MaxAggregationInterval": 600,
+    "ResourceType": "VPC",
+    "Id": "fl-036ddfda22c64b9f1",
+    "LogGroupName": "CdkdriftIntegHarvest11-FlowLogGroup3E25AA51-k0tgRIrKmYgT",
+    "DeliverLogsPermissionArn": "arn:aws:iam::111111111111:role/CdkdriftIntegHarvest11-FlowLogIAMRoleDCBD2EB4-A1N3UUwf9Sl7",
+    "LogDestinationType": "cloud-watch-logs",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest11",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "FlowLog3CB084E9",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest11/d7772f20-68ce-11f1-8db7-0ebb1f9d7ed7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest11/FlowLog",
+        "Key": "Name"
+      }
+    ],
+    "TrafficType": "ALL"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "DeliverCrossAccountRole",
+      "DeliverLogsPermissionArn",
+      "DestinationOptions",
+      "LogDestination",
+      "LogDestinationType",
+      "LogFormat",
+      "LogGroupName",
+      "MaxAggregationInterval",
+      "ResourceId",
+      "ResourceType",
+      "TagFieldSpecifications",
+      "TrafficType"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DeliverCrossAccountRole",
+      "DeliverLogsPermissionArn",
+      "DestinationOptions",
+      "LogDestination",
+      "LogDestinationType",
+      "LogFormat",
+      "LogGroupName",
+      "MaxAggregationInterval",
+      "ResourceId",
+      "ResourceType",
+      "TagFieldSpecifications",
+      "TrafficType"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "FlowLog3CB084E9",
+      "resourceType": "AWS::EC2::FlowLog",
+      "path": "LogFormat",
+      "actual": "${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}",
+      "physicalId": "fl-036ddfda22c64b9f1",
+      "constructPath": "CdkdriftIntegHarvest11/FlowLog/FlowLog"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "FlowLog3CB084E9",
+      "resourceType": "AWS::EC2::FlowLog",
+      "path": "MaxAggregationInterval",
+      "actual": 600,
+      "physicalId": "fl-036ddfda22c64b9f1",
+      "constructPath": "CdkdriftIntegHarvest11/FlowLog/FlowLog"
+    }
+  ]
+}

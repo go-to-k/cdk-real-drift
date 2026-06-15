@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DeploymentConfig",
+    "resourceType": "AWS::CodeDeploy::DeploymentConfig",
+    "physicalId": "cdkrd-deploy-config",
+    "constructPath": "CdkdriftIntegHarvest11/DeploymentConfig",
+    "declared": {
+      "ComputePlatform": "Server",
+      "DeploymentConfigName": "cdkrd-deploy-config",
+      "MinimumHealthyHosts": {
+        "Type": "HOST_COUNT",
+        "Value": 1
+      }
+    }
+  },
+  "liveRaw": {
+    "ComputePlatform": "Server",
+    "DeploymentConfigName": "cdkrd-deploy-config",
+    "MinimumHealthyHosts": {
+      "Type": "HOST_COUNT",
+      "Value": 1
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [
+      "ComputePlatform",
+      "DeploymentConfigName",
+      "MinimumHealthyHosts",
+      "TrafficRoutingConfig",
+      "ZonalConfig"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ComputePlatform",
+      "DeploymentConfigName",
+      "MinimumHealthyHosts",
+      "TrafficRoutingConfig",
+      "ZonalConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

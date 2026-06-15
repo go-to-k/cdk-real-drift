@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DataCatalog",
+    "resourceType": "AWS::Athena::DataCatalog",
+    "physicalId": "cdkrd_catalog",
+    "constructPath": "CdkdriftIntegHarvest11/DataCatalog",
+    "declared": {
+      "Description": "cdkrd harvest data catalog",
+      "Name": "cdkrd_catalog",
+      "Parameters": {
+        "catalog-id": "111111111111"
+      },
+      "Type": "GLUE"
+    }
+  },
+  "liveRaw": {
+    "Status": "CREATE_COMPLETE",
+    "Type": "GLUE",
+    "Description": "cdkrd harvest data catalog",
+    "Parameters": {
+      "catalog-id": "111111111111"
+    },
+    "Tags": [],
+    "Name": "cdkrd_catalog"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "DataCatalog",
+      "resourceType": "AWS::Athena::DataCatalog",
+      "path": "Status",
+      "actual": "CREATE_COMPLETE",
+      "physicalId": "cdkrd_catalog",
+      "constructPath": "CdkdriftIntegHarvest11/DataCatalog"
+    }
+  ]
+}

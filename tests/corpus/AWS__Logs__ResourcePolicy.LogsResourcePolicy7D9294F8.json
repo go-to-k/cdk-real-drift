@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LogsResourcePolicy7D9294F8",
+    "resourceType": "AWS::Logs::ResourcePolicy",
+    "physicalId": "cdkrd-logs-policy",
+    "constructPath": "CdkdriftIntegHarvest11/LogsResourcePolicy/ResourcePolicy",
+    "declared": {
+      "PolicyDocument": "{\"Statement\":[{\"Action\":[\"logs:PutLogEvents\",\"logs:CreateLogStream\"],\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"route53.amazonaws.com\"},\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}",
+      "PolicyName": "cdkrd-logs-policy"
+    }
+  },
+  "liveRaw": {
+    "PolicyName": "cdkrd-logs-policy",
+    "PolicyDocument": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"route53.amazonaws.com\"},\"Action\":[\"logs:PutLogEvents\",\"logs:CreateLogStream\"],\"Resource\":\"*\"}]}"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["PolicyName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PolicyName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
