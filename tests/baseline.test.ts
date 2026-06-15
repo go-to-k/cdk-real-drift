@@ -9,6 +9,7 @@ import {
   type BaselineFile,
   baselinePath,
   buildRecorded,
+  formatPromotedStaleNote,
   identityArrayDelta,
   checkBaselineAccount,
   computeCompleteResources,
@@ -447,6 +448,42 @@ describe('baseline', () => {
     });
     expect(out).toHaveLength(0); // no false "removed" finding
     expect(warnings[0]).toContain('now declared in the template');
+  });
+
+  it('R134: folds MANY promoted-stale entries into ONE warn line (not one per entry)', () => {
+    // three recorded paths, all since declared in the template → previously 3 notes
+    const b = baseline([
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P1', value: ['x'] },
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P2', value: ['y'] },
+      { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: ['z'] },
+    ]);
+    const warnings: string[] = [];
+    const out = applyBaseline([], b, {
+      declaredByLogical: new Map([
+        ['A', new Set(['P1', 'P2'])],
+        ['B', new Set(['Q'])],
+      ]),
+      warn: (m) => warnings.push(m),
+    });
+    expect(out).toHaveLength(0);
+    expect(warnings).toHaveLength(1); // ONE folded line, not three
+    expect(warnings[0]).toContain('3 baseline entries are now declared in the template');
+    expect(warnings[0]).toContain('re-run `cdkrd record`');
+  });
+
+  describe('formatPromotedStaleNote (R134 — folded one-liner)', () => {
+    it('singular names the one entry', () => {
+      const note = formatPromotedStaleNote(['A.P']);
+      expect(note).toBe(
+        'note: baseline entry (A.P) is now declared in the template — re-run `cdkrd record` to clean it up.'
+      );
+    });
+    it('plural folds to a count (no per-entry list)', () => {
+      const note = formatPromotedStaleNote(['A.P1', 'A.P2', 'B.Q']);
+      expect(note).toContain('3 baseline entries are now declared');
+      expect(note).toContain('clean them up');
+      expect(note).not.toContain('A.P1'); // folded — individual paths not listed
+    });
   });
 
   it('still reports a removal when the recorded path is genuinely gone (not declared)', () => {
