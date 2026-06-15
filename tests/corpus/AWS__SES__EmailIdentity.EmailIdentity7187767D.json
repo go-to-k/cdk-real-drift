@@ -1,0 +1,129 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EmailIdentity7187767D",
+    "resourceType": "AWS::SES::EmailIdentity",
+    "physicalId": "cdkrd-harvest11.example.com",
+    "constructPath": "CdkdriftIntegHarvest11/EmailIdentity",
+    "declared": {
+      "EmailIdentity": "cdkrd-harvest11.example.com",
+      "MailFromAttributes": {
+        "MailFromDomain": "mail.cdkrd-harvest11.example.com"
+      }
+    }
+  },
+  "liveRaw": {
+    "DkimDNSTokenValue1": "cfh36sspac56rg5yfcduo6meouxhtzaq.dkim.amazonses.com",
+    "DkimDNSTokenName2": "qsyjvv635lzyxgzdq3owrdf2pdy67mwb._domainkey.cdkrd-harvest11.example.com",
+    "DkimDNSTokenName3": "4uypizlexhgrzihzijqlcelbwo23tqrc._domainkey.cdkrd-harvest11.example.com",
+    "DkimDNSTokenName1": "cfh36sspac56rg5yfcduo6meouxhtzaq._domainkey.cdkrd-harvest11.example.com",
+    "EmailIdentity": "cdkrd-harvest11.example.com",
+    "DkimDNSTokenValue2": "qsyjvv635lzyxgzdq3owrdf2pdy67mwb.dkim.amazonses.com",
+    "DkimSigningAttributes": {
+      "NextSigningKeyLength": "RSA_2048_BIT"
+    },
+    "DkimDNSTokenValue3": "4uypizlexhgrzihzijqlcelbwo23tqrc.dkim.amazonses.com",
+    "DkimAttributes": {
+      "SigningEnabled": true
+    },
+    "FeedbackAttributes": {
+      "EmailForwardingEnabled": true
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest11/d7772f20-68ce-11f1-8db7-0ebb1f9d7ed7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest11",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "EmailIdentity7187767D",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "MailFromAttributes": {
+      "MailFromDomain": "mail.cdkrd-harvest11.example.com",
+      "BehaviorOnMxFailure": "USE_DEFAULT_VALUE"
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "DkimDNSTokenName1",
+      "DkimDNSTokenName2",
+      "DkimDNSTokenName3",
+      "DkimDNSTokenValue1",
+      "DkimDNSTokenValue2",
+      "DkimDNSTokenValue3"
+    ],
+    "writeOnly": [],
+    "createOnly": ["EmailIdentity"],
+    "readOnlyPaths": [
+      "DkimDNSTokenName1",
+      "DkimDNSTokenName2",
+      "DkimDNSTokenName3",
+      "DkimDNSTokenValue1",
+      "DkimDNSTokenValue2",
+      "DkimDNSTokenValue3"
+    ],
+    "writeOnlyPaths": [
+      "DkimSigningAttributes.DomainSigningPrivateKey",
+      "DkimSigningAttributes.DomainSigningSelector"
+    ],
+    "createOnlyPaths": ["EmailIdentity"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "EmailIdentity7187767D",
+      "resourceType": "AWS::SES::EmailIdentity",
+      "path": "DkimSigningAttributes",
+      "actual": {
+        "NextSigningKeyLength": "RSA_2048_BIT"
+      },
+      "physicalId": "cdkrd-harvest11.example.com",
+      "constructPath": "CdkdriftIntegHarvest11/EmailIdentity"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "EmailIdentity7187767D",
+      "resourceType": "AWS::SES::EmailIdentity",
+      "path": "DkimAttributes",
+      "actual": {
+        "SigningEnabled": true
+      },
+      "physicalId": "cdkrd-harvest11.example.com",
+      "constructPath": "CdkdriftIntegHarvest11/EmailIdentity"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "EmailIdentity7187767D",
+      "resourceType": "AWS::SES::EmailIdentity",
+      "path": "FeedbackAttributes",
+      "actual": {
+        "EmailForwardingEnabled": true
+      },
+      "physicalId": "cdkrd-harvest11.example.com",
+      "constructPath": "CdkdriftIntegHarvest11/EmailIdentity"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "EmailIdentity7187767D",
+      "resourceType": "AWS::SES::EmailIdentity",
+      "path": "MailFromAttributes.BehaviorOnMxFailure",
+      "actual": "USE_DEFAULT_VALUE",
+      "nested": true,
+      "physicalId": "cdkrd-harvest11.example.com",
+      "constructPath": "CdkdriftIntegHarvest11/EmailIdentity"
+    }
+  ]
+}
