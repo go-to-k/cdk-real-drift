@@ -668,19 +668,27 @@ a per-stack/account fact:
 ```jsonc
 {
   "ignore": [
-    "*.DesiredCount", // any stack, any logical id
-    "Prod*:*.ReservedConcurrentExecutions", // stack-scoped: "<stack glob>:<logicalId>.<path>"
+    { "path": "*.DesiredCount" }, // unscoped — any stack, any region, any logical id
+    { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*" }, // stack-scoped
+    { "path": "*.DesiredCount", "region": "us-*" }, // region-scoped (independent axis)
   ],
 }
 ```
 
-`applyIgnores(findings, stackName, config)` ([src/config/config-file.ts](../src/config/config-file.ts))
-is a pure function applied right after `applyBaseline` everywhere (check / revert /
-record / the interactive flow), so the tier is uniform across commands. It re-tags
+Every rule is an object `{ path, stack?, region? }` (one uniform, self-labelling
+shape — no bare-string shorthand); `path` is the pattern, `stack` / `region` are
+optional scopes (absent = any). Region is an independent axis from the stack name
+(the same stack name may be deployed to several regions, or matched by a `*` stack
+glob, and a property may legitimately drift in only one), so the current region
+is threaded in.
+`applyIgnores(findings, stackName, region, config)`
+([src/config/config-file.ts](../src/config/config-file.ts)) is a pure function
+applied right after `applyBaseline` everywhere (check / revert / record / the
+interactive flow), so the tier is uniform across commands. It re-tags
 matching `declared` / `undeclared` findings to `ignored` (never `deleted` — a path
 rule must not silence a resource deletion; the already-informational tiers are left
-alone). Patterns glob (`*` / `?`) against EITHER `<logicalId>.<path>` OR (when present)
-`<constructPath>.<path>`, so both styles work: the logicalId
+alone). The `path` pattern globs (`*` / `?`) against EITHER `<logicalId>.<path>` OR
+(when present) `<constructPath>.<path>`, so both styles work: the logicalId
 (`ApiRole1234ABCD.Policies`) is the CloudFormation template's resource key — always
 present, so rules work on ANY stack, **CDK or not** (raw CloudFormation / SAM); the
 constructPath (`MyStack/ApiRole.Policies`) is the human-friendly id `cdk-local` also

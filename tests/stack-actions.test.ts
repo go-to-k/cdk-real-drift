@@ -742,8 +742,8 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
     expect(r.wrote).toBe(true);
     expect(r.added).toBe(2);
     expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
-      'B.AccelerateConfiguration',
-      'B.VersioningConfiguration',
+      { path: 'B.AccelerateConfiguration' },
+      { path: 'B.VersioningConfiguration' },
     ]);
   });
 

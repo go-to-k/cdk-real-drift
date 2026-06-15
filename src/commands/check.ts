@@ -155,7 +155,7 @@ export async function runCheck(args: string[]): Promise<number> {
           );
         if (!a.json) separate();
         const preDeployCode = report(
-          applyIgnores(declaredOnly, stackName, config),
+          applyIgnores(declaredOnly, stackName, region, config),
           `${stackName} (${region})`,
           {
             json: a.json,
@@ -207,6 +207,7 @@ export async function runCheck(args: string[]): Promise<number> {
               },
             }),
         stackName,
+        region,
         config
       );
       if (!a.json) separate();

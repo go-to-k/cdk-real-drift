@@ -50,7 +50,7 @@ export async function runRecord(args: string[]): Promise<number> {
         stackName,
         region,
         desired,
-        findings: applyIgnores(findings, stackName, config),
+        findings: applyIgnores(findings, stackName, region, config),
         yes: a.yes,
         interactive: isInteractive(),
       });
