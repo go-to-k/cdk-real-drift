@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RdsSubnetGroup",
+    "resourceType": "AWS::RDS::DBSubnetGroup",
+    "physicalId": "cdkrd-rds-subnet-group",
+    "constructPath": "CdkdriftIntegHarvest12/RdsSubnetGroup/Default",
+    "declared": {
+      "DBSubnetGroupDescription": "cdkrd harvest rds subnet group",
+      "DBSubnetGroupName": "cdkrd-rds-subnet-group",
+      "SubnetIds": ["subnet-0adc938dc94d09cc8", "subnet-0c65421ad32d7ef91"]
+    }
+  },
+  "liveRaw": {
+    "DBSubnetGroupName": "cdkrd-rds-subnet-group",
+    "DBSubnetGroupDescription": "cdkrd harvest rds subnet group",
+    "SubnetIds": ["subnet-0c65421ad32d7ef91", "subnet-0adc938dc94d09cc8"],
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest12",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RdsSubnetGroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest12/213374f0-68d1-11f1-9c57-0ed4a5a45445",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBSubnetGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBSubnetGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

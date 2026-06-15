@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RdsParameterGroup",
+    "resourceType": "AWS::RDS::DBParameterGroup",
+    "physicalId": "cdkrd-rds-pg",
+    "constructPath": "CdkdriftIntegHarvest12/RdsParameterGroup",
+    "declared": {
+      "DBParameterGroupName": "cdkrd-rds-pg",
+      "Description": "cdkrd harvest rds parameter group",
+      "Family": "mysql8.0",
+      "Parameters": {
+        "general_log": "1",
+        "slow_query_log": "1",
+        "long_query_time": "2"
+      }
+    }
+  },
+  "liveRaw": {
+    "DBParameterGroupName": "cdkrd-rds-pg",
+    "Description": "cdkrd harvest rds parameter group",
+    "Parameters": {
+      "general_log": "1",
+      "long_query_time": "2",
+      "slow_query_log": "1"
+    },
+    "Family": "mysql8.0",
+    "Tags": [
+      {
+        "Value": "CdkdriftIntegHarvest12",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RdsParameterGroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest12/213374f0-68d1-11f1-9c57-0ed4a5a45445",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

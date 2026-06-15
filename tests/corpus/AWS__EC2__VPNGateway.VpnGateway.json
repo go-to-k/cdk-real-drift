@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpnGateway",
+    "resourceType": "AWS::EC2::VPNGateway",
+    "physicalId": "vgw-01105f50327b6141f",
+    "constructPath": "CdkdriftIntegHarvest12/VpnGateway/Default",
+    "declared": {
+      "AmazonSideAsn": 64512,
+      "Type": "ipsec.1"
+    }
+  },
+  "liveRaw": {
+    "VPNGatewayId": "vgw-01105f50327b6141f",
+    "Type": "ipsec.1",
+    "AmazonSideAsn": 64512,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkdriftIntegHarvest12/213374f0-68d1-11f1-9c57-0ed4a5a45445",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkdriftIntegHarvest12",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "VpnGateway",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VPNGatewayId"],
+    "writeOnly": [],
+    "createOnly": ["AmazonSideAsn", "Type"],
+    "readOnlyPaths": ["VPNGatewayId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AmazonSideAsn", "Type"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

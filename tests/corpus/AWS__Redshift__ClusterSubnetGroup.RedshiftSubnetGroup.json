@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RedshiftSubnetGroup",
+    "resourceType": "AWS::Redshift::ClusterSubnetGroup",
+    "physicalId": "redshiftsubnetgroup-3ksvetsc7w2y",
+    "constructPath": "CdkdriftIntegHarvest12/RedshiftSubnetGroup",
+    "declared": {
+      "Description": "cdkrd harvest redshift subnet group",
+      "SubnetIds": ["subnet-0adc938dc94d09cc8", "subnet-0c65421ad32d7ef91"]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd harvest redshift subnet group",
+    "ClusterSubnetGroupName": "redshiftsubnetgroup-3ksvetsc7w2y",
+    "SubnetIds": ["subnet-0c65421ad32d7ef91", "subnet-0adc938dc94d09cc8"],
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["ClusterSubnetGroupName"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["ClusterSubnetGroupName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
