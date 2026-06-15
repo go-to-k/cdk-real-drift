@@ -231,6 +231,10 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
   `keeping N already-accepted unchanged value(s)` note. Deselect a suspicious one
   and it stays reported by `check` — accept the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
+  `accept` records **undeclared** state only — it does not "approve everything".
+  Any **declared / deleted** drift (divergence from your template intent) is NOT
+  written to the baseline and cannot be silenced by it; `accept` prints a note
+  that it still stands, to be resolved with `revert` or `cdk deploy`.
 - **`check` with no baseline yet** asks what to do with the N undeclared values
   it found: **accept ALL of them** into the baseline (the default — the common
   first-run choice; it writes only a git-tracked file, nothing to AWS), or
