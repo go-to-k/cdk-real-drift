@@ -326,7 +326,7 @@ all live changes
   − declared (vs template)            → tagged "declared drift"
   − schema readOnly/writeOnly         → stripped (describe-type, nested + '*')
   − cc-api managed fields             → stripped (timestamps, revision ids)
-  − policy-doc representational noise  → canonicalized (scalar/array, stmt order, acct-id↔root-ARN)
+  − policy-doc representational noise  → canonicalized (scalar/array, stmt order, acct-id↔root-ARN, Condition value-set)
   − aws:* tags ({Key,Value}[] anywhere; maps only under a `Tags` key — never
     IAM condition keys like aws:SecureTransport, R69) → stripped
   − schema defaults + known defaults  → tagged "atDefault" (R86): NOT dropped — folded

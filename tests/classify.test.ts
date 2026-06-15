@@ -1513,3 +1513,61 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     ]);
   });
 });
+
+// An IAM policy Condition value is an UNORDERED SET of strings written as a scalar
+// or an array. AWS may echo a multi-value condition (a CDK enforceSSL /
+// grant-with-SourceArn statement) reordered, or store a scalar-declared value as a
+// one-element array — both were false `declared` drift before canonicalizeCondition.
+describe('classifyResource IAM policy Condition canonicalization', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const declaredPaths = (declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource(
+      { logicalId: 'R', resourceType: 'AWS::SNS::TopicPolicy', physicalId: 'p', declared },
+      live,
+      bare
+    )
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+  const stmt = (cond: unknown) => ({
+    PolicyDocument: {
+      Version: '2012-10-17',
+      Statement: [{ Effect: 'Allow', Action: 'sns:Publish', Resource: '*', Condition: cond }],
+    },
+  });
+
+  it('a reordered multi-value Condition is NOT declared drift', () => {
+    expect(
+      declaredPaths(
+        stmt({ StringEquals: { 'aws:SourceArn': ['arnA', 'arnB'] } }),
+        stmt({ StringEquals: { 'aws:SourceArn': ['arnB', 'arnA'] } })
+      )
+    ).toEqual([]);
+  });
+
+  it('a scalar-declared Condition value AWS stores as a one-element array is NOT drift', () => {
+    expect(
+      declaredPaths(
+        stmt({ StringEquals: { 'aws:SourceAccount': '123456789012' } }),
+        stmt({ StringEquals: { 'aws:SourceAccount': ['123456789012'] } })
+      )
+    ).toEqual([]);
+  });
+
+  it('a GENUINE Condition value change IS still declared drift', () => {
+    expect(
+      declaredPaths(
+        stmt({ StringEquals: { 'aws:SourceArn': ['arnA', 'arnB'] } }),
+        stmt({ StringEquals: { 'aws:SourceArn': ['arnA', 'arnC'] } })
+      )
+    ).not.toEqual([]);
+  });
+});

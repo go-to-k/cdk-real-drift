@@ -51,6 +51,33 @@ function sortKeys(o: Record<string, unknown>): Record<string, unknown> {
 
 const ARRAYISH_KEYS = new Set(['Action', 'NotAction', 'Resource', 'NotResource']);
 
+// An IAM `Condition` block is `{ <operator>: { <conditionKey>: <scalar|array> } }`.
+// A condition key's value is an UNORDERED SET of strings the operator matches
+// against, written either as a scalar (single value) or an array — IAM treats the
+// two forms identically and may store/return either, in any element order. Without
+// canonicalization a multi-value condition (`aws:SourceArn: [arnA, arnB]`) that AWS
+// echoes reordered, or a single-value condition the template declares as a scalar
+// while AWS stores it as a one-element array, both fire a false declared drift.
+// Mirror the Action/Resource treatment: unify scalar↔array and sort each value set,
+// on both sides, so a reordered-or-reshaped-but-equal condition compares equal while
+// a genuine value change still differs after the sort. Operator/condition-key ORDER
+// needs no sorting — deepEqual is key-order-insensitive.
+function canonicalizeCondition(v: unknown): unknown {
+  if (!isObj(v)) return v;
+  const out: Record<string, unknown> = {};
+  for (const op of Object.keys(v)) {
+    const body = v[op];
+    if (!isObj(body)) {
+      out[op] = body;
+      continue;
+    }
+    const inner: Record<string, unknown> = {};
+    for (const key of Object.keys(body)) inner[key] = toSortedArray(body[key]);
+    out[op] = inner;
+  }
+  return out;
+}
+
 function canonicalizeStatement(s: unknown): unknown {
   if (!isObj(s)) return s;
   const out: Record<string, unknown> = {};
@@ -58,6 +85,7 @@ function canonicalizeStatement(s: unknown): unknown {
     const v = s[k];
     if (ARRAYISH_KEYS.has(k)) out[k] = toSortedArray(v);
     else if (k === 'Principal' || k === 'NotPrincipal') out[k] = canonicalizePrincipal(v);
+    else if (k === 'Condition') out[k] = canonicalizeCondition(v);
     else out[k] = v;
   }
   return out;
