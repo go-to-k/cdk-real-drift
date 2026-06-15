@@ -20,6 +20,18 @@ export function isDynamicReference(v: string): boolean {
   return DYNAMIC_REFERENCE_RE.test(v);
 }
 
+// A value safe to interpolate into a joined / substituted STRING: a primitive
+// (string / number / boolean). A symbol (UNRESOLVED / NOVALUE) or an object / array
+// means resolution was incomplete (a deep GetAtt) or the template is malformed —
+// fail closed to UNRESOLVED rather than leak `[object Object]` / `Symbol(unresolved)`
+// into the declared value, which would then mis-compare as false drift. (`Fn::Join`
+// filters NOVALUE out of the list FIRST, so its remaining non-scalar parts are the
+// genuinely-unresolved ones.)
+function isScalarInterpolant(v: unknown): boolean {
+  const t = typeof v;
+  return t === 'string' || t === 'number' || t === 'boolean';
+}
+
 export function resolve(node: unknown, ctx: ResolverContext): unknown {
   if (Array.isArray(node)) return node.map((n) => resolve(n, ctx));
   // A CloudFormation DYNAMIC REFERENCE (`{{resolve:ssm:…}}`,
@@ -58,7 +70,10 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         const resolved = resolve(list, ctx);
         if (!Array.isArray(resolved)) return UNRESOLVED;
         const parts = resolved.filter((p) => p !== NOVALUE);
-        if (parts.some((p) => p === UNRESOLVED)) return UNRESOLVED;
+        // Any non-scalar remaining part (the UNRESOLVED symbol, OR a nested
+        // object/array that leaked from a deep unresolved GetAtt / malformed list)
+        // means we cannot faithfully join — fail closed rather than String()-leak.
+        if (parts.some((p) => !isScalarInterpolant(p))) return UNRESOLVED;
         const joined = parts.join(delim);
         // CDK frequently ASSEMBLES a dynamic reference with Fn::Join (e.g. an RDS
         // MasterUsername = Join("", ["{{resolve:secretsmanager:", Ref(secret),
@@ -219,7 +234,10 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
     if (ref.startsWith('!')) return `\${${ref.slice(1)}}`;
     if (ref in vars) {
       const r = resolve(vars[ref], ctx);
-      if (r === UNRESOLVED) {
+      // Mirror the Ref / GetAtt branches below: a non-scalar resolution (UNRESOLVED,
+      // NOVALUE, or a leaked object/array) cannot be interpolated — fail closed
+      // instead of injecting `Symbol(novalue)` / `[object Object]` into the string.
+      if (!isScalarInterpolant(r)) {
         unresolved = true;
         return '';
       }

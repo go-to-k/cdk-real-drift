@@ -58,6 +58,34 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'AWS::NoValue' }, 'b']] }, ctx())).toBe('a-b');
   });
 
+  // A non-scalar resolved part (a nested object/array carrying a deep unresolved
+  // GetAtt, or a malformed non-string list element) must fail closed to UNRESOLVED
+  // — never String()-leak `[object Object]` / `Symbol(unresolved)` into the joined
+  // value, which would mis-compare as false drift.
+  it('Fn::Join fails closed when a list element is a non-scalar carrying deep UNRESOLVED', () => {
+    expect(
+      resolve({ 'Fn::Join': ['', ['p-', { wrap: { 'Fn::GetAtt': ['X', 'Y'] } }, '-s']] }, ctx())
+    ).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Join': ['', ['a', [{ 'Fn::GetAtt': ['X', 'Y'] }], 'b']] }, ctx())).toBe(
+      UNRESOLVED
+    );
+    // a fully-scalar join still resolves (regression guard)
+    expect(resolve({ 'Fn::Join': ['-', ['a', 'b', 'c']] }, ctx())).toBe('a-b-c');
+  });
+
+  // The Fn::Sub variable-map branch must match the Ref/GetAtt branches: a NOVALUE or
+  // object/array resolution is unresolvable, not `Symbol(novalue)` / `[object Object]`.
+  it('Fn::Sub fails closed when a variable resolves to a non-scalar', () => {
+    expect(resolve({ 'Fn::Sub': ['x-${V}', { V: { Ref: 'AWS::NoValue' } }] }, ctx())).toBe(
+      UNRESOLVED
+    );
+    expect(
+      resolve({ 'Fn::Sub': ['x-${V}', { V: { wrap: { 'Fn::GetAtt': ['X', 'Y'] } } }] }, ctx())
+    ).toBe(UNRESOLVED);
+    // a scalar var (incl. a numeric Ref) still substitutes (regression guard)
+    expect(resolve({ 'Fn::Sub': ['x-${V}', { V: 'ok' }] }, ctx())).toBe('x-ok');
+  });
+
   it('Fn::GetAtt resolves against live attributes (incl. dotted path), else UNRESOLVED', () => {
     const c = ctx({
       liveAttrs: { Role: { Arn: 'arn:aws:iam::123:role/r' }, Db: { Endpoint: { Address: 'h' } } },
