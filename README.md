@@ -29,7 +29,7 @@ explainable — the same change shows up:
 ```console
 $ npx cdkrd check ApiStack
 === cdkrd check: ApiStack (us-east-1) ===
-[UNDECLARED DRIFT: 1] (not declared in your template — the differentiator)
+[UNDECLARED DRIFT: 1] (live-only — not in your CloudFormation template; the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)
@@ -58,7 +58,7 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[UNRECORDED: 2] (not drift — undeclared and not in the baseline yet; record to record)
+[UNRECORDED: 2] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
@@ -68,7 +68,7 @@ info:
   ...
 
 ApiStack: unrecorded values found — what do you want to do?
-    Record all undeclared — snapshot into the baseline (keeps watching)
+    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each
   ❯ Nothing (decide later)
@@ -90,7 +90,7 @@ reports it and asks right there:
 
 ```console
 ApiStack: drift found — what do you want to do?
-    Record all undeclared — snapshot into the baseline (keeps watching)
+    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert all — write the desired values to AWS
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each
@@ -129,6 +129,21 @@ Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
 
 ## How it works
 
+cdkrd compares the **live AWS resource** against your **CloudFormation template**
+(the one you DEPLOYED by default; the local synth with `--pre-deploy`). The
+vocabulary names exactly which of the three sources a finding relates to, so
+"declared" is never ambiguous:
+
+| term                       | source                                        | meaning                                                 |
+| -------------------------- | --------------------------------------------- | ------------------------------------------------------- |
+| **CFn-declared**           | your CloudFormation template                  | the property IS in the template; the live value drifted |
+| **undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
+| **recorded / unrecorded**  | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
+
+So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
+means the deployed **CloudFormation** template. `undeclared` and `unrecorded` are
+different axes (template vs baseline file), not synonyms.
+
 After `check` finds drift, you decide what each finding means — and the verbs mirror
 the choice:
 
@@ -146,10 +161,10 @@ undeclared — and the property is never reported again). `record` is
 undeclared-only; `ignore` is the only in-tool way to accept a **declared** drift
 without editing code or reverting.
 
-- **Declared** properties are compared against the **deployed template** — no
-  baseline involved, drift is detected from the first run.
-- **Undeclared** properties are compared against a **baseline** you record with
-  `record`: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed
+- **CFn-declared** properties are compared against the **deployed CloudFormation
+  template** — no baseline involved, drift is detected from the first run.
+- **Undeclared** (live-only) properties are compared against a **baseline** you
+  record with `record`: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed
   to git. A PR that changes it is a visible, reviewable change to "what real
   state we record". Account id and region are part of the filename, so the same
   stack deployed to several accounts never collides (gitignore personal-account
@@ -284,7 +299,7 @@ incident shows up before `cdk deploy` silently reverts it:
 $ npx cdkrd check --pre-deploy
 (--pre-deploy) comparing live state against the LOCAL synth template
 === cdkrd check: ApiStack (us-east-1) ===
-[DECLARED DRIFT: 1]
+[CFn-DECLARED DRIFT: 1]
   ApiStack/Api/Handler.MemorySize (AWS::Lambda::Function)
       desired=1024
       actual =2048
@@ -375,7 +390,7 @@ text.
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[DECLARED DRIFT: 1]
+[CFn-DECLARED DRIFT: 1]
   ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"
