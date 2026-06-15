@@ -116,6 +116,7 @@ describe('regatherTouched (R44 — scoped post-revert convergence re-gather)', (
     },
     findings,
     schemas: new Map([['AWS::SQS::Queue', EMPTY_SCHEMA]]),
+    liveByLogical: new Map(),
   });
   const aFinding = (): Finding => ({
     tier: 'undeclared',

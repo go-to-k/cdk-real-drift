@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
-import { buildRevertPlan, toPatchDocument, writeOnlyReincludeOps } from '../src/revert/plan.js';
+import {
+  buildRevertPlan,
+  type PatchOp,
+  tagPreservingOps,
+  toPatchDocument,
+  writeOnlyReincludeOps,
+} from '../src/revert/plan.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
 const schemaWithWriteOnly = (...names: string[]): SchemaInfo => ({
@@ -567,5 +573,91 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
     expect(writeOnlyReincludeOps(declared, schemaWithWriteOnly(), [])).toEqual([]);
     expect(writeOnlyReincludeOps(undefined, schema, [])).toEqual([]);
     expect(writeOnlyReincludeOps(declared, undefined, [])).toEqual([]);
+  });
+});
+
+describe('tagPreservingOps (revert must not strip aws:* managed tags — the SNS Topic bug)', () => {
+  const op = (over: Partial<PatchOp>): PatchOp => ({
+    op: 'remove',
+    path: '/Tags',
+    human: 'h',
+    ...over,
+  });
+  // the live model as Cloud Control returns it: the user-added tag PLUS the managed tags
+  const liveWithManaged = {
+    Tags: [
+      { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+      { Key: 'TestAddedTag', Value: 'TestAddedTagAAA' },
+      { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+    ],
+  };
+
+  it('rewrites a bare `remove /Tags` into an `add /Tags` carrying ONLY the live aws:* tags', () => {
+    // the reproducing case: removing the out-of-band user tag must KEEP the managed tags,
+    // else Cloud Control tells SNS to untag aws:* keys -> "aws: prefixed tag key names are
+    // not allowed for external use".
+    const [out] = tagPreservingOps(
+      [op({ op: 'remove', prior: [{ Key: 'TestAddedTag' }] })],
+      liveWithManaged
+    );
+    expect(out).toMatchObject({
+      op: 'add',
+      path: '/Tags',
+      value: [
+        { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+        { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+      ],
+      prior: [{ Key: 'TestAddedTag' }],
+    });
+    // the user tag is gone; no aws:* key is ever in a removal position
+    expect((out!.value as { Key: string }[]).some((t) => t.Key === 'TestAddedTag')).toBe(false);
+  });
+
+  it('an `add /Tags` (restore/declared) keeps its user value AND re-attaches the live aws:* tags', () => {
+    const [out] = tagPreservingOps(
+      [op({ op: 'add', value: [{ Key: 'team', Value: 'x' }] })],
+      liveWithManaged
+    );
+    expect(out!.value).toEqual([
+      { Key: 'team', Value: 'x' },
+      { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+      { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+    ]);
+  });
+
+  it('defensively drops any aws:* entry that slipped into the add value (never re-asserted twice)', () => {
+    const [out] = tagPreservingOps(
+      [
+        op({
+          op: 'add',
+          value: [
+            { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+            { Key: 'team', Value: 'x' },
+          ],
+        }),
+      ],
+      liveWithManaged
+    );
+    // the value's aws:* entry is dropped; the live managed set is the single source
+    expect(out!.value).toEqual([
+      { Key: 'team', Value: 'x' },
+      { Key: 'aws:cloudformation:stack-name', Value: 'S' },
+      { Key: 'aws:cloudformation:logical-id', Value: 'Topic' },
+    ]);
+  });
+
+  it('leaves the op UNCHANGED when the live model has no aws:* managed tags', () => {
+    const ops = [op({ op: 'remove' })];
+    expect(tagPreservingOps(ops, { Tags: [{ Key: 'team', Value: 'x' }] })).toBe(ops);
+    expect(tagPreservingOps(ops, {})).toBe(ops);
+    expect(tagPreservingOps(ops, undefined)).toBe(ops);
+  });
+
+  it('only touches the /Tags op — sibling ops on the same resource pass through untouched', () => {
+    const other = op({ op: 'add', path: '/DisplayName', value: 'X', human: 'd' });
+    const out = tagPreservingOps([op({ op: 'remove' }), other], liveWithManaged);
+    expect(out[0]!.path).toBe('/Tags');
+    expect(out[0]!.op).toBe('add');
+    expect(out[1]).toBe(other); // the non-Tags op is returned by reference, unchanged
   });
 });

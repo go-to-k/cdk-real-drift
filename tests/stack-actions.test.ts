@@ -327,6 +327,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
       },
       findings: [declared()],
       schemas: new Map([['AWS::S3::Bucket', EMPTY_SCHEMA]]),
+      liveByLogical: new Map(),
     }) as GatherResult;
 
   const params = () => ({

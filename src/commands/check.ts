@@ -117,7 +117,7 @@ export async function runCheck(args: string[]): Promise<number> {
         continue;
       }
       const gathered = await gatherFindings(stackName, region, synthTemplates?.get(stackName));
-      const { desired, schemas } = gathered;
+      const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
 
       // Scope flags (R59). --undeclared-only delegates the declared side to
@@ -242,6 +242,7 @@ export async function runCheck(args: string[]): Promise<number> {
           reconciled,
           baseline,
           schemas,
+          liveByLogical,
           config,
           code,
           yes: a.yes,
