@@ -61,7 +61,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ExpressEE4D4F3B",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "EncryptionConfiguration",
@@ -72,7 +72,7 @@
       "constructPath": "CdkrdIntegHarvest5/Express"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ExpressEE4D4F3B",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "LoggingConfiguration",

@@ -56,7 +56,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "DeduplicationScope",
@@ -65,7 +65,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
@@ -74,7 +74,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "FifoThroughputLimit",
@@ -92,7 +92,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "MessageRetentionPeriod",
@@ -110,7 +110,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "ReceiveMessageWaitTimeSeconds",
@@ -119,7 +119,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "SqsManagedSseEnabled",
@@ -128,7 +128,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",

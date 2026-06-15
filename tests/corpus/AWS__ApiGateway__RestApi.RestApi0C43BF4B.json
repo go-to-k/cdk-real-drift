@@ -74,7 +74,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
       "path": "ApiKeySourceType",
@@ -83,7 +83,7 @@
       "constructPath": "CdkrdIntegHarvest/RestApi"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
       "path": "EndpointConfiguration",
@@ -95,7 +95,7 @@
       "constructPath": "CdkrdIntegHarvest/RestApi"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
       "path": "SecurityPolicy",

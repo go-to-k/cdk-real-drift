@@ -36,7 +36,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
@@ -63,7 +63,7 @@
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
       "path": "ReceiveMessageWaitTimeSeconds",
@@ -72,7 +72,7 @@
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
       "path": "SqsManagedSseEnabled",
@@ -81,7 +81,7 @@
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",

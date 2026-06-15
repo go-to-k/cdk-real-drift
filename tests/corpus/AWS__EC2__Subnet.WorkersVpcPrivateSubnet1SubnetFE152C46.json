@@ -147,7 +147,7 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet1/Subnet"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPrivateSubnet1SubnetFE152C46",
       "resourceType": "AWS::EC2::Subnet",
       "path": "PrivateDnsNameOptionsOnLaunch",

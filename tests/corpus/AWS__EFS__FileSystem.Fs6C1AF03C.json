@@ -61,7 +61,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "BackupPolicy",
@@ -72,7 +72,7 @@
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "FileSystemProtection",
@@ -101,7 +101,7 @@
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "ThroughputMode",

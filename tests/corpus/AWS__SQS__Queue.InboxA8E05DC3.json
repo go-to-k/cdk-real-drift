@@ -50,7 +50,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
       "path": "DelaySeconds",
@@ -68,7 +68,7 @@
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
       "path": "MessageRetentionPeriod",
@@ -86,7 +86,7 @@
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
       "path": "ReceiveMessageWaitTimeSeconds",
@@ -95,7 +95,7 @@
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
       "path": "SqsManagedSseEnabled",
@@ -104,7 +104,7 @@
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",

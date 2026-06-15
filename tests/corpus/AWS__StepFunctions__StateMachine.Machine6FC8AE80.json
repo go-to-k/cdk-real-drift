@@ -69,7 +69,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Machine6FC8AE80",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "EncryptionConfiguration",
@@ -80,7 +80,7 @@
       "constructPath": "CdkRealDriftIntegSfn/Machine"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Machine6FC8AE80",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "LoggingConfiguration",
@@ -101,7 +101,7 @@
       "constructPath": "CdkRealDriftIntegSfn/Machine"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Machine6FC8AE80",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "StateMachineType",
