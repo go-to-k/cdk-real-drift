@@ -198,7 +198,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin1117C92F8].ConnectionTimeout",
@@ -208,7 +208,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin1117C92F8].ConnectionAttempts",
@@ -218,7 +218,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin1117C92F8].S3OriginConfig.OriginReadTimeout",
@@ -228,7 +228,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin2499A636E].ConnectionTimeout",
@@ -238,7 +238,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin2499A636E].ConnectionAttempts",
@@ -248,7 +248,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin2499A636E].CustomOriginConfig.HTTPSPort",
@@ -258,7 +258,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin2499A636E].CustomOriginConfig.OriginKeepaliveTimeout",
@@ -268,7 +268,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Origins[CdkrdIntegCloudfrontCdnOrigin2499A636E].CustomOriginConfig.HTTPPort",
@@ -278,7 +278,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.ViewerCertificate",
@@ -292,7 +292,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.OriginGroups",
@@ -305,7 +305,7 @@
       "constructPath": "CdkrdIntegCloudfront/Cdn"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cdn9963B1AD",
       "resourceType": "AWS::CloudFront::Distribution",
       "path": "DistributionConfig.Restrictions",

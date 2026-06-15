@@ -98,7 +98,7 @@
       "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "RestApiGET0F59260B",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.ResponseTransferMode",
@@ -108,7 +108,7 @@
       "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "RestApiGET0F59260B",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.TimeoutInMillis",

@@ -62,7 +62,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Plan",
       "resourceType": "AWS::ApiGateway::UsagePlan",
       "path": "Quota.Offset",

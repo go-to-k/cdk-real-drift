@@ -60,7 +60,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Catalog",
       "resourceType": "AWS::Glue::Database",
       "path": "DatabaseInput.CreateTableDefaultPermissions",
