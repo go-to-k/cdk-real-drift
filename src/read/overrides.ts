@@ -17,6 +17,8 @@ import { DescribeAddressesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
 import {
   ListResourceRecordSetsCommand,
+  type ListResourceRecordSetsCommandOutput,
+  type ResourceRecordSet,
   type RRType,
   Route53Client,
 } from '@aws-sdk/client-route-53';
@@ -336,28 +338,51 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
   // StartRecord cursor, which holds all variants of one name+type consecutively) and
   // disambiguate by SetIdentifier below.
   const c = new Route53Client({ region, ...READ_RETRY });
-  const r = await c.send(
-    new ListResourceRecordSetsCommand({
-      HostedZoneId: hostedZoneId,
-      StartRecordName: name,
-      StartRecordType: type as RRType,
-    })
-  );
   const canon = (s: string): string => s.replace(/\.$/, '').toLowerCase();
   // Match the declared SetIdentifier too: a simple record declares none and AWS
   // returns none (undefined === undefined), while a weighted/latency variant matches
   // its specific identifier instead of whichever sibling happened to come first.
   const declSetId = str(declared.SetIdentifier);
-  const rec = r.ResourceRecordSets?.find(
-    (x) =>
-      x.Type === type &&
-      x.Name &&
-      canon(x.Name) === canon(name) &&
-      (x.SetIdentifier ?? undefined) === declSetId
-  );
-  // The zone was listed successfully but the declared name+type(+SetIdentifier) record
-  // is absent — it was deleted out of band. Distinct from the "couldn't resolve the
-  // target" guard above (which returns undefined → skipped): here we KNOW it is gone.
+  const isOurNameType = (x: ResourceRecordSet): boolean =>
+    x.Type === type && !!x.Name && canon(x.Name) === canon(name);
+  const isExact = (x: ResourceRecordSet): boolean =>
+    isOurNameType(x) && (x.SetIdentifier ?? undefined) === declSetId;
+  // PAGINATE: a name+type with many SetIdentifier variants (weighted/latency/geo/failover/
+  // multivalue), or a name that sorts past the default ~300-record page, can land the
+  // declared record on a LATER page. Reading only page 1 would misread a PRESENT record as
+  // absent and throw ResourceGoneError → a FALSE `deleted` (and revert would then recreate
+  // an existing record). Page from the name+type cursor until the exact record is found.
+  // Early-stop once our name+type's records are exhausted: Route53 returns records sorted,
+  // so all variants of one name+type are contiguous — once we've seen them and a page has
+  // none, the declared SetIdentifier is genuinely absent.
+  let rec: ResourceRecordSet | undefined;
+  let sawOurNameType = false;
+  let startName: string | undefined = name;
+  let startType: RRType | undefined = type as RRType;
+  let startId: string | undefined;
+  for (;;) {
+    const r: ListResourceRecordSetsCommandOutput = await c.send(
+      new ListResourceRecordSetsCommand({
+        HostedZoneId: hostedZoneId,
+        StartRecordName: startName,
+        StartRecordType: startType,
+        ...(startId !== undefined && { StartRecordIdentifier: startId }),
+      })
+    );
+    const page = r.ResourceRecordSets ?? [];
+    rec = page.find(isExact);
+    if (rec) break;
+    const pageHasOurNameType = page.some(isOurNameType);
+    if (pageHasOurNameType) sawOurNameType = true;
+    // exhausted our name+type's contiguous run, or the whole listing -> genuinely absent
+    if ((sawOurNameType && !pageHasOurNameType) || !r.IsTruncated) break;
+    startName = r.NextRecordName;
+    startType = r.NextRecordType as RRType | undefined;
+    startId = r.NextRecordIdentifier;
+  }
+  // The zone was listed successfully (every page) but the declared name+type(+SetIdentifier)
+  // record is absent — it was deleted out of band. Distinct from the "couldn't resolve the
+  // target" guard above (returns undefined → skipped): here we KNOW it is gone.
   if (!rec)
     throw new ResourceGoneError(
       `Route53 RecordSet ${name} ${type} absent from zone ${hostedZoneId}`
