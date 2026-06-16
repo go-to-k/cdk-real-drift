@@ -202,7 +202,8 @@ code or reverting.
   (HTTP / WebSocket) APIs, SNS topic subscriptions, Lambda event source mappings,
   EventBridge bus rules, Cognito user pool clients and groups, AppSync data
   sources and resolvers, CloudWatch Logs metric filters, Elastic Load Balancing
-  v2 listeners, EC2 VPC subnets, and EC2 route table routes are covered.
+  v2 listeners, EC2 VPC subnets, EC2 route table routes, and ECS cluster services
+  are covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
