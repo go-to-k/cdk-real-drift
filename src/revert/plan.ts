@@ -117,6 +117,18 @@ export function buildRevertPlan(
       });
       continue;
     }
+    if (f.tier === 'added') {
+      // an out-of-band resource (not in the template) is reverted by DELETING it via
+      // Cloud Control — not yet wired into the apply path (separate PR), so report it
+      // as not-yet-revertable rather than silently dropping it from the plan.
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'added out of band — delete support coming (remove via console / cdk for now)',
+      });
+      continue;
+    }
     // Nested undeclared values (R96/R98) are detect/record-only, NOT revertable. Their
     // path addresses a sub-key INSIDE a declared object or array element — dotted
     // (`Conf.Destination`) or, for an identity-keyed array element, `Prop[<id>].sub`.

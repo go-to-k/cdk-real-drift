@@ -65,7 +65,7 @@ export function postRecordNote(remainingUndeclared: number, remainingDeclared: n
       remainingUndeclared > 0
         ? ` ${remainingUndeclared} unrecorded value(s) also stay reported.`
         : '';
-    return `record succeeded, but ${remainingDeclared} declared/deleted drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
+    return `record succeeded, but ${remainingDeclared} declared/deleted/added drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
   }
   if (remainingUndeclared > 0)
     return `record succeeded — ${remainingUndeclared} unrecorded value(s) stay reported from the next check on.`;
@@ -120,7 +120,9 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
     nc
   );
   const remainingDeclared = reEval.filter(
-    (f) => (f.tier === 'declared' || f.tier === 'deleted') && !resolvedKeys.has(keyOf(f))
+    (f) =>
+      (f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'added') &&
+      !resolvedKeys.has(keyOf(f))
   ).length;
   return remainingDeclared > 0 ? 1 : 0;
 }
@@ -265,7 +267,9 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
     p.config
   );
   const remainingDeclared = reEval.filter(
-    (f) => f.tier === 'declared' || f.tier === 'deleted'
+    // `added` is unrecordable like `deleted` (record snapshots undeclared only), so it
+    // still stands after record and keeps exit 1.
+    (f) => f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'added'
   ).length;
   const remainingUndeclared = reEval.filter((f) => f.tier === 'undeclared').length;
   console.error(`note: ${p.stackName}: ${postRecordNote(remainingUndeclared, remainingDeclared)}`);

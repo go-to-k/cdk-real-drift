@@ -35,7 +35,14 @@ import { resolveInteractively } from './interactive-resolve.js';
 // not to compare. Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
   return findings.filter(
-    (f) => f.tier !== 'undeclared' && f.tier !== 'generated' && f.tier !== 'atDefault'
+    (f) =>
+      f.tier !== 'undeclared' &&
+      f.tier !== 'generated' &&
+      f.tier !== 'atDefault' &&
+      // `added` is a LIVE-only divergence (a resource not in the template) — the
+      // declared-side / pre-deploy view is about template-declared props, and a deploy
+      // won't remove an out-of-band resource, so it belongs with the undeclared side.
+      f.tier !== 'added'
   );
 }
 

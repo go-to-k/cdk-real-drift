@@ -106,6 +106,22 @@ describe('report', () => {
     expect(text).toContain('Deleted');
   });
 
+  it('added counts as drift (exit 1) and renders its own tier section', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      constructPath: 'Stack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      note: 'created out of band — not in your CloudFormation template',
+    };
+    const { code, text } = run([f]);
+    expect(code).toBe(1);
+    expect(text).toContain('Added (Out-of-Band)');
+    expect(text).toContain('Stack/Api ▸ ANY /');
+  });
+
   it('json mode emits parseable JSON with findings + drifted count', () => {
     const { code, text } = run([F('undeclared'), F('skipped')], { json: true });
     const parsed = JSON.parse(text);

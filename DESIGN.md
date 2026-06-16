@@ -39,6 +39,11 @@ un-deployed code edits would show as false "drift".
      - sibling AWS::IAM::Policy entries filtered BY NAME from a role's live
        Policies (an out-of-band inline policy next to them still reports)
 5. classify (tag):  declared | undeclared | atDefault | generated | readGap | unresolved | skipped
+5b. enumerate added (out-of-band whole resources): per declared PARENT type, list its
+    live child resources via the service SDK and flag any absent from the template →
+    `added` tier (CHILD_ENUMERATORS; API Gateway REST APIs first). Resource-granularity
+    sibling of undeclared; always drift. Not a per-property compare, so it runs outside
+    classify. Revertable by Cloud Control DeleteResource (no per-type writer).
 6. report + exit code (report-only by default; --fail → 1 on drift; --strict → 1 on incomplete coverage; 2 error)
 ```
 

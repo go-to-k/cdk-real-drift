@@ -28,6 +28,7 @@ import { style } from './style.js';
 // which ties directly to the `cdkrd record` verb.
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'Deleted',
+  added: 'Added (Out-of-Band)',
   declared: 'CFn-Declared Drift',
   undeclared: 'CFn-Undeclared Drift',
   atDefault: 'At AWS Default',
@@ -44,6 +45,8 @@ const TIER_NAMES: Record<Tier, string> = {
 // baseline file (recorded/unrecorded — a separate axis).
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
+  added:
+    'a live resource not in your CloudFormation template — created out of band under a declared parent; always drift',
   declared: 'declared in your CloudFormation template — the live value differs',
   undeclared:
     'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
@@ -55,7 +58,7 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   skipped:
     'NOT checked (coverage incomplete) — CC API unsupported / no physical id / custom resource',
 };
-const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
+const DRIFT_TIERS: Tier[] = ['deleted', 'added', 'declared', 'undeclared'];
 // atDefault leads the informational footer: it is the bulk of a first run (undeclared
 // values sitting at their AWS default) and folding it is the whole point of R86 — the
 // report states the complete undeclared count but lists only the values that actually
@@ -138,7 +141,8 @@ function tierStyle(t: Tier): (s: string) => string {
   // (also yellow) and made a real undeclared DRIFT look identical to a not-drift
   // unrecorded value. Yellow (undeclaredTier) is now reserved for UNRECORDED / "to
   // review" — so colour alone separates drift (red) from to-review (yellow). R125.
-  if (t === 'deleted' || t === 'declared' || t === 'undeclared') return style.driftTier;
+  if (t === 'deleted' || t === 'added' || t === 'declared' || t === 'undeclared')
+    return style.driftTier;
   return style.infoTier;
 }
 
