@@ -751,10 +751,24 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
   const remainingDrift = post.filter(isDrift);
   const remaining = remainingDrift.length;
+  // A touched resource whose verification RE-READ failed (skipped tier — a throttle /
+  // transient CC or SDK-override read error) is NOT proof the write landed: a write CC
+  // accepted (200) but silently rejected, followed by an unreadable re-read, would
+  // otherwise count as zero drift and print "CLEAN". Likewise a FAILED delete of an
+  // UNRECORDED `added` resource is re-added to `post` but is excluded from `isDrift`
+  // (unrecorded), so it too would read as CLEAN though the resource still lives. Treat
+  // both as UNCONFIRMED — never claim convergence we could not verify.
+  const unverified = post.filter((f) => touched.has(f.logicalId) && f.tier === 'skipped').length;
+  const unconfirmed = unverified + failedDeleteIds.size;
+  const converged = remaining === 0 && unconfirmed === 0;
   console.log(
-    remaining === 0
+    converged
       ? style.clean(`${stackName}: CLEAN after revert.`)
-      : style.drift(`${stackName}: ${remaining} drift(s) remain.`)
+      : remaining > 0
+        ? style.drift(`${stackName}: ${remaining} drift(s) remain.`)
+        : style.drift(
+            `${stackName}: revert applied, but ${unconfirmed} resource(s) could not be confirmed converged (see above).`
+          )
   );
   // unrecorded values are not drift, but silently dropping them here would read
   // as "all good" when a decision is still pending — one dim pointer line (R62).
@@ -765,11 +779,22 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         `  (${unrecordedLeft} unrecorded value(s) still await a baseline — run cdkrd record)`
       )
     );
+  // A touched resource we could not re-read leaves the revert UNVERIFIED — point the
+  // user at a re-run rather than implying success. (A failed delete already printed its
+  // own `FAILED:` line above and bumped the exit to 2 in the apply loop.)
+  if (unverified > 0)
+    console.log(
+      style.infoTier(
+        `  (${unverified} resource(s) could not be re-read to verify — re-run cdkrd check to confirm)`
+      )
+    );
   // Say WHICH drift survived — without this the user must re-run `check` just to
   // learn what didn't converge (R46). A terse id-per-line pointer, not a report;
   // capped so a no-baseline partial revert doesn't re-list 100+ lines (R52).
   for (const line of formatSurvivingDrift(remainingDrift)) console.log(line);
-  if (remaining > 0) worst = Math.max(worst, 1);
+  // remaining drift OR an unverifiable re-read both mean "not confirmed clean" → exit 1
+  // (a failed delete already set 2). Never return 0 ("converged") when we could not check.
+  if (remaining > 0 || unverified > 0) worst = Math.max(worst, 1);
   return { exit: worst, aborted: false };
 }
 
