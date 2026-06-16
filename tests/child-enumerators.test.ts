@@ -5,6 +5,7 @@ import {
   diffEventBusChildren,
   diffLambdaFunctionChildren,
   diffSnsTopicChildren,
+  diffUserPoolChildren,
 } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
@@ -333,6 +334,51 @@ describe('diffEventBusChildren (EventBridge rules)', () => {
         liveRules: [
           { name: 'a', arn: R('a') },
           { name: 'b', arn: R('b') },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffUserPoolChildren (Cognito user pool clients)', () => {
+  const POOL = 'us-east-1_AbCdEf123';
+
+  it('flags an out-of-band client added via the console (not in the template)', () => {
+    const added = diffUserPoolChildren({
+      userPoolId: POOL,
+      declaredClientIds: ['client-declared'],
+      liveClients: [
+        { id: 'client-declared', label: 'DeclaredClient' },
+        { id: 'client-console', label: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        identifier: `${POOL}|client-console`,
+        label: 'cdkrd-integ-oob',
+        live: { ClientId: 'client-console' },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite UserPoolId|ClientId', () => {
+    const added = diffUserPoolChildren({
+      userPoolId: POOL,
+      declaredClientIds: [],
+      liveClients: [{ id: 'client-x', label: 'X' }],
+    });
+    expect(added[0]!.identifier).toBe(`${POOL}|client-x`);
+  });
+
+  it('no drift when every live client is declared', () => {
+    expect(
+      diffUserPoolChildren({
+        userPoolId: POOL,
+        declaredClientIds: ['a', 'b'],
+        liveClients: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
         ],
       })
     ).toEqual([]);

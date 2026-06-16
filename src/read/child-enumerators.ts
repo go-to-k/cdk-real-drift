@@ -25,6 +25,11 @@ import {
   type Route as ApiGwV2Route,
 } from '@aws-sdk/client-apigatewayv2';
 import {
+  CognitoIdentityProviderClient,
+  ListUserPoolClientsCommand,
+  type UserPoolClientDescription,
+} from '@aws-sdk/client-cognito-identity-provider';
+import {
   EventBridgeClient,
   ListRulesCommand,
   type Rule as EventBridgeRule,
@@ -62,13 +67,15 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
-// Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth.
+// Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
+// Cognito User Pools (clients) the sixth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
   'AWS::Lambda::Function': enumerateLambdaFunctionChildren,
   'AWS::Events::EventBus': enumerateEventBusChildren,
+  'AWS::Cognito::UserPool': enumerateUserPoolChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -572,4 +579,82 @@ async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedC
     .map((r) => ({ name: r.Name, arn: r.Arn, label: r.Name }));
 
   return diffEventBusChildren({ declaredRuleNames, liveRules });
+}
+
+// ── Cognito ──────────────────────────────────────────────────────────────────
+// An `AWS::Cognito::UserPool` owns UserPoolClients (app clients), each a separate
+// CloudFormation resource. A console / CLI `create-user-pool-client` (someone wires a
+// new app client to a pool out of band) is invisible to cdk drift / CFn drift detection
+// (they only compare template-declared resources). The UserPool's own live model does
+// NOT reflect its clients, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::Cognito::UserPoolClient is the composite
+// `["/properties/UserPoolId","/properties/ClientId"]`, so the `identifier` is the
+// composite `UserPoolId|ClientId` — that is what CC GetResource / DeleteResource consume.
+
+// Pure diff: declared client ids + live inventory -> the added clients.
+export interface UserPoolChildInput {
+  userPoolId: string;
+  declaredClientIds: string[]; // physical ids (ClientIds) of AWS::Cognito::UserPoolClient
+  liveClients: { id: string; label?: string | undefined }[];
+}
+
+export function diffUserPoolChildren(input: UserPoolChildInput): AddedChild[] {
+  const { userPoolId, declaredClientIds, liveClients } = input;
+  const declared = new Set(declaredClientIds);
+  const added: AddedChild[] = [];
+  for (const c of liveClients) {
+    if (declared.has(c.id)) continue;
+    added.push({
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      identifier: `${userPoolId}|${c.id}`, // CC composite UserPoolId|ClientId
+      label: c.label ?? c.id,
+      live: { ClientId: c.id },
+    });
+  }
+  return added;
+}
+
+async function pageUserPoolClients(
+  client: CognitoIdentityProviderClient,
+  userPoolId: string
+): Promise<UserPoolClientDescription[]> {
+  const out: UserPoolClientDescription[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListUserPoolClientsCommand({ UserPoolId: userPoolId, NextToken: next, MaxResults: 60 })
+    );
+    out.push(...(res.UserPoolClients ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const userPoolId = parent.physicalId; // a UserPool's physical id IS its UserPoolId
+  if (!userPoolId) return [];
+
+  // Declared clients of THIS pool (Ref/GetAtt UserPoolId already resolved to the physical
+  // id by gather). A client's physical id IS its ClientId.
+  const declaredClientIds: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::Cognito::UserPoolClient' &&
+      r.declared.UserPoolId === userPoolId &&
+      r.physicalId
+    ) {
+      declaredClientIds.push(r.physicalId);
+    }
+  }
+
+  const client = new CognitoIdentityProviderClient({ region, ...READ_RETRY });
+  const clients = await pageUserPoolClients(client, userPoolId);
+  const liveClients = clients
+    .filter(
+      (c): c is UserPoolClientDescription & { ClientId: string } => typeof c.ClientId === 'string'
+    )
+    .map((c) => ({ id: c.ClientId, label: c.ClientName ?? c.ClientId }));
+
+  return diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
 }
