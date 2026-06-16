@@ -207,6 +207,54 @@ describe('SDK overrides', () => {
     expect(out2).not.toHaveProperty('SourceAccount');
   });
 
+  it('Lambda Permission: extracts PrincipalOrgID + FunctionUrlAuthType (security scoping); omits when absent', async () => {
+    // an org-scoped, function-URL permission — both security conditions present.
+    // Note the verbatim casing: lowercase `aws:`/`lambda:`, unlike `AWS:Source*`.
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          {
+            Action: 'lambda:InvokeFunctionUrl',
+            Principal: '*',
+            Condition: {
+              StringEquals: {
+                'aws:PrincipalOrgID': 'o-abc1234567',
+                'lambda:FunctionUrlAuthType': 'AWS_IAM',
+              },
+            },
+          },
+        ],
+      }),
+    });
+    const out = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunctionUrl' })
+    );
+    // both scoping values surface, so dropping the org condition or flipping the URL
+    // auth type to NONE out of band is now detectable drift
+    expect(out).toMatchObject({
+      PrincipalOrgID: 'o-abc1234567',
+      FunctionUrlAuthType: 'AWS_IAM',
+    });
+
+    // a plain permission (no such conditions) projects neither — no first-run noise
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          {
+            Action: 'lambda:InvokeFunction',
+            Principal: { Service: 's3.amazonaws.com' },
+            Condition: { ArnLike: { 'AWS:SourceArn': 'arn:aws:s3:::b' } },
+          },
+        ],
+      }),
+    });
+    const out2 = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction' })
+    );
+    expect(out2).not.toHaveProperty('PrincipalOrgID');
+    expect(out2).not.toHaveProperty('FunctionUrlAuthType');
+  });
+
   it('Lambda Permission: GetPolicy ResourceNotFoundException propagates (R1 intact)', async () => {
     const err = Object.assign(new Error('no policy'), { name: 'ResourceNotFoundException' });
     lambda.on(LambdaGetPolicyCommand).rejects(err);
