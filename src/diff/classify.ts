@@ -53,6 +53,31 @@ const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'LoadBalancerAttributes',
   'AWS::ElasticLoadBalancingV2::TargetGroup': 'TargetGroupAttributes',
 };
+
+// Identity-keyed object arrays where the template declares only a SUBSET of the elements
+// AWS always returns — keyed by the property -> the element's identity field. Cognito
+// UserPool `Schema` is the case: AWS returns all ~21 standard attributes (sub, email,
+// phone_number, …) plus any custom ones, every time, regardless of what the template
+// declares. Comparing the declared subset positionally against the full live array is a
+// length-mismatch whole-array FALSE positive on the first check of any pool that sets
+// `standardAttributes`/`customAttributes` (extremely common). The declared loop aligns
+// the declared elements to live BY this identity, compares them element-wise, and emits
+// the live-only elements as nested undeclared inventory (foldable, recordable) — so a
+// genuine out-of-band CUSTOM attribute addition still surfaces, but the standard-attribute
+// baseline no longer false-drifts. (Distinct from ELB bags, which are {Key,Value} and
+// revert by Key; these are rich objects compared by subset.)
+interface SubsetArraySpec {
+  idField: string;
+  // normalize the identity before matching: Cognito stores a custom attribute the
+  // template declares as `tier` under the live Name `custom:tier` (and a developer-only
+  // one as `dev:tier`), so an exact-Name match would treat the declared attribute as
+  // removed (a false declared drift). Strip those AWS-added prefixes on both sides.
+  normalizeId?: (id: string) => string;
+}
+const stripCognitoAttrPrefix = (id: string): string => id.replace(/^(custom|dev):/, '');
+const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpec>> = {
+  'AWS::Cognito::UserPool': { Schema: { idField: 'Name', normalizeId: stripCognitoAttrPrefix } },
+};
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&
   typeof t === 'object' &&
@@ -350,13 +375,68 @@ export function classifyResource(
       }
       continue;
     }
+    // Per-type identity-keyed SUBSET arrays (Cognito UserPool.Schema): the template
+    // declares a SUBSET of the elements AWS always returns. Align the declared elements
+    // to live BY identity so they compare element-wise (no whole-array length-mismatch
+    // FALSE positive), and emit the live-only elements as nested undeclared inventory.
+    const subsetSpec = IDENTITY_KEYED_SUBSET_ARRAYS[resourceType]?.[k];
     // Per-type unordered OBJECT-array sets (R88: EC2 SecurityGroup ingress/egress) —
     // rule objects with no single identity field that AWS returns reordered. Sort BOTH
     // sides by canonical JSON before the positional diff so a reorder is not false
     // drift; a genuine rule change still differs after the sort.
     const unorderedObjArray = UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k);
-    const declaredVal = unorderedObjArray ? sortUnorderedObjectArray(v) : v;
-    const liveVal = unorderedObjArray ? sortUnorderedObjectArray(live[k]) : live[k];
+    let declaredVal: unknown = v;
+    let liveVal: unknown = live[k];
+    if (subsetSpec && Array.isArray(v) && Array.isArray(live[k])) {
+      const { idField, normalizeId } = subsetSpec;
+      const idOf = (e: unknown): string | undefined => {
+        if (!isNestedObject(e) || typeof e[idField] !== 'string') return undefined;
+        const raw = e[idField] as string;
+        return normalizeId ? normalizeId(raw) : raw;
+      };
+      const liveById = new Map<string, unknown>();
+      for (const el of live[k] as unknown[]) {
+        const id = idOf(el);
+        if (id !== undefined) liveById.set(id, el);
+      }
+      const declaredIds = new Set<string>();
+      const declaredSorted: unknown[] = [];
+      const liveAligned: unknown[] = [];
+      // align each declared element to its live match by identity (undefined if the
+      // declared attribute was removed from the pool -> a genuine declared drift). Set
+      // the idField to the NORMALIZED id on both sides so the per-element compare below
+      // doesn't false-flag the prefix difference itself (declared `tier` vs live
+      // `custom:tier`) — the identity is already matched, the rest compares by value.
+      for (const dEl of [...(v as unknown[])].sort((a, b) =>
+        (idOf(a) ?? '') < (idOf(b) ?? '') ? -1 : 1
+      )) {
+        const id = idOf(dEl);
+        if (id === undefined) continue;
+        declaredIds.add(id);
+        const match = liveById.get(id);
+        declaredSorted.push(isNestedObject(dEl) ? { ...dEl, [idField]: id } : dEl);
+        liveAligned.push(isNestedObject(match) ? { ...match, [idField]: id } : match);
+      }
+      // live-only elements (the always-present standard attributes, OR an out-of-band
+      // custom attribute the template never declared) -> nested undeclared inventory
+      for (const lEl of live[k] as unknown[]) {
+        const id = idOf(lEl);
+        if (id !== undefined && !declaredIds.has(id))
+          findings.push({
+            tier: 'undeclared',
+            logicalId,
+            resourceType,
+            path: `${k}[${id}]`,
+            actual: lEl,
+            nested: true,
+          });
+      }
+      declaredVal = declaredSorted;
+      liveVal = liveAligned;
+    } else if (unorderedObjArray) {
+      declaredVal = sortUnorderedObjectArray(v);
+      liveVal = sortUnorderedObjectArray(live[k]);
+    }
     // R95: the live side is compared in FULL — no subset projection. An R75
     // generic `projectLiveToDeclaredSubset` used to drop live elements whose
     // identity key was not declared, to mute the extra default attributes ELB
