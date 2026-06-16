@@ -5,6 +5,7 @@ import {
   hasCoverageGap,
   nestedStackWarning,
   preDeployFindings,
+  strictCoverageExit,
   synthKey,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
@@ -281,6 +282,17 @@ describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () =
 
   it('hasCoverageGap is false when everything was read and there are no nested stacks', () => {
     expect(hasCoverageGap([F('undeclared'), F('declared')], [dr('AWS::SNS::Topic')])).toBe(false);
+  });
+
+  it('strictCoverageExit is 1 only when --strict AND a coverage gap (else 0)', () => {
+    const gap = [skipped('A')];
+    const clean = [F('declared')];
+    const res = [dr('AWS::SNS::Topic')];
+    expect(strictCoverageExit(true, gap, res)).toBe(1); // strict + gap → fail
+    expect(strictCoverageExit(false, gap, res)).toBe(0); // gap but no --strict → 0
+    expect(strictCoverageExit(true, clean, res)).toBe(0); // strict but no gap → 0
+    // a nested stack is a coverage gap too (the value shared with the --pre-deploy path)
+    expect(strictCoverageExit(true, clean, [dr('AWS::CloudFormation::Stack')])).toBe(1);
   });
 });
 
