@@ -109,10 +109,22 @@ function isUnderCreateOnly(findingPath: string, createOnlyPaths: readonly string
   const f = pathSegments(findingPath);
   for (const co of createOnlyPaths) {
     const c = co.split('.');
-    if (c.length > f.length) continue; // can't be a prefix of the finding path
+    // Block when EITHER path is a prefix of the other (segment-wise; a `*` on either
+    // side is a wildcard):
+    //  - create-only path ⊆ finding path: the finding IS, or is nested under, a
+    //    create-only property — an in-place patch on it is rejected (the nested
+    //    create-only fix);
+    //  - finding path ⊆ create-only path: the finding is a PARENT of a create-only
+    //    property. drift-calculator emits a finding at the PARENT path for a
+    //    length-/shape-changed array or object, so reverting it rewrites the whole
+    //    subtree — INCLUDING the create-only descendant — which AWS also rejects as a
+    //    replacement. Without this the revert proceeded and failed only at apply time
+    //    (e.g. a length change in an object array whose elements carry a create-only
+    //    sub-field, like EFS AccessPoint PosixUser under a replaced parent).
+    const common = Math.min(c.length, f.length);
     let match = true;
-    for (let i = 0; i < c.length; i++) {
-      if (c[i] !== '*' && c[i] !== f[i]) {
+    for (let i = 0; i < common; i++) {
+      if (c[i] !== '*' && f[i] !== '*' && c[i] !== f[i]) {
         match = false;
         break;
       }
