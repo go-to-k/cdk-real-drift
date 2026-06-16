@@ -213,16 +213,25 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
   // BudgetLimit is in the projection (R67): once R65 made budgets readable, a
   // declared BudgetLimit compared against a projection WITHOUT it reported
   // `desired={...} actual=undefined` false drift. The live Amount is a string
-  // ("5.0") vs the declared number (5) — isStringlyEqualScalar's numeric arm
-  // folds that. The projection otherwise stays deliberately thin: nested
-  // live-only keys are ignored by the declared compare, but computed fields
-  // (CalculatedSpend) must never be offered for comparison at all.
+  // ("5.0") vs the declared number (5) — isStringlyEqualScalar's numeric arm folds that.
+  //
+  // CostFilters is the budget's SCOPE — which services/accounts/tags it watches.
+  // Omitting it made an out-of-band scope change (e.g. narrowing a budget from all
+  // services to one) undetectable: a declared CostFilters became a `readGap` (not
+  // compared) and an undeclared one was wholly invisible. FP-safe to add: DescribeBudget
+  // returns `{}` (or omits it) for an unfiltered budget, which `isTrivialEmpty`
+  // suppresses, so a budget that declares no filters stays CLEAN; a declared filter set
+  // is compared, and one added out of band surfaces. The projection still stays thin
+  // where it must: COMPUTED fields (CalculatedSpend) and AWS-defaulted blobs (TimePeriod's
+  // 2087 end date, the full CostTypes default set) are deliberately NOT offered — they
+  // would be live-only noise.
   return {
     Budget: {
       BudgetName: b.BudgetName,
       BudgetType: b.BudgetType,
       TimeUnit: b.TimeUnit,
       ...(b.BudgetLimit !== undefined && { BudgetLimit: b.BudgetLimit }),
+      ...(b.CostFilters !== undefined && { CostFilters: b.CostFilters }),
     },
   };
 };

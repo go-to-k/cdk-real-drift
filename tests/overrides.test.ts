@@ -230,13 +230,14 @@ describe('SDK overrides', () => {
     ).toBeUndefined();
   });
 
-  it('Budgets: reads the budget by name + account, projecting BudgetLimit (R67)', async () => {
+  it('Budgets: projects BudgetLimit + CostFilters (scope), never the computed CalculatedSpend', async () => {
     budgets.on(DescribeBudgetCommand).resolves({
       Budget: {
         BudgetName: 'b',
         BudgetType: 'COST',
         TimeUnit: 'MONTHLY',
         BudgetLimit: { Amount: '40.0', Unit: 'USD' },
+        CostFilters: { Service: ['Amazon Simple Storage Service'] }, // the budget's SCOPE — must be compared
         CalculatedSpend: { ActualSpend: { Amount: '12.3', Unit: 'USD' } }, // computed — never projected
       },
     });
@@ -247,6 +248,7 @@ describe('SDK overrides', () => {
         BudgetType: 'COST',
         TimeUnit: 'MONTHLY',
         BudgetLimit: { Amount: '40.0', Unit: 'USD' },
+        CostFilters: { Service: ['Amazon Simple Storage Service'] },
       },
     });
   });

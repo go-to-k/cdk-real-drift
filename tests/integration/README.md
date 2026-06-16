@@ -273,6 +273,21 @@ silent CLEAN. Deploys + destroys a real (tiny) Lambda.
 cd freeform-strip && npm install && bash verify-freeform-strip.sh
 ```
 
+## budget-scope / verify-budget-scope.sh
+
+The false-NEGATIVE guard for narrow SDK-override projections. An
+`AWS::Budgets::Budget` declaring `CostFilters` (its SCOPE — which service it
+watches). The Budgets override reader used to project a thin model WITHOUT
+`CostFilters`, so an out-of-band scope change was undetectable (the declared
+`CostFilters` became a benign `readGap`). The script flips the filter from S3 to
+EC2 out of band and asserts `check` DETECTS the change (`Budget.CostFilters.Service`,
+exit 1) — previously a silent CLEAN. Budgets is global (us-east-1). Deploys +
+destroys a (free) budget.
+
+```bash
+cd budget-scope && npm install && bash verify-budget-scope.sh
+```
+
 ## noise
 
 The false-positive guard. Deploys resources that DECLARE properties whose live

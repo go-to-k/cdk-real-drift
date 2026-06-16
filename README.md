@@ -518,6 +518,13 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   prints a `warning:` that the deployed template may not match live reality so
   results may be transient. Only stable `*_COMPLETE` states are a fully reliable
   comparison.
+- **SDK-override coverage.** The handful of CC-gap types read via an SDK override
+  (see "CC-gap types" above) compare the properties that override returns. A few
+  readers project a subset of the resource: a declared property the reader doesn't
+  return shows as `readGap` (not silently CLEAN — it's surfaced), and an undeclared
+  one on an unprojected property isn't compared. Coverage is widened as needed
+  (e.g. a budget's `CostFilters` scope is compared); fully CC-readable types (the
+  vast majority) always get the complete live model.
 
 ## FAQ
 
