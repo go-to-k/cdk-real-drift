@@ -43,6 +43,25 @@ describe('AWS::EC2::EIP SDK override', () => {
     expect(call.args[0].input).toEqual({ AllocationIds: ['eipalloc-123'] });
   });
 
+  it('does NOT project NetworkInterfaceId (not a declarable EIP property) and DOES project PublicIpv4Pool (WAVE22)', async () => {
+    ec2.on(DescribeAddressesCommand).resolves({
+      Addresses: [
+        {
+          AllocationId: 'eipalloc-assoc',
+          Domain: 'vpc',
+          PublicIp: '52.0.0.9',
+          InstanceId: 'i-xyz',
+          NetworkInterfaceId: 'eni-deadbeef', // AWS returns this for an associated EIP — must NOT surface
+          PublicIpv4Pool: 'ipv4pool-ec2-abc', // a declarable property — must surface
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::EIP'](ctx('eipalloc-assoc'));
+    // NetworkInterfaceId would have false-flagged an undeclared drift on every associated EIP
+    expect(out).not.toHaveProperty('NetworkInterfaceId');
+    expect(out).toMatchObject({ InstanceId: 'i-xyz', PublicIpv4Pool: 'ipv4pool-ec2-abc' });
+  });
+
   it('reads a classic EIP by public IP when physical id is not an alloc id', async () => {
     ec2.on(DescribeAddressesCommand).resolves({
       Addresses: [{ Domain: 'standard', PublicIp: '52.0.0.2' }],
