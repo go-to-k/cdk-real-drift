@@ -2043,10 +2043,15 @@ describe('Cognito UserPool Schema identity-keyed subset (WAVE23 — declared att
     const findings = classifyResource(pool(declared), live, bare);
     // no whole-array declared FALSE positive (the prefix mismatch is normalized away)
     expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-    // the always-present standard attributes surface as foldable nested undeclared inventory
-    expect(findings.filter((f) => f.tier === 'undeclared' && f.nested).length).toBe(
-      liveStandard.length
-    );
+    // the always-present standard attributes each surface as a foldable nested undeclared
+    // inventory element (server-enriched sub-keys of the matched declared attrs may add
+    // more nested undeclared findings — all foldable, none a declared drift)
+    const undeclaredPaths = findings
+      .filter((f) => f.tier === 'undeclared' && f.nested)
+      .map((f) => f.path);
+    for (const n of ['sub', 'phone_number', 'address', 'birthdate', 'name']) {
+      expect(undeclaredPaths).toContain(`Schema[${n}]`);
+    }
   });
 
   it('an out-of-band change to a DECLARED attribute is reported as declared drift', () => {
@@ -2076,5 +2081,69 @@ describe('Cognito UserPool Schema identity-keyed subset (WAVE23 — declared att
       (f) => f.tier === 'undeclared' && f.path === 'Schema[rogue]'
     );
     expect(undeclared).toHaveLength(1);
+  });
+});
+
+describe('Name-keyed object arrays are identity-aligned (WAVE24 — ECS env vars, Alarm dimensions)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const task = (env: { Name: string; Value: string }[]) => ({
+    logicalId: 'Task',
+    resourceType: 'AWS::ECS::TaskDefinition',
+    physicalId: 'p',
+    declared: { ContainerDefinitions: [{ Name: 'app', Environment: env }] },
+  });
+
+  it('a reordered ECS Environment array is NOT false declared drift (Cloud Control shuffles it)', () => {
+    const declared = task([
+      { Name: 'ZEBRA', Value: '1' },
+      { Name: 'ALPHA', Value: '2' },
+      { Name: 'MIKE', Value: '3' },
+    ]);
+    // AWS returns the same set in a different order
+    const live = {
+      ContainerDefinitions: [
+        {
+          Name: 'app',
+          Environment: [
+            { Name: 'MIKE', Value: '3' },
+            { Name: 'ZEBRA', Value: '1' },
+            { Name: 'ALPHA', Value: '2' },
+          ],
+        },
+      ],
+    };
+    expect(classifyResource(declared, live, bare).filter((f) => f.tier === 'declared')).toEqual([]);
+  });
+
+  it('a genuine ECS Environment value change still surfaces as declared drift', () => {
+    const declared = task([
+      { Name: 'ZEBRA', Value: '1' },
+      { Name: 'ALPHA', Value: '2' },
+    ]);
+    const live = {
+      ContainerDefinitions: [
+        {
+          Name: 'app',
+          Environment: [
+            { Name: 'ALPHA', Value: 'CHANGED' },
+            { Name: 'ZEBRA', Value: '1' },
+          ],
+        },
+      ],
+    };
+    const declaredDrift = classifyResource(declared, live, bare).filter(
+      (f) => f.tier === 'declared'
+    );
+    expect(declaredDrift).toHaveLength(1);
+    expect(declaredDrift[0]).toMatchObject({ actual: 'CHANGED' });
   });
 });

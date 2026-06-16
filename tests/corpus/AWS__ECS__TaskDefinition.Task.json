@@ -113,5 +113,16 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Task",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-harvest6:1",
+      "constructPath": "CdkrdIntegHarvest6/Task"
+    }
+  ]
 }

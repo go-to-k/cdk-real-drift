@@ -50,6 +50,11 @@ node -e '
   if (svc.some(f => f.tier === "skipped")) { console.error("ECS Service was SKIPPED — adapter not applied"); process.exit(1); }
   if (svc.some(f => f.tier === "declared")) { console.error("unexpected declared drift pre-mutation:\n"+JSON.stringify(svc,null,2)); process.exit(1); }
   console.log("ECS Service read, no false declared drift ✓");
+  // WAVE24: the TaskDefinition declares 4 env vars; Cloud Control returns them shuffled.
+  // There must be NO declared drift on the TaskDefinition (the Name-keyed-array reorder FP).
+  const task = (j.findings||[]).filter(f => f.resourceType === "AWS::ECS::TaskDefinition" && f.tier === "declared");
+  if (task.length) { console.error("false declared drift on the TaskDefinition (env-var reorder FP):\n"+JSON.stringify(task,null,2)); process.exit(1); }
+  console.log("TaskDefinition env vars read, no reorder false drift ✓");
 ' || fail "ECS Service not readable / false drift"
 
 echo "=== drift: DesiredCount 0 -> 1 out of band ==="
