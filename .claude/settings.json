@@ -1,5 +1,5 @@
 {
-  "//": "PreToolUse hooks for cdk-real-drift. The repo now has a GitHub remote and a PR-based flow, so the cdkd-derived branch-protection and verify-pr-merge gates are active (R83). Wired (per .markgate.yml, ONLY to gates with companion skills): check-gate blocks `git commit` unless check+docs markers are fresh; branch-gate blocks commit/push directly on main; verify-pr-gate blocks `gh pr create`/`gh pr merge` unless the verify-pr marker is fresh; non-english-text-gate blocks `gh pr create`/`edit`/`merge` when the PR diff contains non-English text (the OSS English-only rule). NOT wired: pr-review and integ-* — they have no companion skill in cdkrd (pr-review is multi-agent; cdkrd has no providers/state/destroy integ), so wiring them would brick the flow.",
+  "//": "PreToolUse hooks for cdk-real-drift. The repo now has a GitHub remote and a PR-based flow, so the cdkd-derived branch-protection and verify-pr-merge gates are active (R83). Wired (per .markgate.yml, ONLY to gates with companion skills): check-gate blocks `git commit` unless check+docs markers are fresh; branch-gate blocks commit/push directly on main; stale-base-gate blocks `git push` of a branch that sits on origin/main yet reverts recent main work (the stale-base soft-reset clobber); verify-pr-gate blocks `gh pr create`/`gh pr merge` unless the verify-pr marker is fresh (EXEMPT for docs/tooling-only diffs touching no src/**); non-english-text-gate blocks `gh pr create`/`edit`/`merge` when the PR diff contains non-English text (the OSS English-only rule). NOT wired: pr-review and integ-* — they have no companion skill in cdkrd (pr-review is multi-agent; cdkrd has no providers/state/destroy integ), so wiring them would brick the flow.",
   "hooks": {
     "PreToolUse": [
       {
@@ -18,6 +18,13 @@
             "if": "Bash(git commit*) or Bash(git push*) or Bash(git -C * commit*) or Bash(git -C * push*) or Bash(cd * && git commit*) or Bash(cd * && git push*)",
             "timeout": 10,
             "statusMessage": "Checking target branch is not main..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/stale-base-gate.sh",
+            "if": "Bash(git push*) or Bash(git -C * push*) or Bash(cd * && git push*)",
+            "timeout": 10,
+            "statusMessage": "Checking branch does not stale-base-clobber main..."
           },
           {
             "type": "command",
