@@ -5,6 +5,7 @@ import {
   diffEventBusChildren,
   diffGraphQLApiChildren,
   diffLambdaFunctionChildren,
+  diffLoadBalancerChildren,
   diffLogGroupChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
@@ -465,6 +466,49 @@ describe('diffGraphQLApiChildren (AppSync data sources)', () => {
         liveDataSources: [
           { name: 'a', arn: DS('a') },
           { name: 'b', arn: DS('b') },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLoadBalancerChildren (ELBv2 listeners)', () => {
+  const LSN = (port: string) =>
+    `arn:aws:elasticloadbalancing:us-east-1:111122223333:listener/app/alb/abc/${port}`;
+
+  it('flags an out-of-band listener added via the console (not in the template)', () => {
+    const added = diffLoadBalancerChildren({
+      declaredListenerArns: [LSN('declared')],
+      liveListeners: [
+        { arn: LSN('declared'), label: 'HTTP:80' },
+        { arn: LSN('console'), label: 'HTTP:8080' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+        identifier: LSN('console'),
+        label: 'HTTP:8080',
+        live: { ListenerArn: LSN('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare ListenerArn (CC primaryIdentifier, not a composite)', () => {
+    const added = diffLoadBalancerChildren({
+      declaredListenerArns: [],
+      liveListeners: [{ arn: LSN('x'), label: 'HTTPS:443' }],
+    });
+    expect(added[0]!.identifier).toBe(LSN('x'));
+  });
+
+  it('no drift when every live listener is declared', () => {
+    expect(
+      diffLoadBalancerChildren({
+        declaredListenerArns: [LSN('a'), LSN('b')],
+        liveListeners: [
+          { arn: LSN('a'), label: 'HTTP:80' },
+          { arn: LSN('b'), label: 'HTTPS:443' },
         ],
       })
     ).toEqual([]);
