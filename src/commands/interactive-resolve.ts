@@ -277,8 +277,9 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
 }
 
 async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
-  // reconciled = the report's declared + undeclared findings; ignoreStack shows its own
-  // multiselect (default all) when !yes, mirroring `cdkrd ignore`.
+  // pass the reconciled findings; ignoreStack filters to the ignorable tiers
+  // (declared / undeclared / added) and shows its own multiselect (default all) when
+  // !yes, mirroring `cdkrd ignore`.
   const result = await ignoreStack({
     stackName: p.stackName,
     findings: p.reconciled,

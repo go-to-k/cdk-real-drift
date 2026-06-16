@@ -641,15 +641,15 @@ note suggesting a re-`record` (the recorded set may be stale). Skipped under
 
 ## 9. Tier semantics (the output contract)
 
-| tier         | meaning                                                                  | exit-affecting |
-| ------------ | ------------------------------------------------------------------------ | -------------- |
-| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)       | yes (always)   |
-| `declared`   | a declared property whose live value differs from the template           | yes (always)   |
-| `undeclared` | a live property not in the template, after noise subtraction             | yes (default)  |
-| `ignored`    | a declared/undeclared finding matched a `.cdkrd/config.json` ignore rule | no             |
-| `readGap`    | a declared property the live read can't return (CC can't read back)      | no             |
-| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)      | no             |
-| `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource)  | no             |
+| tier         | meaning                                                                 | exit-affecting |
+| ------------ | ----------------------------------------------------------------------- | -------------- |
+| `deleted`    | a resource present in the template but gone from AWS (deleted OOB)      | yes (always)   |
+| `declared`   | a declared property whose live value differs from the template          | yes (always)   |
+| `undeclared` | a live property not in the template, after noise subtraction            | yes (default)  |
+| `ignored`    | a declared/undeclared/added finding matched a `.cdkrd/config.json` rule | no             |
+| `readGap`    | a declared property the live read can't return (CC can't read back)     | no             |
+| `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)     | no             |
+| `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource) | no             |
 
 `deleted` is the most blatant drift — a resource the template still declares no
 longer exists in AWS (released/deleted via the console, another tool, etc.). The

@@ -102,8 +102,9 @@ ApiStack: drift found — what do you want to do?
 - **Record all** records the undeclared values in the baseline, so `check` stays
   CLEAN until they change again (a multiselect lets you record some and keep
   reporting others). Keeps watching.
-- **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared
-  _or_ undeclared) stops being reported entirely. Stops watching.
+- **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared,
+  undeclared, _or_ an out-of-band **added** resource) stops being reported entirely.
+  Stops watching.
 - **Decide per finding** opens a picker to assign a different action to each
   finding. On a stack with many findings, **just start typing to filter** the rows
   by name (↑↓ move · space cycles the row's actions · → applies the focused action
@@ -160,8 +161,8 @@ the choice:
 
 The one distinction to keep straight: **`record` keeps watching** (it snapshots
 the current undeclared value and re-surfaces drift if that value later changes),
-while **`ignore` stops watching** (it writes a path rule — declared _or_
-undeclared — and the property is never reported again). `record` is
+while **`ignore` stops watching** (it writes a path rule — declared, undeclared,
+_or_ an out-of-band added resource — and it is never reported again). `record` is
 undeclared-only; `ignore` is the only in-tool way to accept a **declared** drift
 without editing code or reverting.
 

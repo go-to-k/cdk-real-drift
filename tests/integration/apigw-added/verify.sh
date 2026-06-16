@@ -59,4 +59,14 @@ grep -q "ANY /" /tmp/cdk-real-drift-integ-added.out || fail "ANY / method not re
 # must re-resolve to the live root id and NOT false-positive as added (added=1, not 2).
 grep -q "added=1" /tmp/cdk-real-drift-integ-added.out || fail "expected exactly added=1 (declared GET / must not false-positive)"
 
+echo "=== ignore the added method (writes .cdkrd/config.json) ==="
+$CLI ignore "$STACK" --region "$REGION" --yes || fail "ignore"
+grep -q "ANY" .cdkrd/config.json || fail "ignore rule for the added method not written to config.json"
+
+echo "=== check should now be CLEAN (added method ignored) ==="
+$CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added-ignored.out
+rc=${PIPESTATUS[0]}
+[ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after ignore, got $rc"
+grep -q "added=" /tmp/cdk-real-drift-integ-added-ignored.out && fail "added drift still reported after ignore" || true
+
 echo "INTEG PASS"
