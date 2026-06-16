@@ -132,6 +132,15 @@ describe('applyIgnores', () => {
     expect(f?.tier).toBe('ignored');
   });
 
+  it('clears the unrecorded flag when re-tagging to ignored (ignore STOPS watching, WAVE22)', () => {
+    // applyBaseline marks a not-yet-recorded undeclared value `unrecorded`; once ignored
+    // it is a DECIDED value and must not still surface under [Not Recorded] / "run record".
+    const f = { ...undeclared('MyTable', 'ProvisionedThroughput'), unrecorded: true };
+    const [out] = ign([f], 'S', cfg([p('*.ProvisionedThroughput')]));
+    expect(out?.tier).toBe('ignored');
+    expect(out?.unrecorded).toBeUndefined();
+  });
+
   it('parent-segment rule covers child paths', () => {
     const [f] = ign([undeclared('Role', 'Policies.0.PolicyName')], 'S', cfg([p('Role.Policies')]));
     expect(f?.tier).toBe('ignored');
