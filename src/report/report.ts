@@ -367,9 +367,33 @@ export function stackSeparator(log: (s: string) => void = console.log): () => vo
   };
 }
 const VALUE_CAP = 200;
+
+// Slice on SAFE boundaries so truncating a JSON-stringified value never splits a
+// surrogate pair (a lone surrogate renders as the replacement char `�`) or a JSON
+// escape (a dangling odd run of backslashes would escape the following `…`). Trims a
+// leading low-surrogate / trailing high-surrogate left by a mid-pair cut and a
+// trailing odd backslash run left by a mid-escape cut. Cosmetic-only (TEXT mode; the
+// `--json` path emits the raw untruncated value), but keeps long policy-doc values
+// from rendering as corrupted `\uD83C…` / `…\\n\\…`.
+export function safeSlice(s: string, start: number, end: number): string {
+  let out = s.slice(start, end);
+  if (out.length > 0) {
+    const first = out.charCodeAt(0);
+    if (first >= 0xdc00 && first <= 0xdfff) out = out.slice(1); // leading low surrogate
+  }
+  if (out.length > 0) {
+    const last = out.charCodeAt(out.length - 1);
+    if (last >= 0xd800 && last <= 0xdbff) out = out.slice(0, -1); // trailing high surrogate
+  }
+  let bs = 0;
+  for (let k = out.length - 1; k >= 0 && out[k] === '\\'; k--) bs++;
+  if (bs % 2 === 1) out = out.slice(0, -1); // trailing half-escape (odd backslash run)
+  return out;
+}
+
 function j(v: unknown): string {
   const s = JSON.stringify(v);
-  return s && s.length > VALUE_CAP ? s.slice(0, VALUE_CAP) + '…' : (s ?? String(v));
+  return s && s.length > VALUE_CAP ? safeSlice(s, 0, VALUE_CAP) + '…' : (s ?? String(v));
 }
 
 // Truncate a desired/actual (or baseline/actual) PAIR so the FIRST point at which the
@@ -388,7 +412,7 @@ export function jPair(a: unknown, b: unknown): { a: string; b: string } {
   const CONTEXT = 40; // chars of shared lead-in kept before the divergence, for orientation
   const start = Math.max(0, i - CONTEXT);
   const window = (s: string): string => {
-    let out = s.slice(start, start + VALUE_CAP);
+    let out = safeSlice(s, start, start + VALUE_CAP);
     if (start > 0) out = `…${out}`;
     if (start + VALUE_CAP < s.length) out = `${out}…`;
     return out;

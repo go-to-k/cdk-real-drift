@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { jPair, report, stackSeparator } from '../src/report/report.js';
+import { jPair, report, safeSlice, stackSeparator } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -596,5 +596,47 @@ describe('jPair (pair-aware truncation keeps the divergence visible)', () => {
   it('a long value vs a short one still shows where they diverge', () => {
     const { a, b } = jPair('z'.repeat(250), 'z'.repeat(10));
     expect(a).not.toBe(b);
+  });
+});
+
+describe('safeSlice (boundary-safe truncation — no split surrogate / escape)', () => {
+  const hasLoneSurrogate = (s: string): boolean => {
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c >= 0xd800 && c <= 0xdbff) {
+        const n = s.charCodeAt(i + 1);
+        if (!(n >= 0xdc00 && n <= 0xdfff)) return true; // high not followed by low
+        i++;
+      } else if (c >= 0xdc00 && c <= 0xdfff) {
+        return true; // lone low surrogate
+      }
+    }
+    return false;
+  };
+
+  it('never ends on a half surrogate pair (tail cut through an emoji)', () => {
+    const s = `${'a'.repeat(9)}🎉${'b'.repeat(5)}`; // emoji straddles index 9-10
+    expect(hasLoneSurrogate(safeSlice(s, 0, 10))).toBe(false); // would cut the pair
+    expect(hasLoneSurrogate(s.slice(0, 10))).toBe(true); // the unsafe slice DOES split it
+  });
+
+  it('never starts on a half surrogate pair (head cut through an emoji)', () => {
+    const s = `${'a'.repeat(9)}🎉${'b'.repeat(5)}`;
+    expect(hasLoneSurrogate(safeSlice(s, 10, 16))).toBe(false); // start mid-pair -> low dropped
+  });
+
+  it('never ends on an odd run of backslashes (tail cut through a \\n escape)', () => {
+    const s = JSON.stringify(`${'a'.repeat(8)}\n\n\n${'b'.repeat(5)}`); // has \\n escapes
+    // find a cut landing right after a backslash
+    const idx = s.indexOf('\\') + 1; // between the \ and the n
+    const out = safeSlice(s, 0, idx);
+    // count trailing backslashes — must be EVEN (no dangling half-escape)
+    let bs = 0;
+    for (let k = out.length - 1; k >= 0 && out[k] === '\\'; k--) bs++;
+    expect(bs % 2).toBe(0);
+  });
+
+  it('leaves a clean boundary untouched', () => {
+    expect(safeSlice('hello world', 0, 5)).toBe('hello');
   });
 });
