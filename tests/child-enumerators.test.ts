@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayChildren,
   diffApiGatewayV2Children,
+  diffLambdaFunctionChildren,
   diffSnsTopicChildren,
 } from '../src/read/child-enumerators.js';
 
@@ -247,6 +248,48 @@ describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
         liveSubscriptions: [
           { arn: SUB('a'), label: 'sqs q' },
           { arn: SUB('b'), label: 'lambda f' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLambdaFunctionChildren (Lambda event source mappings)', () => {
+  const Q = (n: string) => `arn:aws:sqs:us-east-1:111122223333:${n}`;
+
+  it('flags an out-of-band event source mapping (not in the template)', () => {
+    const added = diffLambdaFunctionChildren({
+      declaredMappingIds: ['uuid-declared'],
+      liveMappings: [
+        { id: 'uuid-declared', label: Q('declared') },
+        { id: 'uuid-console', label: Q('console') },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::EventSourceMapping',
+        identifier: 'uuid-console',
+        label: Q('console'),
+        live: { Id: 'uuid-console' },
+      },
+    ]);
+  });
+
+  it('identifier is the bare mapping UUID (CC primaryIdentifier)', () => {
+    const added = diffLambdaFunctionChildren({
+      declaredMappingIds: [],
+      liveMappings: [{ id: 'uuid-x', label: Q('x') }],
+    });
+    expect(added[0]!.identifier).toBe('uuid-x');
+  });
+
+  it('no drift when every live mapping is declared', () => {
+    expect(
+      diffLambdaFunctionChildren({
+        declaredMappingIds: ['a', 'b'],
+        liveMappings: [
+          { id: 'a', label: Q('a') },
+          { id: 'b', label: Q('b') },
         ],
       })
     ).toEqual([]);
