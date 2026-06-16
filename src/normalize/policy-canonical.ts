@@ -10,7 +10,17 @@ function isObj(v: unknown): v is Record<string, unknown> {
 }
 
 function isPolicyDoc(v: unknown): v is Record<string, unknown> {
-  return isObj(v) && 'Statement' in v;
+  if (!isObj(v) || !('Statement' in v)) return false;
+  // Require `Statement` to actually look like IAM statements — an array of (or a
+  // single) object carrying an `Effect` (Allow/Deny) — NOT just any value under a key
+  // literally named "Statement". Otherwise a user free-form field named `Statement`
+  // (a string, number, or arbitrary object) would be force-canonicalized into policy
+  // shape: a scalar wrapped into a one-element array, sibling keys reordered, two
+  // different values equated (the cc-api-strip free-form-map mangling class). Mirrors
+  // isPolicyStatementArray in classify.ts.
+  const looksLikeStatement = (el: unknown): boolean => isObj(el) && 'Effect' in el;
+  const s = v.Statement;
+  return Array.isArray(s) ? s.every(looksLikeStatement) : looksLikeStatement(s);
 }
 
 /** Parse a (possibly URL-encoded) JSON string into a policy doc, or null. */
@@ -113,14 +123,20 @@ function normalizeAccountPrincipal(v: unknown): unknown {
 
 export function canonicalizePolicy(doc: Record<string, unknown>): Record<string, unknown> {
   const statements = Array.isArray(doc.Statement) ? doc.Statement : [doc.Statement];
+  // Preserve ALL top-level keys (only `Statement` is rewritten). A policy document
+  // may carry a doc-level `Id` (IAM/S3 policy grammar) or other top-level fields; a
+  // prior whitelist of just `Statement`/`Version` DROPPED them, so two policies that
+  // differ ONLY in `Id` (or any sibling key) canon-equalled — hiding an out-of-band
+  // `Id`/sibling change (a false negative).
   const out: Record<string, unknown> = {
+    ...doc,
     Statement: statements.map(canonicalizeStatement).sort(byJson),
   };
   // Keep Version only if present. Filling a default would create a false
   // declared-drift when the template omits Version but AWS stored a literal
   // (e.g. legacy "2008-10-17"); under subset comparison an absent declared
   // Version simply isn't compared, which is the correct outcome.
-  if (doc.Version !== undefined) out.Version = doc.Version;
+  if (doc.Version === undefined) delete out.Version;
   return out;
 }
 
