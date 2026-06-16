@@ -53,6 +53,29 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::If': ['IsProd', 'yes', 'no'] }, c)).toBe('yes');
   });
 
+  // CFn evaluates Fn::Equals as a STRING comparison; a Number/Boolean parameter is
+  // carried as a string, so it must equal a numeric/boolean template LITERAL — else the
+  // wrong Fn::If branch bakes a corrupted declared value into the diff.
+  it('Fn::Equals coerces a stringified Number/Boolean param to a numeric/boolean literal', () => {
+    const cNum = ctx({
+      params: { Env: 'prod', MaxAZs: '2' }, // a Number param, stringified
+      conditions: { HasTwo: { 'Fn::Equals': [{ Ref: 'MaxAZs' }, 2] } }, // literal NUMBER
+    });
+    expect(resolve({ 'Fn::If': ['HasTwo', 2, 1] }, cNum)).toBe(2); // was 1 (wrong branch)
+    expect(resolve({ 'Fn::Equals': [{ Ref: 'MaxAZs' }, 2] }, cNum)).toBe(true);
+
+    const cBool = ctx({
+      params: { Env: 'prod', Enabled: 'true' }, // a Boolean param, stringified
+      conditions: { On: { 'Fn::Equals': [{ Ref: 'Enabled' }, true] } }, // literal BOOLEAN
+    });
+    expect(resolve({ 'Fn::If': ['On', 'on', 'off'] }, cBool)).toBe('on');
+
+    // genuine inequality still differs (no over-coercion): "2" != 3, "2" != "2.0"
+    const cNo = ctx({ params: { N: '2' }, conditions: { C: { 'Fn::Equals': [{ Ref: 'N' }, 3] } } });
+    expect(resolve({ 'Fn::If': ['C', 'yes', 'no'] }, cNo)).toBe('no');
+    expect(resolve({ 'Fn::Equals': ['2.0', 2] }, ctx())).toBe(false); // CFn Equals is exact-string
+  });
+
   it('Fn::GetAtt is UNRESOLVED without live attrs; Fn::Join drops NoValue', () => {
     expect(resolve({ 'Fn::GetAtt': ['X', 'Arn'] }, ctx())).toBe(UNRESOLVED);
     expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'AWS::NoValue' }, 'b']] }, ctx())).toBe('a-b');

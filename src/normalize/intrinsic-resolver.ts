@@ -161,7 +161,21 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
 
 function scalarEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(a) === JSON.stringify(b);
-  return a === b;
+  if (a === b) return true;
+  // CloudFormation evaluates `Fn::Equals` as a STRING comparison. A Number/Boolean
+  // template Parameter is carried as a string by buildResolverContext (params are
+  // stringified), so `Fn::Equals[{Ref: MaxAZs="2"}, 2]` (literal NUMBER) must be TRUE,
+  // and `[{Ref: Enabled="true"}, true]` TRUE — else the WRONG `Fn::If` branch bakes a
+  // corrupted declared value into the diff (a phantom FP, or a hidden FN), and this
+  // operator is fail-OPEN unlike the rest of the resolver. Coerce string<->number/
+  // boolean via exact String() match (CFn does NOT fold "2.0"==2 in Equals, so no
+  // numeric-format folding here); genuine inequality still differs.
+  const prim = (x: unknown): x is number | boolean =>
+    typeof x === 'number' || typeof x === 'boolean';
+  if ((typeof a === 'string' && prim(b)) || (typeof b === 'string' && prim(a))) {
+    return String(a) === String(b);
+  }
+  return false;
 }
 
 // Evaluate a condition operand to true | false | UNRESOLVED (fail-closed).
