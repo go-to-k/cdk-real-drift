@@ -10,6 +10,7 @@ import {
   baselinePath,
   buildRecorded,
   carryForwardUnreadable,
+  constructPathsByLogical,
   formatPromotedStaleNote,
   identityArrayDelta,
   checkBaselineAccount,
@@ -701,6 +702,34 @@ describe('baseline', () => {
       path: 'P',
       note: 'baseline value removed since record',
     });
+  });
+
+  it('restores constructPath onto the removed-since-record finding (so a constructPath ignore rule matches)', () => {
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const out = applyBaseline([], b, {
+      constructPathByLogical: new Map([['A', 'MyStack/A']]),
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      path: 'P',
+      constructPath: 'MyStack/A',
+      note: 'baseline value removed since record',
+    });
+  });
+
+  it('omits constructPath when the resource has none (no map entry)', () => {
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const out = applyBaseline([], b, { constructPathByLogical: new Map() });
+    expect(out[0]!.constructPath).toBeUndefined();
+  });
+
+  it('constructPathsByLogical maps only resources that carry a construct path', () => {
+    const m = constructPathsByLogical([
+      { logicalId: 'A', constructPath: 'MyStack/A' },
+      { logicalId: 'B' }, // no construct path
+    ]);
+    expect(m.get('A')).toBe('MyStack/A');
+    expect(m.has('B')).toBe(false);
   });
 
   it('does NOT report a removal for a resource SKIPPED this run (transient, not actually removed)', () => {

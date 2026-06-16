@@ -407,6 +407,10 @@ export interface ApplyBaselineOptions {
   // path is now DECLARED in the template is the recommended "promote undeclared
   // drift into code" workflow, NOT a removal — suppress the false removal finding.
   declaredByLogical?: Map<string, Set<string>>;
+  // logicalId -> CDK construct path. Used to restore constructPath onto the synthetic
+  // "baseline value removed since record" finding so a constructPath-form ignore rule
+  // matches it (a RecordedEntry carries no constructPath of its own).
+  constructPathByLogical?: Map<string, string>;
   warn?: (s: string) => void; // stderr note channel for the promotion case
 }
 
@@ -602,6 +606,14 @@ export function applyBaseline(
       tier: 'undeclared',
       logicalId: a.logicalId,
       resourceType: a.resourceType,
+      // Restore the construct path that every LIVE finding for this resource carries
+      // (a RecordedEntry doesn't store it). Without it, a constructPath-form ignore
+      // rule — the form `cdkrd ignore` writes by preference — would NOT match this
+      // synthetic "removed since record" finding (applyIgnores keys on constructPath
+      // when present), so the removal would re-surface despite the ignore.
+      ...(opts.constructPathByLogical?.get(a.logicalId) !== undefined && {
+        constructPath: opts.constructPathByLogical.get(a.logicalId),
+      }),
       path: a.path,
       desired: a.value,
       actual: undefined,
@@ -629,6 +641,17 @@ export function declaredKeysByLogical(
   resources: { logicalId: string; declared: Record<string, unknown> }[]
 ): Map<string, Set<string>> {
   return new Map(resources.map((r) => [r.logicalId, new Set(Object.keys(r.declared))]));
+}
+
+// logicalId -> construct path, for resources that carry one. Feeds
+// ApplyBaselineOptions.constructPathByLogical so the synthetic removed-since-record
+// finding can be matched by a constructPath-form ignore rule.
+export function constructPathsByLogical(
+  resources: { logicalId: string; constructPath?: string | undefined }[]
+): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const r of resources) if (r.constructPath !== undefined) m.set(r.logicalId, r.constructPath);
+  return m;
 }
 
 /**
