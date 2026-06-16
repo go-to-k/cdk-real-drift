@@ -40,7 +40,19 @@ async function fetch(client: CloudFormationClient, resourceType: string): Promis
 
 // JSON pointer "/properties/A/B/*/C" -> dotted "A.B.*.C"
 function pointerToDotted(p: string): string {
-  return p.replace(/^\/properties\//, '').replace(/\//g, '.');
+  // A JSON-pointer property path is `/properties/Foo/Bar`. Some CFn registry schemas
+  // (e.g. OpenSearch `conditionalCreateOnlyProperties`) emit an INTERIOR or TRAILING
+  // `/properties/` segment — `/properties/EncryptionAtRestOptions/properties` (the
+  // block itself) or `/properties/AdvancedSecurityOptions/properties/Enabled`. Strip
+  // the leading one, collapse any interior `/properties/` to the real nesting boundary,
+  // and drop a trailing `/properties`, so the dotted path matches the actual model key
+  // (`EncryptionAtRestOptions`, `AdvancedSecurityOptions.Enabled`) instead of keeping a
+  // literal `properties` segment that matches nothing.
+  return p
+    .replace(/^\/properties\//, '')
+    .replace(/\/properties\//g, '/')
+    .replace(/\/properties$/, '')
+    .replace(/\//g, '.');
 }
 
 // Unlike readOnly/writeOnly/createOnly (CFn pre-flattens those into pointer

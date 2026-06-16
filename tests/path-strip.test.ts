@@ -42,4 +42,20 @@ describe('parseSchema nested paths', () => {
     expect(info.writeOnlyPaths).toContain('LifecycleConfiguration.Rules.*.Transition');
     expect(info.readOnlyPaths).toEqual(['Arn']);
   });
+
+  it('collapses interior + trailing /properties/ segments (OpenSearch conditionalCreateOnly)', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        conditionalCreateOnlyProperties: [
+          '/properties/EncryptionAtRestOptions/properties', // the block itself
+          '/properties/AdvancedSecurityOptions/properties/Enabled', // interior /properties/
+        ],
+      })
+    );
+    // the literal `properties` segment is stripped so the dotted path matches the model
+    expect(info.createOnlyPaths).toEqual([
+      'EncryptionAtRestOptions',
+      'AdvancedSecurityOptions.Enabled',
+    ]);
+  });
 });
