@@ -71,6 +71,33 @@ const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
 // Pure: the caller decides suppression and finding shape.
 const isNestedObject = (x: unknown): x is Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x);
+
+// An IAM policy STATEMENT array (PolicyDocument.Statement, AssumeRolePolicyDocument
+// .Statement, inline Policies[].PolicyDocument.Statement, …). Recognized by the
+// `Effect` (Allow/Deny) key every statement carries — NOT by path, so it catches
+// statements at any depth. Statements are identity-LESS (no Key/Id/AttributeName/
+// IndexName), so the identity-keyed descent below skips them; this marker re-enables
+// a SAFE (subset-match) descent for exactly this shape, leaving other identity-less
+// arrays (SecurityGroup rules etc.) untouched.
+const isPolicyStatementArray = (arr: unknown[]): boolean =>
+  arr.length > 0 && arr.every((el) => isNestedObject(el) && 'Effect' in el);
+
+// True when every key of `sub` is present in `sup` with an equal value (objects
+// recurse so a nested declared block must also be a subset; everything else is
+// deep-equal). Used to align a declared policy statement to the live statement it is
+// a subset of — robust to the statement re-sort canonicalization applies once a
+// sub-key is added (so positional alignment would break) and to extra live-only keys.
+function isPolicySubsetOf(sub: Record<string, unknown>, sup: Record<string, unknown>): boolean {
+  for (const [k, v] of Object.entries(sub)) {
+    if (!(k in sup)) return false;
+    const sv = sup[k];
+    if (isNestedObject(v) && isNestedObject(sv)) {
+      if (!isPolicySubsetOf(v, sv)) return false;
+    } else if (!deepEqual(v, sv)) return false;
+  }
+  return true;
+}
+
 function collectNestedUndeclared(
   declaredVal: unknown,
   liveVal: unknown,
@@ -80,13 +107,39 @@ function collectNestedUndeclared(
   if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
     if (declaredVal.length === 0 || liveVal.length === 0) return;
     const idf = identityField(declaredVal);
-    if (!idf || identityField(liveVal) !== idf) return;
-    const liveById = new Map<string, Record<string, unknown>>();
-    for (const el of liveVal) if (isNestedObject(el)) liveById.set(String(el[idf]), el);
-    for (const dEl of declaredVal) {
-      if (!isNestedObject(dEl)) continue;
-      const match = liveById.get(String(dEl[idf]));
-      if (match) collectNestedUndeclared(dEl, match, `${path}[${String(dEl[idf])}]`, emit);
+    if (idf && identityField(liveVal) === idf) {
+      const liveById = new Map<string, Record<string, unknown>>();
+      for (const el of liveVal) if (isNestedObject(el)) liveById.set(String(el[idf]), el);
+      for (const dEl of declaredVal) {
+        if (!isNestedObject(dEl)) continue;
+        const match = liveById.get(String(dEl[idf]));
+        if (match) collectNestedUndeclared(dEl, match, `${path}[${String(dEl[idf])}]`, emit);
+      }
+      return;
+    }
+    // IAM policy STATEMENT arrays are identity-less, so the descent above is skipped —
+    // which hid a live-only sub-key ADDED to a declared statement out of band (e.g. a
+    // `Condition` narrowing/widening access, or an extra `Principal`): the product's
+    // core "a setting you never declared changed" promise failing on a security-
+    // relevant resource. Re-enable the descent for THIS shape only, aligning each
+    // declared statement to the live statement it is a SUBSET of (content match,
+    // greedy 1:1) so the live-only sub-keys surface. A declared statement with no
+    // superset match genuinely changed → left to the declared compare. Other identity-
+    // less arrays stay undescended (no `Effect` marker), preserving their FP safety.
+    if (isPolicyStatementArray(declaredVal) && isPolicyStatementArray(liveVal)) {
+      const used = new Set<number>();
+      declaredVal.forEach((dEl, di) => {
+        if (!isNestedObject(dEl)) return;
+        for (let i = 0; i < liveVal.length; i++) {
+          if (used.has(i)) continue;
+          const lEl = liveVal[i];
+          if (isNestedObject(lEl) && isPolicySubsetOf(dEl, lEl)) {
+            used.add(i);
+            collectNestedUndeclared(dEl, lEl, `${path}[${di}]`, emit);
+            break;
+          }
+        }
+      });
     }
     return;
   }
