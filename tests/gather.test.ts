@@ -298,3 +298,90 @@ describe('gatherFindings pass-1.5 override retry (R27)', () => {
     expect(lambda.commandCalls(LambdaGetPolicyCommand)).toHaveLength(0);
   });
 });
+
+// A CC composite-identifier resource (ApiGatewayV2 Route) whose PARENT key (ApiId) is
+// an Fn::GetAtt is read in pass 1 with the BARE child id (the parent isn't resolved
+// yet) → CC returns not-found → a FALSE `deleted`. Pass 1.5 must retry it (it is a
+// CC_IDENTIFIER_ADAPTERS type, and the prior outcome was `deleted`) now that liveAttrs
+// carries the parent's ApiId, building the composite `apiId|routeId`.
+describe('gatherFindings pass-1.5 composite-id retry (GetAtt parent)', () => {
+  const template = JSON.stringify({
+    Resources: {
+      Api: { Type: 'AWS::ApiGatewayV2::Api', Properties: { Name: 'api' } },
+      Route: {
+        Type: 'AWS::ApiGatewayV2::Route',
+        Properties: { ApiId: { 'Fn::GetAtt': ['Api', 'ApiId'] }, RouteKey: 'GET /x' },
+      },
+    },
+  });
+  const cfnFixture = () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).resolves({ TemplateBody: template });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Api',
+          PhysicalResourceId: 'api456',
+          ResourceType: 'AWS::ApiGatewayV2::Api',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+        {
+          LogicalResourceId: 'Route',
+          PhysicalResourceId: 'route789',
+          ResourceType: 'AWS::ApiGatewayV2::Route',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+    cfn.on(DescribeTypeCommand).resolves({ Schema: '{}' });
+    return cfn;
+  };
+
+  it('re-reads the Route with the composite id, so it is NOT falsely deleted', async () => {
+    cfnFixture();
+    const notFound = Object.assign(new Error('not found'), {
+      name: 'ResourceNotFoundException',
+    });
+    const cc = mockClient(CloudControlClient);
+    // Api reads by its bare physical id and exposes ApiId -> liveAttrs[Api].ApiId
+    cc.on(GetResourceCommand, { Identifier: 'api456' }).resolves({
+      ResourceDescription: {
+        Identifier: 'api456',
+        Properties: JSON.stringify({ ApiId: 'api456', Name: 'api' }),
+      },
+    });
+    // pass 1: bare child id -> not-found (the false-deleted trigger)
+    cc.on(GetResourceCommand, { Identifier: 'route789' }).rejects(notFound);
+    // pass 1.5: composite id -> the real route (declared == live -> CLEAN)
+    cc.on(GetResourceCommand, { Identifier: 'api456|route789' }).resolves({
+      ResourceDescription: {
+        Identifier: 'api456|route789',
+        Properties: JSON.stringify({ ApiId: 'api456', RouteId: 'route789', RouteKey: 'GET /x' }),
+      },
+    });
+
+    const { findings } = await gatherFindings('S', 'us-east-1');
+
+    // the Route is NEITHER falsely deleted NOR skipped — pass 1.5 read it composite
+    expect(findings.find((f) => f.logicalId === 'Route' && f.tier === 'deleted')).toBeUndefined();
+    expect(findings.find((f) => f.logicalId === 'Route' && f.tier === 'skipped')).toBeUndefined();
+    // CC was actually queried with the composite identifier
+    const ids = cc.commandCalls(GetResourceCommand).map((c) => c.args[0].input.Identifier);
+    expect(ids).toContain('api456|route789');
+    // declared == live -> the Route is CLEAN
+    expect(findings.find((f) => f.logicalId === 'Route')).toBeUndefined();
+  });
+});
