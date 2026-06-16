@@ -6,10 +6,11 @@
 //
 // Conservative + value-shape-based (NOT field-name-based, so it needs no per-type
 // table): treat the two as equal when EXACTLY ONE side is a well-formed ARN, the
-// other is a bare (non-ARN) name, and the ARN's final component is EXACTLY that name
-// (after the last ':' or '/'). A bare name in such a field resolves to that one
-// resource in the stack's own account+region, whose ARN ends with `:<name>` — so this
-// never hides a real drift to a DIFFERENT name (the suffix must match exactly).
+// other is a bare (non-ARN) name, and the name EQUALS the ARN's final component — its
+// whole final colon-segment, OR the part after that segment's last '/' (the resource
+// id of a `type/id` ARN). The match is on a COMPLETE component, never a partial path
+// suffix, so a declared `a/b/c` never equals a live `arn:…:bucket/x/a/b/c` (a different
+// object) — a real identity change is not hidden.
 //
 // BIDIRECTIONAL: the bare name may be on EITHER side. `desired=name, actual=ARN`
 // occurs when AWS stores the full ARN for a name-recording input (Lambda
@@ -43,7 +44,19 @@ function arnMatchesName(
   opts?: { accountId?: string; region?: string }
 ): boolean {
   if (name.length === 0) return false;
-  if (!(arn.endsWith(`:${name}`) || arn.endsWith(`/${name}`))) return false;
+  // Match the ARN's EXACT final component, NOT a raw suffix. The final colon-segment is
+  // the resource portion (`myFn`, `role/myRole`, `bucket/a/b/c`); the name must equal
+  // that whole portion OR the part after its last `/` (the resource id of a `type/id`
+  // ARN). A bare `endsWith('/'+name)` matched a MULTI-segment path suffix — declared
+  // `a/b/c` falsely equalled live `arn:…:bucket/x/a/b/c` (a DIFFERENT object), hiding a
+  // real identity change. Equality on the final component never spans a `/` boundary, so
+  // that FN is closed while every real name<->ARN echo (`myRole` vs `…:role/myRole`,
+  // `myFn` vs `…:function:myFn`, `my-bucket` vs `arn:aws:s3:::my-bucket`) still matches.
+  const afterColon = arn.slice(arn.lastIndexOf(':') + 1);
+  const afterSlash = afterColon.includes('/')
+    ? afterColon.slice(afterColon.lastIndexOf('/') + 1)
+    : afterColon;
+  if (name !== afterColon && name !== afterSlash) return false;
   // arn:partition:service:region:account:resource — segments 3 (region) + 4 (account)
   const seg = arn.split(':');
   const arnRegion = seg[3] ?? '';
