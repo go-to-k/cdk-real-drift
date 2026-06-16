@@ -333,6 +333,18 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "Users0A0EEA89",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Policies.SignInPolicy",
+      "actual": {
+        "AllowedFirstAuthFactors": ["PASSWORD"]
+      },
+      "nested": true,
+      "physicalId": "us-east-1_Ifea0bzss",
+      "constructPath": "CdkrdIntegHarvest3/Users"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
@@ -372,34 +384,11 @@
       "constructPath": "CdkrdIntegHarvest3/Users"
     },
     {
-      "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "Policies.SignInPolicy",
-      "actual": {
-        "AllowedFirstAuthFactors": ["PASSWORD"]
-      },
-      "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema",
       "actual": [
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "profile"
-        },
         {
           "DeveloperOnlyAttribute": false,
           "Mutable": true,
@@ -431,119 +420,6 @@
             "MaxLength": "2048"
           },
           "Required": false,
-          "Name": "gender"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "preferred_username"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "Number",
-          "Required": false,
-          "NumberAttributeConstraints": {
-            "MinValue": "0"
-          },
-          "Name": "updated_at"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "website"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "picture"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {},
-          "Required": false,
-          "Name": "identities"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": false,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "1",
-            "MaxLength": "2048"
-          },
-          "Required": true,
-          "Name": "sub"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "phone_number"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "Boolean",
-          "Required": false,
-          "Name": "phone_number_verified"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "zoneinfo"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "locale"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
           "Name": "email"
         },
         {
@@ -562,7 +438,7 @@
             "MaxLength": "2048"
           },
           "Required": false,
-          "Name": "given_name"
+          "Name": "family_name"
         },
         {
           "DeveloperOnlyAttribute": false,
@@ -573,7 +449,37 @@
             "MaxLength": "2048"
           },
           "Required": false,
-          "Name": "family_name"
+          "Name": "gender"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "given_name"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {},
+          "Required": false,
+          "Name": "identities"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "locale"
         },
         {
           "DeveloperOnlyAttribute": false,
@@ -607,6 +513,100 @@
           },
           "Required": false,
           "Name": "nickname"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "phone_number"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "Boolean",
+          "Required": false,
+          "Name": "phone_number_verified"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "picture"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "preferred_username"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "profile"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": false,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "1",
+            "MaxLength": "2048"
+          },
+          "Required": true,
+          "Name": "sub"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "Number",
+          "Required": false,
+          "NumberAttributeConstraints": {
+            "MinValue": "0"
+          },
+          "Name": "updated_at"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "website"
+        },
+        {
+          "DeveloperOnlyAttribute": false,
+          "Mutable": true,
+          "AttributeDataType": "String",
+          "StringAttributeConstraints": {
+            "MinLength": "0",
+            "MaxLength": "2048"
+          },
+          "Required": false,
+          "Name": "zoneinfo"
         }
       ],
       "physicalId": "us-east-1_Ifea0bzss",

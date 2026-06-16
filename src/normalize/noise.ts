@@ -421,7 +421,16 @@ function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
 // GlobalSecondaryIndexes (keyed by IndexName), which AWS returns in a different order
 // than the template declares them (a positional diff otherwise reports false drift on
 // every element). Both are set-like identities, not order-significant.
-const IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName'] as const;
+// WAVE24: `Name` extends it to the very common `[{Name,Value}]` shape — ECS
+// TaskDefinition ContainerDefinitions[].Environment / Secrets / Ulimits and CloudWatch
+// Alarm Dimensions — which Cloud Control returns in a DIFFERENT order than declared
+// (PROVEN live: a 5-var Environment came back fully shuffled), false-flagging every
+// shifted element as `declared` drift. Sorting is comparison-only (both sides, never
+// written back) and `identityField` requires EVERY element to carry a string `Name`, so
+// order-significant arrays without a Name on every element (CloudFront CacheBehaviors —
+// precedence-ordered, no Name; un-named ECS PortMappings) stay UNSORTED. The baseline's
+// `DELTA_IDENTITY_FIELDS` already includes `Name`; this aligns the compare side to it.
+const IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName', 'Name'] as const;
 // Exported for classify's nested-undeclared array descent (R98): an identity-keyed
 // object array (Tags/Origins/AttributeDefinitions/…) can be aligned element-by-element
 // by its identity value, so a live-only SUB-key inside a declared element is detected.

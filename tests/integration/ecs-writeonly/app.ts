@@ -39,6 +39,10 @@ const container = taskDefinition.addContainer("App", {
   image: ContainerImage.fromRegistry("public.ecr.aws/amazonlinux/amazonlinux:latest"),
   memoryLimitMiB: 512,
   command: ["echo", "hello"],
+  // WAVE24: multiple env vars declared in a non-sorted order — Cloud Control returns the
+  // ContainerDefinitions[].Environment `[{Name,Value}]` array SHUFFLED, which used to
+  // false-flag every shifted element as declared drift. `check` must stay CLEAN on them.
+  environment: { ZEBRA: "1", ALPHA: "2", MIKE: "3", BRAVO: "4" },
 });
 
 // Managed EBS volume → configuredAtLaunch volume on the task definition, plus
