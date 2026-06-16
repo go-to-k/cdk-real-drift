@@ -31,6 +31,12 @@ import { resolveInteractively } from './interactive-resolve.js';
 // synth (not deployed) declared set, so all three are excluded. --declared-only
 // reuses the same filter against the DEPLOYED template (R59) — its "undeclared
 // values are not compared" contract must hold for the `atDefault` footer too, else
+// Key a synth template by stack name + region (a CFn stack name is region-scoped, so
+// the same name can recur across regions in one app). Exported (pure) for unit testing.
+export function synthKey(stackName: string, region: string | undefined): string {
+  return `${stackName}\0${region ?? ''}`;
+}
+
 // `--declared-only` still prints an `At AWS Default (N)` line for values it claims
 // not to compare. Exported (pure) so the contract is unit-tested.
 export function preDeployFindings(findings: Finding[]): Finding[] {
@@ -151,7 +157,14 @@ export async function runCheck(args: string[]): Promise<number> {
       profile: a.profile,
       context: a.context,
     });
-    synthTemplates = new Map(synthed.map((s) => [s.stackName, s.template]));
+    // Key by stackName + region, NOT stackName alone: a stack name is region-scoped in
+    // CloudFormation, so an app can define two same-named stacks in different regions.
+    // Keyed by name alone, the second would overwrite the first and BOTH would then be
+    // compared against the wrong (last-synthesized) template. The region resolution
+    // mirrors resolveStacks (`s.region ?? a.region`) so the loop's lookup key matches.
+    synthTemplates = new Map(
+      synthed.map((s) => [synthKey(s.stackName, s.region ?? a.region), s.template])
+    );
     console.error('(--pre-deploy) comparing live state against the LOCAL synth template');
   }
 
@@ -167,11 +180,12 @@ export async function runCheck(args: string[]): Promise<number> {
       continue;
     }
     try {
-      if (synthTemplates && !synthTemplates.has(stackName)) {
+      const sKey = synthKey(stackName, region);
+      if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         continue;
       }
-      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(stackName));
+      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(sKey));
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
 
