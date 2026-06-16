@@ -442,15 +442,27 @@ export function applyBaseline(
   // physical id — gather emits a `skipped` finding) was NOT observed, so its baseline
   // values are unknown, NOT removed. Excluding it prevents a transient skip from
   // flooding the report with false "baseline value removed since record" drift (its
-  // values still exist; we just couldn't read them this run). `deleted` is left as a
-  // genuine removal — those values really are gone.
+  // values still exist; we just couldn't read them this run).
+  //
+  // A resource DELETED out of band already surfaces as a single resource-level
+  // `deleted` finding (gather.ts), which SUBSUMES every recorded baseline value it
+  // had — the whole resource is gone, so of course each of its values is too. Emitting
+  // an extra per-property "baseline value removed" undeclared finding for each is
+  // redundant noise that also inflates the drift COUNT (one deletion would read as
+  // 1 + N drifts) and, for `revert`, yields un-actionable ops against a resource that
+  // no longer exists. Suppress them too; the `deleted` finding carries the drift. (Gated
+  // on an actual `deleted` finding, so a removal NOT already reported still surfaces.)
   const skippedLogical = new Set(
     findings.filter((f) => f.tier === 'skipped').map((f) => f.logicalId)
+  );
+  const deletedLogical = new Set(
+    findings.filter((f) => f.tier === 'deleted').map((f) => f.logicalId)
   );
   const promotedStale: string[] = [];
   for (const a of recorded) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     if (skippedLogical.has(a.logicalId)) continue; // unread this run -> not "removed"
+    if (deletedLogical.has(a.logicalId)) continue; // subsumed by the `deleted` finding
     // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
       promotedStale.push(`${a.logicalId}.${a.path}`);
