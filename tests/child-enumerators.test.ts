@@ -6,6 +6,7 @@ import {
   diffEventBusChildren,
   diffGraphQLApiChildren,
   diffGraphQLApiResolvers,
+  diffKmsKeyChildren,
   diffLambdaFunctionChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
@@ -259,6 +260,40 @@ describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
           { arn: SUB('a'), label: 'sqs q' },
           { arn: SUB('b'), label: 'lambda f' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffKmsKeyChildren (KMS key aliases)', () => {
+  it('flags an out-of-band alias created via the console (not in the template)', () => {
+    const added = diffKmsKeyChildren({
+      declaredAliasNames: ['alias/declared'],
+      liveAliases: [{ name: 'alias/declared' }, { name: 'alias/console' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::KMS::Alias',
+        identifier: 'alias/console',
+        label: 'alias/console',
+        live: { AliasName: 'alias/console' },
+      },
+    ]);
+  });
+
+  it('identifier is the bare AliasName (CC primaryIdentifier, not a composite)', () => {
+    const added = diffKmsKeyChildren({
+      declaredAliasNames: [],
+      liveAliases: [{ name: 'alias/x' }],
+    });
+    expect(added[0]!.identifier).toBe('alias/x');
+  });
+
+  it('no drift when every live alias is declared', () => {
+    expect(
+      diffKmsKeyChildren({
+        declaredAliasNames: ['alias/a', 'alias/b'],
+        liveAliases: [{ name: 'alias/a' }, { name: 'alias/b' }],
       })
     ).toEqual([]);
   });
