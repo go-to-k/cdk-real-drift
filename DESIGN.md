@@ -41,7 +41,7 @@ un-deployed code edits would show as false "drift".
 5. classify (tag):  declared | undeclared | atDefault | generated | readGap | unresolved | skipped
 5b. enumerate added (out-of-band whole resources): per declared PARENT type, list its
     live child resources via the service SDK and flag any absent from the template →
-    `added` tier (CHILD_ENUMERATORS; API GW REST + V2, SNS topic subs, Lambda ESMs + function URLs, EventBridge bus rules, Cognito user pool clients + groups, AppSync data sources + resolvers, CloudWatch Logs metric filters, ELBv2 listeners, EC2 VPC subnets, EC2 route table routes, ECS cluster services, KMS key aliases). Resource-granularity
+    `added` tier (CHILD_ENUMERATORS; API GW REST + V2, SNS topic subs, Lambda ESMs + function URLs, EventBridge bus rules, Cognito user pool clients + groups + resource servers, AppSync data sources + resolvers, CloudWatch Logs metric filters, ELBv2 listeners, EC2 VPC subnets, EC2 route table routes, ECS cluster services, KMS key aliases). Resource-granularity
     sibling of undeclared, reconciled against the baseline the same way: each added
     child is read in FULL (CC GetResource) + normalized, so `record` snapshots it and a
     later CHANGE surfaces as drift; an UNRECORDED added resource is Not-Recorded
