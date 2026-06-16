@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { globToRegExp, isGlob, matchesGlob } from '../src/commands/glob-match.js';
+import { globToRegExp, isGlob, matchesGlob, matchesPathGlob } from '../src/commands/glob-match.js';
 
 describe('isGlob', () => {
   it('detects * and ?', () => {
@@ -87,5 +87,23 @@ describe('globToRegExp', () => {
     expect(matchesGlob('*****X', 'aaaaaY')).toBe(false);
     // a long non-match returns promptly (no catastrophic backtracking)
     expect(matchesGlob('**********X', 'a'.repeat(60))).toBe(false);
+  });
+});
+
+describe('matchesPathGlob (segment-aware — does not cross . or [ boundaries)', () => {
+  it('* / ? stay within one dot/bracket segment', () => {
+    expect(matchesPathGlob('*.DesiredCount', 'Svc123.DesiredCount')).toBe(true); // id wildcard
+    expect(matchesPathGlob('*.DesiredCount', 'Tbl.Config.DesiredCount')).toBe(false); // no cross-dot
+    expect(matchesPathGlob('Fn*.Mem', 'FnABC.Mem')).toBe(true);
+    expect(matchesPathGlob('Fn*.Mem', 'FnA.Sub.Mem')).toBe(false);
+    expect(matchesPathGlob('*', 'BareId')).toBe(true);
+    expect(matchesPathGlob('*', 'A.B')).toBe(false); // bare star is one segment (subtree via ancestor walk)
+    expect(matchesPathGlob('Tags[*]', 'Tags[env]')).toBe(true); // within a bracket key
+    expect(matchesPathGlob('Tags[*]', 'Tags[env].Sub')).toBe(false);
+  });
+
+  it('still collapses *+ runs (no catastrophic backtracking)', () => {
+    expect(matchesPathGlob('****X', 'aaaaaX')).toBe(true);
+    expect(matchesPathGlob('**********X', 'a'.repeat(60))).toBe(false);
   });
 });
