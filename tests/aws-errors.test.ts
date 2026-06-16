@@ -3,6 +3,7 @@ import {
   classifyStackStatus,
   isResourceNotFoundError,
   isStackNotDeployed,
+  ResourceGoneError,
 } from '../src/aws-errors.js';
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
@@ -28,6 +29,10 @@ describe('isResourceNotFoundError', () => {
 
   it('also matches the legacy .Code field shape', () => {
     expect(isResourceNotFoundError({ Code: 'NoSuchBucket' })).toBe(true);
+  });
+
+  it('recognizes ResourceGoneError so a list/describe-absent reader maps to deleted', () => {
+    expect(isResourceNotFoundError(new ResourceGoneError('record absent from zone'))).toBe(true);
   });
 
   it('does NOT match unrelated errors (throttling / access denied)', () => {

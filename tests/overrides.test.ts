@@ -20,6 +20,7 @@ import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { SDK_OVERRIDES } from '../src/read/overrides.js';
+import { ResourceGoneError } from '../src/aws-errors.js';
 import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 
 const s3 = mockClient(S3Client);
@@ -401,15 +402,23 @@ describe('SDK overrides', () => {
       expect(out).toMatchObject({ Type: 'TXT', TTL: '300', ResourceRecords: ['"hi"'] });
     });
 
-    it('undefined when no record matches (-> stays skipped, no false drift)', async () => {
+    it('zone queried but the declared record absent -> ResourceGoneError (deleted, not skipped)', async () => {
+      // The zone exists and was listed; the declared name+type record is gone -> deleted
+      // out of band. (Was a false `undefined`/skipped that hid the deletion.)
       route53.on(ListResourceRecordSetsCommand).resolves({
         ResourceRecordSets: [{ Name: 'other.example.com.', Type: 'A' }],
       });
-      expect(
-        await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+      await expect(
+        SDK_OVERRIDES['AWS::Route53::RecordSet'](
           ctx({ HostedZoneId: 'Z1', Name: 'app.example.com.', Type: 'A' })
         )
-      ).toBeUndefined();
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('undefined (skipped) when the target cannot be resolved from the template', async () => {
+      // No HostedZoneId/Name/Type in declared and a non-composite physical id -> the
+      // query can't be formed: stay skipped (NOT deleted), the list is never even called.
+      expect(await SDK_OVERRIDES['AWS::Route53::RecordSet'](ctx({}, 'opaque-id'))).toBeUndefined();
     });
 
     it('disambiguates same-name+type variants by SetIdentifier (no wrong-record read) and projects routing fields', async () => {
@@ -550,11 +559,17 @@ describe('SDK overrides', () => {
       });
     });
 
-    it('undefined when the named filter is absent (-> stays skipped)', async () => {
+    it('log group described but the named filter absent -> ResourceGoneError (deleted)', async () => {
+      // The log group exists and was described; the exact-named filter is gone -> deleted
+      // out of band. (Was a false `undefined`/skipped that hid the deletion.)
       logs.on(DescribeMetricFiltersCommand).resolves({ metricFilters: [] });
-      expect(
-        await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'missing'))
-      ).toBeUndefined();
+      await expect(
+        SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'missing'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('undefined (skipped) when the target cannot be resolved (no log group / filter name)', async () => {
+      expect(await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({}, ''))).toBeUndefined();
     });
 
     it('follows nextToken to find an exact filter paginated past the first page', async () => {
@@ -582,14 +597,15 @@ describe('SDK overrides', () => {
       });
     });
 
-    it('stops at the last page (no nextToken) and returns undefined if never found', async () => {
+    it('stops at the last page (no nextToken) and reports deleted if never found', async () => {
       logs
         .on(DescribeMetricFiltersCommand)
         .resolvesOnce({ metricFilters: [{ filterName: 'errs-extra' }], nextToken: 'page2' })
         .resolvesOnce({ metricFilters: [{ filterName: 'errs-more' }] });
-      expect(
-        await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'errs'))
-      ).toBeUndefined();
+      // every page described, exact name never present -> deleted out of band (not skipped)
+      await expect(
+        SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'errs'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
     });
   });
 

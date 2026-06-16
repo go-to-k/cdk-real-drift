@@ -33,6 +33,7 @@ import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { ResourceGoneError } from '../aws-errors.js';
 import { READ_RETRY } from './client-config.js';
 
 export interface OverrideCtx {
@@ -349,7 +350,13 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       canon(x.Name) === canon(name) &&
       (x.SetIdentifier ?? undefined) === declSetId
   );
-  if (!rec) return undefined;
+  // The zone was listed successfully but the declared name+type(+SetIdentifier) record
+  // is absent — it was deleted out of band. Distinct from the "couldn't resolve the
+  // target" guard above (which returns undefined → skipped): here we KNOW it is gone.
+  if (!rec)
+    throw new ResourceGoneError(
+      `Route53 RecordSet ${name} ${type} absent from zone ${hostedZoneId}`
+    );
   const model: Record<string, unknown> = {
     Name: alignTrailingDot(rec.Name, declared.Name),
     Type: rec.Type,
@@ -459,7 +466,12 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
     mf = r.metricFilters?.find((m) => m.filterName === filterName);
     nextToken = r.nextToken;
   } while (!mf && nextToken);
-  if (!mf) return undefined;
+  // The log group was described successfully (every page) but the exact-named filter is
+  // absent — it was deleted out of band. (A deleted LOG GROUP instead throws
+  // ResourceNotFoundException above → also `deleted`; an unresolvable target returned
+  // undefined → skipped before the describe.)
+  if (!mf)
+    throw new ResourceGoneError(`MetricFilter ${filterName} absent from log group ${logGroup}`);
   return {
     LogGroupName: logGroup,
     FilterName: filterName,
