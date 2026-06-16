@@ -38,6 +38,35 @@ describe('calculateResourceDrift', () => {
     expect(d).toEqual([{ path: 'A', stateValue: 1, awsValue: undefined }]);
   });
 
+  it('a free-form map with a DOT in a key is emitted whole at the parent (no corrupt path)', () => {
+    // A Docker label "com.example.x" would otherwise build the path
+    // "DockerLabels.com.example.x", which toPointer / baseline / ignore re-split wrong.
+    const d = calculateResourceDrift(
+      { DockerLabels: { 'com.example.x': 'a', plain: 'p' } },
+      { DockerLabels: { 'com.example.x': 'b', plain: 'p' } }
+    );
+    expect(d).toEqual([
+      {
+        path: 'DockerLabels',
+        stateValue: { 'com.example.x': 'a', plain: 'p' },
+        awsValue: { 'com.example.x': 'b', plain: 'p' },
+      },
+    ]);
+  });
+
+  it('a key containing [ or ] is also treated as path-unsafe', () => {
+    const d = calculateResourceDrift({ Tags: { 'a[0]': 'x' } }, { Tags: { 'a[0]': 'y' } });
+    expect(d).toEqual([{ path: 'Tags', stateValue: { 'a[0]': 'x' }, awsValue: { 'a[0]': 'y' } }]);
+  });
+
+  it('a map with only path-SAFE keys still descends per key (unchanged behavior)', () => {
+    const d = calculateResourceDrift(
+      { Variables: { FOO: '1', BAR: '2' } },
+      { Variables: { FOO: '1', BAR: '9' } }
+    );
+    expect(d).toEqual([{ path: 'Variables.BAR', stateValue: '2', awsValue: '9' }]);
+  });
+
   it('ignorePaths skips a subtree', () => {
     const d = calculateResourceDrift(
       { Code: { S3Key: 'x' } },
