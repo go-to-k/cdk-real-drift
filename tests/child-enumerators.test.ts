@@ -9,6 +9,7 @@ import {
   diffGraphQLApiChildren,
   diffGraphQLApiResolvers,
   diffKmsKeyChildren,
+  diffLambdaFunctionAliases,
   diffLambdaFunctionChildren,
   diffLambdaFunctionUrls,
   diffLoadBalancerChildren,
@@ -467,6 +468,48 @@ describe('diffLambdaFunctionUrls (Lambda function URLs)', () => {
         liveUrls: [
           { arn: ARN('A'), label: `NONE ${ARN('A')}` },
           { arn: ARN('B'), label: `AWS_IAM ${ARN('B')}` },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLambdaFunctionAliases (Lambda aliases)', () => {
+  const ARN = (n: string) => `arn:aws:lambda:us-east-1:111122223333:function:Fn:${n}`;
+
+  it('flags an out-of-band alias (not in the template)', () => {
+    const added = diffLambdaFunctionAliases({
+      declaredAliasArns: [ARN('live')],
+      liveAliases: [
+        { arn: ARN('live'), label: `live ${ARN('live')}` },
+        { arn: ARN('console'), label: `console ${ARN('console')}` },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::Alias',
+        identifier: ARN('console'),
+        label: `console ${ARN('console')}`,
+        live: { AliasArn: ARN('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare AliasArn (CC primaryIdentifier)', () => {
+    const added = diffLambdaFunctionAliases({
+      declaredAliasArns: [],
+      liveAliases: [{ arn: ARN('x') }],
+    });
+    expect(added[0]!.identifier).toBe(ARN('x'));
+  });
+
+  it('no drift when every live alias is declared', () => {
+    expect(
+      diffLambdaFunctionAliases({
+        declaredAliasArns: [ARN('a'), ARN('b')],
+        liveAliases: [
+          { arn: ARN('a'), label: `a ${ARN('a')}` },
+          { arn: ARN('b'), label: `b ${ARN('b')}` },
         ],
       })
     ).toEqual([]);

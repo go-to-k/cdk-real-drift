@@ -70,9 +70,11 @@ import {
 } from '@aws-sdk/client-eventbridge';
 import { type AliasListEntry, KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
 import {
+  type AliasConfiguration as LambdaAliasConfiguration,
   type EventSourceMappingConfiguration,
   type FunctionUrlConfig,
   LambdaClient,
+  ListAliasesCommand as ListLambdaAliasesCommand,
   ListEventSourceMappingsCommand,
   ListFunctionUrlConfigsCommand,
 } from '@aws-sdk/client-lambda';
@@ -623,6 +625,13 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
 // its URL inline, so there is no double-report to suppress. The CC primaryIdentifier for
 // AWS::Lambda::Url is the bare FunctionArn of the URL config, which CC GetResource /
 // DeleteResource consume.
+//
+// A Function ALSO owns Aliases (AWS::Lambda::Alias) — named pointers to a published
+// version (e.g. `prod`, `live`). A console / CLI `create-alias` (someone wires a new
+// alias to a function out of band) is invisible to cdk drift / CFn drift detection, and
+// the Function's own live model does NOT reflect its aliases inline, so there is no
+// double-report to suppress. The CC primaryIdentifier for AWS::Lambda::Alias is the bare
+// AliasArn, which CC GetResource / DeleteResource consume.
 
 // Pure diff: declared mapping ids + live inventory -> the added mappings.
 export interface LambdaFunctionChildInput {
@@ -696,6 +705,41 @@ async function pageFunctionUrlConfigs(
   return out;
 }
 
+// Pure diff: declared alias arns + live inventory -> the added aliases.
+export function diffLambdaFunctionAliases(input: {
+  declaredAliasArns: string[];
+  liveAliases: { arn: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const declared = new Set(input.declaredAliasArns);
+  const added: AddedChild[] = [];
+  for (const a of input.liveAliases) {
+    if (declared.has(a.arn)) continue;
+    added.push({
+      resourceType: 'AWS::Lambda::Alias',
+      identifier: a.arn, // the AliasArn IS the CC primaryIdentifier
+      label: a.label ?? a.arn,
+      live: { AliasArn: a.arn },
+    });
+  }
+  return added;
+}
+
+async function pageLambdaAliases(
+  client: LambdaClient,
+  functionName: string
+): Promise<LambdaAliasConfiguration[]> {
+  const out: LambdaAliasConfiguration[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new ListLambdaAliasesCommand({ FunctionName: functionName, Marker: marker })
+    );
+    out.push(...(res.Aliases ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
 async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const functionName = parent.physicalId; // the Function's physical id is its name
@@ -735,6 +779,21 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
     }
   }
 
+  // Declared aliases targeting THIS function. An AWS::Lambda::Alias's CFn physical id
+  // (Ref) IS its AliasArn; its FunctionName resolves (via gather) to the function name or
+  // ARN. Prefer matching on the FunctionName targeting this function; fall back to
+  // including any alias whose FunctionName did not resolve (undefined) so a resolved-id
+  // mismatch never causes a declared alias to be flagged added.
+  const declaredAliasArns: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Lambda::Alias' || !r.physicalId) continue;
+    const fn = r.declared.FunctionName;
+    const targetsThis = fn === functionName || (fnArn !== undefined && fn === fnArn);
+    if (targetsThis || fn === undefined) {
+      declaredAliasArns.push(r.physicalId);
+    }
+  }
+
   const client = new LambdaClient({ region, ...READ_RETRY });
   const mappings = await pageEventSourceMappings(client, functionName);
   const liveMappings = mappings
@@ -757,7 +816,16 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
 
   const urlAdded = diffLambdaFunctionUrls({ declaredUrlArns, liveUrls });
 
-  return [...esmAdded, ...urlAdded];
+  const aliases = await pageLambdaAliases(client, functionName);
+  const liveAliases = aliases
+    .filter(
+      (a): a is LambdaAliasConfiguration & { AliasArn: string } => typeof a.AliasArn === 'string'
+    )
+    .map((a) => ({ arn: a.AliasArn, label: a.Name ? `${a.Name} ${a.AliasArn}` : a.AliasArn }));
+
+  const aliasAdded = diffLambdaFunctionAliases({ declaredAliasArns, liveAliases });
+
+  return [...esmAdded, ...urlAdded, ...aliasAdded];
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────
