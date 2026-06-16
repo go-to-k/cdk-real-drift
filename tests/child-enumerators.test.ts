@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
+  diffAppConfigApplicationChildren,
   diffApiGatewayV2Authorizers,
   diffApiGatewayV2Children,
   diffEcsClusterChildren,
@@ -1022,6 +1023,51 @@ describe('diffEcsClusterChildren (ECS services)', () => {
         cluster: CLUSTER,
         declaredServiceArns: [DECL, OOB],
         liveServices: [{ arn: DECL }, { arn: OOB }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffAppConfigApplicationChildren (AppConfig application environments)', () => {
+  const APP = 'abc1234';
+
+  it('flags an out-of-band environment added via the console (not in the template)', () => {
+    const added = diffAppConfigApplicationChildren({
+      applicationId: APP,
+      declaredEnvironmentIds: ['env-declared'],
+      liveEnvironments: [
+        { id: 'env-declared', label: 'declared' },
+        { id: 'env-console', label: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppConfig::Environment',
+        identifier: `${APP}|env-console`,
+        label: 'cdkrd-integ-oob',
+        live: { EnvironmentId: 'env-console', ApplicationId: APP },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite ApplicationId|EnvironmentId', () => {
+    const added = diffAppConfigApplicationChildren({
+      applicationId: APP,
+      declaredEnvironmentIds: [],
+      liveEnvironments: [{ id: 'env-x', label: 'X' }],
+    });
+    expect(added[0]!.identifier).toBe(`${APP}|env-x`);
+  });
+
+  it('no drift when every live environment is declared', () => {
+    expect(
+      diffAppConfigApplicationChildren({
+        applicationId: APP,
+        declaredEnvironmentIds: ['a', 'b'],
+        liveEnvironments: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
       })
     ).toEqual([]);
   });

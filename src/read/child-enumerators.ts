@@ -20,6 +20,11 @@ import {
   type Resource as ApiGwResource,
 } from '@aws-sdk/client-api-gateway';
 import {
+  AppConfigClient,
+  type Environment as AppConfigEnvironment,
+  ListEnvironmentsCommand,
+} from '@aws-sdk/client-appconfig';
+import {
   AppSyncClient,
   type DataSource as AppSyncDataSource,
   ListDataSourcesCommand,
@@ -111,7 +116,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
-// thirteenth.
+// thirteenth; AppConfig applications (environments) the fourteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -126,6 +131,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::EC2::RouteTable': enumerateRouteTableChildren,
   'AWS::ECS::Cluster': enumerateEcsClusterChildren,
   'AWS::KMS::Key': enumerateKmsKeyChildren,
+  'AWS::AppConfig::Application': enumerateAppConfigApplicationChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -1732,4 +1738,89 @@ async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChi
     .map((a) => ({ name: a.AliasName }));
 
   return diffKmsKeyChildren({ declaredAliasNames, liveAliases });
+}
+
+// ── AppConfig ──────────────────────────────────────────────────────────────────
+// An `AWS::AppConfig::Application` owns Environments, each a separate CloudFormation
+// resource. A console / CLI `create-environment` (someone adds a new environment to an
+// application out of band) is invisible to cdk drift / CFn drift detection (they only
+// compare template-declared resources). The Application's own live model does NOT reflect
+// its environments inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::AppConfig::Environment is the composite
+// `["/properties/ApplicationId","/properties/EnvironmentId"]`, so the `identifier` is the
+// composite `ApplicationId|EnvironmentId` (ApplicationId first) — that is what CC
+// GetResource / DeleteResource consume.
+
+// Pure diff: declared environment ids + live inventory -> the added environments.
+export interface AppConfigApplicationChildInput {
+  applicationId: string;
+  declaredEnvironmentIds: string[]; // physical ids (EnvironmentIds) of AWS::AppConfig::Environment
+  liveEnvironments: { id: string; label?: string | undefined }[];
+}
+
+export function diffAppConfigApplicationChildren(
+  input: AppConfigApplicationChildInput
+): AddedChild[] {
+  const { applicationId, declaredEnvironmentIds, liveEnvironments } = input;
+  const declared = new Set(declaredEnvironmentIds);
+  const added: AddedChild[] = [];
+  for (const e of liveEnvironments) {
+    if (declared.has(e.id)) continue;
+    added.push({
+      resourceType: 'AWS::AppConfig::Environment',
+      identifier: `${applicationId}|${e.id}`, // CC composite ApplicationId|EnvironmentId
+      label: e.label ?? e.id,
+      live: { EnvironmentId: e.id, ApplicationId: applicationId },
+    });
+  }
+  return added;
+}
+
+async function pageAppConfigEnvironments(
+  client: AppConfigClient,
+  applicationId: string
+): Promise<AppConfigEnvironment[]> {
+  const out: AppConfigEnvironment[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListEnvironmentsCommand({ ApplicationId: applicationId, NextToken: next })
+    );
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateAppConfigApplicationChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const applicationId = parent.physicalId; // an Application's physical id IS its ApplicationId
+  if (!applicationId) return [];
+
+  // Declared environments of THIS application (Ref/GetAtt ApplicationId already resolved to
+  // the physical id by gather). An environment's CFn physical id (Ref) IS its EnvironmentId.
+  const declaredEnvironmentIds: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::AppConfig::Environment' &&
+      r.declared.ApplicationId === applicationId &&
+      r.physicalId
+    ) {
+      declaredEnvironmentIds.push(r.physicalId);
+    }
+  }
+
+  const client = new AppConfigClient({ region, ...READ_RETRY });
+  const environments = await pageAppConfigEnvironments(client, applicationId);
+  const liveEnvironments = environments
+    .filter((e): e is AppConfigEnvironment & { Id: string } => typeof e.Id === 'string')
+    .map((e) => ({ id: e.Id, label: e.Name ?? e.Id }));
+
+  return diffAppConfigApplicationChildren({
+    applicationId,
+    declaredEnvironmentIds,
+    liveEnvironments,
+  });
 }
