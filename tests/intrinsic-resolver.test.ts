@@ -86,6 +86,25 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Sub': ['x-${V}', { V: 'ok' }] }, ctx())).toBe('x-ok');
   });
 
+  // The DOTTED-GetAtt and plain-Ref branches of Fn::Sub must fail closed on a
+  // non-scalar exactly like the variable-map branch above — previously they only
+  // guarded UNRESOLVED/NOVALUE and leaked `[object Object]` for an object GetAtt
+  // attribute or the JS comma-join for an array Ref, producing a bogus declared
+  // value that the diff then reported as drift on a clean stack.
+  it('Fn::Sub GetAtt/Ref branches fail closed on a non-scalar resolution', () => {
+    const c = ctx({
+      params: { Env: 'prod', SubnetList: ['subnet-a', 'subnet-b'] }, // CommaDelimitedList
+      liveAttrs: { DB: { Endpoint: { Address: 'db.host', Port: 5432 }, Address: 'db.host' } },
+    });
+    // object GetAtt attribute -> UNRESOLVED (was "[object Object]")
+    expect(resolve({ 'Fn::Sub': 'e=${DB.Endpoint}' }, c)).toBe(UNRESOLVED);
+    // array Ref (a CommaDelimitedList parameter) -> UNRESOLVED (was "subnet-a,subnet-b")
+    expect(resolve({ 'Fn::Sub': 'sn-${SubnetList}' }, c)).toBe(UNRESOLVED);
+    // scalar interpolants still resolve (regression guard)
+    expect(resolve({ 'Fn::Sub': 'env-${Env}' }, c)).toBe('env-prod');
+    expect(resolve({ 'Fn::Sub': 'h=${DB.Address}' }, c)).toBe('h=db.host');
+  });
+
   it('Fn::GetAtt resolves against live attributes (incl. dotted path), else UNRESOLVED', () => {
     const c = ctx({
       liveAttrs: { Role: { Arn: 'arn:aws:iam::123:role/r' }, Db: { Endpoint: { Address: 'h' } } },
