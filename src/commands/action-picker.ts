@@ -47,7 +47,12 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
 export function applicableActions(finding: Finding): FindingAction[] {
   if (finding.tier === 'undeclared')
     return isNestedUndeclared(finding) ? ['record', 'ignore'] : ['record', 'ignore', 'revert'];
-  if (finding.tier === 'added') return ['record', 'ignore', 'revert'];
+  if (finding.tier === 'added')
+    // A `modelReadFailed` added finding carries only an identity snippet (its full model
+    // could not be read this run). buildRecorded DROPS it, so offering `record` is a
+    // silent no-op that the closing note still tallies as "1 record" — misleading. Offer
+    // only ignore + revert (a delete needs only the identifier), both of which work.
+    return finding.modelReadFailed ? ['ignore', 'revert'] : ['record', 'ignore', 'revert'];
   if (finding.tier === 'declared') return ['revert', 'ignore'];
   return [];
 }
