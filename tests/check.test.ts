@@ -5,6 +5,7 @@ import {
   hasCoverageGap,
   nestedStackWarning,
   preDeployFindings,
+  synthKey,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
 import {
@@ -268,5 +269,18 @@ describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () =
 
   it('hasCoverageGap is false when everything was read and there are no nested stacks', () => {
     expect(hasCoverageGap([F('undeclared'), F('declared')], [dr('AWS::SNS::Topic')])).toBe(false);
+  });
+});
+
+describe('synthKey (--pre-deploy template keyed by name + region, WAVE21)', () => {
+  it('distinguishes the same stack name across regions (no template collision)', () => {
+    expect(synthKey('MyStack', 'us-east-1')).not.toBe(synthKey('MyStack', 'eu-west-1'));
+  });
+  it('is stable for the same name + region', () => {
+    expect(synthKey('MyStack', 'us-east-1')).toBe(synthKey('MyStack', 'us-east-1'));
+  });
+  it('treats an undefined (env-agnostic) region as a distinct, stable key', () => {
+    expect(synthKey('MyStack', undefined)).toBe(synthKey('MyStack', undefined));
+    expect(synthKey('MyStack', undefined)).not.toBe(synthKey('MyStack', 'us-east-1'));
   });
 });
