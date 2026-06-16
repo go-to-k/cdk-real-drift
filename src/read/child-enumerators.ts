@@ -41,7 +41,13 @@ import {
   ListUserPoolClientsCommand,
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { DescribeSubnetsCommand, EC2Client, type Subnet as Ec2Subnet } from '@aws-sdk/client-ec2';
+import {
+  DescribeRouteTablesCommand,
+  DescribeSubnetsCommand,
+  EC2Client,
+  type Route as Ec2Route,
+  type Subnet as Ec2Subnet,
+} from '@aws-sdk/client-ec2';
 import {
   DescribeListenersCommand,
   ElasticLoadBalancingV2Client,
@@ -88,7 +94,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
-// balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth.
+// balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
+// (routes) the eleventh.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -100,6 +107,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::Logs::LogGroup': enumerateLogGroupChildren,
   'AWS::ElasticLoadBalancingV2::LoadBalancer': enumerateLoadBalancerChildren,
   'AWS::EC2::VPC': enumerateVpcChildren,
+  'AWS::EC2::RouteTable': enumerateRouteTableChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -1045,4 +1053,81 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
     .map((s) => ({ id: s.SubnetId, label: s.CidrBlock ? `${s.CidrBlock}` : s.SubnetId }));
 
   return diffVpcChildren({ declaredSubnetIds, liveSubnets });
+}
+
+// ── EC2 (RouteTable) ────────────────────────────────────────────────────────────
+// An `AWS::EC2::RouteTable` owns Routes, each a separate CloudFormation resource. A
+// console / CLI `create-route` (someone adds a route to a route table out of band) is
+// invisible to cdk drift / CFn drift detection (they only compare template-declared
+// resources). The RouteTable's own live model does NOT reflect its routes inline (it
+// carries only RouteTableId / VpcId / Tags), so there is no double-report to suppress.
+// The VPC-CIDR LOCAL route is auto-created with the route table (it is not a declared
+// AWS::EC2::Route), so it is skipped (`Origin === 'CreateRouteTable'` / `GatewayId ===
+// 'local'`). Only IPv4 routes (those with a DestinationCidrBlock) are handled, since the
+// CC identifier keys on CidrBlock. The CC primaryIdentifier for AWS::EC2::Route is the
+// composite `["/properties/RouteTableId","/properties/CidrBlock"]`, so the `identifier`
+// is the composite `RouteTableId|CidrBlock` (RouteTableId first) — that is what CC
+// GetResource / DeleteResource consume.
+
+// Pure diff: declared cidrs + live inventory -> the added routes.
+export interface RouteTableChildInput {
+  routeTableId: string;
+  declaredCidrs: string[]; // DestinationCidrBlocks of AWS::EC2::Route declared on this table
+  liveRoutes: { cidr: string }[];
+}
+
+export function diffRouteTableChildren(input: RouteTableChildInput): AddedChild[] {
+  const { routeTableId, declaredCidrs, liveRoutes } = input;
+  const declared = new Set(declaredCidrs);
+  const added: AddedChild[] = [];
+  for (const route of liveRoutes) {
+    if (declared.has(route.cidr)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::Route',
+      identifier: `${routeTableId}|${route.cidr}`, // CC composite RouteTableId|CidrBlock
+      label: route.cidr,
+      live: { RouteTableId: routeTableId, CidrBlock: route.cidr },
+    });
+  }
+  return added;
+}
+
+async function describeRouteTable(client: EC2Client, routeTableId: string): Promise<Ec2Route[]> {
+  const res = await client.send(new DescribeRouteTablesCommand({ RouteTableIds: [routeTableId] }));
+  return res.RouteTables?.[0]?.Routes ?? [];
+}
+
+async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const routeTableId = parent.physicalId; // a RouteTable's physical id IS its RouteTableId
+  if (!routeTableId) return [];
+
+  // Declared routes on THIS route table (Ref/GetAtt RouteTableId already resolved to the
+  // physical id by gather). A route's CFn physical id is a generated token, so MATCH
+  // declared routes by DestinationCidrBlock (the route's identity within the table).
+  const declaredCidrs: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::EC2::Route' &&
+      r.declared.RouteTableId === routeTableId &&
+      typeof r.declared.DestinationCidrBlock === 'string'
+    ) {
+      declaredCidrs.push(r.declared.DestinationCidrBlock);
+    }
+  }
+
+  const client = new EC2Client({ region, ...READ_RETRY });
+  const routes = await describeRouteTable(client, routeTableId);
+  const liveRoutes = routes
+    // Skip the auto-created VPC-local route (not a declared AWS::EC2::Route) and any
+    // IPv6-only route (no DestinationCidrBlock — the CC identifier keys on CidrBlock).
+    .filter(
+      (route): route is Ec2Route & { DestinationCidrBlock: string } =>
+        typeof route.DestinationCidrBlock === 'string' &&
+        route.Origin !== 'CreateRouteTable' &&
+        route.GatewayId !== 'local'
+    )
+    .map((route) => ({ cidr: route.DestinationCidrBlock }));
+
+  return diffRouteTableChildren({ routeTableId, declaredCidrs, liveRoutes });
 }

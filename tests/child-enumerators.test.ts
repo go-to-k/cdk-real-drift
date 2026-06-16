@@ -7,6 +7,7 @@ import {
   diffLambdaFunctionChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
+  diffRouteTableChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
   diffUserPoolGroups,
@@ -596,6 +597,45 @@ describe('diffVpcChildren (EC2 VPC subnets)', () => {
           { id: SN('a'), label: '10.0.0.0/24' },
           { id: SN('b'), label: '10.0.1.0/24' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffRouteTableChildren (EC2 routes)', () => {
+  const RT = 'rtb-0123456789abcdef0';
+
+  it('flags an out-of-band route added via the console (not in the template)', () => {
+    const added = diffRouteTableChildren({
+      routeTableId: RT,
+      declaredCidrs: ['0.0.0.0/0'],
+      liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '10.99.0.0/16' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|10.99.0.0/16`,
+        label: '10.99.0.0/16',
+        live: { RouteTableId: RT, CidrBlock: '10.99.0.0/16' },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite RouteTableId|CidrBlock', () => {
+    const added = diffRouteTableChildren({
+      routeTableId: RT,
+      declaredCidrs: [],
+      liveRoutes: [{ cidr: '10.98.0.0/16' }],
+    });
+    expect(added[0]!.identifier).toBe(`${RT}|10.98.0.0/16`);
+  });
+
+  it('no drift when every live route is declared', () => {
+    expect(
+      diffRouteTableChildren({
+        routeTableId: RT,
+        declaredCidrs: ['0.0.0.0/0', '192.168.0.0/16'],
+        liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '192.168.0.0/16' }],
       })
     ).toEqual([]);
   });
