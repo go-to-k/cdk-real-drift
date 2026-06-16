@@ -98,8 +98,11 @@ export function parseCommonArgs(args: string[]): CommonArgs {
         v = inlineValue;
       } else {
         const next = args[i + 1];
-        // a following token that is itself a flag is NOT a value (catches `--region --json`)
-        if (next === undefined || next.startsWith('-')) {
+        // a following token that is itself a flag is NOT a value (catches `--region --json`).
+        // An empty token (`--region ""`) is also "no value": accepting it would let `''`
+        // shadow the env fallback (`?? process.env.AWS_REGION` does not fire on `''`),
+        // and the inline form `--region=` already rejects empty — stay consistent.
+        if (next === undefined || next === '' || next.startsWith('-')) {
           throw new Error(`option "${flag}" requires a value — see cdkrd --help`);
         }
         v = next;
