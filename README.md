@@ -312,8 +312,11 @@ per finding / Nothing` inline (shown above). Each option appears only when it
   it found: **record ALL of them** into the baseline (the default — the common
   first-run choice; it writes only a git-tracked file, nothing to AWS), or
   **show them first** (the report prints, and a selective record is offered
-  right after it). With zero undeclared values there is nothing to decide, so
-  no prompt. After an interactive record, a closing note states what remains:
+  right after it). Even with **zero undeclared values** (a clean fresh deploy),
+  `check` still offers to **record the current state as the baseline** — so the
+  day-1 baseline is established through `check`'s own prompt, not a separate
+  `cdkrd record` step; once a baseline exists, a clean run prompts nothing. After
+  an interactive record, a closing note states what remains:
   a PARTIAL record is a success — unselected values simply stay reported as
   UNRECORDED from the next `check` on (recording one value never flips the
   rest into drift) — and any remaining declared/deleted drift is named —

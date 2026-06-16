@@ -766,6 +766,12 @@ review (23 folded; run cdkrd record)` — keeping the red drift verdict intact
 Declared and deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`unrecorded values found — what do
 you want to do?`) so "show them first" keeps its promise of a selective record.
+R141: it ALSO fires when there is simply NO baseline file yet — even on a CLEAN stack
+(`no .cdkrd baseline yet — record the current state as your baseline?`), so the day-1
+baseline is established through `check`'s own flow (the chosen Record writes the initial
+snapshot-complete baseline with zero undeclared entries) rather than a separate `cdkrd
+record` step; once a baseline exists, a clean run prompts nothing. `availableActions`
+offers `record` when there are undeclared/added findings OR (no baseline AND no drift).
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 bypasses the baseline entirely — no suppression and no unrecorded tagging (a
