@@ -12,7 +12,12 @@ export function isGlob(s: string): boolean {
 /** Convert a glob pattern to an anchored RegExp (other metachars escaped to literals). */
 export function globToRegExp(pattern: string): RegExp {
   let out = '^';
-  for (const ch of pattern) {
+  // Collapse runs of consecutive `*` to a single `*` FIRST: `***` is semantically
+  // identical to `*` (any run of characters), but compiling each star to `.*` yields
+  // `.*.*.*…` which backtracks CATASTROPHICALLY (O(len^N)) on a long non-matching
+  // subject — a self-inflicted multi-second hang (ReDoS) on a user-authored glob like
+  // `*****` (a natural gitignore-style attempt). One `.*` per run can't backtrack.
+  for (const ch of pattern.replace(/\*+/g, '*')) {
     if (ch === '*') out += '.*';
     else if (ch === '?') out += '.';
     else out += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

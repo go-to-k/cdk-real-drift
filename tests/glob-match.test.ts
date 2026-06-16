@@ -75,4 +75,17 @@ describe('globToRegExp', () => {
   it('escapes dot to a literal', () => {
     expect(globToRegExp('a.b').source).toBe('^a\\.b$');
   });
+
+  it('collapses a run of consecutive `*` to a single `.*` (ReDoS-safe, same semantics)', () => {
+    // `*****` is semantically identical to `*`; without the collapse it compiles to
+    // `.*.*.*.*.*` which backtracks catastrophically on a long non-matching subject.
+    // The `^.*X$` source (one `.*`, not five) IS the fix — it cannot backtrack-partition.
+    expect(globToRegExp('*****X').source).toBe('^.*X$');
+    expect(globToRegExp('a***b').source).toBe('^a.*b$');
+    // semantics preserved
+    expect(matchesGlob('*****X', 'aaaaaX')).toBe(true);
+    expect(matchesGlob('*****X', 'aaaaaY')).toBe(false);
+    // a long non-match returns promptly (no catastrophic backtracking)
+    expect(matchesGlob('**********X', 'a'.repeat(60))).toBe(false);
+  });
 });

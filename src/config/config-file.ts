@@ -219,15 +219,25 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
 
 /**
  * True when `pattern` matches `target` (= "<logicalId>.<path>"), either exactly or
- * as a PARENT segment: a rule "X.Policies" also ignores child paths like
- * "X.Policies.0.PolicyName" (so ignoring a structured property covers its leaves).
- * Parent matching is at dot-segment boundaries only, combined with the glob.
+ * as a PARENT path: a rule "X.Policies" also ignores child paths like
+ * "X.Policies.0.PolicyName" AND "X.Policies[MyPol].PolicyName" (so ignoring a
+ * structured property covers its leaves, including array / identity-keyed elements).
+ * Parent matching walks ancestors at each `.` OR `[` boundary, combined with the glob.
  */
 function pathMatches(pattern: string, target: string): boolean {
   if (matchesGlob(pattern, target)) return true;
-  const segs = target.split('.');
-  for (let i = 1; i < segs.length; i++) {
-    if (matchesGlob(pattern, segs.slice(0, i).join('.'))) return true;
+  // A rule on a PARENT property ignores its whole subtree — including array / identity-
+  // keyed children whose path glues the index to its key inside ONE dot-segment
+  // (`Policies[MyPol].PolicyName`, `Statement[0].Condition`, `Tags[env]`). Walk ancestor
+  // paths by trimming at each `.` OR `[` boundary (not just `.`), so a rule `X.Policies`
+  // covers `X.Policies[MyPol].PolicyName` and `X.Statement` covers
+  // `X.Statement[0].Condition` — the dot-only split silently failed for bracket children.
+  let t = target;
+  while (true) {
+    const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['));
+    if (cut <= 0) break;
+    t = t.slice(0, cut);
+    if (matchesGlob(pattern, t)) return true;
   }
   return false;
 }
