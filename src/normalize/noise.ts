@@ -544,6 +544,9 @@ export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
 // path is the dotted path from calculateResourceDrift.
 export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::RDS::DBInstance': new Set(['EngineVersion']),
+  // Aurora clusters resolve a partial track the same way (declared `"8.0"` /
+  // `"5.7.mysql_aurora.2"` reads back the full provisioned patch version).
+  'AWS::RDS::DBCluster': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
