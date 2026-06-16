@@ -481,6 +481,26 @@ describe('baseline', () => {
       expect(out[0]!.note).toContain('changed since record');
     });
 
+    it('a degraded read (modelReadFailed) is never false-flagged as "changed" — recorded → suppressed', () => {
+      const b = baseline([
+        {
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          value: { AuthorizationType: 'NONE' },
+        },
+      ]);
+      // the live read returned only the identity snippet (full model unreadable this run)
+      const f = { ...added('Api/m1', { HttpMethod: 'ANY' }), modelReadFailed: true };
+      expect(applyBaseline([f], b)).toHaveLength(0); // suppressed, not "changed"
+    });
+
+    it('a degraded read with NO baseline entry stays Not-Recorded (not drift)', () => {
+      const f = { ...added('Api/m1', { HttpMethod: 'ANY' }), modelReadFailed: true };
+      const out = applyBaseline([f], baseline([]));
+      expect(out[0]).toMatchObject({ tier: 'added', unrecorded: true });
+    });
+
     it('an added-resource baseline entry whose live resource is GONE is not a false removal', () => {
       // the out-of-band resource was deleted after record — nothing to "restore"; the
       // empty-path entry must be skipped by the removal pass (no phantom undeclared finding).
@@ -517,6 +537,20 @@ describe('baseline', () => {
         value: { AuthorizationType: 'NONE' },
       });
       expect(recordedKey(recorded.find((e) => e.logicalId === 'Api/m1')!)).toBe('Api/m1::');
+    });
+
+    it('never snapshots an added resource whose model read failed (avoids a partial baseline)', () => {
+      const recorded = buildRecorded([
+        {
+          tier: 'added',
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          actual: { HttpMethod: 'ANY' },
+          modelReadFailed: true,
+        },
+      ]);
+      expect(recorded).toHaveLength(0);
     });
   });
 

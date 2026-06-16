@@ -208,14 +208,20 @@ export function checkBaselineAccount(
  *  surfaces as drift). An `added` entry has the synthesized child logicalId and an
  *  empty `path` (the whole resource is the value); `recordedKey` keeps it unique. */
 export function buildRecorded(findings: Finding[]): RecordedEntry[] {
-  return findings
-    .filter((f) => f.tier === 'undeclared' || f.tier === 'added')
-    .map((f) => ({
-      logicalId: f.logicalId,
-      resourceType: f.resourceType,
-      path: f.path,
-      value: f.actual,
-    }));
+  return (
+    findings
+      .filter((f) => f.tier === 'undeclared' || f.tier === 'added')
+      // PR4: never snapshot an `added` resource whose full model could not be read this
+      // run (`modelReadFailed`) — its `actual` is only the identity snippet, and recording
+      // that would false-flag "changed since record" on the next clean (full-model) read.
+      .filter((f) => !f.modelReadFailed)
+      .map((f) => ({
+        logicalId: f.logicalId,
+        resourceType: f.resourceType,
+        path: f.path,
+        value: f.actual,
+      }))
+  );
 }
 
 /** Stable key uniquely identifying an undeclared finding / recorded entry, for
@@ -393,6 +399,15 @@ export function applyBaseline(
     // so a newly-appeared added resource is simply unrecorded until the user records it.
     if (f.tier === 'added') {
       const entry = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+      // PR4: the full model could not be read this run — `actual` is only the identity
+      // snippet, so we CANNOT decide changed-vs-unchanged. Never false-flag "changed": a
+      // recorded resource is suppressed (it was verified before; re-checked next clean
+      // run, like a transiently-skipped resource), an un-recorded one stays Not-Recorded.
+      if (f.modelReadFailed) {
+        if (entry) continue;
+        kept.push({ ...f, unrecorded: true });
+        continue;
+      }
       if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
       if (entry) {
         kept.push({

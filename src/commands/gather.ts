@@ -82,7 +82,7 @@ async function readAll(
 function addedFinding(
   parent: DesiredResource,
   c: AddedChild,
-  model: Record<string, unknown>
+  read: { model: Record<string, unknown>; ok: boolean }
 ): Finding {
   return {
     tier: 'added',
@@ -91,24 +91,30 @@ function addedFinding(
     constructPath: `${parent.constructPath ?? parent.logicalId} ▸ ${c.label}`,
     resourceType: c.resourceType,
     path: '',
-    actual: model,
-    note: 'created out of band — not in your CloudFormation template',
+    actual: read.model,
+    note: read.ok
+      ? 'created out of band — not in your CloudFormation template'
+      : 'created out of band — not in your CloudFormation template; live model unreadable this run',
+    // a degraded read carries only the identity snippet — not change-watchable this run
+    ...(read.ok ? {} : { modelReadFailed: true }),
   };
 }
 
 // Read the added child's FULL live model via Cloud Control GetResource (its
 // `identifier` is the CC composite, the same one revert's DeleteResource consumes) and
-// normalize it for record/compare. On any read/parse error fall back to the
-// enumerator's identity-only `live` snippet — the resource is still REPORTED as added,
-// it just can't be change-watched until a future read succeeds. `cfn` fetches the
-// child type's schema (readOnly/writeOnly strip); `schemas` is the shared cache.
+// normalize it for record/compare. On any read/parse error return the enumerator's
+// identity-only `live` snippet with `ok: false` — the resource is still REPORTED as
+// added, but the finding is flagged `modelReadFailed` so record skips snapshotting the
+// partial model and applyBaseline never false-flags it as "changed" (a degraded snippet
+// vs a recorded full model would otherwise differ). `cfn` fetches the child type's schema
+// (readOnly/writeOnly strip); `schemas` is the shared cache.
 async function readAddedModel(
   cc: CloudControlClient,
   cfn: CloudFormationClient,
   c: AddedChild,
   schemas: Map<string, SchemaInfo>,
   oaiCanonicalIds: Record<string, string>
-): Promise<Record<string, unknown>> {
+): Promise<{ model: Record<string, unknown>; ok: boolean }> {
   try {
     const g = await cc.send(
       new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
@@ -116,9 +122,9 @@ async function readAddedModel(
     const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
     const schema = schemas.get(c.resourceType) ?? (await getSchemaInfo(cfn, c.resourceType));
     schemas.set(c.resourceType, schema);
-    return normalizeLiveModel(raw, schema, { oaiCanonicalIds });
+    return { model: normalizeLiveModel(raw, schema, { oaiCanonicalIds }), ok: true };
   } catch {
-    return c.live;
+    return { model: c.live, ok: false };
   }
 }
 
@@ -265,8 +271,8 @@ export async function gatherFindings(
     try {
       const children = await enumerate({ parent: r, desired, region });
       for (const c of children) {
-        const model = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
-        findings.push(addedFinding(r, c, model));
+        const read = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
+        findings.push(addedFinding(r, c, read));
       }
     } catch (e) {
       findings.push({

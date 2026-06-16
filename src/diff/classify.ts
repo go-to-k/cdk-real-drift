@@ -136,16 +136,16 @@ export function classifyResource(
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
   const findings: Finding[] = [];
 
-  // strip AWS-managed fields + drop aws:* tag elements (live-only), then reconcile
-  // CloudFront OAI principals (cloudfront:user ARN <-> CanonicalUser; no-op without
-  // a resolved map) on BOTH sides, then run the shared canonicalization pipeline
-  // (policy docs + tag lists + id arrays) so reordering / scalar-vs-array / OAI
-  // principal-form is not false drift. The pipeline is shared with baseline-file.ts
-  // so baseline values normalize identically (see pipeline.ts).
+  // Normalize the LIVE model via the shared `normalizeLiveModel` — strip AWS-managed
+  // fields + aws:* tags (live-only), reconcile CloudFront OAI principals (no-op without
+  // a resolved map), run the shared canonicalization pipeline (policy docs + tag lists +
+  // id arrays so reordering / scalar-vs-array / OAI principal-form is not false drift),
+  // then drop schema readOnly (pure noise) + writeOnly (unreadable) paths at any depth.
+  // The `added` tier uses the SAME helper, so the two live-normalization paths can never
+  // silently diverge; the pipeline is shared with baseline-file.ts so baseline values
+  // normalize identically (see pipeline.ts).
   const oaiMap = opts.oaiCanonicalIds ?? {};
-  const live = canonicalizeForCompare(
-    rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap)
-  ) as Record<string, unknown>;
+  const live = normalizeLiveModel(liveRaw, schema, { oaiCanonicalIds: oaiMap });
   const declared = canonicalizeForCompare(rewriteOaiPrincipalsDeep(declaredIn, oaiMap)) as Record<
     string,
     unknown
@@ -166,11 +166,8 @@ export function classifyResource(
       });
     }
   }
-  // schema-driven noise removal at ANY depth: readOnly is pure noise (strip from
-  // live); writeOnly cannot be read back (strip from BOTH sides so it is never
-  // compared, at top level or nested).
-  deepStripPaths(live, schema.readOnlyPaths);
-  deepStripPaths(live, schema.writeOnlyPaths);
+  // writeOnly cannot be read back: strip it from the DECLARED side too so it is never
+  // compared (the LIVE side was already stripped by normalizeLiveModel above).
   deepStripPaths(declared, schema.writeOnlyPaths);
 
   // Sibling-managed inline Policies (the CDK pattern: grants land in a sibling
