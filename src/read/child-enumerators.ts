@@ -36,6 +36,8 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   CognitoIdentityProviderClient,
+  type GroupType,
+  ListGroupsCommand,
   ListUserPoolClientsCommand,
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -652,6 +654,53 @@ async function pageUserPoolClients(
   return out;
 }
 
+// A UserPool also owns UserPoolGroups, each a separate CloudFormation resource. A
+// console / CLI `create-group` (someone wires a new group onto a pool out of band) is
+// invisible to cdk drift / CFn drift detection. The UserPool model does NOT reflect its
+// groups inline, so there is no double-report to suppress. The CC primaryIdentifier for
+// AWS::Cognito::UserPoolGroup is the composite `["/properties/UserPoolId","/properties/GroupName"]`,
+// so the `identifier` is the composite `UserPoolId|GroupName` — that is what CC
+// GetResource / DeleteResource consume. A group's CFn physical id (Ref) IS its GroupName.
+
+// Pure diff: declared group names + live inventory -> the added groups.
+export interface UserPoolGroupInput {
+  userPoolId: string;
+  declaredGroupNames: string[]; // physical ids (GroupNames) of AWS::Cognito::UserPoolGroup
+  liveGroups: { name: string; label?: string | undefined }[];
+}
+
+export function diffUserPoolGroups(input: UserPoolGroupInput): AddedChild[] {
+  const { userPoolId, declaredGroupNames, liveGroups } = input;
+  const declared = new Set(declaredGroupNames);
+  const added: AddedChild[] = [];
+  for (const g of liveGroups) {
+    if (declared.has(g.name)) continue;
+    added.push({
+      resourceType: 'AWS::Cognito::UserPoolGroup',
+      identifier: `${userPoolId}|${g.name}`, // CC composite UserPoolId|GroupName
+      label: g.label ?? g.name,
+      live: { GroupName: g.name, UserPoolId: userPoolId },
+    });
+  }
+  return added;
+}
+
+async function pageUserPoolGroups(
+  client: CognitoIdentityProviderClient,
+  userPoolId: string
+): Promise<GroupType[]> {
+  const out: GroupType[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListGroupsCommand({ UserPoolId: userPoolId, NextToken: next, Limit: 60 })
+    );
+    out.push(...(res.Groups ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const userPoolId = parent.physicalId; // a UserPool's physical id IS its UserPoolId
@@ -660,6 +709,8 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   // Declared clients of THIS pool (Ref/GetAtt UserPoolId already resolved to the physical
   // id by gather). A client's physical id IS its ClientId.
   const declaredClientIds: string[] = [];
+  // Declared groups of THIS pool. A group's physical id IS its GroupName.
+  const declaredGroupNames: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::Cognito::UserPoolClient' &&
@@ -667,18 +718,32 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
       r.physicalId
     ) {
       declaredClientIds.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::Cognito::UserPoolGroup' &&
+      r.declared.UserPoolId === userPoolId
+    ) {
+      const name = typeof r.declared.GroupName === 'string' ? r.declared.GroupName : r.physicalId;
+      if (name) declaredGroupNames.push(name);
     }
   }
 
   const client = new CognitoIdentityProviderClient({ region, ...READ_RETRY });
+
   const clients = await pageUserPoolClients(client, userPoolId);
   const liveClients = clients
     .filter(
       (c): c is UserPoolClientDescription & { ClientId: string } => typeof c.ClientId === 'string'
     )
     .map((c) => ({ id: c.ClientId, label: c.ClientName ?? c.ClientId }));
+  const clientAdded = diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
 
-  return diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
+  const groups = await pageUserPoolGroups(client, userPoolId);
+  const liveGroups = groups
+    .filter((g): g is GroupType & { GroupName: string } => typeof g.GroupName === 'string')
+    .map((g) => ({ name: g.GroupName }));
+  const groupAdded = diffUserPoolGroups({ userPoolId, declaredGroupNames, liveGroups });
+
+  return [...clientAdded, ...groupAdded];
 }
 
 // ── AppSync ──────────────────────────────────────────────────────────────────
