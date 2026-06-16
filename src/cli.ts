@@ -20,6 +20,12 @@ USAGE
                               — STOPS watching (declared, undeclared, or added)
   cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
+  \`cdkrd check\` is the entry point: run it and act from its prompt — it
+  establishes the first baseline and offers record / revert / ignore inline on
+  whatever it finds, so day to day you only run check. The standalone verbs above
+  are the SAME actions for scripts / non-TTY / CI (with --yes); a human rarely
+  needs them directly.
+
   cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
   pre-synthesized cdk.out) to discover stacks. With no stack argument, every
   stack the app defines is targeted; a <stack> arg (exact or a *?-glob) selects

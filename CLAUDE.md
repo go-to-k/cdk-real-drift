@@ -32,6 +32,13 @@ node dist/cli.js ignore [<stack>...] [--all]   # stop reporting chosen drift via
 node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to AWS (confirms)
 ```
 
+- **`check` is the primary entry point.** Day to day the user runs only
+  `cdkrd check` and acts from its interactive prompt — it establishes the first
+  baseline (R141) and offers record / revert / ignore inline on what it finds
+  (R121/R133). The standalone `record` / `ignore` / `revert` verbs are the SAME
+  actions for scripting / non-TTY / CI (with `--yes`); a human rarely invokes
+  them directly. Baselines stay a reviewed git artifact — CI only runs
+  `check --fail` (it never writes a baseline); a human records locally + commits.
 - `check`, `record`, and `ignore` never write to AWS (`record` writes only the
   baseline file; `ignore` writes only `.cdkrd/config.json`). `revert` is the one
   AWS-mutating verb and always confirms first (`--dry-run` to preview, `--yes`/`-y`

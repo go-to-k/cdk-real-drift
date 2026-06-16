@@ -236,6 +236,14 @@ tells cdkrd which stacks to look at.
 | `cdkrd ignore [<stack>...]` | stop reporting chosen drift via `.cdkrd/config.json` (CI: `--yes`)     |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
+**`cdkrd check` is the entry point.** Run it and act from its interactive
+prompt — it establishes the first baseline (on a fresh deploy) and offers
+**record / revert / ignore** inline on whatever it finds, so day to day you only
+run `cdkrd check`. The standalone `record` / `ignore` / `revert` verbs are the
+**same actions** for scripting / non-TTY / CI (with `--yes`); a human rarely
+needs to invoke them directly. (Baselines stay a reviewed, git-committed artifact
+either way — CI never writes one; you record locally and commit it.)
+
 **Exit codes:** `check` is **report-only by default** — drift prints but exits
 `0` (a note names the flag). Pass **`--fail`** (the `cdk diff --fail` /
 `cdk drift --fail` convention) to exit `1` on drift and suppress all prompts —
