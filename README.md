@@ -497,6 +497,13 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   textually.
 - **Custom resources** (`Custom::*`) have no cloud-side model and are always
   `skipped` (without an API call).
+- **Nested stacks** (the CDK `NestedStack` construct / any
+  `AWS::CloudFormation::Stack` resource) are deployed as separate child stacks;
+  `cdkrd` checks the parent's `AWS::CloudFormation::Stack` resource but does **not**
+  recurse into the child, so the resources **inside** a nested stack are not checked.
+  This is never silent — `check` prints a prominent `warning:` line naming each
+  nested stack so an incomplete-coverage run is never mistaken for a fully-checked
+  CLEAN one. (Check a nested stack directly by passing its deployed child stack name.)
 - **Lambda Permission:** if only the specific statement was removed out of band
   (while the function's policy still exists), it is reported as `skipped`, not
   `deleted` — identifying the exact statement would need its `StatementId`.
