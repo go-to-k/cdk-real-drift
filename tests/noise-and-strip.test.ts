@@ -6,6 +6,7 @@ import {
   canonicalizeTagListsDeep,
   isAllAwsTags,
   isPemEqual,
+  isPhysicalIdSegment,
   isTrivialEmpty,
   isVersionPrefixMatch,
   KNOWN_DEFAULTS,
@@ -423,5 +424,25 @@ describe('parseSchema', () => {
   it('R130: VERSION_PREFIX_PATHS gates the rule to RDS DBInstance EngineVersion only', () => {
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('EngineVersion')).toBe(true);
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('Engine')).toBe(false);
+  });
+});
+
+describe('isPhysicalIdSegment (R142 — value echoes a physical-id segment)', () => {
+  it('matches any |/:/`/`-separated segment of the physical id', () => {
+    const pid = 'api1|res9|GET'; // an ApiGateway Method physical id
+    expect(isPhysicalIdSegment('res9', pid)).toBe(true); // the parent Resource id (CacheNamespace default)
+    expect(isPhysicalIdSegment('api1', pid)).toBe(true);
+    expect(isPhysicalIdSegment('GET', pid)).toBe(true);
+    expect(isPhysicalIdSegment('bucket-x', 'arn:aws:s3:::bucket-x')).toBe(true); // ':'-split segment
+  });
+
+  it('a custom value that is NOT a segment does not match', () => {
+    expect(isPhysicalIdSegment('my-custom-ns', 'api1|res9|GET')).toBe(false);
+    expect(isPhysicalIdSegment('api1|res9', 'api1|res9|GET')).toBe(false); // a partial join, not a segment
+  });
+
+  it('non-string value or missing physical id → false', () => {
+    expect(isPhysicalIdSegment(123, 'api1|res9|GET')).toBe(false);
+    expect(isPhysicalIdSegment('res9', undefined)).toBe(false);
   });
 });

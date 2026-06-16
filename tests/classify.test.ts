@@ -1969,18 +1969,29 @@ describe('R140: nested AWS-populated values fold (so a clean deploy is clean)', 
     expect(f.tier).toBe('undeclared');
   });
 
-  it('ApiGateway Method Integration.CacheNamespace folds as generated on ANY value', () => {
-    // CacheNamespace defaults to the PARENT Resource id, so it varies per resource — a
-    // value-independent GENERATED_PATHS fold (not value-equality). Two different ids both fold.
-    for (const ns of ['7n6zf3', 'abc999']) {
-      const findings = classifyResource(
-        res('AWS::ApiGateway::Method', { Integration: { Type: 'MOCK' } }),
-        { Integration: { Type: 'MOCK', CacheNamespace: ns } },
-        schema
-      );
-      const f = findings.find((x) => x.path === 'Integration.CacheNamespace')!;
-      expect(f.tier).toBe('generated');
-      expect(f.nested).toBe(true);
-    }
+  // CacheNamespace defaults to the PARENT Resource id = the MIDDLE segment of the Method's
+  // own physical id (`RestApiId|ResourceId|HttpMethod`). R142: fold as `generated` ONLY when
+  // the value echoes a physical-id segment, so a CUSTOM value the user set still surfaces.
+  const method: DesiredResource = {
+    logicalId: 'M',
+    resourceType: 'AWS::ApiGateway::Method',
+    physicalId: 'api1|res9|GET',
+    declared: { Integration: { Type: 'MOCK' } },
+  };
+  const cacheNsFinding = (cacheNs: string) =>
+    classifyResource(
+      method,
+      { Integration: { Type: 'MOCK', CacheNamespace: cacheNs } },
+      schema
+    ).find((x) => x.path === 'Integration.CacheNamespace')!;
+
+  it('CacheNamespace == the parent Resource id (a physical-id segment) folds as generated', () => {
+    const f = cacheNsFinding('res9'); // the middle segment of api1|res9|GET
+    expect(f.tier).toBe('generated');
+    expect(f.nested).toBe(true);
+  });
+
+  it('a CUSTOM CacheNamespace (not a physical-id segment) surfaces as undeclared', () => {
+    expect(cacheNsFinding('my-custom-ns').tier).toBe('undeclared');
   });
 });

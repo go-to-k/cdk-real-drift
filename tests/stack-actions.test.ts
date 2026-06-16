@@ -16,6 +16,7 @@ import type { Desired } from '../src/desired/template-adapter.js';
 import {
   ignoreSelectMessage,
   ignoreStack,
+  recordOutcomeMessage,
   recordScopeNote,
   recordSelectMessage,
   recordStack,
@@ -818,6 +819,31 @@ describe('recordScopeNote (R117 — record snapshots undeclared + added; say wha
     // resolution now includes `cdkrd ignore` (declared drift is ignorable in-tool)
     expect(note).toContain('cdkrd ignore');
     expect(note).toMatch(/cdkrd revert|cdk deploy/);
+  });
+});
+
+describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")', () => {
+  it('FIRST baseline on a clean stack (no prior file, 0 entries) reads as an initialization', () => {
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, false);
+    expect(m).toContain('baseline initialized');
+    expect(m).toContain('this stack is now tracked');
+    expect(m).not.toContain('0 recorded entry(ies)'); // the cold phrasing is gone
+  });
+
+  it('with a PRIOR baseline, 0 entries is the normal "written" line (not an init)', () => {
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, true);
+    expect(m).toContain('baseline written');
+    expect(m).not.toContain('initialized');
+  });
+
+  it('N recorded entries → the normal written line', () => {
+    expect(recordOutcomeMessage('ApiStack', 'p', 3, false, false)).toBe(
+      'baseline written: p (3 recorded entry(ies))'
+    );
+  });
+
+  it('refreshedOnly → the refreshed line regardless of prior baseline', () => {
+    expect(recordOutcomeMessage('ApiStack', 'p', 5, true, true)).toContain('baseline refreshed');
   });
 });
 

@@ -25,6 +25,7 @@ import {
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
   isGeneratedName,
+  isPhysicalIdSegment,
   isTrivialEmpty,
   isVersionPrefixMatch,
   GENERATED_PATHS,
@@ -523,7 +524,9 @@ export function classifyResource(
         (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
       const tier = atDefault
         ? 'atDefault'
-        : generatedPaths.includes(schemaPath)
+        : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
+          // physical-id segment (the AWS default) — a custom value the user set surfaces.
+          generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)
           ? 'generated'
           : 'undeclared';
       findings.push({ tier, logicalId, resourceType, path, actual: value, nested: true });
