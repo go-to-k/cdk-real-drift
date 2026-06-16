@@ -421,6 +421,62 @@ describe('SDK overrides', () => {
       expect(await SDK_OVERRIDES['AWS::Route53::RecordSet'](ctx({}, 'opaque-id'))).toBeUndefined();
     });
 
+    it('follows IsTruncated to find a record paginated past the first page (no false deleted, WAVE23)', async () => {
+      // A name+type with many SetIdentifier variants can land the declared one on page 2.
+      // Reading only page 1 would throw ResourceGoneError -> a FALSE `deleted`.
+      route53
+        .on(ListResourceRecordSetsCommand)
+        .resolvesOnce({
+          ResourceRecordSets: [
+            { Name: 'app.example.com.', Type: 'A', SetIdentifier: 'blue', Weight: 10 },
+          ],
+          IsTruncated: true,
+          NextRecordName: 'app.example.com.',
+          NextRecordType: 'A',
+          NextRecordIdentifier: 'green',
+        })
+        .resolvesOnce({
+          ResourceRecordSets: [
+            {
+              Name: 'app.example.com.',
+              Type: 'A',
+              SetIdentifier: 'green',
+              Weight: 90,
+              TTL: 60,
+              ResourceRecords: [{ Value: '2.2.2.2' }],
+            },
+          ],
+          IsTruncated: false,
+        });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'app.example.com.', Type: 'A', SetIdentifier: 'green' })
+      );
+      // the page-2 record was found (NOT a false ResourceGoneError) with its routing fields
+      expect(out).toMatchObject({ SetIdentifier: 'green', Weight: 90, TTL: '60' });
+    });
+
+    it('throws deleted only after exhausting all pages (a genuinely absent record)', async () => {
+      route53
+        .on(ListResourceRecordSetsCommand)
+        .resolvesOnce({
+          ResourceRecordSets: [{ Name: 'app.example.com.', Type: 'A', SetIdentifier: 'blue' }],
+          IsTruncated: true,
+          NextRecordName: 'app.example.com.',
+          NextRecordType: 'A',
+          NextRecordIdentifier: 'blue',
+        })
+        // page 2 moved past our name+type entirely -> exhausted, genuinely gone
+        .resolvesOnce({
+          ResourceRecordSets: [{ Name: 'zzz.example.com.', Type: 'A' }],
+          IsTruncated: false,
+        });
+      await expect(
+        SDK_OVERRIDES['AWS::Route53::RecordSet'](
+          ctx({ HostedZoneId: 'Z1', Name: 'app.example.com.', Type: 'A', SetIdentifier: 'green' })
+        )
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
     it('disambiguates same-name+type variants by SetIdentifier (no wrong-record read) and projects routing fields', async () => {
       // Two weighted records share Name+Type; only SetIdentifier tells them apart. The
       // old reader (MaxItems:1 + Type/Name-only match) would read whichever came first
