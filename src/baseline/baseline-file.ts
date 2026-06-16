@@ -68,13 +68,31 @@ export async function loadBaseline(
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw e;
   }
-  const parsed = JSON.parse(raw) as BaselineFile & { accepted?: RecordedEntry[] };
+  const path = baselinePath(stackName, accountId, region);
+  let parsed: BaselineFile & { accepted?: RecordedEntry[] };
+  try {
+    parsed = JSON.parse(raw) as BaselineFile & { accepted?: RecordedEntry[] };
+  } catch {
+    throw new Error(`baseline file ${path} is not valid JSON (corrupt or partially written)`);
+  }
+  if (parsed === null || typeof parsed !== 'object')
+    throw new Error(`baseline file ${path} is malformed: root is not an object`);
   // Back-compat: baselines written before `accept` was renamed to `record` stored the
   // entries under `accepted`; the field is now `recorded`. Read the old key so a
   // committed baseline keeps loading — the next `record` rewrites it under `recorded`.
   if (parsed.recorded === undefined && parsed.accepted !== undefined)
     parsed.recorded = parsed.accepted;
   delete parsed.accepted;
+  // Fail-safe validation (a baseline is a git-committed, hand-editable, cross-version
+  // artifact): a newer schemaVersion must error CLEARLY rather than be silently
+  // mis-applied as v2, and a missing/non-array `recorded` must error here rather than
+  // crash later with an opaque TypeError inside applyBaseline (`recorded.find`).
+  if (typeof parsed.schemaVersion === 'number' && parsed.schemaVersion > 2)
+    throw new Error(
+      `baseline file ${path} was written by a newer cdkrd (schemaVersion ${parsed.schemaVersion}); upgrade cdkrd`
+    );
+  if (!Array.isArray(parsed.recorded))
+    throw new Error(`baseline file ${path} is malformed: \`recorded\` is missing or not an array`);
   return parsed;
 }
 

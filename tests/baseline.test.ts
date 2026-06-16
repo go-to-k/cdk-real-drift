@@ -955,6 +955,52 @@ describe('baseline', () => {
     });
   });
 
+  describe('loadBaseline fail-safe validation (WAVE23 — a malformed/newer baseline errors clearly)', () => {
+    const withBaselineFile = async (contents: string, fn: () => Promise<void>) => {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const p = baselinePath('s', '111122223333', 'r');
+        await mkdir(dirname(p), { recursive: true });
+        await writeFile(p, contents, 'utf8');
+        await fn();
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
+    };
+
+    it('throws a CLEAR error on corrupt JSON (not an opaque SyntaxError)', async () => {
+      await withBaselineFile('{ "recorded": [', async () => {
+        await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(/not valid JSON/);
+      });
+    });
+
+    it('throws when `recorded` is missing/not an array (not a later opaque TypeError)', async () => {
+      await withBaselineFile(JSON.stringify({ schemaVersion: 2, stackName: 's' }), async () => {
+        await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+          /`recorded` is missing or not an array/
+        );
+      });
+    });
+
+    it('throws on a newer schemaVersion (a future cdkrd wrote it) instead of mis-applying as v2', async () => {
+      await withBaselineFile(JSON.stringify({ schemaVersion: 3, recorded: [] }), async () => {
+        await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(/newer cdkrd/);
+      });
+    });
+
+    it('still loads a valid v1/v2 baseline (no false rejection)', async () => {
+      await withBaselineFile(
+        JSON.stringify({ schemaVersion: 2, recorded: [], stackName: 's' }),
+        async () => {
+          expect((await loadBaseline('s', '111122223333', 'r'))?.recorded).toEqual([]);
+        }
+      );
+    });
+  });
+
   describe('warnTemplateHashDrift', () => {
     it('warns when the stored hash differs from the current template', () => {
       const b = { ...baseline([]), templateHash: hashTemplate('{"old":1}') };
