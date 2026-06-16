@@ -301,6 +301,37 @@ describe('SDK overrides', () => {
       },
     });
   });
+  it('Budgets: projects PlannedBudgetLimits + THIN AutoAdjustData, dropping the computed auto-adjust fields', async () => {
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'b',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        PlannedBudgetLimits: { '1700000000': { Amount: '40.0', Unit: 'USD' } },
+        AutoAdjustData: {
+          AutoAdjustType: 'HISTORICAL',
+          // BudgetAdjustmentPeriod is user-set; LookBackAvailablePeriods is AWS-computed
+          HistoricalOptions: { BudgetAdjustmentPeriod: 6, LookBackAvailablePeriods: 3 },
+          LastAutoAdjustTime: new Date(0), // computed -> must be dropped
+        },
+      },
+    });
+    const out = await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: { BudgetName: 'b' } }));
+    expect(out).toEqual({
+      Budget: {
+        BudgetName: 'b',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        PlannedBudgetLimits: { '1700000000': { Amount: '40.0', Unit: 'USD' } },
+        // only the user-settable auto-adjust fields; LookBackAvailablePeriods +
+        // LastAutoAdjustTime (computed) are dropped so they are not live-only noise
+        AutoAdjustData: {
+          AutoAdjustType: 'HISTORICAL',
+          HistoricalOptions: { BudgetAdjustmentPeriod: 6 },
+        },
+      },
+    });
+  });
   it('Budgets: undefined without a budget name', async () => {
     expect(await SDK_OVERRIDES['AWS::Budgets::Budget'](ctx({ Budget: {} }))).toBeUndefined();
   });

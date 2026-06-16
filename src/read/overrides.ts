@@ -237,13 +237,37 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
   // where it must: COMPUTED fields (CalculatedSpend) and AWS-defaulted blobs (TimePeriod's
   // 2087 end date, the full CostTypes default set) are deliberately NOT offered — they
   // would be live-only noise.
+  // PlannedBudgetLimits — a time-phased budget's per-period limits. Omitting it made an
+  // out-of-band change to a future month's limit invisible (a declared one became a
+  // readGap; an undeclared one wholly invisible). FP-safe: DescribeBudget returns it ONLY
+  // for a budget created WITH planned limits (SDK-documented absent-when-unused), so a
+  // plain fixed budget stays CLEAN; the inner Spend.Amount string ("40.0") vs the declared
+  // number is folded by isStringlyEqualScalar, exactly like BudgetLimit.
+  //
+  // AutoAdjustData — switching a budget to auto-adjusting (or changing its look-back) was
+  // undetectable. Projected THIN: only the user-settable AutoAdjustType + HistoricalOptions
+  // .BudgetAdjustmentPeriod. The COMPUTED fields (LastAutoAdjustTime, the auto-calculated
+  // HistoricalOptions.LookBackAvailablePeriods) are deliberately NOT offered — they would
+  // be live-only noise. Absent for a fixed budget, so no first-run noise there.
+  const aad = b.AutoAdjustData;
   return {
     Budget: {
       BudgetName: b.BudgetName,
       BudgetType: b.BudgetType,
       TimeUnit: b.TimeUnit,
       ...(b.BudgetLimit !== undefined && { BudgetLimit: b.BudgetLimit }),
+      ...(b.PlannedBudgetLimits !== undefined && { PlannedBudgetLimits: b.PlannedBudgetLimits }),
       ...(b.CostFilters !== undefined && { CostFilters: b.CostFilters }),
+      ...(aad && {
+        AutoAdjustData: {
+          ...(aad.AutoAdjustType !== undefined && { AutoAdjustType: aad.AutoAdjustType }),
+          ...(aad.HistoricalOptions?.BudgetAdjustmentPeriod !== undefined && {
+            HistoricalOptions: {
+              BudgetAdjustmentPeriod: aad.HistoricalOptions.BudgetAdjustmentPeriod,
+            },
+          }),
+        },
+      }),
     },
   };
 };
