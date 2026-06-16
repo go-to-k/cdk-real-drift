@@ -209,6 +209,21 @@ goes unnoticed. It does not:
 cd iam && bash verify-sibling-policy-doc.sh
 ```
 
+## stages / verify-stages.sh
+
+DISCOVERY-only (no deploy): a CDK app with a top-level stack AND a stack nested
+inside a `Stage` (the CDK Pipelines / multi-env pattern). Asserts `cdkrd check`
+enumerates BOTH `TopStack` and the staged `ProdStage-ApiStack`. A staged stack is
+absent from `cloudAssembly.stacks` (top-level assembly only), so `synthApp` must use
+`stacksRecursively` — without it the staged stack is silently never discovered.
+Synthesizes locally and runs `check` (stacks not deployed → each "skipped"); only the
+discovered stack NAMES are asserted. Needs AWS creds for the DescribeStacks probe but
+deploys/destroys nothing.
+
+```bash
+cd stages && npm install && bash verify-stages.sh
+```
+
 ## atdefault
 
 Validates the R86 `atDefault` fold end-to-end (a default-config Lambda + a bare
