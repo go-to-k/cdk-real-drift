@@ -9,6 +9,7 @@ import {
   type BaselineFile,
   baselinePath,
   buildRecorded,
+  carryForwardUnreadable,
   formatPromotedStaleNote,
   identityArrayDelta,
   checkBaselineAccount,
@@ -551,6 +552,86 @@ describe('baseline', () => {
         },
       ]);
       expect(recorded).toHaveLength(0);
+    });
+  });
+
+  describe('carryForwardUnreadable (re-record never shrinks the baseline for unread resources)', () => {
+    const prior = baseline([
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 },
+      { logicalId: 'B', resourceType: 'AWS::X::Y', path: 'Q', value: 2 },
+    ]);
+
+    it('preserves a prior entry whose resource was SKIPPED this run', () => {
+      // This run read A (undeclared) but could not read B (skipped) -> B must survive.
+      const findings: Finding[] = [
+        undeclared('A', 'P', 1),
+        { tier: 'skipped', logicalId: 'B', resourceType: 'AWS::X::Y', path: '' },
+      ];
+      const out = carryForwardUnreadable(buildRecorded(findings), prior, findings);
+      expect(out).toContainEqual({
+        logicalId: 'B',
+        resourceType: 'AWS::X::Y',
+        path: 'Q',
+        value: 2,
+      });
+      // A reflects this run's freshly-read value, not the stale prior one.
+      expect(out.find((e) => e.logicalId === 'A')).toMatchObject({ value: 1 });
+    });
+
+    it('preserves a prior added entry whose model read failed this run', () => {
+      const prevAdded = baseline([
+        { logicalId: 'Api/m1', resourceType: 'AWS::ApiGateway::Method', path: '', value: { X: 1 } },
+      ]);
+      const findings: Finding[] = [
+        {
+          tier: 'added',
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          actual: { X: 1 },
+          modelReadFailed: true,
+        },
+      ];
+      // buildRecorded drops the modelReadFailed entry; carry-forward restores it.
+      expect(buildRecorded(findings)).toHaveLength(0);
+      const out = carryForwardUnreadable(buildRecorded(findings), prevAdded, findings);
+      expect(out).toContainEqual({
+        logicalId: 'Api/m1',
+        resourceType: 'AWS::ApiGateway::Method',
+        path: '',
+        value: { X: 1 },
+      });
+    });
+
+    it('does NOT resurrect a prior entry for a resource read CLEAN this run (value returned to default)', () => {
+      // B was read clean (no undeclared finding) -> its value legitimately went to default; drop it.
+      const findings: Finding[] = [undeclared('A', 'P', 1)];
+      const out = carryForwardUnreadable(buildRecorded(findings), prior, findings);
+      expect(out.find((e) => e.logicalId === 'B')).toBeUndefined();
+    });
+
+    it('does NOT resurrect a prior entry for a DELETED resource (genuinely gone)', () => {
+      const findings: Finding[] = [
+        { tier: 'deleted', logicalId: 'B', resourceType: 'AWS::X::Y', path: '' },
+      ];
+      const out = carryForwardUnreadable(buildRecorded(findings), prior, findings);
+      expect(out.find((e) => e.logicalId === 'B')).toBeUndefined();
+    });
+
+    it('does not duplicate an entry already present in this run', () => {
+      const findings: Finding[] = [
+        undeclared('B', 'Q', 2),
+        { tier: 'skipped', logicalId: 'B', resourceType: 'AWS::X::Y', path: '' },
+      ];
+      const out = carryForwardUnreadable(buildRecorded(findings), prior, findings);
+      expect(out.filter((e) => e.logicalId === 'B' && e.path === 'Q')).toHaveLength(1);
+    });
+
+    it('no-ops with no prior baseline', () => {
+      const findings: Finding[] = [undeclared('A', 'P', 1)];
+      expect(carryForwardUnreadable(buildRecorded(findings), undefined, findings)).toEqual(
+        buildRecorded(findings)
+      );
     });
   });
 
