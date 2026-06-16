@@ -29,6 +29,8 @@ import {
 } from '@aws-sdk/client-appsync';
 import {
   ApiGatewayV2Client,
+  type Authorizer as ApiGwV2Authorizer,
+  GetAuthorizersCommand,
   GetIntegrationsCommand,
   GetRoutesCommand,
   type Integration as ApiGwV2Integration,
@@ -350,15 +352,17 @@ async function getAllAuthorizers(
 }
 
 // ── API Gateway V2 (HTTP / WebSocket) ────────────────────────────────────────
-// An `AWS::ApiGatewayV2::Api` owns Routes and Integrations, each a SEPARATE
-// CloudFormation resource — the direct V2 analogue of REST's Resources + Methods.
-// A console-added Route (e.g. `GET /admin`) or Integration is invisible to `cdk drift`
-// / CFn drift detection (they only compare template-declared resources). Unlike REST
-// there is no implicit "root" child to special-case, and Routes/Integrations are
-// siblings (not nested), so each is reported independently. Both protocol types (HTTP
-// and WebSocket) use the same Api type + GetRoutes/GetIntegrations APIs, so one
-// enumerator covers both. CC `GetResource`/`DeleteResource` consume the composite
-// identifier (`ApiId|RouteId` / `ApiId|IntegrationId`), so revert deletes generically.
+// An `AWS::ApiGatewayV2::Api` owns Routes, Integrations, and Authorizers, each a
+// SEPARATE CloudFormation resource — the direct V2 analogue of REST's Resources +
+// Methods. A console-added Route (e.g. `GET /admin`), Integration, or Authorizer is
+// invisible to `cdk drift` / CFn drift detection (they only compare template-declared
+// resources). Unlike REST there is no implicit "root" child to special-case, and these
+// children are siblings (not nested), so each is reported independently. Both protocol
+// types (HTTP and WebSocket) use the same Api type + GetRoutes/GetIntegrations/
+// GetAuthorizers APIs, so one enumerator covers both. The Api model does NOT reflect
+// its authorizers inline, so there is no double-report to suppress. CC `GetResource`/
+// `DeleteResource` consume the composite identifier (`ApiId|RouteId` /
+// `ApiId|IntegrationId` / `AuthorizerId|ApiId`), so revert deletes generically.
 
 // Pure diff: declared child id sets + live inventory -> the added children. Separated
 // from the SDK calls so the matching is unit-tested offline (mirrors REST).
@@ -428,6 +432,45 @@ async function pageIntegrations(
   return out;
 }
 
+// Pure diff: declared authorizer ids + live inventory -> the added authorizers. An
+// AWS::ApiGatewayV2::Authorizer's CFn physical id (Ref) IS its AuthorizerId, so declared
+// authorizers are matched by AuthorizerId. The CC primaryIdentifier is the composite
+// `["/properties/AuthorizerId","/properties/ApiId"]` (AuthorizerId FIRST), so the
+// `identifier` is `AuthorizerId|ApiId` — that is what CC GetResource / DeleteResource consume.
+export function diffApiGatewayV2Authorizers(input: {
+  apiId: string;
+  declaredAuthorizerIds: string[]; // physical ids (AuthorizerIds) of AWS::ApiGatewayV2::Authorizer
+  liveAuthorizers: { id: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const { apiId, declaredAuthorizerIds, liveAuthorizers } = input;
+  const declared = new Set(declaredAuthorizerIds);
+  const added: AddedChild[] = [];
+  for (const a of liveAuthorizers) {
+    if (declared.has(a.id)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGatewayV2::Authorizer',
+      identifier: `${a.id}|${apiId}`, // CC composite AuthorizerId|ApiId (AuthorizerId first)
+      label: a.label ?? a.id,
+      live: { AuthorizerId: a.id, ApiId: apiId },
+    });
+  }
+  return added;
+}
+
+async function pageV2Authorizers(
+  client: ApiGatewayV2Client,
+  apiId: string
+): Promise<ApiGwV2Authorizer[]> {
+  const out: ApiGwV2Authorizer[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new GetAuthorizersCommand({ ApiId: apiId, NextToken: next }));
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const apiId = parent.physicalId;
@@ -437,19 +480,24 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   // by gather). Route/Integration physical ids ARE the RouteId/IntegrationId.
   const declaredRouteIds: string[] = [];
   const declaredIntegrationIds: string[] = [];
+  // Declared authorizers of THIS api. An Authorizer's physical id (Ref) IS its AuthorizerId.
+  const declaredAuthorizerIds: string[] = [];
   for (const r of desired.resources) {
     if (r.declared.ApiId !== apiId) continue;
     if (r.resourceType === 'AWS::ApiGatewayV2::Route' && r.physicalId) {
       declaredRouteIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::ApiGatewayV2::Integration' && r.physicalId) {
       declaredIntegrationIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::ApiGatewayV2::Authorizer' && r.physicalId) {
+      declaredAuthorizerIds.push(r.physicalId);
     }
   }
 
   const client = new ApiGatewayV2Client({ region, ...READ_RETRY });
-  const [routes, integrations] = await Promise.all([
+  const [routes, integrations, authorizers] = await Promise.all([
     pageRoutes(client, apiId),
     pageIntegrations(client, apiId),
+    pageV2Authorizers(client, apiId),
   ]);
   const liveRoutes = routes
     .filter((r): r is ApiGwV2Route & { RouteId: string } => typeof r.RouteId === 'string')
@@ -460,14 +508,25 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
         typeof i.IntegrationId === 'string'
     )
     .map((i) => ({ id: i.IntegrationId, label: integrationLabel(i) }));
+  const liveAuthorizers = authorizers
+    .filter(
+      (a): a is ApiGwV2Authorizer & { AuthorizerId: string } => typeof a.AuthorizerId === 'string'
+    )
+    .map((a) => ({ id: a.AuthorizerId, label: a.Name ?? a.AuthorizerId }));
 
-  return diffApiGatewayV2Children({
+  const added = diffApiGatewayV2Children({
     apiId,
     declaredRouteIds,
     declaredIntegrationIds,
     liveRoutes,
     liveIntegrations,
   });
+  const authorizerAdded = diffApiGatewayV2Authorizers({
+    apiId,
+    declaredAuthorizerIds,
+    liveAuthorizers,
+  });
+  return added.concat(authorizerAdded);
 }
 
 // ── SNS ──────────────────────────────────────────────────────────────────────

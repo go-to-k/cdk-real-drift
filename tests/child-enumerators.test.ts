@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
+  diffApiGatewayV2Authorizers,
   diffApiGatewayV2Children,
   diffEcsClusterChildren,
   diffEventBusChildren,
@@ -264,6 +265,51 @@ describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
       liveIntegrations: [],
     });
     expect(added[0]!.label).toBe('rX');
+  });
+});
+
+describe('diffApiGatewayV2Authorizers (HTTP / WebSocket API authorizers)', () => {
+  const APIV2 = 'v2api01';
+
+  it('flags an out-of-band Authorizer; identifier is the CC composite AuthorizerId|ApiId', () => {
+    const added = diffApiGatewayV2Authorizers({
+      apiId: APIV2,
+      declaredAuthorizerIds: ['authDeclared'],
+      liveAuthorizers: [
+        { id: 'authDeclared', label: 'declared' },
+        { id: 'authConsole', label: 'console-jwt' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ApiGatewayV2::Authorizer',
+        identifier: `authConsole|${APIV2}`,
+        label: 'console-jwt',
+        live: { AuthorizerId: 'authConsole', ApiId: APIV2 },
+      },
+    ]);
+  });
+
+  it('no drift when every live Authorizer is declared', () => {
+    expect(
+      diffApiGatewayV2Authorizers({
+        apiId: APIV2,
+        declaredAuthorizerIds: ['a1', 'a2'],
+        liveAuthorizers: [
+          { id: 'a1', label: 'jwt1' },
+          { id: 'a2', label: 'jwt2' },
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it('falls back to the AuthorizerId when the live Authorizer has no name', () => {
+    const added = diffApiGatewayV2Authorizers({
+      apiId: APIV2,
+      declaredAuthorizerIds: [],
+      liveAuthorizers: [{ id: 'authX', label: undefined }],
+    });
+    expect(added[0]!.label).toBe('authX');
   });
 });
 
