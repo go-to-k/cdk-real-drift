@@ -65,20 +65,6 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
-      "logicalId": "Alerts91F83244",
-      "resourceType": "AWS::SNS::Topic",
-      "path": "Subscription",
-      "actual": [
-        {
-          "Endpoint": "arn:aws:sqs:us-east-1:111111111111:CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-          "Protocol": "sqs"
-        }
-      ],
-      "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkrdIntegHarvest2-Alerts91F83244-1ZnyAF9edmoR",
-      "constructPath": "CdkrdIntegHarvest2/Alerts"
-    },
-    {
       "tier": "generated",
       "logicalId": "Alerts91F83244",
       "resourceType": "AWS::SNS::Topic",

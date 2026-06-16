@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { diffApiGatewayChildren, diffApiGatewayV2Children } from '../src/read/child-enumerators.js';
+import {
+  diffApiGatewayChildren,
+  diffApiGatewayV2Children,
+  diffSnsTopicChildren,
+} from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
 const ROOT = 'rootres0';
@@ -176,5 +180,47 @@ describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
       liveIntegrations: [],
     });
     expect(added[0]!.label).toBe('rX');
+  });
+});
+
+describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
+  const SUB = (id: string) => `arn:aws:sns:us-east-1:111122223333:t:${id}`;
+
+  it('flags an out-of-band subscription added via the console (not in the template)', () => {
+    const added = diffSnsTopicChildren({
+      declaredSubscriptionArns: [SUB('declared')],
+      liveSubscriptions: [
+        { arn: SUB('declared'), label: 'sqs arn:queue' },
+        { arn: SUB('console'), label: 'email ops@example.com' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SNS::Subscription',
+        identifier: SUB('console'),
+        label: 'email ops@example.com',
+        live: { SubscriptionArn: SUB('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare SubscriptionArn (CC primaryIdentifier, not a composite)', () => {
+    const added = diffSnsTopicChildren({
+      declaredSubscriptionArns: [],
+      liveSubscriptions: [{ arn: SUB('x'), label: 'lambda arn:fn' }],
+    });
+    expect(added[0]!.identifier).toBe(SUB('x'));
+  });
+
+  it('no drift when every live subscription is declared', () => {
+    expect(
+      diffSnsTopicChildren({
+        declaredSubscriptionArns: [SUB('a'), SUB('b')],
+        liveSubscriptions: [
+          { arn: SUB('a'), label: 'sqs q' },
+          { arn: SUB('b'), label: 'lambda f' },
+        ],
+      })
+    ).toEqual([]);
   });
 });

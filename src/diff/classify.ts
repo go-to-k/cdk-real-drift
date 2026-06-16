@@ -57,6 +57,20 @@ const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   typeof (t as { Key?: unknown }).Key === 'string' &&
   'Value' in (t as object);
 
+// Parent resources whose live model REFLECTS their separately-managed child resources
+// as an inline aggregate property (e.g. an SNS Topic's `Subscription` list mirrors every
+// AWS::SNS::Subscription pointing at it, including ones created out of band). cdkrd
+// already tracks those children independently — declared ones as their own resources,
+// out-of-band ones via the `added` enumerator (read/child-enumerators.ts) — so comparing
+// the reflection too would DOUBLE-REPORT one subscription as both a `Topic.Subscription`
+// undeclared drift AND an `added` Subscription resource. Drop the live reflection so the
+// child is reported ONCE (as the resource). Only when the template does NOT declare the
+// property inline: a stack that genuinely uses inline subscriptions keeps the compare
+// (fail-open — never hide a declared value). Same idea as the sibling-IAM-policy drop.
+const REFLECTED_CHILD_PROPS: Record<string, string> = {
+  'AWS::SNS::Topic': 'Subscription',
+};
+
 // R96/R98: recurse the declared and live sides of a property and emit each LIVE-only
 // nested key — a sub-key present in live but never declared, at any depth.
 //   - Plain objects (R96): walk every live key; recurse where declared, emit otherwise.
@@ -203,6 +217,12 @@ export function classifyResource(
     string,
     unknown
   >;
+  // Drop a parent's reflected child-aggregate property (e.g. SNS Topic.Subscription)
+  // UNLESS the template declares it inline — cdkrd tracks those children as their own
+  // resources (+ the `added` enumerator), so comparing the reflection would double-report
+  // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
+  const reflected = REFLECTED_CHILD_PROPS[resourceType];
+  if (reflected && !(reflected in declared)) delete live[reflected];
   // R11: a declared TOP-LEVEL write-only key is about to be stripped from `declared`
   // (below). Surface it as ONE readGap finding FIRST so it is never silently dropped
   // — the informational tier exists precisely for "declared but unreadable" props.

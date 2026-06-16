@@ -52,20 +52,5 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": [
-    {
-      "tier": "undeclared",
-      "logicalId": "BillingAlarmTopic299F87AA",
-      "resourceType": "AWS::SNS::Topic",
-      "path": "Subscription",
-      "actual": [
-        {
-          "Endpoint": "https://global.sns-api.chatbot.amazonaws.com",
-          "Protocol": "https"
-        }
-      ],
-      "physicalId": "arn:aws:sns:us-east-1:111111111111:main-CostCheck-BillingAlarmTopic",
-      "constructPath": "main-CostCheck/BillingAlarmTopic"
-    }
-  ]
+  "expected": []
 }
