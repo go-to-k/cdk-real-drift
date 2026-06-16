@@ -4,6 +4,7 @@ import {
   diffApiGatewayV2Children,
   diffEventBusChildren,
   diffGraphQLApiChildren,
+  diffGraphQLApiResolvers,
   diffLambdaFunctionChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
@@ -511,6 +512,49 @@ describe('diffGraphQLApiChildren (AppSync data sources)', () => {
         liveDataSources: [
           { name: 'a', arn: DS('a') },
           { name: 'b', arn: DS('b') },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffGraphQLApiResolvers (AppSync resolvers)', () => {
+  const RES = (typeName: string, fieldName: string) =>
+    `arn:aws:appsync:us-east-1:111122223333:apis/abc/types/${typeName}/resolvers/${fieldName}`;
+
+  it('flags an out-of-band resolver added via the console (not in the template)', () => {
+    const added = diffGraphQLApiResolvers({
+      declaredResolverKeys: ['Query|ping'],
+      liveResolvers: [
+        { key: 'Query|ping', arn: RES('Query', 'ping'), label: 'Query.ping' },
+        { key: 'Query|pong', arn: RES('Query', 'pong'), label: 'Query.pong' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppSync::Resolver',
+        identifier: RES('Query', 'pong'),
+        label: 'Query.pong',
+        live: { ResolverArn: RES('Query', 'pong') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare ResolverArn (CC primaryIdentifier)', () => {
+    const added = diffGraphQLApiResolvers({
+      declaredResolverKeys: [],
+      liveResolvers: [{ key: 'Query|x', arn: RES('Query', 'x') }],
+    });
+    expect(added[0]!.identifier).toBe(RES('Query', 'x'));
+  });
+
+  it('no drift when every live resolver is declared', () => {
+    expect(
+      diffGraphQLApiResolvers({
+        declaredResolverKeys: ['Query|a', 'Mutation|b'],
+        liveResolvers: [
+          { key: 'Query|a', arn: RES('Query', 'a') },
+          { key: 'Mutation|b', arn: RES('Mutation', 'b') },
         ],
       })
     ).toEqual([]);

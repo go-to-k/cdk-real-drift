@@ -21,6 +21,9 @@ import {
   AppSyncClient,
   type DataSource as AppSyncDataSource,
   ListDataSourcesCommand,
+  ListResolversCommand,
+  ListTypesCommand,
+  type Resolver as AppSyncResolver,
 } from '@aws-sdk/client-appsync';
 import {
   ApiGatewayV2Client,
@@ -756,12 +759,14 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
 
 // ── AppSync ──────────────────────────────────────────────────────────────────
 // An `AWS::AppSync::GraphQLApi` owns DataSources (the DynamoDB / Lambda / HTTP / NONE
-// resolver backings), each a separate CloudFormation resource. A console / CLI
-// `create-data-source` (someone wires a new backing onto an api out of band) is
-// invisible to cdk drift / CFn drift detection. The GraphQLApi model does NOT reflect
-// its datasources inline, so there is no double-report to suppress. The CC
-// primaryIdentifier for AWS::AppSync::DataSource is the bare DataSourceArn, which CC
-// GetResource / DeleteResource consume.
+// resolver backings) AND Resolvers (per type/field attachments), each a separate
+// CloudFormation resource. A console / CLI `create-data-source` / `create-resolver`
+// (someone wires a new backing or resolver onto an api out of band) is invisible to
+// cdk drift / CFn drift detection. The GraphQLApi model does NOT reflect its
+// datasources or resolvers inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::AppSync::DataSource is the bare DataSourceArn and for
+// AWS::AppSync::Resolver the bare ResolverArn, which CC GetResource / DeleteResource
+// consume.
 
 // Pure diff: declared datasource names + live inventory -> the added datasources.
 export interface GraphQLApiChildInput {
@@ -795,6 +800,58 @@ async function pageDataSources(client: AppSyncClient, apiId: string): Promise<Ap
   return out;
 }
 
+// Pure diff: declared resolver keys (`${typeName}|${fieldName}`) + live inventory ->
+// the added resolvers. Declared resolvers are matched by their typeName|fieldName key
+// (the physical-id form is unreliable); an added resolver's identifier is its live
+// ResolverArn (the CC primaryIdentifier).
+export interface GraphQLApiResolverInput {
+  declaredResolverKeys: string[]; // `${typeName}|${fieldName}` of declared AWS::AppSync::Resolver
+  liveResolvers: { key: string; arn: string; label?: string | undefined }[];
+}
+
+export function diffGraphQLApiResolvers(input: GraphQLApiResolverInput): AddedChild[] {
+  const declared = new Set(input.declaredResolverKeys);
+  const added: AddedChild[] = [];
+  for (const r of input.liveResolvers) {
+    if (declared.has(r.key)) continue;
+    added.push({
+      resourceType: 'AWS::AppSync::Resolver',
+      identifier: r.arn, // ResolverArn IS the CC primaryIdentifier
+      label: r.label ?? r.key,
+      live: { ResolverArn: r.arn },
+    });
+  }
+  return added;
+}
+
+async function pageTypes(client: AppSyncClient, apiId: string): Promise<string[]> {
+  const out: string[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListTypesCommand({ apiId, format: 'SDL', nextToken: next }));
+    for (const t of res.types ?? []) {
+      if (typeof t.name === 'string') out.push(t.name);
+    }
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
+async function pageResolvers(
+  client: AppSyncClient,
+  apiId: string,
+  typeName: string
+): Promise<AppSyncResolver[]> {
+  const out: AppSyncResolver[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListResolversCommand({ apiId, typeName, nextToken: next }));
+    out.push(...(res.resolvers ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
 // A GraphQLApi's CFn physical id is its ARN (`arn:...:apis/<apiId>`), but `ListDataSources`
 // and a DataSource's declared `ApiId` (`Fn::GetAtt ApiId`) both use the BARE api id. Take
 // the trailing `apis/<id>` segment when the physical id is an ARN; otherwise it already IS
@@ -823,6 +880,21 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     declaredDataSourceNames.push(r.declared.Name);
   }
 
+  // Declared resolvers on THIS api. Resolvers are attached per (type, field); match
+  // DECLARED resolvers by the `${typeName}|${fieldName}` key (the physical-id form is
+  // unreliable). A declared Resolver's ApiId (Fn::GetAtt ApiId) is the bare api id;
+  // tolerate an ARN form too in case gather resolved it differently.
+  const declaredResolverKeys: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::AppSync::Resolver') continue;
+    const declaredApiId = r.declared.ApiId;
+    if (typeof declaredApiId !== 'string') continue;
+    if (bareApiId(declaredApiId) !== apiId) continue;
+    const { TypeName, FieldName } = r.declared;
+    if (typeof TypeName !== 'string' || typeof FieldName !== 'string') continue;
+    declaredResolverKeys.push(`${TypeName}|${FieldName}`);
+  }
+
   const client = new AppSyncClient({ region, ...READ_RETRY });
   const dataSources = await pageDataSources(client, apiId);
   const liveDataSources = dataSources
@@ -835,8 +907,25 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
       arn: ds.dataSourceArn,
       label: ds.type ? `${ds.type} ${ds.name}` : ds.name,
     }));
+  const datasourceAdded = diffGraphQLApiChildren({ declaredDataSourceNames, liveDataSources });
 
-  return diffGraphQLApiChildren({ declaredDataSourceNames, liveDataSources });
+  // Resolvers are scoped per type: list all types, then list resolvers per type.
+  const types = await pageTypes(client, apiId);
+  const liveResolvers: { key: string; arn: string; label?: string | undefined }[] = [];
+  for (const typeName of types) {
+    for (const r of await pageResolvers(client, apiId, typeName)) {
+      if (typeof r.resolverArn !== 'string') continue;
+      if (typeof r.typeName !== 'string' || typeof r.fieldName !== 'string') continue;
+      liveResolvers.push({
+        key: `${r.typeName}|${r.fieldName}`,
+        arn: r.resolverArn,
+        label: `${r.typeName}.${r.fieldName}`,
+      });
+    }
+  }
+  const resolverAdded = diffGraphQLApiResolvers({ declaredResolverKeys, liveResolvers });
+
+  return [...datasourceAdded, ...resolverAdded];
 }
 
 // ── CloudWatch Logs ────────────────────────────────────────────────────────────
