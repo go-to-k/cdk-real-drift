@@ -25,6 +25,11 @@ import {
   type Route as ApiGwV2Route,
 } from '@aws-sdk/client-apigatewayv2';
 import {
+  EventBridgeClient,
+  ListRulesCommand,
+  type Rule as EventBridgeRule,
+} from '@aws-sdk/client-eventbridge';
+import {
   type EventSourceMappingConfiguration,
   LambdaClient,
   ListEventSourceMappingsCommand,
@@ -57,12 +62,13 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
-// Functions (event source mappings) the fourth.
+// Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
   'AWS::Lambda::Function': enumerateLambdaFunctionChildren,
+  'AWS::Events::EventBus': enumerateEventBusChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -489,4 +495,81 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
     .map((m) => ({ id: m.UUID, label: m.EventSourceArn ?? m.UUID }));
 
   return diffLambdaFunctionChildren({ declaredMappingIds, liveMappings });
+}
+
+// ── EventBridge ────────────────────────────────────────────────────────────────
+// An `AWS::Events::EventBus` owns Rules, each a separate CloudFormation resource. A
+// console / CLI `put-rule` (someone wires a new rule on a custom bus out of band) is
+// invisible to cdk drift / CFn drift detection. Only DECLARED custom buses are scanned,
+// so the AWS-default bus (never a template resource) is never swept — its many
+// AWS-created rules are out of scope. AWS service-managed rules (ManagedBy set) are
+// skipped: they are owned by another service, not an out-of-band human change. The
+// EventBus model does NOT reflect its rules, so there is no double-report to suppress.
+// The CC primaryIdentifier for AWS::Events::Rule is the bare rule Arn, which CC
+// GetResource / DeleteResource consume.
+
+// Pure diff: declared rule names + live inventory -> the added rules.
+export interface EventBusChildInput {
+  declaredRuleNames: string[]; // bare Names of AWS::Events::Rule declared on this bus
+  liveRules: { name: string; arn: string; label?: string | undefined }[];
+}
+
+export function diffEventBusChildren(input: EventBusChildInput): AddedChild[] {
+  const declared = new Set(input.declaredRuleNames);
+  const added: AddedChild[] = [];
+  for (const r of input.liveRules) {
+    if (declared.has(r.name)) continue;
+    added.push({
+      resourceType: 'AWS::Events::Rule',
+      identifier: r.arn, // the rule Arn IS the CC primaryIdentifier
+      label: r.label ?? r.name,
+      live: { Name: r.name, Arn: r.arn },
+    });
+  }
+  return added;
+}
+
+async function pageRules(client: EventBridgeClient, busName: string): Promise<EventBridgeRule[]> {
+  const out: EventBridgeRule[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListRulesCommand({ EventBusName: busName, NextToken: next }));
+    out.push(...(res.Rules ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const busName = parent.physicalId; // an EventBus's physical id is its name
+  if (!busName) return [];
+  const busArnRaw = desired.ctx.liveAttrs[parent.logicalId]?.Arn;
+  const busArn = typeof busArnRaw === 'string' ? busArnRaw : undefined;
+
+  // Declared rules on THIS bus. EventBusName resolves (via gather) to either the bus name
+  // or its ARN. A rule's physical id (Ref) is its name — but for a custom bus that can be
+  // a `<busName>|<ruleName>` composite, so take the trailing segment; ListRules returns
+  // the bare name. Fall back to a literal declared Name.
+  const declaredRuleNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Events::Rule') continue;
+    const bus = r.declared.EventBusName;
+    if (bus !== busName && !(busArn !== undefined && bus === busArn)) continue;
+    const raw = r.physicalId ?? (typeof r.declared.Name === 'string' ? r.declared.Name : undefined);
+    if (raw) declaredRuleNames.push(raw.includes('|') ? raw.slice(raw.lastIndexOf('|') + 1) : raw);
+  }
+
+  const client = new EventBridgeClient({ region, ...READ_RETRY });
+  const rules = await pageRules(client, busName);
+  const liveRules = rules
+    // Skip AWS service-managed rules (ManagedBy set): owned by another AWS service, not an
+    // out-of-band human change, and not user-revertable.
+    .filter(
+      (r): r is EventBridgeRule & { Name: string; Arn: string } =>
+        typeof r.Name === 'string' && typeof r.Arn === 'string' && !r.ManagedBy
+    )
+    .map((r) => ({ name: r.Name, arn: r.Arn, label: r.Name }));
+
+  return diffEventBusChildren({ declaredRuleNames, liveRules });
 }

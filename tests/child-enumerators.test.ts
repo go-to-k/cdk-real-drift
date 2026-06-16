@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayChildren,
   diffApiGatewayV2Children,
+  diffEventBusChildren,
   diffLambdaFunctionChildren,
   diffSnsTopicChildren,
 } from '../src/read/child-enumerators.js';
@@ -290,6 +291,48 @@ describe('diffLambdaFunctionChildren (Lambda event source mappings)', () => {
         liveMappings: [
           { id: 'a', label: Q('a') },
           { id: 'b', label: Q('b') },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffEventBusChildren (EventBridge rules)', () => {
+  const R = (n: string) => `arn:aws:events:us-east-1:111122223333:rule/MyBus/${n}`;
+
+  it('flags an out-of-band rule (not in the template)', () => {
+    const added = diffEventBusChildren({
+      declaredRuleNames: ['declared'],
+      liveRules: [
+        { name: 'declared', arn: R('declared') },
+        { name: 'console', arn: R('console') },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Events::Rule',
+        identifier: R('console'),
+        label: 'console',
+        live: { Name: 'console', Arn: R('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare rule Arn (CC primaryIdentifier)', () => {
+    const added = diffEventBusChildren({
+      declaredRuleNames: [],
+      liveRules: [{ name: 'x', arn: R('x') }],
+    });
+    expect(added[0]!.identifier).toBe(R('x'));
+  });
+
+  it('no drift when every live rule is declared', () => {
+    expect(
+      diffEventBusChildren({
+        declaredRuleNames: ['a', 'b'],
+        liveRules: [
+          { name: 'a', arn: R('a') },
+          { name: 'b', arn: R('b') },
         ],
       })
     ).toEqual([]);
