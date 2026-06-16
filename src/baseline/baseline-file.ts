@@ -458,11 +458,31 @@ export function applyBaseline(
   const deletedLogical = new Set(
     findings.filter((f) => f.tier === 'deleted').map((f) => f.logicalId)
   );
+  // A recorded nested undeclared value whose DECLARED parent property is itself
+  // drifting this run is subsumed by that `declared` finding: the parent array/object
+  // changed (e.g. CloudFront `DistributionConfig.Origins` -> []), so the nested value's
+  // disappearance is the SAME real change, not a separate "baseline value removed".
+  // Emitting both double-counts the drift and yields an un-actionable revert op against
+  // a nested path that no longer exists — the exact class already suppressed for
+  // `deleted`/`skipped`. Suppress when a current `declared` finding's path is a prefix
+  // of the recorded path (so a sibling NOT under the drifting parent still surfaces).
+  const declaredDriftByLogical = new Map<string, string[]>();
+  for (const f of findings) {
+    if (f.tier !== 'declared') continue;
+    const arr = declaredDriftByLogical.get(f.logicalId) ?? [];
+    arr.push(f.path);
+    declaredDriftByLogical.set(f.logicalId, arr);
+  }
+  const underDeclaredDrift = (logicalId: string, path: string): boolean =>
+    (declaredDriftByLogical.get(logicalId) ?? []).some(
+      (p) => path === p || path.startsWith(`${p}.`) || path.startsWith(`${p}[`)
+    );
   const promotedStale: string[] = [];
   for (const a of recorded) {
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     if (skippedLogical.has(a.logicalId)) continue; // unread this run -> not "removed"
     if (deletedLogical.has(a.logicalId)) continue; // subsumed by the `deleted` finding
+    if (underDeclaredDrift(a.logicalId, a.path)) continue; // subsumed by parent declared drift
     // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
       promotedStale.push(`${a.logicalId}.${a.path}`);

@@ -535,6 +535,52 @@ describe('baseline', () => {
     expect(out).toEqual([deleted]);
   });
 
+  it('does NOT double-report a recorded nested value whose DECLARED parent is drifting', () => {
+    // The declared array `Origins` drifted out of band (e.g. -> []). The recorded
+    // nested undeclared value `Origins[o1].ConnectionAttempts` is gone BECAUSE the
+    // parent changed — subsumed by the single `declared` Origins finding. It must NOT
+    // also surface as a separate "baseline value removed" undeclared finding (double-
+    // count + an un-actionable revert op against a now-gone nested path). A recorded
+    // SIBLING not under the drifting parent still surfaces (precision guard).
+    const b = baseline([
+      {
+        logicalId: 'D',
+        resourceType: 'AWS::CloudFront::Distribution',
+        path: 'Origins[o1].ConnectionAttempts',
+        value: 5,
+      },
+      {
+        logicalId: 'D',
+        resourceType: 'AWS::CloudFront::Distribution',
+        path: 'Comment',
+        value: 'x',
+      },
+    ]);
+    const declaredOrigins: Finding = {
+      tier: 'declared',
+      logicalId: 'D',
+      resourceType: 'AWS::CloudFront::Distribution',
+      path: 'Origins',
+      desired: [{ id: 'o1' }],
+      actual: [],
+    };
+    const out = applyBaseline([declaredOrigins], b);
+    // the nested value UNDER the drifting Origins is suppressed
+    expect(
+      out.some(
+        (f) =>
+          f.path === 'Origins[o1].ConnectionAttempts' &&
+          f.note === 'baseline value removed since record'
+      )
+    ).toBe(false);
+    // the unrelated sibling (not under any declared drift) still surfaces as removed
+    expect(
+      out.some((f) => f.path === 'Comment' && f.note === 'baseline value removed since record')
+    ).toBe(true);
+    // the declared Origins finding passes through untouched
+    expect(out.some((f) => f.tier === 'declared' && f.path === 'Origins')).toBe(true);
+  });
+
   it('does NOT report a removal when the recorded path was promoted into the template', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const warnings: string[] = [];

@@ -247,14 +247,20 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
       // ${LogicalId.Attr} GetAtt form — resolve against live attributes.
       const dot = ref.indexOf('.');
       const r = resolveGetAtt([ref.slice(0, dot), ref.slice(dot + 1)], ctx);
-      if (r === UNRESOLVED || r === NOVALUE) {
+      // A non-scalar resolution can't be interpolated: an object GetAtt attribute
+      // (`${DB.Endpoint}` = {Address,Port}) would leak `[object Object]`, an array
+      // (a `CommaDelimitedList` Ref / `Fn::Split` value) the JS comma-join — either a
+      // bogus declared value the diff then reports as drift on a clean stack. Fail
+      // closed, mirroring the `vars` branch above (isScalarInterpolant is also false
+      // for the UNRESOLVED / NOVALUE symbols, so it subsumes that earlier check).
+      if (!isScalarInterpolant(r)) {
         unresolved = true;
         return '';
       }
       return String(r);
     }
     const r = resolveRef(ref, ctx);
-    if (r === UNRESOLVED || r === NOVALUE) {
+    if (!isScalarInterpolant(r)) {
       unresolved = true;
       return '';
     }

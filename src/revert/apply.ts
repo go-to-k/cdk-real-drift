@@ -18,6 +18,22 @@ export interface ApplyResult {
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 5 * 60 * 1000;
 
+// A DELETE whose target is ALREADY absent is the goal state, not a failure. Two ways
+// this happens for an `added`-resource revert: (1) deleting an API Gateway Resource
+// CASCADE-deletes its child Resources/Methods — and each added child is an independent
+// finding applied in unspecified order, so a later DeleteResource on a child can race
+// the cascade; (2) the user removed it between `check` and `revert`. Cloud Control
+// surfaces an absent target as ResourceNotFoundException (thrown) or a FAILED event
+// whose message says not-found. Treat both as success so a revert that REACHES the
+// goal state isn't reported as FAILED (which would also wrongly bump the exit code).
+export function isAlreadyGone(e: unknown): boolean {
+  const o = (e ?? {}) as { name?: unknown; message?: unknown };
+  const name = typeof o.name === 'string' ? o.name : '';
+  if (name === 'ResourceNotFoundException' || name === 'NotFoundException') return true;
+  const m = (typeof o.message === 'string' ? o.message : '').toLowerCase();
+  return m.includes('not found') || m.includes('does not exist') || m.includes('notfound');
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 // Poll a Cloud Control ProgressEvent (Update or Delete) to a terminal state.
@@ -77,8 +93,13 @@ export async function applyRevertDelete(
     const res = await cc.send(
       new DeleteResourceCommand({ TypeName: item.resourceType, Identifier: identifier })
     );
-    return await pollToCompletion(cc, res.ProgressEvent);
+    const result = await pollToCompletion(cc, res.ProgressEvent);
+    // already-gone surfaced as a FAILED event (vs a thrown error, handled below)
+    if (!result.ok && isAlreadyGone({ message: result.error })) return { ok: true };
+    return result;
   } catch (e) {
-    return { ok: false, error: (e as Error).message };
+    const err = e as { name?: string; message?: string };
+    if (isAlreadyGone(err)) return { ok: true };
+    return { ok: false, error: err.message ?? String(e) };
   }
 }
