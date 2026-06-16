@@ -174,6 +174,15 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
     | undefined;
   const sourceArn = str(cond?.ArnLike?.['AWS:SourceArn']);
   const sourceAccount = str(cond?.StringEquals?.['AWS:SourceAccount']);
+  // Security-scoping conditions that were NOT projected, so an out-of-band widening
+  // was invisible: PrincipalOrgID restricts invocation to an AWS Organization
+  // (dropping it opens the function to any matching principal), and
+  // FunctionUrlAuthType gates a function-URL permission (a flip from AWS_IAM to NONE
+  // makes the URL public). Both are stored under the verbatim global/service
+  // condition keys (lowercase `aws:`/`lambda:`, unlike Lambda's own capitalized
+  // `AWS:Source*`). Absent unless the permission uses them → omitted, no noise.
+  const principalOrgId = str(cond?.StringEquals?.['aws:PrincipalOrgID']);
+  const functionUrlAuthType = str(cond?.StringEquals?.['lambda:FunctionUrlAuthType']);
   return {
     FunctionName: fn,
     Action: m.Action,
@@ -181,6 +190,8 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
     // omit SourceArn/SourceAccount when absent (→ readGap, honest; never fabricate)
     ...(sourceArn !== undefined && { SourceArn: sourceArn }),
     ...(sourceAccount !== undefined && { SourceAccount: sourceAccount }),
+    ...(principalOrgId !== undefined && { PrincipalOrgID: principalOrgId }),
+    ...(functionUrlAuthType !== undefined && { FunctionUrlAuthType: functionUrlAuthType }),
   };
 };
 
