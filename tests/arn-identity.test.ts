@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { isArnNameMatch, isManagedKmsAliasMatch } from '../src/normalize/arn-identity.js';
+import {
+  isArnNameMatch,
+  isLogGroupArnWildcardMatch,
+  isManagedKmsAliasMatch,
+} from '../src/normalize/arn-identity.js';
 
 describe('isArnNameMatch (name <-> ARN identity)', () => {
   const fnArn = 'arn:aws:lambda:us-east-1:111122223333:function:MyFn';
@@ -93,5 +97,34 @@ describe('isManagedKmsAliasMatch (managed-default KMS alias <-> key ARN)', () =>
     it('falls back to shape-based suppression when the alias is unresolved (no perms)', () => {
       expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn, {})).toBe(true);
     });
+  });
+});
+
+describe('isLogGroupArnWildcardMatch (CloudWatch Logs log-group ARN :* wildcard)', () => {
+  const base = 'arn:aws:logs:ap-northeast-1:111122223333:log-group:/aws/api-gateway/scoring/x';
+  it('suppresses desired-with-:* vs actual-without (API Gateway AccessLogSetting case)', () => {
+    expect(isLogGroupArnWildcardMatch(`${base}:*`, base)).toBe(true);
+  });
+  it('suppresses in the reverse direction (actual carries the :*)', () => {
+    expect(isLogGroupArnWildcardMatch(base, `${base}:*`)).toBe(true);
+  });
+  it('suppresses when both carry the :* (defensive — diff already equal)', () => {
+    expect(isLogGroupArnWildcardMatch(`${base}:*`, `${base}:*`)).toBe(true);
+  });
+  it('reports drift on a DIFFERENT log group (real repoint preserved)', () => {
+    const other = 'arn:aws:logs:ap-northeast-1:111122223333:log-group:/aws/api-gateway/other';
+    expect(isLogGroupArnWildcardMatch(`${base}:*`, other)).toBe(false);
+  });
+  it('does NOT match non-log-group ARNs', () => {
+    expect(
+      isLogGroupArnWildcardMatch(
+        'arn:aws:lambda:us-east-1:1:function:Fn:*',
+        'arn:aws:lambda:us-east-1:1:function:Fn'
+      )
+    ).toBe(false);
+  });
+  it('ignores non-strings', () => {
+    expect(isLogGroupArnWildcardMatch(5, `${base}:*`)).toBe(false);
+    expect(isLogGroupArnWildcardMatch(`${base}:*`, null)).toBe(false);
   });
 });
