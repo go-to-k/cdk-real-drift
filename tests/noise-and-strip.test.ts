@@ -434,9 +434,13 @@ describe('parseSchema', () => {
     expect(isVersionPrefixMatch(8 as unknown, '8.0')).toBe(false); // non-string
   });
 
-  it('R130: VERSION_PREFIX_PATHS gates the rule to RDS DBInstance EngineVersion only', () => {
+  it('R130: VERSION_PREFIX_PATHS gates the rule to RDS EngineVersion only', () => {
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('EngineVersion')).toBe(true);
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBInstance']?.has('Engine')).toBe(false);
+    // Aurora clusters resolve a partial track the same way as instances.
+    expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('EngineVersion')).toBe(true);
+    expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('Engine')).toBe(false);
+    expect(VERSION_PREFIX_PATHS['AWS::S3::Bucket']).toBeUndefined(); // not a blanket rule
   });
 });
 
