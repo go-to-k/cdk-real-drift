@@ -383,6 +383,26 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
     expect(findings).toEqual([]);
   });
 
+  it("declared role Policies + UNRESOLVED sibling: the Policies finding carries the 'unresolved' marker (revert hazard)", () => {
+    // With an unresolved sibling the live Policies array is NOT filtered, so the
+    // declared compare (own vs own+sibling) emits a declared Policies finding. It must
+    // carry siblingPolicyNames:'unresolved' so the revert plan refuses — a per-entry
+    // revert would otherwise DELETE the sibling-managed DefaultPolicy entry.
+    const declared = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] };
+    const live = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }, sibling] };
+    const findings = classifyResource(role('unresolved', declared), live, noSchema);
+    const f = findings.find((x) => x.path === 'Policies');
+    expect(f).toBeDefined();
+    expect(f!.siblingPolicyNames).toBe('unresolved');
+  });
+
+  it('a resolved sibling never stamps the marker (revert stays enabled for the rogue case)', () => {
+    const declared = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] };
+    const live = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }, rogue] };
+    const findings = classifyResource(role(['RoleDefaultPolicyABC'], declared), live, noSchema);
+    for (const f of findings) expect(f.siblingPolicyNames).toBeUndefined();
+  });
+
   it('a live-only sub-key added to a WRAPPED inline-policy statement surfaces as undeclared (WAVE20 F3)', () => {
     // The dominant CDK shape: `Policies: [{ PolicyName, PolicyDocument: { Statement } }]`.
     // The wrapper array is identity-less and its elements aren't statements, so before

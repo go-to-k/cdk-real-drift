@@ -639,9 +639,22 @@ export function classifyResource(
   // attach physicalId (for revert) + construct path (display) onto every finding
   const cp = resource.constructPath;
   const pid = resource.physicalId;
+  // R111 fail-open carries a revert hazard: when the role's sibling AWS::IAM::Policy
+  // names were UNRESOLVED we did NOT filter the sibling-managed (DefaultPolicy)
+  // entries out of the live Policies array (above), so a declared `Policies` diff
+  // here lists own + sibling-managed entries together. The per-entry revert writer
+  // (writeIamRoleInlinePolicies) deletes every prior entry the declared set drops —
+  // which would DELETE the sibling-managed inline policy, removing real IAM grants.
+  // We cannot separate them, so mark the Policies finding(s) so the revert plan
+  // refuses to act (a wrong-write to live IAM is worse than an un-reverted FP).
+  const unresolvedSibling =
+    resourceType === 'AWS::IAM::Role' && resource.siblingPolicyNames === 'unresolved';
   return findings.map((f) => ({
     ...f,
     ...(pid !== undefined && { physicalId: pid }),
     ...(cp !== undefined && { constructPath: cp }),
+    ...(unresolvedSibling && (f.path.split(/[.[]/)[0] ?? f.path) === 'Policies'
+      ? { siblingPolicyNames: 'unresolved' as const }
+      : {}),
   }));
 }

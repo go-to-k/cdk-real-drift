@@ -250,6 +250,42 @@ describe('buildRevertPlan', () => {
     ]);
   });
 
+  it("an IAM Role Policies finding marked siblingPolicyNames:'unresolved' is NOT revertable (would delete a managed policy)", () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::IAM::Role',
+          path: 'Policies',
+          desired: [{ PolicyName: 'inline-a' }],
+          actual: [{ PolicyName: 'inline-a' }, { PolicyName: 'RoleDefaultPolicyABC' }],
+          siblingPolicyNames: 'unresolved',
+        }),
+      ],
+      undefined
+    );
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('sibling AWS::IAM::Policy whose name');
+  });
+
+  it('an IAM Role Policies finding with a RESOLVED sibling (no marker) stays revertable', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::IAM::Role',
+          path: 'Policies',
+          desired: [{ PolicyName: 'inline-a' }],
+          actual: [{ PolicyName: 'inline-a' }, { PolicyName: 'rogue' }],
+        }),
+      ],
+      undefined
+    );
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+  });
+
   it('a CC-gap type WITH an SDK writer (BucketPolicy) is revertable via kind=sdk', () => {
     const plan = buildRevertPlan(
       [
