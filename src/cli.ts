@@ -37,6 +37,10 @@ OPTIONS
   --fail                      (check) exit 1 on drift + never prompt — for
                               scripts/CI (same convention as \`cdk diff --fail\`);
                               without it, check REPORTS drift but exits 0
+  --strict                    (check) exit 1 when coverage is INCOMPLETE — any
+                              resource skipped (unread) or a nested stack not
+                              recursed into. A loud coverage warning always prints;
+                              --strict makes it CI-failing. Orthogonal to --fail
   --show-all                  inventory mode: show ALL current undeclared state
                               (not just changes since record)
   --verbose                   (check) expand informational tiers / (revert) the
@@ -58,7 +62,7 @@ OPTIONS
   --dry-run); non-TTY runs never prompt.
 
 EXIT CODES
-  check:  0 = clean (or drift without --fail)   1 = drift (--fail)   2 = error
+  check:  0 = clean (or drift without --fail)   1 = drift (--fail) / incomplete coverage (--strict)   2 = error
   record: 0 = written   2 = error/refused
   ignore: 0 = rule(s) written / nothing to ignore   2 = error/refused
   revert: 0 = converged/aborted   1 = drift remains   2 = error/apply failure

@@ -68,6 +68,32 @@ export function nestedStackWarning(resources: DesiredResource[], stackName: stri
   return `warning: ${stackName} has ${nested.length} nested CloudFormation stack(s) — cdkrd does not recurse into them, so the resources INSIDE them are NOT checked: ${names.join(', ')}`;
 }
 
+// Resources cdkrd could NOT read this run land in the `skipped` tier — a
+// CC-unsupported type with no SDK override, a read error (throttle / AccessDenied), a
+// missing physical id, a Custom resource. They are genuinely UNCHECKED, yet `skipped`
+// is excluded from the verdict and from `--fail`, and only folded into the `info:`
+// footer — so a materially under-covered run can read `result: CLEAN`, exit 0. Surface
+// the gap LOUDLY (same not-silent principle as the nested-stack / KMS warnings); the
+// `--strict` flag additionally turns it into a non-zero exit. Returns null when nothing
+// was skipped. Pure + exported for unit tests.
+export function coverageWarning(findings: Finding[], stackName: string): string | null {
+  const skipped = findings.filter((f) => f.tier === 'skipped');
+  if (skipped.length === 0) return null;
+  const names = skipped.map((f) => f.constructPath ?? f.logicalId).sort();
+  const shown = names.slice(0, 10);
+  const more = names.length > shown.length ? `, …(+${names.length - shown.length} more)` : '';
+  return `warning: ${stackName}: ${skipped.length} resource(s) were NOT checked (coverage incomplete) — ${shown.join(', ')}${more}; see the skipped breakdown (--verbose)`;
+}
+
+// The coverage gap that `--strict` fails on: any resource skipped (unread) OR any
+// nested stack not recursed into. Pure + exported.
+export function hasCoverageGap(findings: Finding[], resources: DesiredResource[]): boolean {
+  return (
+    findings.some((f) => f.tier === 'skipped') ||
+    resources.some((r) => r.resourceType === 'AWS::CloudFormation::Stack')
+  );
+}
+
 /**
  * Map a stack's drift code to check's final exit (R53, the `cdk diff --fail` /
  * `cdk drift --fail` convention): without --fail, check is REPORT-ONLY — drift
@@ -142,11 +168,14 @@ export async function runCheck(args: string[]): Promise<number> {
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
 
-      // Loudly flag nested stacks whose resources cdkrd does not recurse into — a
-      // CLEAN verdict must never silently hide an unchecked child stack. To stderr so
-      // it survives `--json` (whose machine output is stdout) without polluting it.
+      // Loudly flag incomplete coverage — a CLEAN verdict must never silently hide an
+      // unchecked nested stack or an unread (skipped) resource. To stderr so it survives
+      // `--json` (whose machine output is stdout) without polluting it. `--strict` turns
+      // any such gap into a non-zero exit (folded into `worst` after the report).
       const nestedWarn = nestedStackWarning(desired.resources, stackName);
       if (nestedWarn) console.error(nestedWarn);
+      const covWarn = coverageWarning(gathered.findings, stackName);
+      if (covWarn) console.error(covWarn);
 
       // Scope flags (R59). --undeclared-only delegates the declared side to
       // `cdk drift` / CFn drift detection (no double reporting when pairing);
@@ -281,6 +310,12 @@ export async function runCheck(args: string[]): Promise<number> {
       }
       if (code === 1) anyDrift = true;
       worst = Math.max(worst, finalCheckExit(code, a.fail));
+      // --strict: incomplete coverage (a skipped resource or an un-recursed nested
+      // stack) is a non-zero exit, independent of --fail's drift axis. The loud
+      // coverage warnings above always print; --strict makes them CI-failing.
+      if (a.strict && hasCoverageGap(gathered.findings, desired.resources)) {
+        worst = Math.max(worst, 1);
+      }
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — skipped`);
