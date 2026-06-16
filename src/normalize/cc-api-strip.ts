@@ -47,20 +47,25 @@ export const FREE_FORM_MAP_PARENTS = new Set([
 export function stripCcApiAwsManagedFields(
   awsProps: Record<string, unknown>
 ): Record<string, unknown> {
-  return stripWalk(awsProps, undefined) as Record<string, unknown>;
+  return stripWalk(awsProps, false) as Record<string, unknown>;
 }
 
-function stripWalk(value: unknown, parentKey: string | undefined): unknown {
+// `freeForm` = this subtree lives under a free-form USER map (Lambda env Variables, Glue
+// Parameters/DefaultArguments, DockerLabels, Labels, map-Tags) whose keys/values are user
+// data — never name-strip there. Sticky DOWN the subtree (matching the sticky free-form
+// flag in policy-canonical.ts, #182): the prior version recomputed the flag from the
+// immediate parent only, so a NESTED object value under a free-form map lost the
+// protection and a user key colliding with an ALWAYS_STRIPPED name (e.g. `CreatedBy`)
+// would be stripped one level down. No real type nests objects under these parents today,
+// so this is a defensive hardening to keep the two free-form guards consistent.
+function stripWalk(value: unknown, freeForm: boolean): unknown {
   if (value === null || value === undefined) return value;
-  if (Array.isArray(value)) return value.map((v) => stripWalk(v, parentKey));
+  if (Array.isArray(value)) return value.map((v) => stripWalk(v, freeForm));
   if (typeof value === 'object') {
-    // when THIS object is the body of a free-form user map, its keys are user data —
-    // never strip an ALWAYS_STRIPPED name here (it would hide a real change).
-    const inFreeFormMap = parentKey !== undefined && FREE_FORM_MAP_PARENTS.has(parentKey);
     const out: Record<string, unknown> = {};
     for (const [k, child] of Object.entries(value as Record<string, unknown>)) {
-      if (!inFreeFormMap && ALWAYS_STRIPPED.has(k)) continue;
-      out[k] = stripWalk(child, k);
+      if (!freeForm && ALWAYS_STRIPPED.has(k)) continue;
+      out[k] = stripWalk(child, freeForm || FREE_FORM_MAP_PARENTS.has(k));
     }
     return out;
   }

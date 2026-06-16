@@ -326,6 +326,19 @@ describe('cc-api strip', () => {
     });
   });
 
+  it('protects a NESTED object value under a free-form map (sticky free-form, WAVE24)', () => {
+    // a user key colliding with a managed name, an OBJECT-level deeper inside a free-form
+    // map, must NOT be stripped — the protection is now sticky down the subtree.
+    const out = stripCcApiAwsManagedFields({
+      Parameters: { group: { OwnerId: 'team', CreatedBy: 'alice' } }, // nested user data -> kept
+      Variables: { config: { LastModified: 'user-set', nested: { CreatedAt: 'x' } } },
+    });
+    expect(out).toEqual({
+      Parameters: { group: { OwnerId: 'team', CreatedBy: 'alice' } },
+      Variables: { config: { LastModified: 'user-set', nested: { CreatedAt: 'x' } } },
+    });
+  });
+
   it('STILL strips a genuine nested managed field in a STRUCTURED object (no FP regression)', () => {
     // StepFunctions LoggingConfiguration.CreatedAt is AWS-managed and NOT under a
     // free-form-map key, so it is still removed.
