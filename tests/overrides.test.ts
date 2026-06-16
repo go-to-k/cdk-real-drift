@@ -331,6 +331,65 @@ describe('SDK overrides', () => {
         )
       ).toBeUndefined();
     });
+
+    it('disambiguates same-name+type variants by SetIdentifier (no wrong-record read) and projects routing fields', async () => {
+      // Two weighted records share Name+Type; only SetIdentifier tells them apart. The
+      // old reader (MaxItems:1 + Type/Name-only match) would read whichever came first
+      // — here the WRONG one — reporting false drift against the declared variant.
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          {
+            Name: 'app.example.com.',
+            Type: 'A',
+            SetIdentifier: 'blue',
+            Weight: 10,
+            TTL: 60,
+            ResourceRecords: [{ Value: '1.1.1.1' }],
+          },
+          {
+            Name: 'app.example.com.',
+            Type: 'A',
+            SetIdentifier: 'green',
+            Weight: 90,
+            TTL: 60,
+            ResourceRecords: [{ Value: '2.2.2.2' }],
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx(
+          {
+            HostedZoneId: 'Z1',
+            Name: 'app.example.com.',
+            Type: 'A',
+            SetIdentifier: 'green', // declared variant is the SECOND record
+            Weight: 90,
+          },
+          'Z1_app.example.com._A'
+        )
+      );
+      expect(out).toMatchObject({
+        Type: 'A',
+        SetIdentifier: 'green',
+        Weight: 90,
+        ResourceRecords: ['2.2.2.2'], // the green record's value, not blue's 1.1.1.1
+      });
+    });
+
+    it('a simple record (no SetIdentifier) projects no routing fields — common-case FP guard', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          { Name: 'x.example.com.', Type: 'TXT', TTL: 300, ResourceRecords: [{ Value: '"hi"' }] },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'x.example.com.', Type: 'TXT' })
+      )) as Record<string, unknown>;
+      expect(out.SetIdentifier).toBeUndefined();
+      expect(out.Weight).toBeUndefined();
+      expect(out.Failover).toBeUndefined();
+      expect(out.GeoLocation).toBeUndefined();
+    });
   });
 
   describe('Glue Table', () => {
