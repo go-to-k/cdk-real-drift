@@ -25,6 +25,11 @@ import {
   type Route as ApiGwV2Route,
 } from '@aws-sdk/client-apigatewayv2';
 import {
+  type EventSourceMappingConfiguration,
+  LambdaClient,
+  ListEventSourceMappingsCommand,
+} from '@aws-sdk/client-lambda';
+import {
   ListSubscriptionsByTopicCommand,
   SNSClient,
   type Subscription as SnsSubscription,
@@ -51,11 +56,13 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
-// V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third.
+// V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
+// Functions (event source mappings) the fourth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
+  'AWS::Lambda::Function': enumerateLambdaFunctionChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -406,4 +413,80 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
     }));
 
   return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions });
+}
+
+// ── Lambda ───────────────────────────────────────────────────────────────────
+// A Lambda Function owns Event Source Mappings (the SQS / DynamoDB-stream / Kinesis /
+// MSK poller wiring), each a separate CloudFormation resource. A console / CLI
+// `create-event-source-mapping` (someone wires a new trigger to a function out of band)
+// is invisible to cdk drift / CFn drift detection. The Function's own live model does
+// NOT reflect its mappings, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::Lambda::EventSourceMapping is the bare mapping UUID (Id),
+// which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared mapping ids + live inventory -> the added mappings.
+export interface LambdaFunctionChildInput {
+  declaredMappingIds: string[]; // physical ids (UUIDs) of AWS::Lambda::EventSourceMapping
+  liveMappings: { id: string; label?: string | undefined }[];
+}
+
+export function diffLambdaFunctionChildren(input: LambdaFunctionChildInput): AddedChild[] {
+  const declared = new Set(input.declaredMappingIds);
+  const added: AddedChild[] = [];
+  for (const m of input.liveMappings) {
+    if (declared.has(m.id)) continue;
+    added.push({
+      resourceType: 'AWS::Lambda::EventSourceMapping',
+      identifier: m.id, // the mapping UUID IS the CC primaryIdentifier
+      label: m.label ?? m.id,
+      live: { Id: m.id },
+    });
+  }
+  return added;
+}
+
+async function pageEventSourceMappings(
+  client: LambdaClient,
+  functionName: string
+): Promise<EventSourceMappingConfiguration[]> {
+  const out: EventSourceMappingConfiguration[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new ListEventSourceMappingsCommand({ FunctionName: functionName, Marker: marker })
+    );
+    out.push(...(res.EventSourceMappings ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const functionName = parent.physicalId; // the Function's physical id is its name
+  if (!functionName) return [];
+
+  // Declared mappings targeting THIS function. An EventSourceMapping's FunctionName is
+  // often a Ref/GetAtt (already resolved by gather), and its physical id IS the mapping
+  // UUID. Match on the function name resolving to either the bare name or its ARN.
+  const fnArnRaw = desired.ctx.liveAttrs[parent.logicalId]?.Arn;
+  const fnArn = typeof fnArnRaw === 'string' ? fnArnRaw : undefined;
+  const declaredMappingIds: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Lambda::EventSourceMapping' || !r.physicalId) continue;
+    const fn = r.declared.FunctionName;
+    if (fn === functionName || (fnArn !== undefined && fn === fnArn)) {
+      declaredMappingIds.push(r.physicalId);
+    }
+  }
+
+  const client = new LambdaClient({ region, ...READ_RETRY });
+  const mappings = await pageEventSourceMappings(client, functionName);
+  const liveMappings = mappings
+    .filter(
+      (m): m is EventSourceMappingConfiguration & { UUID: string } => typeof m.UUID === 'string'
+    )
+    .map((m) => ({ id: m.UUID, label: m.EventSourceArn ?? m.UUID }));
+
+  return diffLambdaFunctionChildren({ declaredMappingIds, liveMappings });
 }
