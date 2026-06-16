@@ -708,6 +708,57 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
     expect(writeOnlyReincludeOps(undefined, schema, [])).toEqual([]);
     expect(writeOnlyReincludeOps(declared, undefined, [])).toEqual([]);
   });
+
+  it('re-includes a NESTED write-only prop (IAM User LoginProfile.Password) — no credential reset (WAVE24)', () => {
+    // AWS::IAM::User has only the NESTED write-only path LoginProfile.Password; the
+    // top-level write-only set is EMPTY, so the old top-level-only loop re-included
+    // nothing and a cc revert touching another property dropped the password.
+    const userSchema = schemaWithWriteOnly('LoginProfile.Password');
+    const userDeclared = {
+      Path: '/team/',
+      LoginProfile: { Password: 'S3cret!', PasswordResetRequired: true },
+    };
+    const ops = writeOnlyReincludeOps(userDeclared, userSchema, [
+      { op: 'add', path: '/Path', value: '/team/', human: '' },
+    ]);
+    expect(ops).toEqual([
+      {
+        op: 'add',
+        path: '/LoginProfile/Password',
+        value: 'S3cret!',
+        human:
+          'LoginProfile.Password -> re-include write-only (Cloud Control read-modify-write contract)',
+      },
+    ]);
+  });
+
+  it('skips a nested write-only path absent from the declared model (nothing to re-include)', () => {
+    // the template declares no LoginProfile -> no value to preserve
+    const ops = writeOnlyReincludeOps(
+      { Path: '/team/' },
+      schemaWithWriteOnly('LoginProfile.Password'),
+      []
+    );
+    expect(ops).toEqual([]);
+  });
+
+  it('skips an UNRESOLVED nested write-only value', () => {
+    const ops = writeOnlyReincludeOps(
+      { LoginProfile: { Password: UNRESOLVED } },
+      schemaWithWriteOnly('LoginProfile.Password'),
+      []
+    );
+    expect(ops).toEqual([]);
+  });
+
+  it('skips a wildcard (array-element) write-only path', () => {
+    const ops = writeOnlyReincludeOps(
+      { Items: [{ Secret: 'a' }] },
+      schemaWithWriteOnly('Items.*.Secret'),
+      []
+    );
+    expect(ops).toEqual([]);
+  });
 });
 
 describe('tagPreservingOps (revert must not strip aws:* managed tags — the SNS Topic bug)', () => {
