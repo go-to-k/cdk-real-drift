@@ -9,10 +9,23 @@ import {
   DeleteRolePolicyCommand,
   GetPolicyCommand,
   GetPolicyVersionCommand,
+  GetRolePolicyCommand,
   IAMClient,
   ListPolicyVersionsCommand,
+  PutGroupPolicyCommand,
   PutRolePolicyCommand,
+  PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
+import {
+  GetTopicAttributesCommand,
+  SetTopicAttributesCommand,
+  SNSClient,
+} from '@aws-sdk/client-sns';
+import {
+  GetQueueAttributesCommand,
+  SetQueueAttributesCommand,
+  SQSClient,
+} from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -21,6 +34,8 @@ import { resolveSdkWriter, SDK_WRITERS } from '../src/revert/writers.js';
 
 const iam = mockClient(IAMClient);
 const elb = mockClient(ElasticLoadBalancingV2Client);
+const sns = mockClient(SNSClient);
+const sqs = mockClient(SQSClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -52,6 +67,8 @@ const stubReader = (currentDoc: unknown): void => {
 beforeEach(() => {
   iam.reset();
   elb.reset();
+  sns.reset();
+  sqs.reset();
 });
 
 describe('IAM ManagedPolicy writer', () => {
@@ -314,5 +331,65 @@ describe('ELB attribute-bag prop-scoped writers (R78)', () => {
       { op: 'add', path: '/LoadBalancerAttributes', value: '1', human: '' },
     ]);
     expect(elb.commandCalls(ModifyLoadBalancerAttributesCommand)).toHaveLength(0);
+  });
+});
+
+describe('policy writers revert ALL attachment targets (not just the first)', () => {
+  it('IAM Policy: the inline policy is put on EVERY role, user and group', async () => {
+    iam.on(GetRolePolicyCommand).resolves({ PolicyDocument: '{}' }); // reader reads the first role
+    iam.on(PutRolePolicyCommand).resolves({});
+    iam.on(PutUserPolicyCommand).resolves({});
+    iam.on(PutGroupPolicyCommand).resolves({});
+    await SDK_WRITERS['AWS::IAM::Policy'](
+      ctx({
+        declared: {
+          PolicyName: 'p',
+          Roles: ['role-a', 'role-b'],
+          Users: ['user-a'],
+          Groups: ['group-a'],
+        },
+      }),
+      [addOp(DESIRED)]
+    );
+    expect(iam.commandCalls(PutRolePolicyCommand).map((c) => c.args[0].input.RoleName)).toEqual([
+      'role-a',
+      'role-b',
+    ]);
+    expect(iam.commandCalls(PutUserPolicyCommand).map((c) => c.args[0].input.UserName)).toEqual([
+      'user-a',
+    ]);
+    expect(iam.commandCalls(PutGroupPolicyCommand).map((c) => c.args[0].input.GroupName)).toEqual([
+      'group-a',
+    ]);
+  });
+
+  it('IAM Policy: no target throws', async () => {
+    await expect(
+      SDK_WRITERS['AWS::IAM::Policy'](ctx({ declared: { PolicyName: 'p' } }), [addOp(DESIRED)])
+    ).rejects.toThrow('no role/user/group target');
+  });
+
+  it('SNS TopicPolicy: the policy is set on EVERY topic', async () => {
+    sns.on(GetTopicAttributesCommand).resolves({ Attributes: { Policy: '{}' } });
+    sns.on(SetTopicAttributesCommand).resolves({});
+    await SDK_WRITERS['AWS::SNS::TopicPolicy'](
+      ctx({ declared: { Topics: ['arn:aws:sns:us-east-1:1:t1', 'arn:aws:sns:us-east-1:1:t2'] } }),
+      [addOp(DESIRED)]
+    );
+    expect(
+      sns.commandCalls(SetTopicAttributesCommand).map((c) => c.args[0].input.TopicArn)
+    ).toEqual(['arn:aws:sns:us-east-1:1:t1', 'arn:aws:sns:us-east-1:1:t2']);
+  });
+
+  it('SQS QueuePolicy: the policy is set on EVERY queue', async () => {
+    sqs.on(GetQueueAttributesCommand).resolves({ Attributes: { Policy: '{}' } });
+    sqs.on(SetQueueAttributesCommand).resolves({});
+    await SDK_WRITERS['AWS::SQS::QueuePolicy'](
+      ctx({ declared: { Queues: ['https://sqs/q1', 'https://sqs/q2'] } }),
+      [addOp(DESIRED)]
+    );
+    expect(
+      sqs.commandCalls(SetQueueAttributesCommand).map((c) => c.args[0].input.QueueUrl)
+    ).toEqual(['https://sqs/q1', 'https://sqs/q2']);
   });
 });
