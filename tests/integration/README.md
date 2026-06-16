@@ -288,6 +288,20 @@ destroys a (free) budget.
 cd budget-scope && npm install && bash verify-budget-scope.sh
 ```
 
+## codebuild-proj / verify-codebuild-proj.sh
+
+The same false-NEGATIVE guard for the CodeBuild override projection. A
+`PipelineProject` declaring `concurrentBuildLimit`. The reader used to omit
+`ConcurrentBuildLimit`, `VpcConfig`, `Visibility`, and `SourceVersion`, so an
+out-of-band change was undetectable. The script asserts CLEAN after record (FP
+guard: the now-read `Visibility=PRIVATE` folds to `atDefault`, `VpcConfig` is
+omitted when unused), then bumps `ConcurrentBuildLimit` out of band and asserts
+`check` DETECTS it (exit 1). Deploys + destroys a CodeBuild project.
+
+```bash
+cd codebuild-proj && npm install && bash verify-codebuild-proj.sh
+```
+
 ## noise
 
 The false-positive guard. Deploys resources that DECLARE properties whose live

@@ -147,6 +147,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::CodeBuild::Project': {
     TimeoutInMinutes: 60,
     QueuedTimeoutInMinutes: 480,
+    Visibility: 'PRIVATE', // the default; folds to atDefault so a never-declared project is not first-run noise — flipping to PUBLIC_READ no longer matches and surfaces
   },
   'AWS::DynamoDB::Table': {
     BillingMode: 'PROVISIONED',

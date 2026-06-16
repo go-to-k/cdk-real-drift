@@ -480,6 +480,25 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
         })),
       }),
     };
+  // R(this) — these CFn-modeled props were OMITTED from the projection, so an
+  // out-of-band change to them was undetectable (a declared one became a benign
+  // readGap; an undeclared one was invisible). All FP-safe to add:
+  //   Visibility   — PRIVATE/PUBLIC_READ; security-relevant (a project flipped to
+  //                  PUBLIC_READ exposes build logs/artifacts). Always present; the
+  //                  PRIVATE default is folded via KNOWN_DEFAULTS so it is atDefault,
+  //                  not first-run noise.
+  //   VpcConfig    — absent unless the project runs in a VPC → no noise when unused.
+  //   ConcurrentBuildLimit / SourceVersion — absent unless set → no noise.
+  if (p.projectVisibility !== undefined) model.Visibility = p.projectVisibility;
+  if (p.concurrentBuildLimit !== undefined) model.ConcurrentBuildLimit = p.concurrentBuildLimit;
+  if (p.sourceVersion !== undefined) model.SourceVersion = p.sourceVersion;
+  const vpc = p.vpcConfig;
+  if (vpc && (vpc.vpcId || vpc.subnets?.length || vpc.securityGroupIds?.length))
+    model.VpcConfig = {
+      ...(vpc.vpcId !== undefined && { VpcId: vpc.vpcId }),
+      ...(vpc.subnets !== undefined && { Subnets: vpc.subnets }),
+      ...(vpc.securityGroupIds !== undefined && { SecurityGroupIds: vpc.securityGroupIds }),
+    };
   return model;
 };
 

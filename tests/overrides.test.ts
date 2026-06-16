@@ -470,6 +470,9 @@ describe('SDK overrides', () => {
               privilegedMode: false,
               environmentVariables: [{ name: 'K', value: 'V', type: 'PLAINTEXT' }],
             },
+            projectVisibility: 'PRIVATE', // security-relevant — now projected
+            concurrentBuildLimit: 2, // now projected
+            vpcConfig: { vpcId: 'vpc-1', subnets: ['subnet-a'], securityGroupIds: ['sg-1'] },
             created: new Date(0), // AWS-managed noise — must NOT appear in the model
           },
         ],
@@ -492,7 +495,30 @@ describe('SDK overrides', () => {
           PrivilegedMode: false,
           EnvironmentVariables: [{ Name: 'K', Value: 'V', Type: 'PLAINTEXT' }],
         },
+        Visibility: 'PRIVATE',
+        ConcurrentBuildLimit: 2,
+        VpcConfig: { VpcId: 'vpc-1', Subnets: ['subnet-a'], SecurityGroupIds: ['sg-1'] },
       });
+    });
+
+    it('omits an EMPTY vpcConfig (no VPC) so a non-VPC project is not noise', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            projectVisibility: 'PRIVATE',
+            vpcConfig: { vpcId: undefined, subnets: [], securityGroupIds: [] },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.VpcConfig).toBeUndefined();
+      expect(out.Visibility).toBe('PRIVATE');
     });
 
     it('undefined when the project is absent (-> stays skipped)', async () => {
