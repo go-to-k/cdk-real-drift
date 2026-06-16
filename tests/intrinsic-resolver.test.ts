@@ -190,6 +190,26 @@ describe('intrinsic resolver', () => {
     );
   });
 
+  it('Fn::FindInMap honors the optional 4th DefaultValue when the path is absent', () => {
+    const c = ctx({ mappings: { RegionMap: { 'us-east-1': { ami: 'ami-123' } } } });
+    // missing path + DefaultValue -> the declared default (not UNRESOLVED)
+    expect(
+      resolve({ 'Fn::FindInMap': ['RegionMap', 'us-east-1', 'nope', { DefaultValue: 'fb' }] }, c)
+    ).toBe('fb');
+    // present path still wins over the default
+    expect(
+      resolve({ 'Fn::FindInMap': ['RegionMap', 'us-east-1', 'ami', { DefaultValue: 'fb' }] }, c)
+    ).toBe('ami-123');
+    // the default may itself be an intrinsic
+    expect(
+      resolve({ 'Fn::FindInMap': ['Ghost', 'x', 'y', { DefaultValue: { Ref: 'Env' } }] }, c)
+    ).toBe('prod');
+    // an unresolvable default stays fail-closed
+    expect(
+      resolve({ 'Fn::FindInMap': ['Ghost', 'x', 'y', { DefaultValue: { Ref: 'Nope' } }] }, c)
+    ).toBe(UNRESOLVED);
+  });
+
   it('Fn::Split splits a resolved string, propagates UNRESOLVED', () => {
     expect(resolve({ 'Fn::Split': [',', 'a,b,c'] }, ctx())).toEqual(['a', 'b', 'c']);
     expect(resolve({ 'Fn::Split': [',', { Ref: 'Env' }] }, ctx())).toEqual(['prod']);
@@ -214,6 +234,16 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Select': [1, ['a', 'b']] }, ctx())).toBe('b'); // in-range ok
     expect(resolve({ 'Fn::Select': [5, ['a', 'b']] }, ctx())).toBe(UNRESOLVED); // OOB
     expect(resolve({ 'Fn::Select': [0, [{ Ref: 'Ghost' }, 'b']] }, ctx())).toBe(UNRESOLVED); // unresolved element
+  });
+
+  it('Fn::Select resolves an intrinsic index (CFn allows Ref/FindInMap as the index)', () => {
+    const c = ctx({ params: { Env: 'prod', Idx: '1' } });
+    // index is a Ref to a (numeric-string) param -> resolved, then selected
+    expect(resolve({ 'Fn::Select': [{ Ref: 'Idx' }, ['a', 'b', 'c']] }, c)).toBe('b');
+    // a string-literal index still works
+    expect(resolve({ 'Fn::Select': ['2', ['a', 'b', 'c']] }, c)).toBe('c');
+    // an unresolvable index stays fail-closed (no throw on the UNRESOLVED symbol)
+    expect(resolve({ 'Fn::Select': [{ Ref: 'Ghost' }, ['a', 'b']] }, c)).toBe(UNRESOLVED);
   });
 
   it('hasUnresolved detects sentinel at depth', () => {

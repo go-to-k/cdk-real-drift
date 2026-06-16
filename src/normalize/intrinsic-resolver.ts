@@ -83,9 +83,14 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
       }
       case 'Fn::Select': {
         if (!Array.isArray(v)) return UNRESOLVED;
-        const [idx, list] = v as [number, unknown];
+        const [idxRaw, list] = v as [unknown, unknown];
         const arr = resolve(list, ctx);
         if (!Array.isArray(arr)) return UNRESOLVED;
+        // The index may itself be an intrinsic (CFn allows e.g. { Ref: SomeParam } /
+        // Fn::FindInMap as the index) — resolve it before coercing. (Number() on the
+        // raw UNRESOLVED symbol would throw, so guard it first.)
+        const idx = resolve(idxRaw, ctx);
+        if (idx === UNRESOLVED) return UNRESOLVED;
         const i = Number(idx);
         // Fail-closed: out-of-range index (or a NaN index) would otherwise yield
         // `undefined` and report false `desired: undefined` drift. The selected
@@ -96,7 +101,7 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
       }
       case 'Fn::FindInMap': {
         if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
-        const [mapName, topKey, secondKey] = v.map((x) => resolve(x, ctx));
+        const [mapName, topKey, secondKey] = v.slice(0, 3).map((x) => resolve(x, ctx));
         // All 3 keys must resolve to strings and the path must exist; else fail-closed.
         if (
           typeof mapName !== 'string' ||
@@ -105,7 +110,21 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         )
           return UNRESOLVED;
         const val = ctx.mappings?.[mapName]?.[topKey]?.[secondKey];
-        return val === undefined ? UNRESOLVED : val;
+        if (val !== undefined) return val;
+        // CFn supports an optional 4th argument — { DefaultValue: ... } — returned when
+        // the map path is absent. Honor it so a declared default is still compared (else
+        // a knowable declared value is silently dropped to UNRESOLVED = missed drift).
+        const fourth = v[3];
+        if (
+          fourth !== null &&
+          typeof fourth === 'object' &&
+          !Array.isArray(fourth) &&
+          'DefaultValue' in fourth
+        ) {
+          const def = resolve((fourth as Record<string, unknown>).DefaultValue, ctx);
+          return def === UNRESOLVED ? UNRESOLVED : def;
+        }
+        return UNRESOLVED;
       }
       case 'Fn::Split': {
         if (!Array.isArray(v) || v.length < 2) return UNRESOLVED;
