@@ -120,7 +120,9 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
     nc
   );
   const remainingDeclared = reEval.filter(
-    (f) => (f.tier === 'declared' || f.tier === 'deleted') && !resolvedKeys.has(keyOf(f))
+    (f) =>
+      (f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'added') &&
+      !resolvedKeys.has(keyOf(f))
   ).length;
   return remainingDeclared > 0 ? 1 : 0;
 }

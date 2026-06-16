@@ -712,10 +712,18 @@ describe('recordScopeNote (R117 — record records undeclared only; say so where
     expect(recordScopeNote('ApiStack', [])).toBeUndefined();
   });
 
-  it('names the declared/deleted count and that it was NOT approved + how to resolve', () => {
-    const note = recordScopeNote('ApiStack', [declared(), deleted(), undeclared()]);
+  const added = (): Finding => ({
+    tier: 'added',
+    logicalId: 'Api/abc|root|ANY',
+    resourceType: 'AWS::ApiGateway::Method',
+    path: '',
+    physicalId: 'abc|root|ANY',
+  });
+
+  it('names the declared/deleted/added count and that it was NOT approved + how to resolve', () => {
+    const note = recordScopeNote('ApiStack', [declared(), deleted(), added(), undeclared()]);
     expect(note).toContain('ApiStack');
-    expect(note).toContain('2 declared/deleted drift NOT approved');
+    expect(note).toContain('3 declared/deleted/added drift NOT approved');
     expect(note).toContain('undeclared state into the baseline only');
     // resolution now includes `cdkrd ignore` (declared drift is ignorable in-tool)
     expect(note).toContain('cdkrd ignore');

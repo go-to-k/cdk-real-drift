@@ -200,9 +200,17 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
    --- PASS 1.5: re-read override resources that pass 1 skipped as "target not
                  resolvable" but whose declared target now resolves (e.g. Lambda
                  Permission.FunctionName = GetAtt[fn, Arn]) — concurrent, once
+   --- PASS 1.6: added-resource enumeration — for each declared PARENT type with a
+                 CHILD_ENUMERATORS entry (read/child-enumerators.ts), list its LIVE
+                 child resources via the service SDK and emit an `added` finding for
+                 any not in the template (e.g. an API Gateway Method on `/`). An
+                 enumeration failure is surfaced as a `skipped` finding on the parent
    --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
-5. classify (tier)       deleted | declared | undeclared | atDefault | generated | readGap | unresolved | skipped
+5. classify (tier)       deleted | added | declared | undeclared | atDefault | generated | readGap | unresolved | skipped
+                         (added = a whole LIVE child resource not in the template,
+                         from pass 1.6's enumerators — resource-granularity sibling of
+                         undeclared; always drift; revertable by CC DeleteResource)
                          (atDefault = undeclared but EQUAL to a known AWS default —
                          folded, never drift, never recorded; R86)
                          (generated = undeclared (absent from the template) but EQUAL to the
@@ -263,6 +271,7 @@ checked.
 - **read/** — the "reality" side
   - **router.ts** — `readLive()`: SDK_OVERRIDES first, else CC API GetResource (with `CC_IDENTIFIER_ADAPTERS` deriving the CC identifier when the CFn physical id is not it — AppSync GraphQLApi ARN→ApiId, Cognito UserPoolClient `UserPoolId|ClientId`); classifies skip reasons.
   - **overrides.ts** — `SDK_OVERRIDES` readers for CC-gap types (S3/SNS/SQS BucketPolicy/TopicPolicy/QueuePolicy, IAM Policy/ManagedPolicy, Lambda Permission (incl. the security-scoping conditions PrincipalOrgID + FunctionUrlAuthType so an out-of-band invoke-widening is not invisible), Budgets, **EC2 EIP** via DescribeAddresses, **Route53 RecordSet** via ListResourceRecordSets (disambiguated by SetIdentifier so a weighted/latency/failover/geo variant is matched to its OWN record, not whichever shares the name+type first, and projecting the routing fields Weight/Region/Failover/GeoLocation/MultiValueAnswer/HealthCheckId), **Glue Table** via GetTable, **Logs MetricFilter** via DescribeMetricFilters, **Scheduler Schedule** via GetSchedule — CC only reads the default group, **CodeBuild Project** via BatchGetProjects with a camelCase→CFn-PascalCase projection, R85 — incl. Visibility/VpcConfig/ConcurrentBuildLimit/SourceVersion/LogsConfig/BadgeEnabled so a scope/network/visibility/logging change is not silently projected away; LogsConfig/BadgeEnabled are FP-safe because BatchGetProjects returns logsConfig=null and badgeEnabled=false when unconfigured). NOTE: where a reader projects a SUBSET, an out-of-band change to an un-projected property is a silent FN — coverage is widened as such gaps surface (e.g. Budgets CostFilters, the CodeBuild fields above).
+  - **child-enumerators.ts** — `CHILD_ENUMERATORS`: per declared PARENT type, enumerate LIVE child resources and flag any not in the template → `added` tier (pass 1.6). First member: API Gateway REST APIs (`getResources` embed=methods — CC `ListResources` is UnsupportedAction for Resource/Method, so the service SDK is used, mirroring SDK_OVERRIDES). Findings carry the CC composite identifier (`RestApiId|ResourceId[|HttpMethod]`) so revert can DeleteResource them. The pure `diffApiGatewayChildren` matcher is unit-tested offline.
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
   - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS` (top-level per-type service defaults → `atDefault`) + `KNOWN_DEFAULT_PATHS` (the nested-path twin: dotted paths with `*` for array elements, folds nested service defaults the CFn schema does not annotate; R108), `GENERATED_DEFAULTS` + `resolveGeneratedDefault` (per-type STRUCTURED auto-generated values templated on the physical id → `generated` tier; R104) + `isGeneratedName` (general rule: a scalar equal to the ARN physical id's name segment → `generated`, any type, no table entry; R107), **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `isJsonStringStructEqual` (object↔JSON-string), `isPemEqual` (PEM-armored value ↔ same body with surrounding-whitespace/trailing-newline differences, e.g. CloudFront PublicKey EncodedKey; R125), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules). (R95 removed the generic `projectLiveToDeclaredSubset` — it silently dropped out-of-band ADDITIONS to identity-keyed arrays like Tags; ELB attribute bags keep subset behaviour via `ELB_ATTRIBUTE_BAGS` in classify.)

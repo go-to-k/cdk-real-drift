@@ -2,6 +2,7 @@
 
 export type Tier =
   | 'deleted'
+  | 'added' // a whole LIVE resource not in the deployed template — a child resource created out of band under a declared parent (e.g. an API Gateway Method on `/`). The resource-granularity sibling of `undeclared`; always drift. Detected by CHILD_ENUMERATORS (read/child-enumerators.ts), revertable by Cloud Control DeleteResource. physicalId carries the CC identifier.
   | 'declared'
   | 'undeclared'
   | 'atDefault' // undeclared, but the live value EQUALS a known AWS default (schema `default` or KNOWN_DEFAULTS) — informational inventory, folded in the report (R86); never drift, never recorded by record. An out-of-band change AWAY from the default no longer matches, so it re-surfaces as a real `undeclared` finding.

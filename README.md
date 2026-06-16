@@ -40,6 +40,7 @@ _The GIF is regenerated with [`demo/`](demo/) (`bash demo/setup.sh` → `vhs dem
 | ------------------------------------------------------------------- | :-----: | :-------------------------------: |
 | Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
 | Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
+| Detect **added** out-of-band resources (not in template)            |   ✅    |                ❌                 |
 | **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
 | **Revert** undeclared drift                                         |   ✅    |                ❌                 |
 | **Record** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
@@ -140,6 +141,7 @@ vocabulary names exactly which of the three sources a finding relates to, so
 | ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
 | **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
 | **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
+| **Added** (out-of-band)        | the live resource                             | a whole resource exists live but is NOT in the template |
 | **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
 So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
@@ -181,6 +183,12 @@ without editing code or reverting.
 - A resource **deleted out of band** — the most blatant drift there is — is
   reported in the `deleted` tier and always counts as failing drift under
   `--fail`.
+- A resource **added out of band** — a whole child resource that exists live but
+  is not in your template (e.g. an API Gateway `ANY` method added on `/` via the
+  console) — is reported in the `added` tier and always counts as failing drift.
+  `cdk drift` / CFn drift detection compare only template-declared resources, so
+  an out-of-band addition is invisible to them. Coverage grows per parent type
+  (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
@@ -483,6 +491,8 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
     so `revert` refuses: record them if the live values are right, or opt into
     removal with `--remove-unrecorded`;
   - a `deleted` resource (recreate it with `cdk deploy`);
+  - an `added` (out-of-band) resource — detect-only for now; deleting it via revert
+    is a planned follow-up, so remove it via the console / `cdk` for the moment;
   - **nested undeclared values** (a sub-key inside a property you declared, incl.
     inside an identity-keyed array element) — detect/record-only: a flat patch
     can't safely target a deep sub-field, so fix any real divergence in your IaC

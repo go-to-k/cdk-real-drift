@@ -98,7 +98,9 @@ detail:
   resolution + the shared per-stack actions (`stack-actions.ts`).
 - `desired/` — declared "intent": deployed-template fetch + CFn template adapter.
 - `read/` — live state read routing: Cloud Control API → SDK overrides for CC-gap
-  types (`overrides.ts` / `SDK_OVERRIDES`).
+  types (`overrides.ts` / `SDK_OVERRIDES`). Also `child-enumerators.ts`
+  (`CHILD_ENUMERATORS`): per declared parent type, enumerate live child resources
+  and flag any not in the template → the `added` tier (API Gateway first).
 - `normalize/` — noise subtraction (policy canonicalization, ARN/identity, `aws:*`
   tags, CC-API strip, path strip, intrinsic resolution).
 - `diff/` — drift classification + calculation (declared / undeclared / atDefault / readGap /

@@ -12,6 +12,7 @@ import {
   kmsListAliasesDeniedWarning,
   usesManagedKmsAlias,
 } from '../read/kms-aliases.js';
+import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import { readLive, type ReadResult } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
@@ -63,6 +64,24 @@ async function readAll(
     }
   };
   await Promise.all(Array.from({ length: Math.min(POOL_SIZE, targets.length) }, () => worker()));
+}
+
+// Turn an enumerated out-of-band child into an `added` finding. logicalId is
+// synthesized (the child is not in the template, so it has none) from the parent's
+// logical id + the CC identifier — stable and unique. physicalId carries the CC
+// identifier so revert can DeleteResource it; constructPath gives the report a
+// readable label even when the parent has no CDK construct path.
+function addedFinding(parent: DesiredResource, c: AddedChild): Finding {
+  return {
+    tier: 'added',
+    logicalId: `${parent.logicalId}/${c.identifier}`,
+    physicalId: c.identifier,
+    constructPath: `${parent.constructPath ?? parent.logicalId} ▸ ${c.label}`,
+    resourceType: c.resourceType,
+    path: '',
+    actual: c.live,
+    note: 'created out of band — not in your CloudFormation template',
+  };
 }
 
 interface ClassifyOpts {
@@ -187,6 +206,29 @@ export async function gatherFindings(
       reads.get(r.logicalId)?.skippedReason
   );
   await readAll(cc, retryTargets, region, desired, reads);
+
+  // Pass 1.6: added-resource detection. For each declared PARENT type with a child
+  // enumerator (read/child-enumerators.ts), list its live child resources and flag any
+  // not in the template — a whole resource created out of band (e.g. an API Gateway
+  // Method on `/`). The resource-granularity sibling of undeclared; not a per-property
+  // compare, so it runs OUTSIDE classify. An enumeration failure is a coverage gap, not
+  // drift — surfaced as a `skipped` finding on the parent so it is never silently lost.
+  for (const r of desired.resources) {
+    const enumerate = CHILD_ENUMERATORS[r.resourceType];
+    if (!enumerate || !r.physicalId) continue;
+    try {
+      const children = await enumerate({ parent: r, desired, region });
+      for (const c of children) findings.push(addedFinding(r, c));
+    } catch (e) {
+      findings.push({
+        tier: 'skipped',
+        logicalId: r.logicalId,
+        resourceType: r.resourceType,
+        path: '',
+        note: `added-resource scan: ${(e as Error).name}`,
+      });
+    }
+  }
 
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from
