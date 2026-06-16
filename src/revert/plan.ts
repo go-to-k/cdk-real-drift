@@ -424,7 +424,39 @@ export function tagPreservingOps(
   ops: PatchOp[],
   liveRaw: Record<string, unknown> | undefined
 ): PatchOp[] {
-  const managed = awsManagedTags(liveRaw?.['Tags']);
+  const liveTags = liveRaw?.['Tags'];
+  // MAP-shaped Tags (key->value, e.g. AWS::SSM::Parameter): the managed tags are aws:*
+  // KEYS. awsManagedTags only understood the {Key,Value}[] list shape, so a map-shaped
+  // /Tags revert dropped the aws:* keys -> AWS rejects ("aws: prefixed tag key names are
+  // not allowed for external use"). Mirror stripTagsWalk/isAllAwsTags and preserve them.
+  if (liveTags !== null && typeof liveTags === 'object' && !Array.isArray(liveTags)) {
+    const managedMap = Object.fromEntries(
+      Object.entries(liveTags).filter(([k]) => k.startsWith('aws:'))
+    );
+    if (Object.keys(managedMap).length === 0) return ops;
+    return ops.map((op) => {
+      if (op.path !== TAGS_POINTER) return op;
+      const userMap =
+        op.op === 'add' &&
+        op.value !== null &&
+        typeof op.value === 'object' &&
+        !Array.isArray(op.value)
+          ? Object.fromEntries(
+              Object.entries(op.value as Record<string, unknown>).filter(
+                ([k]) => !k.startsWith('aws:')
+              )
+            )
+          : {};
+      return {
+        op: 'add',
+        path: TAGS_POINTER,
+        value: { ...userMap, ...managedMap },
+        ...(op.prior !== undefined && { prior: op.prior }),
+        human: `${op.human} (preserving aws:* managed tags)`,
+      };
+    });
+  }
+  const managed = awsManagedTags(liveTags);
   if (managed.length === 0) return ops; // nothing managed to protect — leave ops as-is
   return ops.map((op) => {
     if (op.path !== TAGS_POINTER) return op;
