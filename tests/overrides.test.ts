@@ -363,6 +363,23 @@ describe('SDK overrides', () => {
       });
     });
 
+    it('projects TargetTable (resource link) when present, drops it when absent', async () => {
+      glue.on(GetTableCommand).resolves({
+        Table: {
+          Name: 't',
+          TargetTable: { CatalogId: '111', DatabaseName: 'shared-db', Name: 'shared-t' },
+        },
+      });
+      const out = (await SDK_OVERRIDES['AWS::Glue::Table'](
+        ctx({ DatabaseName: 'db', TableInput: { Name: 't' } }, 'db|t')
+      )) as { TableInput: Record<string, unknown> };
+      expect(out.TableInput.TargetTable).toEqual({
+        CatalogId: '111',
+        DatabaseName: 'shared-db',
+        Name: 'shared-t',
+      });
+    });
+
     it('undefined when database/table cannot be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::Glue::Table'](ctx({}))).toBeUndefined();
     });
