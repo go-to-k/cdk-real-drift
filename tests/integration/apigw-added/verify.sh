@@ -55,5 +55,8 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
 grep -q "Added (Out-of-Band)" /tmp/cdk-real-drift-integ-added.out || fail "added section not reported"
 grep -q "ANY /" /tmp/cdk-real-drift-integ-added.out || fail "ANY / method not reported"
+# Exactly ONE added finding: the declared GET / (ResourceId = GetAtt RootResourceId)
+# must re-resolve to the live root id and NOT false-positive as added (added=1, not 2).
+grep -q "added=1" /tmp/cdk-real-drift-integ-added.out || fail "expected exactly added=1 (declared GET / must not false-positive)"
 
 echo "INTEG PASS"

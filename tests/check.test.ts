@@ -78,13 +78,13 @@ describe('postRecordNote (R52 — a partial record is a SUCCESS, said plainly)',
 
   it("declared/deleted drift remains → named (outside record's reach), undeclared remainder too", () => {
     const note = postRecordNote(112, 2);
-    expect(note).toContain('2 declared/deleted drift(s) remain un-addressed');
+    expect(note).toContain('2 declared/deleted/added drift(s) remain un-addressed');
     expect(note).toContain('112 unrecorded value(s) also stay reported');
   });
 
   it('declared drift remains, nothing else → no undeclared clause', () => {
     const note = postRecordNote(0, 1);
-    expect(note).toContain('declared/deleted drift(s) remain');
+    expect(note).toContain('declared/deleted/added drift(s) remain');
     expect(note).not.toContain('also stay reported');
   });
 });
