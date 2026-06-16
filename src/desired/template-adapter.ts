@@ -9,6 +9,7 @@ import {
   ListExportsCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
+import { classifyStackStatus, StackNotCheckableError } from '../aws-errors.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
 import { parseCfnTemplate } from './yaml-cfn.js';
@@ -20,6 +21,10 @@ export interface Desired {
   resources: DesiredResource[];
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
   ctx: ResolverContext; // exposed so gather can re-resolve GetAtt once live attrs are read
+  // set when the stack's StackStatus is mid-operation / failed (a comparison still runs
+  // but results may be unreliable — check prints this). REVIEW_IN_PROGRESS / deleting
+  // states never reach here: loadDesired throws StackNotCheckableError for those.
+  stackStatusWarning?: string | undefined;
 }
 
 /** Parse a deployed template body (JSON or CFn-flavored YAML). */
@@ -134,6 +139,19 @@ export async function loadDesired(
     client.send(new DescribeStacksCommand({ StackName: stackName })),
     listStackResources(client, stackName),
   ]);
+  const stack = stkRes.Stacks?.[0];
+  // Stack-state gate — runs BEFORE the template is parsed: a REVIEW_IN_PROGRESS stack
+  // (a change set created but never deployed) returns an EMPTY GetTemplate body, which
+  // would otherwise blow up parseTemplateBody with "Unexpected end of JSON input". Skip
+  // a stack with no meaningful deployed reality (REVIEW_IN_PROGRESS / deleting) rather
+  // than silently compare live state against a never-deployed template; carry a warning
+  // for mid-operation / failed states. Skipped under --pre-deploy (the declared source
+  // is the LOCAL synth, not the deployed stack).
+  const stateClass = templateOverride
+    ? ({ kind: 'ok', message: '' } as const)
+    : classifyStackStatus(stack?.StackStatus);
+  if (stateClass.kind === 'skip') throw new StackNotCheckableError(stateClass.message);
+  const stackStatusWarning = stateClass.kind === 'warn' ? stateClass.message : undefined;
   const template = (templateOverride ?? parseTemplateBody(tmplRes.TemplateBody ?? '{}')) as Record<
     string,
     any
@@ -141,7 +159,6 @@ export async function loadDesired(
   const rawTemplate = templateOverride
     ? JSON.stringify(templateOverride)
     : (tmplRes.TemplateBody ?? '{}');
-  const stack = stkRes.Stacks?.[0];
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';
 
@@ -192,7 +209,7 @@ export async function loadDesired(
         res.Type === 'AWS::IAM::Role' ? rolesWithSiblingPolicy.get(logicalId) : undefined,
     });
   }
-  return { stackName, region, accountId, resources, rawTemplate, ctx };
+  return { stackName, region, accountId, resources, rawTemplate, ctx, stackStatusWarning };
 }
 
 // CDK construct paths end in "/Resource" for the L1 node; drop it for readability

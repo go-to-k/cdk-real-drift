@@ -5,7 +5,7 @@
 //   undeclared -> baseline value (restore) or removal (if never recorded)
 // The per-stack plan / apply / converge flow lives in stack-actions.ts (shared with
 // check's interactive prompt, R28).
-import { isStackNotDeployed } from '../aws-errors.js';
+import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   type BaselineFile,
   checkBaselineAccount,
@@ -77,6 +77,10 @@ export async function runRevert(args: string[]): Promise<number> {
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed — skipped`);
+        continue;
+      }
+      if (e instanceof StackNotCheckableError) {
+        console.error(`note: ${stackName}: ${e.message} — skipped`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);

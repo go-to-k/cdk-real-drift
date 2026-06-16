@@ -7,6 +7,55 @@ export function isStackNotDeployed(e: unknown): boolean {
   return /does not exist/i.test(msg) || (/ValidationError/i.test(msg) && /stack/i.test(msg));
 }
 
+// A stack that EXISTS but is in a state with no meaningful deployed reality to compare
+// against — REVIEW_IN_PROGRESS (a change set was created but never executed; nothing is
+// deployed) or a delete in progress. loadDesired throws this so `check` SKIPS it with a
+// clear note instead of silently comparing live state against a template that was never
+// deployed (which would read as a meaningless CLEAN).
+export class StackNotCheckableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StackNotCheckableError';
+  }
+}
+
+// Classify a CloudFormation StackStatus for checkability:
+//   skip — REVIEW_IN_PROGRESS (change set never deployed) or DELETE_IN_PROGRESS: no
+//          meaningful deployed reality, so comparing is nonsense (loadDesired throws).
+//   warn — any OTHER `*_IN_PROGRESS` (mid-operation: live state in flux) or `*_FAILED`
+//          (the deployed template may not match live reality): the comparison runs but
+//          results may be transient/unreliable, so `check` prints a warning.
+//   ok   — a stable `*_COMPLETE` state (incl. ROLLBACK_COMPLETE / IMPORT_COMPLETE): a
+//          valid comparison. Pure + exported for tests.
+export function classifyStackStatus(status: string | undefined): {
+  kind: 'ok' | 'skip' | 'warn';
+  message: string;
+} {
+  const s = status ?? '';
+  if (s === 'REVIEW_IN_PROGRESS')
+    return {
+      kind: 'skip',
+      message:
+        'in REVIEW_IN_PROGRESS — a change set was created but never deployed, so there is no deployed state to check',
+    };
+  if (s === 'DELETE_IN_PROGRESS')
+    return {
+      kind: 'skip',
+      message: 'is being deleted (DELETE_IN_PROGRESS) — nothing stable to check',
+    };
+  if (s.endsWith('_IN_PROGRESS'))
+    return {
+      kind: 'warn',
+      message: `stack is mid-operation (${s}) — live state is in flux, so drift results may be transient`,
+    };
+  if (s.endsWith('_FAILED'))
+    return {
+      kind: 'warn',
+      message: `stack is in a failed state (${s}) — the deployed template may not match live reality, so drift results may be unreliable`,
+    };
+  return { kind: 'ok', message: '' };
+}
+
 // "the resource itself no longer exists in AWS" — i.e. it was deleted out of band.
 // Covers Cloud Control GetResource + every SDK-override reader's not-found error:
 //   CC API / Lambda     : ResourceNotFoundException

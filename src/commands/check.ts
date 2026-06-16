@@ -6,7 +6,7 @@
 // exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
 // suppressed. Errors always exit 2. The exit is the worst across all checked
 // stacks.
-import { isStackNotDeployed } from '../aws-errors.js';
+import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
   checkBaselineAccount,
@@ -176,6 +176,11 @@ export async function runCheck(args: string[]): Promise<number> {
       if (nestedWarn) console.error(nestedWarn);
       const covWarn = coverageWarning(gathered.findings, stackName);
       if (covWarn) console.error(covWarn);
+      // a mid-operation / failed stack state still gets compared, but the result may be
+      // transient/unreliable — say so loudly (REVIEW_IN_PROGRESS / deleting states never
+      // reach here; loadDesired throws StackNotCheckableError, handled in the catch).
+      if (desired.stackStatusWarning)
+        console.error(`warning: ${stackName}: ${desired.stackStatusWarning}`);
 
       // Scope flags (R59). --undeclared-only delegates the declared side to
       // `cdk drift` / CFn drift detection (no double reporting when pairing);
@@ -319,6 +324,12 @@ export async function runCheck(args: string[]): Promise<number> {
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — skipped`);
+        continue;
+      }
+      // a stack that exists but has no meaningful deployed state (REVIEW_IN_PROGRESS /
+      // deleting): skip with a clear reason, not a meaningless CLEAN and not an error.
+      if (e instanceof StackNotCheckableError) {
+        console.error(`note: ${stackName}: ${e.message} — skipped`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);

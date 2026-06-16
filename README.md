@@ -511,6 +511,13 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 - **Lambda Permission:** if only the specific statement was removed out of band
   (while the function's policy still exists), it is reported as `skipped`, not
   `deleted` — identifying the exact statement would need its `StatementId`.
+- **Stack state.** A stack with no meaningful deployed reality is **skipped with a
+  clear note**, not compared to a meaningless CLEAN: `REVIEW_IN_PROGRESS` (a change
+  set created but never deployed) and a delete in progress. A stack mid-operation
+  (any other `*_IN_PROGRESS`) or in a `*_FAILED` state is still checked, but `check`
+  prints a `warning:` that the deployed template may not match live reality so
+  results may be transient. Only stable `*_COMPLETE` states are a fully reliable
+  comparison.
 
 ## FAQ
 
