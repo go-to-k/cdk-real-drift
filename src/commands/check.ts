@@ -107,6 +107,21 @@ export function hasCoverageGap(findings: Finding[], resources: DesiredResource[]
   );
 }
 
+// The exit contribution of `--strict`: a coverage gap is a non-zero exit
+// independent of --fail's drift axis. Returns 1 when --strict is set AND coverage
+// is incomplete, else 0. Pure + exported so BOTH the normal and the --pre-deploy
+// path fold the identical value into `worst` — the --pre-deploy branch returns
+// early (its own report + continue), so without sharing this it silently never
+// applied --strict (a skipped resource / un-recursed nested stack under
+// --strict --pre-deploy exited 0).
+export function strictCoverageExit(
+  strict: boolean,
+  findings: Finding[],
+  resources: DesiredResource[]
+): number {
+  return strict && hasCoverageGap(findings, resources) ? 1 : 0;
+}
+
 /**
  * Map a stack's drift code to check's final exit (R53, the `cdk diff --fail` /
  * `cdk drift --fail` convention): without --fail, check is REPORT-ONLY — drift
@@ -255,6 +270,11 @@ export async function runCheck(args: string[]): Promise<number> {
         );
         if (preDeployCode === 1) anyDrift = true;
         worst = Math.max(worst, finalCheckExit(preDeployCode, a.fail));
+        // --strict still applies under --pre-deploy: live reads (and so the skipped
+        // tier / un-recursed nested stacks) happen here too, only the DECLARED side
+        // comes from the synth template. Fold the coverage-gap exit BEFORE the early
+        // continue, or --strict --pre-deploy would silently never fail.
+        worst = Math.max(worst, strictCoverageExit(a.strict, gathered.findings, desired.resources));
         continue;
       }
 
@@ -356,9 +376,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // --strict: incomplete coverage (a skipped resource or an un-recursed nested
       // stack) is a non-zero exit, independent of --fail's drift axis. The loud
       // coverage warnings above always print; --strict makes them CI-failing.
-      if (a.strict && hasCoverageGap(gathered.findings, desired.resources)) {
-        worst = Math.max(worst, 1);
-      }
+      worst = Math.max(worst, strictCoverageExit(a.strict, gathered.findings, desired.resources));
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — skipped`);
