@@ -14,7 +14,7 @@ import {
 } from '../read/kms-aliases.js';
 import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
-import { readLive, type ReadResult } from '../read/router.js';
+import { CC_IDENTIFIER_ADAPTERS, readLive, type ReadResult } from '../read/router.js';
 import { getSchemaInfo } from '../schema/schema-strip.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 
@@ -236,19 +236,29 @@ export async function gatherFindings(
     if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
   }
 
-  // Pass 1.5: declared-dependent SDK overrides key off props that are frequently
-  // Fn::GetAtt (AWS::Lambda::Permission.FunctionName = GetAtt[fn, Arn]). Those were
-  // UNRESOLVED during pass 1 (liveAttrs was still being filled), so their pass-1
-  // override read wrongly skipped as "target not resolvable" — the resource is
-  // structurally readable, we just asked too early. Re-read ONCE, concurrently, the
-  // override-routed resources that pass 1 skipped and whose target is now resolvable.
-  const retryTargets = desired.resources.filter(
-    (r) =>
+  // Pass 1.5: declared-dependent reads key off props that are frequently Fn::GetAtt
+  // and so were UNRESOLVED during pass 1 (liveAttrs was still being filled) — the
+  // resource is structurally readable, we just asked too early. Two shapes hit this:
+  //   - SDK overrides whose target prop is a GetAtt (Lambda Permission.FunctionName =
+  //     GetAtt[fn,Arn]) → pass 1 returned `skippedReason` ("target not resolvable").
+  //   - CC composite-id types whose PARENT key is a GetAtt (ApiGatewayV2 Route.ApiId =
+  //     GetAtt[Api,ApiId], ECS Service.Cluster = GetAtt[Cluster,Arn]): the composite
+  //     identifier couldn't be built, so CC was queried with the BARE child id — which
+  //     fails as `skippedReason` (ValidationException) OR, worse, `deleted`
+  //     (ResourceNotFound) → a FALSE "deleted out of band". (Ref-sourced parents
+  //     resolve in pass 1 via physIds, so only the GetAtt form is affected.)
+  // Re-read ONCE, concurrently, both shapes when the earlier result was a skip OR a
+  // deleted — now that liveAttrs is populated the parent resolves. A genuinely deleted
+  // resource just reads not-found again, so re-reading the `deleted` set is safe.
+  const retryTargets = desired.resources.filter((r) => {
+    const prev = reads.get(r.logicalId);
+    return (
       r.physicalId &&
       r.declaredRaw &&
-      SDK_OVERRIDES[r.resourceType] &&
-      reads.get(r.logicalId)?.skippedReason
-  );
+      (SDK_OVERRIDES[r.resourceType] || CC_IDENTIFIER_ADAPTERS[r.resourceType]) &&
+      (prev?.skippedReason || prev?.deleted)
+    );
+  });
   await readAll(cc, retryTargets, region, desired, reads);
 
   // OAI canonical-id map (CloudFront legacy OAI principal reconciliation) — harvested
