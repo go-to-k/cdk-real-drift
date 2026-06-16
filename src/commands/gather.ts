@@ -122,7 +122,10 @@ async function readAddedModel(
     const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
     const schema = schemas.get(c.resourceType) ?? (await getSchemaInfo(cfn, c.resourceType));
     schemas.set(c.resourceType, schema);
-    return { model: normalizeLiveModel(raw, schema, { oaiCanonicalIds }), ok: true };
+    return {
+      model: normalizeLiveModel(raw, schema, { oaiCanonicalIds, resourceType: c.resourceType }),
+      ok: true,
+    };
   } catch {
     return { model: c.live, ok: false };
   }

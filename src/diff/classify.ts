@@ -229,10 +229,32 @@ function collectNestedUndeclared(
 // field (a timestamp, a revision id) would read as a false "changed since record" on
 // every check. Mutates a fresh object (the canonicalize step clones), so liveRaw is
 // untouched. Pure: no AWS calls.
+// Sort a resource's per-type UNORDERED-SET properties into a canonical order, in place.
+// canonicalizeForCompare is type-agnostic, so it can't apply these per-type opt-ins; the
+// DECLARED loop sorts them for its compare, but the UNDECLARED loop (and the recorded
+// baseline value + the `added` model) emitted them RAW — so a recorded SG ingress set or
+// Cognito OAuth list, re-read by AWS in a different order, false-flagged as "changed since
+// record" (baselineValueMatches re-canonicalizes without this step). Sorting them here, in
+// the shared live-model normalizer, makes every downstream consumer see one stable order.
+function sortUnorderedSetProps(model: Record<string, unknown>, resourceType: string): void {
+  for (const k of UNORDERED_OBJECT_ARRAY_PROPS[resourceType] ?? [])
+    if (Array.isArray(model[k])) model[k] = sortUnorderedObjectArray(model[k]);
+  for (const k of UNORDERED_ARRAY_PROPS[resourceType] ?? []) {
+    const v = model[k];
+    if (
+      Array.isArray(v) &&
+      v.every((e) => typeof e === 'string' || typeof e === 'number' || typeof e === 'boolean')
+    )
+      model[k] = [...v].sort((a, b) =>
+        `${typeof a}:${String(a)}` < `${typeof b}:${String(b)}` ? -1 : 1
+      );
+  }
+}
+
 export function normalizeLiveModel(
   liveRaw: Record<string, unknown>,
   schema: SchemaInfo,
-  opts: { oaiCanonicalIds?: Record<string, string> } = {}
+  opts: { oaiCanonicalIds?: Record<string, string>; resourceType?: string } = {}
 ): Record<string, unknown> {
   const oaiMap = opts.oaiCanonicalIds ?? {};
   const live = canonicalizeForCompare(
@@ -240,6 +262,7 @@ export function normalizeLiveModel(
   ) as Record<string, unknown>;
   deepStripPaths(live, schema.readOnlyPaths);
   deepStripPaths(live, schema.writeOnlyPaths);
+  if (opts.resourceType) sortUnorderedSetProps(live, opts.resourceType);
   return live;
 }
 
@@ -266,7 +289,7 @@ export function classifyResource(
   // silently diverge; the pipeline is shared with baseline-file.ts so baseline values
   // normalize identically (see pipeline.ts).
   const oaiMap = opts.oaiCanonicalIds ?? {};
-  const live = normalizeLiveModel(liveRaw, schema, { oaiCanonicalIds: oaiMap });
+  const live = normalizeLiveModel(liveRaw, schema, { oaiCanonicalIds: oaiMap, resourceType });
   const declared = canonicalizeForCompare(rewriteOaiPrincipalsDeep(declaredIn, oaiMap)) as Record<
     string,
     unknown
