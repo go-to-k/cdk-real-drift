@@ -284,6 +284,32 @@ describe('cc-api strip', () => {
     });
     expect(out).toEqual({ Name: 'n', Arn: 'a', Nested: { Keep: 1 } }); // Arn intentionally kept
   });
+
+  it('does NOT strip a managed-LOOKING key inside a free-form user map (the FN fix)', () => {
+    // a Lambda env var / Glue Parameter / user Tag keyed like a managed field is USER
+    // data — stripping it would hide a real out-of-band change. The genuine top-level
+    // managed field is still stripped.
+    const out = stripCcApiAwsManagedFields({
+      LastModified: '2026-06-16T00:00:00Z', // genuine top-level managed field -> stripped
+      Environment: { Variables: { APP_VERSION: 'v2', LastModified: 'user-set' } },
+      Parameters: { OwnerId: 'team-a' }, // Glue-style free-form map -> kept
+      Tags: { CreatedBy: 'alice' }, // map-shaped user tag -> kept
+    });
+    expect(out).toEqual({
+      Environment: { Variables: { APP_VERSION: 'v2', LastModified: 'user-set' } },
+      Parameters: { OwnerId: 'team-a' },
+      Tags: { CreatedBy: 'alice' },
+    });
+  });
+
+  it('STILL strips a genuine nested managed field in a STRUCTURED object (no FP regression)', () => {
+    // StepFunctions LoggingConfiguration.CreatedAt is AWS-managed and NOT under a
+    // free-form-map key, so it is still removed.
+    const out = stripCcApiAwsManagedFields({
+      LoggingConfiguration: { Level: 'OFF', CreatedAt: '2026-06-16T00:00:00Z' },
+    });
+    expect(out).toEqual({ LoggingConfiguration: { Level: 'OFF' } });
+  });
 });
 
 describe('parseSchema', () => {
