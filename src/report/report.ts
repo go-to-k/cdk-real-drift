@@ -257,7 +257,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // R114: when DRIFT and standout UNRECORDED values are BOTH visible, a lone
   // "1 drift(s)" verdict reads as a mismatch against the 2+ printed blocks (the user
   // sees [DECLARED DRIFT: 1] + [UNRECORDED: 2] but a single "1 drift"). Combine them
-  // under one findings count — `N findings — X drift (...) + Y undeclared to review` —
+  // under one findings count — `N findings — X drift (...) + Y not-recorded to review` —
   // keeping the red drift verdict and its breakdown so exit-1 stays legible, and
   // counting only what is SHOWN (folded values are not findings, just a parenthetical).
   // The combined framing fires ONLY in this mixed case; single-category runs keep their
@@ -271,7 +271,9 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
         : 'run cdkrd record';
     resultBody =
       `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
-      ` + ${style.undeclaredTier(`${unrecordedShown.length} undeclared to review`)}` +
+      // "not-recorded" (not "undeclared"): the [Not Recorded] set is undeclared
+      // PROPERTIES plus out-of-band `added` RESOURCES (PR4) — both await a record.
+      ` + ${style.undeclaredTier(`${unrecordedShown.length} not-recorded to review`)}` +
       style.infoTier(` (${foldedHint})`);
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count
