@@ -2147,3 +2147,73 @@ describe('Name-keyed object arrays are identity-aligned (WAVE24 — ECS env vars
     expect(declaredDrift[0]).toMatchObject({ actual: 'CHANGED' });
   });
 });
+
+describe('unordered-set props are order-stable in the live model (WAVE24 — baseline match)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const rule = (port: number) => ({
+    CidrIp: '0.0.0.0/0',
+    IpProtocol: 'tcp',
+    FromPort: port,
+    ToPort: port,
+  });
+  const sg = {
+    logicalId: 'SG',
+    resourceType: 'AWS::EC2::SecurityGroup',
+    physicalId: 'sg-1',
+    declared: {},
+  };
+
+  it('an UNDECLARED SecurityGroupIngress set is emitted in a STABLE order across reordered reads', () => {
+    const a = classifyResource(
+      sg,
+      { SecurityGroupIngress: [rule(22), rule(80), rule(443)] },
+      bare
+    ).find((f) => f.path === 'SecurityGroupIngress');
+    const b = classifyResource(
+      sg,
+      { SecurityGroupIngress: [rule(443), rule(22), rule(80)] },
+      bare
+    ).find((f) => f.path === 'SecurityGroupIngress');
+    // identical recorded value -> baselineValueMatches stays true (no false "changed since record")
+    expect(a?.actual).toEqual(b?.actual);
+  });
+
+  it('an UNDECLARED Cognito OAuth scalar set is order-stable too', () => {
+    const c = {
+      logicalId: 'C',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      physicalId: 'c',
+      declared: {},
+    };
+    const a = classifyResource(
+      c,
+      { AllowedOAuthScopes: ['openid', 'email', 'profile'] },
+      bare
+    ).find((f) => f.path === 'AllowedOAuthScopes');
+    const b = classifyResource(
+      c,
+      { AllowedOAuthScopes: ['profile', 'openid', 'email'] },
+      bare
+    ).find((f) => f.path === 'AllowedOAuthScopes');
+    expect(a?.actual).toEqual(b?.actual);
+  });
+
+  it('a genuine SecurityGroupIngress change still differs (not masked by the sort)', () => {
+    const a = classifyResource(sg, { SecurityGroupIngress: [rule(22), rule(80)] }, bare).find(
+      (f) => f.path === 'SecurityGroupIngress'
+    );
+    const b = classifyResource(sg, { SecurityGroupIngress: [rule(22), rule(8080)] }, bare).find(
+      (f) => f.path === 'SecurityGroupIngress'
+    );
+    expect(a?.actual).not.toEqual(b?.actual);
+  });
+});
