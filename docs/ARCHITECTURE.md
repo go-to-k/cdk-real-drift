@@ -767,7 +767,10 @@ report meaningfully per path).
 ## 10. Synth integration
 
 [src/synth/](../src/synth/) wraps `@aws-cdk/toolkit-lib` (same dep as cdk-local):
-`synthApp()` returns per-stack `{stackName, region, template}`; `discoverStacks()`
+`synthApp()` returns per-stack `{stackName, region, template}` from
+`cloudAssembly.stacksRecursively` (NOT `.stacks`, which is the top-level assembly
+only — `stacksRecursively` descends into nested assemblies so stacks inside a CDK
+`Stage` / CDK Pipelines are discovered, not silently skipped); `discoverStacks()`
 feeds stack resolution. Used for: (a) stack resolution — cdkrd is CDK-only, so EVERY
 invocation discovers the app's stacks (all / exact-name / glob all select among them;
 R33), (b) construct-path display, (c) `--pre-deploy` (the synth template becomes the

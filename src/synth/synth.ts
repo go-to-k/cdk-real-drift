@@ -59,7 +59,14 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 
   const cached = await toolkit.synth(source);
   try {
-    return cached.cloudAssembly.stacks.map((s) => ({
+    // `stacksRecursively` (NOT `stacks`): `stacks` returns only the TOP-LEVEL
+    // assembly's stacks, so every stack nested inside a CDK `Stage` (the CDK
+    // Pipelines / multi-env pattern) is silently invisible — never discovered, never
+    // checked, with no error. `stacksRecursively` descends into nested assemblies and
+    // is a SUPERSET of `stacks`, so a non-staged app is unaffected. `s.stackName` is
+    // the deployed CloudFormation stack name (CDK stage-qualifies it), which is the
+    // correct live-read target.
+    return cached.cloudAssembly.stacksRecursively.map((s) => ({
       stackName: s.stackName,
       region: CONCRETE_REGION.test(s.environment.region) ? s.environment.region : undefined,
       template: s.template as Record<string, unknown>,
