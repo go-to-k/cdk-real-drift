@@ -316,10 +316,12 @@ export async function runCheck(args: string[]): Promise<number> {
       // of making the user re-run a separate verb. Skipped for --json (machine output),
       // --show-all (baseline not applied — record would mean something else), and
       // --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED values do
-      // not set code 1 (R60) but still deserve the prompt. The whole resolution flow
-      // lives in interactive-resolve.ts; it returns the re-evaluated exit code.
+      // not set code 1 (R60) but still deserve the prompt. R141: a stack with NO baseline
+      // file ALSO opens the prompt even when clean — so the day-1 baseline is established
+      // through `check`'s own flow (pick Record) rather than a separate `cdkrd record`.
+      // The whole resolution flow lives in interactive-resolve.ts; it returns the exit code.
       if (
-        (code === 1 || hasUnrecorded) &&
+        (code === 1 || hasUnrecorded || !baseline) &&
         !a.json &&
         !a.showAll &&
         !a.preDeploy &&

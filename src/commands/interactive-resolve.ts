@@ -161,7 +161,8 @@ interface SubResult {
  */
 export function buildResolveOptions(
   actions: Actions,
-  decidableCount: number
+  decidableCount: number,
+  establishOnly = false
 ): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [
     { value: 'nothing', label: 'Nothing (decide later)' },
@@ -169,8 +170,11 @@ export function buildResolveOptions(
   if (actions.record)
     options.push({
       value: 'record-all',
-      label:
-        'Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
+      // R141: when there is nothing to record but no baseline yet, Record establishes the
+      // initial baseline (marks the stack reviewed) — name that, not "all undeclared".
+      label: establishOnly
+        ? 'Record current state as the .cdkrd baseline (marks this stack reviewed)'
+        : 'Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
     });
   if (actions.revert)
     options.push({ value: 'revert-all', label: 'Revert all — write the desired values to AWS' });
@@ -184,9 +188,11 @@ export function buildResolveOptions(
   return options;
 }
 
-/** The top-menu prompt, worded by the remaining exit state (drift vs unrecorded-only).
- *  Pure + exported. */
-export function resolveMenuMessage(stackName: string, code: number): string {
+/** The top-menu prompt, worded by the remaining exit state (drift vs unrecorded-only vs
+ *  R141 no-baseline establish). Pure + exported. */
+export function resolveMenuMessage(stackName: string, code: number, establishOnly = false): string {
+  if (establishOnly)
+    return `${stackName}: no .cdkrd baseline yet — record the current state as your baseline?`;
   return code === 1
     ? `${stackName}: drift found — what do you want to do?`
     : `${stackName}: unrecorded values found — what do you want to do?`;
@@ -213,10 +219,13 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     const actions = availableActions(reconciled, baseline, p.schemas, includeRemovals);
     if (!actions.record && !actions.ignore && !actions.revert) return code;
     const decidable = reconciled.filter((f) => applicableActions(f).length > 0);
-    const options = buildResolveOptions(actions, decidable.length);
+    // R141: nothing to act on, but no baseline yet → Record establishes the day-1 baseline.
+    // The only available action is `record` and there are no actionable findings to decide.
+    const establishOnly = baseline === undefined && decidable.length === 0;
+    const options = buildResolveOptions(actions, decidable.length, establishOnly);
 
     const choice = await select({
-      message: resolveMenuMessage(p.stackName, code),
+      message: resolveMenuMessage(p.stackName, code, establishOnly),
       options,
       initialValue: 'nothing',
     });

@@ -124,6 +124,15 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
     expect(values(A({ revert: true }), 1)).not.toContain('per-finding');
     expect(values(A({ revert: true }), 2)).toContain('per-finding');
   });
+
+  it('R141: establishOnly relabels Record to "establish the baseline", not "all undeclared"', () => {
+    const label = (establish: boolean): string =>
+      buildResolveOptions(A({ record: true }), 0, establish).find((o) => o.value === 'record-all')!
+        .label;
+    expect(label(true)).toContain('Record current state as the .cdkrd baseline');
+    expect(label(true)).not.toContain('undeclared');
+    expect(label(false)).toContain('Record all undeclared');
+  });
 });
 
 describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
@@ -132,6 +141,9 @@ describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
   });
   it('code 0 (only unrecorded) says unrecorded values found', () => {
     expect(resolveMenuMessage('S', 0)).toContain('unrecorded values found');
+  });
+  it('R141: establishOnly says "no .cdkrd baseline yet"', () => {
+    expect(resolveMenuMessage('S', 0, true)).toContain('no .cdkrd baseline yet');
   });
 });
 

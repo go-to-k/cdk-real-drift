@@ -177,6 +177,32 @@ describe('availableActions (R28 interactive choice logic)', () => {
       revert: true,
     });
   });
+
+  it('R141: clean stack + NO baseline → Record offered (establish the day-1 baseline)', () => {
+    expect(availableActions([], undefined, NO_SCHEMAS, false)).toEqual({
+      record: true,
+      ignore: false,
+      revert: false,
+    });
+  });
+
+  it('R141: clean stack WITH a baseline → nothing offered (no establish nag)', () => {
+    expect(availableActions([], baselineWith([]), NO_SCHEMAS, false)).toEqual({
+      record: false,
+      ignore: false,
+      revert: false,
+    });
+  });
+
+  it('R141: drift + NO baseline → establish NOT mixed in (Record gated off, only its real actions)', () => {
+    // declared drift on a never-recorded stack: Record must NOT appear wearing the
+    // "all undeclared" label for a declared drift it cannot address.
+    expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
+      record: false,
+      ignore: true,
+      revert: true,
+    });
+  });
 });
 
 describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', () => {
