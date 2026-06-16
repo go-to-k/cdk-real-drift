@@ -114,6 +114,27 @@ describe('applyIgnores', () => {
     expect(f?.tier).toBe('ignored');
   });
 
+  it('parent rule covers BRACKET-indexed child paths (array / identity-keyed elements)', () => {
+    // classify emits bracket paths (`Policies[MyPol].PolicyName`, `Statement[0].Condition`,
+    // `Tags[env]`); the dot-only split silently failed to cover them under a parent rule.
+    expect(
+      ign([undeclared('Role', 'Policies[MyPol].PolicyName')], 'S', cfg([p('Role.Policies')]))[0]
+        ?.tier
+    ).toBe('ignored');
+    expect(
+      ign(
+        [undeclared('P', 'PolicyDocument.Statement[0].Condition')],
+        'S',
+        cfg([p('P.PolicyDocument.Statement')])
+      )[0]?.tier
+    ).toBe('ignored');
+    expect(ign([undeclared('R', 'Tags[env]')], 'S', cfg([p('R.Tags')]))[0]?.tier).toBe('ignored');
+    // a SIBLING not under the rule's subtree is NOT ignored (no over-suppression)
+    expect(
+      ign([undeclared('Role', 'Other[MyPol].X')], 'S', cfg([p('Role.Policies')]))[0]?.tier
+    ).toBe('undeclared');
+  });
+
   it('re-tags an `added` (whole out-of-band resource, empty path) finding to ignored', () => {
     const addedFinding: Finding = {
       tier: 'added',
