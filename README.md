@@ -198,7 +198,8 @@ code or reverting.
   `cdkrd revert` **deletes** it (Cloud Control `DeleteResource`, behind the usual
   confirm / `--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`,
   exactly like removing an unrecorded undeclared value). Coverage grows per parent
-  type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs, API Gateway V2
+  type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs (resources,
+  methods, and authorizers), API Gateway V2
   (HTTP / WebSocket) APIs, SNS topic subscriptions, Lambda event source mappings
   and function URLs, EventBridge bus rules, Cognito user pool clients, groups, and
   resource servers, AppSync data sources and resolvers, CloudWatch Logs metric

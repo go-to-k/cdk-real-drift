@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
   diffApiGatewayV2Children,
   diffEcsClusterChildren,
@@ -151,6 +152,46 @@ describe('diffApiGatewayChildren', () => {
       liveMethodsByResource: {},
     });
     expect(added2.map((a) => a.identifier)).toEqual([`${API}|res9`]);
+  });
+});
+
+describe('diffApiGatewayAuthorizers (REST API authorizers)', () => {
+  it('flags an out-of-band authorizer with a composite RestApiId|AuthorizerId identifier', () => {
+    const added = diffApiGatewayAuthorizers({
+      apiId: API,
+      declaredAuthorizerIds: ['authdec0'],
+      liveAuthorizers: [
+        { id: 'authdec0', label: 'DeclaredAuth' },
+        { id: 'authoob1', label: 'oob-authorizer' },
+      ],
+    });
+    expect(added).toHaveLength(1);
+    expect(added[0]?.resourceType).toBe('AWS::ApiGateway::Authorizer');
+    expect(added[0]?.identifier).toBe(`${API}|authoob1`);
+    expect(added[0]?.label).toBe('oob-authorizer');
+    expect(added[0]?.live).toEqual({ AuthorizerId: 'authoob1', RestApiId: API });
+  });
+
+  it('uses the live id as the label when no name is provided', () => {
+    const added = diffApiGatewayAuthorizers({
+      apiId: API,
+      declaredAuthorizerIds: [],
+      liveAuthorizers: [{ id: 'authoob2' }],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}|authoob2`]);
+    expect(added[0]?.label).toBe('authoob2');
+  });
+
+  it('reports no drift when every live authorizer is declared', () => {
+    const added = diffApiGatewayAuthorizers({
+      apiId: API,
+      declaredAuthorizerIds: ['authdec0', 'authdec1'],
+      liveAuthorizers: [
+        { id: 'authdec0', label: 'A' },
+        { id: 'authdec1', label: 'B' },
+      ],
+    });
+    expect(added).toEqual([]);
   });
 });
 
