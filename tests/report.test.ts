@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { report, stackSeparator } from '../src/report/report.js';
+import { jPair, report, stackSeparator } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -491,5 +491,33 @@ describe('R96 nested unrecorded folding', () => {
   it('--verbose also expands nested', () => {
     const { text } = run([NU('Conf.A', true)], { verbose: true });
     expect(text).toContain('L.Conf.A');
+  });
+});
+
+describe('jPair (pair-aware truncation keeps the divergence visible)', () => {
+  it('short values pass through whole, both sides', () => {
+    expect(jPair('abc', 'abd')).toEqual({ a: '"abc"', b: '"abd"' });
+  });
+
+  it('two long values that differ only PAST the 200-char cap do NOT render identical', () => {
+    const prefix = 'x'.repeat(230);
+    const { a, b } = jPair(`${prefix}AAA`, `${prefix}BBB`);
+    expect(a).not.toBe(b); // the old fixed-prefix slice made these identical
+    expect(a).toContain('AAA'); // the diverging tail is visible
+    expect(b).toContain('BBB');
+    expect(a.startsWith('…')).toBe(true); // windowed, with a leading ellipsis
+  });
+
+  it('the window is the SAME for both sides (aligned), centered on the first difference', () => {
+    const prefix = 'y'.repeat(300);
+    const { a, b } = jPair(`${prefix}_LEFT_only`, `${prefix}_RIGHT_x`);
+    // both windows start at the same offset, so the shared lead-in lines up
+    const lead = (s: string) => s.replace(/…/g, '').slice(0, 20);
+    expect(lead(a)).toBe(lead(b));
+  });
+
+  it('a long value vs a short one still shows where they diverge', () => {
+    const { a, b } = jPair('z'.repeat(250), 'z'.repeat(10));
+    expect(a).not.toBe(b);
   });
 });
