@@ -1,10 +1,10 @@
 // Shared read+classify pipeline used by both `check` and `record`.
 
-import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
+import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
-import { classifyResource } from '../diff/classify.js';
+import { classifyResource, normalizeLiveModel } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import {
@@ -71,7 +71,19 @@ async function readAll(
 // logical id + the CC identifier — stable and unique. physicalId carries the CC
 // identifier so revert can DeleteResource it; constructPath gives the report a
 // readable label even when the parent has no CDK construct path.
-function addedFinding(parent: DesiredResource, c: AddedChild): Finding {
+//
+// `actual` is the child's FULL, normalized live model (PR4): `added` is now
+// record-able (the resource-level analog of recording an undeclared property), so the
+// baseline snapshots this value and a later out-of-band CHANGE to the child surfaces
+// as drift. The model is normalized identically to classify's live side
+// (normalizeLiveModel) so a volatile readOnly field never reads as a false "changed
+// since record". Falls back to the enumerator's identity-only snippet when the CC
+// GetResource fails (so the resource is still reported, just not change-watchable).
+function addedFinding(
+  parent: DesiredResource,
+  c: AddedChild,
+  model: Record<string, unknown>
+): Finding {
   return {
     tier: 'added',
     logicalId: `${parent.logicalId}/${c.identifier}`,
@@ -79,9 +91,35 @@ function addedFinding(parent: DesiredResource, c: AddedChild): Finding {
     constructPath: `${parent.constructPath ?? parent.logicalId} ▸ ${c.label}`,
     resourceType: c.resourceType,
     path: '',
-    actual: c.live,
+    actual: model,
     note: 'created out of band — not in your CloudFormation template',
   };
+}
+
+// Read the added child's FULL live model via Cloud Control GetResource (its
+// `identifier` is the CC composite, the same one revert's DeleteResource consumes) and
+// normalize it for record/compare. On any read/parse error fall back to the
+// enumerator's identity-only `live` snippet — the resource is still REPORTED as added,
+// it just can't be change-watched until a future read succeeds. `cfn` fetches the
+// child type's schema (readOnly/writeOnly strip); `schemas` is the shared cache.
+async function readAddedModel(
+  cc: CloudControlClient,
+  cfn: CloudFormationClient,
+  c: AddedChild,
+  schemas: Map<string, SchemaInfo>,
+  oaiCanonicalIds: Record<string, string>
+): Promise<Record<string, unknown>> {
+  try {
+    const g = await cc.send(
+      new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
+    );
+    const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+    const schema = schemas.get(c.resourceType) ?? (await getSchemaInfo(cfn, c.resourceType));
+    schemas.set(c.resourceType, schema);
+    return normalizeLiveModel(raw, schema, { oaiCanonicalIds });
+  } catch {
+    return c.live;
+  }
 }
 
 interface ClassifyOpts {
@@ -207,18 +245,29 @@ export async function gatherFindings(
   );
   await readAll(cc, retryTargets, region, desired, reads);
 
+  // OAI canonical-id map (CloudFront legacy OAI principal reconciliation) — harvested
+  // from already-read liveAttrs, so it is ready before pass 1.6 normalizes added child
+  // models AND reused for pass 2's classifyOpts below. Empty unless the stack declares
+  // an OAI; for API Gateway children it is simply a no-op.
+  const oaiCanonicalIds = buildOaiCanonicalIds(desired);
+
   // Pass 1.6: added-resource detection. For each declared PARENT type with a child
   // enumerator (read/child-enumerators.ts), list its live child resources and flag any
   // not in the template — a whole resource created out of band (e.g. an API Gateway
   // Method on `/`). The resource-granularity sibling of undeclared; not a per-property
-  // compare, so it runs OUTSIDE classify. An enumeration failure is a coverage gap, not
-  // drift — surfaced as a `skipped` finding on the parent so it is never silently lost.
+  // compare, so it runs OUTSIDE classify. Each added child is then read in FULL (CC
+  // GetResource) and normalized so `record` can snapshot it and a later change surfaces
+  // as drift (PR4). An enumeration failure is a coverage gap, not drift — surfaced as a
+  // `skipped` finding on the parent so it is never silently lost.
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
     try {
       const children = await enumerate({ parent: r, desired, region });
-      for (const c of children) findings.push(addedFinding(r, c));
+      for (const c of children) {
+        const model = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
+        findings.push(addedFinding(r, c, model));
+      }
     } catch (e) {
       findings.push({
         tier: 'skipped',
@@ -244,7 +293,6 @@ export async function gatherFindings(
       console.error(kmsListAliasesDeniedWarning(region));
     }
   }
-  const oaiCanonicalIds = buildOaiCanonicalIds(desired);
   const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).

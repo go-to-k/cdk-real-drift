@@ -35,6 +35,9 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
  *    (stop watching), then revert (REMOVE the live value — destructive, so last) —
  *    BUT revert is dropped for a NESTED undeclared value, which is detect/record-only
  *    (R99): offering it would let the user pick an action revert can't run;
+ *  - added → record (snapshot the out-of-band resource; keeps watching for changes),
+ *    ignore (stop watching), revert (DELETE the resource — destructive, so last). PR4
+ *    makes added the resource-level sibling of undeclared, so it takes the same verbs;
  *  - declared → revert (restore the template intent — the natural fix), then ignore;
  *  - everything else (deleted / readGap / unresolved / atDefault / generated / skipped)
  *    has no in-tool action → an empty list, so it is not a decidable row.
@@ -44,6 +47,7 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
 export function applicableActions(finding: Finding): FindingAction[] {
   if (finding.tier === 'undeclared')
     return isNestedUndeclared(finding) ? ['record', 'ignore'] : ['record', 'ignore', 'revert'];
+  if (finding.tier === 'added') return ['record', 'ignore', 'revert'];
   if (finding.tier === 'declared') return ['revert', 'ignore'];
   return [];
 }

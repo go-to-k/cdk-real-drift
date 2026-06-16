@@ -99,9 +99,9 @@ ApiStack: drift found — what do you want to do?
     Decide per finding — pick an action for each
 ```
 
-- **Record all** records the undeclared values in the baseline, so `check` stays
-  CLEAN until they change again (a multiselect lets you record some and keep
-  reporting others). Keeps watching.
+- **Record all** records the undeclared values — and any out-of-band **added**
+  resources — in the baseline, so `check` stays CLEAN until they change again (a
+  multiselect lets you record some and keep reporting others). Keeps watching.
 - **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared,
   undeclared, _or_ an out-of-band **added** resource) stops being reported entirely.
   Stops watching.
@@ -152,19 +152,20 @@ are different axes (template vs baseline file), not synonyms.
 After `check` finds drift, you decide what each finding means — and the verbs mirror
 the choice:
 
-| verb           | meaning                                                       | writes                     |
-| -------------- | ------------------------------------------------------------- | -------------------------- |
-| `cdkrd check`  | find drift                                                    | nothing                    |
-| `cdkrd record` | "this undeclared state is the norm — tell me if it _changes_" | a git file (baseline)      |
-| `cdkrd ignore` | "stop reporting this property, ever"                          | a git file (`config.json`) |
-| `cdkrd revert` | "this state is WRONG" — write the desired value back          | AWS (plan + confirm)       |
+| verb           | meaning                                                               | writes                     |
+| -------------- | --------------------------------------------------------------------- | -------------------------- |
+| `cdkrd check`  | find drift                                                            | nothing                    |
+| `cdkrd record` | "this undeclared / added state is the norm — tell me if it _changes_" | a git file (baseline)      |
+| `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`) |
+| `cdkrd revert` | "this state is WRONG" — write the desired value back                  | AWS (plan + confirm)       |
 
 The one distinction to keep straight: **`record` keeps watching** (it snapshots
-the current undeclared value and re-surfaces drift if that value later changes),
-while **`ignore` stops watching** (it writes a path rule — declared, undeclared,
-_or_ an out-of-band added resource — and it is never reported again). `record` is
-undeclared-only; `ignore` is the only in-tool way to accept a **declared** drift
-without editing code or reverting.
+the current undeclared value — or out-of-band **added** resource — and re-surfaces
+drift if it later changes), while **`ignore` stops watching** (it writes a path
+rule — declared, undeclared, _or_ an out-of-band added resource — and it is never
+reported again). `record` snapshots undeclared properties **and** added resources;
+`ignore` is the only in-tool way to accept a **declared** drift without editing
+code or reverting.
 
 - **CFn-declared** properties are compared against the **deployed CloudFormation
   template** — no baseline involved, drift is detected from the first run.
@@ -186,12 +187,18 @@ without editing code or reverting.
   `--fail`.
 - A resource **added out of band** — a whole child resource that exists live but
   is not in your template (e.g. an API Gateway `ANY` method added on `/` via the
-  console) — is reported in the `added` tier and always counts as failing drift.
-  `cdk drift` / CFn drift detection compare only template-declared resources, so
-  an out-of-band addition is invisible to them. `cdkrd revert` **deletes** it
-  (Cloud Control `DeleteResource`, behind the usual confirm / `--dry-run` / picker),
-  or `cdkrd ignore` accepts it. Coverage grows per parent type (the
-  `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
+  console) — is the resource-level sibling of an undeclared property, and is
+  reconciled the same way against your baseline: an added resource you have **not**
+  recorded is reported under **Not Recorded** (inventory awaiting a decision, not
+  failing drift), one you recorded and that is unchanged is suppressed, and one
+  that **changed since you recorded it** is failing drift. `cdk drift` / CFn drift
+  detection compare only template-declared resources, so an out-of-band addition
+  is invisible to them. Decide it like any other finding: `cdkrd record` snapshots
+  its full live model (and watches it for changes), `cdkrd ignore` accepts it, or
+  `cdkrd revert` **deletes** it (Cloud Control `DeleteResource`, behind the usual
+  confirm / `--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`,
+  exactly like removing an unrecorded undeclared value). Coverage grows per parent
+  type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
@@ -220,7 +227,7 @@ tells cdkrd which stacks to look at.
 | command                     | does                                                                   |
 | --------------------------- | ---------------------------------------------------------------------- |
 | `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
-| `cdkrd record [<stack>...]` | snapshot undeclared state into the baseline (CI / non-TTY: `--yes`)    |
+| `cdkrd record [<stack>...]` | snapshot undeclared + added state into the baseline (CI: `--yes`)      |
 | `cdkrd ignore [<stack>...]` | stop reporting chosen drift via `.cdkrd/config.json` (CI: `--yes`)     |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
@@ -258,7 +265,7 @@ Errors always exit `2`; `revert` exits `1` when drift remains after it.
 | `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` / CFn drift detection for the declared side                                                                                                          |
 | `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                                                                                           |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                                                                                                         |
-| `--remove-unrecorded`      | (revert) REMOVE unrecorded values in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them as opt-in REMOVE                                                                                     |
+| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them as opt-in REMOVE/DELETE                                          |
 | `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                                                                                    |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
@@ -292,10 +299,11 @@ per finding / Nothing` inline (shown above). Each option appears only when it
   `keeping N already-recorded unchanged value(s)` note. Deselect a suspicious one
   and it stays reported by `check` — record the intentional changes without
   rubber-stamping the rest. With no baseline yet, the full set is shown.
-  `record` records **undeclared** state only — it does not "approve everything".
-  Any **declared / deleted** drift (divergence from your template intent) is NOT
-  written to the baseline and cannot be silenced by it; `record` prints a note
-  that it still stands, to be resolved with `revert` or `cdk deploy`.
+  `record` snapshots **undeclared** state and out-of-band **added** resources —
+  it does not "approve everything". Any **declared / deleted** drift (divergence
+  from your template intent) is NOT written to the baseline and cannot be silenced
+  by it; `record` prints a note that it still stands, to be resolved with `revert`
+  or `cdk deploy`.
 - **`check` with no baseline yet** asks what to do with the N undeclared values
   it found: **record ALL of them** into the baseline (the default — the common
   first-run choice; it writes only a git-tracked file, nothing to AWS), or

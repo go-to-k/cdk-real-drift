@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # cdk-real-drift `added` (out-of-band resource) REVERT integration test (real AWS).
 #   deploy fixture (REST API, GET / + POST /scoring) -> record -> check CLEAN
-#   -> inject an out-of-band ANY method on the ROOT `/` resource -> check DETECTS it
-#   (added=1) -> `cdkrd revert --yes` DELETES it via Cloud Control DeleteResource
-#   -> check is CLEAN (the method is gone) -> destroy.
+#   -> inject an out-of-band ANY method on the ROOT `/` resource -> check reports it
+#      under [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift)
+#   -> `cdkrd revert --yes --remove-unrecorded` DELETES it via Cloud Control
+#      DeleteResource (an unrecorded added resource needs --remove-unrecorded, exactly
+#      like removing an unrecorded undeclared value) -> check is CLEAN -> destroy.
 # This exercises the one AWS-MUTATING path for the added tier: revert = delete.
 # A cleanup trap destroys the stack even on failure, so no orphan resources remain.
 #
@@ -49,14 +51,18 @@ ROOT_ID="$(aws apigateway get-resources --rest-api-id "$API_ID" --region "$REGIO
 aws apigateway put-method --rest-api-id "$API_ID" --resource-id "$ROOT_ID" \
   --http-method ANY --authorization-type NONE --region "$REGION" >/dev/null || fail "inject ANY /"
 
-echo "=== check should DETECT the added method ==="
+echo "=== check reports the added method under [Not Recorded] (not drift, PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added-rev.out
 rc=${PIPESTATUS[0]}
-[ "$rc" -eq 1 ] || fail "expected drift exit 1 before revert, got $rc"
-grep -q "added=1" /tmp/cdk-real-drift-integ-added-rev.out || fail "expected added=1 before revert"
+[ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
+grep -q "Not Recorded" /tmp/cdk-real-drift-integ-added-rev.out || fail "added method not under [Not Recorded]"
 
-echo "=== revert DELETES the added method (Cloud Control DeleteResource) ==="
-$CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdk-real-drift-integ-revert.out
+echo "=== a plain revert refuses to delete an UNRECORDED added resource (needs the flag) ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdk-real-drift-integ-revert-guard.out
+grep -q "remove-unrecorded" /tmp/cdk-real-drift-integ-revert-guard.out || fail "expected the unrecorded guard to name --remove-unrecorded"
+
+echo "=== revert --remove-unrecorded DELETES the added method (Cloud Control DeleteResource) ==="
+$CLI revert "$STACK" --region "$REGION" --yes --remove-unrecorded | tee /tmp/cdk-real-drift-integ-revert.out
 rc=${PIPESTATUS[0]}
 grep -q "reverted:" /tmp/cdk-real-drift-integ-revert.out || fail "revert did not report a reverted item"
 grep -q "CLEAN after revert" /tmp/cdk-real-drift-integ-revert.out || fail "revert did not converge to CLEAN"

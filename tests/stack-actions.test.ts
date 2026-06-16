@@ -123,16 +123,39 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
-  it('added-only → Ignore + Revert shown (revert DELETEs it); Record hidden (unrecordable)', () => {
-    const addedFinding: Finding = {
-      tier: 'added',
-      logicalId: 'Api/abc|root|ANY',
-      resourceType: 'AWS::ApiGateway::Method',
-      path: '',
-      physicalId: 'abc|root|ANY',
-    };
-    expect(availableActions([addedFinding], undefined, NO_SCHEMAS, false)).toEqual({
-      record: false,
+  // PR4: `added` is now record-able (the resource-level sibling of undeclared).
+  const addedFinding = (): Finding => ({
+    tier: 'added',
+    logicalId: 'Api/abc|root|ANY',
+    resourceType: 'AWS::ApiGateway::Method',
+    path: '',
+    physicalId: 'abc|root|ANY',
+    actual: { HttpMethod: 'ANY' },
+  });
+
+  it('recorded-changed added → Record + Ignore + Revert all shown (revert DELETEs it)', () => {
+    expect(availableActions([addedFinding()], undefined, NO_SCHEMAS, false)).toEqual({
+      record: true,
+      ignore: true,
+      revert: true,
+    });
+  });
+
+  it('unrecorded added → Record + Ignore shown; Revert guarded (no --remove-unrecorded)', () => {
+    expect(
+      availableActions([{ ...addedFinding(), unrecorded: true }], undefined, NO_SCHEMAS, false)
+    ).toEqual({
+      record: true,
+      ignore: true,
+      revert: false,
+    });
+  });
+
+  it('unrecorded added with --remove-unrecorded → Revert becomes available (DELETE)', () => {
+    expect(
+      availableActions([{ ...addedFinding(), unrecorded: true }], undefined, NO_SCHEMAS, true)
+    ).toEqual({
+      record: true,
       ignore: true,
       revert: true,
     });
@@ -743,12 +766,7 @@ describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hin
   });
 });
 
-describe('recordScopeNote (R117 — record records undeclared only; say so wherever it runs)', () => {
-  it('returns undefined when there is no declared/deleted drift (nothing left unapproved)', () => {
-    expect(recordScopeNote('ApiStack', [undeclared(), undeclared()])).toBeUndefined();
-    expect(recordScopeNote('ApiStack', [])).toBeUndefined();
-  });
-
+describe('recordScopeNote (R117 — record snapshots undeclared + added; say what it did NOT approve)', () => {
   const added = (): Finding => ({
     tier: 'added',
     logicalId: 'Api/abc|root|ANY',
@@ -757,11 +775,20 @@ describe('recordScopeNote (R117 — record records undeclared only; say so where
     physicalId: 'abc|root|ANY',
   });
 
-  it('names the declared/deleted/added count and that it was NOT approved + how to resolve', () => {
+  it('returns undefined when there is no declared/deleted drift (nothing left unapproved)', () => {
+    expect(recordScopeNote('ApiStack', [undeclared(), undeclared()])).toBeUndefined();
+    expect(recordScopeNote('ApiStack', [])).toBeUndefined();
+  });
+
+  it('PR4: an `added` resource alone leaves nothing unapproved (record now snapshots it)', () => {
+    expect(recordScopeNote('ApiStack', [added(), undeclared()])).toBeUndefined();
+  });
+
+  it('names ONLY the declared/deleted count (added is approved by record) + how to resolve', () => {
     const note = recordScopeNote('ApiStack', [declared(), deleted(), added(), undeclared()]);
     expect(note).toContain('ApiStack');
-    expect(note).toContain('3 declared/deleted/added drift NOT approved');
-    expect(note).toContain('undeclared state into the baseline only');
+    expect(note).toContain('2 declared/deleted drift NOT approved');
+    expect(note).toContain('undeclared + added state into the baseline only');
     // resolution now includes `cdkrd ignore` (declared drift is ignorable in-tool)
     expect(note).toContain('cdkrd ignore');
     expect(note).toMatch(/cdkrd revert|cdk deploy/);

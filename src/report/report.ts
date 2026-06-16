@@ -46,7 +46,7 @@ const TIER_NAMES: Record<Tier, string> = {
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   added:
-    'a WHOLE live resource not in your CloudFormation template (the resource-level counterpart of CFn-Undeclared) — created out of band under a declared parent; always drift',
+    'a WHOLE live resource not in your CloudFormation template (the resource-level counterpart of CFn-Undeclared) — created out of band under a declared parent, changed from your .cdkrd baseline (an unrecorded one is Not Recorded, not drift)',
   declared: 'declared in your CloudFormation template — the live value differs',
   undeclared:
     'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
@@ -106,6 +106,13 @@ export function formatFinding(f: Finding): string {
   if (f.tier === 'declared') {
     const { a: d, b: act } = jPair(f.desired, f.actual);
     s += `\n      desired=${style.desired(d)}\n      actual =${style.actual(act)}`;
+  } else if (f.tier === 'added' && f.desired !== undefined) {
+    // PR4: a recorded `added` resource whose live model CHANGED since record — show the
+    // recorded baseline model vs the live one (pair-truncated to the divergence) so the
+    // user sees WHAT changed, mirroring the declared tier's desired/actual layout. A
+    // first-seen / unrecorded added resource has no `desired`, so it stays a one-liner.
+    const { a: base, b: act } = jPair(f.desired, f.actual);
+    s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
   } else if (f.tier === 'undeclared' && f.arrayDelta)
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).

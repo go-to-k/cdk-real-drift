@@ -202,10 +202,14 @@ export function checkBaselineAccount(
   }
 }
 
-/** Build the recorded-undeclared set from a check run's findings. */
+/** Build the recorded set from a check run's findings: undeclared PROPERTIES plus
+ *  out-of-band `added` RESOURCES (PR4 — `added` is the resource-granularity sibling of
+ *  undeclared, so `record` snapshots its full live model and a later change to it
+ *  surfaces as drift). An `added` entry has the synthesized child logicalId and an
+ *  empty `path` (the whole resource is the value); `recordedKey` keeps it unique. */
 export function buildRecorded(findings: Finding[]): RecordedEntry[] {
   return findings
-    .filter((f) => f.tier === 'undeclared')
+    .filter((f) => f.tier === 'undeclared' || f.tier === 'added')
     .map((f) => ({
       logicalId: f.logicalId,
       resourceType: f.resourceType,
@@ -366,12 +370,41 @@ export function applyBaseline(
   baseline: BaselineFile | undefined,
   opts: ApplyBaselineOptions = {}
 ): Finding[] {
+  // PR4 (option B): an out-of-band `added` resource is the resource-level sibling of an
+  // undeclared property — with NO recorded intent (CFn template OR baseline) about it,
+  // there is no contract to violate, so an UNRECORDED added resource is inventory, not
+  // drift, exactly like an undeclared property with no entry. With no baseline at all,
+  // every undeclared value AND every added resource is unrecorded.
   if (!baseline)
-    return findings.map((f) => (f.tier === 'undeclared' ? { ...f, unrecorded: true } : f));
+    return findings.map((f) =>
+      f.tier === 'undeclared' || f.tier === 'added' ? { ...f, unrecorded: true } : f
+    );
   const recorded = baseline.recorded;
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
   const kept: Finding[] = [];
   for (const f of findings) {
+    // PR4: reconcile `added` against the baseline as a full mirror of undeclared — but on
+    // the WHOLE resource (path ''), not a property. A matching entry whose value is equal
+    // is suppressed; a recorded value that CHANGED stays `added` drift with a "changed
+    // since record" note + the baseline value on `desired` (so the report shows it); a
+    // resource with NO entry is unrecorded inventory (not drift). The completeResources /
+    // "appeared since record" mechanism is undeclared-only (it is keyed per template
+    // resource, and an added child has a synthesized id that never enters allLogicalIds),
+    // so a newly-appeared added resource is simply unrecorded until the user records it.
+    if (f.tier === 'added') {
+      const entry = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+      if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
+      if (entry) {
+        kept.push({
+          ...f,
+          desired: canonicalizeForCompare(entry.value),
+          note: f.note ? `${f.note}; changed since record` : 'changed since record',
+        });
+        continue;
+      }
+      kept.push({ ...f, unrecorded: true }); // never decided -> not drift
+      continue;
+    }
     // atDefault AND generated are reconciled alongside undeclared (R86): a value the
     // user already recorded is suppressed whichever undeclared-side tier it lands in
     // today, so a baseline entry whose live value is now classified at-default OR
@@ -460,6 +493,11 @@ export function applyBaseline(
   );
   const promotedStale: string[] = [];
   for (const a of recorded) {
+    // PR4: an `added`-resource entry has an empty path (the whole resource is the value)
+    // and is reconciled in the loop above, never here. If its live resource is gone the
+    // out-of-band addition was simply removed — nothing to "restore", so skip it (a
+    // property-removal note against a synthesized child id would be meaningless).
+    if (a.path === '') continue;
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     if (skippedLogical.has(a.logicalId)) continue; // unread this run -> not "removed"
     if (deletedLogical.has(a.logicalId)) continue; // subsumed by the `deleted` finding

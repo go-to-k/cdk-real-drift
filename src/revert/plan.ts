@@ -120,6 +120,21 @@ export function buildRevertPlan(
       continue;
     }
     if (f.tier === 'added') {
+      // PR4: an UNRECORDED added resource (no baseline entry — the user has not decided
+      // on it) is excluded from the default plan, exactly like an unrecorded undeclared
+      // value: a default revert would DELETE it (the destructive mirror of the
+      // subtractive model). Refuse unless --remove-unrecorded; the fork is the same —
+      // record it if the live resource should stay, --remove-unrecorded to delete it.
+      if (f.unrecorded && !opts.removeUnrecorded) {
+        notRevertable.push({
+          displayId,
+          resourceType: f.resourceType,
+          path: f.path,
+          reason:
+            'unrecorded — record it if the live resource is right, or --remove-unrecorded to delete it',
+        });
+        continue;
+      }
       // an out-of-band resource (not in the template) is reverted by DELETING it via
       // Cloud Control DeleteResource. f.physicalId is the CC identifier (the composite
       // `RestApiId|ResourceId[|HttpMethod]`). Modeled as a `delete`-kind item carrying a

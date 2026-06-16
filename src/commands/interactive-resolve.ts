@@ -90,7 +90,9 @@ export const keyOf = (f: Finding): string =>
 const tierTag = (f: Finding): string =>
   f.tier === 'declared'
     ? 'CFn-declared'
-    : `CFn-undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
+    : f.tier === 'added'
+      ? `added resource · live-only${f.unrecorded ? ' · unrecorded' : ''}`
+      : `CFn-undeclared · live-only${f.unrecorded ? ' · unrecorded' : ''}`;
 
 // Show `attributeKey` (e.g. `LoadBalancerAttributes[idle_timeout.timeout_seconds]`)
 // so ELB attribute-bag rows are distinguishable in the picker — without it the bag's
@@ -121,7 +123,10 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
   );
   const remainingDeclared = reEval.filter(
     (f) =>
-      (f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'added') &&
+      // PR4: an UNRECORDED added resource is inventory, not drift (like an unrecorded
+      // undeclared value), so it must NOT keep exit 1 — only a recorded-but-changed
+      // added resource counts. declared/deleted are never unrecorded.
+      (f.tier === 'declared' || f.tier === 'deleted' || (f.tier === 'added' && !f.unrecorded)) &&
       !resolvedKeys.has(keyOf(f))
   ).length;
   return remainingDeclared > 0 ? 1 : 0;
@@ -240,8 +245,9 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
   }
 }
 
-// record records UNDECLARED only; recordStack emits the "declared/deleted NOT approved"
-// scope note after the write (R117), so this path warns consistently with `cdkrd record`.
+// record snapshots UNDECLARED + out-of-band ADDED resources (PR4); recordStack emits the
+// "declared/deleted NOT approved" scope note after the write (R117), so this path warns
+// consistently with `cdkrd record`.
 async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   const result = await recordStack({
     stackName: p.stackName,
@@ -267,11 +273,14 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
     p.config
   );
   const remainingDeclared = reEval.filter(
-    // `added` is unrecordable like `deleted` (record snapshots undeclared only), so it
-    // still stands after record and keeps exit 1.
-    (f) => f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'added'
+    // PR4: a recorded-but-CHANGED added resource is still drift and keeps exit 1; an
+    // UNRECORDED added one (not snapshotted) is inventory, counted with the undeclared
+    // bucket below. declared/deleted are always drift, never recordable.
+    (f) => f.tier === 'declared' || f.tier === 'deleted' || (f.tier === 'added' && !f.unrecorded)
   ).length;
-  const remainingUndeclared = reEval.filter((f) => f.tier === 'undeclared').length;
+  const remainingUndeclared = reEval.filter(
+    (f) => f.tier === 'undeclared' || (f.tier === 'added' && f.unrecorded)
+  ).length;
   console.error(`note: ${p.stackName}: ${postRecordNote(remainingUndeclared, remainingDeclared)}`);
   return { exit: remainingDeclared > 0 ? 1 : 0, awsMutated: false };
 }

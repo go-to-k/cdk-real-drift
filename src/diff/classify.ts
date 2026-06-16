@@ -98,6 +98,30 @@ function collectNestedUndeclared(
   }
 }
 
+// Bring a raw Cloud Control live model into the SAME canonical, noise-subtracted form
+// classify's live side uses: strip AWS-managed fields + `aws:*` tags, reconcile OAI
+// principals (no-op without a resolved map), run the shared canonicalization pipeline
+// (policy docs + tag lists + id arrays), then drop schema readOnly + writeOnly paths.
+// Factored out of `classifyResource` so the `added` tier (read/child-enumerators.ts,
+// whole out-of-band resources with NO declared side to compare) can normalize the
+// child's full model IDENTICALLY before record/compare — otherwise a volatile readOnly
+// field (a timestamp, a revision id) would read as a false "changed since record" on
+// every check. Mutates a fresh object (the canonicalize step clones), so liveRaw is
+// untouched. Pure: no AWS calls.
+export function normalizeLiveModel(
+  liveRaw: Record<string, unknown>,
+  schema: SchemaInfo,
+  opts: { oaiCanonicalIds?: Record<string, string> } = {}
+): Record<string, unknown> {
+  const oaiMap = opts.oaiCanonicalIds ?? {};
+  const live = canonicalizeForCompare(
+    rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap)
+  ) as Record<string, unknown>;
+  deepStripPaths(live, schema.readOnlyPaths);
+  deepStripPaths(live, schema.writeOnlyPaths);
+  return live;
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,

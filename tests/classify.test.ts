@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { classifyResource } from '../src/diff/classify.js';
+import { classifyResource, normalizeLiveModel } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULT_PATHS, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
@@ -1601,5 +1601,52 @@ describe('classifyResource IAM policy Condition canonicalization', () => {
         stmt({ StringEquals: { 'aws:SourceArn': ['arnA', 'arnC'] } })
       )
     ).not.toEqual([]);
+  });
+});
+
+describe('normalizeLiveModel (PR4 — the shared live-model normalizer used for `added`)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(['MethodId']),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: ['MethodId'],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('strips readOnly paths so a volatile id never reads as a change', () => {
+    const out = normalizeLiveModel({ AuthorizationType: 'NONE', MethodId: 'volatile-123' }, schema);
+    expect(out).toEqual({ AuthorizationType: 'NONE' });
+    expect(out.MethodId).toBeUndefined();
+  });
+
+  it('canonicalizes tag lists (unordered) so element order is not a false change', () => {
+    const a = normalizeLiveModel(
+      {
+        Tags: [
+          { Key: 'b', Value: '2' },
+          { Key: 'a', Value: '1' },
+        ],
+      },
+      schema
+    );
+    const b = normalizeLiveModel(
+      {
+        Tags: [
+          { Key: 'a', Value: '1' },
+          { Key: 'b', Value: '2' },
+        ],
+      },
+      schema
+    );
+    expect(a).toEqual(b);
+  });
+
+  it('does not mutate the input model', () => {
+    const input = { AuthorizationType: 'NONE', MethodId: 'x' };
+    normalizeLiveModel(input, schema);
+    expect(input).toEqual({ AuthorizationType: 'NONE', MethodId: 'x' });
   });
 });
