@@ -298,7 +298,12 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   if (str(addr.NetworkBorderGroup)) model.NetworkBorderGroup = addr.NetworkBorderGroup;
   if (str(addr.PublicIp)) model.PublicIp = addr.PublicIp;
   if (str(addr.InstanceId)) model.InstanceId = addr.InstanceId;
-  if (str(addr.NetworkInterfaceId)) model.NetworkInterfaceId = addr.NetworkInterfaceId;
+  // NOTE: NetworkInterfaceId is NOT projected — it is not a declarable CFn property of
+  // AWS::EC2::EIP (verified against the registry schema: the property set has no
+  // NetworkInterfaceId), so it is neither readOnly-stripped nor a known default. AWS
+  // populates it for any EIP associated with an ENI, so projecting it false-flagged an
+  // `undeclared` drift on EVERY associated EIP on the first check.
+  if (str(addr.PublicIpv4Pool)) model.PublicIpv4Pool = addr.PublicIpv4Pool; // declarable; absent for AWS-pool EIPs (FP-safe)
   if (tags && tags.length > 0) model.Tags = tags;
   return model;
 };
