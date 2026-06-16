@@ -286,18 +286,32 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
   const name = str(declared.Name) ?? (hasIdParts ? parts[1] : undefined);
   const type = str(declared.Type) ?? (hasIdParts ? parts[parts.length - 1] : undefined);
   if (!hostedZoneId || !name || !type) return undefined;
+  // A name+type can have MANY records that differ only by SetIdentifier (weighted,
+  // latency, failover, geolocation, multivalue routing — an L1 CfnRecordSet pattern).
+  // MaxItems:1 returned only the FIRST one at the cursor, so the declared variant was
+  // either read as the WRONG record (false positive/negative against the wrong values)
+  // or missed entirely. Drop the cap (Route53's default page is 100 records from the
+  // StartRecord cursor, which holds all variants of one name+type consecutively) and
+  // disambiguate by SetIdentifier below.
   const c = new Route53Client({ region, ...READ_RETRY });
   const r = await c.send(
     new ListResourceRecordSetsCommand({
       HostedZoneId: hostedZoneId,
       StartRecordName: name,
       StartRecordType: type as RRType,
-      MaxItems: 1,
     })
   );
   const canon = (s: string): string => s.replace(/\.$/, '').toLowerCase();
+  // Match the declared SetIdentifier too: a simple record declares none and AWS
+  // returns none (undefined === undefined), while a weighted/latency variant matches
+  // its specific identifier instead of whichever sibling happened to come first.
+  const declSetId = str(declared.SetIdentifier);
   const rec = r.ResourceRecordSets?.find(
-    (x) => x.Type === type && x.Name && canon(x.Name) === canon(name)
+    (x) =>
+      x.Type === type &&
+      x.Name &&
+      canon(x.Name) === canon(name) &&
+      (x.SetIdentifier ?? undefined) === declSetId
   );
   if (!rec) return undefined;
   const model: Record<string, unknown> = {
@@ -316,6 +330,23 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       EvaluateTargetHealth: rec.AliasTarget.EvaluateTargetHealth ?? false,
     };
   }
+  // Routing-policy fields — projected away before, so a console change to a weight /
+  // failover role / health check was invisible. All absent for a simple record (the
+  // common case) so they add no noise; present only on the routing variant the user
+  // declared, which is now matched correctly via SetIdentifier above.
+  if (rec.SetIdentifier !== undefined) model.SetIdentifier = rec.SetIdentifier;
+  if (rec.Weight !== undefined) model.Weight = rec.Weight;
+  if (rec.Region !== undefined) model.Region = rec.Region;
+  if (rec.Failover !== undefined) model.Failover = rec.Failover;
+  if (rec.MultiValueAnswer !== undefined) model.MultiValueAnswer = rec.MultiValueAnswer;
+  if (rec.HealthCheckId !== undefined) model.HealthCheckId = rec.HealthCheckId;
+  const geo = rec.GeoLocation;
+  if (geo)
+    model.GeoLocation = {
+      ...(geo.ContinentCode !== undefined && { ContinentCode: geo.ContinentCode }),
+      ...(geo.CountryCode !== undefined && { CountryCode: geo.CountryCode }),
+      ...(geo.SubdivisionCode !== undefined && { SubdivisionCode: geo.SubdivisionCode }),
+    };
   return model;
 };
 
