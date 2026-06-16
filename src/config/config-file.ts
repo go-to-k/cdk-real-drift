@@ -106,6 +106,11 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
     );
   if (typeof obj.path !== 'string')
     throw new Error(`${at}: "path" is required and must be a string`);
+  if (obj.path === '')
+    // an empty path matches NOTHING (the glob `^$` never matches a `<id>.<path>` target
+    // and the ancestor walk never reaches empty) — a silent no-op rule the user believes
+    // is suppressing a property. Reject it loudly so the no-op can't masquerade as active.
+    throw new Error(`${at}: "path" must not be empty`);
   for (const k of ['stack', 'region'] as const)
     if (obj[k] !== undefined && typeof obj[k] !== 'string')
       throw new Error(`${at}: "${k}" must be a string`);

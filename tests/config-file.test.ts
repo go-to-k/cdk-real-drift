@@ -349,6 +349,11 @@ describe('loadConfig', () => {
     await expect(loadConfig()).rejects.toThrow(/"path" is required and must be a string/);
   });
 
+  it('an empty "path" → throws (a silent no-op rule must not masquerade as active, WAVE23)', async () => {
+    await write('{ "ignore": [{ "path": "" }] }');
+    await expect(loadConfig()).rejects.toThrow(/"path" must not be empty/);
+  });
+
   it('an object entry with a non-string scope → throws', async () => {
     await write('{ "ignore": [{ "path": "x", "region": 1 }] }');
     await expect(loadConfig()).rejects.toThrow(/"region" must be a string/);
