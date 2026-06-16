@@ -41,7 +41,9 @@ import {
   CognitoIdentityProviderClient,
   type GroupType,
   ListGroupsCommand,
+  ListResourceServersCommand,
   ListUserPoolClientsCommand,
+  type ResourceServerType,
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
@@ -796,6 +798,53 @@ async function pageUserPoolGroups(
   return out;
 }
 
+// A UserPool also owns UserPoolResourceServers, each a separate CloudFormation resource. A
+// console / CLI `create-resource-server` (someone wires a new OAuth resource server onto a
+// pool out of band) is invisible to cdk drift / CFn drift detection. The UserPool model does
+// NOT reflect its resource servers inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::Cognito::UserPoolResourceServer is the composite
+// `["/properties/UserPoolId","/properties/Identifier"]`, so the `identifier` is the composite
+// `UserPoolId|Identifier` — that is what CC GetResource / DeleteResource consume.
+
+// Pure diff: declared resource server identifiers + live inventory -> the added resource servers.
+export interface UserPoolResourceServerInput {
+  userPoolId: string;
+  declaredIdentifiers: string[]; // Identifier values of AWS::Cognito::UserPoolResourceServer
+  liveResourceServers: { identifier: string; label?: string | undefined }[];
+}
+
+export function diffUserPoolResourceServers(input: UserPoolResourceServerInput): AddedChild[] {
+  const { userPoolId, declaredIdentifiers, liveResourceServers } = input;
+  const declared = new Set(declaredIdentifiers);
+  const added: AddedChild[] = [];
+  for (const rs of liveResourceServers) {
+    if (declared.has(rs.identifier)) continue;
+    added.push({
+      resourceType: 'AWS::Cognito::UserPoolResourceServer',
+      identifier: `${userPoolId}|${rs.identifier}`, // CC composite UserPoolId|Identifier
+      label: rs.label ?? rs.identifier,
+      live: { Identifier: rs.identifier, UserPoolId: userPoolId },
+    });
+  }
+  return added;
+}
+
+async function pageUserPoolResourceServers(
+  client: CognitoIdentityProviderClient,
+  userPoolId: string
+): Promise<ResourceServerType[]> {
+  const out: ResourceServerType[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListResourceServersCommand({ UserPoolId: userPoolId, NextToken: next, MaxResults: 50 })
+    );
+    out.push(...(res.ResourceServers ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const userPoolId = parent.physicalId; // a UserPool's physical id IS its UserPoolId
@@ -806,6 +855,8 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   const declaredClientIds: string[] = [];
   // Declared groups of THIS pool. A group's physical id IS its GroupName.
   const declaredGroupNames: string[] = [];
+  // Declared resource servers of THIS pool. Matched by the Identifier value.
+  const declaredResourceServerIdentifiers: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::Cognito::UserPoolClient' &&
@@ -819,6 +870,13 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     ) {
       const name = typeof r.declared.GroupName === 'string' ? r.declared.GroupName : r.physicalId;
       if (name) declaredGroupNames.push(name);
+    } else if (
+      r.resourceType === 'AWS::Cognito::UserPoolResourceServer' &&
+      r.declared.UserPoolId === userPoolId
+    ) {
+      const identifier =
+        typeof r.declared.Identifier === 'string' ? r.declared.Identifier : r.physicalId;
+      if (identifier) declaredResourceServerIdentifiers.push(identifier);
     }
   }
 
@@ -838,7 +896,19 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     .map((g) => ({ name: g.GroupName }));
   const groupAdded = diffUserPoolGroups({ userPoolId, declaredGroupNames, liveGroups });
 
-  return [...clientAdded, ...groupAdded];
+  const resourceServers = await pageUserPoolResourceServers(client, userPoolId);
+  const liveResourceServers = resourceServers
+    .filter(
+      (rs): rs is ResourceServerType & { Identifier: string } => typeof rs.Identifier === 'string'
+    )
+    .map((rs) => ({ identifier: rs.Identifier, label: rs.Name ?? rs.Identifier }));
+  const resourceServerAdded = diffUserPoolResourceServers({
+    userPoolId,
+    declaredIdentifiers: declaredResourceServerIdentifiers,
+    liveResourceServers,
+  });
+
+  return [...clientAdded, ...groupAdded, ...resourceServerAdded];
 }
 
 // ── AppSync ──────────────────────────────────────────────────────────────────

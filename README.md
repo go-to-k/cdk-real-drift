@@ -200,10 +200,10 @@ code or reverting.
   exactly like removing an unrecorded undeclared value). Coverage grows per parent
   type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs, API Gateway V2
   (HTTP / WebSocket) APIs, SNS topic subscriptions, Lambda event source mappings
-  and function URLs, EventBridge bus rules, Cognito user pool clients and groups,
-  AppSync data sources and resolvers, CloudWatch Logs metric filters, Elastic Load
-  Balancing v2 listeners, EC2 VPC subnets, EC2 route table routes, ECS cluster
-  services, and KMS key aliases are covered.
+  and function URLs, EventBridge bus rules, Cognito user pool clients, groups, and
+  resource servers, AppSync data sources and resolvers, CloudWatch Logs metric
+  filters, Elastic Load Balancing v2 listeners, EC2 VPC subnets, EC2 route table
+  routes, ECS cluster services, and KMS key aliases are covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift

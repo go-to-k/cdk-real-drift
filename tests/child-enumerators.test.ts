@@ -15,6 +15,7 @@ import {
   diffSnsTopicChildren,
   diffUserPoolChildren,
   diffUserPoolGroups,
+  diffUserPoolResourceServers,
   diffVpcChildren,
 } from '../src/read/child-enumerators.js';
 
@@ -508,6 +509,48 @@ describe('diffUserPoolGroups (Cognito user pool groups)', () => {
         userPoolId: POOL,
         declaredGroupNames: ['a', 'b'],
         liveGroups: [{ name: 'a' }, { name: 'b' }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffUserPoolResourceServers (Cognito resource servers)', () => {
+  const POOL = 'us-east-1_AbCdEf123';
+
+  it('flags an out-of-band resource server added via the console (not in the template)', () => {
+    const added = diffUserPoolResourceServers({
+      userPoolId: POOL,
+      declaredIdentifiers: ['https://declared.cdkrd.example'],
+      liveResourceServers: [
+        { identifier: 'https://declared.cdkrd.example', label: 'declared' },
+        { identifier: 'https://oob.cdkrd.example', label: 'oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolResourceServer',
+        identifier: `${POOL}|https://oob.cdkrd.example`,
+        label: 'oob',
+        live: { Identifier: 'https://oob.cdkrd.example', UserPoolId: POOL },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite UserPoolId|Identifier', () => {
+    const added = diffUserPoolResourceServers({
+      userPoolId: POOL,
+      declaredIdentifiers: [],
+      liveResourceServers: [{ identifier: 'https://rs-x.cdkrd.example' }],
+    });
+    expect(added[0]!.identifier).toBe(`${POOL}|https://rs-x.cdkrd.example`);
+  });
+
+  it('no drift when every live resource server is declared', () => {
+    expect(
+      diffUserPoolResourceServers({
+        userPoolId: POOL,
+        declaredIdentifiers: ['a', 'b'],
+        liveResourceServers: [{ identifier: 'a' }, { identifier: 'b' }],
       })
     ).toEqual([]);
   });
