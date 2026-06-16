@@ -20,6 +20,36 @@ describe('policy canonicalization', () => {
     expect(canonicalizePolicy({ Statement: [] })).not.toHaveProperty('Version');
   });
 
+  it('preserves a top-level Id (and other top-level keys); policies differing only in Id are NOT equal', () => {
+    const stmt = [{ Effect: 'Allow', Action: 's3:Get', Resource: '*' }];
+    const a = canonicalizePolicy({ Version: '2012-10-17', Id: 'A', Statement: stmt });
+    const b = canonicalizePolicy({ Version: '2012-10-17', Id: 'B', Statement: stmt });
+    expect(a.Id).toBe('A');
+    expect(deepEqual(a, b)).toBe(false); // an out-of-band doc-level Id change is no longer hidden
+    // same Id with a reordered statement still canon-equal (canonicalization still applies)
+    const c = canonicalizePolicy({
+      Version: '2012-10-17',
+      Id: 'A',
+      Statement: [{ Effect: 'Allow', Resource: '*', Action: 's3:Get' }],
+    });
+    expect(deepEqual(a, c)).toBe(true);
+  });
+
+  it('does NOT mangle a non-policy value under a key literally named Statement', () => {
+    // a free-form field whose Statement is a STRING is not an IAM policy — pass through
+    expect(normalizePoliciesDeep({ Statement: 'hello', Other: [3, 1, 2] })).toEqual({
+      Statement: 'hello',
+      Other: [3, 1, 2],
+    });
+    // a Statement array whose elements lack `Effect` is not a policy — untouched
+    expect(normalizePoliciesDeep({ Statement: [{ Foo: 1 }] })).toEqual({ Statement: [{ Foo: 1 }] });
+    // a REAL policy (statements carry Effect) IS still canonicalized (Action sorted)
+    const real = normalizePoliciesDeep({
+      Statement: [{ Effect: 'Allow', Action: ['b', 'a'], Resource: '*' }],
+    }) as { Statement: { Action: unknown }[] };
+    expect(real.Statement[0].Action).toEqual(['a', 'b']);
+  });
+
   it('is order-independent across statements and within Action arrays', () => {
     const a = canonicalizePolicy({
       Statement: [
