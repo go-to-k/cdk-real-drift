@@ -65,7 +65,10 @@ export function postRecordNote(remainingUndeclared: number, remainingDeclared: n
       remainingUndeclared > 0
         ? ` ${remainingUndeclared} unrecorded value(s) also stay reported.`
         : '';
-    return `record succeeded, but ${remainingDeclared} declared/deleted/added drift(s) remain un-addressed (fix the code or choose Revert).${alsoUndeclared}`;
+    // resolutions span the tiers: declared → fix the code / revert / ignore; deleted →
+    // cdk deploy; a changed-since-record added resource → re-record (accept) / revert /
+    // ignore. "fix the code, or revert / ignore them" covers all without listing each.
+    return `record succeeded, but ${remainingDeclared} declared/deleted/added drift(s) remain un-addressed (fix the code, or revert / ignore them).${alsoUndeclared}`;
   }
   if (remainingUndeclared > 0)
     return `record succeeded — ${remainingUndeclared} unrecorded value(s) stay reported from the next check on.`;

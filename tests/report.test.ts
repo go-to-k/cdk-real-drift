@@ -45,7 +45,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(code).toBe(1);
     // R114: drift + standout unrecorded both visible -> combined findings framing so
     // the verdict matches the printed blocks (was a lone "1 drift(s)" beside 2 sections).
-    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 undeclared to review');
+    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 not-recorded to review');
     expect(text).not.toContain('undeclared=1'); // unrecorded never appears as a drift count
   });
 
@@ -54,7 +54,9 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(code).toBe(1);
     expect(text).toContain('[CFn-Undeclared Drift: 1]');
     expect(text).toContain('[Not Recorded: 1]');
-    expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 undeclared to review');
+    expect(text).toContain(
+      'result: 2 findings — 1 drift (undeclared=1) + 1 not-recorded to review'
+    );
   });
 
   it('mixed findings line counts only SHOWN unrecorded; folded ones stay a parenthetical (R114)', () => {
@@ -63,7 +65,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
     expect(code).toBe(1);
     expect(text).toContain(
-      'result: 2 findings — 1 drift (declared=1) + 1 undeclared to review (2 folded; run cdkrd record)'
+      'result: 2 findings — 1 drift (declared=1) + 1 not-recorded to review (2 folded; run cdkrd record)'
     );
   });
 
