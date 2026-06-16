@@ -356,6 +356,11 @@ const readGlueTable: OverrideReader = async ({ physicalId, declared, region }) =
   copy('StorageDescriptor', 'StorageDescriptor');
   copy('ViewOriginalText', 'ViewOriginalText');
   copy('ViewExpandedText', 'ViewExpandedText');
+  // TargetTable — a Glue resource-link table points at another catalog/db/table; it
+  // was the one CFn-modeled TableInput field the projection omitted, so an out-of-band
+  // repoint was undetectable. Absent for a normal (non-link) table, so adding it is
+  // inert there (no FP) and only the resource-link case gains coverage.
+  copy('TargetTable', 'TargetTable');
   const model: Record<string, unknown> = { DatabaseName: dbName, TableInput: ti };
   if (catalogId) model.CatalogId = catalogId;
   return model;
