@@ -20,6 +20,7 @@ describe('isResourceNotFoundError', () => {
       'NoSuchEntityException', // IAM
       'InvalidAllocationID.NotFound',
       'InvalidAddress.NotFound', // EC2 EIP
+      'EntityNotFoundException', // Glue GetTable on a deleted table/db
     ]) {
       expect(isResourceNotFoundError(named(n))).toBe(true);
     }

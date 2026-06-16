@@ -64,6 +64,7 @@ export function classifyStackStatus(status: string | undefined): {
 //   SNS / Budgets       : NotFoundException
 //   IAM                 : NoSuchEntity / NoSuchEntityException
 //   EC2 EIP             : InvalidAllocationID.NotFound / InvalidAddress.NotFound
+//   Glue                : EntityNotFoundException (GetTable on a deleted table/db)
 // Distinct from "target not resolvable from the template" (override returns
 // undefined → skipped) — this means the resource was read for and is gone.
 const NOT_FOUND_ERROR_NAMES = new Set([
@@ -77,6 +78,7 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'NoSuchEntityException',
   'InvalidAllocationID.NotFound',
   'InvalidAddress.NotFound',
+  'EntityNotFoundException',
 ]);
 
 export function isResourceNotFoundError(e: unknown): boolean {
