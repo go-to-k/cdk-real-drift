@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-freeform-strip",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture CDK app for the cdk-real-drift free-form-map cc-api-strip FN test. Run via verify-freeform-strip.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

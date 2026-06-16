@@ -258,6 +258,21 @@ L1 S3 bucket, whose undeclared properties all sit at a known AWS default):
 cd atdefault && bash verify.sh
 ```
 
+## freeform-strip / verify-freeform-strip.sh
+
+The false-NEGATIVE guard for `cc-api-strip`. A Lambda with one declared env var;
+the script adds an out-of-band env var whose KEY is an AWS-managed field NAME
+(`LastModified`). `cc-api-strip` removes managed field names at any depth, so it
+used to strip this user env var too — the out-of-band change was SILENTLY
+undetectable. The fix stops stripping inside free-form user maps
+(`Environment.Variables`, Glue `Parameters`, map-shaped `Tags`, …). Asserts `check`
+DETECTS the injected `Environment.Variables.LastModified` (exit 1) — previously a
+silent CLEAN. Deploys + destroys a real (tiny) Lambda.
+
+```bash
+cd freeform-strip && npm install && bash verify-freeform-strip.sh
+```
+
 ## noise
 
 The false-positive guard. Deploys resources that DECLARE properties whose live
