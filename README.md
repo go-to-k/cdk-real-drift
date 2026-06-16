@@ -204,8 +204,8 @@ code or reverting.
   confirm / `--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`,
   exactly like removing an unrecorded undeclared value). Coverage grows per parent
   type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs, API Gateway V2
-  (HTTP / WebSocket) APIs, SNS topic subscriptions, and Lambda event source
-  mappings are covered.
+  (HTTP / WebSocket) APIs, SNS topic subscriptions, Lambda event source mappings,
+  and EventBridge bus rules are covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
