@@ -752,19 +752,27 @@ ENTRY is the contract that defines undeclared drift; a value with no entry on a
 never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick record it is still every value the
-user did not pick. They render as their own `[Not Recorded: N]` section (note:
+user did not pick. They render as their own section, are excluded from the
+verdict and the `--fail` exit, and the `result:` line carries the count + the
+way out. **First run vs steady state (R138):** with NO baseline file the run is
+framed as a setup step, not a clean check — the section is `[To Record: N]`
+(note: `live-only values, no baseline yet — run cdkrd record to start tracking`),
+nested unrecorded values are EXPANDED (so the report lists the SAME set the
+record prompt offers — no contradictory `0 shown, N folded`), and the verdict is
+`NO DRIFT — N value(s) to record (run cdkrd record)`, NOT a green `CLEAN` (which
+read as "nothing to do" right before the record prompt). Once a baseline exists,
+steady-state rendering returns: the section is `[Not Recorded: N]` (note:
 `not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to
-track it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
-`--fail` exit, and the `result:` line carries the count + the way out
-(`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
-when some fold; R112). When BOTH a drift section and a standout `[Not Recorded]`
+track it`), nested values fold (R96), and the line reads
+`CLEAN — N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
+when some fold (R112). When BOTH a drift section and a standout `[Not Recorded]`
 section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
 visible blocks, so the line switches to a combined findings count counting only
 what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 undeclared to
 review (23 folded; run cdkrd record)` — keeping the red drift verdict intact
 (R114); single-category runs keep their plain `CLEAN` / `N drift(s)` verdict.
 Declared and deleted drift still report and fail normally. The interactive after-report
-prompt still fires for unrecorded values (`unrecorded values found — what do
+prompt still fires for unrecorded values (`values to record found — what do
 you want to do?`) so "show them first" keeps its promise of a selective record.
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
