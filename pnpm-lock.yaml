@@ -44,6 +44,9 @@ importers:
       '@aws-sdk/client-ec2':
         specifier: ^3.1066.0
         version: 3.1066.0
+      '@aws-sdk/client-ecs':
+        specifier: ^3.1066.0
+        version: 3.1066.0
       '@aws-sdk/client-elastic-load-balancing-v2':
         specifier: ^3.1068.0
         version: 3.1068.0
@@ -3711,9 +3714,9 @@ snapshots:
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/core': 3.974.20
-      '@aws-sdk/credential-provider-node': 3.972.55
-      '@aws-sdk/types': 3.973.12
+      '@aws-sdk/core': 3.974.21
+      '@aws-sdk/credential-provider-node': 3.972.56
+      '@aws-sdk/types': 3.973.13
       '@smithy/core': 3.24.6
       '@smithy/fetch-http-handler': 5.4.6
       '@smithy/node-http-handler': 4.7.7

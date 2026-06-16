@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayChildren,
   diffApiGatewayV2Children,
+  diffEcsClusterChildren,
   diffEventBusChildren,
   diffGraphQLApiChildren,
   diffGraphQLApiResolvers,
@@ -680,6 +681,50 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
         routeTableId: RT,
         declaredCidrs: ['0.0.0.0/0', '192.168.0.0/16'],
         liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '192.168.0.0/16' }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffEcsClusterChildren (ECS services)', () => {
+  const CLUSTER = 'my-cluster';
+  const DECL = 'arn:aws:ecs:us-east-1:111122223333:service/my-cluster/declared-svc';
+  const OOB = 'arn:aws:ecs:us-east-1:111122223333:service/my-cluster/cdkrd-oob-svc';
+
+  it('flags an out-of-band service added via the console (not in the template)', () => {
+    const added = diffEcsClusterChildren({
+      cluster: CLUSTER,
+      declaredServiceArns: [DECL],
+      liveServices: [
+        { arn: DECL, label: 'declared-svc' },
+        { arn: OOB, label: 'cdkrd-oob-svc' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ECS::Service',
+        identifier: `${OOB}|${CLUSTER}`,
+        label: 'cdkrd-oob-svc',
+        live: { ServiceArn: OOB },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite ServiceArn|Cluster', () => {
+    const added = diffEcsClusterChildren({
+      cluster: CLUSTER,
+      declaredServiceArns: [],
+      liveServices: [{ arn: OOB }],
+    });
+    expect(added[0]!.identifier).toBe(`${OOB}|${CLUSTER}`);
+  });
+
+  it('no drift when every live service is declared', () => {
+    expect(
+      diffEcsClusterChildren({
+        cluster: CLUSTER,
+        declaredServiceArns: [DECL, OOB],
+        liveServices: [{ arn: DECL }, { arn: OOB }],
       })
     ).toEqual([]);
   });

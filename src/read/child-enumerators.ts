@@ -51,6 +51,7 @@ import {
   type Route as Ec2Route,
   type Subnet as Ec2Subnet,
 } from '@aws-sdk/client-ec2';
+import { ECSClient, ListServicesCommand } from '@aws-sdk/client-ecs';
 import {
   DescribeListenersCommand,
   ElasticLoadBalancingV2Client,
@@ -98,7 +99,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
-// (routes) the eleventh.
+// (routes) the eleventh; ECS clusters (services) the twelfth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -111,6 +112,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': enumerateLoadBalancerChildren,
   'AWS::EC2::VPC': enumerateVpcChildren,
   'AWS::EC2::RouteTable': enumerateRouteTableChildren,
+  'AWS::ECS::Cluster': enumerateEcsClusterChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -1219,4 +1221,79 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
     .map((route) => ({ cidr: route.DestinationCidrBlock }));
 
   return diffRouteTableChildren({ routeTableId, declaredCidrs, liveRoutes });
+}
+
+// ── ECS ──────────────────────────────────────────────────────────────────────
+// An `AWS::ECS::Cluster` owns Services, each a separate CloudFormation resource. A
+// console / CLI `create-service` (someone launches a new service onto a cluster out of
+// band) is invisible to cdk drift / CFn drift detection (they only compare
+// template-declared resources). The Cluster's own live model does NOT reflect its
+// services inline, so there is no double-report to suppress. The CC primaryIdentifier for
+// AWS::ECS::Service is the composite `["/properties/ServiceArn","/properties/Cluster"]`,
+// so the `identifier` is the composite `ServiceArn|Cluster` (ServiceArn first) — that is
+// what CC GetResource / DeleteResource consume.
+
+// Pure diff: declared service arns + live inventory -> the added services.
+export interface EcsClusterChildInput {
+  cluster: string; // the cluster name (the Cluster half of the composite identifier)
+  declaredServiceArns: string[]; // physical ids (ServiceArns) of AWS::ECS::Service on this cluster
+  liveServices: { arn: string; label?: string | undefined }[];
+}
+
+export function diffEcsClusterChildren(input: EcsClusterChildInput): AddedChild[] {
+  const { cluster, declaredServiceArns, liveServices } = input;
+  const declared = new Set(declaredServiceArns);
+  const added: AddedChild[] = [];
+  for (const svc of liveServices) {
+    if (declared.has(svc.arn)) continue;
+    added.push({
+      resourceType: 'AWS::ECS::Service',
+      identifier: `${svc.arn}|${cluster}`, // CC composite ServiceArn|Cluster
+      label: svc.label ?? svc.arn,
+      live: { ServiceArn: svc.arn },
+    });
+  }
+  return added;
+}
+
+async function pageServices(client: ECSClient, cluster: string): Promise<string[]> {
+  const out: string[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListServicesCommand({ cluster, nextToken: next }));
+    for (const arn of res.serviceArns ?? []) {
+      if (typeof arn === 'string') out.push(arn);
+    }
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateEcsClusterChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const cluster = parent.physicalId; // a Cluster's physical id IS its cluster name
+  if (!cluster) return [];
+
+  // The cluster ARN, for matching a declared service whose `Cluster` was resolved to the
+  // ARN form (gather may resolve Ref/GetAtt to either the name or the ARN).
+  const clusterArnRaw = desired.ctx.liveAttrs[parent.logicalId]?.Arn;
+  const clusterArn = typeof clusterArnRaw === 'string' ? clusterArnRaw : undefined;
+
+  // Declared services of THIS cluster (Ref/GetAtt Cluster already resolved by gather). A
+  // service's physical id (Ref) IS its ServiceArn. Match services to this cluster by the
+  // declared `Cluster` resolving to either the cluster name or its ARN.
+  const declaredServiceArns: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::ECS::Service' || !r.physicalId) continue;
+    const decl = r.declared.Cluster;
+    if (decl === cluster || (clusterArn !== undefined && decl === clusterArn)) {
+      declaredServiceArns.push(r.physicalId);
+    }
+  }
+
+  const client = new ECSClient({ region, ...READ_RETRY });
+  const arns = await pageServices(client, cluster);
+  const liveServices = arns.map((arn) => ({ arn, label: arn.split('/').pop() }));
+
+  return diffEcsClusterChildren({ cluster, declaredServiceArns, liveServices });
 }
