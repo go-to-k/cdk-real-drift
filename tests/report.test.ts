@@ -122,6 +122,44 @@ describe('report', () => {
     expect(text).toContain('Stack/Api ▸ ANY /');
   });
 
+  it('PR4: an UNRECORDED added resource renders in [Not Recorded], not as drift (exit 0)', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      constructPath: 'Stack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      unrecorded: true,
+      note: 'created out of band — not in your CloudFormation template',
+    };
+    const { code, text } = run([f]);
+    expect(code).toBe(0);
+    expect(text).toContain('[Not Recorded: 1]');
+    expect(text).not.toContain('[Added Resource');
+  });
+
+  it('PR4: a recorded-but-CHANGED added resource shows the baseline vs actual model', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      constructPath: 'Stack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      desired: { AuthorizationType: 'NONE' },
+      actual: { AuthorizationType: 'AWS_IAM' },
+      note: 'changed since record',
+    };
+    const { code, text } = run([f]);
+    expect(code).toBe(1);
+    expect(text).toContain('Added Resource');
+    expect(text).toContain('changed since record');
+    expect(text).toContain('baseline=');
+    expect(text).toContain('actual  =');
+    expect(text).toContain('NONE');
+    expect(text).toContain('AWS_IAM');
+  });
+
   it('the Added section sorts AFTER declared/undeclared (sections + result line)', () => {
     const added: Finding = {
       tier: 'added',

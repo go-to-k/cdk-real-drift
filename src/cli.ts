@@ -13,10 +13,11 @@ properties that 'cdk drift' / CloudFormation drift detection never see.
 
 USAGE
   cdkrd check  [<stack>...]   detect drift (read-only)
-  cdkrd record [<stack>...]   snapshot current undeclared state into the baseline
-                              — KEEPS watching (re-surfaces if the value changes)
+  cdkrd record [<stack>...]   snapshot current undeclared state + out-of-band added
+                              resources into the baseline — KEEPS watching
+                              (re-surfaces if the value/resource changes)
   cdkrd ignore [<stack>...]   stop reporting the chosen drift (writes config.json)
-                              — STOPS watching (declared or undeclared)
+                              — STOPS watching (declared, undeclared, or added)
   cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
   cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
@@ -52,8 +53,9 @@ OPTIONS
   --declared-only             (check) declared drift vs the DEPLOYED template only
                               (undeclared tier skipped; baseline untouched)
   --dry-run                   (revert) print the plan; make no changes
-  --remove-unrecorded         (revert) REMOVE unrecorded values (never recorded;
-                              default: refuse — record the ones that are right)
+  --remove-unrecorded         (revert) REMOVE unrecorded values + DELETE unrecorded
+                              added resources (never recorded; default: refuse —
+                              record the ones that are right)
   --yes, -y                   skip confirmation (revert) / overwrite notice (record) /
                               ignore ALL shown drift without the multiselect (ignore)
   --help, -h    --version, -v

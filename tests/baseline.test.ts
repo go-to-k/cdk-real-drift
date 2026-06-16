@@ -427,6 +427,133 @@ describe('baseline', () => {
     });
   });
 
+  describe('added-resource reconciliation (PR4 — `added` is record-able, full mirror of undeclared)', () => {
+    const added = (logicalId: string, value: unknown): Finding => ({
+      tier: 'added',
+      logicalId,
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      physicalId: logicalId.split('/')[1] ?? logicalId,
+      actual: value,
+      note: 'created out of band — not in your CloudFormation template',
+    });
+
+    it('no baseline -> an added resource is unrecorded (inventory), not drift', () => {
+      const out = applyBaseline([added('Api/m1', { AuthorizationType: 'NONE' })], undefined);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ tier: 'added', unrecorded: true });
+    });
+
+    it('with a baseline but NO entry for the added resource -> unrecorded, not drift', () => {
+      const b = baseline([{ logicalId: 'Other', resourceType: 'AWS::X::Y', path: 'P', value: 1 }]);
+      const out = applyBaseline([added('Api/m1', { AuthorizationType: 'NONE' })], b);
+      expect(out[0]).toMatchObject({ tier: 'added', unrecorded: true });
+    });
+
+    it('a recorded + unchanged added resource is suppressed', () => {
+      const b = baseline([
+        {
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          value: { AuthorizationType: 'NONE' },
+        },
+      ]);
+      const out = applyBaseline([added('Api/m1', { AuthorizationType: 'NONE' })], b);
+      expect(out).toHaveLength(0);
+    });
+
+    it('a recorded + CHANGED added resource stays `added` drift with baseline + changed note', () => {
+      const b = baseline([
+        {
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          value: { AuthorizationType: 'NONE' },
+        },
+      ]);
+      const out = applyBaseline([added('Api/m1', { AuthorizationType: 'AWS_IAM' })], b);
+      expect(out).toHaveLength(1);
+      expect(out[0]!.tier).toBe('added');
+      expect(out[0]!.unrecorded).toBeUndefined();
+      expect(out[0]!.desired).toEqual({ AuthorizationType: 'NONE' });
+      expect(out[0]!.actual).toEqual({ AuthorizationType: 'AWS_IAM' });
+      expect(out[0]!.note).toContain('changed since record');
+    });
+
+    it('a degraded read (modelReadFailed) is never false-flagged as "changed" — recorded → suppressed', () => {
+      const b = baseline([
+        {
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          value: { AuthorizationType: 'NONE' },
+        },
+      ]);
+      // the live read returned only the identity snippet (full model unreadable this run)
+      const f = { ...added('Api/m1', { HttpMethod: 'ANY' }), modelReadFailed: true };
+      expect(applyBaseline([f], b)).toHaveLength(0); // suppressed, not "changed"
+    });
+
+    it('a degraded read with NO baseline entry stays Not-Recorded (not drift)', () => {
+      const f = { ...added('Api/m1', { HttpMethod: 'ANY' }), modelReadFailed: true };
+      const out = applyBaseline([f], baseline([]));
+      expect(out[0]).toMatchObject({ tier: 'added', unrecorded: true });
+    });
+
+    it('an added-resource baseline entry whose live resource is GONE is not a false removal', () => {
+      // the out-of-band resource was deleted after record — nothing to "restore"; the
+      // empty-path entry must be skipped by the removal pass (no phantom undeclared finding).
+      const b = baseline([
+        {
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          value: { AuthorizationType: 'NONE' },
+        },
+      ]);
+      const out = applyBaseline([], b);
+      expect(out).toHaveLength(0);
+    });
+  });
+
+  describe('buildRecorded includes added resources (PR4)', () => {
+    it('snapshots both undeclared properties and out-of-band added resources', () => {
+      const recorded = buildRecorded([
+        undeclared('B', 'AccelerateConfiguration', { S: 1 }),
+        {
+          tier: 'added',
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          actual: { AuthorizationType: 'NONE' },
+        },
+        // not recorded: declared / atDefault / generated
+        { tier: 'declared', logicalId: 'B', resourceType: 'AWS::X::Y', path: 'P', actual: 1 },
+      ]);
+      expect(recorded).toHaveLength(2);
+      expect(recorded.find((e) => e.logicalId === 'Api/m1')).toMatchObject({
+        path: '',
+        value: { AuthorizationType: 'NONE' },
+      });
+      expect(recordedKey(recorded.find((e) => e.logicalId === 'Api/m1')!)).toBe('Api/m1::');
+    });
+
+    it('never snapshots an added resource whose model read failed (avoids a partial baseline)', () => {
+      const recorded = buildRecorded([
+        {
+          tier: 'added',
+          logicalId: 'Api/m1',
+          resourceType: 'AWS::ApiGateway::Method',
+          path: '',
+          actual: { HttpMethod: 'ANY' },
+          modelReadFailed: true,
+        },
+      ]);
+      expect(recorded).toHaveLength(0);
+    });
+  });
+
   describe('computeCompleteResources (R62 — what the record snapshot covered)', () => {
     it('covered, uncovered, unread, and clean resources bucket correctly', () => {
       const findings: Finding[] = [

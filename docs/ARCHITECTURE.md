@@ -136,10 +136,11 @@ Decision 1):
 | `cdkrd ignore` | "stop reporting this property" (declared or undeclared); STOP      | git file (config)   |
 | `cdkrd revert` | "current state is WRONG" — write the desired value back to AWS     | AWS (confirmed)     |
 
-`record` (undeclared-only, keeps watching: a later change to the snapshotted
-value re-surfaces as drift) and `ignore` (declared OR undeclared, stops watching:
-re-tags the finding `ignored` forever) are the two non-AWS resolutions; `ignore`
-is the only in-tool way to accept a **declared** drift. The `record` baseline
+`record` (undeclared properties **and** out-of-band `added` resources, keeps
+watching: a later change to the snapshotted value/resource re-surfaces as drift)
+and `ignore` (declared, undeclared, OR added, stops watching: re-tags the finding
+`ignored` forever) are the two non-AWS resolutions; `ignore` is the only in-tool
+way to accept a **declared** drift. The `record` baseline
 lives per stack/account/region; the `ignore` rules live once, app-wide, in
 `.cdkrd/config.json` (`config/config-file.ts` — `addIgnoreRules` writes,
 `applyIgnores` reads).
@@ -203,14 +204,20 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
    --- PASS 1.6: added-resource enumeration — for each declared PARENT type with a
                  CHILD_ENUMERATORS entry (read/child-enumerators.ts), list its LIVE
                  child resources via the service SDK and emit an `added` finding for
-                 any not in the template (e.g. an API Gateway Method on `/`). An
-                 enumeration failure is surfaced as a `skipped` finding on the parent
+                 any not in the template (e.g. an API Gateway Method on `/`). Each
+                 added child is then read in FULL (CC GetResource) + normalized
+                 (normalizeLiveModel) so `record` can snapshot it and a later change
+                 surfaces as drift. An enumeration failure is surfaced as a `skipped`
+                 finding on the parent
    --- PASS 2:   classify
 4. normalize / subtract  classify.ts orchestrates the normalizers (section 6)
 5. classify (tier)       deleted | added | declared | undeclared | atDefault | generated | readGap | unresolved | skipped
                          (added = a whole LIVE child resource not in the template,
                          from pass 1.6's enumerators — resource-granularity sibling of
-                         undeclared; always drift; revertable by CC DeleteResource)
+                         undeclared, reconciled against the baseline the same way:
+                         recorded+unchanged is suppressed, recorded+changed is drift,
+                         an UNRECORDED added resource is Not-Recorded inventory (not
+                         drift). Revertable by CC DeleteResource; PR4)
                          (atDefault = undeclared but EQUAL to a known AWS default —
                          folded, never drift, never recorded; R86)
                          (generated = undeclared (absent from the template) but EQUAL to the
@@ -573,7 +580,9 @@ This section is the mechanics. The design rationale — why the baseline must be
 state at all, and why neither schema defaults nor `.cdkrd/config.json` can
 replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 
-`record` snapshots the current undeclared state into a **git-committed** file
+`record` snapshots the current undeclared state — and (PR4) any out-of-band
+`added` resource's full normalized model, as a `recorded` entry with an empty
+`path` — into a **git-committed** file
 `.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
 
 ```jsonc

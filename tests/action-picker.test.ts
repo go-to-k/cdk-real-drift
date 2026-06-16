@@ -45,6 +45,9 @@ describe('applicableActions (cycle order mirrors the verbs scope)', () => {
   it('declared → revert (the natural fix), ignore — never record', () => {
     expect(applicableActions(F('declared'))).toEqual(['revert', 'ignore']);
   });
+  it('PR4: added → record (snapshot), ignore, revert (DELETE — destructive, last)', () => {
+    expect(applicableActions(F('added'))).toEqual(['record', 'ignore', 'revert']);
+  });
   it('non-actionable tiers → empty (not decidable rows)', () => {
     for (const t of [
       'deleted',

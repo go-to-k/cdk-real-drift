@@ -50,6 +50,13 @@ export interface Finding {
   // property never un-records); this just describes WHICH element(s) differ so the
   // report shows the delta, not the full array dump. See `identityArrayDelta`.
   arrayDelta?: ArrayDelta;
+  // added tier only (PR4): the child's FULL live model could NOT be read this run (the
+  // CC GetResource failed), so `actual` is only the enumerator's identity snippet. The
+  // resource still EXISTS and is reported, but it is not change-watchable this run:
+  // `record` skips snapshotting a partial model, and `applyBaseline` never cries
+  // "changed since record" off the degraded snippet (it suppresses a recorded one until
+  // a clean read, like a transiently-skipped resource). Self-heals on the next check.
+  modelReadFailed?: boolean;
 }
 
 // Element-level delta of a recorded-but-changed undeclared identity-keyed object

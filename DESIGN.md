@@ -8,11 +8,11 @@ A CDK-ecosystem drift detector. Superset of `cdk drift`: it also sees
 
 ## What `check` compares (three "desired" sources)
 
-| source                                           | used for                      |
-| ------------------------------------------------ | ----------------------------- |
-| deployed CloudFormation template (`GetTemplate`) | declared-property drift       |
-| baseline snapshot file (last `record`)           | undeclared-property drift     |
-| code synth (`--pre-deploy` only)                 | clobber annotation (optional) |
+| source                                           | used for                                   |
+| ------------------------------------------------ | ------------------------------------------ |
+| deployed CloudFormation template (`GetTemplate`) | declared-property drift                    |
+| baseline snapshot file (last `record`)           | undeclared-property + added-resource drift |
+| code synth (`--pre-deploy` only)                 | clobber annotation (optional)              |
 
 Declared drift compares against the **deployed** template (not code synth) — else
 un-deployed code edits would show as false "drift".
@@ -42,8 +42,12 @@ un-deployed code edits would show as false "drift".
 5b. enumerate added (out-of-band whole resources): per declared PARENT type, list its
     live child resources via the service SDK and flag any absent from the template →
     `added` tier (CHILD_ENUMERATORS; API Gateway REST APIs first). Resource-granularity
-    sibling of undeclared; always drift. Not a per-property compare, so it runs outside
-    classify. Revertable by Cloud Control DeleteResource (no per-type writer).
+    sibling of undeclared, reconciled against the baseline the same way: each added
+    child is read in FULL (CC GetResource) + normalized, so `record` snapshots it and a
+    later CHANGE surfaces as drift; an UNRECORDED added resource is Not-Recorded
+    inventory (not drift), a recorded+unchanged one is suppressed (PR4). Not a
+    per-property compare, so it runs outside classify. Revertable by Cloud Control
+    DeleteResource (no per-type writer; an unrecorded one needs --remove-unrecorded).
 6. report + exit code (report-only by default; --fail → 1 on drift; --strict → 1 on incomplete coverage; 2 error)
 ```
 

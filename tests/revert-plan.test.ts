@@ -189,6 +189,35 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('no physical id');
   });
 
+  it('PR4: an UNRECORDED `added` resource is guarded out of the default plan (no auto-delete)', () => {
+    const f = F({
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      unrecorded: true,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('unrecorded');
+    expect(plan.notRevertable[0]!.reason).toContain('--remove-unrecorded');
+  });
+
+  it('PR4: --remove-unrecorded turns an unrecorded `added` resource into a DELETE item', () => {
+    const f = F({
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      unrecorded: true,
+    });
+    const plan = buildRevertPlan([f], undefined, { removeUnrecorded: true });
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({ kind: 'delete', physicalId: 'abc|root|ANY' });
+  });
+
   it('removed-undeclared (baseline value gone) -> re-add the baseline value', () => {
     const f = F({
       tier: 'undeclared',
