@@ -229,8 +229,10 @@ describe('report', () => {
         reason('skipped', 'custom resource — no cloud-side model to read', 'Custom::Foo'),
       ]);
       expect(text).not.toContain('[Skipped');
+      // R127: the skipped footer line carries the loud "NOT checked (coverage
+      // incomplete)" framing (folded from the old pre-report stderr warning).
       expect(text).toContain(
-        'info: skipped=1 (custom resource 1) — run with --verbose for the list'
+        'info: skipped=1 — NOT checked (coverage incomplete: custom resource 1) — run with --verbose for the list'
       );
     });
 
@@ -254,7 +256,7 @@ describe('report', () => {
         "  - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)"
       );
       expect(lines[infoIdx + 2]).toMatch(
-        /^ {2}- skipped=2 \(.*custom resource 1.*override target unresolved 1.*\)$/
+        /^ {2}- skipped=2 — NOT checked \(coverage incomplete: .*custom resource 1.*override target unresolved 1.*\)$/
       );
       expect(lines[infoIdx + 3]).toBe('  run with --verbose for the list');
       expect(text.match(/--verbose/g)).toHaveLength(1);
@@ -410,7 +412,7 @@ describe('report', () => {
       expect(text.split('\n')).toEqual([
         '=== cdkrd check: stack (us-east-1) ===',
         'result: CLEAN',
-        'info: skipped=1 (custom resource 1) — run with --verbose for the list',
+        'info: skipped=1 — NOT checked (coverage incomplete: custom resource 1) — run with --verbose for the list',
       ]);
     });
 

@@ -218,8 +218,11 @@ tells cdkrd which stacks to look at.
 `cdk drift --fail` convention) to exit `1` on drift and suppress all prompts —
 the one flag for scripts and CI. **`--strict`** is the orthogonal coverage axis:
 it exits `1` when a run was incomplete — any resource skipped (unread) or a
-nested stack not recursed into. A loud coverage `warning:` always prints to
-stderr regardless; `--strict` only decides whether that gap fails the build.
+nested stack not recursed into. The gap is always surfaced regardless: skipped
+resources as the `skipped=N — NOT checked (coverage incomplete)` line in the
+report's `info:` footer (a stderr `warning:` under `--json`, which has no footer),
+a nested stack as a loud stderr `warning:`. `--strict` only decides whether that
+gap fails the build.
 Errors always exit `2`; `revert` exits `1` when drift remains after it.
 
 ```yaml
@@ -237,7 +240,7 @@ Errors always exit `2`; `revert` exits `1` when drift remains after it.
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                                                                                       |
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                                                                                             |
 | `--fail`                   | (check) exit 1 on drift + never prompt — for scripts/CI; without it, check reports drift but exits 0                                                                                                             |
-| `--strict`                 | (check) exit 1 when COVERAGE is incomplete — any resource skipped (unread) or a nested stack not recursed into. A loud coverage `warning:` always prints; `--strict` makes it CI-failing. Orthogonal to `--fail` |
+| `--strict`                 | (check) exit 1 when COVERAGE is incomplete — any resource skipped (unread) or a nested stack not recursed into. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail` |
 | `--show-all`               | inventory mode: show ALL current undeclared state, ignoring the baseline                                                                                                                                         |
 | `--verbose` / `-v`         | (check) expand informational tiers from the `info:` footer / (revert) the per-reason NOT-revertable summary — to full lists                                                                                      |
 | `--pre-deploy`             | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite                                                                                            |
