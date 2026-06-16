@@ -231,6 +231,45 @@ export function recordedKey(e: { logicalId: string; path: string }): string {
 }
 
 /**
+ * Carry forward previously-recorded entries for resources that this run could NOT
+ * read, so a re-`record` does not silently SHRINK the (git-committed) baseline.
+ *
+ * `buildRecorded` only emits entries for resources observed this run (a `skipped`
+ * resource produces no undeclared finding; an `added` resource whose full model
+ * failed to read is filtered by `modelReadFailed`). Because `writeBaseline` writes
+ * the `recorded` array as the COMPLETE new baseline (full replace, not a merge),
+ * an entry absent from this run is permanently dropped — even when the resource was
+ * merely unread, not actually changed-to-default. That loses a real recorded value:
+ * a later out-of-band change to that property/resource can then no longer be
+ * compared against it (it re-reads as unrecorded inventory, not "changed").
+ *
+ * The READ side (`applyBaseline`) already makes this exact distinction — it refuses
+ * to surface a false "removed since record" for `skipped`/`modelReadFailed`
+ * resources (unread ≠ gone). This is its symmetric WRITE-side guard: preserve the
+ * existing baseline entries for resources unread this run (`skipped`, or a
+ * `modelReadFailed` `added` finding). A resource read clean whose undeclared value
+ * legitimately returned to its default is NOT unread, so it is correctly dropped; a
+ * `deleted` resource is genuinely gone, so it is dropped too.
+ */
+export function carryForwardUnreadable(
+  recorded: RecordedEntry[],
+  existing: BaselineFile | undefined,
+  findings: Finding[]
+): RecordedEntry[] {
+  const prior = existing?.recorded;
+  if (!prior || prior.length === 0) return recorded;
+  const unreadable = new Set(
+    findings.filter((f) => f.tier === 'skipped' || f.modelReadFailed).map((f) => f.logicalId)
+  );
+  if (unreadable.size === 0) return recorded;
+  const present = new Set(recorded.map(recordedKey));
+  const preserved = prior.filter(
+    (e) => unreadable.has(e.logicalId) && !present.has(recordedKey(e))
+  );
+  return preserved.length === 0 ? recorded : [...recorded, ...preserved];
+}
+
+/**
  * The single source of truth for "is this baseline value equal to the current
  * value?". `applyBaseline` (suppress vs surface) and `splitRecordedByBaseline`
  * (unchanged vs changed) MUST share this exact predicate. The baseline value is
