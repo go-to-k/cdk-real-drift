@@ -262,6 +262,29 @@ describe('loadDesired Fn::ImportValue exports prefetch', () => {
     expect(desired.resources[0]!.declared).toEqual({ Tag: 'arn:aws:x:::shared' });
   });
 
+  it('prefetches + resolves a YAML short-form !ImportValue (WAVE20)', async () => {
+    // A YAML deployed template carries the short-form tag `!ImportValue`, never the
+    // long-form string `Fn::ImportValue`. Gating the prefetch on the raw body missed it,
+    // leaving the import UNRESOLVED (missed drift). The gate now reads the PARSED template.
+    const cfn = mockClient(CloudFormationClient);
+    stackMocks(
+      cfn,
+      [
+        'Resources:',
+        '  Q:',
+        '    Type: AWS::SQS::Queue',
+        '    Properties:',
+        '      Tag: !ImportValue SharedArn',
+      ].join('\n')
+    );
+    cfn
+      .on(ListExportsCommand)
+      .resolves({ Exports: [{ Name: 'SharedArn', Value: 'arn:aws:x:::shared' }] });
+
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'IV', 'us-west-2');
+    expect(desired.resources[0]!.declared).toEqual({ Tag: 'arn:aws:x:::shared' });
+  });
+
   it('does NOT call ListExports when the template has no Fn::ImportValue', async () => {
     const cfn = mockClient(CloudFormationClient);
     stackMocks(

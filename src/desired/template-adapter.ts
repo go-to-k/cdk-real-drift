@@ -177,10 +177,13 @@ export async function loadDesired(
   );
 
   // Fn::ImportValue is synchronous in the resolver, so prefetch exports here — but
-  // ONLY when the template actually references it (a substring check on the body),
-  // so normal stacks pay nothing for the extra ListExports call(s).
-  const templateBody = templateOverride ? JSON.stringify(templateOverride) : rawTemplate;
-  if (templateBody.includes('Fn::ImportValue')) {
+  // ONLY when the template actually references it, so normal stacks pay nothing for the
+  // extra ListExports call(s). Gate on the PARSED template, NOT the raw body: a YAML
+  // deployed template carries the short-form `!ImportValue` tag, so a substring check on
+  // the raw body would miss it and leave exports unfetched — the import then resolves
+  // UNRESOLVED and its declared property is silently skipped (missed drift).
+  // parseTemplateBody has already normalized short-form tags to long-form `Fn::ImportValue`.
+  if (JSON.stringify(template).includes('Fn::ImportValue')) {
     ctx.exports = await listExports(client, region);
   }
 
