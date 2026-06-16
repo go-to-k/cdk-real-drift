@@ -497,6 +497,43 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   if (p.projectVisibility !== undefined) model.Visibility = p.projectVisibility;
   if (p.concurrentBuildLimit !== undefined) model.ConcurrentBuildLimit = p.concurrentBuildLimit;
   if (p.sourceVersion !== undefined) model.SourceVersion = p.sourceVersion;
+  // LogsConfig — CloudWatch/S3 build-log destinations. Security/observability
+  // relevant (enabling S3 logs writes build output to a bucket; a custom CloudWatch
+  // group/stream redirects audit data) and commonly toggled in the console, yet it
+  // was projected away entirely, so an out-of-band logging change was undetectable.
+  // FP-safe: BatchGetProjects returns logsConfig=null (absent) when the project was
+  // never configured with logging, and otherwise echoes EXACTLY the configured shape
+  // with NO server-added siblings (verified live: setting only cloudWatchLogs does
+  // not materialize an s3Logs default, and vice versa). So a never-configured project
+  // emits nothing and a declared one matches its template. The lone always-present
+  // extra is s3Logs.encryptionDisabled=false, which isTrivialEmpty suppresses — no
+  // KNOWN_DEFAULTS entry needed.
+  const logs = p.logsConfig;
+  if (logs) {
+    const cw = logs.cloudWatchLogs;
+    const s3 = logs.s3Logs;
+    model.LogsConfig = {
+      ...(cw && {
+        CloudWatchLogs: {
+          ...(cw.status !== undefined && { Status: cw.status }),
+          ...(cw.groupName !== undefined && { GroupName: cw.groupName }),
+          ...(cw.streamName !== undefined && { StreamName: cw.streamName }),
+        },
+      }),
+      ...(s3 && {
+        S3Logs: {
+          ...(s3.status !== undefined && { Status: s3.status }),
+          ...(s3.location !== undefined && { Location: s3.location }),
+          ...(s3.encryptionDisabled !== undefined && { EncryptionDisabled: s3.encryptionDisabled }),
+        },
+      }),
+    };
+  }
+  // BadgeEnabled — a public build-status badge exposes build state; console-toggleable.
+  // badge.badgeEnabled is false when off → isTrivialEmpty suppresses it (no first-run
+  // noise); flipping it true surfaces. badge.badgeRequestUrl is a read-only computed
+  // URL, deliberately not projected.
+  if (p.badge?.badgeEnabled !== undefined) model.BadgeEnabled = p.badge.badgeEnabled;
   const vpc = p.vpcConfig;
   if (vpc && (vpc.vpcId || vpc.subnets?.length || vpc.securityGroupIds?.length))
     model.VpcConfig = {
