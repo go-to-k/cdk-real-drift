@@ -14,6 +14,8 @@
 // what revert's DeleteResource consumes.
 import {
   APIGatewayClient,
+  type Authorizer as ApiGwAuthorizer,
+  GetAuthorizersCommand,
   GetResourcesCommand,
   type Resource as ApiGwResource,
 } from '@aws-sdk/client-api-gateway';
@@ -123,10 +125,18 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
-// A RestApi owns Resources (paths) and Methods. Both are separate CloudFormation
-// resources, so the template lists every declared one; anything live but undeclared
-// is an out-of-band addition. The root resource `/` is implicit (created with the
-// RestApi) and so always counts as declared.
+// A RestApi owns Resources (paths), Methods, and Authorizers. Each is a separate
+// CloudFormation resource, so the template lists every declared one; anything live
+// but undeclared is an out-of-band addition. The root resource `/` is implicit
+// (created with the RestApi) and so always counts as declared. A console / CLI
+// `create-authorizer` (someone wires a new TOKEN / REQUEST / COGNITO_USER_POOLS
+// authorizer onto the api out of band — a security-relevant change) is invisible to
+// cdk drift / CFn drift detection. The RestApi's own live model does NOT reflect its
+// authorizers inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::ApiGateway::Authorizer is the composite
+// `["/properties/RestApiId","/properties/AuthorizerId"]`, so the `identifier` is the
+// composite `RestApiId|AuthorizerId` (RestApiId first) — that is what CC
+// GetResource / DeleteResource consume.
 
 // Pure diff: given the declared child sets and the live inventory, return the added
 // children. Separated from the SDK calls so the matching logic is unit-tested offline.
@@ -246,6 +256,19 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     }
   }
 
+  // Declared authorizers of THIS api. An Authorizer's CFn physical id (Ref) IS its
+  // AuthorizerId, and its declared RestApiId resolves (via gather) to the physical id.
+  const declaredAuthorizerIds: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::ApiGateway::Authorizer' &&
+      r.declared.RestApiId === apiId &&
+      r.physicalId
+    ) {
+      declaredAuthorizerIds.push(r.physicalId);
+    }
+  }
+
   const client = new APIGatewayClient({ region, ...READ_RETRY });
   const items = await getAllResources(client, apiId);
   const liveResources = items
@@ -263,7 +286,7 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     }));
   }
 
-  return diffApiGatewayChildren({
+  const resourceAndMethodAdded = diffApiGatewayChildren({
     apiId,
     rootResourceId,
     declaredResourceIds,
@@ -271,6 +294,59 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveResources,
     liveMethodsByResource,
   });
+
+  const authorizers = await getAllAuthorizers(client, apiId);
+  const liveAuthorizers = authorizers
+    .filter((a): a is ApiGwAuthorizer & { id: string } => typeof a.id === 'string')
+    .map((a) => ({ id: a.id, label: a.name ?? a.id }));
+  const authorizerAdded = diffApiGatewayAuthorizers({
+    apiId,
+    declaredAuthorizerIds,
+    liveAuthorizers,
+  });
+
+  return resourceAndMethodAdded.concat(authorizerAdded);
+}
+
+// Pure diff: declared authorizer ids + live inventory -> the added authorizers.
+// Separated from the SDK calls so the matching logic is unit-tested offline.
+export interface ApiGatewayAuthorizerInput {
+  apiId: string;
+  declaredAuthorizerIds: string[]; // physical ids (AuthorizerIds) of AWS::ApiGateway::Authorizer
+  liveAuthorizers: { id: string; label?: string | undefined }[];
+}
+
+export function diffApiGatewayAuthorizers(input: ApiGatewayAuthorizerInput): AddedChild[] {
+  const { apiId, declaredAuthorizerIds, liveAuthorizers } = input;
+  const declared = new Set(declaredAuthorizerIds);
+  const added: AddedChild[] = [];
+  for (const a of liveAuthorizers) {
+    if (declared.has(a.id)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGateway::Authorizer',
+      identifier: `${apiId}|${a.id}`, // CC composite RestApiId|AuthorizerId
+      label: a.label ?? a.id,
+      live: { AuthorizerId: a.id, RestApiId: apiId },
+    });
+  }
+  return added;
+}
+
+// Page GetAuthorizers (position-paginated like GetResources).
+async function getAllAuthorizers(
+  client: APIGatewayClient,
+  apiId: string
+): Promise<ApiGwAuthorizer[]> {
+  const out: ApiGwAuthorizer[] = [];
+  let position: string | undefined;
+  do {
+    const res = await client.send(
+      new GetAuthorizersCommand({ restApiId: apiId, limit: 500, position })
+    );
+    out.push(...(res.items ?? []));
+    position = res.position;
+  } while (position);
+  return out;
 }
 
 // ── API Gateway V2 (HTTP / WebSocket) ────────────────────────────────────────
