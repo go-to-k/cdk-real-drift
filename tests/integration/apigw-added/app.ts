@@ -2,7 +2,7 @@
 // A REST API with a declared method on a child resource (POST /scoring) AND a declared
 // method on the ROOT `/` resource (GET /). verify.sh then adds an ANY method on root
 // out of band (via the AWS CLI) — a whole resource not in the template — and asserts
-// cdkrd reports EXACTLY that one under [Added (Out-of-Band)] (added=1). The declared
+// cdkrd reports EXACTLY that one under [Added Resource] (added=1). The declared
 // GET / is the false-positive guard: its ResourceId is `GetAtt RootResourceId`, which
 // must re-resolve to the live root id so the declared root method is NOT flagged added.
 import { App, Stack } from "aws-cdk-lib";

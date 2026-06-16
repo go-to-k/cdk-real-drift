@@ -142,7 +142,7 @@ vocabulary names exactly which of the three sources a finding relates to, so
 | ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
 | **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
 | **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
-| **Added** (out-of-band)        | the live resource                             | a whole resource exists live but is NOT in the template |
+| **Added Resource**             | the live resource                             | a whole resource exists live but is NOT in the template |
 | **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
 So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
