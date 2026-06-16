@@ -538,6 +538,59 @@ describe('SDK overrides', () => {
       expect(out.Visibility).toBe('PRIVATE');
     });
 
+    it('projects LogsConfig + BadgeEnabled — an out-of-band logging/badge change is no longer invisible', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            projectVisibility: 'PRIVATE',
+            logsConfig: {
+              cloudWatchLogs: { status: 'ENABLED', groupName: 'g' },
+              s3Logs: { status: 'DISABLED', encryptionDisabled: false },
+            },
+            badge: { badgeEnabled: true, badgeRequestUrl: 'https://example/badge.svg' },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.LogsConfig).toEqual({
+        CloudWatchLogs: { Status: 'ENABLED', GroupName: 'g' },
+        S3Logs: { Status: 'DISABLED', EncryptionDisabled: false },
+      });
+      // badgeRequestUrl is a read-only computed URL — only the writable BadgeEnabled is projected
+      expect(out.BadgeEnabled).toBe(true);
+    });
+
+    it('FP-safe absence: logsConfig=null omits LogsConfig; badgeEnabled=false stays false (isTrivialEmpty drops it)', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            projectVisibility: 'PRIVATE',
+            // AWS returns logsConfig=null (not undefined) for never-configured projects;
+            // the SDK models it as optional, so cast to inject the real runtime null.
+            logsConfig: null as unknown as undefined,
+            badge: { badgeEnabled: false },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.LogsConfig).toBeUndefined();
+      // the reader faithfully projects false; the noise layer's isTrivialEmpty drops a
+      // never-enabled badge so it is not first-run undeclared noise
+      expect(out.BadgeEnabled).toBe(false);
+    });
+
     it('undefined when the project is absent (-> stays skipped)', async () => {
       codebuild.on(BatchGetProjectsCommand).resolves({ projects: [] });
       expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'missing'))).toBeUndefined();
