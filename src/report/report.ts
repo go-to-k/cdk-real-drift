@@ -95,9 +95,10 @@ export function formatFinding(f: Finding): string {
   const pathDisplay = f.attributeKey ? `${f.path}[${f.attributeKey}]` : f.path;
   let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${f.note}`;
-  if (f.tier === 'declared')
-    s += `\n      desired=${style.desired(j(f.desired))}\n      actual =${style.actual(j(f.actual))}`;
-  else if (f.tier === 'undeclared' && f.arrayDelta)
+  if (f.tier === 'declared') {
+    const { a: d, b: act } = jPair(f.desired, f.actual);
+    s += `\n      desired=${style.desired(d)}\n      actual =${style.actual(act)}`;
+  } else if (f.tier === 'undeclared' && f.arrayDelta)
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).
     s += formatArrayDelta(f.arrayDelta);
@@ -119,7 +120,11 @@ function formatArrayDelta(d: ArrayDelta): string {
   const actual = (v: unknown): string => `\n          actual  =${style.actual(j(v))}`;
   let s = ` — ${d.identityField}-keyed element(s) changed vs .cdkrd baseline:`;
   for (const a of d.added) s += `\n      + [${a.id}]${actual(a.value)}`;
-  for (const c of d.changed) s += `\n      ~ [${c.id}]${baseline(c.recorded)}${actual(c.actual)}`;
+  for (const c of d.changed) {
+    // pair-aware truncation so a long recorded-vs-live element shows WHERE it diverges
+    const { a: base, b: act } = jPair(c.recorded, c.actual);
+    s += `\n      ~ [${c.id}]\n          baseline=${style.desired(base)}\n          actual  =${style.actual(act)}`;
+  }
   for (const r of d.removed) s += `\n      - [${r.id}]${baseline(r.value)}`;
   return s;
 }
@@ -336,7 +341,32 @@ export function stackSeparator(log: (s: string) => void = console.log): () => vo
     else log('');
   };
 }
+const VALUE_CAP = 200;
 function j(v: unknown): string {
   const s = JSON.stringify(v);
-  return s && s.length > 200 ? s.slice(0, 200) + '…' : s;
+  return s && s.length > VALUE_CAP ? s.slice(0, VALUE_CAP) + '…' : (s ?? String(v));
+}
+
+// Truncate a desired/actual (or baseline/actual) PAIR so the FIRST point at which the
+// two diverge is visible even when both exceed the cap — one shared window centered on
+// the divergence, applied to both. Independently slicing each at a fixed 200-char prefix
+// (the old behavior) made two long values that differ only PAST the cap render as
+// identical blobs, hiding the very change the report exists to show (common for long
+// inline-policy / bucket-policy documents). Pure + exported for tests.
+export function jPair(a: unknown, b: unknown): { a: string; b: string } {
+  const as = JSON.stringify(a) ?? String(a);
+  const bs = JSON.stringify(b) ?? String(b);
+  if (as.length <= VALUE_CAP && bs.length <= VALUE_CAP) return { a: as, b: bs };
+  let i = 0;
+  const min = Math.min(as.length, bs.length);
+  while (i < min && as[i] === bs[i]) i++; // first index at which they differ
+  const CONTEXT = 40; // chars of shared lead-in kept before the divergence, for orientation
+  const start = Math.max(0, i - CONTEXT);
+  const window = (s: string): string => {
+    let out = s.slice(start, start + VALUE_CAP);
+    if (start > 0) out = `…${out}`;
+    if (start + VALUE_CAP < s.length) out = `${out}…`;
+    return out;
+  };
+  return { a: window(as), b: window(bs) };
 }
