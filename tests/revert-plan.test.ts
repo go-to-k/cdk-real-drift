@@ -391,6 +391,55 @@ describe('buildRevertPlan', () => {
     expect(plan.items).toHaveLength(1);
   });
 
+  it('a NESTED create-only path (parent mutable) is notRevertable, not a doomed in-place patch', () => {
+    // ECR EncryptionConfiguration is mutable but EncryptionConfiguration.KmsKey is
+    // create-only; the top-level-only check missed it and built a patch AWS rejects at
+    // apply time. createOnlyPaths carries the nested path; isUnderCreateOnly catches it.
+    const ecr = (...paths: string[]) => schemaWithCreateOnly('AWS::ECR::Repository', ...paths);
+    const drift = (path: string) =>
+      buildRevertPlan(
+        [
+          F({
+            resourceType: 'AWS::ECR::Repository',
+            tier: 'declared',
+            path,
+            desired: 'a',
+            actual: 'b',
+          }),
+        ],
+        undefined,
+        { schemas: ecr('EncryptionConfiguration.KmsKey') }
+      );
+    expect(drift('EncryptionConfiguration.KmsKey').notRevertable[0]!.reason).toContain(
+      'create-only'
+    );
+    expect(drift('EncryptionConfiguration.KmsKey').items).toHaveLength(0);
+    // a SIBLING nested path that is NOT create-only still plans a revert op
+    expect(drift('EncryptionConfiguration.RegistryId').items).toHaveLength(1);
+  });
+
+  it('a wildcard nested create-only path matches an array-index finding path', () => {
+    // EFS AccessPoint PosixUser.* (and a `Foo.*.Bar` array form) are create-only
+    const efs = schemaWithCreateOnly('AWS::EFS::AccessPoint', 'PosixUser.*', 'Tags.*.Key');
+    const plan = (path: string) =>
+      buildRevertPlan(
+        [
+          F({
+            resourceType: 'AWS::EFS::AccessPoint',
+            tier: 'declared',
+            path,
+            desired: 'a',
+            actual: 'b',
+          }),
+        ],
+        undefined,
+        { schemas: efs }
+      );
+    expect(plan('PosixUser.Uid').notRevertable[0]!.reason).toContain('create-only');
+    expect(plan('Tags.0.Key').notRevertable[0]!.reason).toContain('create-only'); // numeric index aligns with *
+    expect(plan('Tags.0.Value').items).toHaveLength(1); // .Value is not under the create-only Key path
+  });
+
   it('deleted finding -> notRevertable (recreate via cdk deploy), never a patch op', () => {
     const plan = buildRevertPlan(
       [F({ tier: 'deleted', path: '', desired: undefined, actual: undefined })],

@@ -91,10 +91,35 @@ export interface RevertOptions {
   schemas?: Map<string, SchemaInfo>;
 }
 
-// the first dotted segment of a finding path ("A.B.0" -> "A"), used to test the
-// top-level create-only set.
-function topSegment(path: string): string {
-  return path.split('.')[0] ?? path;
+// True when a finding path is AT or UNDER any create-only schema path. The schema's
+// `createOnlyPaths` are full dotted paths with `*` wildcards (e.g. `EncryptionConfiguration
+// .KmsKey`, `PosixUser.*`, `Foo.*.Bar`); a finding's array-index segments (`[id]` or a
+// numeric `.0`) align with those `*`. Segment-wise PREFIX membership, so a NESTED
+// create-only property (parent mutable) is caught — the previous top-level-only check
+// (`createOnly.has(firstSegment)`) missed those, and a `revert` then built an in-place
+// patch that AWS rejects only at apply time (e.g. ECR `EncryptionConfiguration.KmsKey`,
+// EFS AccessPoint `PosixUser.*`).
+function pathSegments(path: string): string[] {
+  return path
+    .replace(/\[[^\]]*\]/g, '.*')
+    .split('.')
+    .filter((s) => s.length > 0);
+}
+function isUnderCreateOnly(findingPath: string, createOnlyPaths: readonly string[]): boolean {
+  const f = pathSegments(findingPath);
+  for (const co of createOnlyPaths) {
+    const c = co.split('.');
+    if (c.length > f.length) continue; // can't be a prefix of the finding path
+    let match = true;
+    for (let i = 0; i < c.length; i++) {
+      if (c[i] !== '*' && c[i] !== f[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
 }
 
 export function buildRevertPlan(
@@ -228,7 +253,8 @@ export function buildRevertPlan(
     }
     // create-only property: an in-place UpdateResource patch would be rejected (the
     // change needs a replacement) — report it now instead of failing at apply time.
-    if (opts.schemas?.get(f.resourceType)?.createOnly.has(topSegment(f.path))) {
+    const schema = opts.schemas?.get(f.resourceType);
+    if (schema && isUnderCreateOnly(f.path, schema.createOnlyPaths)) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
