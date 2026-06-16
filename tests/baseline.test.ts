@@ -512,6 +512,29 @@ describe('baseline', () => {
     expect(out).toEqual([skipped]);
   });
 
+  it('does NOT double-report per-property removals for a resource DELETED out of band', () => {
+    // 'A' was deleted out of band -> gather emits ONE resource-level `deleted` finding,
+    // which already conveys that the whole resource (and every recorded value) is gone.
+    // Its recorded baseline values must NOT each re-surface as a "baseline value removed"
+    // undeclared finding: that is redundant noise and inflates the drift count (1 deletion
+    // would read as 1 + N drifts).
+    const b = baseline([
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P1', value: ['x'] },
+      { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P2', value: ['y'] },
+    ]);
+    const deleted: Finding = {
+      tier: 'deleted',
+      logicalId: 'A',
+      resourceType: 'AWS::X::Y',
+      path: '',
+      note: 'resource deleted out of band',
+    };
+    const out = applyBaseline([deleted], b);
+    expect(out.some((f) => f.note === 'baseline value removed since record')).toBe(false);
+    // ONLY the single deleted finding remains — the deletion is the drift
+    expect(out).toEqual([deleted]);
+  });
+
   it('does NOT report a removal when the recorded path was promoted into the template', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const warnings: string[] = [];
