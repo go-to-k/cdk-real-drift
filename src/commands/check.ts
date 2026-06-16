@@ -10,6 +10,7 @@ import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
   checkBaselineAccount,
+  constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
   warnBaselineSchemaV1,
@@ -313,6 +314,7 @@ export async function runCheck(args: string[]): Promise<number> {
           ? findings
           : applyBaseline(findings, baseline, {
               declaredByLogical: declaredKeysByLogical(desired.resources),
+              constructPathByLogical: constructPathsByLogical(desired.resources),
               warn: (s: string) => {
                 if (!a.json) console.error(s);
               },
