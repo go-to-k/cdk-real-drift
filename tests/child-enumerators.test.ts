@@ -8,6 +8,7 @@ import {
   diffGraphQLApiResolvers,
   diffKmsKeyChildren,
   diffLambdaFunctionChildren,
+  diffLambdaFunctionUrls,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
   diffRouteTableChildren,
@@ -335,6 +336,48 @@ describe('diffLambdaFunctionChildren (Lambda event source mappings)', () => {
         liveMappings: [
           { id: 'a', label: Q('a') },
           { id: 'b', label: Q('b') },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLambdaFunctionUrls (Lambda function URLs)', () => {
+  const ARN = (n: string) => `arn:aws:lambda:us-east-1:111122223333:function:${n}`;
+
+  it('flags an out-of-band function URL (not in the template)', () => {
+    const added = diffLambdaFunctionUrls({
+      declaredUrlArns: [ARN('FnDeclared')],
+      liveUrls: [
+        { arn: ARN('FnDeclared'), label: `NONE ${ARN('FnDeclared')}` },
+        { arn: ARN('FnTarget'), label: `NONE ${ARN('FnTarget')}` },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::Url',
+        identifier: ARN('FnTarget'),
+        label: `NONE ${ARN('FnTarget')}`,
+        live: { FunctionArn: ARN('FnTarget') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare FunctionArn (CC primaryIdentifier)', () => {
+    const added = diffLambdaFunctionUrls({
+      declaredUrlArns: [],
+      liveUrls: [{ arn: ARN('FnX') }],
+    });
+    expect(added[0]!.identifier).toBe(ARN('FnX'));
+  });
+
+  it('no drift when every live URL is declared', () => {
+    expect(
+      diffLambdaFunctionUrls({
+        declaredUrlArns: [ARN('A'), ARN('B')],
+        liveUrls: [
+          { arn: ARN('A'), label: `NONE ${ARN('A')}` },
+          { arn: ARN('B'), label: `AWS_IAM ${ARN('B')}` },
         ],
       })
     ).toEqual([]);
