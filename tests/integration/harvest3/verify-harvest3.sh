@@ -34,13 +34,13 @@ OUT=/tmp/cdkrd-harvest3.out
 cleanup() {
   # CDKRD_HARVEST3_KEEP=1 skips the destroy so a corpus/debug session can keep
   # iterating against the deployed stack. Destroy manually when done:
-  #   npx cdk destroy -f CdkrdIntegHarvest3 && rm -rf .cdkrd cdk.out
+  #   delstack cdk -a cdk.out -r us-east-1 -f -y && rm -rf .cdkrd cdk.out
   if [ -n "${CDKRD_HARVEST3_KEEP:-}" ]; then
     echo "--- keeping stack (CDKRD_HARVEST3_KEEP set) — destroy manually when done ---"
     return
   fi
   echo "--- cleanup ---"
-  npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
+  delstack cdk -a cdk.out -r "$REGION" -f -y >/dev/null 2>&1 || npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
   rm -rf .cdkrd cdk.out
 }
 trap cleanup EXIT

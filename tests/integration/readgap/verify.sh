@@ -22,7 +22,7 @@ CLI="node $ROOT/dist/cli.js"
 
 cleanup() {
   echo "--- cleanup ---"
-  npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
+  delstack cdk -a cdk.out -r "$REGION" -f -y >/dev/null 2>&1 || npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
   # purge the secret immediately (cdk destroy only SCHEDULES deletion)
   aws secretsmanager delete-secret --secret-id "$SECRET" \
     --force-delete-without-recovery --region "$REGION" >/dev/null 2>&1 || true

@@ -16,7 +16,7 @@ CLI="node $ROOT/dist/cli.js"
 
 cleanup() {
   echo "--- cleanup (CloudFront destroy is slow) ---"
-  npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
+  delstack cdk -a cdk.out -r "$REGION" -f -y >/dev/null 2>&1 || npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
   rm -rf .cdkrd cdk.out
 }
 trap cleanup EXIT
