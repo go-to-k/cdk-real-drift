@@ -57,6 +57,13 @@ export interface Finding {
   // "changed since record" off the degraded snippet (it suppresses a recorded one until
   // a clean read, like a transiently-skipped resource). Self-heals on the next check.
   modelReadFailed?: boolean;
+  // declared tier only (R111): set to 'unresolved' on an IAM Role `Policies` finding
+  // when the role's sibling AWS::IAM::Policy names could NOT be resolved, so classify
+  // left the sibling-managed (DefaultPolicy) entries in the live array. The revert plan
+  // reads this and refuses to act — a per-entry revert would DELETE a managed inline
+  // policy (real IAM grants). Mirrors DesiredResource.siblingPolicyNames; only the
+  // 'unresolved' sentinel is propagated (the resolved case is already filtered out).
+  siblingPolicyNames?: 'unresolved' | undefined;
 }
 
 // Element-level delta of a recorded-but-changed undeclared identity-keyed object

@@ -263,6 +263,22 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // R111: an IAM Role whose sibling AWS::IAM::Policy names could NOT be resolved
+    // statically keeps the sibling-managed (DefaultPolicy) entries in its live
+    // Policies array — classify could not separate them, and marked this finding
+    // accordingly. The per-entry writer (writeIamRoleInlinePolicies) deletes every
+    // prior entry the declared set drops, so reverting here would DELETE a managed
+    // inline policy, removing real IAM grants. Refuse rather than wrong-write.
+    if (f.siblingPolicyNames === 'unresolved') {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'inline policies are managed by a sibling AWS::IAM::Policy whose name could not be resolved — reverting could delete a managed policy',
+      });
+      continue;
+    }
     // property-scoped SDK writers match the EXACT top-level finding path only
     // (deeper paths keep going through Cloud Control); a resource can therefore
     // split into one cc item and one sdk item per scoped path — key the grouping
