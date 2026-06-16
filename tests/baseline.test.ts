@@ -232,6 +232,45 @@ describe('baseline', () => {
         actual: 3600,
       });
     });
+
+    it('a recorded value changed to an AWS-GENERATED form IS drift (generalizes the atDefault case)', () => {
+      // same class as the atDefault reset, for the `generated` tier: a recorded
+      // undeclared LogFormat reset out of band to the AWS-generated default. classify
+      // tags today's value `generated`; because it CHANGED from the baseline it must
+      // surface as drift, not be folded as generated nor mislabeled "removed".
+      const generated = (logicalId: string, path: string, value: unknown): Finding => ({
+        tier: 'generated',
+        logicalId,
+        resourceType: 'AWS::Lambda::Function',
+        path,
+        actual: value,
+      });
+      const b = baseline([
+        {
+          logicalId: 'Fn',
+          resourceType: 'AWS::Lambda::Function',
+          path: 'LogFormat',
+          value: 'JSON',
+        },
+      ]);
+      const out = applyBaseline([generated('Fn', 'LogFormat', 'Text')], b);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'LogFormat', actual: 'Text' });
+      // and NOT a duplicate "removed since record" entry
+      expect(out.some((f) => f.note === 'baseline value removed since record')).toBe(false);
+    });
+
+    it('a generated value with NO baseline entry passes through folded (not removed, not drift)', () => {
+      const generated: Finding = {
+        tier: 'generated',
+        logicalId: 'Fn',
+        resourceType: 'AWS::Lambda::Function',
+        path: 'LoggingConfig',
+        actual: { LogGroup: '/aws/lambda/x' },
+      };
+      const out = applyBaseline([generated], baseline([]));
+      expect(out).toEqual([generated]);
+    });
   });
 
   it('re-canonicalizes the baseline value before compare (old unsorted form still matches)', () => {

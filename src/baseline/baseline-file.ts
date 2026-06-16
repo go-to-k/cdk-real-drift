@@ -372,10 +372,13 @@ export function applyBaseline(
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
   const kept: Finding[] = [];
   for (const f of findings) {
-    // atDefault is reconciled alongside undeclared (R86): a value the user already
-    // recorded is suppressed whichever tier it lands in today, so a baseline entry
-    // whose live value is now classified at-default does NOT read as "removed".
-    if (f.tier !== 'undeclared' && f.tier !== 'atDefault') {
+    // atDefault AND generated are reconciled alongside undeclared (R86): a value the
+    // user already recorded is suppressed whichever undeclared-side tier it lands in
+    // today, so a baseline entry whose live value is now classified at-default OR
+    // generated does NOT read as "removed" — and a recorded value CHANGED to one of
+    // those forms still surfaces as drift (handled below), not folded away. (The three
+    // tiers here mirror the `currentPaths` filter at the bottom of this function.)
+    if (f.tier !== 'undeclared' && f.tier !== 'atDefault' && f.tier !== 'generated') {
       kept.push(f);
       continue;
     }
@@ -399,11 +402,12 @@ export function applyBaseline(
       kept.push({ ...f, tier: 'undeclared', ...(delta && { arrayDelta: delta }) });
       continue;
     }
-    if (f.tier === 'atDefault') {
-      // No recorded entry and the value equals a known AWS default (the equality gate
-      // proved it): folded inventory — never drift, never unrecorded. A genuine change
-      // away from the default would not match a default and arrives as tier
-      // 'undeclared', handled below.
+    if (f.tier === 'atDefault' || f.tier === 'generated') {
+      // No recorded entry and the value equals a known AWS default / an AWS-generated
+      // form (the equality gate proved it): folded inventory — never drift, never
+      // unrecorded. A genuine change AWAY from it would not match and arrives as tier
+      // 'undeclared', handled below; a recorded value changed TO it is the entry branch
+      // above (drift).
       kept.push(f);
       continue;
     }
@@ -417,12 +421,15 @@ export function applyBaseline(
       kept.push({ ...f, unrecorded: true }); // never decided -> not drift
     }
   }
-  // removed: recorded entries whose path is no longer present in any current undeclared
-  // OR at-default finding (R86: an recorded value reclassified at-default is still
-  // present, not removed).
+  // removed: recorded entries whose path is no longer present in any current
+  // undeclared / at-default / generated finding (R86: a recorded value reclassified to
+  // any of those undeclared-side tiers is still PRESENT — reconciled above as either
+  // suppressed-unchanged or drift — not "removed"). Must match the reconciliation tier
+  // set at the top of the loop, else a recorded value changed to a generated/at-default
+  // form would be both surfaced as drift AND double-reported here as removed.
   const currentPaths = new Set(
     findings
-      .filter((f) => f.tier === 'undeclared' || f.tier === 'atDefault')
+      .filter((f) => f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
       .map((f) => `${f.logicalId}.${f.path}`)
   );
   // R134: baseline entries promoted into the template since record are a "clean up your
