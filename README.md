@@ -60,32 +60,27 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[Not Recorded: 3] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
+[Not Recorded: 2] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
-  ApiStack/Api.EndpointConfiguration.IpAddressType (AWS::ApiGateway::RestApi) = "ipv4"
 
-result: NO DRIFT — 3 value(s) to record (run cdkrd record)
+result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; run cdkrd record)
 info:
   - atDefault=40 (undeclared values matching a known AWS default — not drift)
-  - generated=2 (auto-generated identifiers not in your template, AWS-assigned at deploy — not drift)
+  ...
 
-ApiStack: values to record found — what do you want to do?
+ApiStack: unrecorded values found — what do you want to do?
   ❯ Nothing (decide later)
-    Record all (live-only values) — snapshot into the .cdkrd baseline (keeps watching)
+    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each
 ```
 
-The verdict is **`NO DRIFT` (not `CLEAN`)** because there is a pending action —
-values to record — even though nothing has drifted yet. On a first run (no
-baseline) the report lists **every** live-only value you'd record, including
-nested sub-keys you never touched, so the report and the record checklist show
-the **same** set (no "0 shown, N folded" surprise). Only AWS defaults and
-auto-generated identifiers fold into the `info:` footer — they are never recorded
-(`atDefault=` / `generated=`, `--show-all` lists them). (Day to day, once a
-baseline exists, the fold is tighter: re-surfaced nested defaults fold too, so
-steady-state checks stay quiet.)
+The report always prints **first**, so you see the standout values before deciding
+(no blind bulk-record). The count is the **complete** undeclared inventory, but
+only the handful that **stand out** are listed — AWS defaults, auto-generated
+names/identifiers, and nested sub-keys you never touched fold into the `info:`
+footer (`atDefault=` / `generated=` / `nested=`, `--show-all` expands them).
 Choosing Record opens a checklist (everything pre-selected — Enter to record all,
 or deselect what you want to keep visible) and writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
@@ -98,7 +93,7 @@ reports it and asks right there:
 ```console
 ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
-    Record all (live-only values) — snapshot into the .cdkrd baseline (keeps watching)
+    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert all — write the desired values to AWS
     Ignore all — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — pick an action for each

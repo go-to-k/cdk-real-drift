@@ -294,10 +294,6 @@ export async function runCheck(args: string[]): Promise<number> {
         // --show-all is inventory mode: list every undeclared value, including the
         // ones at an AWS default (otherwise folded to a count) (R86).
         expandAtDefault: a.showAll,
-        // R138: no baseline file → first run. Expand nested unrecorded values (so the
-        // report shows the same set the record prompt offers) and print the distinct
-        // "N value(s) to record" verdict instead of a misleading CLEAN.
-        firstRun: !baseline,
       });
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 

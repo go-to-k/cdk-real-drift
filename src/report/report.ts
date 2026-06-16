@@ -81,7 +81,6 @@ export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
   expandAtDefault?: boolean; // expand ONLY the atDefault tier to a full list (--show-all inventory mode)
-  firstRun?: boolean; // no baseline file yet: expand nested unrecorded + use the "to record" verdict (R138)
   log?: (s: string) => void;
 }
 // Unrecorded values (R60, per finding since R62): an undeclared finding tagged
@@ -204,19 +203,9 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // Top-level unrecorded values still list in full in [UNRECORDED]; the nested ones
   // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
   // record records them, so a later out-of-band change to one surfaces as drift.
-  // R138: on a FIRST run (no baseline) the nested unrecorded values ARE the set the
-  // record prompt asks about — folding them to "0 shown, N folded" contradicts the very
-  // next prompt. Expand on firstRun; the steady-state fold (R96) is otherwise unchanged.
-  const expandNested = !!opts.verbose || !!opts.expandAtDefault || !!opts.firstRun;
-  let unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
-  // R139: never print "0 shown". If folding hid EVERY unrecorded value (they are all
-  // nested), the report would say "0 shown, N folded" and the record prompt would then
-  // immediately ask about those N — the same contradiction R138 fixed for the first run,
-  // but it can also arise in steady state when a newly-appeared value is nested. Expand
-  // them so the report and the prompt always agree; folding still applies whenever at
-  // least one value stands out.
-  if (unrecordedShown.length === 0) unrecordedShown = unrecordedItems;
-  const nestedFolded = unrecordedItems.filter((f) => !unrecordedShown.includes(f));
+  const expandNested = !!opts.verbose || !!opts.expandAtDefault;
+  const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
+  const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
@@ -247,9 +236,6 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
   // UNRECORDED: full detail like a drift section (these values await a decision —
   // hiding them would defeat the differentiator), but kept OUT of the verdict.
-  // R139: one section name in both first-run and steady state — the verdict already
-  // carries the first-run "to record" framing, so a separate "[To Record]" header (R138)
-  // only split one concept into two labels. "Not Recorded" reads correctly either way.
   if (
     section(
       unrecordedShown,
@@ -289,16 +275,6 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       // PROPERTIES plus out-of-band `added` RESOURCES (PR4) — both await a record.
       ` + ${style.undeclaredTier(`${unrecordedShown.length} not-recorded to review`)}` +
       style.infoTier(` (${foldedHint})`);
-  } else if (opts.firstRun && drifted === 0 && unrecordedItems.length > 0) {
-    // R138: a FIRST run (no baseline) with values to record and no drift is NOT "CLEAN" —
-    // green CLEAN reads as "nothing to do" right before the record prompt asks the user to
-    // record those very values. Name the state (NO DRIFT, neutral — not the green all-clear)
-    // and the pending action. On a first run nested values are expanded, so there is no
-    // "X shown, Y folded" split to report.
-    resultBody =
-      `${style.infoTier('NO DRIFT')} — ` +
-      style.undeclaredTier(`${unrecordedItems.length} value(s) to record`) +
-      style.infoTier(' (run cdkrd record)');
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count
     const verdict =

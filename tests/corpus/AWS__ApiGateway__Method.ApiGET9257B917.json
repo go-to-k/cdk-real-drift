@@ -71,7 +71,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ApiGET9257B917",
       "resourceType": "AWS::ApiGateway::Method",
       "path": "Integration.CacheNamespace",

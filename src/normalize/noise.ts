@@ -193,12 +193,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // when it deep-equals the listed default, so an out-of-band change away from the
 // default no longer matches and falls through to a real `undeclared` finding;
 // `atDefault` is still surfaced (folded into the report footer, listed by
-// --show-all), never dropped and never recorded by record. Resource-/account-/
-// throughput-specific values are deliberately EXCLUDED (genuine inventory, not
-// constants): ApiGateway Method `Integration.CacheNamespace` (a generated id),
-// Budgets `Budget.BudgetName` (a generated name), DynamoDB GSI `*.WarmThroughput`
-// (mirrors the table's provisioned throughput, not a constant).
+// --show-all), never dropped and never recorded by record. Values that are a
+// generated ID (not a constant) are EXCLUDED here and folded as `generated`
+// instead — via GENERATED_DEFAULTS / isGeneratedName, or GENERATED_PATHS for a
+// nested id cdkrd cannot template (ApiGateway Method `Integration.CacheNamespace`,
+// the parent Resource's id). Genuine resource-/account-/throughput inventory stays
+// EXCLUDED from both (Budgets `Budget.BudgetName`, DynamoDB GSI `*.WarmThroughput`).
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  'AWS::ApiGateway::DomainName': {
+    // AWS sets a custom domain's IP address type to ipv4 when the template leaves
+    // EndpointConfiguration.IpAddressType unset — a server default, not user intent.
+    'EndpointConfiguration.IpAddressType': 'ipv4',
+  },
   'AWS::ApiGateway::Method': {
     'Integration.PassthroughBehavior': 'WHEN_NO_MATCH',
     'Integration.ResponseTransferMode': 'BUFFERED',
@@ -282,6 +288,19 @@ export const GENERATED_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Lambda::Function': {
     LoggingConfig: { LogFormat: 'Text', LogGroup: '/aws/lambda/${PHYSICAL_NAME}' },
   },
+};
+
+// NESTED paths whose value is ALWAYS an AWS-assigned generated id, regardless of
+// the exact value — the value-INDEPENDENT analogue of GENERATED_DEFAULTS, for ids
+// cdkrd cannot template from the resource's OWN physical id. Example: an ApiGateway
+// Method's `Integration.CacheNamespace` defaults to the PARENT Resource's id (not
+// the Method's), so neither KNOWN_DEFAULT_PATHS (a fixed value) nor GENERATED_DEFAULTS
+// (the resource's own id) can express it. A value at one of these paths is AWS-minted,
+// never user intent, so it folds into the `generated` tier on ANY value (inventory,
+// never drift, never recorded). Trade-off: a later out-of-band change is NOT surfaced
+// — acceptable for cosmetic AWS-assigned ids the user never meaningfully sets.
+export const GENERATED_PATHS: Record<string, string[]> = {
+  'AWS::ApiGateway::Method': ['Integration.CacheNamespace'],
 };
 
 // R107: a scalar property whose value IS this resource's generated NAME taken from

@@ -27,6 +27,7 @@ import {
   isGeneratedName,
   isTrivialEmpty,
   isVersionPrefixMatch,
+  GENERATED_PATHS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   resolveGeneratedDefault,
@@ -490,6 +491,9 @@ export function classifyResource(
   // the CFn schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read
   // through the SAME wildcard lookup, equality-gated identically.
   const knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  // R140: nested paths that are always an AWS-assigned generated id (value-independent),
+  // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
+  const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
   for (const [k, dv] of Object.entries(declared)) {
     // Only skip a WHOLLY-unresolved property: collectNestedUndeclared descends to emit
     // LIVE-only keys, and an UNRESOLVED declared leaf is inert there (isNestedObject/
@@ -505,7 +509,11 @@ export function classifyResource(
       const atDefault =
         (schemaPath in schema.defaultPaths && deepEqual(value, schema.defaultPaths[schemaPath])) ||
         (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
-      const tier = atDefault ? 'atDefault' : 'undeclared';
+      const tier = atDefault
+        ? 'atDefault'
+        : generatedPaths.includes(schemaPath)
+          ? 'generated'
+          : 'undeclared';
       findings.push({ tier, logicalId, resourceType, path, actual: value, nested: true });
     });
   }
