@@ -2,7 +2,7 @@
 // Write the current undeclared state into the baseline FILE(s). Writes ONLY
 // git-committed baselines; no AWS writes. The per-stack record flow lives in
 // stack-actions.ts (shared with check's interactive prompt, R28).
-import { isStackNotDeployed } from '../aws-errors.js';
+import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -59,6 +59,10 @@ export async function runRecord(args: string[]): Promise<number> {
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — nothing to record`);
+        continue;
+      }
+      if (e instanceof StackNotCheckableError) {
+        console.error(`note: ${stackName}: ${e.message} — nothing to record`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);
