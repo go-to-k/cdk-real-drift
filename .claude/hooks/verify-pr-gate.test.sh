@@ -24,6 +24,23 @@ git -C "$side_repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m 
 git init -q -b main "$main_repo"
 git -C "$main_repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 
+# Fixture for the NON-SRC EXEMPTION: a repo with a real origin/main and two
+# feature branches off it — one changing only a non-src file (README), one
+# touching src/. The exemption must let the docs-only PR through (exit 0) even
+# when the markgate verdict is stale, but still gate the src/ PR (exit 2).
+exempt_repo="$TMPDIR/exempt-repo"
+gx() { git -C "$exempt_repo" -c user.email=t@t -c user.name=t "$@"; }
+git init -q -b main "$exempt_repo"
+mkdir -p "$exempt_repo/src"
+printf 'keep\n' > "$exempt_repo/src/keep.ts"
+printf 'readme\n' > "$exempt_repo/README.md"
+gx add -A; gx commit -q -m init
+gx update-ref refs/remotes/origin/main HEAD
+gx checkout -q -b feature/docs
+printf 'more\n' >> "$exempt_repo/README.md"; gx add -A; gx commit -q -m "docs only"
+gx checkout -q -b feature/src main
+printf 'change\n' >> "$exempt_repo/src/keep.ts"; gx add -A; gx commit -q -m "src change"
+
 SHIM_DIR="$TMPDIR/bin"
 mkdir -p "$SHIM_DIR"
 CWD_TRACE_FILE="$TMPDIR/cwd-trace"
@@ -161,6 +178,23 @@ run_case "gh issue body quoting 'gh pr create' passes through" 0 stale "" \
 #     the command starts with `echo`. MUST pass through.
 run_case "echo body quoting 'gh pr merge' passes through" 0 stale "" \
   "$(printf '{"cwd":"%s","tool_input":{"command":"echo \"after CI green: gh pr merge --squash\""}}' "$side_repo")"
+
+# --- NON-SRC EXEMPTION cases ---
+#
+# A docs/tooling-only PR (no src/** in the diff) is exempt: it exits 0 BEFORE
+# markgate is consulted, even with a stale verdict. A PR that touches src/** is
+# still gated (exit 2 when stale). expect_cwd="" for the exempt case because the
+# hook returns before invoking markgate (no cwd trace written).
+
+# 14. feature/docs (README-only diff vs origin/main) → exempt, exit 0 even stale.
+gx checkout -q feature/docs
+run_case "non-src (docs-only) PR exempt from verify-pr" 0 stale "" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"gh pr create --title docs"}}' "$exempt_repo")"
+
+# 15. feature/src (src/ diff vs origin/main) → still gated, exit 2 when stale.
+gx checkout -q feature/src
+run_case "src-touching PR still gated" 2 stale "$exempt_repo" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"gh pr create --title src"}}' "$exempt_repo")"
 
 echo
 echo "Pass: $pass  Fail: $fail"

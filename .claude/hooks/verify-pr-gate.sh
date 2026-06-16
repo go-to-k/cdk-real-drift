@@ -89,6 +89,33 @@ fi
 
 cd "$target_dir" 2>/dev/null || exit 0
 
+# Non-src exemption: /verify-pr's heavy half (live-test changed behavior +
+# real-AWS integration fixtures + retrospective) only earns its cost when the
+# change carries RUNTIME BEHAVIOR — i.e. touches `src/**`. A PR that edits only
+# docs, tooling (.claude/**, .github/**, .mise.toml), or integ teardown scripts
+# has no behavior to live-test; the `check` + `docs` markers (enforced at commit
+# by check-gate) already cover its quality. Demanding a full /verify-pr there
+# (which needs AWS credentials it doesn't exercise) is pure friction. So: if the
+# PR's diff vs the base contains NO `src/**` path, let it through.
+#
+# Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
+# only skip the gate when we can PROVE the diff is src-free.
+base=""
+for ref in origin/main origin/master main master; do
+  if git rev-parse --verify --quiet "$ref" >/dev/null 2>&1; then base="$ref"; break; fi
+done
+if [ -n "$base" ]; then
+  mb=$(git merge-base "$base" HEAD 2>/dev/null || echo "")
+  if [ -n "$mb" ]; then
+    changed=$(git diff --name-only "$mb" HEAD 2>/dev/null || echo "__ERR__")
+    if [ "$changed" != "__ERR__" ] && [ -n "$changed" ] \
+       && ! printf '%s\n' "$changed" | grep -qE '^src/'; then
+      echo "verify-pr-gate: PR diff touches no src/** (docs/tooling-only) — exempt from /verify-pr (check + docs cover it)." >&2
+      exit 0
+    fi
+  fi
+fi
+
 # Prefer the `.mise.toml`-pinned version via `mise exec --` so the repo's
 # canonical markgate wins over an older PATH binary; see check-gate.sh for
 # the schema-bump rationale (0.3.0 markers are silently invisible to 0.3.1).

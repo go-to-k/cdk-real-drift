@@ -167,7 +167,12 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's
   branch-protection (`branch-gate`) and verify-pr-merge (`verify-pr-gate`) gates
   ARE now ported and wired (R83), plus the OSS English-only
-  `non-english-text-gate`. pr-review and integ-\* stay UNPORTED on purpose:
+  `non-english-text-gate` and the `stale-base-gate` (blocks a `git push`
+  whose branch sits on `origin/main` yet reverts recent main work — the
+  stale-base soft-reset clobber that bit this worktree flow twice).
+  `verify-pr-gate` is EXEMPT for docs/tooling-only PRs (no `src/**` in the
+  diff): `check` + `docs` already cover them, so a full `/verify-pr` (with
+  its real-AWS live-test) is not demanded. pr-review and integ-\* stay UNPORTED on purpose:
   pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
   providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
 
