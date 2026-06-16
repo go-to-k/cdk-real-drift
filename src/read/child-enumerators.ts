@@ -1304,9 +1304,10 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
 // invisible to cdk drift / CFn drift detection (they only compare template-declared
 // resources). The RouteTable's own live model does NOT reflect its routes inline (it
 // carries only RouteTableId / VpcId / Tags), so there is no double-report to suppress.
-// The VPC-CIDR LOCAL route is auto-created with the route table (it is not a declared
-// AWS::EC2::Route), so it is skipped (`Origin === 'CreateRouteTable'` / `GatewayId ===
-// 'local'`). Only IPv4 routes (those with a DestinationCidrBlock) are handled, since the
+// Non-declarable routes are skipped by `isEnumerableRoute`: the auto-created VPC-CIDR
+// LOCAL route (`Origin CreateRouteTable` / `GatewayId local`) and VGW-PROPAGATED routes
+// (`Origin EnableVgwRoutePropagation` — BGP/propagated, not declarable `AWS::EC2::Route`
+// resources). Only IPv4 routes (those with a DestinationCidrBlock) are handled, since the
 // CC identifier keys on CidrBlock. The CC primaryIdentifier for AWS::EC2::Route is the
 // composite `["/properties/RouteTableId","/properties/CidrBlock"]`, so the `identifier`
 // is the composite `RouteTableId|CidrBlock` (RouteTableId first) — that is what CC
@@ -1340,6 +1341,25 @@ async function describeRouteTable(client: EC2Client, routeTableId: string): Prom
   return res.RouteTables?.[0]?.Routes ?? [];
 }
 
+// A live route is an enumerable out-of-band `AWS::EC2::Route` only if it is one a user
+// could have declared. EXCLUDED:
+//   - the auto-created VPC-CIDR LOCAL route (Origin CreateRouteTable / GatewayId local);
+//   - an IPv6-only route (no DestinationCidrBlock — the CC identifier keys on CidrBlock);
+//   - a route inserted by VGW route PROPAGATION (Origin EnableVgwRoutePropagation): these
+//     are BGP/propagated, not declarable `AWS::EC2::Route` resources, and AWS re-creates
+//     them — flagging one as `added` is a false positive, and a `revert` DeleteResource
+//     would either churn (AWS re-propagates) or fail. Pure + exported for unit tests.
+export function isEnumerableRoute(
+  route: Ec2Route
+): route is Ec2Route & { DestinationCidrBlock: string } {
+  return (
+    typeof route.DestinationCidrBlock === 'string' &&
+    route.Origin !== 'CreateRouteTable' &&
+    route.Origin !== 'EnableVgwRoutePropagation' &&
+    route.GatewayId !== 'local'
+  );
+}
+
 async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const routeTableId = parent.physicalId; // a RouteTable's physical id IS its RouteTableId
@@ -1362,14 +1382,7 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
   const client = new EC2Client({ region, ...READ_RETRY });
   const routes = await describeRouteTable(client, routeTableId);
   const liveRoutes = routes
-    // Skip the auto-created VPC-local route (not a declared AWS::EC2::Route) and any
-    // IPv6-only route (no DestinationCidrBlock — the CC identifier keys on CidrBlock).
-    .filter(
-      (route): route is Ec2Route & { DestinationCidrBlock: string } =>
-        typeof route.DestinationCidrBlock === 'string' &&
-        route.Origin !== 'CreateRouteTable' &&
-        route.GatewayId !== 'local'
-    )
+    .filter(isEnumerableRoute)
     .map((route) => ({ cidr: route.DestinationCidrBlock }));
 
   return diffRouteTableChildren({ routeTableId, declaredCidrs, liveRoutes });

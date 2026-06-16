@@ -17,6 +17,7 @@ import {
   diffUserPoolGroups,
   diffUserPoolResourceServers,
   diffVpcChildren,
+  isEnumerableRoute,
 } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
@@ -804,6 +805,51 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
         liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '192.168.0.0/16' }],
       })
     ).toEqual([]);
+  });
+
+  describe('isEnumerableRoute', () => {
+    it('keeps a user-declarable route (manual CreateRoute with a real CIDR)', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationCidrBlock: '10.99.0.0/16',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        })
+      ).toBe(true);
+    });
+
+    it('excludes the auto-created VPC-local route', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationCidrBlock: '10.0.0.0/16',
+          Origin: 'CreateRouteTable',
+          GatewayId: 'local',
+        })
+      ).toBe(false);
+    });
+
+    it('excludes a VGW-propagated route (Origin EnableVgwRoutePropagation) — not a declarable resource', () => {
+      // The reported false-`added`: a route table with EnableVgwRoutePropagation:true
+      // gets BGP/propagated routes with a real CIDR and a VGW GatewayId (not 'local'),
+      // so the old filter let them through and flagged each as an out-of-band Route.
+      expect(
+        isEnumerableRoute({
+          DestinationCidrBlock: '172.16.0.0/16',
+          Origin: 'EnableVgwRoutePropagation',
+          GatewayId: 'vgw-0abc123',
+        })
+      ).toBe(false);
+    });
+
+    it('excludes an IPv6-only route (no DestinationCidrBlock)', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationIpv6CidrBlock: '::/0',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        })
+      ).toBe(false);
+    });
   });
 });
 
