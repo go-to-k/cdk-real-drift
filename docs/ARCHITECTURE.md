@@ -214,11 +214,11 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                          (undeclared also carries a nested:true flag for a live
                          sub-key inside a declared object the template never set; R96)
 6. baseline filter       applyBaseline(): undeclared findings already recorded → drop;
-                         atDefault reconciled too (an UNCHANGED recorded value now
-                         at-default is suppressed, not a false "removed since record")
-                         — but a recorded value CHANGED to the default (e.g. reset
-                         out of band) is real drift; a SKIPPED resource's recorded
-                         values are unread, not "removed"
+                         atDefault AND generated reconciled too (an UNCHANGED recorded
+                         value now at-default/generated is suppressed, not a false
+                         "removed since record") — but a recorded value CHANGED to a
+                         default/generated form (e.g. reset out of band) is real drift;
+                         a SKIPPED resource's recorded values are unread, not "removed"
 7. report + exit code    report.ts: drift tiers in full + info: footer (1 line;
                          1 bullet/tier when 2+; --verbose expands, --show-all expands
                          atDefault + nested undeclared); --json carries all findings;
