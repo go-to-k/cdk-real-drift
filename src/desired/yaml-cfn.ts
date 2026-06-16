@@ -58,7 +58,14 @@ function buildCustomTags(): Array<ScalarTag | CollectionTag> {
     tag: '!GetAtt',
     resolve(value: string): unknown {
       const dot = value.indexOf('.');
-      if (dot < 0) throw new Error(`!GetAtt requires '<LogicalId>.<Attribute>'; got '${value}'`);
+      // A dot-less `!GetAtt X` is malformed (CFn wants `<LogicalId>.<Attribute>`),
+      // but a custom-tag `resolve` that THROWS aborts the whole `yaml` parse — one
+      // bad scalar would crash the entire stack check (GetTemplate returns the
+      // deployed body verbatim, and a --pre-deploy synth / hand-written template can
+      // carry it). Degrade to a 1-element Fn::GetAtt instead: resolveGetAtt requires
+      // length >= 2, so it resolves to UNRESOLVED and that one property is skipped,
+      // never mis-compared — the rest of the template still parses.
+      if (dot < 0) return { 'Fn::GetAtt': [value] };
       return { 'Fn::GetAtt': [value.slice(0, dot), value.slice(dot + 1)] };
     },
     identify: () => false,
