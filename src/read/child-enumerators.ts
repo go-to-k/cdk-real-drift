@@ -86,9 +86,17 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
     liveResources,
     liveMethodsByResource,
   } = input;
-  // Declared = template resources + the implicit root.
+  // Declared = template resources + the implicit root. The root `/` resource is ALWAYS
+  // created with the RestApi and is never an "added" out-of-band resource. Identify it
+  // by its LIVE path '/' (authoritative) IN ADDITION to rootResourceId — the latter
+  // comes from the RestApi's CC read (liveAttrs), which may be skipped / throttled /
+  // missing the attr, leaving rootResourceId undefined. Without the path fallback the
+  // live root would then be flagged `added`, and a `revert` would issue DeleteResource
+  // against the API's ROOT resource — a destructive false positive.
+  const liveRootId = liveResources.find((r) => r.path === '/')?.id;
   const declaredResources = new Set(declaredResourceIds);
   if (rootResourceId) declaredResources.add(rootResourceId);
+  if (liveRootId) declaredResources.add(liveRootId);
   const declaredMethods = new Set(declaredMethodKeys);
 
   const pathOf = new Map<string, string>();
@@ -113,6 +121,11 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
   // undeclared method is its own added finding.
   for (const [resourceId, methods] of Object.entries(liveMethodsByResource)) {
     if (addedResourceIds.has(resourceId)) continue;
+    // When rootResourceId is unresolved (RestApi read incomplete), the template's
+    // root-method ResourceId (Fn::GetAtt RootResourceId) couldn't resolve, so
+    // declaredMethodKeys is missing the root's DECLARED methods — skip method-diffing
+    // the live root to avoid falsely flagging a declared root method as added.
+    if (!rootResourceId && resourceId === liveRootId) continue;
     for (const m of methods) {
       if (declaredMethods.has(`${resourceId}|${m.httpMethod}`)) continue;
       added.push({

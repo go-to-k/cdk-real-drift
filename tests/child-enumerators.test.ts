@@ -109,6 +109,34 @@ describe('diffApiGatewayChildren', () => {
     });
     expect(added).toEqual([]);
   });
+
+  it('identifies the root by its live path even when rootResourceId is UNRESOLVED (no destructive false-added)', () => {
+    // The RestApi read was skipped/missing RootResourceId -> rootResourceId undefined.
+    // The live root (path '/') must STILL not be flagged added (else a revert would
+    // DeleteResource the API root), and its declared methods must not falsely surface.
+    const added = diffApiGatewayChildren({
+      apiId: API,
+      rootResourceId: undefined,
+      declaredResourceIds: [],
+      declaredMethodKeys: [], // unresolvable because RootResourceId didn't resolve
+      liveResources: [{ id: ROOT, path: '/' }],
+      liveMethodsByResource: { [ROOT]: [{ httpMethod: 'GET' }] },
+    });
+    expect(added).toEqual([]);
+    // a genuine non-root added resource is still flagged in the same (degraded) read
+    const added2 = diffApiGatewayChildren({
+      apiId: API,
+      rootResourceId: undefined,
+      declaredResourceIds: [],
+      declaredMethodKeys: [],
+      liveResources: [
+        { id: ROOT, path: '/' },
+        { id: 'res9', path: '/added' },
+      ],
+      liveMethodsByResource: {},
+    });
+    expect(added2.map((a) => a.identifier)).toEqual([`${API}|res9`]);
+  });
 });
 
 describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
