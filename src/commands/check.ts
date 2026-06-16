@@ -20,7 +20,7 @@ import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { report, stackSeparator } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
-import type { Finding } from '../types.js';
+import type { DesiredResource, Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { resolveInteractively } from './interactive-resolve.js';
@@ -49,6 +49,23 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   return findings.filter(
     (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
   );
+}
+
+// A nested CloudFormation stack (the CDK `NestedStack` construct, or any plain
+// `AWS::CloudFormation::Stack` resource) is deployed as a SEPARATE child stack whose
+// own resources are the real infrastructure. cdkrd checks the PARENT's
+// `AWS::CloudFormation::Stack` resource (its TemplateURL / Parameters) via Cloud
+// Control, but does NOT recurse into the child stack — so the child's resources
+// (buckets, roles, …) are never checked. A drift tool silently under-covering is the
+// danger: a CLEAN verdict that never looked inside the nested stack reads as
+// fully-checked. Surface the gap LOUDLY so coverage is never silently incomplete.
+// Returns the warning line, or null when the stack has no nested stacks. Pure +
+// exported for unit tests.
+export function nestedStackWarning(resources: DesiredResource[], stackName: string): string | null {
+  const nested = resources.filter((r) => r.resourceType === 'AWS::CloudFormation::Stack');
+  if (nested.length === 0) return null;
+  const names = nested.map((r) => r.constructPath ?? r.logicalId).sort();
+  return `warning: ${stackName} has ${nested.length} nested CloudFormation stack(s) — cdkrd does not recurse into them, so the resources INSIDE them are NOT checked: ${names.join(', ')}`;
 }
 
 /**
@@ -124,6 +141,12 @@ export async function runCheck(args: string[]): Promise<number> {
       const gathered = await gatherFindings(stackName, region, synthTemplates?.get(stackName));
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
+
+      // Loudly flag nested stacks whose resources cdkrd does not recurse into — a
+      // CLEAN verdict must never silently hide an unchecked child stack. To stderr so
+      // it survives `--json` (whose machine output is stdout) without polluting it.
+      const nestedWarn = nestedStackWarning(desired.resources, stackName);
+      if (nestedWarn) console.error(nestedWarn);
 
       // Scope flags (R59). --undeclared-only delegates the declared side to
       // `cdk drift` / CFn drift detection (no double reporting when pairing);

@@ -224,6 +224,20 @@ deploys/destroys nothing.
 cd stages && npm install && bash verify-stages.sh
 ```
 
+## nested / verify-nested.sh
+
+A parent stack with a CDK `NestedStack` (the child has its own SNS topic). A nested
+stack deploys as a separate child CloudFormation stack; `cdkrd` checks the parent's
+`AWS::CloudFormation::Stack` resource but does NOT recurse into the child, so the
+child's resources are unchecked. Asserts `check` prints a prominent `warning:` line
+naming the nested stack (coverage is never silently incomplete) while the parent
+itself reads CLEAN (the warning is on stderr, not counted as drift). Deploys +
+destroys a real (tiny) stack.
+
+```bash
+cd nested && npm install && bash verify-nested.sh
+```
+
 ## atdefault
 
 Validates the R86 `atDefault` fold end-to-end (a default-config Lambda + a bare

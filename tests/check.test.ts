@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   finalCheckExit,
+  nestedStackWarning,
   preDeployFindings,
   undeclaredOnlyFindings,
 } from '../src/commands/check.js';
@@ -11,7 +12,7 @@ import {
   resolveMenuMessage,
 } from '../src/commands/interactive-resolve.js';
 import type { Actions } from '../src/commands/stack-actions.js';
-import type { Finding } from '../src/types.js';
+import type { DesiredResource, Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
   tier,
@@ -179,5 +180,40 @@ describe('keyOf (per-finding identity — ELB attribute-bag collision guard)', (
   it('a finding without attributeKey keeps the bare logicalId::path key', () => {
     const f: Finding = { tier: 'undeclared', logicalId: 'R', resourceType: 'T', path: 'P' };
     expect(keyOf(f)).toBe('R::P');
+  });
+});
+
+describe('nestedStackWarning (loud coverage gap for nested stacks)', () => {
+  const r = (resourceType: string, over: Partial<DesiredResource> = {}): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    declared: {},
+    ...over,
+  });
+
+  it('returns null when there are no nested stacks', () => {
+    expect(nestedStackWarning([r('AWS::SNS::Topic'), r('AWS::S3::Bucket')], 'S')).toBeNull();
+  });
+
+  it('warns, counts, and lists nested stacks by construct path (sorted)', () => {
+    const w = nestedStackWarning(
+      [
+        r('AWS::CloudFormation::Stack', { logicalId: 'B', constructPath: 'S/Zeta' }),
+        r('AWS::SNS::Topic'),
+        r('AWS::CloudFormation::Stack', { logicalId: 'A', constructPath: 'S/Alpha' }),
+      ],
+      'MyStack'
+    );
+    expect(w).toContain('MyStack has 2 nested CloudFormation stack(s)');
+    expect(w).toContain('NOT checked');
+    expect(w).toContain('S/Alpha, S/Zeta'); // sorted, construct paths preferred
+  });
+
+  it('falls back to logicalId when no construct path', () => {
+    const w = nestedStackWarning(
+      [r('AWS::CloudFormation::Stack', { logicalId: 'NestedXYZ' })],
+      'S'
+    );
+    expect(w).toContain('NestedXYZ');
   });
 });
