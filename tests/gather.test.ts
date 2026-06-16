@@ -6,7 +6,11 @@ import {
   GetTemplateCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
-import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
+import {
+  LambdaClient,
+  GetPolicyCommand as LambdaGetPolicyCommand,
+  ListEventSourceMappingsCommand,
+} from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import { type GatherResult, gatherFindings, regatherTouched } from '../src/commands/gather.js';
@@ -383,5 +387,89 @@ describe('gatherFindings pass-1.5 composite-id retry (GetAtt parent)', () => {
     expect(ids).toContain('api456|route789');
     // declared == live -> the Route is CLEAN
     expect(findings.find((f) => f.logicalId === 'Route')).toBeUndefined();
+  });
+});
+
+describe('gatherFindings pass-1.6 added-enumeration guards an unread parent (WAVE20 F2)', () => {
+  it('does NOT false-flag a declared ESM as `added` when the Lambda Function parent read failed', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // A Lambda Function parent + a declared EventSourceMapping whose FunctionName is a
+    // GetAtt(Fn, Arn) — the common CDK shape, matched only via the parent's live Arn.
+    const template = JSON.stringify({
+      Resources: {
+        Fn: { Type: 'AWS::Lambda::Function', Properties: { FunctionName: 'fn-name' } },
+        Esm: {
+          Type: 'AWS::Lambda::EventSourceMapping',
+          Properties: {
+            FunctionName: { 'Fn::GetAtt': ['Fn', 'Arn'] },
+            EventSourceArn: 'arn:aws:sqs:us-east-1:111122223333:q',
+          },
+        },
+      },
+    });
+    cfn.on(GetTemplateCommand).resolves({ TemplateBody: template });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Fn',
+          PhysicalResourceId: 'fn-name',
+          ResourceType: 'AWS::Lambda::Function',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+        {
+          LogicalResourceId: 'Esm',
+          PhysicalResourceId: 'esm-uuid',
+          ResourceType: 'AWS::Lambda::EventSourceMapping',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE' as const,
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+    cfn.on(DescribeTypeCommand).resolves({ Schema: '{}' });
+
+    const cc = mockClient(CloudControlClient);
+    cc.on(GetResourceCommand).callsFake(async (input: { Identifier: string }) => {
+      // The Function parent read FAILS (not a not-found) -> skipped, no liveAttrs[Fn].Arn,
+      // and Lambda::Function is not retried in pass 1.5 (no override / id-adapter).
+      if (String(input.Identifier).includes('fn-name')) {
+        const e = new Error('denied');
+        e.name = 'AccessDeniedException';
+        throw e;
+      }
+      // the ESM reads clean (its declared FunctionName GetAtt stays unresolved -> uncompared)
+      return {
+        ResourceDescription: {
+          Identifier: input.Identifier,
+          Properties: JSON.stringify({ EventSourceArn: 'arn:aws:sqs:us-east-1:111122223333:q' }),
+        },
+      };
+    });
+
+    const lambda = mockClient(LambdaClient);
+    // the live inventory contains exactly the DECLARED ESM (same UUID); before the guard
+    // this false-flagged as `added` because fnArn was missing.
+    lambda.on(ListEventSourceMappingsCommand).resolves({
+      EventSourceMappings: [
+        { UUID: 'esm-uuid', EventSourceArn: 'arn:aws:sqs:us-east-1:111122223333:q' },
+      ],
+    });
+
+    const { findings } = await gatherFindings('S', 'us-east-1');
+    // the declared ESM is NOT reported as an out-of-band addition...
+    expect(findings.some((f) => f.tier === 'added')).toBe(false);
+    // ...and the unread parent surfaces its coverage gap as skipped
+    expect(findings.some((f) => f.logicalId === 'Fn' && f.tier === 'skipped')).toBe(true);
   });
 });

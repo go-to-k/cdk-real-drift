@@ -278,6 +278,16 @@ export async function gatherFindings(
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
+    // Only enumerate children of a parent we actually READ this run. The enumerators
+    // match DECLARED children against the parent's live attributes (e.g. a Lambda
+    // Function / EventBus matches its declared ESMs / Rules by the parent's `Arn`), and
+    // those attrs are absent when the parent's own read failed transiently — Lambda
+    // Function and Events::EventBus are in neither SDK_OVERRIDES nor
+    // CC_IDENTIFIER_ADAPTERS, so pass 1.5 never retries them. With the parent unread,
+    // every declared child would fail to match and false-flag as `added` — and `revert`
+    // would then offer to DeleteResource a legitimately declared resource. The parent's
+    // own skipped/deleted finding already carries that coverage gap, so skip enumeration.
+    if (!reads.get(r.logicalId)?.live) continue;
     try {
       const children = await enumerate({ parent: r, desired, region });
       for (const c of children) {
