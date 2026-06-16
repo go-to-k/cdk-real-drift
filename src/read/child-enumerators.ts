@@ -40,6 +40,11 @@ import {
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
+  DescribeListenersCommand,
+  ElasticLoadBalancingV2Client,
+  type Listener as Elbv2Listener,
+} from '@aws-sdk/client-elastic-load-balancing-v2';
+import {
   EventBridgeClient,
   ListRulesCommand,
   type Rule as EventBridgeRule,
@@ -79,7 +84,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
 // Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
-// CloudWatch Logs log groups (metric filters) the eighth.
+// CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
+// balancers (listeners) the ninth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -89,6 +95,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::Cognito::UserPool': enumerateUserPoolChildren,
   'AWS::AppSync::GraphQLApi': enumerateGraphQLApiChildren,
   'AWS::Logs::LogGroup': enumerateLogGroupChildren,
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': enumerateLoadBalancerChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -830,4 +837,77 @@ async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedC
     .map((f) => ({ name: f.filterName }));
 
   return diffLogGroupChildren({ logGroupName, declaredFilterNames, liveFilters });
+}
+
+// ── Elastic Load Balancing v2 ──────────────────────────────────────────────────
+// An `AWS::ElasticLoadBalancingV2::LoadBalancer` owns Listeners, each a separate
+// CloudFormation resource. A console / CLI `create-listener` (someone wires a new
+// listener onto a load balancer out of band) is invisible to cdk drift / CFn drift
+// detection (they only compare template-declared resources). The LoadBalancer's own
+// live model does NOT reflect its listeners inline, so there is no double-report to
+// suppress. The CC primaryIdentifier for AWS::ElasticLoadBalancingV2::Listener is the
+// bare ListenerArn, which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared listener arns + live inventory -> the added listeners.
+export interface LoadBalancerChildInput {
+  declaredListenerArns: string[]; // physical ids of AWS::ElasticLoadBalancingV2::Listener
+  liveListeners: { arn: string; label?: string | undefined }[];
+}
+
+export function diffLoadBalancerChildren(input: LoadBalancerChildInput): AddedChild[] {
+  const declared = new Set(input.declaredListenerArns);
+  const added: AddedChild[] = [];
+  for (const l of input.liveListeners) {
+    if (declared.has(l.arn)) continue;
+    added.push({
+      resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+      identifier: l.arn, // ListenerArn IS the CC primaryIdentifier
+      label: l.label ?? l.arn,
+      live: { ListenerArn: l.arn },
+    });
+  }
+  return added;
+}
+
+async function pageListeners(
+  client: ElasticLoadBalancingV2Client,
+  loadBalancerArn: string
+): Promise<Elbv2Listener[]> {
+  const out: Elbv2Listener[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeListenersCommand({ LoadBalancerArn: loadBalancerArn, Marker: marker })
+    );
+    out.push(...(res.Listeners ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateLoadBalancerChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const lbArn = parent.physicalId; // a LoadBalancer's physical id IS its LoadBalancerArn
+  if (!lbArn) return [];
+
+  // Declared listeners of THIS load balancer (Ref/GetAtt LoadBalancerArn already resolved
+  // to the physical id by gather). A listener's physical id IS its ListenerArn.
+  const declaredListenerArns: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::ElasticLoadBalancingV2::Listener' &&
+      r.declared.LoadBalancerArn === lbArn &&
+      r.physicalId
+    ) {
+      declaredListenerArns.push(r.physicalId);
+    }
+  }
+
+  const client = new ElasticLoadBalancingV2Client({ region, ...READ_RETRY });
+  const listeners = await pageListeners(client, lbArn);
+  const liveListeners = listeners
+    .filter((l): l is Elbv2Listener & { ListenerArn: string } => typeof l.ListenerArn === 'string')
+    .map((l) => ({ arn: l.ListenerArn, label: `${l.Protocol}:${l.Port}` }));
+
+  return diffLoadBalancerChildren({ declaredListenerArns, liveListeners });
 }
