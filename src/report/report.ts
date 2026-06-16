@@ -28,7 +28,7 @@ import { style } from './style.js';
 // which ties directly to the `cdkrd record` verb.
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'Deleted',
-  added: 'Added (Out-of-Band)',
+  added: 'Added Resource',
   declared: 'CFn-Declared Drift',
   undeclared: 'CFn-Undeclared Drift',
   atDefault: 'At AWS Default',
@@ -46,7 +46,7 @@ const TIER_NAMES: Record<Tier, string> = {
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   added:
-    'a live resource not in your CloudFormation template — created out of band under a declared parent; always drift',
+    'a WHOLE live resource not in your CloudFormation template (the resource-level counterpart of CFn-Undeclared) — created out of band under a declared parent; always drift',
   declared: 'declared in your CloudFormation template — the live value differs',
   undeclared:
     'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
@@ -58,7 +58,11 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   skipped:
     'NOT checked (coverage incomplete) — CC API unsupported / no physical id / custom resource',
 };
-const DRIFT_TIERS: Tier[] = ['deleted', 'added', 'declared', 'undeclared'];
+// Section + result-line order (both iterate this). `added` (whole out-of-band
+// resources) sorts AFTER the property tiers — declared/undeclared are the per-property
+// differentiator the report leads with, and the resource-level `added` follows them.
+// `deleted` stays first (the most blatant drift).
+const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared', 'added'];
 // atDefault leads the informational footer: it is the bulk of a first run (undeclared
 // values sitting at their AWS default) and folding it is the whole point of R86 — the
 // report states the complete undeclared count but lists only the values that actually

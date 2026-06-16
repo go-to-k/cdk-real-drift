@@ -118,8 +118,27 @@ describe('report', () => {
     };
     const { code, text } = run([f]);
     expect(code).toBe(1);
-    expect(text).toContain('Added (Out-of-Band)');
+    expect(text).toContain('Added Resource');
     expect(text).toContain('Stack/Api ▸ ANY /');
+  });
+
+  it('the Added section sorts AFTER declared/undeclared (sections + result line)', () => {
+    const added: Finding = {
+      tier: 'added',
+      logicalId: 'Api/x',
+      constructPath: 'Stack/Api ▸ /x',
+      resourceType: 'AWS::ApiGateway::Resource',
+      path: '',
+    };
+    const { text } = run([added, F('declared', 'P'), F('undeclared', 'Q')]);
+    // section order: CFn-Declared Drift -> CFn-Undeclared Drift -> Added Resource
+    const iDeclared = text.indexOf('CFn-Declared Drift');
+    const iUndeclared = text.indexOf('CFn-Undeclared Drift');
+    const iAdded = text.indexOf('Added Resource');
+    expect(iDeclared).toBeLessThan(iUndeclared);
+    expect(iUndeclared).toBeLessThan(iAdded);
+    // result-line counts in the same order, added last
+    expect(text).toMatch(/declared=1 undeclared=1 added=1/);
   });
 
   it('json mode emits parseable JSON with findings + drifted count', () => {

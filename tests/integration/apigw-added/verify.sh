@@ -2,7 +2,7 @@
 # cdk-real-drift `added` (out-of-band resource) integration test (real AWS).
 #   deploy fixture (REST API, POST /scoring) -> record -> check CLEAN
 #   -> inject an out-of-band ANY method on the ROOT `/` resource (aws apigateway
-#      put-method) -> check DETECTS it under [Added (Out-of-Band)] -> destroy.
+#      put-method) -> check DETECTS it under [Added Resource] -> destroy.
 # This is the case CFn drift / cdk drift / driftctl all miss: a WHOLE resource
 # (an API Gateway Method) created out of band, not just an undeclared property.
 # A cleanup trap destroys the stack even on failure, so no orphan resources remain.
@@ -53,7 +53,7 @@ echo "=== check should DETECT the added method ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
-grep -q "Added (Out-of-Band)" /tmp/cdk-real-drift-integ-added.out || fail "added section not reported"
+grep -q "Added Resource" /tmp/cdk-real-drift-integ-added.out || fail "added section not reported"
 grep -q "ANY /" /tmp/cdk-real-drift-integ-added.out || fail "ANY / method not reported"
 # Exactly ONE added finding: the declared GET / (ResourceId = GetAtt RootResourceId)
 # must re-resolve to the live root id and NOT false-positive as added (added=1, not 2).
