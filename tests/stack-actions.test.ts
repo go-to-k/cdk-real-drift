@@ -758,7 +758,7 @@ describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () 
 describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hints now)', () => {
   it('is the one-line prompt header only (the space/→/←/enter hints live in bulkMultiselect)', () => {
     const msg = recordSelectMessage('ApiStack');
-    expect(msg).toContain('ApiStack: select undeclared value(s) to record');
+    expect(msg).toContain('ApiStack: select value(s) to record');
     expect(msg).toContain('unselected stay reported');
     // the hint line moved into bulkMultiselect's render — the header is now single-line
     expect(msg).not.toContain('\n');

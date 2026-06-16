@@ -81,6 +81,7 @@ export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
   expandAtDefault?: boolean; // expand ONLY the atDefault tier to a full list (--show-all inventory mode)
+  firstRun?: boolean; // no baseline file yet: expand nested unrecorded + use the "to record" verdict (R138)
   log?: (s: string) => void;
 }
 // Unrecorded values (R60, per finding since R62): an undeclared finding tagged
@@ -203,7 +204,10 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // Top-level unrecorded values still list in full in [UNRECORDED]; the nested ones
   // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
   // record records them, so a later out-of-band change to one surfaces as drift.
-  const expandNested = !!opts.verbose || !!opts.expandAtDefault;
+  // R138: on a FIRST run (no baseline) the nested unrecorded values ARE the set the
+  // record prompt asks about — folding them to "0 shown, N folded" contradicts the very
+  // next prompt. Expand on firstRun; the steady-state fold (R96) is otherwise unchanged.
+  const expandNested = !!opts.verbose || !!opts.expandAtDefault || !!opts.firstRun;
   const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
   const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
@@ -236,11 +240,18 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
   // UNRECORDED: full detail like a drift section (these values await a decision —
   // hiding them would defeat the differentiator), but kept OUT of the verdict.
+  // R138: on a first run (no baseline) name the section for the action the user is about
+  // to take ("To Record"); in steady state it is values that appeared since record
+  // ("Not Recorded").
+  const recordSectionName = opts.firstRun ? 'To Record' : 'Not Recorded';
+  const recordSectionNote = opts.firstRun
+    ? 'live-only values, no baseline yet — run cdkrd record to start tracking'
+    : 'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it';
   if (
     section(
       unrecordedShown,
-      'Not Recorded',
-      'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
+      recordSectionName,
+      recordSectionNote,
       style.undeclaredTier,
       driftSections > 0
     )
@@ -275,6 +286,16 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       // PROPERTIES plus out-of-band `added` RESOURCES (PR4) — both await a record.
       ` + ${style.undeclaredTier(`${unrecordedShown.length} not-recorded to review`)}` +
       style.infoTier(` (${foldedHint})`);
+  } else if (opts.firstRun && drifted === 0 && unrecordedItems.length > 0) {
+    // R138: a FIRST run (no baseline) with values to record and no drift is NOT "CLEAN" —
+    // green CLEAN reads as "nothing to do" right before the record prompt asks the user to
+    // record those very values. Name the state (NO DRIFT, neutral — not the green all-clear)
+    // and the pending action. On a first run nested values are expanded, so there is no
+    // "X shown, Y folded" split to report.
+    resultBody =
+      `${style.infoTier('NO DRIFT')} — ` +
+      style.undeclaredTier(`${unrecordedItems.length} value(s) to record`) +
+      style.infoTier(' (run cdkrd record)');
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count
     const verdict =

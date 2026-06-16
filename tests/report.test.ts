@@ -40,6 +40,35 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
+  it('R138: first run (no baseline) expands nested + names a "to record" state, not CLEAN', () => {
+    // All three nested — in steady state they would fold to "0 shown, 3 folded"; on a
+    // first run they expand so the report lists the same set the record prompt offers.
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const { code, text } = run([nested('a'), nested('b'), nested('c')], { firstRun: true });
+    expect(code).toBe(0); // unrecorded never counts as drift
+    expect(text).toContain('[To Record: 3]'); // first-run section name
+    expect(text).toContain('no baseline yet'); // first-run section note
+    expect(text).not.toContain('Not Recorded'); // steady-state name is not used
+    expect(text).toContain('result: NO DRIFT — 3 value(s) to record (run cdkrd record)');
+    expect(text).not.toContain('CLEAN'); // the contradiction we are fixing
+    expect(text).not.toContain('shown'); // no "X shown, Y folded" split on a first run
+    expect(text).not.toContain('folded');
+  });
+
+  it('R138: first run with drift keeps the combined mixed verdict (firstRun only refines no-drift)', () => {
+    const { code, text } = run([F('declared'), U('Q')], { firstRun: true });
+    expect(code).toBe(1);
+    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 not-recorded to review');
+    expect(text).not.toContain('NO DRIFT'); // the to-record verdict is suppressed when drift exists
+  });
+
+  it('R138: first run with nothing to record is still plain CLEAN', () => {
+    const { code, text } = run([], { firstRun: true });
+    expect(code).toBe(0);
+    expect(text).toContain('result: CLEAN');
+    expect(text).not.toContain('to record');
+  });
+
   it('declared drift still fails, with unrecorded values noted beside the verdict', () => {
     const { code, text } = run([F('declared'), U('Q')]);
     expect(code).toBe(1);
