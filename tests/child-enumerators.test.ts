@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { diffApiGatewayChildren } from '../src/read/child-enumerators.js';
+import { diffApiGatewayChildren, diffApiGatewayV2Children } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
 const ROOT = 'rootres0';
@@ -104,5 +104,77 @@ describe('diffApiGatewayChildren', () => {
       liveMethodsByResource: { [ROOT]: [] },
     });
     expect(added).toEqual([]);
+  });
+});
+
+describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
+  const APIV2 = 'v2api01';
+
+  it('flags an out-of-band Route added via the console (not in the template)', () => {
+    const added = diffApiGatewayV2Children({
+      apiId: APIV2,
+      declaredRouteIds: ['rDeclared'],
+      declaredIntegrationIds: ['iDeclared'],
+      liveRoutes: [
+        { id: 'rDeclared', key: 'GET /items' },
+        { id: 'rConsole', key: 'GET /admin' },
+      ],
+      liveIntegrations: [{ id: 'iDeclared', label: 'AWS_PROXY arn:lambda' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ApiGatewayV2::Route',
+        identifier: `${APIV2}|rConsole`,
+        label: 'GET /admin',
+        live: { RouteId: 'rConsole', RouteKey: 'GET /admin' },
+      },
+    ]);
+  });
+
+  it('flags an out-of-band Integration; identifier is the CC composite ApiId|IntegrationId', () => {
+    const added = diffApiGatewayV2Children({
+      apiId: APIV2,
+      declaredRouteIds: [],
+      declaredIntegrationIds: ['iDeclared'],
+      liveRoutes: [],
+      liveIntegrations: [
+        { id: 'iDeclared', label: 'AWS_PROXY arn:a' },
+        { id: 'iConsole', label: 'HTTP_PROXY https://x' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ApiGatewayV2::Integration',
+        identifier: `${APIV2}|iConsole`,
+        label: 'HTTP_PROXY https://x',
+        live: { IntegrationId: 'iConsole' },
+      },
+    ]);
+  });
+
+  it('no drift when every live Route + Integration is declared', () => {
+    expect(
+      diffApiGatewayV2Children({
+        apiId: APIV2,
+        declaredRouteIds: ['r1', 'r2'],
+        declaredIntegrationIds: ['i1'],
+        liveRoutes: [
+          { id: 'r1', key: '$default' },
+          { id: 'r2', key: 'POST /x' },
+        ],
+        liveIntegrations: [{ id: 'i1', label: 'AWS_PROXY arn' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('falls back to the id for a Route with no RouteKey', () => {
+    const added = diffApiGatewayV2Children({
+      apiId: APIV2,
+      declaredRouteIds: [],
+      declaredIntegrationIds: [],
+      liveRoutes: [{ id: 'rX', key: undefined }],
+      liveIntegrations: [],
+    });
+    expect(added[0]!.label).toBe('rX');
   });
 });
