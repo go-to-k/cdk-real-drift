@@ -50,8 +50,10 @@ export interface RevertItem {
   displayId: string; // construct path or logical id
   resourceType: string;
   physicalId: string;
-  kind: 'cc' | 'sdk'; // cc = Cloud Control UpdateResource; sdk = type-specific SDK writer
-  ops: PatchOp[];
+  // cc = Cloud Control UpdateResource; sdk = type-specific SDK writer;
+  // delete = Cloud Control DeleteResource (revert of an `added` out-of-band resource).
+  kind: 'cc' | 'sdk' | 'delete';
+  ops: PatchOp[]; // for `delete`: a single pseudo-op carrying the human label (never serialized)
 }
 
 export interface NotRevertable {
@@ -119,13 +121,32 @@ export function buildRevertPlan(
     }
     if (f.tier === 'added') {
       // an out-of-band resource (not in the template) is reverted by DELETING it via
-      // Cloud Control — not yet wired into the apply path (separate PR), so report it
-      // as not-yet-revertable rather than silently dropping it from the plan.
-      notRevertable.push({
+      // Cloud Control DeleteResource. f.physicalId is the CC identifier (the composite
+      // `RestApiId|ResourceId[|HttpMethod]`). Modeled as a `delete`-kind item carrying a
+      // single pseudo-op so the picker / count / filter machinery (which is op-based)
+      // works unchanged; the apply path branches on kind and never serializes the op.
+      if (!f.physicalId) {
+        notRevertable.push({
+          displayId,
+          resourceType: f.resourceType,
+          path: f.path,
+          reason: 'no physical id',
+        });
+        continue;
+      }
+      itemsByLogical.set(f.logicalId, {
+        logicalId: f.logicalId,
         displayId,
         resourceType: f.resourceType,
-        path: f.path,
-        reason: 'added out of band — delete support coming (remove via console / cdk for now)',
+        physicalId: f.physicalId,
+        kind: 'delete',
+        ops: [
+          {
+            op: 'remove',
+            path: '',
+            human: `DELETE out-of-band ${f.resourceType} (not in your template)`,
+          },
+        ],
       });
       continue;
     }

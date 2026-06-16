@@ -123,7 +123,7 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
-  it('added-only → Ignore shown; Record hidden (unrecordable), Revert hidden (delete not wired yet)', () => {
+  it('added-only → Ignore + Revert shown (revert DELETEs it); Record hidden (unrecordable)', () => {
     const addedFinding: Finding = {
       tier: 'added',
       logicalId: 'Api/abc|root|ANY',
@@ -134,7 +134,7 @@ describe('availableActions (R28 interactive choice logic)', () => {
     expect(availableActions([addedFinding], undefined, NO_SCHEMAS, false)).toEqual({
       record: false,
       ignore: true,
-      revert: false,
+      revert: true,
     });
   });
 
@@ -659,6 +659,28 @@ describe('revertSelectOptions / filterRevertPlan (R57 — pick what to revert)',
     expect(filtered.items[0]!.logicalId).toBe('B');
     expect(filtered.items[0]!.ops).toHaveLength(1);
     expect(filtered.items[0]!.ops[0]!.path).toBe('/Acc');
+  });
+
+  it('a `delete`-kind item (added resource) gets a loud (DELETE) marker, unselected', () => {
+    const delPlan: RevertPlan = {
+      items: [
+        {
+          logicalId: 'Api/abc|root|ANY',
+          displayId: 'Stack/Api ▸ ANY /',
+          resourceType: 'AWS::ApiGateway::Method',
+          physicalId: 'abc|root|ANY',
+          kind: 'delete',
+          ops: [{ op: 'remove', path: '', human: 'DELETE out-of-band AWS::ApiGateway::Method' }],
+        },
+      ],
+      notRevertable: [],
+    };
+    const [opt] = revertSelectOptions(delPlan);
+    expect(opt!.selected).toBe(false); // destructive — never pre-armed
+    expect(opt!.label).toContain('(DELETE)');
+    expect(opt!.label).toContain('Stack/Api ▸ ANY /');
+    // round-trips through filterRevertPlan (the pseudo-op is selectable by its key)
+    expect(filterRevertPlan(delPlan, new Set([opt!.value])).items).toHaveLength(1);
   });
 
   it('picking nothing empties the plan (the caller aborts)', () => {
