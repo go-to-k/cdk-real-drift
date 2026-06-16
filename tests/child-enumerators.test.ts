@@ -3,6 +3,7 @@ import {
   diffApiGatewayChildren,
   diffApiGatewayV2Children,
   diffEventBusChildren,
+  diffGraphQLApiChildren,
   diffLambdaFunctionChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
@@ -379,6 +380,48 @@ describe('diffUserPoolChildren (Cognito user pool clients)', () => {
         liveClients: [
           { id: 'a', label: 'A' },
           { id: 'b', label: 'B' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffGraphQLApiChildren (AppSync data sources)', () => {
+  const DS = (n: string) => `arn:aws:appsync:us-east-1:111122223333:apis/abc/datasources/${n}`;
+
+  it('flags an out-of-band data source added via the console (not in the template)', () => {
+    const added = diffGraphQLApiChildren({
+      declaredDataSourceNames: ['declared'],
+      liveDataSources: [
+        { name: 'declared', arn: DS('declared'), label: 'NONE declared' },
+        { name: 'console', arn: DS('console'), label: 'AMAZON_DYNAMODB console' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppSync::DataSource',
+        identifier: DS('console'),
+        label: 'AMAZON_DYNAMODB console',
+        live: { Name: 'console', DataSourceArn: DS('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare DataSourceArn (CC primaryIdentifier)', () => {
+    const added = diffGraphQLApiChildren({
+      declaredDataSourceNames: [],
+      liveDataSources: [{ name: 'x', arn: DS('x') }],
+    });
+    expect(added[0]!.identifier).toBe(DS('x'));
+  });
+
+  it('no drift when every live data source is declared', () => {
+    expect(
+      diffGraphQLApiChildren({
+        declaredDataSourceNames: ['a', 'b'],
+        liveDataSources: [
+          { name: 'a', arn: DS('a') },
+          { name: 'b', arn: DS('b') },
         ],
       })
     ).toEqual([]);

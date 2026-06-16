@@ -18,6 +18,11 @@ import {
   type Resource as ApiGwResource,
 } from '@aws-sdk/client-api-gateway';
 import {
+  AppSyncClient,
+  type DataSource as AppSyncDataSource,
+  ListDataSourcesCommand,
+} from '@aws-sdk/client-appsync';
+import {
   ApiGatewayV2Client,
   GetIntegrationsCommand,
   GetRoutesCommand,
@@ -68,7 +73,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
 // Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
-// Cognito User Pools (clients) the sixth.
+// Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -76,6 +81,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::Lambda::Function': enumerateLambdaFunctionChildren,
   'AWS::Events::EventBus': enumerateEventBusChildren,
   'AWS::Cognito::UserPool': enumerateUserPoolChildren,
+  'AWS::AppSync::GraphQLApi': enumerateGraphQLApiChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -657,4 +663,89 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     .map((c) => ({ id: c.ClientId, label: c.ClientName ?? c.ClientId }));
 
   return diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
+}
+
+// ── AppSync ──────────────────────────────────────────────────────────────────
+// An `AWS::AppSync::GraphQLApi` owns DataSources (the DynamoDB / Lambda / HTTP / NONE
+// resolver backings), each a separate CloudFormation resource. A console / CLI
+// `create-data-source` (someone wires a new backing onto an api out of band) is
+// invisible to cdk drift / CFn drift detection. The GraphQLApi model does NOT reflect
+// its datasources inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::AppSync::DataSource is the bare DataSourceArn, which CC
+// GetResource / DeleteResource consume.
+
+// Pure diff: declared datasource names + live inventory -> the added datasources.
+export interface GraphQLApiChildInput {
+  declaredDataSourceNames: string[]; // Names of AWS::AppSync::DataSource declared on this api
+  liveDataSources: { name: string; arn: string; label?: string | undefined }[];
+}
+
+export function diffGraphQLApiChildren(input: GraphQLApiChildInput): AddedChild[] {
+  const declared = new Set(input.declaredDataSourceNames);
+  const added: AddedChild[] = [];
+  for (const ds of input.liveDataSources) {
+    if (declared.has(ds.name)) continue;
+    added.push({
+      resourceType: 'AWS::AppSync::DataSource',
+      identifier: ds.arn, // DataSourceArn IS the CC primaryIdentifier
+      label: ds.label ?? ds.name,
+      live: { Name: ds.name, DataSourceArn: ds.arn },
+    });
+  }
+  return added;
+}
+
+async function pageDataSources(client: AppSyncClient, apiId: string): Promise<AppSyncDataSource[]> {
+  const out: AppSyncDataSource[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListDataSourcesCommand({ apiId, nextToken: next }));
+    out.push(...(res.dataSources ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
+// A GraphQLApi's CFn physical id is its ARN (`arn:...:apis/<apiId>`), but `ListDataSources`
+// and a DataSource's declared `ApiId` (`Fn::GetAtt ApiId`) both use the BARE api id. Take
+// the trailing `apis/<id>` segment when the physical id is an ARN; otherwise it already IS
+// the bare id (the CC primaryIdentifier form).
+function bareApiId(physicalId: string): string {
+  return physicalId.includes('/') ? physicalId.slice(physicalId.lastIndexOf('/') + 1) : physicalId;
+}
+
+async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  if (!parent.physicalId) return [];
+  const apiId = bareApiId(parent.physicalId); // the BARE ApiId (ListDataSources / declared ApiId form)
+
+  // Declared datasources on THIS api. Datasource names are unique per api, and the
+  // Ref/physical-id form is unreliable, so match DECLARED datasources by Name. A declared
+  // DataSource's ApiId (Fn::GetAtt ApiId, resolved by gather) is the bare api id; tolerate
+  // an ARN form too in case gather resolved it differently.
+  const declaredDataSourceNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::AppSync::DataSource' || typeof r.declared.Name !== 'string') {
+      continue;
+    }
+    const declaredApiId = r.declared.ApiId;
+    if (typeof declaredApiId !== 'string') continue;
+    if (bareApiId(declaredApiId) !== apiId) continue;
+    declaredDataSourceNames.push(r.declared.Name);
+  }
+
+  const client = new AppSyncClient({ region, ...READ_RETRY });
+  const dataSources = await pageDataSources(client, apiId);
+  const liveDataSources = dataSources
+    .filter(
+      (ds): ds is AppSyncDataSource & { name: string; dataSourceArn: string } =>
+        typeof ds.name === 'string' && typeof ds.dataSourceArn === 'string'
+    )
+    .map((ds) => ({
+      name: ds.name,
+      arn: ds.dataSourceArn,
+      label: ds.type ? `${ds.type} ${ds.name}` : ds.name,
+    }));
+
+  return diffGraphQLApiChildren({ declaredDataSourceNames, liveDataSources });
 }
