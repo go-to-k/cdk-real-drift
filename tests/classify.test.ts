@@ -1760,3 +1760,46 @@ describe('nested undeclared on IAM policy statements (identity-less subset desce
     expect(t.undeclared.some((p) => p.includes('Description'))).toBe(false);
   });
 });
+
+describe('REFLECTED_CHILD_PROPS (drop a parent reflection of its child resources)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const topic = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'Topic',
+    resourceType: 'AWS::SNS::Topic',
+    physicalId: 'arn:aws:sns:us-east-1:111122223333:t',
+    declared,
+  });
+
+  it('SNS Topic.Subscription reflection is NOT flagged undeclared (tracked as resources)', () => {
+    const live = {
+      DisplayName: 'd',
+      Subscription: [{ Protocol: 'sqs', Endpoint: 'arn:aws:sqs:us-east-1:111122223333:q' }],
+    };
+    const findings = classifyResource(topic({ DisplayName: 'd' }), live, schema);
+    expect(findings.find((f) => f.path === 'Subscription')).toBeUndefined();
+  });
+
+  it('but a Topic that DECLARES inline Subscription still compares it (fail-open)', () => {
+    const declaredSubs = [{ Protocol: 'sqs', Endpoint: 'arn:declared' }];
+    const liveSubs = [{ Protocol: 'sqs', Endpoint: 'arn:CHANGED' }];
+    const findings = classifyResource(
+      topic({ Subscription: declaredSubs }),
+      { Subscription: liveSubs },
+      schema
+    );
+    // the reflection is NOT dropped (declared), so the change surfaces as declared drift
+    // on a Subscription-rooted path (exact path shape depends on the array diff).
+    expect(findings.some((f) => f.tier === 'declared' && f.path.startsWith('Subscription'))).toBe(
+      true
+    );
+  });
+});

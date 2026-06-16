@@ -24,6 +24,11 @@ import {
   type Integration as ApiGwV2Integration,
   type Route as ApiGwV2Route,
 } from '@aws-sdk/client-apigatewayv2';
+import {
+  ListSubscriptionsByTopicCommand,
+  SNSClient,
+  type Subscription as SnsSubscription,
+} from '@aws-sdk/client-sns';
 import { READ_RETRY } from './client-config.js';
 import type { Desired } from '../desired/template-adapter.js';
 import type { DesiredResource } from '../types.js';
@@ -45,11 +50,12 @@ export interface EnumeratorContext {
 export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
-// exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member;
-// API Gateway V2 (HTTP / WebSocket) APIs are the second.
+// exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
+// V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
+  'AWS::SNS::Topic': enumerateSnsTopicChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -309,4 +315,82 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveRoutes,
     liveIntegrations,
   });
+}
+
+// ── SNS ──────────────────────────────────────────────────────────────────────
+// An `AWS::SNS::Topic` owns Subscriptions, each a separate CloudFormation resource.
+// A console-added subscription (someone wires an email / SQS / Lambda endpoint to a
+// topic out of band) is invisible to `cdk drift` / CFn drift detection. A topic has no
+// AWS-auto-created subscriptions, so there is no implicit child to special-case (unlike
+// REST's root resource). The CC primaryIdentifier for AWS::SNS::Subscription is the bare
+// SubscriptionArn (not a composite), which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared subscription arns + live inventory -> the added subscriptions.
+export interface SnsTopicChildInput {
+  declaredSubscriptionArns: string[]; // physical ids of AWS::SNS::Subscription in the template
+  liveSubscriptions: { arn: string; label?: string | undefined }[];
+}
+
+export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
+  const declared = new Set(input.declaredSubscriptionArns);
+  const added: AddedChild[] = [];
+  for (const s of input.liveSubscriptions) {
+    if (declared.has(s.arn)) continue;
+    added.push({
+      resourceType: 'AWS::SNS::Subscription',
+      identifier: s.arn, // SubscriptionArn IS the CC primaryIdentifier
+      label: s.label ?? s.arn,
+      live: { SubscriptionArn: s.arn },
+    });
+  }
+  return added;
+}
+
+async function pageSubscriptions(client: SNSClient, topicArn: string): Promise<SnsSubscription[]> {
+  const out: SnsSubscription[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListSubscriptionsByTopicCommand({ TopicArn: topicArn, NextToken: next })
+    );
+    out.push(...(res.Subscriptions ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const topicArn = parent.physicalId; // the Topic's physical id IS its ARN
+  if (!topicArn) return [];
+
+  // Declared subscriptions of THIS topic (Ref/GetAtt TopicArn already resolved by gather).
+  // A subscription's physical id IS its SubscriptionArn.
+  const declaredSubscriptionArns: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::SNS::Subscription' &&
+      r.declared.TopicArn === topicArn &&
+      r.physicalId
+    ) {
+      declaredSubscriptionArns.push(r.physicalId);
+    }
+  }
+
+  const client = new SNSClient({ region, ...READ_RETRY });
+  const subs = await pageSubscriptions(client, topicArn);
+  const liveSubscriptions = subs
+    // Skip subscriptions with no real ARN: a pending-confirmation email/http sub reports
+    // `PendingConfirmation` (and a just-deleted one `Deleted`) as its arn — neither is a
+    // CC-addressable resource, so it cannot be recorded or reverted; not yet a real child.
+    .filter(
+      (s): s is SnsSubscription & { SubscriptionArn: string } =>
+        typeof s.SubscriptionArn === 'string' && s.SubscriptionArn.startsWith('arn:')
+    )
+    .map((s) => ({
+      arn: s.SubscriptionArn,
+      label: s.Protocol ? `${s.Protocol} ${s.Endpoint ?? ''}`.trim() : s.SubscriptionArn,
+    }));
+
+  return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions });
 }
