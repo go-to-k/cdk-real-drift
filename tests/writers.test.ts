@@ -119,6 +119,45 @@ describe('IAM ManagedPolicy writer', () => {
       ])
     ).rejects.toThrow(/managed policy arn/);
   });
+
+  it('a statement-indexed op lands on the canonical statement, not the raw one (WAVE21)', async () => {
+    // The live doc's RAW statement order differs from the canonical (sorted) order
+    // classify compared. A finding at canonical Statement[1] (zzz:Write) must revert
+    // THAT statement — not raw Statement[1] (aaa:Read). Before the fix the op corrupted
+    // aaa:Read and left zzz:Write's HACKED resource unreverted.
+    stubReader({
+      Version: '2012-10-17',
+      Statement: [
+        { Effect: 'Allow', Action: 'zzz:Write', Resource: 'HACKED' }, // raw[0], canonical[1]
+        { Effect: 'Allow', Action: 'aaa:Read', Resource: 'r2' }, // raw[1], canonical[0]
+      ],
+    });
+    iam
+      .on(ListPolicyVersionsCommand)
+      .resolves({ Versions: [{ VersionId: 'v1', IsDefaultVersion: true }] });
+    iam.on(CreatePolicyVersionCommand).resolves({});
+
+    // revert the drifted zzz:Write Resource (canonical index 1) back to the declared value
+    await SDK_WRITERS['AWS::IAM::ManagedPolicy'](ctx(), [
+      {
+        op: 'add',
+        path: '/PolicyDocument/Statement/1/Resource',
+        value: ['r1'],
+        human: 'PolicyDocument.Statement.1.Resource -> deployed-template value',
+      },
+    ]);
+
+    const created = iam.commandCalls(CreatePolicyVersionCommand);
+    expect(created).toHaveLength(1);
+    const written = JSON.parse(created[0]!.args[0].input.PolicyDocument as string) as {
+      Statement: { Action: string[]; Resource: unknown }[];
+    };
+    const byAction = (a: string) => written.Statement.find((s) => s.Action.includes(a));
+    // the RIGHT statement was reverted...
+    expect(byAction('zzz:Write')!.Resource).toEqual(['r1']);
+    // ...and the unrelated statement was NOT corrupted (stayed r2)
+    expect(byAction('aaa:Read')!.Resource).toEqual(['r2']);
+  });
 });
 
 describe('IAM Role inline Policies prop-scoped writer', () => {

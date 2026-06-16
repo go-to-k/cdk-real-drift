@@ -39,6 +39,7 @@ import {
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import { type OverrideCtx, SDK_OVERRIDES } from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
 import type { PatchOp } from './plan.js';
@@ -57,7 +58,19 @@ async function desiredModel(
 ): Promise<Record<string, unknown>> {
   const reader = SDK_OVERRIDES[type];
   const current = (reader && (await reader(ctx))) ?? {};
-  return applyOps(current, ops);
+  // A revert op path indexes the model classify COMPARED — which is canonicalized
+  // (canonicalizePolicy SORTS the Statement array, reshapes Action/Resource, …). But the
+  // override reader returns the RAW live document, whose statement order can differ. An
+  // op like `…/Statement/1/Resource` would then land on a DIFFERENT statement than the
+  // one classify found drifted — corrupting an unrelated statement and leaving the real
+  // drift unreverted (a security-relevant wrong write). Canonicalize the current
+  // PolicyDocument the same way so an indexed op hits the SAME statement; the written
+  // doc is the canonical (statement-sorted, AWS-equivalent) form of the declared intent.
+  const aligned =
+    current.PolicyDocument === undefined
+      ? current
+      : { ...current, PolicyDocument: canonicalizeForCompare(current.PolicyDocument) };
+  return applyOps(aligned, ops);
 }
 const policyJson = (m: Record<string, unknown>): string | undefined =>
   m.PolicyDocument === undefined ? undefined : JSON.stringify(m.PolicyDocument);
