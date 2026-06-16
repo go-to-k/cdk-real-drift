@@ -845,4 +845,45 @@ describe('tagPreservingOps (revert must not strip aws:* managed tags — the SNS
     expect(out[0]!.op).toBe('add');
     expect(out[1]).toBe(other); // the non-Tags op is returned by reference, unchanged
   });
+
+  describe('MAP-shaped Tags (AWS::SSM::Parameter — key->value, WAVE24)', () => {
+    // CC returns SSM Parameter Tags as a map; the managed tags are aws:* KEYS
+    const liveMapManaged = {
+      Tags: {
+        'aws:cloudformation:stack-name': 'S',
+        'aws:cloudformation:logical-id': 'Param',
+        Team: 'platform',
+      },
+    };
+
+    it('a `remove /Tags` keeps ONLY the live aws:* map keys (not a dropped-managed reject)', () => {
+      const [out] = tagPreservingOps([op({ op: 'remove' })], liveMapManaged);
+      expect(out).toMatchObject({
+        op: 'add',
+        path: '/Tags',
+        value: {
+          'aws:cloudformation:stack-name': 'S',
+          'aws:cloudformation:logical-id': 'Param',
+        },
+      });
+      expect(out!.value).not.toHaveProperty('Team'); // user key dropped by the remove
+    });
+
+    it('an `add /Tags` merges the user map with the live aws:* keys (and drops any aws:* from the value)', () => {
+      const [out] = tagPreservingOps(
+        [op({ op: 'add', value: { Team: 'data', 'aws:should-not-be-here': 'x' } })],
+        liveMapManaged
+      );
+      expect(out!.value).toEqual({
+        Team: 'data',
+        'aws:cloudformation:stack-name': 'S',
+        'aws:cloudformation:logical-id': 'Param',
+      });
+    });
+
+    it('leaves the op unchanged when a map-shaped Tags has no aws:* keys', () => {
+      const ops = [op({ op: 'remove' })];
+      expect(tagPreservingOps(ops, { Tags: { Team: 'x' } })).toBe(ops);
+    });
+  });
 });
