@@ -305,9 +305,13 @@ export function classifyResource(
   for (const [k, v] of Object.entries(declared)) {
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
-      continue;
-    }
-    if (!(k in live)) {
+      // Wholly unresolved, OR partially unresolved but not in live to compare against:
+      // nothing more to do. Otherwise fall through to compare the RESOLVED sub-values —
+      // a sibling sub-value's drift (e.g. a changed Environment.Variables entry next to a
+      // GetAtt-valued one) must not be hidden just because a SIBLING leaf is unresolved.
+      // The compare below skips any per-leaf record whose declared side is unresolved.
+      if (v === UNRESOLVED || !(k in live)) continue;
+    } else if (!(k in live)) {
       findings.push({
         tier: 'readGap',
         logicalId,
@@ -325,6 +329,9 @@ export function classifyResource(
       const liveBag = live[k] as unknown[];
       for (const dEl of v) {
         if (!isKeyValueEntry(dEl)) continue;
+        // an unresolved declared attribute value can't be compared (already noted at the
+        // property level) — skip it rather than emit a false declared drift vs the symbol
+        if (dEl.Value === UNRESOLVED || hasUnresolved(dEl.Value)) continue;
         const lEl = liveBag.find((e) => isKeyValueEntry(e) && e.Key === dEl.Key);
         const liveValue = lEl ? (lEl as { Value: unknown }).Value : undefined;
         if (deepEqual(dEl.Value, liveValue)) continue;
@@ -358,6 +365,11 @@ export function classifyResource(
     // which subsumes the projection for the one type that needed it; the corpus
     // confirms no other type relied on it.
     for (const d of calculateResourceDrift({ [k]: declaredVal }, { [k]: liveVal })) {
+      // a per-leaf record whose DECLARED side is (or contains) an unresolved value can't
+      // be verified — already noted as `unresolved` at the property level above. Skip it
+      // so the unresolvable leaf never becomes a false `declared` drift vs the symbol,
+      // while its RESOLVED siblings still compare normally (the WAVE20-F1 fix).
+      if (d.stateValue === UNRESOLVED || hasUnresolved(d.stateValue)) continue;
       // a bare name declared for a field AWS returns as the full ARN is not drift
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN

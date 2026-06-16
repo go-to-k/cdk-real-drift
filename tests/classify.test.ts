@@ -1607,6 +1607,71 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
   });
 });
 
+describe('partial-unresolved declared compare (WAVE20 F1 — a sibling drift is not hidden)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const run = (declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource(
+      { logicalId: 'R', resourceType: 'AWS::Foo::Bar', physicalId: 'p', declared },
+      live,
+      bare
+    );
+
+  it('a RESOLVED sibling sub-value drift surfaces even when another sub-value is unresolved', () => {
+    // Environment.Variables: TABLE_ARN is a GetAtt (UNRESOLVED), LOG_LEVEL is a literal
+    // that drifted out of band. Before the fix the WHOLE property was skipped as
+    // unresolved, hiding the LOG_LEVEL change.
+    const out = run(
+      { Env: { TABLE_ARN: UNRESOLVED, LOG_LEVEL: 'INFO' } },
+      { Env: { TABLE_ARN: 'arn:aws:dynamodb:::table/x', LOG_LEVEL: 'DEBUG' } }
+    );
+    // the property is still flagged unresolved (the GetAtt part is unverifiable)...
+    expect(out.filter((f) => f.tier === 'unresolved').map((f) => f.path)).toEqual(['Env']);
+    // ...AND the resolved sibling's drift is now a declared finding
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([
+      {
+        tier: 'declared',
+        logicalId: 'R',
+        resourceType: 'AWS::Foo::Bar',
+        path: 'Env.LOG_LEVEL',
+        desired: 'INFO',
+        actual: 'DEBUG',
+        physicalId: 'p',
+      },
+    ]);
+  });
+
+  it('FP-safe: when the resolved siblings all match, only the unresolved note is emitted', () => {
+    const out = run(
+      { Env: { TABLE_ARN: UNRESOLVED, LOG_LEVEL: 'INFO' } },
+      { Env: { TABLE_ARN: 'arn:aws:dynamodb:::table/x', LOG_LEVEL: 'INFO' } }
+    );
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([]);
+    expect(out.filter((f) => f.tier === 'unresolved').map((f) => f.path)).toEqual(['Env']);
+  });
+
+  it('the unresolved leaf itself is never reported as declared drift (vs the symbol)', () => {
+    const out = run({ Env: { A: UNRESOLVED } }, { Env: { A: 'anything' } });
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([]);
+    expect(out.filter((f) => f.tier === 'unresolved').map((f) => f.path)).toEqual(['Env']);
+  });
+
+  it('a partially-unresolved property absent from live is a single unresolved note (no compare)', () => {
+    const out = run({ Env: { A: UNRESOLVED, B: 'x' } }, {});
+    expect(out.filter((f) => f.tier === 'unresolved').map((f) => f.path)).toEqual(['Env']);
+    expect(out.filter((f) => f.tier === 'declared')).toEqual([]);
+    expect(out.filter((f) => f.tier === 'readGap')).toEqual([]);
+  });
+});
+
 // An IAM policy Condition value is an UNORDERED SET of strings written as a scalar
 // or an array. AWS may echo a multi-value condition (a CDK enforceSSL /
 // grant-with-SourceArn statement) reordered, or store a scalar-declared value as a
