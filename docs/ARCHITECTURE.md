@@ -281,7 +281,7 @@ checked.
   - **child-enumerators.ts** — `CHILD_ENUMERATORS`: per declared PARENT type, enumerate LIVE child resources and flag any not in the template → `added` tier (pass 1.6). Members: (1) API Gateway REST APIs (`getResources` embed=methods — CC `ListResources` is UnsupportedAction for Resource/Method, so the service SDK is used, mirroring SDK_OVERRIDES; identifier `RestApiId|ResourceId[|HttpMethod]`); (2) API Gateway V2 (HTTP / WebSocket) APIs — Routes + Integrations via `GetRoutes`/`GetIntegrations` (identifier `ApiId|RouteId` / `ApiId|IntegrationId`); (3) SNS Topics — Subscriptions via `ListSubscriptionsByTopic` (identifier = the bare `SubscriptionArn`; pending-confirmation / deleted subs, which have no real arn, are skipped); (4) Lambda Functions — Event Source Mappings via `ListEventSourceMappings` (identifier = the bare mapping UUID; the Function model does not reflect its mappings, so no double-report); (5) EventBridge event buses — Rules via `ListRules` (identifier = the bare rule Arn; only DECLARED custom buses are scanned so the AWS-default bus is out of scope, and AWS service-managed rules with `ManagedBy` set are skipped); (6) Cognito User Pools — Clients via `ListUserPoolClients` (identifier = composite `UserPoolId|ClientId`; the UserPool model does not reflect its clients, so no double-report); (7) AppSync GraphQL APIs — Data Sources via `ListDataSources` (identifier = the bare DataSourceArn; matched by Name since the Ref/physical-id form is unreliable, and the GraphQLApi model does not reflect its datasources, so no double-report). Findings carry the CC primaryIdentifier so revert can DeleteResource them. The pure `diffApiGatewayChildren` / `diffApiGatewayV2Children` / `diffSnsTopicChildren` / `diffLambdaFunctionChildren` / `diffEventBusChildren` / `diffUserPoolChildren` / `diffGraphQLApiChildren` matchers are unit-tested offline.
 - **normalize/** — noise subtraction (section 6)
   - **intrinsic-resolver.ts** — fail-closed CFn intrinsic resolver (section 5).
-  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS` (top-level per-type service defaults → `atDefault`) + `KNOWN_DEFAULT_PATHS` (the nested-path twin: dotted paths with `*` for array elements, folds nested service defaults the CFn schema does not annotate; R108), `GENERATED_DEFAULTS` + `resolveGeneratedDefault` (per-type STRUCTURED auto-generated values templated on the physical id → `generated` tier; R104) + `isGeneratedName` (general rule: a scalar equal to the ARN physical id's name segment → `generated`, any type, no table entry; R107), **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `isJsonStringStructEqual` (object↔JSON-string), `isPemEqual` (PEM-armored value ↔ same body with surrounding-whitespace/trailing-newline differences, e.g. CloudFront PublicKey EncodedKey; R125), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules). (R95 removed the generic `projectLiveToDeclaredSubset` — it silently dropped out-of-band ADDITIONS to identity-keyed arrays like Tags; ELB attribute bags keep subset behaviour via `ELB_ATTRIBUTE_BAGS` in classify.)
+  - **noise.ts** — `isTrivialEmpty`, `isAllAwsTags`, `stripAwsTagsDeep`, `KNOWN_DEFAULTS` (top-level per-type service defaults → `atDefault`) + `KNOWN_DEFAULT_PATHS` (the nested-path twin: dotted paths with `*` for array elements, folds nested service defaults the CFn schema does not annotate; R108), `GENERATED_DEFAULTS` + `resolveGeneratedDefault` (per-type STRUCTURED auto-generated values templated on the physical id → `generated` tier; R104) + `isGeneratedName` (general rule: a scalar equal to the ARN physical id's name segment → `generated`, any type, no table entry; R107) + `GENERATED_PATHS` (value-INDEPENDENT nested paths that are always an AWS-assigned generated id cdkrd cannot template from the resource's own physical id — e.g. ApiGateway Method `Integration.CacheNamespace`, the PARENT Resource's id → `generated`; R140), **`canonicalizeTagListsDeep`**, **`canonicalizeIdArraysDeep`**, `isJsonStringStructEqual` (object↔JSON-string), `isPemEqual` (PEM-armored value ↔ same body with surrounding-whitespace/trailing-newline differences, e.g. CloudFront PublicKey EncodedKey; R125), `UNORDERED_ARRAY_PROPS` (per-type unordered scalar arrays) / `UNORDERED_OBJECT_ARRAY_PROPS` + `sortUnorderedObjectArray` (per-type unordered object arrays — SG rules, R88) / `CASE_INSENSITIVE_PATHS` (per-type compare rules). (R95 removed the generic `projectLiveToDeclaredSubset` — it silently dropped out-of-band ADDITIONS to identity-keyed arrays like Tags; ELB attribute bags keep subset behaviour via `ELB_ATTRIBUTE_BAGS` in classify.)
   - **arn-identity.ts** — **`isArnNameMatch`** (bare name ↔ ARN), **`isManagedKmsAliasMatch`** (`alias/aws/*` ↔ key ARN).
   - **policy-canonical.ts** — IAM policy-doc canonicalization. **cc-api-strip.ts** — strip AWS-managed fields (timestamps/owner/revision ids) by name at any depth, EXCEPT inside free-form user maps (Lambda `Environment.Variables`, Glue `Parameters`/`DefaultArguments`, `DockerLabels`/`Labels`, map-shaped `Tags`) where a managed-looking KEY is the user's data — stripping it would hide a real out-of-band change. **path-strip.ts** — schema readOnly/writeOnly path stripping (incl `*`).
 - **schema/schema-strip.ts** — `describe-type` → readOnly/writeOnly/defaults `SchemaInfo` (cached).
@@ -752,31 +752,19 @@ ENTRY is the contract that defines undeclared drift; a value with no entry on a
 never-snapshot-complete resource has nothing to violate (§8). `applyBaseline`
 tags such findings `unrecorded` — on a no-baseline first run that is every
 undeclared value, and after a cherry-pick record it is still every value the
-user did not pick. They render as their own section, are excluded from the
-verdict and the `--fail` exit, and the `result:` line carries the count + the
-way out. The section is always `[Not Recorded: N]` (note: `not drift — a live-only
-value not yet in your .cdkrd baseline; run cdkrd record to track it`). **First run
-vs steady state (R138):** with NO baseline file the run is framed as a setup step,
-not a clean check — nested unrecorded values are EXPANDED (so the report lists the
-SAME set the record prompt offers — no contradictory `0 shown, N folded`), and the
-verdict is `NO DRIFT — N value(s) to record (run cdkrd record)`, NOT a green `CLEAN`
-(which read as "nothing to do" right before the record prompt). Once a baseline
-exists, nested values fold (R96) and the line reads
-`CLEAN — N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
-when some fold (R112). **Never `0 shown` (R139):** the fold is suppressed whenever it
-would hide EVERY unrecorded value (they are all nested) — folding to `0 shown, N
-folded` while the record prompt still asks about those N is the same contradiction in
-steady state, so the values are expanded; folding still applies once at least one
-value stands out. (R139 also dropped R138's first-run-only `[To Record]` header — one
-concept, two labels; the verdict already carries the "to record" framing.) When BOTH a
-drift section and a standout `[Not Recorded]`
+user did not pick. They render as their own `[Not Recorded: N]` section (note:
+`not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to
+track it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
+`--fail` exit, and the `result:` line carries the count + the way out
+(`— N unrecorded value(s) await a baseline (X shown, Y folded; run cdkrd record)`
+when some fold; R112). When BOTH a drift section and a standout `[Not Recorded]`
 section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
 visible blocks, so the line switches to a combined findings count counting only
 what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 undeclared to
 review (23 folded; run cdkrd record)` — keeping the red drift verdict intact
 (R114); single-category runs keep their plain `CLEAN` / `N drift(s)` verdict.
 Declared and deleted drift still report and fail normally. The interactive after-report
-prompt still fires for unrecorded values (`values to record found — what do
+prompt still fires for unrecorded values (`unrecorded values found — what do
 you want to do?`) so "show them first" keeps its promise of a selective record.
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`

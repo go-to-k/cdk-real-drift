@@ -1929,3 +1929,58 @@ describe('REFLECTED_CHILD_PROPS (drop a parent reflection of its child resources
     );
   });
 });
+
+describe('R140: nested AWS-populated values fold (so a clean deploy is clean)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+
+  it('ApiGateway DomainName EndpointConfiguration.IpAddressType ipv4 folds as atDefault', () => {
+    const findings = classifyResource(
+      res('AWS::ApiGateway::DomainName', { EndpointConfiguration: { Types: ['REGIONAL'] } }),
+      { EndpointConfiguration: { Types: ['REGIONAL'], IpAddressType: 'ipv4' } },
+      schema
+    );
+    const f = findings.find((x) => x.path === 'EndpointConfiguration.IpAddressType')!;
+    expect(f.tier).toBe('atDefault');
+    expect(f.nested).toBe(true);
+  });
+
+  it('a CHANGED IpAddressType surfaces as undeclared (equality-gated)', () => {
+    const findings = classifyResource(
+      res('AWS::ApiGateway::DomainName', { EndpointConfiguration: { Types: ['REGIONAL'] } }),
+      { EndpointConfiguration: { Types: ['REGIONAL'], IpAddressType: 'dualstack' } },
+      schema
+    );
+    const f = findings.find((x) => x.path === 'EndpointConfiguration.IpAddressType')!;
+    expect(f.tier).toBe('undeclared');
+  });
+
+  it('ApiGateway Method Integration.CacheNamespace folds as generated on ANY value', () => {
+    // CacheNamespace defaults to the PARENT Resource id, so it varies per resource — a
+    // value-independent GENERATED_PATHS fold (not value-equality). Two different ids both fold.
+    for (const ns of ['7n6zf3', 'abc999']) {
+      const findings = classifyResource(
+        res('AWS::ApiGateway::Method', { Integration: { Type: 'MOCK' } }),
+        { Integration: { Type: 'MOCK', CacheNamespace: ns } },
+        schema
+      );
+      const f = findings.find((x) => x.path === 'Integration.CacheNamespace')!;
+      expect(f.tier).toBe('generated');
+      expect(f.nested).toBe(true);
+    }
+  });
+});

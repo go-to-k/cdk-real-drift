@@ -169,7 +169,8 @@ export function buildResolveOptions(
   if (actions.record)
     options.push({
       value: 'record-all',
-      label: 'Record all (live-only values) — snapshot into the .cdkrd baseline (keeps watching)',
+      label:
+        'Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
     });
   if (actions.revert)
     options.push({ value: 'revert-all', label: 'Revert all — write the desired values to AWS' });
@@ -183,12 +184,12 @@ export function buildResolveOptions(
   return options;
 }
 
-/** The top-menu prompt, worded by the remaining exit state (drift vs to-record-only).
+/** The top-menu prompt, worded by the remaining exit state (drift vs unrecorded-only).
  *  Pure + exported. */
 export function resolveMenuMessage(stackName: string, code: number): string {
   return code === 1
     ? `${stackName}: drift found — what do you want to do?`
-    : `${stackName}: values to record found — what do you want to do?`;
+    : `${stackName}: unrecorded values found — what do you want to do?`;
 }
 
 export async function resolveInteractively(p: ResolveParams): Promise<number> {

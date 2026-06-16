@@ -129,8 +129,8 @@ describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
   it('code 1 (drift remains) says drift found', () => {
     expect(resolveMenuMessage('S', 1)).toContain('drift found');
   });
-  it('code 0 (only unrecorded) says values to record found', () => {
-    expect(resolveMenuMessage('S', 0)).toContain('values to record found');
+  it('code 0 (only unrecorded) says unrecorded values found', () => {
+    expect(resolveMenuMessage('S', 0)).toContain('unrecorded values found');
   });
 });
 
