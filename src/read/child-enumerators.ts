@@ -17,6 +17,13 @@ import {
   GetResourcesCommand,
   type Resource as ApiGwResource,
 } from '@aws-sdk/client-api-gateway';
+import {
+  ApiGatewayV2Client,
+  GetIntegrationsCommand,
+  GetRoutesCommand,
+  type Integration as ApiGwV2Integration,
+  type Route as ApiGwV2Route,
+} from '@aws-sdk/client-apigatewayv2';
 import { READ_RETRY } from './client-config.js';
 import type { Desired } from '../desired/template-adapter.js';
 import type { DesiredResource } from '../types.js';
@@ -38,9 +45,11 @@ export interface EnumeratorContext {
 export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
-// exactly like SDK_OVERRIDES. API Gateway REST APIs are the first member.
+// exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member;
+// API Gateway V2 (HTTP / WebSocket) APIs are the second.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
+  'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -178,5 +187,126 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredMethodKeys,
     liveResources,
     liveMethodsByResource,
+  });
+}
+
+// ── API Gateway V2 (HTTP / WebSocket) ────────────────────────────────────────
+// An `AWS::ApiGatewayV2::Api` owns Routes and Integrations, each a SEPARATE
+// CloudFormation resource — the direct V2 analogue of REST's Resources + Methods.
+// A console-added Route (e.g. `GET /admin`) or Integration is invisible to `cdk drift`
+// / CFn drift detection (they only compare template-declared resources). Unlike REST
+// there is no implicit "root" child to special-case, and Routes/Integrations are
+// siblings (not nested), so each is reported independently. Both protocol types (HTTP
+// and WebSocket) use the same Api type + GetRoutes/GetIntegrations APIs, so one
+// enumerator covers both. CC `GetResource`/`DeleteResource` consume the composite
+// identifier (`ApiId|RouteId` / `ApiId|IntegrationId`), so revert deletes generically.
+
+// Pure diff: declared child id sets + live inventory -> the added children. Separated
+// from the SDK calls so the matching is unit-tested offline (mirrors REST).
+export interface ApiGatewayV2ChildInput {
+  apiId: string;
+  declaredRouteIds: string[]; // physical ids of AWS::ApiGatewayV2::Route in the template
+  declaredIntegrationIds: string[]; // physical ids of AWS::ApiGatewayV2::Integration
+  liveRoutes: { id: string; key?: string | undefined }[];
+  liveIntegrations: { id: string; label?: string | undefined }[];
+}
+
+export function diffApiGatewayV2Children(input: ApiGatewayV2ChildInput): AddedChild[] {
+  const { apiId, declaredRouteIds, declaredIntegrationIds, liveRoutes, liveIntegrations } = input;
+  const declaredRoutes = new Set(declaredRouteIds);
+  const declaredIntegrations = new Set(declaredIntegrationIds);
+  const added: AddedChild[] = [];
+  for (const r of liveRoutes) {
+    if (declaredRoutes.has(r.id)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGatewayV2::Route',
+      identifier: `${apiId}|${r.id}`,
+      label: r.key ?? r.id, // RouteKey is the human form, e.g. 'GET /items' / '$default'
+      live: { RouteId: r.id, RouteKey: r.key },
+    });
+  }
+  for (const i of liveIntegrations) {
+    if (declaredIntegrations.has(i.id)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGatewayV2::Integration',
+      identifier: `${apiId}|${i.id}`,
+      label: i.label ?? i.id,
+      live: { IntegrationId: i.id },
+    });
+  }
+  return added;
+}
+
+// A readable label for an out-of-band Integration (no RouteKey-style human key): the
+// integration type plus its target URI when present (e.g. 'AWS_PROXY arn:...:fn').
+function integrationLabel(i: ApiGwV2Integration): string | undefined {
+  if (!i.IntegrationType) return undefined;
+  return i.IntegrationUri ? `${i.IntegrationType} ${i.IntegrationUri}` : i.IntegrationType;
+}
+
+async function pageRoutes(client: ApiGatewayV2Client, apiId: string): Promise<ApiGwV2Route[]> {
+  const out: ApiGwV2Route[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new GetRoutesCommand({ ApiId: apiId, NextToken: next }));
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function pageIntegrations(
+  client: ApiGatewayV2Client,
+  apiId: string
+): Promise<ApiGwV2Integration[]> {
+  const out: ApiGwV2Integration[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new GetIntegrationsCommand({ ApiId: apiId, NextToken: next }));
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const apiId = parent.physicalId;
+  if (!apiId) return [];
+
+  // Declared children of THIS api (Ref/GetAtt ApiId already resolved to the physical id
+  // by gather). Route/Integration physical ids ARE the RouteId/IntegrationId.
+  const declaredRouteIds: string[] = [];
+  const declaredIntegrationIds: string[] = [];
+  for (const r of desired.resources) {
+    if (r.declared.ApiId !== apiId) continue;
+    if (r.resourceType === 'AWS::ApiGatewayV2::Route' && r.physicalId) {
+      declaredRouteIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::ApiGatewayV2::Integration' && r.physicalId) {
+      declaredIntegrationIds.push(r.physicalId);
+    }
+  }
+
+  const client = new ApiGatewayV2Client({ region, ...READ_RETRY });
+  const [routes, integrations] = await Promise.all([
+    pageRoutes(client, apiId),
+    pageIntegrations(client, apiId),
+  ]);
+  const liveRoutes = routes
+    .filter((r): r is ApiGwV2Route & { RouteId: string } => typeof r.RouteId === 'string')
+    .map((r) => ({ id: r.RouteId, key: r.RouteKey }));
+  const liveIntegrations = integrations
+    .filter(
+      (i): i is ApiGwV2Integration & { IntegrationId: string } =>
+        typeof i.IntegrationId === 'string'
+    )
+    .map((i) => ({ id: i.IntegrationId, label: integrationLabel(i) }));
+
+  return diffApiGatewayV2Children({
+    apiId,
+    declaredRouteIds,
+    declaredIntegrationIds,
+    liveRoutes,
+    liveIntegrations,
   });
 }

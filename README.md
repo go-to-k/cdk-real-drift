@@ -198,7 +198,8 @@ code or reverting.
   `cdkrd revert` **deletes** it (Cloud Control `DeleteResource`, behind the usual
   confirm / `--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`,
   exactly like removing an unrecorded undeclared value). Coverage grows per parent
-  type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
+  type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs and API Gateway
+  V2 (HTTP / WebSocket) APIs are covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
