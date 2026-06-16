@@ -174,8 +174,16 @@ export async function runCheck(args: string[]): Promise<number> {
       // any such gap into a non-zero exit (folded into `worst` after the report).
       const nestedWarn = nestedStackWarning(desired.resources, stackName);
       if (nestedWarn) console.error(nestedWarn);
-      const covWarn = coverageWarning(gathered.findings, stackName);
-      if (covWarn) console.error(covWarn);
+      // Coverage gap (skipped / unread resources): R127 folds this into the report's
+      // info: footer for TEXT mode — the `skipped=` line there now carries the "NOT
+      // checked (coverage incomplete)" framing, so emitting a separate stderr warning
+      // BEFORE the report would (a) bury the drift result below the fold (the very UX
+      // complaint that prompted R127) and (b) duplicate the footer. --json has no info:
+      // footer, so keep the loud stderr warning there to preserve the invariant.
+      if (a.json) {
+        const covWarn = coverageWarning(gathered.findings, stackName);
+        if (covWarn) console.error(covWarn);
+      }
       // a mid-operation / failed stack state still gets compared, but the result may be
       // transient/unreliable — say so loudly (REVIEW_IN_PROGRESS / deleting states never
       // reach here; loadDesired throws StackNotCheckableError, handled in the catch).

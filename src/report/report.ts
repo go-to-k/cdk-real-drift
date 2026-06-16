@@ -52,7 +52,8 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
   readGap: "declared, but AWS doesn't return it on read so cdkrd can't verify it — not drift",
   unresolved: 'declared paths needing GetAtt — skipped, not drift',
-  skipped: 'CC API unsupported / no physical id',
+  skipped:
+    'NOT checked (coverage incomplete) — CC API unsupported / no physical id / custom resource',
 };
 const DRIFT_TIERS: Tier[] = ['deleted', 'declared', 'undeclared'];
 // atDefault leads the informational footer: it is the bulk of a first run (undeclared
@@ -308,6 +309,13 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       ];
       return `readGap=${items.length} (declared but unverifiable — AWS doesn't return them on read, not drift: ${parts.join(', ')})`;
     }
+    // skipped = resources cdkrd genuinely could NOT read this run (CC-unsupported with
+    // no SDK override, read error, missing physical id, custom resource). It is the one
+    // info: tier that is a COVERAGE GAP, not a not-drift classification — so it carries
+    // the "NOT checked / coverage incomplete" framing here (R28-era loud coverage warning,
+    // folded into the footer in R127 so the drift result stays the first thing on screen).
+    if (t === 'skipped')
+      return `skipped=${items.length} — NOT checked (coverage incomplete: ${groupReasons(items)})`;
     return `${t}=${items.length} (${groupReasons(items)})`;
   };
   const summaries = INFO_TIERS.filter((t) => !isExpanded(t))
