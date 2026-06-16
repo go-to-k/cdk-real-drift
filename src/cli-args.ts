@@ -19,6 +19,7 @@ const BOOLEAN_FLAGS = new Set([
   '--remove-unrecorded',
   '--verbose',
   '-v',
+  '--strict',
 ]);
 
 export interface CommonArgs {
@@ -47,6 +48,13 @@ export interface CommonArgs {
   // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
   // check REPORTS drift but exits 0 (report-only).
   fail: boolean;
+  // (check) coverage axis, ORTHOGONAL to --fail (which is about drift): make a run
+  // whose coverage was incomplete — any resource SKIPPED (CC-unsupported + no SDK
+  // override, a read error, a missing physical id) or any nested stack not recursed
+  // into — exit non-zero. A loud coverage `warning:` always prints regardless of this
+  // flag; --strict additionally turns that gap into a CI-failing exit. Does not change
+  // the --fail default (a transient throttle should not silently start failing CI).
+  strict: boolean;
   removeUnrecorded: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
 }
@@ -136,6 +144,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     app: values['--app'] ?? process.env.CDKRD_APP,
     json: has('--json'),
     fail: has('--fail'),
+    strict: has('--strict'),
     showAll: has('--show-all'),
     yes: has('--yes') || has('-y'),
     preDeploy: has('--pre-deploy'),

@@ -47,4 +47,8 @@ echo "=== parent stack itself should be CLEAN (warning is on stderr, not drift) 
 $CLI check "$STACK" --region "$REGION" --fail
 [ $? -eq 0 ] || fail "expected CLEAN exit 0 (the warning must not be counted as drift)"
 
+echo "=== --strict: the nested-stack coverage gap must make exit NON-ZERO ==="
+$CLI check "$STACK" --region "$REGION" --strict
+[ $? -eq 1 ] || fail "expected --strict to exit 1 on the nested-stack coverage gap"
+
 echo "INTEG PASS"

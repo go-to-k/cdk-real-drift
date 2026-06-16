@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  coverageWarning,
   finalCheckExit,
+  hasCoverageGap,
   nestedStackWarning,
   preDeployFindings,
   undeclaredOnlyFindings,
@@ -215,5 +217,56 @@ describe('nestedStackWarning (loud coverage gap for nested stacks)', () => {
       'S'
     );
     expect(w).toContain('NestedXYZ');
+  });
+});
+
+describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () => {
+  const skipped = (logicalId: string, over: Partial<Finding> = {}): Finding => ({
+    tier: 'skipped',
+    logicalId,
+    resourceType: 'AWS::X::Y',
+    path: '',
+    ...over,
+  });
+  const dr = (resourceType: string): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    declared: {},
+  });
+
+  it('coverageWarning is null when nothing was skipped', () => {
+    expect(coverageWarning([F('undeclared'), F('declared')], 'S')).toBeNull();
+  });
+
+  it('coverageWarning counts + lists skipped resources (construct path preferred, sorted)', () => {
+    const w = coverageWarning(
+      [
+        skipped('B', { constructPath: 'S/Zeta' }),
+        F('declared'),
+        skipped('A', { constructPath: 'S/Alpha' }),
+      ],
+      'MyStack'
+    );
+    expect(w).toContain('MyStack: 2 resource(s) were NOT checked (coverage incomplete)');
+    expect(w).toContain('S/Alpha, S/Zeta');
+  });
+
+  it('coverageWarning caps the list at 10 with a "+N more" suffix', () => {
+    const many = Array.from({ length: 14 }, (_, i) => skipped(`R${String(i).padStart(2, '0')}`));
+    const w = coverageWarning(many, 'S')!;
+    expect(w).toContain('14 resource(s) were NOT checked');
+    expect(w).toContain('…(+4 more)');
+  });
+
+  it('hasCoverageGap is true on a skipped resource', () => {
+    expect(hasCoverageGap([skipped('A')], [dr('AWS::SNS::Topic')])).toBe(true);
+  });
+
+  it('hasCoverageGap is true on a nested stack even with everything else checked', () => {
+    expect(hasCoverageGap([F('undeclared')], [dr('AWS::CloudFormation::Stack')])).toBe(true);
+  });
+
+  it('hasCoverageGap is false when everything was read and there are no nested stacks', () => {
+    expect(hasCoverageGap([F('undeclared'), F('declared')], [dr('AWS::SNS::Topic')])).toBe(false);
   });
 });
