@@ -476,6 +476,32 @@ describe('buildRevertPlan', () => {
     expect(plan('Tags.0.Value').items).toHaveLength(1); // .Value is not under the create-only Key path
   });
 
+  it('a PARENT finding of a create-only sub-path is notRevertable (revert would replace the subtree)', () => {
+    // drift-calculator emits a finding at the PARENT path for a length-/shape-changed
+    // array or object; reverting it rewrites the whole subtree, INCLUDING the create-only
+    // descendant. Block it up front instead of failing at apply time.
+    const efs = schemaWithCreateOnly('AWS::EFS::AccessPoint', 'PosixUser.Uid');
+    const plan = (path: string) =>
+      buildRevertPlan(
+        [
+          F({
+            resourceType: 'AWS::EFS::AccessPoint',
+            tier: 'declared',
+            path,
+            desired: [],
+            actual: [1],
+          }),
+        ],
+        undefined,
+        { schemas: efs }
+      );
+    // the whole PosixUser object reverted -> would rewrite the create-only Uid
+    expect(plan('PosixUser').notRevertable[0]!.reason).toContain('create-only');
+    expect(plan('PosixUser').items).toHaveLength(0);
+    // an unrelated parent that contains NO create-only descendant stays revertable
+    expect(plan('RootDirectory').items).toHaveLength(1);
+  });
+
   it('deleted finding -> notRevertable (recreate via cdk deploy), never a patch op', () => {
     const plan = buildRevertPlan(
       [F({ tier: 'deleted', path: '', desired: undefined, actual: undefined })],
