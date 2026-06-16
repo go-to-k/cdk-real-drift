@@ -30,3 +30,24 @@ export function globToRegExp(pattern: string): RegExp {
 export function matchesGlob(pattern: string, name: string): boolean {
   return globToRegExp(pattern).test(name);
 }
+
+/**
+ * Path-axis glob (for ignore-rule `path` patterns against a `<id>.<sub.path>` target):
+ * a SEGMENT-aware variant where `*` / `?` do NOT cross a `.` or `[` boundary. So
+ * `*.DesiredCount` matches `<anyId>.DesiredCount` (the documented intent — `*` = one id
+ * segment) but NOT a same-named leaf nested deeper (`Tbl.Config.DesiredCount`, or a
+ * free-form-map key literally named `DesiredCount`). Subtree coverage of a PARENT rule
+ * (`X.Policies` covering `X.Policies[Mp].Name`) is handled separately by the ancestor
+ * walk in `pathMatches`, so bounding `*` here does not under-match. The stack/region
+ * axes keep `matchesGlob` (their names contain no `.`/`[`, so it is equivalent there).
+ */
+export function matchesPathGlob(pattern: string, target: string): boolean {
+  let out = '^';
+  for (const ch of pattern.replace(/\*+/g, '*')) {
+    if (ch === '*') out += '[^.[]*';
+    else if (ch === '?') out += '[^.[]';
+    else out += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  out += '$';
+  return new RegExp(out).test(target);
+}

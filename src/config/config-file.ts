@@ -32,7 +32,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { matchesGlob } from '../commands/glob-match.js';
+import { matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
 import type { Finding } from '../types.js';
 
 // An ignore rule. `path` is the glob against "<logicalId>.<path>" /
@@ -225,7 +225,7 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
  * Parent matching walks ancestors at each `.` OR `[` boundary, combined with the glob.
  */
 function pathMatches(pattern: string, target: string): boolean {
-  if (matchesGlob(pattern, target)) return true;
+  if (matchesPathGlob(pattern, target)) return true;
   // A rule on a PARENT property ignores its whole subtree — including array / identity-
   // keyed children whose path glues the index to its key inside ONE dot-segment
   // (`Policies[MyPol].PolicyName`, `Statement[0].Condition`, `Tags[env]`). Walk ancestor
@@ -237,7 +237,7 @@ function pathMatches(pattern: string, target: string): boolean {
     const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['));
     if (cut <= 0) break;
     t = t.slice(0, cut);
-    if (matchesGlob(pattern, t)) return true;
+    if (matchesPathGlob(pattern, t)) return true;
   }
   return false;
 }

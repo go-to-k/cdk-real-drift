@@ -100,6 +100,29 @@ describe('applyIgnores', () => {
     expect(out.map((f) => f.tier)).toEqual(['ignored', 'declared']);
   });
 
+  it('wildcard *.X does NOT cross dot segments — a deeper same-named leaf is not over-ignored (WAVE21)', () => {
+    // `*.DesiredCount` means "<anyId>.DesiredCount" (the documented intent), NOT "any
+    // `.DesiredCount` at any depth". A genuinely-drifted DesiredCount nested deeper (or a
+    // free-form-map key literally named DesiredCount) must NOT be silently hidden.
+    const out = ign(
+      [
+        declared('Svc', 'DesiredCount'), // the intended target -> ignored
+        declared('Tbl', 'Config.DesiredCount'), // nested deeper -> must stay drift
+        undeclared('Tbl', 'SomeMap.DesiredCount'), // free-form leaf -> must stay drift
+      ],
+      'S',
+      cfg([p('*.DesiredCount')])
+    );
+    expect(out.map((f) => f.tier)).toEqual(['ignored', 'declared', 'undeclared']);
+  });
+
+  it('a parent rule still covers a deep same-named leaf via the ancestor walk (no under-match)', () => {
+    // segment-bounding `*` must not break subtree coverage: an explicit parent rule
+    // (`Tbl.Config`) still ignores everything under it, including `Tbl.Config.DesiredCount`.
+    const [f] = ign([declared('Tbl', 'Config.DesiredCount')], 'S', cfg([p('Tbl.Config')]));
+    expect(f?.tier).toBe('ignored');
+  });
+
   it('re-tags undeclared too', () => {
     const [f] = ign(
       [undeclared('MyTable', 'ProvisionedThroughput')],
