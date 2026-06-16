@@ -48,7 +48,13 @@ export type SdkWriter = (ctx: OverrideCtx, ops: PatchOp[]) => Promise<void>;
 
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 ? v : undefined;
-const firstStr = (v: unknown): string | undefined => (Array.isArray(v) ? str(v[0]) : str(v));
+// Every non-empty string in v (an array of targets, or a single scalar). A policy
+// resource can attach to MORE THAN ONE target (an AWS::IAM::Policy on several Roles,
+// an SNS TopicPolicy spanning several Topics) — revert must write to ALL of them, or
+// the drift silently persists on every target after the first while the run reports
+// "reverted".
+const strList = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : [v]).map(str).filter((s): s is string => s !== undefined);
 
 // reconstruct the desired full model = current (read back) with revert ops applied
 async function desiredModel(
@@ -85,25 +91,33 @@ const writeS3BucketPolicy: SdkWriter = async (ctx, ops) => {
 };
 
 const writeSnsTopicPolicy: SdkWriter = async (ctx, ops) => {
-  const topic = firstStr(ctx.declared['Topics']);
-  if (!topic) throw new Error('cannot resolve topic for revert');
+  const topics = strList(ctx.declared['Topics']);
+  if (topics.length === 0) throw new Error('cannot resolve topic for revert');
   const desired = policyJson(await desiredModel('AWS::SNS::TopicPolicy', ctx, ops)) ?? '';
-  await new SNSClient({ region: ctx.region }).send(
-    new SetTopicAttributesCommand({
-      TopicArn: topic,
-      AttributeName: 'Policy',
-      AttributeValue: desired,
-    })
-  );
+  const c = new SNSClient({ region: ctx.region });
+  // A TopicPolicy can attach to several Topics — set the policy on every one.
+  for (const topic of topics) {
+    await c.send(
+      new SetTopicAttributesCommand({
+        TopicArn: topic,
+        AttributeName: 'Policy',
+        AttributeValue: desired,
+      })
+    );
+  }
 };
 
 const writeSqsQueuePolicy: SdkWriter = async (ctx, ops) => {
-  const queue = firstStr(ctx.declared['Queues']);
-  if (!queue) throw new Error('cannot resolve queue for revert');
+  const queues = strList(ctx.declared['Queues']);
+  if (queues.length === 0) throw new Error('cannot resolve queue for revert');
   const desired = policyJson(await desiredModel('AWS::SQS::QueuePolicy', ctx, ops)) ?? '';
-  await new SQSClient({ region: ctx.region }).send(
-    new SetQueueAttributesCommand({ QueueUrl: queue, Attributes: { Policy: desired } })
-  );
+  const c = new SQSClient({ region: ctx.region });
+  // A QueuePolicy can attach to several Queues — set the policy on every one.
+  for (const queue of queues) {
+    await c.send(
+      new SetQueueAttributesCommand({ QueueUrl: queue, Attributes: { Policy: desired } })
+    );
+  }
 };
 
 const writeIamPolicy: SdkWriter = async (ctx, ops) => {
@@ -112,22 +126,27 @@ const writeIamPolicy: SdkWriter = async (ctx, ops) => {
   const desired = policyJson(await desiredModel('AWS::IAM::Policy', ctx, ops));
   if (desired === undefined) throw new Error('cannot revert an IAM inline policy to absent');
   const c = new IAMClient({ region: ctx.region });
-  const role = firstStr(ctx.declared['Roles']);
-  const user = firstStr(ctx.declared['Users']);
-  const group = firstStr(ctx.declared['Groups']);
-  if (role)
+  // An AWS::IAM::Policy can attach to ANY combination of Roles, Users and Groups, and
+  // to several of each — the same inline policy is put on every one. Reverting only the
+  // first target (the old behavior) left the drift in place on every other attachment
+  // while reporting success.
+  const roles = strList(ctx.declared['Roles']);
+  const users = strList(ctx.declared['Users']);
+  const groups = strList(ctx.declared['Groups']);
+  if (roles.length + users.length + groups.length === 0)
+    throw new Error('IAM policy has no role/user/group target');
+  for (const role of roles)
     await c.send(
       new PutRolePolicyCommand({ RoleName: role, PolicyName: name, PolicyDocument: desired })
     );
-  else if (user)
+  for (const user of users)
     await c.send(
       new PutUserPolicyCommand({ UserName: user, PolicyName: name, PolicyDocument: desired })
     );
-  else if (group)
+  for (const group of groups)
     await c.send(
       new PutGroupPolicyCommand({ GroupName: group, PolicyName: name, PolicyDocument: desired })
     );
-  else throw new Error('IAM policy has no role/user/group target');
 };
 
 // IAM managed policies are versioned: a "settable" PolicyDocument lives in the
