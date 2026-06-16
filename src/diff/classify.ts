@@ -23,6 +23,7 @@ import {
   isJsonStringStructEqual,
   isPemEqual,
   isStringlyEqualScalar,
+  isStringlyEqualScalarArray,
   isGeneratedName,
   isTrivialEmpty,
   isVersionPrefixMatch,
@@ -247,6 +248,11 @@ export function classifyResource(
       // CFn stringly-typed scalar (Glue Parameters Map<String,String>, "5432" ports):
       // declared `true`/`5432` vs AWS `"true"`/`"5432"` is not drift.
       if (isStringlyEqualScalar(d.stateValue, d.awsValue)) continue;
+      // CFn stringly-typed scalar ARRAY (R23): the drift-calculator emits the whole
+      // array as one record, so the per-leaf check above can't see the elements of a
+      // declared `[80, 443]` vs live `["80", "443"]`. Same typed<->string collapse,
+      // element-wise; a genuine element change still differs.
+      if (isStringlyEqualScalarArray(d.stateValue, d.awsValue)) continue;
       // A declared object whose live form is the same value as a JSON STRING
       // (R75: SSM Document.Content) — equal after parse, key-order-insensitive.
       if (isJsonStringStructEqual(d.stateValue, d.awsValue)) continue;

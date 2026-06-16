@@ -11,6 +11,7 @@ import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebu
 import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
+  type MetricFilter,
 } from '@aws-sdk/client-cloudwatch-logs';
 import { DescribeAddressesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
@@ -416,10 +417,24 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
   const filterName = str(physicalId) ?? str(declared.FilterName);
   if (!logGroup || !filterName) return undefined;
   const c = new CloudWatchLogsClient({ region, ...READ_RETRY });
-  const r = await c.send(
-    new DescribeMetricFiltersCommand({ logGroupName: logGroup, filterNamePrefix: filterName })
-  );
-  const mf = r.metricFilters?.find((m) => m.filterName === filterName);
+  // `filterNamePrefix: filterName` narrows each page to filters that START WITH this
+  // name — but when many filters share the prefix (a name that is also a prefix of
+  // others), the EXACT-named one can be paginated past the first page. Follow
+  // nextToken until it is found, so a present filter is never misread as deleted (a
+  // false negative). Stops as soon as the exact match appears.
+  let mf: MetricFilter | undefined;
+  let nextToken: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeMetricFiltersCommand({
+        logGroupName: logGroup,
+        filterNamePrefix: filterName,
+        ...(nextToken && { nextToken }),
+      })
+    );
+    mf = r.metricFilters?.find((m) => m.filterName === filterName);
+    nextToken = r.nextToken;
+  } while (!mf && nextToken);
   if (!mf) return undefined;
   return {
     LogGroupName: logGroup,

@@ -91,6 +91,38 @@ describe('classifyResource (the heart)', () => {
       )
     ).toBe(false);
   });
+
+  // R23: a CFn stringly-typed scalar ARRAY (declared [80, 443] vs live ["80","443"])
+  // surfaces from the drift-calculator as one parent-path record carrying the whole
+  // array; the per-leaf stringly check could not see the elements. Now suppressed.
+  it('stringly-typed scalar array is not declared drift, real element change still is (R23)', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'LB',
+      resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+      physicalId: 'lb-phys',
+      declared: { Ports: [80, 443], Flags: [true, false] },
+    };
+    // AWS echoes the typed list as strings, same order — no declared drift.
+    const clean = tiers(
+      classifyResource(res, { Ports: ['80', '443'], Flags: ['true', 'false'] }, emptySchema)
+    );
+    expect(clean.declared).toEqual([]);
+    // A genuine element change still surfaces as declared drift.
+    const drifted = tiers(
+      classifyResource(res, { Ports: ['80', '8443'], Flags: ['true', 'false'] }, emptySchema)
+    );
+    expect(drifted.declared).toEqual(['Ports']);
+  });
 });
 
 // R10: classifyResource threads optional { accountId, region } into isArnNameMatch.
