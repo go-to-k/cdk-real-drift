@@ -9,6 +9,7 @@ import {
   diffLogGroupChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
+  diffVpcChildren,
 } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
@@ -509,6 +510,48 @@ describe('diffLoadBalancerChildren (ELBv2 listeners)', () => {
         liveListeners: [
           { arn: LSN('a'), label: 'HTTP:80' },
           { arn: LSN('b'), label: 'HTTPS:443' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcChildren (EC2 VPC subnets)', () => {
+  const SN = (id: string) => `subnet-${id}`;
+
+  it('flags an out-of-band subnet added via the console (not in the template)', () => {
+    const added = diffVpcChildren({
+      declaredSubnetIds: [SN('declared')],
+      liveSubnets: [
+        { id: SN('declared'), label: '10.0.0.0/24' },
+        { id: SN('console'), label: '10.0.200.0/24' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Subnet',
+        identifier: SN('console'),
+        label: '10.0.200.0/24',
+        live: { SubnetId: SN('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare SubnetId (CC primaryIdentifier, not a composite)', () => {
+    const added = diffVpcChildren({
+      declaredSubnetIds: [],
+      liveSubnets: [{ id: SN('x'), label: '10.0.201.0/24' }],
+    });
+    expect(added[0]!.identifier).toBe(SN('x'));
+  });
+
+  it('no drift when every live subnet is declared', () => {
+    expect(
+      diffVpcChildren({
+        declaredSubnetIds: [SN('a'), SN('b')],
+        liveSubnets: [
+          { id: SN('a'), label: '10.0.0.0/24' },
+          { id: SN('b'), label: '10.0.1.0/24' },
         ],
       })
     ).toEqual([]);

@@ -39,6 +39,7 @@ import {
   ListUserPoolClientsCommand,
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { DescribeSubnetsCommand, EC2Client, type Subnet as Ec2Subnet } from '@aws-sdk/client-ec2';
 import {
   DescribeListenersCommand,
   ElasticLoadBalancingV2Client,
@@ -85,7 +86,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
-// balancers (listeners) the ninth.
+// balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -96,6 +97,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::AppSync::GraphQLApi': enumerateGraphQLApiChildren,
   'AWS::Logs::LogGroup': enumerateLogGroupChildren,
   'AWS::ElasticLoadBalancingV2::LoadBalancer': enumerateLoadBalancerChildren,
+  'AWS::EC2::VPC': enumerateVpcChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -910,4 +912,72 @@ async function enumerateLoadBalancerChildren(ctx: EnumeratorContext): Promise<Ad
     .map((l) => ({ arn: l.ListenerArn, label: `${l.Protocol}:${l.Port}` }));
 
   return diffLoadBalancerChildren({ declaredListenerArns, liveListeners });
+}
+
+// ── EC2 (VPC) ──────────────────────────────────────────────────────────────────
+// An `AWS::EC2::VPC` owns Subnets, each a separate CloudFormation resource. A console
+// / CLI `create-subnet` (someone carves a new subnet into a VPC out of band) is
+// invisible to cdk drift / CFn drift detection (they only compare template-declared
+// resources). The VPC's own live model does NOT reflect its subnets inline, so there is
+// no double-report to suppress. The CC primaryIdentifier for AWS::EC2::Subnet is the
+// bare SubnetId, which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared subnet ids + live inventory -> the added subnets.
+export interface VpcChildInput {
+  declaredSubnetIds: string[]; // physical ids (SubnetIds) of AWS::EC2::Subnet on this VPC
+  liveSubnets: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcChildren(input: VpcChildInput): AddedChild[] {
+  const declared = new Set(input.declaredSubnetIds);
+  const added: AddedChild[] = [];
+  for (const s of input.liveSubnets) {
+    if (declared.has(s.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::Subnet',
+      identifier: s.id, // SubnetId IS the CC primaryIdentifier
+      label: s.label ?? s.id,
+      live: { SubnetId: s.id },
+    });
+  }
+  return added;
+}
+
+async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[]> {
+  const out: Ec2Subnet[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeSubnetsCommand({
+        Filters: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.Subnets ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const vpcId = parent.physicalId; // a VPC's physical id IS its VpcId
+  if (!vpcId) return [];
+
+  // Declared subnets of THIS VPC (Ref/GetAtt VpcId already resolved to the physical id by
+  // gather). A subnet's physical id IS its SubnetId.
+  const declaredSubnetIds: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType === 'AWS::EC2::Subnet' && r.declared.VpcId === vpcId && r.physicalId) {
+      declaredSubnetIds.push(r.physicalId);
+    }
+  }
+
+  const client = new EC2Client({ region, ...READ_RETRY });
+  const subnets = await pageSubnets(client, vpcId);
+  const liveSubnets = subnets
+    .filter((s): s is Ec2Subnet & { SubnetId: string } => typeof s.SubnetId === 'string')
+    .map((s) => ({ id: s.SubnetId, label: s.CidrBlock ? `${s.CidrBlock}` : s.SubnetId }));
+
+  return diffVpcChildren({ declaredSubnetIds, liveSubnets });
 }
