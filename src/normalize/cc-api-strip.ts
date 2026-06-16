@@ -35,7 +35,7 @@ const ALWAYS_STRIPPED = new Set<string>([
 // `CreationDate` — are not under one of these keys, so they are still stripped; the few
 // nested AWS-managed fields in STRUCTURED objects, e.g. StepFunctions
 // `LoggingConfiguration.CreatedAt`, are also not under these keys, so they still strip.)
-const FREE_FORM_MAP_PARENTS = new Set([
+export const FREE_FORM_MAP_PARENTS = new Set([
   'Variables', // AWS::Lambda::Function Environment.Variables
   'Parameters', // AWS::Glue::Table/Database TableInput/DatabaseInput.Parameters
   'DefaultArguments', // AWS::Glue::Job
