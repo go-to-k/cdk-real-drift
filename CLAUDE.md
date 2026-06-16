@@ -107,7 +107,8 @@ detail:
 - `diff/` — drift classification + calculation (declared / undeclared / atDefault / readGap /
   unresolved / skipped).
 - `revert/` — the AWS-mutating path: Cloud Control `UpdateResource` + type-specific
-  SDK writers (`writers.ts` / `SDK_WRITERS`).
+  SDK writers (`writers.ts` / `SDK_WRITERS`), plus Cloud Control `DeleteResource` to
+  revert (delete) an out-of-band `added` resource (a `delete`-kind plan item).
 - `schema/` — CloudFormation resource-schema strip (readOnly/writeOnly props).
 - `synth/` — CDK app synthesis (`@aws-cdk/toolkit-lib`) for stack discovery +
   construct-path display.

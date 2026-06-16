@@ -161,6 +161,34 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('an `added` resource -> a `delete`-kind item keyed on its CC identifier', () => {
+    const f = F({
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]).toMatchObject({
+      kind: 'delete',
+      physicalId: 'abc|root|ANY',
+      resourceType: 'AWS::ApiGateway::Method',
+    });
+    // single pseudo-op carrying the human label, never serialized to a patch
+    expect(plan.items[0]!.ops).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]!.human).toContain('DELETE');
+  });
+
+  it('an `added` finding with no physical id -> notRevertable (cannot address the delete)', () => {
+    const f = F({ tier: 'added', logicalId: 'X/y', physicalId: undefined, path: '' });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('no physical id');
+  });
+
   it('removed-undeclared (baseline value gone) -> re-add the baseline value', () => {
     const f = F({
       tier: 'undeclared',

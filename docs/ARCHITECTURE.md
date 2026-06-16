@@ -283,7 +283,7 @@ checked.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
 - **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
-- **revert/** — the write path (section 7): **plan.ts**, **apply.ts** (CC UpdateResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
+- **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
   TTY-only semantic colors (R43). **aws-errors.ts** — `isStackNotDeployed` etc.
@@ -476,9 +476,11 @@ see [redesign-notes.md](redesign-notes.md).)
 always in full — per finding: path, current → target; NOT-revertable findings folded
 to one line per reason, `--verbose` for the full list — R35), then in a TTY shows a
 **multiselect of the op(s) to write** (R57 — symmetric with record's multiselect:
-RESTORE ops pre-selected; REMOVE ops, which DELETE a live value not in the
-baseline, start unselected and labeled `(REMOVE)` so removal stays an explicit
-per-item choice; picking nothing aborts), asks for confirmation with the selected
+every op starts unselected (R137); REMOVE ops, which DELETE a live value not in the
+baseline, are labeled `(REMOVE)`, and a whole out-of-band `added` resource is a
+`delete`-kind item labeled `(DELETE)` that removes it via Cloud Control
+`DeleteResource` — so each destructive write stays an explicit per-item choice;
+picking nothing aborts), asks for confirmation with the selected
 op count (`@clack`; `--yes` skips both and applies the full plan; non-TTY
 refuses; `--dry-run` previews), applies, then
 **re-checks for convergence**. The convergence re-check is **scoped to the

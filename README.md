@@ -188,8 +188,10 @@ without editing code or reverting.
   is not in your template (e.g. an API Gateway `ANY` method added on `/` via the
   console) — is reported in the `added` tier and always counts as failing drift.
   `cdk drift` / CFn drift detection compare only template-declared resources, so
-  an out-of-band addition is invisible to them. Coverage grows per parent type
-  (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
+  an out-of-band addition is invisible to them. `cdkrd revert` **deletes** it
+  (Cloud Control `DeleteResource`, behind the usual confirm / `--dry-run` / picker),
+  or `cdkrd ignore` accepts it. Coverage grows per parent type (the
+  `CHILD_ENUMERATORS` registry); API Gateway REST APIs are the first.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift
@@ -492,8 +494,6 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
     so `revert` refuses: record them if the live values are right, or opt into
     removal with `--remove-unrecorded`;
   - a `deleted` resource (recreate it with `cdk deploy`);
-  - an `added` (out-of-band) resource — detect-only for now; deleting it via revert
-    is a planned follow-up, so remove it via the console / `cdk` for the moment;
   - **nested undeclared values** (a sub-key inside a property you declared, incl.
     inside an identity-keyed array element) — detect/record-only: a flat patch
     can't safely target a deep sub-field, so fix any real divergence in your IaC
