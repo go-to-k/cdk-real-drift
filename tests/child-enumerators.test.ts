@@ -5,6 +5,7 @@ import {
   diffEventBusChildren,
   diffGraphQLApiChildren,
   diffLambdaFunctionChildren,
+  diffLogGroupChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
 } from '../src/read/child-enumerators.js';
@@ -381,6 +382,48 @@ describe('diffUserPoolChildren (Cognito user pool clients)', () => {
           { id: 'a', label: 'A' },
           { id: 'b', label: 'B' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLogGroupChildren (CloudWatch Logs metric filters)', () => {
+  const LG = '/aws/cdkrd/integ';
+
+  it('flags an out-of-band metric filter added via the console (not in the template)', () => {
+    const added = diffLogGroupChildren({
+      logGroupName: LG,
+      declaredFilterNames: ['DeclaredFilter'],
+      liveFilters: [
+        { name: 'DeclaredFilter', label: 'DeclaredFilter' },
+        { name: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Logs::MetricFilter',
+        identifier: `${LG}|cdkrd-integ-oob`,
+        label: 'cdkrd-integ-oob',
+        live: { FilterName: 'cdkrd-integ-oob', LogGroupName: LG },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite LogGroupName|FilterName', () => {
+    const added = diffLogGroupChildren({
+      logGroupName: LG,
+      declaredFilterNames: [],
+      liveFilters: [{ name: 'filter-x' }],
+    });
+    expect(added[0]!.identifier).toBe(`${LG}|filter-x`);
+  });
+
+  it('no drift when every live filter is declared', () => {
+    expect(
+      diffLogGroupChildren({
+        logGroupName: LG,
+        declaredFilterNames: ['a', 'b'],
+        liveFilters: [{ name: 'a' }, { name: 'b' }],
       })
     ).toEqual([]);
   });

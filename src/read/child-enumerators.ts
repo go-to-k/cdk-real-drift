@@ -30,6 +30,11 @@ import {
   type Route as ApiGwV2Route,
 } from '@aws-sdk/client-apigatewayv2';
 import {
+  CloudWatchLogsClient,
+  DescribeMetricFiltersCommand,
+  type MetricFilter as CwlMetricFilter,
+} from '@aws-sdk/client-cloudwatch-logs';
+import {
   CognitoIdentityProviderClient,
   ListUserPoolClientsCommand,
   type UserPoolClientDescription,
@@ -73,7 +78,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
 // Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
-// Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh.
+// Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
+// CloudWatch Logs log groups (metric filters) the eighth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -82,6 +88,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::Events::EventBus': enumerateEventBusChildren,
   'AWS::Cognito::UserPool': enumerateUserPoolChildren,
   'AWS::AppSync::GraphQLApi': enumerateGraphQLApiChildren,
+  'AWS::Logs::LogGroup': enumerateLogGroupChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -748,4 +755,79 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     }));
 
   return diffGraphQLApiChildren({ declaredDataSourceNames, liveDataSources });
+}
+
+// ── CloudWatch Logs ────────────────────────────────────────────────────────────
+// An `AWS::Logs::LogGroup` owns MetricFilters, each a separate CloudFormation resource.
+// A console / CLI `put-metric-filter` (someone wires a new metric filter onto a log group
+// out of band) is invisible to cdk drift / CFn drift detection (they only compare
+// template-declared resources). The LogGroup's own live model does NOT reflect its metric
+// filters inline, so there is no double-report to suppress. The CC primaryIdentifier for
+// AWS::Logs::MetricFilter is the composite `["/properties/LogGroupName","/properties/FilterName"]`,
+// so the `identifier` is the composite `LogGroupName|FilterName` (LogGroupName first) — that
+// is what CC GetResource / DeleteResource consume.
+
+// Pure diff: declared filter names + live inventory -> the added metric filters.
+export interface LogGroupChildInput {
+  logGroupName: string;
+  declaredFilterNames: string[]; // names of AWS::Logs::MetricFilter declared on this log group
+  liveFilters: { name: string; label?: string | undefined }[];
+}
+
+export function diffLogGroupChildren(input: LogGroupChildInput): AddedChild[] {
+  const { logGroupName, declaredFilterNames, liveFilters } = input;
+  const declared = new Set(declaredFilterNames);
+  const added: AddedChild[] = [];
+  for (const f of liveFilters) {
+    if (declared.has(f.name)) continue;
+    added.push({
+      resourceType: 'AWS::Logs::MetricFilter',
+      identifier: `${logGroupName}|${f.name}`, // CC composite LogGroupName|FilterName
+      label: f.label ?? f.name,
+      live: { FilterName: f.name, LogGroupName: logGroupName },
+    });
+  }
+  return added;
+}
+
+async function pageMetricFilters(
+  client: CloudWatchLogsClient,
+  logGroupName: string
+): Promise<CwlMetricFilter[]> {
+  const out: CwlMetricFilter[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeMetricFiltersCommand({ logGroupName, nextToken: next })
+    );
+    out.push(...(res.metricFilters ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const logGroupName = parent.physicalId; // a LogGroup's physical id IS its LogGroupName
+  if (!logGroupName) return [];
+
+  // Declared metric filters on THIS log group (Ref/GetAtt LogGroupName already resolved to
+  // the physical id by gather). A filter's physical id (Ref) is its FilterName, but prefer a
+  // literal declared FilterName when present.
+  const declaredFilterNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Logs::MetricFilter' || r.declared.LogGroupName !== logGroupName) {
+      continue;
+    }
+    const name = typeof r.declared.FilterName === 'string' ? r.declared.FilterName : r.physicalId;
+    if (name) declaredFilterNames.push(name);
+  }
+
+  const client = new CloudWatchLogsClient({ region, ...READ_RETRY });
+  const filters = await pageMetricFilters(client, logGroupName);
+  const liveFilters = filters
+    .filter((f): f is CwlMetricFilter & { filterName: string } => typeof f.filterName === 'string')
+    .map((f) => ({ name: f.filterName }));
+
+  return diffLogGroupChildren({ logGroupName, declaredFilterNames, liveFilters });
 }
