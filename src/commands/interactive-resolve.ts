@@ -325,7 +325,13 @@ async function revertAll(p: ResolveParams): Promise<SubResult | null> {
     baseline: p.baseline,
     config: p.config,
     dryRun: false,
-    yes: p.yes,
+    // NEVER inherit --yes here. `check` is the read-only verb; reaching a revert
+    // through its interactive menu must still show the "this WRITES to AWS" confirm.
+    // `yes:true` would skip BOTH the op-multiselect AND that confirm (the whole block
+    // in revertStack is `if (!yes)`), so `check --yes` + "Revert all" would mutate AWS
+    // with no prompt. The standalone `cdkrd revert --yes` bypass is intended and goes
+    // through revert.ts directly, not this path.
+    yes: false,
     removeUnrecorded: p.removeUnrecorded,
     verbose: p.verbose,
     interactive: true,
@@ -385,7 +391,11 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       baseline: p.baseline,
       config: p.config,
       dryRun: false,
-      yes: p.yes,
+      // NEVER inherit --yes (see revertAll): the read-only `check` verb must still
+      // confirm an AWS write. autoSelectAll skips the op-multiselect (the picker already
+      // chose), but the "this WRITES to AWS" confirm must fire — which only happens when
+      // yes is false (the confirm lives inside `if (!yes)` in revertStack).
+      yes: false,
       removeUnrecorded: p.removeUnrecorded,
       verbose: p.verbose,
       interactive: true,
