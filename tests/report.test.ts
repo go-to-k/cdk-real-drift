@@ -40,18 +40,31 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
-  it('R138: first run (no baseline) expands nested + names a "to record" state, not CLEAN', () => {
+  it('R138/R139: first run (no baseline) expands nested + NO DRIFT verdict, one section name', () => {
     // All three nested — in steady state they would fold to "0 shown, 3 folded"; on a
     // first run they expand so the report lists the same set the record prompt offers.
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { code, text } = run([nested('a'), nested('b'), nested('c')], { firstRun: true });
     expect(code).toBe(0); // unrecorded never counts as drift
-    expect(text).toContain('[To Record: 3]'); // first-run section name
-    expect(text).toContain('no baseline yet'); // first-run section note
-    expect(text).not.toContain('Not Recorded'); // steady-state name is not used
+    expect(text).toContain('[Not Recorded: 3]'); // R139: one section name in both states
     expect(text).toContain('result: NO DRIFT — 3 value(s) to record (run cdkrd record)');
     expect(text).not.toContain('CLEAN'); // the contradiction we are fixing
     expect(text).not.toContain('shown'); // no "X shown, Y folded" split on a first run
+    expect(text).not.toContain('folded');
+  });
+
+  it('R139: steady state, ALL unrecorded nested -> 0-shown guard expands them (never "0 shown")', () => {
+    // No firstRun: nested would normally fold, but folding every value would print
+    // "0 shown, 3 folded" and the record prompt would still ask about all 3. The guard
+    // expands them so the report and the prompt agree. Verdict stays the steady CLEAN line.
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const { code, text } = run([nested('a'), nested('b'), nested('c')]);
+    expect(code).toBe(0);
+    expect(text).toContain('[Not Recorded: 3]'); // all 3 listed, not folded away
+    expect(text).toContain(
+      'result: CLEAN — 3 unrecorded value(s) await a baseline (run cdkrd record)'
+    );
+    expect(text).not.toContain('0 shown'); // the residual this guard closes
     expect(text).not.toContain('folded');
   });
 

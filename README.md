@@ -60,7 +60,7 @@ there is nothing to compare them to yet), then offers to record a baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[To Record: 3] (live-only values, no baseline yet — run cdkrd record to start tracking)
+[Not Recorded: 3] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
   ApiStack/Api.EndpointConfiguration.IpAddressType (AWS::ApiGateway::RestApi) = "ipv4"
