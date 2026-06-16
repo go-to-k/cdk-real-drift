@@ -30,6 +30,23 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
     expect(isArnNameMatch('MyFn', `${fnArn}:PROD`)).toBe(false);
   });
 
+  it('does NOT match a MULTI-segment path suffix (a different object is not hidden)', () => {
+    // A bare name that is only a partial path-suffix of a longer key is a DIFFERENT
+    // resource — must surface as drift, not be equated. (The old endsWith matched it.)
+    expect(isArnNameMatch('a/b/c', 'arn:aws:s3:::my-bucket/x/a/b/c')).toBe(false);
+    expect(isArnNameMatch('b/c', 'arn:aws:s3:::my-bucket/a/b/c')).toBe(false);
+  });
+
+  it('matches the WHOLE final colon-segment (the full resource portion)', () => {
+    // a name declared as the full `type/id` (or full S3 bucket/key) still matches
+    expect(isArnNameMatch('role/MyRole', 'arn:aws:iam::111122223333:role/MyRole')).toBe(true);
+    expect(isArnNameMatch('my-bucket/key.txt', 'arn:aws:s3:::my-bucket/key.txt')).toBe(true);
+  });
+
+  it('matches the resource id after the last / (the common bare-name echo)', () => {
+    expect(isArnNameMatch('MyRole', 'arn:aws:iam::111122223333:role/MyRole')).toBe(true);
+  });
+
   // Bidirectional: the bare name may be on the DESIRED side and the ARN on the
   // ACTUAL side (AWS::Lambda::Url.TargetFunctionArn: template resolves GetAtt to the
   // function ARN, live read returns the bare function name).
