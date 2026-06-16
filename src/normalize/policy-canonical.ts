@@ -5,6 +5,8 @@
 // Normalizations: URL-decode + JSON.parse strings; fill default Version;
 // scalar/array unify + sort for Action/Resource/Principal; sort statements.
 
+import { FREE_FORM_MAP_PARENTS } from './cc-api-strip.js';
+
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
@@ -237,16 +239,29 @@ function sortDeep(v: unknown): unknown {
  * embedded JSON-text strings with a canonical (sorted, minified) form.
  */
 export function normalizePoliciesDeep(v: unknown): unknown {
+  return normWalk(v, false);
+}
+
+// `freeForm` = this subtree lives under a free-form USER map (Lambda env Variables,
+// Glue Parameters/DefaultArguments, DockerLabels, Labels, map-Tags). Those values are
+// opaque user data AWS stores VERBATIM (Map<String,String>), so re-serializing /
+// policy-canonicalizing a JSON-shaped value there would SUPPRESS a real out-of-band
+// key-order / statement edit by the user (a false negative) — the same R69 protection
+// cc-api-strip applies, extended to the policy/json-text canonicalizers that run after
+// it. Sticky down the subtree (everything under a user map is user data).
+function normWalk(v: unknown, freeForm: boolean): unknown {
   if (typeof v === 'string') {
+    if (freeForm) return v; // opaque user data — never canonicalize
     const p = parsePolicyString(v);
     if (p) return canonicalizePolicy(p);
     return canonicalizeJsonText(v);
   }
-  if (Array.isArray(v)) return v.map(normalizePoliciesDeep);
-  if (isPolicyDoc(v)) return canonicalizePolicy(v);
+  if (Array.isArray(v)) return v.map((el) => normWalk(el, freeForm));
+  if (!freeForm && isPolicyDoc(v)) return canonicalizePolicy(v);
   if (isObj(v)) {
     const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v)) out[k] = normalizePoliciesDeep(val);
+    for (const [k, val] of Object.entries(v))
+      out[k] = normWalk(val, freeForm || FREE_FORM_MAP_PARENTS.has(k));
     return out;
   }
   return v;

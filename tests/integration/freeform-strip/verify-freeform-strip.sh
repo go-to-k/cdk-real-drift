@@ -46,9 +46,13 @@ $CLI check "$STACK" --region "$REGION" --fail
 [ $? -eq 0 ] || fail "expected CLEAN right after record"
 
 echo "=== inject out-of-band env var keyed LastModified (a managed-field NAME) ==="
+# Keep the declared vars (APP_VERSION + the JSON-shaped CONFIG) so only LastModified is
+# the drift; a JSON-string value needs file:// (the shorthand parser chokes on it).
+ENV_JSON="$(mktemp)"
+printf '{"Variables":{"APP_VERSION":"x","CONFIG":"{\\"region\\":\\"us-east-1\\",\\"mode\\":\\"a\\"}","LastModified":"sneaky-out-of-band"}}' > "$ENV_JSON"
 aws lambda update-function-configuration --function-name "$FN_NAME" --region "$REGION" \
-  --environment "Variables={APP_VERSION=x,LastModified=sneaky-out-of-band}" >/dev/null \
-  || fail "inject env var"
+  --environment "file://$ENV_JSON" >/dev/null || fail "inject env var"
+rm -f "$ENV_JSON"
 # wait for the update to settle
 aws lambda wait function-updated --function-name "$FN_NAME" --region "$REGION" || true
 

@@ -121,6 +121,65 @@ describe('policy canonicalization', () => {
     expect(normalizePoliciesDeep(pretty)).toBe(normalizePoliciesDeep(mini));
   });
 
+  describe('free-form user-map values are opaque (WAVE21 — R69 extended past cc-strip)', () => {
+    const reordered = (parent: string) => ({
+      a: normalizePoliciesDeep({ [parent]: { CONFIG: '{"region":"us-east-1","mode":"a"}' } }),
+      b: normalizePoliciesDeep({ [parent]: { CONFIG: '{"mode":"a","region":"us-east-1"}' } }),
+    });
+
+    it('a JSON-string value under Variables is NOT re-serialized (a real key-order edit stays visible)', () => {
+      const { a, b } = reordered('Variables');
+      expect(deepEqual(a, b)).toBe(false);
+    });
+
+    for (const parent of ['Parameters', 'DefaultArguments', 'DockerLabels', 'Labels', 'Tags']) {
+      it(`a JSON-string value under ${parent} is opaque too`, () => {
+        const { a, b } = reordered(parent);
+        expect(deepEqual(a, b)).toBe(false);
+      });
+    }
+
+    it('a policy-SHAPED user value under a free-form map is NOT policy-canonicalized', () => {
+      const s1 = '{"Statement":[{"Effect":"Allow","Action":"a"},{"Effect":"Allow","Action":"b"}]}';
+      const s2 = '{"Statement":[{"Effect":"Allow","Action":"b"},{"Effect":"Allow","Action":"a"}]}';
+      expect(
+        deepEqual(
+          normalizePoliciesDeep({ Variables: { P: s1 } }),
+          normalizePoliciesDeep({ Variables: { P: s2 } })
+        )
+      ).toBe(false);
+    });
+
+    it('a REAL policy NOT under a free-form map still canonicalizes (no regression)', () => {
+      const r1 = {
+        PolicyDocument: {
+          Statement: [
+            { Effect: 'Allow', Action: 'a' },
+            { Effect: 'Allow', Action: 'b' },
+          ],
+        },
+      };
+      const r2 = {
+        PolicyDocument: {
+          Statement: [
+            { Effect: 'Allow', Action: 'b' },
+            { Effect: 'Allow', Action: 'a' },
+          ],
+        },
+      };
+      expect(deepEqual(normalizePoliciesDeep(r1), normalizePoliciesDeep(r2))).toBe(true);
+    });
+
+    it('a genuine value change under a free-form map still differs', () => {
+      expect(
+        deepEqual(
+          normalizePoliciesDeep({ Variables: { X: '{"a":1}' } }),
+          normalizePoliciesDeep({ Variables: { X: '{"a":2}' } })
+        )
+      ).toBe(false);
+    });
+  });
+
   // Condition canonicalization: an IAM condition key's value is an unordered SET
   // of strings written as a scalar or an array; IAM treats both forms identically
   // and AWS may store/return either, in any order. Without canonicalization a
