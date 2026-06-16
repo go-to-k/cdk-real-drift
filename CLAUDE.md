@@ -126,6 +126,22 @@ detail:
 - **Run `vp run build`** after modifying source, before telling the user to test.
 - **Conventional commits**: use `feat:` / `fix:` / `chore:` / `docs:` / `test:`
   prefixes. A `pr-title-check` workflow enforces PR titles.
+- **Delete CloudFormation stacks with `delstack`, NOT `aws cloudformation
+delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
+  `DELETE_FAILED` — orphaning its resources — whenever a member can't be deleted
+  (e.g. an out-of-band-modified Route53 record once blocked its hosted zone's
+  deletion in a live integ, silently leaving the zone billing). `delstack`
+  force-deletes the stack and its retained/protected/blocking resources, so it
+  never orphans. Two forms: plain **`delstack -s <stack> -r <region> -y -f`** is
+  CloudFormation-based (delete a stack by name); the **`delstack cdk`** subcommand
+  is a drop-in for `cdk destroy` (CDK-aware) — `delstack cdk -a cdk.out -r
+<region> -f -y` reads an existing `cdk.out` (no re-synth; omit `-a` to
+  synthesize, or `-s` to target specific stacks). Integ/dogfood teardown traps
+  use `delstack cdk -a cdk.out` (it was `cdk destroy`). Pinned in `.mise.toml`
+  (`ubi:go-to-k/delstack`). `delstack` only sees stack members — after deleting,
+  still SWEEP for stack-EXTERNAL orphans it can't reach: auto-created
+  `/aws/lambda/*` and access-log groups, RETAIN-policy stateful resources,
+  Secrets in their recovery window, KMS keys pending deletion.
 - **markgate gates** (see `.markgate.yml`) — each has a companion skill that sets
   its marker:
   - `/check` → `check` marker (typecheck / lint+format / build / unit tests).

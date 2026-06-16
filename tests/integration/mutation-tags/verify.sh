@@ -6,7 +6,7 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$(cd "$HERE/../../.." && pwd)"; cd "$HERE"
 STACK=CdkRealDriftIntegMutationTags; REGION="${AWS_REGION:-us-east-1}"; CLI="node $ROOT/dist/cli.js"
-cleanup() { echo "--- cleanup ---"; npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true; rm -rf .cdkrd cdk.out; }
+cleanup() { echo "--- cleanup ---"; delstack cdk -a cdk.out -r "$REGION" -f -y >/dev/null 2>&1 || npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true; rm -rf .cdkrd cdk.out; }
 trap cleanup EXIT
 fail() { echo "INTEG FAIL: $*"; exit 1; }
 echo "=== build + deploy + record ==="
