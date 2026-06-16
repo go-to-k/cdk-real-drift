@@ -181,6 +181,29 @@ describe('noise suppressors', () => {
     expect(isStringlyEqualScalar(true, '1')).toBe(false);
   });
 
+  it('isStringlyEqualScalarArray: typed<->string element arrays fold, real drift kept (R23)', async () => {
+    const { isStringlyEqualScalarArray } = await import('../src/normalize/noise.js');
+    // declared typed ports vs AWS stringly form, same order
+    expect(isStringlyEqualScalarArray([80, 443], ['80', '443'])).toBe(true);
+    expect(isStringlyEqualScalarArray(['80', '443'], [80, 443])).toBe(true);
+    expect(isStringlyEqualScalarArray([true, false], ['true', 'false'])).toBe(true);
+    // R67 numeric formatting carries through element-wise
+    expect(isStringlyEqualScalarArray([5, 40], ['5.0', '40.00'])).toBe(true);
+    // identical arrays (strict) still fold
+    expect(isStringlyEqualScalarArray(['a', 'b'], ['a', 'b'])).toBe(true);
+    // a genuine element change still differs
+    expect(isStringlyEqualScalarArray([80, 443], ['80', '8443'])).toBe(false);
+    // length change is real drift
+    expect(isStringlyEqualScalarArray([80], [80, 443])).toBe(false);
+    // ORDER matters (unordered sets are handled separately by UNORDERED_ARRAY_PROPS)
+    expect(isStringlyEqualScalarArray([80, 443], ['443', '80'])).toBe(false);
+    // never collapses object/nested arrays (those have their own canonicalizers)
+    expect(isStringlyEqualScalarArray([{ a: 1 }], ['[object Object]'])).toBe(false);
+    expect(isStringlyEqualScalarArray([[1]], [['1']])).toBe(false);
+    // non-arrays
+    expect(isStringlyEqualScalarArray(80, '80')).toBe(false);
+  });
+
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {
     expect(isAllAwsTags([{ Key: 'aws:cloudformation:stack-id', Value: 'x' }])).toBe(true);
     expect(

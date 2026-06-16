@@ -524,6 +524,41 @@ describe('SDK overrides', () => {
         await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'missing'))
       ).toBeUndefined();
     });
+
+    it('follows nextToken to find an exact filter paginated past the first page', async () => {
+      // The exact-named "errs" filter is a prefix of "errs-extra"/"errs-more", so it
+      // can land on a later page. Page 1 has only prefix-siblings + a nextToken.
+      logs
+        .on(DescribeMetricFiltersCommand)
+        .resolvesOnce({
+          metricFilters: [{ filterName: 'errs-extra' }, { filterName: 'errs-more' }],
+          nextToken: 'page2',
+        })
+        .resolvesOnce({
+          metricFilters: [
+            { filterName: 'errs', filterPattern: 'ERROR', metricTransformations: [] },
+          ],
+        });
+      const out = await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/aws/lambda/fn' }, 'errs')
+      );
+      expect(out).toEqual({
+        LogGroupName: '/aws/lambda/fn',
+        FilterName: 'errs',
+        FilterPattern: 'ERROR',
+        MetricTransformations: [],
+      });
+    });
+
+    it('stops at the last page (no nextToken) and returns undefined if never found', async () => {
+      logs
+        .on(DescribeMetricFiltersCommand)
+        .resolvesOnce({ metricFilters: [{ filterName: 'errs-extra' }], nextToken: 'page2' })
+        .resolvesOnce({ metricFilters: [{ filterName: 'errs-more' }] });
+      expect(
+        await SDK_OVERRIDES['AWS::Logs::MetricFilter'](ctx({ LogGroupName: '/lg' }, 'errs'))
+      ).toBeUndefined();
+    });
   });
 
   describe('Scheduler Schedule (R74)', () => {

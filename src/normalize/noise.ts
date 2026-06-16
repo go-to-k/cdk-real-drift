@@ -676,12 +676,12 @@ export function sortUnorderedObjectArray(v: unknown): unknown {
 // (never collapses objects/arrays); a genuine value change (`true` vs `"false"`,
 // `5` vs `"6"`) still differs, so real drift is preserved.
 //
-// KNOWN LIMITATION (R23): this runs in classify's declared loop on LEAF drift records
-// only. The drift-calculator reports a scalar-array mismatch as ONE parent-path record
-// (value = the whole array), so element-wise stringly comparison never happens — a
-// typed `[80, 443]` vs live `["80", "443"]` still reports drift. The direction is a
-// false POSITIVE (noise), never hidden drift, so it is fail-safe; collapsing it would
-// need a drift-calculator change. Revisit only if a real fixture hits it.
+// SCOPE: this scalar check runs in classify's declared loop on LEAF drift records.
+// The drift-calculator reports a scalar-ARRAY mismatch as ONE parent-path record
+// (value = the whole array), so this per-leaf check never sees the ELEMENTS of a
+// typed `[80, 443]` vs live `["80", "443"]`. That array shape is handled by
+// `isStringlyEqualScalarArray` (R23) below, which applies this same typed<->string
+// collapse element-wise — so both the scalar and scalar-array forms are suppressed.
 const DECIMAL_RE = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
 
 export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
@@ -698,6 +698,24 @@ export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
   if (prim(a) && typeof b === 'string') return eq(a, b);
   if (prim(b) && typeof a === 'string') return eq(b, a);
   return false;
+}
+
+// R23: a scalar ARRAY whose elements are pairwise stringly-equal is not drift.
+// CFn stringly-typed list fields (declared `[80, 443]` while AWS returns
+// `["80", "443"]`, declared `[true]` vs live `["true"]`) surface from the
+// drift-calculator as ONE parent-path record carrying the WHOLE array, so the
+// per-leaf `isStringlyEqualScalar` above never compares the elements. This applies
+// the same typed<->string collapse element-wise: positional (order-sensitive —
+// unordered sets are handled by UNORDERED_ARRAY_PROPS), equal length + all scalars
+// required, each pair equal either strictly or via `isStringlyEqualScalar`. A
+// genuine element change (`[80, 443]` vs `["80", "8443"]`) still differs, so real
+// drift is preserved.
+export function isStringlyEqualScalarArray(a: unknown, b: unknown): boolean {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  const scalar = (v: unknown): boolean =>
+    typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+  if (!a.every(scalar) || !b.every(scalar)) return false;
+  return a.every((v, i) => v === b[i] || isStringlyEqualScalar(v, b[i]));
 }
 
 // A1: trivially-empty/off values AWS returns for unset features. Objects recurse:
