@@ -7,7 +7,11 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
-import { isArnNameMatch, isManagedKmsAliasMatch } from '../normalize/arn-identity.js';
+import {
+  isArnNameMatch,
+  isLogGroupArnWildcardMatch,
+  isManagedKmsAliasMatch,
+} from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
@@ -237,6 +241,9 @@ export function classifyResource(
       // KMS alias vs its resolved key ARN
       if (isArnNameMatch(d.stateValue, d.awsValue, opts)) continue;
       if (isManagedKmsAliasMatch(d.stateValue, d.awsValue, opts.kmsAliasTargets)) continue;
+      // a CloudWatch Logs log-group ARN whose only difference is the trailing `:*`
+      // wildcard (CDK emits it; API Gateway AccessLogSetting strips it) is not drift
+      if (isLogGroupArnWildcardMatch(d.stateValue, d.awsValue)) continue;
       // CFn stringly-typed scalar (Glue Parameters Map<String,String>, "5432" ports):
       // declared `true`/`5432` vs AWS `"true"`/`"5432"` is not drift.
       if (isStringlyEqualScalar(d.stateValue, d.awsValue)) continue;

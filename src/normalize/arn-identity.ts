@@ -87,3 +87,30 @@ export function isManagedKmsAliasMatch(
   // unresolved alias → conservative shape-based suppression (today's behavior)
   return true;
 }
+
+// A CloudWatch Logs log-group ARN carries a trailing `:*` wildcard segment
+// (`...:log-group:/my/group:*`) that scopes it to the group's log STREAMS. CDK's
+// `logGroup.logGroupArn` emits the ARN WITH that `:*`, so a template references it
+// that way — but several services store + return the SAME ARN with the `:*`
+// stripped (observed: API Gateway `AWS::ApiGateway::Stage`
+// AccessLogSetting.DestinationArn). A positional string diff then reports false
+// drift on a fresh deploy with nothing changed:
+//   desired = "arn:aws:logs:...:log-group:/aws/api-gateway/x:*"
+//   actual  = "arn:aws:logs:...:log-group:/aws/api-gateway/x"
+//
+// Shape-based + value-only (NOT field-name-based, so no per-type table): suppress
+// ONLY when BOTH sides are well-formed log-group ARNs that are byte-identical after
+// dropping a single trailing `:*` from each. A different log group still differs
+// after the strip, so this never hides a real repoint.
+const LOG_GROUP_ARN_RE = /^arn:aws[a-z-]*:logs:[^:]*:\d*:log-group:/;
+const stripLogGroupWildcard = (s: string): string => (s.endsWith(':*') ? s.slice(0, -2) : s);
+export function isLogGroupArnWildcardMatch(desired: unknown, actual: unknown): boolean {
+  if (
+    typeof desired !== 'string' ||
+    typeof actual !== 'string' ||
+    !LOG_GROUP_ARN_RE.test(desired) ||
+    !LOG_GROUP_ARN_RE.test(actual)
+  )
+    return false;
+  return stripLogGroupWildcard(desired) === stripLogGroupWildcard(actual);
+}
