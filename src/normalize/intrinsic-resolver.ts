@@ -211,6 +211,14 @@ function condVal(node: unknown, ctx: ResolverContext): boolean | typeof UNRESOLV
 
 export function evalCondition(name: string, ctx: ResolverContext): boolean | typeof UNRESOLVED {
   if (ctx.condCache.has(name)) return ctx.condCache.get(name) as boolean | typeof UNRESOLVED;
+  // Seed the cache with UNRESOLVED BEFORE recursing: a condition that references
+  // itself (directly, or via a cycle A→B→A through a `{Condition: …}` operand) would
+  // otherwise recurse forever and hang `cdkrd check`. CloudFormation rejects circular
+  // conditions at deploy time, so a DEPLOYED template can't carry one — but a
+  // `--pre-deploy` synth template is unvalidated and a hand-rolled `--app` output
+  // could. Failing closed to UNRESOLVED on the cycle is the safe direction (the
+  // dependent Fn::If branch is then skipped, never mis-evaluated).
+  ctx.condCache.set(name, UNRESOLVED);
   const r = resolve(ctx.conditions[name], ctx);
   const val = r === true ? true : r === false ? false : UNRESOLVED;
   ctx.condCache.set(name, val);

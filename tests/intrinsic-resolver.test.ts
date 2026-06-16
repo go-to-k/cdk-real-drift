@@ -150,6 +150,23 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::If': ['C', 'then', 'else'] }, c)).toBe(UNRESOLVED);
   });
 
+  it('FAIL-CLOSED: a self-referential / cyclic condition → UNRESOLVED without hanging', () => {
+    // A references itself through an Fn::And operand — CFn rejects this at deploy, but a
+    // --pre-deploy synth / hand-rolled template could carry it. The cache is seeded with
+    // UNRESOLVED before recursing, so the cycle terminates rather than stack-overflowing.
+    const selfRef = ctx({ conditions: { A: { 'Fn::And': [{ Condition: 'A' }, true] } } });
+    expect(resolve({ 'Fn::If': ['A', 'then', 'else'] }, selfRef)).toBe(UNRESOLVED);
+
+    // Mutual cycle A→B→A.
+    const mutual = ctx({
+      conditions: {
+        A: { 'Fn::And': [{ Condition: 'B' }, true] },
+        B: { 'Fn::And': [{ Condition: 'A' }, true] },
+      },
+    });
+    expect(resolve({ 'Fn::If': ['A', 'then', 'else'] }, mutual)).toBe(UNRESOLVED);
+  });
+
   it('FAIL-CLOSED: Fn::Equals / And / Or / Not with an unresolved operand → UNRESOLVED', () => {
     expect(resolve({ 'Fn::Equals': [{ Ref: 'Unknown' }, 'x'] }, ctx())).toBe(UNRESOLVED);
     const c = ctx({ conditions: { U: { 'Fn::Equals': [{ Ref: 'Unknown' }, 'x'] } } });
