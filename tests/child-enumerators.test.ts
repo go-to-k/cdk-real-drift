@@ -9,6 +9,7 @@ import {
   diffLogGroupChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
+  diffUserPoolGroups,
   diffVpcChildren,
 } from '../src/read/child-enumerators.js';
 
@@ -384,6 +385,48 @@ describe('diffUserPoolChildren (Cognito user pool clients)', () => {
           { id: 'a', label: 'A' },
           { id: 'b', label: 'B' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffUserPoolGroups (Cognito user pool groups)', () => {
+  const POOL = 'us-east-1_AbCdEf123';
+
+  it('flags an out-of-band group added via the console (not in the template)', () => {
+    const added = diffUserPoolGroups({
+      userPoolId: POOL,
+      declaredGroupNames: ['declared-group'],
+      liveGroups: [
+        { name: 'declared-group', label: 'declared-group' },
+        { name: 'cdkrd-integ-oob', label: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolGroup',
+        identifier: `${POOL}|cdkrd-integ-oob`,
+        label: 'cdkrd-integ-oob',
+        live: { GroupName: 'cdkrd-integ-oob', UserPoolId: POOL },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite UserPoolId|GroupName', () => {
+    const added = diffUserPoolGroups({
+      userPoolId: POOL,
+      declaredGroupNames: [],
+      liveGroups: [{ name: 'group-x' }],
+    });
+    expect(added[0]!.identifier).toBe(`${POOL}|group-x`);
+  });
+
+  it('no drift when every live group is declared', () => {
+    expect(
+      diffUserPoolGroups({
+        userPoolId: POOL,
+        declaredGroupNames: ['a', 'b'],
+        liveGroups: [{ name: 'a' }, { name: 'b' }],
       })
     ).toEqual([]);
   });
