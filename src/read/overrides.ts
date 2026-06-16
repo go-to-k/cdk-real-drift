@@ -598,6 +598,20 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
       ...(vpc.subnets !== undefined && { Subnets: vpc.subnets }),
       ...(vpc.securityGroupIds !== undefined && { SecurityGroupIds: vpc.securityGroupIds }),
     };
+  // Cache — was omitted, so an out-of-band switch to/from S3 caching (a cost + a
+  // cross-project cache-sharing surface) was undetectable. BatchGetProjects ALWAYS
+  // returns cache (default `{type:'NO_CACHE'}`), so the never-configured case is
+  // folded to atDefault via KNOWN_DEFAULTS (`Cache: {Type:'NO_CACHE'}`); a declared
+  // S3/LOCAL cache projects its real shape and matches the template. Modes/Location
+  // are projected only when present so the NO_CACHE default is exactly `{Type:'NO_CACHE'}`
+  // (else it would not fold). A declared cache change still surfaces.
+  const cache = p.cache;
+  if (cache)
+    model.Cache = {
+      ...(cache.type !== undefined && { Type: cache.type }),
+      ...(cache.location !== undefined && { Location: cache.location }),
+      ...(cache.modes?.length && { Modes: cache.modes }),
+    };
   return model;
 };
 

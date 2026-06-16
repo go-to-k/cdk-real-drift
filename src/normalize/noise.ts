@@ -148,6 +148,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     TimeoutInMinutes: 60,
     QueuedTimeoutInMinutes: 480,
     Visibility: 'PRIVATE', // the default; folds to atDefault so a never-declared project is not first-run noise — flipping to PUBLIC_READ no longer matches and surfaces
+    Cache: { Type: 'NO_CACHE' }, // BatchGetProjects always returns cache; the unconfigured default folds to atDefault so a never-declared cache is not first-run noise — switching to S3/LOCAL no longer matches and surfaces
   },
   'AWS::DynamoDB::Table': {
     BillingMode: 'PROVISIONED',
