@@ -343,6 +343,13 @@ export async function runCheck(args: string[]): Promise<number> {
           removeUnrecorded: a.removeUnrecorded,
           verbose: a.verbose,
         });
+      } else if (!baseline && !hasUnrecorded && !a.json && !a.showAll && !a.preDeploy) {
+        // R142: no interactive establish prompt could fire (non-TTY, or --fail) and there is
+        // no baseline on an otherwise-quiet stack — the report gave no record cue (nothing is
+        // unrecorded), so point at how to create the day-1 baseline. stderr keeps stdout clean.
+        console.error(
+          `note: ${stackName}: no .cdkrd baseline yet — run \`cdkrd record\` to establish one (future out-of-band changes then report as drift).`
+        );
       }
       if (code === 1) anyDrift = true;
       worst = Math.max(worst, finalCheckExit(code, a.fail));

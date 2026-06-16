@@ -290,18 +290,28 @@ export const GENERATED_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
 };
 
-// NESTED paths whose value is ALWAYS an AWS-assigned generated id, regardless of
-// the exact value — the value-INDEPENDENT analogue of GENERATED_DEFAULTS, for ids
-// cdkrd cannot template from the resource's OWN physical id. Example: an ApiGateway
-// Method's `Integration.CacheNamespace` defaults to the PARENT Resource's id (not
-// the Method's), so neither KNOWN_DEFAULT_PATHS (a fixed value) nor GENERATED_DEFAULTS
-// (the resource's own id) can express it. A value at one of these paths is AWS-minted,
-// never user intent, so it folds into the `generated` tier on ANY value (inventory,
-// never drift, never recorded). Trade-off: a later out-of-band change is NOT surfaced
-// — acceptable for cosmetic AWS-assigned ids the user never meaningfully sets.
+// NESTED paths whose value is an AWS-assigned generated id that ECHOES a segment of
+// the resource's physical id — for ids cdkrd cannot template from a single placeholder.
+// Example: an ApiGateway Method's `Integration.CacheNamespace` defaults to the PARENT
+// Resource's id, which is the MIDDLE segment of the Method's own physical id
+// (`RestApiId|ResourceId|HttpMethod`); neither KNOWN_DEFAULT_PATHS (a fixed value) nor
+// GENERATED_DEFAULTS (a single-placeholder template on the resource's own id) can express
+// it. Folded into the `generated` tier (inventory, never drift, never recorded) ONLY when
+// the value matches a physical-id segment (isPhysicalIdSegment) — so the AWS default stays
+// quiet while a CUSTOM value the user actually set still surfaces as undeclared, and an
+// out-of-band change to it reports as drift (R142; was value-independent in R140).
 export const GENERATED_PATHS: Record<string, string[]> = {
   'AWS::ApiGateway::Method': ['Integration.CacheNamespace'],
 };
+
+// R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
+// Folds a GENERATED_PATHS value only when it ECHOES an id AWS minted (an ApiGateway
+// Method's CacheNamespace = the parent Resource id, the middle segment of
+// `RestApiId|ResourceId|HttpMethod`), leaving a user-set custom value to surface.
+export function isPhysicalIdSegment(value: unknown, physicalId: string | undefined): boolean {
+  if (typeof value !== 'string' || physicalId === undefined) return false;
+  return physicalId.split(/[|:/]/).includes(value);
+}
 
 // R107: a scalar property whose value IS this resource's generated NAME taken from
 // an ARN physical id — the ARN's trailing name segment (a topic's TopicName, a
