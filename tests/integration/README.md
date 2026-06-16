@@ -39,6 +39,15 @@ These do NOT run in CI (they need credentials and mutate a real account):
   `noise`, `readgap`, and the false-positive matrix (`dynamodb`, `sqs`,
   `securitygroup`, `cloudwatch-alarm`, `stepfunctions`, `ssm`, `eventbridge`,
   `cognito`, `cloudfront-oai`).
+- **After running ANY fixture(s)** — as a safety net: `bash sweep-orphans.sh`
+  (dry run; add `--delete` to remove). Each `verify.sh` tears down its own stack,
+  but stack teardown only deletes stack MEMBERS — RETAIN-policy stateful resources
+  (Kinesis/RDS/DynamoDB/EFS), auto-created Lambda/APIGW log groups, Secrets in
+  their recovery window, and KMS keys pending deletion outlive the stack and bill
+  silently. `sweep-orphans.sh` finds and deletes those, scoped strictly to
+  cdkrd's own integ name tokens (`Cdkrd`/`Cdkdrift`/`CdkRealDrift`) and never
+  touching a resource that is still a member of an active stack. Run it after a
+  release suite — and whenever you suspect a fixture left something behind.
 - **After changing** `src/read/**`, `src/revert/**`, `src/normalize/**`, or
   `src/commands/gather.ts`: run at least `basic` + `revert` + `noise` + the
   false-positive matrix (below — each asserts tricky declared values normalize
