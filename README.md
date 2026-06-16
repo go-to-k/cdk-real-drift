@@ -201,8 +201,8 @@ code or reverting.
   type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs (resources,
   methods, and authorizers), API Gateway V2 (HTTP / WebSocket) API routes,
   integrations, and authorizers, SNS topic subscriptions, Lambda event source
-  mappings
-  and function URLs, EventBridge bus rules, Cognito user pool clients, groups, and
+  mappings, function URLs, and aliases, EventBridge bus rules, Cognito user pool
+  clients, groups, and
   resource servers, AppSync data sources and resolvers, CloudWatch Logs metric
   filters, Elastic Load Balancing v2 listeners, EC2 VPC subnets, EC2 route table
   routes, ECS cluster services, and KMS key aliases are covered.
