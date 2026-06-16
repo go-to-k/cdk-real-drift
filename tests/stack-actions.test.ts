@@ -521,6 +521,22 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     expect(logs).toContain('  - B.VersioningConfiguration.Status (declared)');
     expect(cc.commandCalls(GetResourceCommand)).toHaveLength(2); // first read + one retry, no more
   });
+
+  it('verification re-read FAILS → NOT "CLEAN", exit 1 (a skipped re-read is not proof the write landed)', async () => {
+    // The write was accepted (200), but the convergence re-read throttles, so the
+    // touched resource comes back `skipped`. Before the fix this counted as zero drift
+    // and printed "CLEAN after revert." with exit 0 — a false success on a possibly-
+    // failed write. Now it is reported as unconfirmed and exits 1.
+    const cc = mockClient(CloudControlClient);
+    mockApplySuccess(cc);
+    cc.on(GetResourceCommand).rejects(new Error('ThrottlingException'));
+
+    const { outcome, logs } = await run();
+    expect(outcome.exit).toBe(1);
+    expect(logs).not.toContain('CLEAN after revert');
+    expect(logs).toContain('could not be confirmed converged');
+    expect(logs).toContain('could not be re-read to verify');
+  });
 });
 
 describe('recordStack non-interactive refusal (R38)', () => {
