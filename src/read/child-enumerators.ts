@@ -65,8 +65,10 @@ import {
 import { type AliasListEntry, KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
 import {
   type EventSourceMappingConfiguration,
+  type FunctionUrlConfig,
   LambdaClient,
   ListEventSourceMappingsCommand,
+  ListFunctionUrlConfigsCommand,
 } from '@aws-sdk/client-lambda';
 import {
   ListSubscriptionsByTopicCommand,
@@ -476,6 +478,14 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
 // NOT reflect its mappings, so there is no double-report to suppress. The CC
 // primaryIdentifier for AWS::Lambda::EventSourceMapping is the bare mapping UUID (Id),
 // which CC GetResource / DeleteResource consume.
+//
+// A Function ALSO owns at most one Function URL per qualifier (AWS::Lambda::Url). A
+// console / CLI `create-function-url-config` (someone exposes a public HTTPS endpoint
+// out of band — a security-relevant change, especially `AuthType: NONE`) is invisible
+// to cdk drift / CFn drift detection, and the Function's own live model does NOT reflect
+// its URL inline, so there is no double-report to suppress. The CC primaryIdentifier for
+// AWS::Lambda::Url is the bare FunctionArn of the URL config, which CC GetResource /
+// DeleteResource consume.
 
 // Pure diff: declared mapping ids + live inventory -> the added mappings.
 export interface LambdaFunctionChildInput {
@@ -514,6 +524,41 @@ async function pageEventSourceMappings(
   return out;
 }
 
+// Pure diff: declared URL FunctionArns + live inventory -> the added function URLs.
+export function diffLambdaFunctionUrls(input: {
+  declaredUrlArns: string[];
+  liveUrls: { arn: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const declared = new Set(input.declaredUrlArns);
+  const added: AddedChild[] = [];
+  for (const u of input.liveUrls) {
+    if (declared.has(u.arn)) continue;
+    added.push({
+      resourceType: 'AWS::Lambda::Url',
+      identifier: u.arn, // the URL config's FunctionArn IS the CC primaryIdentifier
+      label: u.label ?? u.arn,
+      live: { FunctionArn: u.arn },
+    });
+  }
+  return added;
+}
+
+async function pageFunctionUrlConfigs(
+  client: LambdaClient,
+  functionName: string
+): Promise<FunctionUrlConfig[]> {
+  const out: FunctionUrlConfig[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new ListFunctionUrlConfigsCommand({ FunctionName: functionName, Marker: marker })
+    );
+    out.push(...(res.FunctionUrlConfigs ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
 async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const functionName = parent.physicalId; // the Function's physical id is its name
@@ -533,6 +578,26 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
     }
   }
 
+  // Declared function URLs targeting THIS function. An AWS::Lambda::Url's physical id
+  // (Ref) IS the URL config's FunctionArn; its TargetFunctionArn resolves to the function
+  // name or ARN. Match by physicalId (the FunctionArn), and also tolerate matching by the
+  // target function (a URL whose TargetFunctionArn resolves to this function's name/arn),
+  // falling back to physicalId.
+  const declaredUrlArns: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Lambda::Url') continue;
+    const target = r.declared.TargetFunctionArn;
+    const targetsThis = target === functionName || (fnArn !== undefined && target === fnArn);
+    if (targetsThis) {
+      // The URL's FunctionArn (its primaryIdentifier) is the function's bare ARN for an
+      // unqualified URL; prefer the resolved live function ARN, else the declared physicalId.
+      if (fnArn !== undefined) declaredUrlArns.push(fnArn);
+      if (r.physicalId) declaredUrlArns.push(r.physicalId);
+    } else if (r.physicalId) {
+      declaredUrlArns.push(r.physicalId);
+    }
+  }
+
   const client = new LambdaClient({ region, ...READ_RETRY });
   const mappings = await pageEventSourceMappings(client, functionName);
   const liveMappings = mappings
@@ -541,7 +606,21 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
     )
     .map((m) => ({ id: m.UUID, label: m.EventSourceArn ?? m.UUID }));
 
-  return diffLambdaFunctionChildren({ declaredMappingIds, liveMappings });
+  const esmAdded = diffLambdaFunctionChildren({ declaredMappingIds, liveMappings });
+
+  const urlConfigs = await pageFunctionUrlConfigs(client, functionName);
+  const liveUrls = urlConfigs
+    .filter(
+      (u): u is FunctionUrlConfig & { FunctionArn: string } => typeof u.FunctionArn === 'string'
+    )
+    .map((u) => ({
+      arn: u.FunctionArn,
+      label: u.AuthType ? `${u.AuthType} ${u.FunctionArn}` : u.FunctionArn,
+    }));
+
+  const urlAdded = diffLambdaFunctionUrls({ declaredUrlArns, liveUrls });
+
+  return [...esmAdded, ...urlAdded];
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────
