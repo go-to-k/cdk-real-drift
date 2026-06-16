@@ -48,6 +48,12 @@ describe('applicableActions (cycle order mirrors the verbs scope)', () => {
   it('PR4: added → record (snapshot), ignore, revert (DELETE — destructive, last)', () => {
     expect(applicableActions(F('added'))).toEqual(['record', 'ignore', 'revert']);
   });
+  it('a modelReadFailed added drops record (it would be a silent no-op) → ignore, revert only', () => {
+    expect(applicableActions({ ...F('added'), modelReadFailed: true })).toEqual([
+      'ignore',
+      'revert',
+    ]);
+  });
   it('non-actionable tiers → empty (not decidable rows)', () => {
     for (const t of [
       'deleted',
