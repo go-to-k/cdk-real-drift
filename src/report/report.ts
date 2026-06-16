@@ -208,8 +208,15 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // record prompt asks about — folding them to "0 shown, N folded" contradicts the very
   // next prompt. Expand on firstRun; the steady-state fold (R96) is otherwise unchanged.
   const expandNested = !!opts.verbose || !!opts.expandAtDefault || !!opts.firstRun;
-  const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
-  const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
+  let unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
+  // R139: never print "0 shown". If folding hid EVERY unrecorded value (they are all
+  // nested), the report would say "0 shown, N folded" and the record prompt would then
+  // immediately ask about those N — the same contradiction R138 fixed for the first run,
+  // but it can also arise in steady state when a newly-appeared value is nested. Expand
+  // them so the report and the prompt always agree; folding still applies whenever at
+  // least one value stands out.
+  if (unrecordedShown.length === 0) unrecordedShown = unrecordedItems;
+  const nestedFolded = unrecordedItems.filter((f) => !unrecordedShown.includes(f));
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
@@ -240,18 +247,14 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   }
   // UNRECORDED: full detail like a drift section (these values await a decision —
   // hiding them would defeat the differentiator), but kept OUT of the verdict.
-  // R138: on a first run (no baseline) name the section for the action the user is about
-  // to take ("To Record"); in steady state it is values that appeared since record
-  // ("Not Recorded").
-  const recordSectionName = opts.firstRun ? 'To Record' : 'Not Recorded';
-  const recordSectionNote = opts.firstRun
-    ? 'live-only values, no baseline yet — run cdkrd record to start tracking'
-    : 'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it';
+  // R139: one section name in both first-run and steady state — the verdict already
+  // carries the first-run "to record" framing, so a separate "[To Record]" header (R138)
+  // only split one concept into two labels. "Not Recorded" reads correctly either way.
   if (
     section(
       unrecordedShown,
-      recordSectionName,
-      recordSectionNote,
+      'Not Recorded',
+      'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
       style.undeclaredTier,
       driftSections > 0
     )
