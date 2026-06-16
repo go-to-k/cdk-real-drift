@@ -4,7 +4,7 @@
 // keeps watching). Writes ONLY the git-committed config file; no AWS writes. The
 // per-stack ignore flow lives in stack-actions.ts (shared with check's interactive
 // prompt in PR-B2).
-import { isStackNotDeployed } from '../aws-errors.js';
+import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
   checkBaselineAccount,
@@ -77,6 +77,13 @@ export async function runIgnore(args: string[]): Promise<number> {
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — nothing to ignore`);
+        continue;
+      }
+      // A stack that exists but has no meaningful deployed state (REVIEW_IN_PROGRESS /
+      // deleting): skip, not error — matching check/record/revert. There is nothing to
+      // ignore, so one un-checkable stack must not drag the whole run to exit 2.
+      if (e instanceof StackNotCheckableError) {
+        console.error(`note: ${stackName}: ${e.message} — nothing to ignore`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);

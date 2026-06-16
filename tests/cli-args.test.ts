@@ -75,6 +75,13 @@ describe('parseCommonArgs', () => {
       /option "--region" requires a value/
     );
     expect(() => parseCommonArgs(['-c', '--json'])).toThrow(/option "-c" requires a value/);
+    // an empty separate-token value is also "no value" — else `''` would shadow the
+    // env fallback (e.g. $AWS_REGION) and the inline form `--region=` already rejects it
+    expect(() => parseCommonArgs(['--region', ''])).toThrow(/option "--region" requires a value/);
+    expect(() => parseCommonArgs(['--profile', ''])).toThrow(/option "--profile" requires a value/);
+    expect(() => parseCommonArgs(['MyStack', '--app', ''])).toThrow(
+      /option "--app" requires a value/
+    );
   });
 
   it('errors on malformed -c/--context (no key=value)', () => {
