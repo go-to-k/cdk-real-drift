@@ -30,7 +30,7 @@ import {
 import {
   ApiGatewayV2Client,
   type Authorizer as ApiGwV2Authorizer,
-  GetAuthorizersCommand,
+  GetAuthorizersCommand as GetV2AuthorizersCommand,
   GetIntegrationsCommand,
   GetRoutesCommand,
   type Integration as ApiGwV2Integration,
@@ -464,7 +464,7 @@ async function pageV2Authorizers(
   const out: ApiGwV2Authorizer[] = [];
   let next: string | undefined;
   do {
-    const res = await client.send(new GetAuthorizersCommand({ ApiId: apiId, NextToken: next }));
+    const res = await client.send(new GetV2AuthorizersCommand({ ApiId: apiId, NextToken: next }));
     out.push(...(res.Items ?? []));
     next = res.NextToken;
   } while (next);
