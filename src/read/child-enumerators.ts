@@ -62,6 +62,7 @@ import {
   ListRulesCommand,
   type Rule as EventBridgeRule,
 } from '@aws-sdk/client-eventbridge';
+import { type AliasListEntry, KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
 import {
   type EventSourceMappingConfiguration,
   LambdaClient,
@@ -99,7 +100,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
-// (routes) the eleventh; ECS clusters (services) the twelfth.
+// (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
+// thirteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -113,6 +115,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::EC2::VPC': enumerateVpcChildren,
   'AWS::EC2::RouteTable': enumerateRouteTableChildren,
   'AWS::ECS::Cluster': enumerateEcsClusterChildren,
+  'AWS::KMS::Key': enumerateKmsKeyChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -1296,4 +1299,72 @@ async function enumerateEcsClusterChildren(ctx: EnumeratorContext): Promise<Adde
   const liveServices = arns.map((arn) => ({ arn, label: arn.split('/').pop() }));
 
   return diffEcsClusterChildren({ cluster, declaredServiceArns, liveServices });
+}
+
+// ── KMS ──────────────────────────────────────────────────────────────────────
+// An `AWS::KMS::Key` owns Aliases, each a separate CloudFormation resource. A
+// console / CLI `create-alias` (someone points a new alias at a key out of band) is
+// invisible to cdk drift / CFn drift detection (they only compare template-declared
+// resources). The Key's own live model does NOT reflect its aliases inline, so there
+// is no double-report to suppress. The CC primaryIdentifier for AWS::KMS::Alias is the
+// bare AliasName (e.g. `alias/foo`), which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared alias names + live inventory -> the added aliases.
+export interface KmsKeyChildInput {
+  declaredAliasNames: string[]; // AliasNames of AWS::KMS::Alias declared on this key
+  liveAliases: { name: string; label?: string | undefined }[];
+}
+
+export function diffKmsKeyChildren(input: KmsKeyChildInput): AddedChild[] {
+  const declared = new Set(input.declaredAliasNames);
+  const added: AddedChild[] = [];
+  for (const alias of input.liveAliases) {
+    if (declared.has(alias.name)) continue;
+    added.push({
+      resourceType: 'AWS::KMS::Alias',
+      identifier: alias.name, // AliasName IS the CC primaryIdentifier
+      label: alias.label ?? alias.name,
+      live: { AliasName: alias.name },
+    });
+  }
+  return added;
+}
+
+async function pageAliases(client: KMSClient, keyId: string): Promise<AliasListEntry[]> {
+  const out: AliasListEntry[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(new ListAliasesCommand({ KeyId: keyId, Marker: marker }));
+    out.push(...(res.Aliases ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const keyId = parent.physicalId; // a Key's physical id IS its KeyId (UUID)
+  if (!keyId) return [];
+
+  // Declared aliases targeting THIS key. An alias's TargetKeyId (resolved by gather) is
+  // either the bare KeyId or the key ARN; tolerate both. An alias's CFn physical id (Ref)
+  // IS its AliasName, so fall back to the physical id when AliasName is not a literal.
+  const keyArnRaw = desired.ctx.liveAttrs[parent.logicalId]?.Arn;
+  const keyArn = typeof keyArnRaw === 'string' ? keyArnRaw : undefined;
+  const declaredAliasNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::KMS::Alias') continue;
+    const target = r.declared.TargetKeyId;
+    if (target !== keyId && !(keyArn !== undefined && target === keyArn)) continue;
+    const name = typeof r.declared.AliasName === 'string' ? r.declared.AliasName : r.physicalId;
+    if (name) declaredAliasNames.push(name);
+  }
+
+  const client = new KMSClient({ region, ...READ_RETRY });
+  const aliases = await pageAliases(client, keyId);
+  const liveAliases = aliases
+    .filter((a): a is AliasListEntry & { AliasName: string } => typeof a.AliasName === 'string')
+    .map((a) => ({ name: a.AliasName }));
+
+  return diffKmsKeyChildren({ declaredAliasNames, liveAliases });
 }
