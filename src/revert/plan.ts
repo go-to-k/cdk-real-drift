@@ -356,25 +356,44 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
 // read-modify-write through Cloud Control). An UNRESOLVED declared value is skipped
 // (we cannot send a sentinel); the patch then omits it exactly as before, so this
 // never makes a borderline revert WORSE than today.
+// Navigate a dotted path (e.g. `LoginProfile.Password`) in a declared model; returns
+// undefined if any segment is missing or non-object. Used to re-include a NESTED
+// write-only value from the template's intent.
+function valueAtDottedPath(model: Record<string, unknown>, path: string): unknown {
+  let node: unknown = model;
+  for (const seg of path.split('.')) {
+    if (node === null || typeof node !== 'object' || Array.isArray(node)) return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return node;
+}
+
 export function writeOnlyReincludeOps(
   declared: Record<string, unknown> | undefined,
   schema: SchemaInfo | undefined,
   existingOps: PatchOp[]
 ): PatchOp[] {
-  if (!declared || !schema || schema.writeOnly.size === 0) return [];
+  if (!declared || !schema || schema.writeOnlyPaths.length === 0) return [];
   const touched = new Set(existingOps.map((o) => o.path));
   const ops: PatchOp[] = [];
-  for (const k of Object.keys(declared)) {
-    if (!schema.writeOnly.has(k)) continue;
-    const pointer = toPointer(k);
+  // Iterate the FULL write-only paths, not just the top-level set: a NESTED write-only
+  // property (AWS::IAM::User LoginProfile.Password, AWS::Amplify::App
+  // BasicAuthConfig.Password) is never a top-level key, so the old top-level-only loop
+  // re-included nothing — and a cc revert touching another property sent the parent
+  // object (e.g. LoginProfile, which CC returns WITHOUT the write-only Password) to
+  // UpdateResource, which RESET the credential. Re-include each resolved write-only value
+  // present in the declared model from its template intent.
+  for (const path of schema.writeOnlyPaths) {
+    if (path.includes('*')) continue; // a wildcard (array-element) write-only — no single value to re-include
+    const value = valueAtDottedPath(declared, path);
+    if (value === undefined || value === UNRESOLVED || hasUnresolved(value)) continue;
+    const pointer = toPointer(path);
     if (touched.has(pointer)) continue;
-    const value = declared[k];
-    if (value === UNRESOLVED || hasUnresolved(value)) continue;
     ops.push({
       op: 'add',
       path: pointer,
       value,
-      human: `${k} -> re-include write-only (Cloud Control read-modify-write contract)`,
+      human: `${path} -> re-include write-only (Cloud Control read-modify-write contract)`,
     });
   }
   return ops;
