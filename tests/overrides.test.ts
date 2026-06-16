@@ -20,6 +20,7 @@ import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { SDK_OVERRIDES } from '../src/read/overrides.js';
+import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 
 const s3 = mockClient(S3Client);
 const sns = mockClient(SNSClient);
@@ -731,6 +732,49 @@ describe('SDK overrides', () => {
       // the reader faithfully projects false; the noise layer's isTrivialEmpty drops a
       // never-enabled badge so it is not first-run undeclared noise
       expect(out.BadgeEnabled).toBe(false);
+    });
+
+    it('projects Cache — an out-of-band cache change is no longer invisible; NO_CACHE default folds via KNOWN_DEFAULTS', async () => {
+      // a declared S3 cache projects its real shape (matches the template)
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            cache: { type: 'S3', location: 'bkt/cache', modes: ['LOCAL_SOURCE_CACHE'] },
+          },
+        ],
+      });
+      const s3 = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(s3.Cache).toEqual({
+        Type: 'S3',
+        Location: 'bkt/cache',
+        Modes: ['LOCAL_SOURCE_CACHE'],
+      });
+
+      // the always-present NO_CACHE default projects exactly {Type:'NO_CACHE'} so it
+      // folds to atDefault via KNOWN_DEFAULTS (no Location/Modes leak)
+      codebuild.reset();
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            cache: { type: 'NO_CACHE' },
+          },
+        ],
+      });
+      const none = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(none.Cache).toEqual({ Type: 'NO_CACHE' });
+      expect(KNOWN_DEFAULTS['AWS::CodeBuild::Project'].Cache).toEqual({ Type: 'NO_CACHE' });
     });
 
     it('undefined when the project is absent (-> stays skipped)', async () => {
