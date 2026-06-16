@@ -1650,3 +1650,113 @@ describe('normalizeLiveModel (PR4 — the shared live-model normalizer used for 
     expect(input).toEqual({ AuthorizationType: 'NONE', MethodId: 'x' });
   });
 });
+
+// A live-only sub-key ADDED to a declared IAM policy STATEMENT out of band (e.g. a
+// Condition) was invisible: statements are identity-less, so the nested-undeclared
+// descent skipped them. Now an Effect-marked statement array is descended via a
+// subset match — catching the sub-key while leaving other identity-less arrays
+// (SecurityGroup rules) untouched.
+describe('nested undeclared on IAM policy statements (identity-less subset descent)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const policyRes = (statements: unknown[]): DesiredResource => ({
+    logicalId: 'P',
+    resourceType: 'AWS::IAM::ManagedPolicy',
+    physicalId: 'p',
+    declared: { PolicyDocument: { Version: '2012-10-17', Statement: statements } },
+  });
+
+  it('detects a Condition added out of band to a declared statement (the FN this fixes)', () => {
+    const res = policyRes([{ Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:b' }]);
+    const live = {
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 's3:GetObject',
+            Resource: 'arn:b',
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }, // added out of band
+          },
+        ],
+      },
+    };
+    const t = tiers(classifyResource(res, live, emptySchema));
+    expect(t.undeclared).toContain('PolicyDocument.Statement[0].Condition');
+  });
+
+  it('CLEAN when the live policy equals the declared policy (no false nested undeclared)', () => {
+    const stmt = { Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:b' };
+    const t = tiers(
+      classifyResource(
+        policyRes([stmt]),
+        { PolicyDocument: { Version: '2012-10-17', Statement: [{ ...stmt }] } },
+        emptySchema
+      )
+    );
+    expect(t.undeclared).toEqual([]);
+    expect(t.declared).toEqual([]);
+  });
+
+  it('subset-match survives the statement re-sort: detects the added key on the right statement', () => {
+    const res = policyRes([
+      { Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:a' },
+      { Effect: 'Allow', Action: 's3:PutObject', Resource: 'arn:b' },
+    ]);
+    // the put-object statement gains a Condition live; canonicalization re-sorts
+    // statements by content, so positional alignment would misfire — subset match must
+    // still pin the Condition to the put-object statement and leave the other clean.
+    const live = {
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 's3:PutObject',
+            Resource: 'arn:b',
+            Condition: { StringEquals: { 'aws:username': 'x' } },
+          },
+          { Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:a' },
+        ],
+      },
+    };
+    const t = tiers(classifyResource(res, live, emptySchema));
+    expect(t.undeclared.filter((p) => p.endsWith('.Condition'))).toHaveLength(1);
+    expect(t.undeclared.some((p) => p.endsWith('.Condition'))).toBe(true);
+    expect(t.declared).toEqual([]); // no false declared drift on the reordered clean statement
+  });
+
+  it('FP-safe: an identity-less array WITHOUT an Effect marker (SecurityGroup-rule shape) is NOT descended', () => {
+    const res: DesiredResource = {
+      logicalId: 'SG',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg',
+      declared: {
+        SecurityGroupIngress: [
+          { IpProtocol: 'tcp', FromPort: 443, ToPort: 443, CidrIp: '0.0.0.0/0' },
+        ],
+      },
+    };
+    const live = {
+      SecurityGroupIngress: [
+        {
+          IpProtocol: 'tcp',
+          FromPort: 443,
+          ToPort: 443,
+          CidrIp: '0.0.0.0/0',
+          Description: 'added',
+        },
+      ],
+    };
+    const t = tiers(classifyResource(res, live, emptySchema));
+    expect(t.undeclared.some((p) => p.includes('Description'))).toBe(false);
+  });
+});
