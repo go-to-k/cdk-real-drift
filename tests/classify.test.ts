@@ -382,6 +382,67 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
     const findings = classifyResource(role(['RoleDefaultPolicyABC'], declared), live, noSchema);
     expect(findings).toEqual([]);
   });
+
+  it('a live-only sub-key added to a WRAPPED inline-policy statement surfaces as undeclared (WAVE20 F3)', () => {
+    // The dominant CDK shape: `Policies: [{ PolicyName, PolicyDocument: { Statement } }]`.
+    // The wrapper array is identity-less and its elements aren't statements, so before
+    // the fix the statement subset-descent (#151, top-level docs only) never reached the
+    // wrapped statement — an out-of-band `Condition` on an inline role policy was invisible.
+    const declared = {
+      Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }],
+    };
+    const live = {
+      Policies: [
+        {
+          PolicyName: 'inline-a',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 's3:GetObject',
+                Resource: '*',
+                Condition: { StringEquals: { 'aws:PrincipalOrgID': 'o-rogue' } },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const findings = classifyResource(role([], declared), live, noSchema);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      tier: 'undeclared',
+      path: 'Policies[inline-a].PolicyDocument.Statement[0].Condition',
+    });
+    // an identical declared/live inline policy emits nothing (no FP)
+    const clean = classifyResource(
+      role([], { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] }),
+      { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] },
+      noSchema
+    );
+    expect(clean).toEqual([]);
+  });
+
+  it('a property containing one UNRESOLVED sub-value still surfaces a genuinely undeclared sibling sub-key (WAVE20 F2)', () => {
+    // Before: a property with ANY unresolved sub-value was skipped WHOLE for nested
+    // descent, hiding live-only undeclared keys under config-bag properties that merely
+    // reference another resource. Now only the unresolved SUBTREE is inert.
+    const declared = { Cfg: { Known: UNRESOLVED, Other: 'x' } };
+    const live = { Cfg: { Known: 'live-val', Other: 'x', LIVE_ONLY: 'rogue' } };
+    const r: DesiredResource = {
+      logicalId: 'R',
+      resourceType: 'AWS::Foo::Bar',
+      physicalId: 'p',
+      declared,
+    };
+    const findings = classifyResource(r, live, noSchema);
+    // the property is still flagged `unresolved` (partial unresolution noted)...
+    expect(tiers(findings).unresolved).toEqual(['Cfg']);
+    // ...AND the live-only undeclared sibling is now surfaced (previously hidden)
+    const u = findings.find((f) => f.tier === 'undeclared');
+    expect(u).toMatchObject({ path: 'Cfg.LIVE_ONLY', actual: 'rogue' });
+  });
 });
 
 describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)', () => {

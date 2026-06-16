@@ -96,6 +96,17 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 const isPolicyStatementArray = (arr: unknown[]): boolean =>
   arr.length > 0 && arr.every((el) => isNestedObject(el) && 'Effect' in el);
 
+// An IAM inline-policy WRAPPER array — `Policies: [{ PolicyName, PolicyDocument }]` on
+// AWS::IAM::Role/User/Group, the dominant CDK inline-policy shape. The wrapper is
+// identity-LESS (PolicyName is not a generic IDENTITY_FIELD) and its elements are NOT
+// statements (no `Effect`), so neither descent above fires — leaving the wrapped
+// PolicyDocument.Statement unreached and a live-only sub-key added to a wrapped statement
+// (e.g. an out-of-band `Condition` narrowing/widening access) invisible, the same FN
+// #151 fixed for TOP-LEVEL documents. Recognized by `PolicyDocument` so the descent can
+// align by PolicyName and reach the statement subset-match for this shape too.
+const isInlinePolicyArray = (arr: unknown[]): boolean =>
+  arr.length > 0 && arr.every((el) => isNestedObject(el) && 'PolicyDocument' in el);
+
 // True when every key of `sub` is present in `sup` with an equal value (objects
 // recurse so a nested declared block must also be a subset; everything else is
 // deep-equal). Used to align a declared policy statement to the live statement it is
@@ -154,6 +165,22 @@ function collectNestedUndeclared(
           }
         }
       });
+      return;
+    }
+    // IAM inline-policy wrappers (Role/User/Group `Policies[]`) are identity-less and
+    // their elements aren't statements, so neither descent above reaches the wrapped
+    // PolicyDocument.Statement. Align by PolicyName and recurse into each matched pair so
+    // the statement subset-descent (above) is reached for this dominant CDK shape too.
+    if (isInlinePolicyArray(declaredVal) && isInlinePolicyArray(liveVal)) {
+      const liveByName = new Map<string, Record<string, unknown>>();
+      for (const el of liveVal)
+        if (isNestedObject(el) && typeof el.PolicyName === 'string')
+          liveByName.set(el.PolicyName, el);
+      for (const dEl of declaredVal) {
+        if (!isNestedObject(dEl) || typeof dEl.PolicyName !== 'string') continue;
+        const match = liveByName.get(dEl.PolicyName);
+        if (match) collectNestedUndeclared(dEl, match, `${path}[${dEl.PolicyName}]`, emit);
+      }
     }
     return;
   }
@@ -464,7 +491,14 @@ export function classifyResource(
   // through the SAME wildcard lookup, equality-gated identically.
   const knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
   for (const [k, dv] of Object.entries(declared)) {
-    if (dv === UNRESOLVED || hasUnresolved(dv) || !(k in live)) continue;
+    // Only skip a WHOLLY-unresolved property: collectNestedUndeclared descends to emit
+    // LIVE-only keys, and an UNRESOLVED declared leaf is inert there (isNestedObject/
+    // Array both false → no recursion, no emit). So a property that merely CONTAINS an
+    // unresolved sub-value (e.g. Environment.Variables with one GetAtt) can still be
+    // descended to surface a genuinely undeclared sibling sub-key — dropping the old
+    // `hasUnresolved(dv)` guard, which hid that whole class (FP-safe: unresolved subtrees
+    // simply aren't descended).
+    if (dv === UNRESOLVED || !(k in live)) continue;
     collectNestedUndeclared(dv, live[k], k, (path, value) => {
       if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
       const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
