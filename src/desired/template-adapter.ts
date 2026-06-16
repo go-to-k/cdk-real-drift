@@ -52,8 +52,11 @@ export function buildResolverContext(
     const t = paramDefs[k]?.Type ?? '';
     return t === 'CommaDelimitedList' || t.startsWith('List<');
   };
+  // CommaDelimitedList values are whitespace-trimmed by CloudFormation
+  // ("a, b , c" -> ["a","b","c"]); mirror that so a Fn::Select / membership test
+  // over the list matches the deployed-resource value (untrimmed " b" would FP).
   const toParam = (k: string, raw: string): string | string[] =>
-    isList(k) ? (raw === '' ? [] : raw.split(',')) : raw;
+    isList(k) ? (raw === '' ? [] : raw.split(',').map((s) => s.trim())) : raw;
   const params: Record<string, string | string[]> = {};
   for (const [k, def] of Object.entries(paramDefs)) {
     if (def && 'Default' in def) params[k] = toParam(k, String(def.Default));
@@ -163,8 +166,19 @@ export async function loadDesired(
   const accountId = stackId.split(':')[4] ?? '';
 
   const stackParams: Record<string, string> = {};
-  for (const p of stack?.Parameters ?? [])
-    if (p.ParameterKey) stackParams[p.ParameterKey] = p.ParameterValue ?? '';
+  for (const p of stack?.Parameters ?? []) {
+    if (!p.ParameterKey) continue;
+    // SSM-typed params (Type: AWS::SSM::Parameter::Value<...>) carry the raw SSM
+    // KEY in ParameterValue and the dereferenced value in ResolvedValue — prefer
+    // ResolvedValue so Ref resolves to what AWS actually deployed, not the key.
+    const value = p.ResolvedValue ?? p.ParameterValue ?? '';
+    // A NoEcho parameter is returned MASKED as '****'. Comparing against the mask
+    // would be a false positive, so skip it entirely: the param drops out of ctx,
+    // Ref resolves UNRESOLVED, and the dependent property is skipped (not compared)
+    // — same treatment as a dynamic reference we cannot resolve.
+    if (value === '****') continue;
+    stackParams[p.ParameterKey] = value;
+  }
 
   const ctx = buildResolverContext(
     template,

@@ -13,6 +13,7 @@ import {
   loadDesired,
   parseTemplateBody,
 } from '../src/desired/template-adapter.js';
+import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 
 describe('collectRolesWithSiblingPolicies', () => {
   it('maps roles referenced by sibling AWS::IAM::Policy resources to the policy NAMES', () => {
@@ -101,6 +102,36 @@ describe('buildResolverContext', () => {
     expect(ctx.conditions.C).toBe(true);
     expect(ctx.mappings.RegionMap['us-west-2'].ami).toBe('ami-1'); // Mappings carried for FindInMap
     expect(ctx.exports).toEqual({}); // empty until loadDesired prefetches (only when needed)
+  });
+
+  it('resolves CommaDelimitedList / List<> params to trimmed arrays', () => {
+    const template = {
+      Parameters: {
+        Subnets: { Type: 'List<AWS::EC2::Subnet::Id>' },
+        Csv: { Type: 'CommaDelimitedList', Default: 'x, y' },
+        Plain: { Type: 'String' },
+      },
+    };
+    const ctx = buildResolverContext(
+      template,
+      { Subnets: 'subnet-1, subnet-2 ,subnet-3', Plain: 'a,b' },
+      {},
+      'us-east-1',
+      '999',
+      'S',
+      'arn:stack'
+    );
+    // CloudFormation trims each element of a delimited list; mirror it so a
+    // Fn::Select / membership test matches the deployed value (no " subnet-2").
+    expect(ctx.params.Subnets).toEqual(['subnet-1', 'subnet-2', 'subnet-3']);
+    expect(ctx.params.Csv).toEqual(['x', 'y']); // template Default also trimmed
+    expect(ctx.params.Plain).toBe('a,b'); // a plain String param is NOT split
+  });
+
+  it('resolves an empty delimited-list value to an empty array', () => {
+    const template = { Parameters: { L: { Type: 'CommaDelimitedList' } } };
+    const ctx = buildResolverContext(template, { L: '' }, {}, 'us-east-1', '999', 'S', 'arn');
+    expect(ctx.params.L).toEqual([]);
   });
 });
 
@@ -297,5 +328,73 @@ describe('loadDesired Fn::ImportValue exports prefetch', () => {
 
     const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'IV', 'eu-west-1');
     expect(desired.resources[0]!.declared).toEqual({ Tag: 'static' });
+  });
+});
+
+describe('loadDesired stack parameter resolution', () => {
+  function paramMocks(
+    cfn: ReturnType<typeof mockClient>,
+    parameters: Array<{ ParameterKey: string; ParameterValue?: string; ResolvedValue?: string }>
+  ) {
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: {
+          Q: { Type: 'AWS::SQS::Queue', Properties: { Tag: { Ref: 'P' } } },
+        },
+      }),
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Q',
+          PhysicalResourceId: 'q-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/P/x',
+          StackName: 'P',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: parameters,
+        },
+      ],
+    });
+  }
+
+  it('prefers ResolvedValue over ParameterValue for an SSM-typed parameter', async () => {
+    // SSM-typed params (Type: AWS::SSM::Parameter::Value<String>) return the SSM KEY
+    // in ParameterValue and the dereferenced value in ResolvedValue. Ref must resolve
+    // to the deployed value, not the key, or a declared property Ref'ing it FPs.
+    const cfn = mockClient(CloudFormationClient);
+    paramMocks(cfn, [
+      { ParameterKey: 'P', ParameterValue: '/my/ssm/key', ResolvedValue: 'real-value' },
+    ]);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'P', 'us-east-1');
+    expect(desired.resources[0]!.declared).toEqual({ Tag: 'real-value' });
+  });
+
+  it('skips a NoEcho-masked **** parameter so its Ref resolves UNRESOLVED (not the mask)', async () => {
+    // A NoEcho param is returned masked as '****'. Comparing against the mask is a
+    // false positive; skipping the param leaves Ref UNRESOLVED → the property is
+    // skipped (not compared), the same as an unresolvable dynamic reference.
+    const cfn = mockClient(CloudFormationClient);
+    paramMocks(cfn, [{ ParameterKey: 'P', ParameterValue: '****' }]);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'P', 'us-east-1');
+    // Tag Ref'd a param that is no longer in ctx → resolves to the UNRESOLVED
+    // symbol, which classify skips (never a '****' comparison / false drift).
+    expect(desired.resources[0]!.declared).toEqual({ Tag: UNRESOLVED });
+  });
+
+  it('uses ParameterValue when there is no ResolvedValue (ordinary parameter)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    paramMocks(cfn, [{ ParameterKey: 'P', ParameterValue: 'plain' }]);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'P', 'us-east-1');
+    expect(desired.resources[0]!.declared).toEqual({ Tag: 'plain' });
   });
 });
