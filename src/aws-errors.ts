@@ -65,6 +65,11 @@ export function classifyStackStatus(status: string | undefined): {
 //   IAM                 : NoSuchEntity / NoSuchEntityException
 //   EC2 EIP             : InvalidAllocationID.NotFound / InvalidAddress.NotFound
 //   Glue                : EntityNotFoundException (GetTable on a deleted table/db)
+//   cdkrd ResourceGoneError : a list/describe-based override whose PARENT container
+//                             exists but whose specific keyed resource is absent (a
+//                             Route53 record / MetricFilter deleted while its zone /
+//                             log group survives) — the SDK returns success+empty, not
+//                             a throw, so the reader raises this to mean "deleted".
 // Distinct from "target not resolvable from the template" (override returns
 // undefined → skipped) — this means the resource was read for and is gone.
 const NOT_FOUND_ERROR_NAMES = new Set([
@@ -79,7 +84,21 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'InvalidAllocationID.NotFound',
   'InvalidAddress.NotFound',
   'EntityNotFoundException',
+  'ResourceGoneError',
 ]);
+
+// Raised by a list/describe-based SDK-override reader when the parent container was
+// queried successfully but the specific keyed resource is ABSENT — i.e. it was deleted
+// out of band (the AWS API returns success with the item missing, not a not-found
+// throw). The router maps this (via isResourceNotFoundError) to the `deleted` tier, the
+// same as a native not-found error. NOT used for "couldn't resolve the target from the
+// template" — that case returns undefined → `skipped`.
+export class ResourceGoneError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ResourceGoneError';
+  }
+}
 
 export function isResourceNotFoundError(e: unknown): boolean {
   const name = (e as { name?: string })?.name ?? '';
