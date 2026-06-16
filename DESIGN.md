@@ -89,8 +89,9 @@ NEW (cdkd does NOT have these):
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON (the `record` verb; KEEPS watching)
 - **config ignore rules** — git-committed `.cdkrd/config.json`; the `ignore` verb
-  appends path rules (declared OR undeclared) that re-tag findings to `ignored`
-  and STOP watching (the `.driftignore` / `ignore_changes` analogue)
+  appends path rules (declared, undeclared, OR an out-of-band `added` resource)
+  that re-tag findings to `ignored` and STOP watching (the `.driftignore` /
+  `ignore_changes` analogue)
 - **report** — tiered text + JSON
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 

@@ -114,6 +114,31 @@ describe('applyIgnores', () => {
     expect(f?.tier).toBe('ignored');
   });
 
+  it('re-tags an `added` (whole out-of-band resource, empty path) finding to ignored', () => {
+    const addedFinding: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      constructPath: 'MyStack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+    };
+    // rule keyed on the construct-path id (no trailing dot — the finding has empty path)
+    const [f] = ign([addedFinding], 'S', cfg([p('MyStack/Api ▸ ANY /')]));
+    expect(f?.tier).toBe('ignored');
+  });
+
+  it('the rule ignoreRuleFor writes for an `added` finding matches that finding (round-trip)', () => {
+    const addedFinding: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      constructPath: 'MyStack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+    };
+    const [f] = ign([addedFinding], 'S', cfg([ignoreRuleFor(addedFinding)]));
+    expect(f?.tier).toBe('ignored');
+  });
+
   it('matches the friendly constructPath too (CDK stacks; same id cdk-local targets)', () => {
     const f: Finding = {
       tier: 'undeclared',

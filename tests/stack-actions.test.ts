@@ -123,6 +123,21 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
+  it('added-only → Ignore shown; Record hidden (unrecordable), Revert hidden (delete not wired yet)', () => {
+    const addedFinding: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      physicalId: 'abc|root|ANY',
+    };
+    expect(availableActions([addedFinding], undefined, NO_SCHEMAS, false)).toEqual({
+      record: false,
+      ignore: true,
+      revert: false,
+    });
+  });
+
   it('mixed declared + undeclared (with baseline making undeclared revertable) → all', () => {
     const b = baselineWith([
       {

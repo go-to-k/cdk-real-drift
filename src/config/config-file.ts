@@ -233,9 +233,11 @@ function pathMatches(pattern: string, target: string): boolean {
 }
 
 /**
- * Re-tag declared/undeclared findings that match an ignore rule to the `ignored`
- * tier (informational) — they are SURFACED, never silently dropped, preserving the
- * "everything is reported" invariant. `deleted` is never ignorable (a path rule must
+ * Re-tag declared/undeclared/added findings that match an ignore rule to the
+ * `ignored` tier (informational) — they are SURFACED, never silently dropped,
+ * preserving the "everything is reported" invariant. `added` (a whole out-of-band
+ * resource) is ignorable like declared/undeclared — accepting it is a deliberate
+ * decision, symmetric with revert. `deleted` is never ignorable (a path rule must
  * not silence a resource deletion); readGap/unresolved/skipped are already
  * informational and left untouched. Pure: no IO.
  *
@@ -264,9 +266,13 @@ export function applyIgnores(
   if (config.ignore.length === 0) return findings;
   const rules = config.ignore.map(parseIgnoreRule);
   return findings.map((f) => {
-    if (f.tier !== 'declared' && f.tier !== 'undeclared') return f;
-    const targets = [`${f.logicalId}.${f.path}`];
-    if (f.constructPath) targets.push(`${f.constructPath}.${f.path}`);
+    if (f.tier !== 'declared' && f.tier !== 'undeclared' && f.tier !== 'added') return f;
+    // A whole-resource `added` finding has an empty path, so omit the `.<path>` suffix:
+    // the rule target is then just the id, matching ignoreRuleFor's empty-path form
+    // (a trailing dot would only match via the parent-segment fallback — fragile).
+    const suffix = f.path ? `.${f.path}` : '';
+    const targets = [`${f.logicalId}${suffix}`];
+    if (f.constructPath) targets.push(`${f.constructPath}${suffix}`);
     const hit = rules.find(
       (r) =>
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&

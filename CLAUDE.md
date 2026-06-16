@@ -38,9 +38,10 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   to skip the prompt).
 - **`record` vs `ignore`** (the one invariant): `record` snapshots undeclared state
   and KEEPS watching — a later change re-surfaces as drift. `ignore` writes a path
-  rule (declared OR undeclared) and STOPS watching — the property is re-tagged
-  `ignored` and never reported again. `record` is undeclared-only; `ignore` is
-  symmetric with revert (it is the only in-tool way to accept a DECLARED drift).
+  rule (declared, undeclared, OR an out-of-band `added` resource) and STOPS watching
+  — the finding is re-tagged `ignored` and never reported again. `record` is
+  undeclared-only; `ignore` is symmetric with revert (the only in-tool way to accept
+  a DECLARED or out-of-band ADDED drift).
 - With no stack and no `--all`, the CDK app is synthesized (`--app` / `cdk.json`)
   and every stack it defines is targeted. A stack arg containing `*`/`?` is a glob.
 - Key flags: `--region`, `--profile`, `--app`, `-c/--context key=value`, `--json`,
