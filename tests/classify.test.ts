@@ -1984,3 +1984,86 @@ describe('R140: nested AWS-populated values fold (so a clean deploy is clean)', 
     }
   });
 });
+
+describe('Cognito UserPool Schema identity-keyed subset (WAVE23 — declared attrs vs the full live set)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const pool = (declared: Record<string, unknown>) => ({
+    logicalId: 'Pool',
+    resourceType: 'AWS::Cognito::UserPool',
+    physicalId: 'p',
+    declared,
+  });
+  const liveAttr = (Name: string, over: Record<string, unknown> = {}) => ({
+    Name,
+    AttributeDataType: 'String',
+    DeveloperOnlyAttribute: false,
+    Mutable: true,
+    Required: false,
+    StringAttributeConstraints: { MinLength: '0', MaxLength: '2048' },
+    ...over,
+  });
+  // AWS always returns the full standard-attribute set plus declared customs
+  const liveStandard = ['sub', 'phone_number', 'address', 'birthdate', 'name'].map((n) =>
+    liveAttr(n)
+  );
+
+  it('a declared attribute subset does NOT false-drift against the full live Schema', () => {
+    // CDK emits a custom attribute as the BARE name `tier`; Cognito returns it prefixed
+    // as `custom:tier`. The identity match normalizes the prefix so the declared subset
+    // aligns to live and does not false-drift.
+    const declared = {
+      Schema: [
+        { Name: 'email', Mutable: true, Required: true },
+        { Name: 'tier', AttributeDataType: 'String', Mutable: true },
+      ],
+    };
+    const live = {
+      Schema: [...liveStandard, liveAttr('email', { Required: true }), liveAttr('custom:tier')],
+    };
+    const findings = classifyResource(pool(declared), live, bare);
+    // no whole-array declared FALSE positive (the prefix mismatch is normalized away)
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // the always-present standard attributes surface as foldable nested undeclared inventory
+    expect(findings.filter((f) => f.tier === 'undeclared' && f.nested).length).toBe(
+      liveStandard.length
+    );
+  });
+
+  it('an out-of-band change to a DECLARED attribute is reported as declared drift', () => {
+    const declared = { Schema: [{ Name: 'email', Mutable: true, Required: true }] };
+    const live = { Schema: [...liveStandard, liveAttr('email', { Required: false })] };
+    const declaredDrift = classifyResource(pool(declared), live, bare).filter(
+      (f) => f.tier === 'declared'
+    );
+    expect(declaredDrift).toHaveLength(1);
+    expect(declaredDrift[0]).toMatchObject({ desired: true, actual: false });
+  });
+
+  it('a declared attribute absent from live (removed from the pool) is declared drift', () => {
+    const declared = { Schema: [{ Name: 'custom:gone', AttributeDataType: 'String' }] };
+    const live = { Schema: [...liveStandard] }; // custom:gone not present
+    const declaredDrift = classifyResource(pool(declared), live, bare).filter(
+      (f) => f.tier === 'declared'
+    );
+    expect(declaredDrift).toHaveLength(1);
+  });
+
+  it('an out-of-band CUSTOM attribute added (never declared) surfaces as undeclared', () => {
+    const declared = { Schema: [{ Name: 'email', Mutable: true }] };
+    const live = { Schema: [...liveStandard, liveAttr('email'), liveAttr('custom:rogue')] };
+    // the path carries the normalized identity (the `custom:` prefix is stripped)
+    const undeclared = classifyResource(pool(declared), live, bare).filter(
+      (f) => f.tier === 'undeclared' && f.path === 'Schema[rogue]'
+    );
+    expect(undeclared).toHaveLength(1);
+  });
+});
