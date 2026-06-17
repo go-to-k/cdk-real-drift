@@ -27,10 +27,10 @@ USAGE
   needs them directly.
 
   cdkrd is CDK-only: it synthesizes the CDK app (--app / cdk.json, or a
-  pre-synthesized cdk.out) to discover stacks. With no stack argument, every
-  stack the app defines is targeted; a <stack> arg (exact or a *?-glob) selects
-  among them. The drift comparison itself reads each stack's DEPLOYED template +
-  live state from AWS.
+  pre-synthesized cdk.out) to discover stacks. With no stack argument (or --all),
+  every stack the app defines is targeted; a <stack> arg (exact or a *?-glob)
+  selects among them. The drift comparison itself reads each stack's DEPLOYED
+  template + live state from AWS.
 
 OPTIONS
   --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
@@ -40,6 +40,8 @@ OPTIONS
                               (or $CDKRD_APP / cdk.json "app") — enables stack
                               auto-discovery + construct-path output
   -c, --context key=value     context for synth (repeatable; cdk.json is the base)
+  --all                       target EVERY stack the app defines (the default when
+                              no <stack> is named; overrides any positional names)
   --json                      machine-readable output
   --fail                      (check) exit 1 on drift + never prompt — for
                               scripts/CI (same convention as \`cdk diff --fail\`);

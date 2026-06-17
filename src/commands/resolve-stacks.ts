@@ -33,8 +33,9 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     context: a.context,
   });
 
-  // no names → every stack the app defines
-  if (a.stackNames.length === 0) {
+  // --all, or no names → every stack the app defines. --all is the explicit form of the
+  // no-argument default; it also overrides any positional names (target everything).
+  if (a.all || a.stackNames.length === 0) {
     return discovered.map((s) => ({ stackName: s.stackName, region: s.region ?? a.region }));
   }
 

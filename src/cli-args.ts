@@ -20,10 +20,12 @@ const BOOLEAN_FLAGS = new Set([
   '--verbose',
   '-v',
   '--strict',
+  '--all',
 ]);
 
 export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty → all stacks the CDK app defines)
+  all: boolean; // explicitly target EVERY stack the app defines (the default when no name is given); overrides any positional names
   region: string | undefined; // resolved region (no silent default — caller errors if absent)
   profile: string | undefined; // AWS profile (--profile or $AWS_PROFILE)
   app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
@@ -140,6 +142,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
   }
   return {
     stackNames,
+    all: has('--all'),
     context,
     region: values['--region'] ?? process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION,
     profile: values['--profile'] ?? process.env.AWS_PROFILE,
