@@ -514,6 +514,15 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
       ...(t.unit !== undefined && { Unit: t.unit }),
       ...(t.dimensions !== undefined && { Dimensions: t.dimensions }),
     })),
+    // ApplyOnTransformedLogs (CFn AWS::Logs::MetricFilter prop) controls whether the
+    // filter evaluates the TRANSFORMED log events instead of the originals — toggling it
+    // out of band silently changes what the metric counts. It was omitted, so that change
+    // was invisible. FP-safe: projected only when present; a live false is a top-level
+    // undeclared value that isTrivialEmpty drops, so a never-set filter stays CLEAN and
+    // only an out-of-band flip to true surfaces.
+    ...(mf.applyOnTransformedLogs !== undefined && {
+      ApplyOnTransformedLogs: mf.applyOnTransformedLogs,
+    }),
   };
 };
 
