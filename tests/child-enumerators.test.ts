@@ -3,6 +3,7 @@ import {
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
   diffAppConfigApplicationChildren,
+  diffAppConfigProfiles,
   diffApiGatewayV2Authorizers,
   diffApiGatewayV2Children,
   diffEcsClusterChildren,
@@ -1110,6 +1111,51 @@ describe('diffAppConfigApplicationChildren (AppConfig application environments)'
         applicationId: APP,
         declaredEnvironmentIds: ['a', 'b'],
         liveEnvironments: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffAppConfigProfiles (AppConfig application configuration profiles)', () => {
+  const APP = 'abc1234';
+
+  it('flags an out-of-band configuration profile added via the console (not in the template)', () => {
+    const added = diffAppConfigProfiles({
+      applicationId: APP,
+      declaredProfileIds: ['prof-declared'],
+      liveProfiles: [
+        { id: 'prof-declared', label: 'declared' },
+        { id: 'prof-console', label: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppConfig::ConfigurationProfile',
+        identifier: `${APP}|prof-console`,
+        label: 'cdkrd-integ-oob',
+        live: { ConfigurationProfileId: 'prof-console', ApplicationId: APP },
+      },
+    ]);
+  });
+
+  it('identifier is the CC composite ApplicationId|ConfigurationProfileId', () => {
+    const added = diffAppConfigProfiles({
+      applicationId: APP,
+      declaredProfileIds: [],
+      liveProfiles: [{ id: 'prof-x', label: 'X' }],
+    });
+    expect(added[0]!.identifier).toBe(`${APP}|prof-x`);
+  });
+
+  it('no drift when every live configuration profile is declared', () => {
+    expect(
+      diffAppConfigProfiles({
+        applicationId: APP,
+        declaredProfileIds: ['a', 'b'],
+        liveProfiles: [
           { id: 'a', label: 'A' },
           { id: 'b', label: 'B' },
         ],
