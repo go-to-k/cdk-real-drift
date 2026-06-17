@@ -207,7 +207,8 @@ code or reverting.
   filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
   VPC subnets, EC2 route table
   routes, ECS cluster services, KMS key aliases, AppConfig application
-  environments, and EFS file system mount targets are covered.
+  environments and configuration profiles, and EFS file system mount targets are
+  covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not
 reimplement `cdk diff`, so undeployed code changes never show up as drift

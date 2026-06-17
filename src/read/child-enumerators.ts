@@ -21,7 +21,9 @@ import {
 } from '@aws-sdk/client-api-gateway';
 import {
   AppConfigClient,
+  type ConfigurationProfileSummary as AppConfigConfigurationProfile,
   type Environment as AppConfigEnvironment,
+  ListConfigurationProfilesCommand,
   ListEnvironmentsCommand,
 } from '@aws-sdk/client-appconfig';
 import {
@@ -1831,15 +1833,18 @@ async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChi
 }
 
 // ── AppConfig ──────────────────────────────────────────────────────────────────
-// An `AWS::AppConfig::Application` owns Environments, each a separate CloudFormation
-// resource. A console / CLI `create-environment` (someone adds a new environment to an
-// application out of band) is invisible to cdk drift / CFn drift detection (they only
+// An `AWS::AppConfig::Application` owns Environments AND ConfigurationProfiles, each a
+// separate CloudFormation resource. A console / CLI `create-environment` /
+// `create-configuration-profile` (someone adds a new environment or configuration profile
+// to an application out of band) is invisible to cdk drift / CFn drift detection (they only
 // compare template-declared resources). The Application's own live model does NOT reflect
-// its environments inline, so there is no double-report to suppress. The CC
+// its environments or profiles inline, so there is no double-report to suppress. The CC
 // primaryIdentifier for AWS::AppConfig::Environment is the composite
-// `["/properties/ApplicationId","/properties/EnvironmentId"]`, so the `identifier` is the
-// composite `ApplicationId|EnvironmentId` (ApplicationId first) — that is what CC
-// GetResource / DeleteResource consume.
+// `["/properties/ApplicationId","/properties/EnvironmentId"]` and for
+// AWS::AppConfig::ConfigurationProfile the composite
+// `["/properties/ApplicationId","/properties/ConfigurationProfileId"]`, so the `identifier`
+// is the composite `ApplicationId|EnvironmentId` / `ApplicationId|ConfigurationProfileId`
+// (ApplicationId first) — that is what CC GetResource / DeleteResource consume.
 
 // Pure diff: declared environment ids + live inventory -> the added environments.
 export interface AppConfigApplicationChildInput {
@@ -1882,6 +1887,45 @@ async function pageAppConfigEnvironments(
   return out;
 }
 
+// Pure diff: declared configuration-profile ids + live inventory -> the added profiles.
+export interface AppConfigProfilesInput {
+  applicationId: string;
+  declaredProfileIds: string[]; // physical ids (ConfigurationProfileIds) of the declared profiles
+  liveProfiles: { id: string; label?: string | undefined }[];
+}
+
+export function diffAppConfigProfiles(input: AppConfigProfilesInput): AddedChild[] {
+  const { applicationId, declaredProfileIds, liveProfiles } = input;
+  const declared = new Set(declaredProfileIds);
+  const added: AddedChild[] = [];
+  for (const p of liveProfiles) {
+    if (declared.has(p.id)) continue;
+    added.push({
+      resourceType: 'AWS::AppConfig::ConfigurationProfile',
+      identifier: `${applicationId}|${p.id}`, // CC composite ApplicationId|ConfigurationProfileId
+      label: p.label ?? p.id,
+      live: { ConfigurationProfileId: p.id, ApplicationId: applicationId },
+    });
+  }
+  return added;
+}
+
+async function pageAppConfigProfiles(
+  client: AppConfigClient,
+  applicationId: string
+): Promise<AppConfigConfigurationProfile[]> {
+  const out: AppConfigConfigurationProfile[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListConfigurationProfilesCommand({ ApplicationId: applicationId, NextToken: next })
+    );
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateAppConfigApplicationChildren(
   ctx: EnumeratorContext
 ): Promise<AddedChild[]> {
@@ -1892,6 +1936,9 @@ async function enumerateAppConfigApplicationChildren(
   // Declared environments of THIS application (Ref/GetAtt ApplicationId already resolved to
   // the physical id by gather). An environment's CFn physical id (Ref) IS its EnvironmentId.
   const declaredEnvironmentIds: string[] = [];
+  // Declared configuration profiles of THIS application. A profile's CFn physical id (Ref)
+  // IS its ConfigurationProfileId.
+  const declaredProfileIds: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::AppConfig::Environment' &&
@@ -1899,20 +1946,38 @@ async function enumerateAppConfigApplicationChildren(
       r.physicalId
     ) {
       declaredEnvironmentIds.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::AppConfig::ConfigurationProfile' &&
+      r.declared.ApplicationId === applicationId &&
+      r.physicalId
+    ) {
+      declaredProfileIds.push(r.physicalId);
     }
   }
 
   const client = new AppConfigClient({ region, ...READ_RETRY });
+
   const environments = await pageAppConfigEnvironments(client, applicationId);
   const liveEnvironments = environments
     .filter((e): e is AppConfigEnvironment & { Id: string } => typeof e.Id === 'string')
     .map((e) => ({ id: e.Id, label: e.Name ?? e.Id }));
-
-  return diffAppConfigApplicationChildren({
+  const environmentAdded = diffAppConfigApplicationChildren({
     applicationId,
     declaredEnvironmentIds,
     liveEnvironments,
   });
+
+  const profiles = await pageAppConfigProfiles(client, applicationId);
+  const liveProfiles = profiles
+    .filter((p): p is AppConfigConfigurationProfile & { Id: string } => typeof p.Id === 'string')
+    .map((p) => ({ id: p.Id, label: p.Name ?? p.Id }));
+  const profileAdded = diffAppConfigProfiles({
+    applicationId,
+    declaredProfileIds,
+    liveProfiles,
+  });
+
+  return [...environmentAdded, ...profileAdded];
 }
 
 // ── EFS ──────────────────────────────────────────────────────────────────────
