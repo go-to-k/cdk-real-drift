@@ -204,7 +204,8 @@ code or reverting.
   mappings, function URLs, and aliases, EventBridge bus rules, Cognito user pool
   clients, groups, and
   resource servers, AppSync data sources and resolvers, CloudWatch Logs metric
-  filters, Elastic Load Balancing v2 listeners, EC2 VPC subnets, EC2 route table
+  filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
+  VPC subnets, EC2 route table
   routes, ECS cluster services, KMS key aliases, and AppConfig application
   environments are covered.
 

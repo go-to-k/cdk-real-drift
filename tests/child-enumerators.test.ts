@@ -13,6 +13,7 @@ import {
   diffLambdaFunctionAliases,
   diffLambdaFunctionChildren,
   diffLambdaFunctionUrls,
+  diffListenerChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
   diffRouteTableChildren,
@@ -852,6 +853,49 @@ describe('diffLoadBalancerChildren (ELBv2 listeners)', () => {
         liveListeners: [
           { arn: LSN('a'), label: 'HTTP:80' },
           { arn: LSN('b'), label: 'HTTPS:443' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffListenerChildren (ELBv2 listener rules)', () => {
+  const RULE = (id: string) =>
+    `arn:aws:elasticloadbalancing:us-east-1:111122223333:listener-rule/app/alb/abc/lsn/${id}`;
+
+  it('flags an out-of-band rule added via the console (not in the template)', () => {
+    const added = diffListenerChildren({
+      declaredRuleArns: [RULE('declared')],
+      liveRules: [
+        { arn: RULE('declared'), label: 'priority 10' },
+        { arn: RULE('console'), label: 'priority 50' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ElasticLoadBalancingV2::ListenerRule',
+        identifier: RULE('console'),
+        label: 'priority 50',
+        live: { RuleArn: RULE('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare RuleArn (CC primaryIdentifier, not a composite)', () => {
+    const added = diffListenerChildren({
+      declaredRuleArns: [],
+      liveRules: [{ arn: RULE('x'), label: 'priority 5' }],
+    });
+    expect(added[0]!.identifier).toBe(RULE('x'));
+  });
+
+  it('no drift when every live rule is declared', () => {
+    expect(
+      diffListenerChildren({
+        declaredRuleArns: [RULE('a'), RULE('b')],
+        liveRules: [
+          { arn: RULE('a'), label: 'priority 10' },
+          { arn: RULE('b'), label: 'priority 20' },
         ],
       })
     ).toEqual([]);

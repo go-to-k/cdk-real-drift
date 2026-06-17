@@ -65,8 +65,10 @@ import {
 import { ECSClient, ListServicesCommand } from '@aws-sdk/client-ecs';
 import {
   DescribeListenersCommand,
+  DescribeRulesCommand,
   ElasticLoadBalancingV2Client,
   type Listener as Elbv2Listener,
+  type Rule as Elbv2Rule,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import {
   EventBridgeClient,
@@ -116,7 +118,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
-// thirteenth; AppConfig applications (environments) the fourteenth.
+// thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
+// v2 listeners (rules) the fifteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -127,6 +130,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::AppSync::GraphQLApi': enumerateGraphQLApiChildren,
   'AWS::Logs::LogGroup': enumerateLogGroupChildren,
   'AWS::ElasticLoadBalancingV2::LoadBalancer': enumerateLoadBalancerChildren,
+  'AWS::ElasticLoadBalancingV2::Listener': enumerateListenerChildren,
   'AWS::EC2::VPC': enumerateVpcChildren,
   'AWS::EC2::RouteTable': enumerateRouteTableChildren,
   'AWS::ECS::Cluster': enumerateEcsClusterChildren,
@@ -1437,6 +1441,86 @@ async function enumerateLoadBalancerChildren(ctx: EnumeratorContext): Promise<Ad
     .map((l) => ({ arn: l.ListenerArn, label: `${l.Protocol}:${l.Port}` }));
 
   return diffLoadBalancerChildren({ declaredListenerArns, liveListeners });
+}
+
+// A Listener (itself a declared template resource, AND enumerated as a child of its
+// LoadBalancer) owns ListenerRules, each a separate CloudFormation resource. A console /
+// CLI `create-rule` (someone wires a new routing rule onto a listener out of band) is
+// invisible to cdk drift / CFn drift detection (they only compare template-declared
+// resources). Every listener has an AWS-auto-created DEFAULT rule (`IsDefault`) that is
+// not a template resource and is never an out-of-band addition, so it is skipped. The
+// Listener's own live model does NOT reflect its rules inline, so there is no
+// double-report to suppress. The CC primaryIdentifier for
+// AWS::ElasticLoadBalancingV2::ListenerRule is the bare RuleArn, which CC GetResource /
+// DeleteResource consume.
+
+// Pure diff: declared rule arns + live inventory -> the added rules.
+export interface ListenerChildInput {
+  declaredRuleArns: string[]; // physical ids of AWS::ElasticLoadBalancingV2::ListenerRule
+  liveRules: { arn: string; label?: string | undefined }[];
+}
+
+export function diffListenerChildren(input: ListenerChildInput): AddedChild[] {
+  const declared = new Set(input.declaredRuleArns);
+  const added: AddedChild[] = [];
+  for (const r of input.liveRules) {
+    if (declared.has(r.arn)) continue;
+    added.push({
+      resourceType: 'AWS::ElasticLoadBalancingV2::ListenerRule',
+      identifier: r.arn, // RuleArn IS the CC primaryIdentifier
+      label: r.label ?? r.arn,
+      live: { RuleArn: r.arn },
+    });
+  }
+  return added;
+}
+
+async function pageListenerRules(
+  client: ElasticLoadBalancingV2Client,
+  listenerArn: string
+): Promise<Elbv2Rule[]> {
+  const out: Elbv2Rule[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeRulesCommand({ ListenerArn: listenerArn, Marker: marker })
+    );
+    out.push(...(res.Rules ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const listenerArn = parent.physicalId; // a Listener's physical id IS its ListenerArn
+  if (!listenerArn) return [];
+
+  // Declared rules of THIS listener (Ref/GetAtt ListenerArn already resolved to the
+  // physical id by gather). A rule's physical id IS its RuleArn.
+  const declaredRuleArns: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::ElasticLoadBalancingV2::ListenerRule' &&
+      r.declared.ListenerArn === listenerArn &&
+      r.physicalId
+    ) {
+      declaredRuleArns.push(r.physicalId);
+    }
+  }
+
+  const client = new ElasticLoadBalancingV2Client({ region, ...READ_RETRY });
+  const rules = await pageListenerRules(client, listenerArn);
+  const liveRules = rules
+    // Skip the auto-created default rule: it is created with the listener, not a template
+    // resource, and is never an out-of-band addition.
+    .filter(
+      (r): r is Elbv2Rule & { RuleArn: string } =>
+        typeof r.RuleArn === 'string' && r.IsDefault !== true
+    )
+    .map((r) => ({ arn: r.RuleArn, label: r.Priority ? `priority ${r.Priority}` : r.RuleArn }));
+
+  return diffListenerChildren({ declaredRuleArns, liveRules });
 }
 
 // ── EC2 (VPC) ──────────────────────────────────────────────────────────────────
