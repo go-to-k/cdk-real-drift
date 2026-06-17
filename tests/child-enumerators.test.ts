@@ -6,6 +6,7 @@ import {
   diffApiGatewayV2Authorizers,
   diffApiGatewayV2Children,
   diffEcsClusterChildren,
+  diffEfsFileSystemChildren,
   diffEventBusChildren,
   diffGraphQLApiChildren,
   diffGraphQLApiResolvers,
@@ -1111,6 +1112,48 @@ describe('diffAppConfigApplicationChildren (AppConfig application environments)'
         liveEnvironments: [
           { id: 'a', label: 'A' },
           { id: 'b', label: 'B' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffEfsFileSystemChildren (EFS file system mount targets)', () => {
+  const MT = (id: string) => `fsmt-${id}`;
+
+  it('flags an out-of-band mount target added via the console (not in the template)', () => {
+    const added = diffEfsFileSystemChildren({
+      declaredMountTargetIds: [MT('declared')],
+      liveMountTargets: [
+        { id: MT('declared'), label: `${MT('declared')} (subnet-a)` },
+        { id: MT('console'), label: `${MT('console')} (subnet-b)` },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EFS::MountTarget',
+        identifier: MT('console'),
+        label: `${MT('console')} (subnet-b)`,
+        live: { Id: MT('console') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare mount-target Id (CC primaryIdentifier, not a composite)', () => {
+    const added = diffEfsFileSystemChildren({
+      declaredMountTargetIds: [],
+      liveMountTargets: [{ id: MT('x'), label: `${MT('x')} (subnet-c)` }],
+    });
+    expect(added[0]!.identifier).toBe(MT('x'));
+  });
+
+  it('no drift when every live mount target is declared', () => {
+    expect(
+      diffEfsFileSystemChildren({
+        declaredMountTargetIds: [MT('a'), MT('b')],
+        liveMountTargets: [
+          { id: MT('a'), label: `${MT('a')} (subnet-a)` },
+          { id: MT('b'), label: `${MT('b')} (subnet-b)` },
         ],
       })
     ).toEqual([]);
