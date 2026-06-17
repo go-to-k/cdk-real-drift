@@ -64,6 +64,11 @@ import {
 } from '@aws-sdk/client-ec2';
 import { ECSClient, ListServicesCommand } from '@aws-sdk/client-ecs';
 import {
+  DescribeMountTargetsCommand,
+  EFSClient,
+  type MountTargetDescription,
+} from '@aws-sdk/client-efs';
+import {
   DescribeListenersCommand,
   DescribeRulesCommand,
   ElasticLoadBalancingV2Client,
@@ -119,7 +124,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
 // thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
-// v2 listeners (rules) the fifteenth.
+// v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -136,6 +141,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ECS::Cluster': enumerateEcsClusterChildren,
   'AWS::KMS::Key': enumerateKmsKeyChildren,
   'AWS::AppConfig::Application': enumerateAppConfigApplicationChildren,
+  'AWS::EFS::FileSystem': enumerateEfsFileSystemChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -1907,4 +1913,83 @@ async function enumerateAppConfigApplicationChildren(
     declaredEnvironmentIds,
     liveEnvironments,
   });
+}
+
+// ── EFS ──────────────────────────────────────────────────────────────────────
+// An `AWS::EFS::FileSystem` owns MountTargets, each a separate CloudFormation resource.
+// A console / CLI `create-mount-target` (someone attaches a new mount target to a file
+// system in an out-of-band subnet) is invisible to cdk drift / CFn drift detection (they
+// only compare template-declared resources). The FileSystem's own live model does NOT
+// reflect its mount targets inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::EFS::MountTarget is the bare mount-target Id (fsmt-...),
+// which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared mount-target ids + live inventory -> the added mount targets.
+export interface EfsFileSystemChildInput {
+  declaredMountTargetIds: string[]; // physical ids (MountTargetIds) of AWS::EFS::MountTarget
+  liveMountTargets: { id: string; label?: string | undefined }[];
+}
+
+export function diffEfsFileSystemChildren(input: EfsFileSystemChildInput): AddedChild[] {
+  const declared = new Set(input.declaredMountTargetIds);
+  const added: AddedChild[] = [];
+  for (const mt of input.liveMountTargets) {
+    if (declared.has(mt.id)) continue;
+    added.push({
+      resourceType: 'AWS::EFS::MountTarget',
+      identifier: mt.id, // the mount-target Id IS the CC primaryIdentifier
+      label: mt.label ?? mt.id,
+      live: { Id: mt.id },
+    });
+  }
+  return added;
+}
+
+async function pageMountTargets(
+  client: EFSClient,
+  fileSystemId: string
+): Promise<MountTargetDescription[]> {
+  const out: MountTargetDescription[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeMountTargetsCommand({ FileSystemId: fileSystemId, Marker: marker })
+    );
+    out.push(...(res.MountTargets ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const fileSystemId = parent.physicalId; // a FileSystem's physical id IS its FileSystemId
+  if (!fileSystemId) return [];
+
+  // Declared mount targets of THIS file system (Ref/GetAtt FileSystemId already resolved to
+  // the physical id by gather). A mount target's CFn physical id (Ref) IS its MountTargetId.
+  const declaredMountTargetIds: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::EFS::MountTarget' &&
+      r.declared.FileSystemId === fileSystemId &&
+      r.physicalId
+    ) {
+      declaredMountTargetIds.push(r.physicalId);
+    }
+  }
+
+  const client = new EFSClient({ region, ...READ_RETRY });
+  const mountTargets = await pageMountTargets(client, fileSystemId);
+  const liveMountTargets = mountTargets
+    .filter(
+      (mt): mt is MountTargetDescription & { MountTargetId: string } =>
+        typeof mt.MountTargetId === 'string'
+    )
+    .map((mt) => ({
+      id: mt.MountTargetId,
+      label: mt.SubnetId ? `${mt.MountTargetId} (${mt.SubnetId})` : mt.MountTargetId,
+    }));
+
+  return diffEfsFileSystemChildren({ declaredMountTargetIds, liveMountTargets });
 }
