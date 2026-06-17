@@ -97,6 +97,11 @@ import {
   ListFunctionUrlConfigsCommand,
 } from '@aws-sdk/client-lambda';
 import {
+  type DBInstance as RdsDBInstance,
+  DescribeDBInstancesCommand,
+  RDSClient,
+} from '@aws-sdk/client-rds';
+import {
   ListSubscriptionsByTopicCommand,
   SNSClient,
   type Subscription as SnsSubscription,
@@ -130,7 +135,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
 // thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
-// v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth.
+// v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
+// RDS DB clusters (DB instances) the seventeenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -148,6 +154,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::KMS::Key': enumerateKmsKeyChildren,
   'AWS::AppConfig::Application': enumerateAppConfigApplicationChildren,
   'AWS::EFS::FileSystem': enumerateEfsFileSystemChildren,
+  'AWS::RDS::DBCluster': enumerateRdsClusterChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -2210,4 +2217,80 @@ async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<A
     }));
 
   return diffEfsFileSystemChildren({ declaredMountTargetIds, liveMountTargets });
+}
+
+// ── RDS ────────────────────────────────────────────────────────────────────────
+// An `AWS::RDS::DBCluster` owns DBInstances (the cluster's writer / reader members),
+// each a separate CloudFormation resource. A console / CLI `create-db-instance`
+// (someone adds a new reader instance to a cluster out of band) is invisible to cdk
+// drift / CFn drift detection (they only compare template-declared resources). The
+// DBCluster's own live model does NOT reflect its instances inline, so there is no
+// double-report to suppress. The CC primaryIdentifier for AWS::RDS::DBInstance is the
+// bare DBInstanceIdentifier, which CC GetResource / DeleteResource consume.
+
+// Pure diff: declared instance ids + live inventory -> the added DB instances.
+export interface RdsClusterChildInput {
+  declaredInstanceIds: string[]; // physical ids (DBInstanceIdentifiers) of AWS::RDS::DBInstance
+  liveInstances: { id: string; label?: string | undefined }[];
+}
+
+export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[] {
+  const declared = new Set(input.declaredInstanceIds);
+  const added: AddedChild[] = [];
+  for (const i of input.liveInstances) {
+    if (declared.has(i.id)) continue;
+    added.push({
+      resourceType: 'AWS::RDS::DBInstance',
+      identifier: i.id, // DBInstanceIdentifier IS the CC primaryIdentifier
+      label: i.label ?? i.id,
+      live: { DBInstanceIdentifier: i.id },
+    });
+  }
+  return added;
+}
+
+async function pageDbInstances(client: RDSClient, clusterId: string): Promise<RdsDBInstance[]> {
+  const out: RdsDBInstance[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeDBInstancesCommand({
+        Filters: [{ Name: 'db-cluster-id', Values: [clusterId] }],
+        Marker: marker,
+      })
+    );
+    out.push(...(res.DBInstances ?? []));
+    marker = res.Marker;
+  } while (marker);
+  return out;
+}
+
+async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const clusterId = parent.physicalId; // a DBCluster's physical id IS its DBClusterIdentifier
+  if (!clusterId) return [];
+
+  // Declared instances of THIS cluster (Ref/GetAtt DBClusterIdentifier already resolved to
+  // the physical id by gather). A DBInstance's CFn physical id (Ref) IS its DBInstanceIdentifier.
+  const declaredInstanceIds: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::RDS::DBInstance' &&
+      r.declared.DBClusterIdentifier === clusterId &&
+      r.physicalId
+    ) {
+      declaredInstanceIds.push(r.physicalId);
+    }
+  }
+
+  const client = new RDSClient({ region, ...READ_RETRY });
+  const instances = await pageDbInstances(client, clusterId);
+  const liveInstances = instances
+    .filter(
+      (i): i is RdsDBInstance & { DBInstanceIdentifier: string } =>
+        typeof i.DBInstanceIdentifier === 'string'
+    )
+    .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
+
+  return diffRdsClusterChildren({ declaredInstanceIds, liveInstances });
 }

@@ -16,7 +16,11 @@ export interface ApplyResult {
 }
 
 const POLL_INTERVAL_MS = 2000;
-const TIMEOUT_MS = 5 * 60 * 1000;
+// Generous ceiling: Cloud Control operations on stateful resources legitimately take
+// many minutes (e.g. deleting an RDS DBInstance is ~5-10 min). pollToCompletion returns
+// as soon as the operation reaches a terminal state, so a high ceiling never slows the
+// common case — it only bounds how long we wait on an operation that never terminates.
+const TIMEOUT_MS = 15 * 60 * 1000;
 
 // A DELETE whose target is ALREADY absent is the goal state, not a failure. Two ways
 // this happens for an `added`-resource revert: (1) deleting an API Gateway Resource
