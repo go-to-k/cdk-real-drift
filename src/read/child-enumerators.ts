@@ -48,7 +48,9 @@ import {
 import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
+  DescribeSubscriptionFiltersCommand,
   type MetricFilter as CwlMetricFilter,
+  type SubscriptionFilter as CwlSubscriptionFilter,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   CognitoIdentityProviderClient,
@@ -1369,16 +1371,47 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
 }
 
 // ── CloudWatch Logs ────────────────────────────────────────────────────────────
-// An `AWS::Logs::LogGroup` owns MetricFilters, each a separate CloudFormation resource.
-// A console / CLI `put-metric-filter` (someone wires a new metric filter onto a log group
-// out of band) is invisible to cdk drift / CFn drift detection (they only compare
-// template-declared resources). The LogGroup's own live model does NOT reflect its metric
-// filters inline, so there is no double-report to suppress. The CC primaryIdentifier for
-// AWS::Logs::MetricFilter is the composite `["/properties/LogGroupName","/properties/FilterName"]`,
-// so the `identifier` is the composite `LogGroupName|FilterName` (LogGroupName first) — that
-// is what CC GetResource / DeleteResource consume.
+// An `AWS::Logs::LogGroup` owns MetricFilters AND SubscriptionFilters, each a separate
+// CloudFormation resource. A console / CLI `put-metric-filter` / `put-subscription-filter`
+// (someone wires a new metric filter, or — security-relevant — a new SUBSCRIPTION filter
+// streaming the log group's events to an out-of-band Lambda/Kinesis/Firehose destination)
+// is invisible to cdk drift / CFn drift detection (they only compare template-declared
+// resources). The LogGroup's own live model does NOT reflect either inline, so there is no
+// double-report to suppress. The CC primaryIdentifier for BOTH AWS::Logs::MetricFilter and
+// AWS::Logs::SubscriptionFilter is the composite `["/properties/LogGroupName",
+// "/properties/FilterName"]`, so the `identifier` is `LogGroupName|FilterName`
+// (LogGroupName first) — what CC GetResource / DeleteResource consume.
 
-// Pure diff: declared filter names + live inventory -> the added metric filters.
+// Pure diff: declared filter names + live inventory -> the added filters, tagged with the
+// given CFn resourceType (MetricFilter or SubscriptionFilter). Metric- and subscription-
+// filter names are independent namespaces, so each is diffed against its OWN declared set.
+// `identifierOf` builds the CC composite identifier — the two types ORDER it DIFFERENTLY:
+// AWS::Logs::MetricFilter is `["/properties/LogGroupName","/properties/FilterName"]`
+// (LogGroupName|FilterName), AWS::Logs::SubscriptionFilter is the REVERSE
+// `["/properties/FilterName","/properties/LogGroupName"]` (FilterName|LogGroupName) — using
+// the wrong order makes CC GetResource/DeleteResource throw a ValidationException.
+function diffLogGroupFilters(
+  logGroupName: string,
+  resourceType: string,
+  declaredFilterNames: string[],
+  liveFilters: { name: string; label?: string | undefined }[],
+  identifierOf: (filterName: string) => string
+): AddedChild[] {
+  const declared = new Set(declaredFilterNames);
+  const added: AddedChild[] = [];
+  for (const f of liveFilters) {
+    if (declared.has(f.name)) continue;
+    added.push({
+      resourceType,
+      identifier: identifierOf(f.name),
+      label: f.label ?? f.name,
+      live: { FilterName: f.name, LogGroupName: logGroupName },
+    });
+  }
+  return added;
+}
+
+// Pure diff: declared metric-filter names + live inventory -> the added metric filters.
 export interface LogGroupChildInput {
   logGroupName: string;
   declaredFilterNames: string[]; // names of AWS::Logs::MetricFilter declared on this log group
@@ -1386,19 +1419,31 @@ export interface LogGroupChildInput {
 }
 
 export function diffLogGroupChildren(input: LogGroupChildInput): AddedChild[] {
-  const { logGroupName, declaredFilterNames, liveFilters } = input;
-  const declared = new Set(declaredFilterNames);
-  const added: AddedChild[] = [];
-  for (const f of liveFilters) {
-    if (declared.has(f.name)) continue;
-    added.push({
-      resourceType: 'AWS::Logs::MetricFilter',
-      identifier: `${logGroupName}|${f.name}`, // CC composite LogGroupName|FilterName
-      label: f.label ?? f.name,
-      live: { FilterName: f.name, LogGroupName: logGroupName },
-    });
-  }
-  return added;
+  return diffLogGroupFilters(
+    input.logGroupName,
+    'AWS::Logs::MetricFilter',
+    input.declaredFilterNames,
+    input.liveFilters,
+    (name) => `${input.logGroupName}|${name}` // CC composite LogGroupName|FilterName
+  );
+}
+
+// Pure diff: declared subscription-filter names + live inventory -> the added ones.
+export interface LogGroupSubscriptionInput {
+  logGroupName: string;
+  declaredFilterNames: string[]; // names of AWS::Logs::SubscriptionFilter declared on this log group
+  liveFilters: { name: string; label?: string | undefined }[];
+}
+
+export function diffLogGroupSubscriptionFilters(input: LogGroupSubscriptionInput): AddedChild[] {
+  return diffLogGroupFilters(
+    input.logGroupName,
+    'AWS::Logs::SubscriptionFilter',
+    input.declaredFilterNames,
+    input.liveFilters,
+    // CC composite FilterName|LogGroupName (the REVERSE of MetricFilter — verified live)
+    (name) => `${name}|${input.logGroupName}`
+  );
 }
 
 async function pageMetricFilters(
@@ -1412,6 +1457,22 @@ async function pageMetricFilters(
       new DescribeMetricFiltersCommand({ logGroupName, nextToken: next })
     );
     out.push(...(res.metricFilters ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
+async function pageSubscriptionFilters(
+  client: CloudWatchLogsClient,
+  logGroupName: string
+): Promise<CwlSubscriptionFilter[]> {
+  const out: CwlSubscriptionFilter[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeSubscriptionFiltersCommand({ logGroupName, nextToken: next })
+    );
+    out.push(...(res.subscriptionFilters ?? []));
     next = res.nextToken;
   } while (next);
   return out;
@@ -1434,13 +1495,40 @@ async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedC
     if (name) declaredFilterNames.push(name);
   }
 
+  // Declared subscription filters on THIS log group (separate name namespace from metric
+  // filters). A SubscriptionFilter's physical id (Ref) is its FilterName.
+  const declaredSubscriptionNames: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType !== 'AWS::Logs::SubscriptionFilter' ||
+      r.declared.LogGroupName !== logGroupName
+    ) {
+      continue;
+    }
+    const name = typeof r.declared.FilterName === 'string' ? r.declared.FilterName : r.physicalId;
+    if (name) declaredSubscriptionNames.push(name);
+  }
+
   const client = new CloudWatchLogsClient({ region, ...READ_RETRY });
   const filters = await pageMetricFilters(client, logGroupName);
   const liveFilters = filters
     .filter((f): f is CwlMetricFilter & { filterName: string } => typeof f.filterName === 'string')
     .map((f) => ({ name: f.filterName }));
+  const subs = await pageSubscriptionFilters(client, logGroupName);
+  const liveSubs = subs
+    .filter(
+      (f): f is CwlSubscriptionFilter & { filterName: string } => typeof f.filterName === 'string'
+    )
+    .map((f) => ({ name: f.filterName }));
 
-  return diffLogGroupChildren({ logGroupName, declaredFilterNames, liveFilters });
+  return [
+    ...diffLogGroupChildren({ logGroupName, declaredFilterNames, liveFilters }),
+    ...diffLogGroupSubscriptionFilters({
+      logGroupName,
+      declaredFilterNames: declaredSubscriptionNames,
+      liveFilters: liveSubs,
+    }),
+  ];
 }
 
 // ── Elastic Load Balancing v2 ──────────────────────────────────────────────────

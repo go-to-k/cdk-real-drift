@@ -205,7 +205,7 @@ code or reverting.
   clients, groups, and
   resource servers, AppSync data sources, resolvers, and functions, CloudWatch
   Logs metric
-  filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
+  filters and subscription filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
   VPC subnets, EC2 route table
   routes, ECS cluster services, KMS key aliases, AppConfig application
   environments and configuration profiles, and EFS file system mount targets are
