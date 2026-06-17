@@ -29,7 +29,9 @@ import {
 import {
   AppSyncClient,
   type DataSource as AppSyncDataSource,
+  type FunctionConfiguration as AppSyncFunctionConfiguration,
   ListDataSourcesCommand,
+  ListFunctionsCommand as ListAppSyncFunctionsCommand,
   ListResolversCommand,
   ListTypesCommand,
   type Resolver as AppSyncResolver,
@@ -1134,14 +1136,16 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
 
 // ── AppSync ──────────────────────────────────────────────────────────────────
 // An `AWS::AppSync::GraphQLApi` owns DataSources (the DynamoDB / Lambda / HTTP / NONE
-// resolver backings) AND Resolvers (per type/field attachments), each a separate
-// CloudFormation resource. A console / CLI `create-data-source` / `create-resolver`
-// (someone wires a new backing or resolver onto an api out of band) is invisible to
-// cdk drift / CFn drift detection. The GraphQLApi model does NOT reflect its
-// datasources or resolvers inline, so there is no double-report to suppress. The CC
-// primaryIdentifier for AWS::AppSync::DataSource is the bare DataSourceArn and for
-// AWS::AppSync::Resolver the bare ResolverArn, which CC GetResource / DeleteResource
-// consume.
+// resolver backings), Resolvers (per type/field attachments), AND Functions (the
+// pipeline functions composed into a pipeline resolver), each a separate
+// CloudFormation resource. A console / CLI `create-data-source` / `create-resolver` /
+// `create-function` (someone wires a new backing, resolver, or function onto an api
+// out of band) is invisible to cdk drift / CFn drift detection. The GraphQLApi model
+// does NOT reflect its datasources, resolvers, or functions inline, so there is no
+// double-report to suppress. The CC primaryIdentifier for AWS::AppSync::DataSource is
+// the bare DataSourceArn, for AWS::AppSync::Resolver the bare ResolverArn, and for
+// AWS::AppSync::FunctionConfiguration the bare FunctionArn, which CC GetResource /
+// DeleteResource consume.
 
 // Pure diff: declared datasource names + live inventory -> the added datasources.
 export interface GraphQLApiChildInput {
@@ -1227,6 +1231,44 @@ async function pageResolvers(
   return out;
 }
 
+// Pure diff: declared function arns + live inventory -> the added functions. A declared
+// AWS::AppSync::FunctionConfiguration's CFn physical id (Ref) IS its FunctionArn, so
+// declared functions are matched by FunctionArn; an added function's identifier is its
+// live FunctionArn (the CC primaryIdentifier).
+export interface GraphQLApiFunctionInput {
+  declaredFunctionArns: string[]; // physical ids (FunctionArns) of AWS::AppSync::FunctionConfiguration
+  liveFunctions: { arn: string; label?: string | undefined }[];
+}
+
+export function diffGraphQLApiFunctions(input: GraphQLApiFunctionInput): AddedChild[] {
+  const declared = new Set(input.declaredFunctionArns);
+  const added: AddedChild[] = [];
+  for (const f of input.liveFunctions) {
+    if (declared.has(f.arn)) continue;
+    added.push({
+      resourceType: 'AWS::AppSync::FunctionConfiguration',
+      identifier: f.arn, // FunctionArn IS the CC primaryIdentifier
+      label: f.label ?? f.arn,
+      live: { FunctionArn: f.arn },
+    });
+  }
+  return added;
+}
+
+async function pageAppSyncFunctions(
+  client: AppSyncClient,
+  apiId: string
+): Promise<AppSyncFunctionConfiguration[]> {
+  const out: AppSyncFunctionConfiguration[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListAppSyncFunctionsCommand({ apiId, nextToken: next }));
+    out.push(...(res.functions ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
 // A GraphQLApi's CFn physical id is its ARN (`arn:...:apis/<apiId>`), but `ListDataSources`
 // and a DataSource's declared `ApiId` (`Fn::GetAtt ApiId`) both use the BARE api id. Take
 // the trailing `apis/<id>` segment when the physical id is an ARN; otherwise it already IS
@@ -1270,6 +1312,19 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     declaredResolverKeys.push(`${TypeName}|${FieldName}`);
   }
 
+  // Declared functions on THIS api. An AWS::AppSync::FunctionConfiguration's CFn physical
+  // id (Ref) IS its FunctionArn, so match DECLARED functions by FunctionArn (= physicalId).
+  // A declared Function's ApiId (Fn::GetAtt ApiId, resolved by gather) is the bare api id;
+  // tolerate an ARN form too in case gather resolved it differently.
+  const declaredFunctionArns: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::AppSync::FunctionConfiguration' || !r.physicalId) continue;
+    const declaredApiId = r.declared.ApiId;
+    if (typeof declaredApiId !== 'string') continue;
+    if (bareApiId(declaredApiId) !== apiId) continue;
+    declaredFunctionArns.push(r.physicalId);
+  }
+
   const client = new AppSyncClient({ region, ...READ_RETRY });
   const dataSources = await pageDataSources(client, apiId);
   const liveDataSources = dataSources
@@ -1300,7 +1355,17 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
   }
   const resolverAdded = diffGraphQLApiResolvers({ declaredResolverKeys, liveResolvers });
 
-  return [...datasourceAdded, ...resolverAdded];
+  // Functions are listed per api (not per type).
+  const functions = await pageAppSyncFunctions(client, apiId);
+  const liveFunctions = functions
+    .filter(
+      (f): f is AppSyncFunctionConfiguration & { functionArn: string } =>
+        typeof f.functionArn === 'string'
+    )
+    .map((f) => ({ arn: f.functionArn, label: f.name ?? f.functionArn }));
+  const functionAdded = diffGraphQLApiFunctions({ declaredFunctionArns, liveFunctions });
+
+  return [...datasourceAdded, ...resolverAdded, ...functionAdded];
 }
 
 // ── CloudWatch Logs ────────────────────────────────────────────────────────────
