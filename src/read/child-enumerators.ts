@@ -46,8 +46,10 @@ import {
   GetAuthorizersCommand as GetV2AuthorizersCommand,
   GetIntegrationsCommand,
   GetRoutesCommand,
+  GetStagesCommand,
   type Integration as ApiGwV2Integration,
   type Route as ApiGwV2Route,
+  type Stage as ApiGwV2Stage,
 } from '@aws-sdk/client-apigatewayv2';
 import {
   CloudWatchLogsClient,
@@ -514,17 +516,18 @@ async function getAllRequestValidators(
 }
 
 // ── API Gateway V2 (HTTP / WebSocket) ────────────────────────────────────────
-// An `AWS::ApiGatewayV2::Api` owns Routes, Integrations, and Authorizers, each a
+// An `AWS::ApiGatewayV2::Api` owns Routes, Integrations, Authorizers, and Stages, each a
 // SEPARATE CloudFormation resource — the direct V2 analogue of REST's Resources +
-// Methods. A console-added Route (e.g. `GET /admin`), Integration, or Authorizer is
-// invisible to `cdk drift` / CFn drift detection (they only compare template-declared
-// resources). Unlike REST there is no implicit "root" child to special-case, and these
-// children are siblings (not nested), so each is reported independently. Both protocol
-// types (HTTP and WebSocket) use the same Api type + GetRoutes/GetIntegrations/
-// GetAuthorizers APIs, so one enumerator covers both. The Api model does NOT reflect
-// its authorizers inline, so there is no double-report to suppress. CC `GetResource`/
-// `DeleteResource` consume the composite identifier (`ApiId|RouteId` /
-// `ApiId|IntegrationId` / `AuthorizerId|ApiId`), so revert deletes generically.
+// Methods + Stages. A console-added Route (e.g. `GET /admin`), Integration, Authorizer,
+// or Stage is invisible to `cdk drift` / CFn drift detection (they only compare
+// template-declared resources). Unlike REST there is no implicit "root" child to
+// special-case, and these children are siblings (not nested), so each is reported
+// independently. Both protocol types (HTTP and WebSocket) use the same Api type +
+// GetRoutes/GetIntegrations/GetAuthorizers/GetStages APIs, so one enumerator covers both.
+// The Api model does NOT reflect its authorizers/stages inline, so there is no
+// double-report to suppress. CC `GetResource`/`DeleteResource` consume the composite
+// identifier (`ApiId|RouteId` / `ApiId|IntegrationId` / `AuthorizerId|ApiId` /
+// `ApiId|StageName`), so revert deletes generically.
 
 // Pure diff: declared child id sets + live inventory -> the added children. Separated
 // from the SDK calls so the matching is unit-tested offline (mirrors REST).
@@ -633,6 +636,42 @@ async function pageV2Authorizers(
   return out;
 }
 
+// Pure diff: declared stage names + live inventory -> the added stages. An
+// AWS::ApiGatewayV2::Stage's CFn physical id (Ref) IS its StageName, so declared stages
+// are matched by StageName. The CC primaryIdentifier is the composite
+// `["/properties/ApiId","/properties/StageName"]`, so the `identifier` is
+// `ApiId|StageName` — that is what CC GetResource / DeleteResource consume.
+export function diffApiGatewayV2Stages(input: {
+  apiId: string;
+  declaredStageNames: string[]; // physical ids (StageNames) of AWS::ApiGatewayV2::Stage
+  liveStages: { name: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const { apiId, declaredStageNames, liveStages } = input;
+  const declared = new Set(declaredStageNames);
+  const added: AddedChild[] = [];
+  for (const s of liveStages) {
+    if (declared.has(s.name)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGatewayV2::Stage',
+      identifier: `${apiId}|${s.name}`, // CC composite ApiId|StageName
+      label: s.label ?? s.name,
+      live: { StageName: s.name, ApiId: apiId },
+    });
+  }
+  return added;
+}
+
+async function pageV2Stages(client: ApiGatewayV2Client, apiId: string): Promise<ApiGwV2Stage[]> {
+  const out: ApiGwV2Stage[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new GetStagesCommand({ ApiId: apiId, NextToken: next }));
+    out.push(...(res.Items ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const apiId = parent.physicalId;
@@ -644,6 +683,8 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const declaredIntegrationIds: string[] = [];
   // Declared authorizers of THIS api. An Authorizer's physical id (Ref) IS its AuthorizerId.
   const declaredAuthorizerIds: string[] = [];
+  // Declared stages of THIS api. A Stage's physical id (Ref) IS its StageName.
+  const declaredStageNames: string[] = [];
   for (const r of desired.resources) {
     if (r.declared.ApiId !== apiId) continue;
     if (r.resourceType === 'AWS::ApiGatewayV2::Route' && r.physicalId) {
@@ -652,14 +693,18 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       declaredIntegrationIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::ApiGatewayV2::Authorizer' && r.physicalId) {
       declaredAuthorizerIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::ApiGatewayV2::Stage') {
+      const name = r.physicalId ?? (r.declared.StageName as string | undefined);
+      if (name) declaredStageNames.push(name);
     }
   }
 
   const client = new ApiGatewayV2Client({ region, ...READ_RETRY });
-  const [routes, integrations, authorizers] = await Promise.all([
+  const [routes, integrations, authorizers, stages] = await Promise.all([
     pageRoutes(client, apiId),
     pageIntegrations(client, apiId),
     pageV2Authorizers(client, apiId),
+    pageV2Stages(client, apiId),
   ]);
   const liveRoutes = routes
     .filter((r): r is ApiGwV2Route & { RouteId: string } => typeof r.RouteId === 'string')
@@ -675,6 +720,9 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       (a): a is ApiGwV2Authorizer & { AuthorizerId: string } => typeof a.AuthorizerId === 'string'
     )
     .map((a) => ({ id: a.AuthorizerId, label: a.Name ?? a.AuthorizerId }));
+  const liveStages = stages
+    .filter((s): s is ApiGwV2Stage & { StageName: string } => typeof s.StageName === 'string')
+    .map((s) => ({ name: s.StageName }));
 
   const added = diffApiGatewayV2Children({
     apiId,
@@ -688,7 +736,12 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredAuthorizerIds,
     liveAuthorizers,
   });
-  return added.concat(authorizerAdded);
+  const stageAdded = diffApiGatewayV2Stages({
+    apiId,
+    declaredStageNames,
+    liveStages,
+  });
+  return added.concat(authorizerAdded, stageAdded);
 }
 
 // ── SNS ──────────────────────────────────────────────────────────────────────
