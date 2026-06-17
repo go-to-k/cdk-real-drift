@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
+  diffApiGatewayModels,
+  diffApiGatewayRequestValidators,
   diffAppConfigApplicationChildren,
   diffAppConfigProfiles,
   diffApiGatewayV2Authorizers,
@@ -198,6 +200,83 @@ describe('diffApiGatewayAuthorizers (REST API authorizers)', () => {
       liveAuthorizers: [
         { id: 'authdec0', label: 'A' },
         { id: 'authdec1', label: 'B' },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+});
+
+describe('diffApiGatewayModels (REST API models)', () => {
+  it('flags an out-of-band model with a composite RestApiId|Name identifier', () => {
+    const added = diffApiGatewayModels({
+      apiId: API,
+      declaredModelNames: ['DeclaredModel'],
+      liveModels: [
+        { name: 'DeclaredModel', label: 'DeclaredModel' },
+        { name: 'cdkrdOobModel', label: 'cdkrdOobModel' },
+      ],
+    });
+    expect(added).toHaveLength(1);
+    expect(added[0]?.resourceType).toBe('AWS::ApiGateway::Model');
+    expect(added[0]?.identifier).toBe(`${API}|cdkrdOobModel`);
+    expect(added[0]?.label).toBe('cdkrdOobModel');
+    expect(added[0]?.live).toEqual({ Name: 'cdkrdOobModel', RestApiId: API });
+  });
+
+  it('flags the built-in Empty/Error models when they are not declared', () => {
+    const added = diffApiGatewayModels({
+      apiId: API,
+      declaredModelNames: [],
+      liveModels: [{ name: 'Empty' }, { name: 'Error' }],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}|Empty`, `${API}|Error`]);
+    expect(added[0]?.label).toBe('Empty');
+  });
+
+  it('reports no drift when every live model is declared', () => {
+    const added = diffApiGatewayModels({
+      apiId: API,
+      declaredModelNames: ['Empty', 'Error', 'DeclaredModel'],
+      liveModels: [{ name: 'Empty' }, { name: 'Error' }, { name: 'DeclaredModel' }],
+    });
+    expect(added).toEqual([]);
+  });
+});
+
+describe('diffApiGatewayRequestValidators (REST API request validators)', () => {
+  it('flags an out-of-band validator with a composite RestApiId|RequestValidatorId identifier', () => {
+    const added = diffApiGatewayRequestValidators({
+      apiId: API,
+      declaredValidatorIds: ['valdec0'],
+      liveValidators: [
+        { id: 'valdec0', label: 'DeclaredValidator' },
+        { id: 'valoob1', label: 'cdkrd-oob-validator' },
+      ],
+    });
+    expect(added).toHaveLength(1);
+    expect(added[0]?.resourceType).toBe('AWS::ApiGateway::RequestValidator');
+    expect(added[0]?.identifier).toBe(`${API}|valoob1`);
+    expect(added[0]?.label).toBe('cdkrd-oob-validator');
+    expect(added[0]?.live).toEqual({ RequestValidatorId: 'valoob1', RestApiId: API });
+  });
+
+  it('uses the live id as the label when no name is provided', () => {
+    const added = diffApiGatewayRequestValidators({
+      apiId: API,
+      declaredValidatorIds: [],
+      liveValidators: [{ id: 'valoob2' }],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}|valoob2`]);
+    expect(added[0]?.label).toBe('valoob2');
+  });
+
+  it('reports no drift when every live validator is declared', () => {
+    const added = diffApiGatewayRequestValidators({
+      apiId: API,
+      declaredValidatorIds: ['valdec0', 'valdec1'],
+      liveValidators: [
+        { id: 'valdec0', label: 'A' },
+        { id: 'valdec1', label: 'B' },
       ],
     });
     expect(added).toEqual([]);
