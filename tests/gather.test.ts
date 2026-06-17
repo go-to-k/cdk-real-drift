@@ -301,6 +301,100 @@ describe('gatherFindings pass-1.5 override retry (R27)', () => {
     // GetPolicy was never called (the reader bails on the unresolved FunctionName)
     expect(lambda.commandCalls(LambdaGetPolicyCommand)).toHaveLength(0);
   });
+
+  it('re-resolves a CONSUMER whose GetAtt targets a type read only in pass 1.5 (missed-drift FN)', async () => {
+    // Q's KmsMasterKeyId is Fn::GetAtt[Perm, Action]. Perm (an SDK_OVERRIDE) is read only
+    // in pass 1.5 (its FunctionName GetAtt resolves after pass 1), so liveAttrs[Perm] is
+    // populated AFTER the first re-resolution. Without a second re-resolution Q's prop
+    // stays UNRESOLVED and its drift is silently skipped. The live Action differs from
+    // the live KmsMasterKeyId, so once Q's GetAtt resolves a DECLARED drift must surface.
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: {
+          Fn: { Type: 'AWS::Lambda::Function', Properties: { FunctionName: 'Fn-phys' } },
+          Perm: {
+            Type: 'AWS::Lambda::Permission',
+            Properties: {
+              FunctionName: { 'Fn::GetAtt': ['Fn', 'Arn'] },
+              Action: 'lambda:InvokeFunction',
+              Principal: 's3.amazonaws.com',
+            },
+          },
+          Q: {
+            Type: 'AWS::SQS::Queue',
+            Properties: { KmsMasterKeyId: { 'Fn::GetAtt': ['Perm', 'Action'] } },
+          },
+        },
+      }),
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Fn',
+          PhysicalResourceId: 'Fn-phys',
+          ResourceType: 'AWS::Lambda::Function',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+        {
+          LogicalResourceId: 'Perm',
+          PhysicalResourceId: 'Perm-phys',
+          ResourceType: 'AWS::Lambda::Permission',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+        {
+          LogicalResourceId: 'Q',
+          PhysicalResourceId: 'Q-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+    cfn.on(DescribeTypeCommand).resolves({ Schema: '{}' });
+
+    const cc = mockClient(CloudControlClient);
+    cc.on(GetResourceCommand, { Identifier: 'Fn-phys' }).resolves({
+      ResourceDescription: { Identifier: 'Fn-phys', Properties: JSON.stringify({ Arn: FN_ARN }) },
+    });
+    cc.on(GetResourceCommand, { Identifier: 'Q-phys' }).resolves({
+      ResourceDescription: {
+        Identifier: 'Q-phys',
+        Properties: JSON.stringify({ KmsMasterKeyId: 'lambda:DIFFERENT' }),
+      },
+    });
+    const lambda = mockClient(LambdaClient);
+    lambda.on(LambdaGetPolicyCommand).resolves({
+      Policy: JSON.stringify({
+        Statement: [
+          { Action: 'lambda:InvokeFunction', Principal: { Service: 's3.amazonaws.com' } },
+        ],
+      }),
+    });
+    lambda.on(ListEventSourceMappingsCommand).resolves({ EventSourceMappings: [] });
+
+    const { findings } = await gatherFindings('S', 'us-east-1');
+    // Q's GetAtt resolved to Perm's live Action ('lambda:InvokeFunction'); live
+    // KmsMasterKeyId is 'lambda:DIFFERENT' → a DECLARED drift that would be missed
+    // (skipped as unresolved) without the second re-resolution pass.
+    const qDrift = findings.find((f) => f.logicalId === 'Q' && f.path === 'KmsMasterKeyId');
+    expect(qDrift?.tier).toBe('declared');
+    expect(qDrift?.desired).toBe('lambda:InvokeFunction');
+    expect(qDrift?.actual).toBe('lambda:DIFFERENT');
+  });
 });
 
 // A CC composite-identifier resource (ApiGatewayV2 Route) whose PARENT key (ApiId) is
