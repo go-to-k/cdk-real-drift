@@ -615,6 +615,43 @@ describe('SDK overrides', () => {
       });
     });
 
+    it('projects ApplyOnTransformedLogs when set (an out-of-band toggle is no longer invisible)', async () => {
+      logs.on(DescribeMetricFiltersCommand).resolves({
+        metricFilters: [
+          {
+            filterName: 'errs',
+            filterPattern: 'ERROR',
+            metricTransformations: [{ metricName: 'E', metricNamespace: 'App', metricValue: '1' }],
+            applyOnTransformedLogs: true,
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/lg' }, 'errs')
+      )) as Record<string, unknown>;
+      expect(out.ApplyOnTransformedLogs).toBe(true);
+    });
+
+    it('FP-safe: omits ApplyOnTransformedLogs when undefined; a live false folds via isTrivialEmpty', async () => {
+      logs.on(DescribeMetricFiltersCommand).resolves({
+        metricFilters: [
+          {
+            filterName: 'errs',
+            filterPattern: 'ERROR',
+            metricTransformations: [{ metricName: 'E', metricNamespace: 'App', metricValue: '1' }],
+            // a never-set filter: AWS returns false (or omits it) — the reader projects it
+            // faithfully when present; the noise layer's isTrivialEmpty drops a top-level
+            // false so it is not first-run undeclared noise
+            applyOnTransformedLogs: false,
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/lg' }, 'errs')
+      )) as Record<string, unknown>;
+      expect(out.ApplyOnTransformedLogs).toBe(false);
+    });
+
     it('log group described but the named filter absent -> ResourceGoneError (deleted)', async () => {
       // The log group exists and was described; the exact-named filter is gone -> deleted
       // out of band. (Was a false `undefined`/skipped that hid the deletion.)
