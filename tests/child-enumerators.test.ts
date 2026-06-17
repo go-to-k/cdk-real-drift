@@ -10,6 +10,7 @@ import {
   diffEfsFileSystemChildren,
   diffEventBusChildren,
   diffGraphQLApiChildren,
+  diffGraphQLApiFunctions,
   diffGraphQLApiResolvers,
   diffKmsKeyChildren,
   diffLambdaFunctionAliases,
@@ -813,6 +814,45 @@ describe('diffGraphQLApiResolvers (AppSync resolvers)', () => {
           { key: 'Query|a', arn: RES('Query', 'a') },
           { key: 'Mutation|b', arn: RES('Mutation', 'b') },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffGraphQLApiFunctions (AppSync functions)', () => {
+  const FN = (id: string) => `arn:aws:appsync:us-east-1:111122223333:apis/abc/functions/${id}`;
+
+  it('flags an out-of-band function added via the console (not in the template)', () => {
+    const added = diffGraphQLApiFunctions({
+      declaredFunctionArns: [FN('declared')],
+      liveFunctions: [
+        { arn: FN('declared'), label: 'declaredFn' },
+        { arn: FN('oob'), label: 'oobFn' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppSync::FunctionConfiguration',
+        identifier: FN('oob'),
+        label: 'oobFn',
+        live: { FunctionArn: FN('oob') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare FunctionArn (CC primaryIdentifier)', () => {
+    const added = diffGraphQLApiFunctions({
+      declaredFunctionArns: [],
+      liveFunctions: [{ arn: FN('x') }],
+    });
+    expect(added[0]!.identifier).toBe(FN('x'));
+  });
+
+  it('no drift when every live function is declared', () => {
+    expect(
+      diffGraphQLApiFunctions({
+        declaredFunctionArns: [FN('a'), FN('b')],
+        liveFunctions: [{ arn: FN('a') }, { arn: FN('b') }],
       })
     ).toEqual([]);
   });
