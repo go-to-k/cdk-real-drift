@@ -581,6 +581,11 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   one on an unprojected property isn't compared. Coverage is widened as needed
   (e.g. a budget's `CostFilters` scope is compared); fully CC-readable types (the
   vast majority) always get the complete live model.
+- **Unsupported / unreadable resource types.** A resource type Cloud Control can't
+  read — one with no Cloud Control support, or one whose CC handler errors (e.g. a
+  server-side CC bug) and that has no SDK override — is reported as `skipped`
+  (coverage incomplete), surfaced in the `skipped=N — NOT checked` line and
+  **never** silently treated as CLEAN; `--strict` makes such a gap CI-failing.
 
 ## FAQ
 
