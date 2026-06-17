@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
+  diffApiGatewayGatewayResponses,
   diffApiGatewayModels,
   diffApiGatewayRequestValidators,
   diffAppConfigApplicationChildren,
@@ -279,6 +280,46 @@ describe('diffApiGatewayRequestValidators (REST API request validators)', () => 
       liveValidators: [
         { id: 'valdec0', label: 'A' },
         { id: 'valdec1', label: 'B' },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+});
+
+describe('diffApiGatewayGatewayResponses (REST API gateway responses)', () => {
+  it('flags an out-of-band gateway response with the colon-joined RestApiId:ResponseType identifier', () => {
+    const added = diffApiGatewayGatewayResponses({
+      apiId: API,
+      declaredResponseTypes: ['DEFAULT_4XX'],
+      liveResponseTypes: [
+        { type: 'DEFAULT_4XX', label: 'DEFAULT_4XX' },
+        { type: 'DEFAULT_5XX', label: 'DEFAULT_5XX' },
+      ],
+    });
+    expect(added).toHaveLength(1);
+    expect(added[0]?.resourceType).toBe('AWS::ApiGateway::GatewayResponse');
+    expect(added[0]?.identifier).toBe(`${API}:DEFAULT_5XX`);
+    expect(added[0]?.label).toBe('DEFAULT_5XX');
+    expect(added[0]?.live).toEqual({ ResponseType: 'DEFAULT_5XX', RestApiId: API });
+  });
+
+  it('uses the response type as the label when no label is provided', () => {
+    const added = diffApiGatewayGatewayResponses({
+      apiId: API,
+      declaredResponseTypes: [],
+      liveResponseTypes: [{ type: 'UNAUTHORIZED' }],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}:UNAUTHORIZED`]);
+    expect(added[0]?.label).toBe('UNAUTHORIZED');
+  });
+
+  it('reports no drift when every live gateway response is declared', () => {
+    const added = diffApiGatewayGatewayResponses({
+      apiId: API,
+      declaredResponseTypes: ['DEFAULT_4XX', 'DEFAULT_5XX'],
+      liveResponseTypes: [
+        { type: 'DEFAULT_4XX', label: 'DEFAULT_4XX' },
+        { type: 'DEFAULT_5XX', label: 'DEFAULT_5XX' },
       ],
     });
     expect(added).toEqual([]);
