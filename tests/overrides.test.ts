@@ -402,6 +402,55 @@ describe('SDK overrides', () => {
       expect(out).toMatchObject({ Type: 'TXT', TTL: '300', ResourceRecords: ['"hi"'] });
     });
 
+    it('projects GeoProximityLocation + CidrRoutingConfig (geoproximity/CIDR routing variants)', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          {
+            Name: 'geo.example.com.',
+            Type: 'A',
+            SetIdentifier: 'g1',
+            TTL: 60,
+            ResourceRecords: [{ Value: '1.2.3.4' }],
+            GeoProximityLocation: { AWSRegion: 'us-east-1', Bias: 10 },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'geo.example.com.', Type: 'A', SetIdentifier: 'g1' })
+      )) as Record<string, unknown>;
+      expect(out.GeoProximityLocation).toEqual({ AWSRegion: 'us-east-1', Bias: 10 });
+
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          {
+            Name: 'cidr.example.com.',
+            Type: 'A',
+            SetIdentifier: 'c1',
+            TTL: 60,
+            ResourceRecords: [{ Value: '1.2.3.4' }],
+            CidrRoutingConfig: { CollectionId: 'col-123', LocationName: 'loc-a' },
+          },
+        ],
+      });
+      const out2 = (await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'cidr.example.com.', Type: 'A', SetIdentifier: 'c1' })
+      )) as Record<string, unknown>;
+      expect(out2.CidrRoutingConfig).toEqual({ CollectionId: 'col-123', LocationName: 'loc-a' });
+    });
+
+    it('FP-safe: a simple record has neither routing object (no noise)', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          { Name: 'x.example.com.', Type: 'A', TTL: 60, ResourceRecords: [{ Value: '1.2.3.4' }] },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({ HostedZoneId: 'Z1', Name: 'x.example.com.', Type: 'A' })
+      )) as Record<string, unknown>;
+      expect(out.GeoProximityLocation).toBeUndefined();
+      expect(out.CidrRoutingConfig).toBeUndefined();
+    });
+
     it('zone queried but the declared record absent -> ResourceGoneError (deleted, not skipped)', async () => {
       // The zone exists and was listed; the declared name+type record is gone -> deleted
       // out of band. (Was a false `undefined`/skipped that hid the deletion.)

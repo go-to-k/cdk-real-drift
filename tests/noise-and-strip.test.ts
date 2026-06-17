@@ -12,6 +12,8 @@ import {
   KNOWN_DEFAULTS,
   stripAwsTagsDeep,
   VERSION_PREFIX_PATHS,
+  isTrailingDotEqual,
+  TRAILING_DOT_PATHS,
 } from '../src/normalize/noise.js';
 import { parseSchema } from '../src/schema/schema-strip.js';
 
@@ -441,6 +443,24 @@ describe('parseSchema', () => {
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('EngineVersion')).toBe(true);
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('Engine')).toBe(false);
     expect(VERSION_PREFIX_PATHS['AWS::S3::Bucket']).toBeUndefined(); // not a blanket rule
+  });
+});
+
+describe('isTrailingDotEqual (Route53 HostedZone Name FQDN trailing dot)', () => {
+  it('equates an FQDN that differs only by a trailing dot', () => {
+    expect(isTrailingDotEqual('example.com', 'example.com.')).toBe(true);
+    expect(isTrailingDotEqual('example.com.', 'example.com')).toBe(true);
+    expect(isTrailingDotEqual('a.b.example.com', 'a.b.example.com.')).toBe(true);
+    expect(isTrailingDotEqual('example.com.', 'example.com.')).toBe(true);
+  });
+  it('a genuinely different name still differs; non-strings ignored', () => {
+    expect(isTrailingDotEqual('example.com', 'other.com.')).toBe(false);
+    expect(isTrailingDotEqual('example.com', 'example.org.')).toBe(false);
+    expect(isTrailingDotEqual(5 as unknown, 'example.com.')).toBe(false);
+  });
+  it('TRAILING_DOT_PATHS gates the rule to HostedZone Name', () => {
+    expect(TRAILING_DOT_PATHS['AWS::Route53::HostedZone']?.has('Name')).toBe(true);
+    expect(TRAILING_DOT_PATHS['AWS::Route53::RecordSet']).toBeUndefined();
   });
 });
 

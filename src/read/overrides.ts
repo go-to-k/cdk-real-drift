@@ -420,6 +420,35 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       ...(geo.CountryCode !== undefined && { CountryCode: geo.CountryCode }),
       ...(geo.SubdivisionCode !== undefined && { SubdivisionCode: geo.SubdivisionCode }),
     };
+  // Geoproximity + CIDR routing-policy fields — the two newer routing variants, projected
+  // away before so an out-of-band change to a geoproximity Bias/region or a CIDR
+  // collection/location was invisible. Both objects exist ONLY on a record using that
+  // routing policy (absent on a simple/weighted/latency/geo/failover record), so they add
+  // no noise to the common case. Bias defaults to 0 when omitted — folded via
+  // KNOWN_DEFAULT_PATHS so a record declaring only AWSRegion stays CLEAN.
+  const geoProx = rec.GeoProximityLocation;
+  if (geoProx)
+    model.GeoProximityLocation = {
+      ...(geoProx.AWSRegion !== undefined && { AWSRegion: geoProx.AWSRegion }),
+      ...(geoProx.LocalZoneGroup !== undefined && { LocalZoneGroup: geoProx.LocalZoneGroup }),
+      ...(geoProx.Coordinates !== undefined && {
+        Coordinates: {
+          ...(geoProx.Coordinates.Latitude !== undefined && {
+            Latitude: geoProx.Coordinates.Latitude,
+          }),
+          ...(geoProx.Coordinates.Longitude !== undefined && {
+            Longitude: geoProx.Coordinates.Longitude,
+          }),
+        },
+      }),
+      ...(geoProx.Bias !== undefined && { Bias: geoProx.Bias }),
+    };
+  const cidr = rec.CidrRoutingConfig;
+  if (cidr)
+    model.CidrRoutingConfig = {
+      ...(cidr.CollectionId !== undefined && { CollectionId: cidr.CollectionId }),
+      ...(cidr.LocationName !== undefined && { LocationName: cidr.LocationName }),
+    };
   return model;
 };
 

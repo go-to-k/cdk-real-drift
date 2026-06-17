@@ -26,8 +26,10 @@ import {
   isStringlyEqualScalarArray,
   isGeneratedName,
   isPhysicalIdSegment,
+  isTrailingDotEqual,
   isTrivialEmpty,
   isVersionPrefixMatch,
+  TRAILING_DOT_PATHS,
   GENERATED_PATHS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
@@ -503,6 +505,13 @@ export function classifyResource(
       if (
         CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) &&
         isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type DNS-FQDN paths whose trailing `.` is optional (Route53 HostedZone Name:
+      // declared `example.com`, CC returns `example.com.`) — equal once stripped.
+      if (
+        TRAILING_DOT_PATHS[resourceType]?.has(d.path) &&
+        isTrailingDotEqual(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type version-track paths (R130: RDS DBInstance EngineVersion) — a declared

@@ -255,6 +255,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::Route53::HealthCheck': {
     'HealthCheckConfig.EnableSNI': true,
   },
+  'AWS::Route53::RecordSet': {
+    // A geoproximity record may declare only AWSRegion (or Coordinates); AWS then sets
+    // Bias to 0 and returns it. Fold that server default so a record that never set a
+    // bias stays CLEAN, while a real out-of-band bias change still surfaces.
+    'GeoProximityLocation.Bias': 0,
+  },
   'AWS::S3::Bucket': {
     'LifecycleConfiguration.TransitionDefaultMinimumObjectSize': 'all_storage_classes_128K',
   },
@@ -530,6 +536,22 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+}
+
+// Per-type property paths where a value is a DNS FQDN whose trailing `.` is
+// OPTIONAL and semantically meaningless: AWS::Route53::HostedZone `Name` is declared
+// `example.com` in the template but Cloud Control returns it `example.com.` (the
+// root-anchored form), which a positional diff reports as false drift on every zone.
+// Equal once a single trailing dot is stripped from each side, so a genuinely
+// different zone name still differs. (The RecordSet override reader already aligns its
+// own Name/DNSName via alignTrailingDot; HostedZone is CC-native, handled here.)
+export const TRAILING_DOT_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Route53::HostedZone': new Set(['Name']),
+};
+export function isTrailingDotEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const strip = (s: string): string => (s.endsWith('.') ? s.slice(0, -1) : s);
+  return strip(a) === strip(b);
 }
 
 // Per-type property paths where AWS RESOLVES a partial (major/minor) version the
