@@ -202,8 +202,8 @@ code or reverting.
   methods, authorizers, models, and request validators), API Gateway V2
   (HTTP / WebSocket) API routes,
   integrations, and authorizers, SNS topic subscriptions, Lambda event source
-  mappings, function URLs, and aliases, EventBridge bus rules, Cognito user pool
-  clients, groups, and
+  mappings, function URLs, aliases, and versions, EventBridge bus rules, Cognito
+  user pool clients, groups, and
   resource servers, AppSync data sources, resolvers, and functions, CloudWatch
   Logs metric
   filters and subscription filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
