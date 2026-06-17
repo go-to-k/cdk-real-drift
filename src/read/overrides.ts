@@ -686,6 +686,25 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   if (p.projectVisibility !== undefined) model.Visibility = p.projectVisibility;
   if (p.concurrentBuildLimit !== undefined) model.ConcurrentBuildLimit = p.concurrentBuildLimit;
   if (p.sourceVersion !== undefined) model.SourceVersion = p.sourceVersion;
+  // ResourceAccessRole — the role CodeBuild assumes for batch builds / report groups;
+  // absent unless set, so no noise. FileSystemLocations — EFS mounts into the build
+  // (Identifier/Type/Location/MountPoint/MountOptions are all USER-specified, no server
+  // default), absent unless the project mounts a file system. Both were omitted, so an
+  // out-of-band change was invisible. (secondarySources / secondaryArtifacts /
+  // buildBatchConfig / autoRetryLimit are deliberately NOT projected yet: the read shapes
+  // diverge from the declared CFn shapes [secondaryArtifacts reads as BuildArtifacts —
+  // missing Type/Name/NamespaceType/Packaging], carry server defaults [autoRetryLimit=0,
+  // batch nested defaults], or are order-sensitive arrays — each needs its own FP-safe
+  // handling, added when a real gap surfaces per the "widen coverage as gaps surface" rule.)
+  if (p.resourceAccessRole !== undefined) model.ResourceAccessRole = p.resourceAccessRole;
+  if (p.fileSystemLocations !== undefined && p.fileSystemLocations.length > 0)
+    model.FileSystemLocations = p.fileSystemLocations.map((f) => ({
+      ...(f.type !== undefined && { Type: f.type }),
+      ...(f.location !== undefined && { Location: f.location }),
+      ...(f.mountPoint !== undefined && { MountPoint: f.mountPoint }),
+      ...(f.identifier !== undefined && { Identifier: f.identifier }),
+      ...(f.mountOptions !== undefined && { MountOptions: f.mountOptions }),
+    }));
   // LogsConfig — CloudWatch/S3 build-log destinations. Security/observability
   // relevant (enabling S3 logs writes build output to a bucket; a custom CloudWatch
   // group/stream redirects audit data) and commonly toggled in the console, yet it
