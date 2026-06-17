@@ -199,7 +199,8 @@ code or reverting.
   confirm / `--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`,
   exactly like removing an unrecorded undeclared value). Coverage grows per parent
   type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs (resources,
-  methods, and authorizers), API Gateway V2 (HTTP / WebSocket) API routes,
+  methods, authorizers, models, and request validators), API Gateway V2
+  (HTTP / WebSocket) API routes,
   integrations, and authorizers, SNS topic subscriptions, Lambda event source
   mappings, function URLs, and aliases, EventBridge bus rules, Cognito user pool
   clients, groups, and

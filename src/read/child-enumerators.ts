@@ -16,7 +16,11 @@ import {
   APIGatewayClient,
   type Authorizer as ApiGwAuthorizer,
   GetAuthorizersCommand,
+  GetModelsCommand,
+  GetRequestValidatorsCommand,
   GetResourcesCommand,
+  type Model as ApiGwModel,
+  type RequestValidator as ApiGwRequestValidator,
   type Resource as ApiGwResource,
 } from '@aws-sdk/client-api-gateway';
 import {
@@ -158,7 +162,8 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
-// A RestApi owns Resources (paths), Methods, and Authorizers. Each is a separate
+// A RestApi owns Resources (paths), Methods, Authorizers, Models, and
+// RequestValidators. Each is a separate
 // CloudFormation resource, so the template lists every declared one; anything live
 // but undeclared is an out-of-band addition. The root resource `/` is implicit
 // (created with the RestApi) and so always counts as declared. A console / CLI
@@ -292,6 +297,11 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   // Declared authorizers of THIS api. An Authorizer's CFn physical id (Ref) IS its
   // AuthorizerId, and its declared RestApiId resolves (via gather) to the physical id.
   const declaredAuthorizerIds: string[] = [];
+  // Declared models of THIS api. A Model's CFn physical id (Ref) IS its Name.
+  const declaredModelNames: string[] = [];
+  // Declared request validators of THIS api. A RequestValidator's CFn physical id (Ref)
+  // IS its RequestValidatorId.
+  const declaredValidatorIds: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ApiGateway::Authorizer' &&
@@ -299,6 +309,15 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       r.physicalId
     ) {
       declaredAuthorizerIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::ApiGateway::Model' && r.declared.RestApiId === apiId) {
+      const name = typeof r.declared.Name === 'string' ? r.declared.Name : r.physicalId;
+      if (name) declaredModelNames.push(name);
+    } else if (
+      r.resourceType === 'AWS::ApiGateway::RequestValidator' &&
+      r.declared.RestApiId === apiId &&
+      r.physicalId
+    ) {
+      declaredValidatorIds.push(r.physicalId);
     }
   }
 
@@ -338,7 +357,23 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveAuthorizers,
   });
 
-  return resourceAndMethodAdded.concat(authorizerAdded);
+  const models = await getAllModels(client, apiId);
+  const liveModels = models
+    .filter((m): m is ApiGwModel & { name: string } => typeof m.name === 'string')
+    .map((m) => ({ name: m.name, label: m.name }));
+  const modelAdded = diffApiGatewayModels({ apiId, declaredModelNames, liveModels });
+
+  const validators = await getAllRequestValidators(client, apiId);
+  const liveValidators = validators
+    .filter((v): v is ApiGwRequestValidator & { id: string } => typeof v.id === 'string')
+    .map((v) => ({ id: v.id, label: v.name ?? v.id }));
+  const validatorAdded = diffApiGatewayRequestValidators({
+    apiId,
+    declaredValidatorIds,
+    liveValidators,
+  });
+
+  return [...resourceAndMethodAdded, ...authorizerAdded, ...modelAdded, ...validatorAdded];
 }
 
 // Pure diff: declared authorizer ids + live inventory -> the added authorizers.
@@ -375,6 +410,100 @@ async function getAllAuthorizers(
   do {
     const res = await client.send(
       new GetAuthorizersCommand({ restApiId: apiId, limit: 500, position })
+    );
+    out.push(...(res.items ?? []));
+    position = res.position;
+  } while (position);
+  return out;
+}
+
+// A RestApi also owns Models (request/response body schemas) and RequestValidators
+// (per-method body/parameter validation rules), each a separate CloudFormation resource.
+// A console / CLI `create-model` / `create-request-validator` (someone wires a new model
+// or validator onto an api out of band) is invisible to cdk drift / CFn drift detection.
+// The RestApi's own live model does NOT reflect its models or validators inline, so there
+// is no double-report to suppress. The CC primaryIdentifier for AWS::ApiGateway::Model is
+// the composite `["/properties/RestApiId","/properties/Name"]` (identifier `RestApiId|Name`)
+// and for AWS::ApiGateway::RequestValidator the composite
+// `["/properties/RestApiId","/properties/RequestValidatorId"]` (identifier
+// `RestApiId|RequestValidatorId`) — that is what CC GetResource / DeleteResource consume.
+// NOTE: every RestApi ships two built-in default models (`Empty`, `Error`) auto-created
+// with the api; they appear live but are not template resources. They are handled by
+// `record` (snapshotted as added) rather than special-cased here.
+
+// Pure diff: declared model names + live inventory -> the added models. A Model's CFn
+// physical id (Ref) IS its Name, so declared models are matched by Name.
+export interface ApiGatewayModelInput {
+  apiId: string;
+  declaredModelNames: string[]; // Names of AWS::ApiGateway::Model declared on this api
+  liveModels: { name: string; label?: string | undefined }[];
+}
+
+export function diffApiGatewayModels(input: ApiGatewayModelInput): AddedChild[] {
+  const { apiId, declaredModelNames, liveModels } = input;
+  const declared = new Set(declaredModelNames);
+  const added: AddedChild[] = [];
+  for (const m of liveModels) {
+    if (declared.has(m.name)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGateway::Model',
+      identifier: `${apiId}|${m.name}`, // CC composite RestApiId|Name
+      label: m.label ?? m.name,
+      live: { Name: m.name, RestApiId: apiId },
+    });
+  }
+  return added;
+}
+
+// Page GetModels (position-paginated like GetResources / GetAuthorizers).
+async function getAllModels(client: APIGatewayClient, apiId: string): Promise<ApiGwModel[]> {
+  const out: ApiGwModel[] = [];
+  let position: string | undefined;
+  do {
+    const res = await client.send(new GetModelsCommand({ restApiId: apiId, limit: 500, position }));
+    out.push(...(res.items ?? []));
+    position = res.position;
+  } while (position);
+  return out;
+}
+
+// Pure diff: declared validator ids + live inventory -> the added request validators. A
+// RequestValidator's CFn physical id (Ref) IS its RequestValidatorId, so declared
+// validators are matched by RequestValidatorId.
+export interface ApiGatewayRequestValidatorInput {
+  apiId: string;
+  declaredValidatorIds: string[]; // physical ids (RequestValidatorIds) of AWS::ApiGateway::RequestValidator
+  liveValidators: { id: string; label?: string | undefined }[];
+}
+
+export function diffApiGatewayRequestValidators(
+  input: ApiGatewayRequestValidatorInput
+): AddedChild[] {
+  const { apiId, declaredValidatorIds, liveValidators } = input;
+  const declared = new Set(declaredValidatorIds);
+  const added: AddedChild[] = [];
+  for (const v of liveValidators) {
+    if (declared.has(v.id)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGateway::RequestValidator',
+      identifier: `${apiId}|${v.id}`, // CC composite RestApiId|RequestValidatorId
+      label: v.label ?? v.id,
+      live: { RequestValidatorId: v.id, RestApiId: apiId },
+    });
+  }
+  return added;
+}
+
+// Page GetRequestValidators (position-paginated like GetModels / GetAuthorizers).
+async function getAllRequestValidators(
+  client: APIGatewayClient,
+  apiId: string
+): Promise<ApiGwRequestValidator[]> {
+  const out: ApiGwRequestValidator[] = [];
+  let position: string | undefined;
+  do {
+    const res = await client.send(
+      new GetRequestValidatorsCommand({ restApiId: apiId, limit: 500, position })
     );
     out.push(...(res.items ?? []));
     position = res.position;
