@@ -201,7 +201,7 @@ code or reverting.
   type (the `CHILD_ENUMERATORS` registry); API Gateway REST APIs (resources,
   methods, authorizers, models, and request validators), API Gateway V2
   (HTTP / WebSocket) API routes,
-  integrations, and authorizers, SNS topic subscriptions, Lambda event source
+  integrations, authorizers, and stages, SNS topic subscriptions, Lambda event source
   mappings, function URLs, aliases, and versions, EventBridge bus rules, Cognito
   user pool clients, groups, and
   resource servers, AppSync data sources, resolvers, and functions, CloudWatch

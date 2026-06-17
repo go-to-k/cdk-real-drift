@@ -8,6 +8,7 @@ import {
   diffAppConfigProfiles,
   diffApiGatewayV2Authorizers,
   diffApiGatewayV2Children,
+  diffApiGatewayV2Stages,
   diffEcsClusterChildren,
   diffEfsFileSystemChildren,
   diffEventBusChildren,
@@ -398,6 +399,48 @@ describe('diffApiGatewayV2Authorizers (HTTP / WebSocket API authorizers)', () =>
       liveAuthorizers: [{ id: 'authX', label: undefined }],
     });
     expect(added[0]!.label).toBe('authX');
+  });
+});
+
+describe('diffApiGatewayV2Stages (HTTP / WebSocket API stages)', () => {
+  const APIV2 = 'v2api01';
+
+  it('flags an out-of-band Stage; identifier is the CC composite ApiId|StageName', () => {
+    const added = diffApiGatewayV2Stages({
+      apiId: APIV2,
+      declaredStageNames: ['prod'],
+      liveStages: [
+        { name: 'prod', label: 'prod' },
+        { name: 'cdkrdoob', label: 'console-stage' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ApiGatewayV2::Stage',
+        identifier: `${APIV2}|cdkrdoob`,
+        label: 'console-stage',
+        live: { StageName: 'cdkrdoob', ApiId: APIV2 },
+      },
+    ]);
+  });
+
+  it('no drift when every live Stage is declared', () => {
+    expect(
+      diffApiGatewayV2Stages({
+        apiId: APIV2,
+        declaredStageNames: ['prod', '$default'],
+        liveStages: [{ name: 'prod' }, { name: '$default' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('falls back to the StageName when the live Stage has no label', () => {
+    const added = diffApiGatewayV2Stages({
+      apiId: APIV2,
+      declaredStageNames: [],
+      liveStages: [{ name: 'stageX', label: undefined }],
+    });
+    expect(added[0]!.label).toBe('stageX');
   });
 });
 
