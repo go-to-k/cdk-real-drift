@@ -208,7 +208,8 @@ code or reverting.
   filters and subscription filters, Elastic Load Balancing v2 listeners, and ELBv2 listener rules, EC2
   VPC subnets, EC2 route table
   routes, ECS cluster services, KMS key aliases, AppConfig application
-  environments and configuration profiles, and EFS file system mount targets are
+  environments and configuration profiles, EFS file system mount targets, and RDS
+  database cluster instances are
   covered.
 
 `cdkrd` is **reality vs intent**, not code vs template: it deliberately does not

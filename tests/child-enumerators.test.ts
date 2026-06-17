@@ -20,6 +20,7 @@ import {
   diffLoadBalancerChildren,
   diffLogGroupChildren,
   diffLogGroupSubscriptionFilters,
+  diffRdsClusterChildren,
   diffRouteTableChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
@@ -1012,6 +1013,46 @@ describe('diffVpcChildren (EC2 VPC subnets)', () => {
         liveSubnets: [
           { id: SN('a'), label: '10.0.0.0/24' },
           { id: SN('b'), label: '10.0.1.0/24' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
+  it('flags an out-of-band DB instance added via the console (not in the template)', () => {
+    const added = diffRdsClusterChildren({
+      declaredInstanceIds: ['cluster-writer'],
+      liveInstances: [
+        { id: 'cluster-writer', label: 'cluster-writer' },
+        { id: 'cdkrd-integ-oob', label: 'cdkrd-integ-oob' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::RDS::DBInstance',
+        identifier: 'cdkrd-integ-oob',
+        label: 'cdkrd-integ-oob',
+        live: { DBInstanceIdentifier: 'cdkrd-integ-oob' },
+      },
+    ]);
+  });
+
+  it('identifier is the bare DBInstanceIdentifier (CC primaryIdentifier, not a composite)', () => {
+    const added = diffRdsClusterChildren({
+      declaredInstanceIds: [],
+      liveInstances: [{ id: 'reader-1', label: 'reader-1' }],
+    });
+    expect(added[0]!.identifier).toBe('reader-1');
+  });
+
+  it('no drift when every live DB instance is declared', () => {
+    expect(
+      diffRdsClusterChildren({
+        declaredInstanceIds: ['writer', 'reader'],
+        liveInstances: [
+          { id: 'writer', label: 'writer' },
+          { id: 'reader', label: 'reader' },
         ],
       })
     ).toEqual([]);
