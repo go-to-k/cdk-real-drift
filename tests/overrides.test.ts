@@ -983,6 +983,55 @@ describe('SDK overrides', () => {
       expect(out.Artifacts.EncryptionDisabled).toBe(false);
     });
 
+    it('projects ResourceAccessRole + FileSystemLocations when set; omits them when absent', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            resourceAccessRole: 'arn:aws:iam::1:role/r',
+            fileSystemLocations: [
+              {
+                type: 'EFS',
+                location: 'fs-1.efs.us-east-1.amazonaws.com:/',
+                mountPoint: '/mnt/efs',
+                identifier: 'efs1',
+                mountOptions: 'nfsvers=4.1',
+              },
+            ],
+          },
+        ],
+      });
+      const set = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(set.ResourceAccessRole).toBe('arn:aws:iam::1:role/r');
+      expect(set.FileSystemLocations).toEqual([
+        {
+          Type: 'EFS',
+          Location: 'fs-1.efs.us-east-1.amazonaws.com:/',
+          MountPoint: '/mnt/efs',
+          Identifier: 'efs1',
+          MountOptions: 'nfsvers=4.1',
+        },
+      ]);
+
+      // a project using neither: both omitted (no noise)
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          { name: 'p', source: { type: 'NO_SOURCE' }, artifacts: { type: 'NO_ARTIFACTS' } },
+        ],
+      });
+      const none = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(none.ResourceAccessRole).toBeUndefined();
+      expect(none.FileSystemLocations).toBeUndefined();
+    });
+
     it('projects Cache — an out-of-band cache change is no longer invisible; NO_CACHE default folds via KNOWN_DEFAULTS', async () => {
       // a declared S3 cache projects its real shape (matches the template)
       codebuild.on(BatchGetProjectsCommand).resolves({
