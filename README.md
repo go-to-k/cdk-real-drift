@@ -556,6 +556,15 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 - **Lambda Permission:** if only the specific statement was removed out of band
   (while the function's policy still exists), it is reported as `skipped`, not
   `deleted` — identifying the exact statement would need its `StatementId`.
+- **IAM ManagedPolicy attachments:** `cdkrd` compares a managed policy's
+  **document** (and Path/Description), not its `Roles`/`Users`/`Groups`
+  **attachment** lists. A managed policy is commonly attached from several places
+  (the `AWS::IAM::ManagedPolicy`'s own lists, a role's `ManagedPolicyArns`, a
+  separate attachment resource, the console), so the live attachment set is a
+  **union** that legitimately exceeds any one stack's intent — comparing it against
+  the declaring stack would false-drift on every shared policy. So an out-of-band
+  attach/detach is not reported (a deliberate fail-closed boundary, not a missed
+  document change).
 - **Stack state.** A stack with no meaningful deployed reality is **skipped with a
   clear note**, not compared to a meaningless CLEAN: `REVIEW_IN_PROGRESS` (a change
   set created but never deployed) and a delete in progress. A stack mid-operation
