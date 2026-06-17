@@ -18,6 +18,7 @@ import {
   diffLambdaFunctionAliases,
   diffLambdaFunctionChildren,
   diffLambdaFunctionUrls,
+  diffLambdaFunctionVersions,
   diffListenerChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
@@ -596,6 +597,48 @@ describe('diffLambdaFunctionAliases (Lambda aliases)', () => {
         liveAliases: [
           { arn: ARN('a'), label: `a ${ARN('a')}` },
           { arn: ARN('b'), label: `b ${ARN('b')}` },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLambdaFunctionVersions (Lambda versions)', () => {
+  const ARN = (n: string) => `arn:aws:lambda:us-east-1:111122223333:function:Fn:${n}`;
+
+  it('flags an out-of-band version (not in the template)', () => {
+    const added = diffLambdaFunctionVersions({
+      declaredVersionArns: [ARN('1')],
+      liveVersions: [
+        { arn: ARN('1'), label: 'v1' },
+        { arn: ARN('2'), label: 'v2' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::Version',
+        identifier: ARN('2'),
+        label: 'v2',
+        live: { FunctionArn: ARN('2') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare versioned FunctionArn (CC primaryIdentifier)', () => {
+    const added = diffLambdaFunctionVersions({
+      declaredVersionArns: [],
+      liveVersions: [{ arn: ARN('3') }],
+    });
+    expect(added[0]!.identifier).toBe(ARN('3'));
+  });
+
+  it('no drift when every live version is declared', () => {
+    expect(
+      diffLambdaFunctionVersions({
+        declaredVersionArns: [ARN('1'), ARN('2')],
+        liveVersions: [
+          { arn: ARN('1'), label: 'v1' },
+          { arn: ARN('2'), label: 'v2' },
         ],
       })
     ).toEqual([]);

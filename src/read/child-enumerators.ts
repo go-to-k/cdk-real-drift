@@ -94,11 +94,13 @@ import { type AliasListEntry, KMSClient, ListAliasesCommand } from '@aws-sdk/cli
 import {
   type AliasConfiguration as LambdaAliasConfiguration,
   type EventSourceMappingConfiguration,
+  type FunctionConfiguration as LambdaVersionConfiguration,
   type FunctionUrlConfig,
   LambdaClient,
   ListAliasesCommand as ListLambdaAliasesCommand,
   ListEventSourceMappingsCommand,
   ListFunctionUrlConfigsCommand,
+  ListVersionsByFunctionCommand,
 } from '@aws-sdk/client-lambda';
 import {
   type DBInstance as RdsDBInstance,
@@ -790,6 +792,14 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
 // the Function's own live model does NOT reflect its aliases inline, so there is no
 // double-report to suppress. The CC primaryIdentifier for AWS::Lambda::Alias is the bare
 // AliasArn, which CC GetResource / DeleteResource consume.
+//
+// A Function ALSO owns published Versions (AWS::Lambda::Version) — immutable snapshots of
+// the function's code + config. A console / CLI `publish-version` (someone publishes a new
+// version out of band) is invisible to cdk drift / CFn drift detection, and the Function's
+// own live model does NOT reflect its versions inline, so there is no double-report to
+// suppress. The `$LATEST` pseudo-version is NOT a real AWS::Lambda::Version resource and is
+// skipped. The CC primaryIdentifier for AWS::Lambda::Version is the bare versioned
+// FunctionArn (e.g. `arn:...:function:fn:2`), which CC GetResource / DeleteResource consume.
 
 // Pure diff: declared mapping ids + live inventory -> the added mappings.
 export interface LambdaFunctionChildInput {
@@ -898,6 +908,41 @@ async function pageLambdaAliases(
   return out;
 }
 
+// Pure diff: declared version arns + live inventory -> the added versions.
+export function diffLambdaFunctionVersions(input: {
+  declaredVersionArns: string[];
+  liveVersions: { arn: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const declared = new Set(input.declaredVersionArns);
+  const added: AddedChild[] = [];
+  for (const v of input.liveVersions) {
+    if (declared.has(v.arn)) continue;
+    added.push({
+      resourceType: 'AWS::Lambda::Version',
+      identifier: v.arn, // the versioned FunctionArn IS the CC primaryIdentifier
+      label: v.label ?? v.arn,
+      live: { FunctionArn: v.arn },
+    });
+  }
+  return added;
+}
+
+async function pageLambdaVersions(
+  client: LambdaClient,
+  functionName: string
+): Promise<LambdaVersionConfiguration[]> {
+  const out: LambdaVersionConfiguration[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(
+      new ListVersionsByFunctionCommand({ FunctionName: functionName, Marker: marker })
+    );
+    out.push(...(res.Versions ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
+}
+
 async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const functionName = parent.physicalId; // the Function's physical id is its name
@@ -952,6 +997,21 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
     }
   }
 
+  // Declared versions targeting THIS function. An AWS::Lambda::Version's CFn physical id
+  // (Ref) IS its versioned FunctionArn; its FunctionName resolves (via gather) to the
+  // function name or ARN. Prefer matching on the FunctionName targeting this function; fall
+  // back to including any version whose FunctionName did not resolve (undefined) so a
+  // resolved-id mismatch never causes a declared version to be flagged added.
+  const declaredVersionArns: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Lambda::Version' || !r.physicalId) continue;
+    const fn = r.declared.FunctionName;
+    const targetsThis = fn === functionName || (fnArn !== undefined && fn === fnArn);
+    if (targetsThis || fn === undefined) {
+      declaredVersionArns.push(r.physicalId);
+    }
+  }
+
   const client = new LambdaClient({ region, ...READ_RETRY });
   const mappings = await pageEventSourceMappings(client, functionName);
   const liveMappings = mappings
@@ -983,7 +1043,20 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
 
   const aliasAdded = diffLambdaFunctionAliases({ declaredAliasArns, liveAliases });
 
-  return [...esmAdded, ...urlAdded, ...aliasAdded];
+  const versions = await pageLambdaVersions(client, functionName);
+  const liveVersions = versions
+    .filter(
+      (v): v is LambdaVersionConfiguration & { FunctionArn: string } =>
+        typeof v.FunctionArn === 'string' && v.Version !== '$LATEST' // skip the $LATEST pseudo-version
+    )
+    .map((v) => ({
+      arn: v.FunctionArn,
+      label: v.Version ? `v${v.Version}` : v.FunctionArn,
+    }));
+
+  const versionAdded = diffLambdaFunctionVersions({ declaredVersionArns, liveVersions });
+
+  return [...esmAdded, ...urlAdded, ...aliasAdded, ...versionAdded];
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────
