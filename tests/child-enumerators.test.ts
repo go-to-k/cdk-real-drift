@@ -19,6 +19,7 @@ import {
   diffListenerChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
+  diffLogGroupSubscriptionFilters,
   diffRouteTableChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
@@ -729,6 +730,37 @@ describe('diffLogGroupChildren (CloudWatch Logs metric filters)', () => {
         logGroupName: LG,
         declaredFilterNames: ['a', 'b'],
         liveFilters: [{ name: 'a' }, { name: 'b' }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffLogGroupSubscriptionFilters (CloudWatch Logs subscription filters)', () => {
+  const LG = '/aws/cdkrd/integ';
+
+  it('flags an out-of-band subscription filter (log exfiltration) not in the template', () => {
+    const added = diffLogGroupSubscriptionFilters({
+      logGroupName: LG,
+      declaredFilterNames: ['DeclaredSub'],
+      liveFilters: [{ name: 'DeclaredSub' }, { name: 'cdkrd-oob-sub' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Logs::SubscriptionFilter',
+        // CC composite is FilterName|LogGroupName (the REVERSE of MetricFilter)
+        identifier: `cdkrd-oob-sub|${LG}`,
+        label: 'cdkrd-oob-sub',
+        live: { FilterName: 'cdkrd-oob-sub', LogGroupName: LG },
+      },
+    ]);
+  });
+
+  it('no drift when every live subscription filter is declared', () => {
+    expect(
+      diffLogGroupSubscriptionFilters({
+        logGroupName: LG,
+        declaredFilterNames: ['s1'],
+        liveFilters: [{ name: 's1' }],
       })
     ).toEqual([]);
   });
