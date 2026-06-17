@@ -15,7 +15,9 @@
 import {
   APIGatewayClient,
   type Authorizer as ApiGwAuthorizer,
+  type GatewayResponse as ApiGwGatewayResponse,
   GetAuthorizersCommand,
+  GetGatewayResponsesCommand,
   GetModelsCommand,
   GetRequestValidatorsCommand,
   GetResourcesCommand,
@@ -306,6 +308,8 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   // Declared request validators of THIS api. A RequestValidator's CFn physical id (Ref)
   // IS its RequestValidatorId.
   const declaredValidatorIds: string[] = [];
+  // Declared gateway responses of THIS api, matched by ResponseType.
+  const declaredResponseTypes: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ApiGateway::Authorizer' &&
@@ -322,6 +326,12 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       r.physicalId
     ) {
       declaredValidatorIds.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::ApiGateway::GatewayResponse' &&
+      r.declared.RestApiId === apiId &&
+      typeof r.declared.ResponseType === 'string'
+    ) {
+      declaredResponseTypes.push(r.declared.ResponseType);
     }
   }
 
@@ -377,7 +387,26 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveValidators,
   });
 
-  return [...resourceAndMethodAdded, ...authorizerAdded, ...modelAdded, ...validatorAdded];
+  const gatewayResponses = await getAllGatewayResponses(client, apiId);
+  const liveResponseTypes = gatewayResponses
+    .filter(
+      (g): g is ApiGwGatewayResponse & { responseType: string } =>
+        typeof g.responseType === 'string'
+    )
+    .map((g) => ({ type: g.responseType, label: g.responseType }));
+  const gatewayResponseAdded = diffApiGatewayGatewayResponses({
+    apiId,
+    declaredResponseTypes,
+    liveResponseTypes,
+  });
+
+  return [
+    ...resourceAndMethodAdded,
+    ...authorizerAdded,
+    ...modelAdded,
+    ...validatorAdded,
+    ...gatewayResponseAdded,
+  ];
 }
 
 // Pure diff: declared authorizer ids + live inventory -> the added authorizers.
@@ -510,6 +539,67 @@ async function getAllRequestValidators(
       new GetRequestValidatorsCommand({ restApiId: apiId, limit: 500, position })
     );
     out.push(...(res.items ?? []));
+    position = res.position;
+  } while (position);
+  return out;
+}
+
+// A RestApi also owns GatewayResponses (per-response-type error customizations, e.g.
+// DEFAULT_4XX, UNAUTHORIZED), each a separate CloudFormation resource. A console / CLI
+// `put-gateway-response` (someone customizes a gateway response on an api out of band) is
+// invisible to cdk drift / CFn drift detection. The RestApi's own live model does NOT
+// reflect its gateway responses inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::ApiGateway::GatewayResponse is the SINGLE `["/properties/Id"]`,
+// whose runtime form is `${RestApiId}:${ResponseType}` (COLON-joined — verified live via CC
+// GetResource/ListResources; a `|`-joined composite is rejected as "not valid for identifier
+// [/properties/Id]"). So the `identifier` is `RestApiId:ResponseType` — that is what CC
+// GetResource / DeleteResource consume. NOTE: GetGatewayResponses returns ALL ~17 supported response
+// types, most as API Gateway-generated DEFAULTS (`defaultResponse: true`) that are NOT real
+// AWS::ApiGateway::GatewayResponse resources; the enumerator filters to the CUSTOMIZED ones
+// (`defaultResponse === false`) before diffing, so the un-customized defaults never flag.
+
+// Pure diff: declared response types + live (already filtered to customized) inventory ->
+// the added gateway responses. A GatewayResponse is matched by ResponseType.
+export interface ApiGatewayGatewayResponseInput {
+  apiId: string;
+  declaredResponseTypes: string[]; // ResponseTypes of AWS::ApiGateway::GatewayResponse on this api
+  liveResponseTypes: { type: string; label?: string | undefined }[];
+}
+
+export function diffApiGatewayGatewayResponses(
+  input: ApiGatewayGatewayResponseInput
+): AddedChild[] {
+  const { apiId, declaredResponseTypes, liveResponseTypes } = input;
+  const declared = new Set(declaredResponseTypes);
+  const added: AddedChild[] = [];
+  for (const r of liveResponseTypes) {
+    if (declared.has(r.type)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGateway::GatewayResponse',
+      identifier: `${apiId}:${r.type}`, // CC single Id `RestApiId:ResponseType` (colon-joined)
+      label: r.label ?? r.type,
+      live: { ResponseType: r.type, RestApiId: apiId },
+    });
+  }
+  return added;
+}
+
+// Page GetGatewayResponses (position-paginated for parity; the collection does not paginate).
+// Returns ONLY customized responses (`defaultResponse === false`) — the API
+// Gateway-generated defaults (`defaultResponse: true`) are not real resources.
+async function getAllGatewayResponses(
+  client: APIGatewayClient,
+  apiId: string
+): Promise<ApiGwGatewayResponse[]> {
+  const out: ApiGwGatewayResponse[] = [];
+  let position: string | undefined;
+  do {
+    const res = await client.send(
+      new GetGatewayResponsesCommand({ restApiId: apiId, limit: 500, position })
+    );
+    for (const g of res.items ?? []) {
+      if (g.defaultResponse === false && typeof g.responseType === 'string') out.push(g);
+    }
     position = res.position;
   } while (position);
   return out;
