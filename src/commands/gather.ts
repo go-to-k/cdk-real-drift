@@ -264,6 +264,20 @@ export async function gatherFindings(
   });
   await readAll(cc, retryTargets, region, desired, reads);
 
+  // Re-resolve once MORE when pass 1.5 actually read something: it populated liveAttrs
+  // for the composite-id / SDK-override types it just read, so a CONSUMER whose declared
+  // Fn::GetAtt targets one of those (e.g. a prop = GetAtt[<an ECS Service / Permission>,
+  // attr]) was still UNRESOLVED after the first re-resolution above (which ran BEFORE
+  // pass 1.5) — its property would be classified `unresolved` and skipped = a missed
+  // drift. Monotonic and FP-safe: liveAttrs only grew, so this can only turn an
+  // UNRESOLVED into a concrete value, never change an already-resolved one. Cheap:
+  // retryTargets is empty for the common stack, so this loop is skipped entirely.
+  if (retryTargets.length > 0) {
+    for (const r of desired.resources) {
+      if (r.declaredRaw) r.declared = resolveProperties(r.declaredRaw, desired.ctx);
+    }
+  }
+
   // OAI canonical-id map (CloudFront legacy OAI principal reconciliation) — harvested
   // from already-read liveAttrs, so it is ready before pass 1.6 normalizes added child
   // models AND reused for pass 2's classifyOpts below. Empty unless the stack declares
