@@ -837,6 +837,66 @@ describe('SDK overrides', () => {
       expect(out.BadgeEnabled).toBe(false);
     });
 
+    it('projects Source.InsecureSsl/ReportBuildStatus + Artifacts.EncryptionDisabled when set (security flags)', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: {
+              type: 'GITHUB',
+              location: 'https://x',
+              insecureSsl: true,
+              reportBuildStatus: true,
+            },
+            artifacts: {
+              type: 'S3',
+              location: 'b',
+              name: 'out',
+              namespaceType: 'NONE',
+              packaging: 'NONE',
+              encryptionDisabled: true,
+            },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.Source).toMatchObject({ InsecureSsl: true, ReportBuildStatus: true });
+      // S3-artifact fields (Name/NamespaceType/Packaging) are now projected too — a
+      // declared one no longer false-drifts as actual=undefined (live-caught in the integ)
+      expect(out.Artifacts).toMatchObject({
+        Name: 'out',
+        NamespaceType: 'NONE',
+        Packaging: 'NONE',
+        EncryptionDisabled: true,
+      });
+    });
+
+    it('FP-safe: the security flags are omitted when undefined; a live false folds via isTrivialEmpty', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            // a never-set project: AWS omits insecureSsl/reportBuildStatus (NO_SOURCE) and
+            // returns encryptionDisabled=false on the artifacts
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS', encryptionDisabled: false },
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(out.Source.InsecureSsl).toBeUndefined();
+      expect(out.Source.ReportBuildStatus).toBeUndefined();
+      // the reader faithfully projects false; isTrivialEmpty(false) drops it from the
+      // nested-undeclared compare so a never-disabled-encryption project stays CLEAN
+      expect(out.Artifacts.EncryptionDisabled).toBe(false);
+    });
+
     it('projects Cache — an out-of-band cache change is no longer invisible; NO_CACHE default folds via KNOWN_DEFAULTS', async () => {
       // a declared S3 cache projects its real shape (matches the template)
       codebuild.on(BatchGetProjectsCommand).resolves({
