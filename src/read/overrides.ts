@@ -583,12 +583,40 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
       ...(src.location !== undefined && { Location: src.location }),
       ...(src.buildspec !== undefined && { BuildSpec: src.buildspec }),
       ...(src.gitCloneDepth !== undefined && { GitCloneDepth: src.gitCloneDepth }),
+      // Security-relevant source flags omitted before, so an out-of-band flip was
+      // invisible: InsecureSsl disables TLS verification when cloning the source;
+      // ReportBuildStatus posts build status back to the source provider. Both default
+      // false and are projected only when present; a live false folds via isTrivialEmpty
+      // (nested undeclared), so a never-set project stays CLEAN and only a flip to true
+      // surfaces.
+      ...(src.insecureSsl !== undefined && { InsecureSsl: src.insecureSsl }),
+      ...(src.reportBuildStatus !== undefined && { ReportBuildStatus: src.reportBuildStatus }),
     };
   const art = p.artifacts;
   if (art)
     model.Artifacts = {
       ...(art.type !== undefined && { Type: art.type }),
       ...(art.location !== undefined && { Location: art.location }),
+      // The remaining CFn-declarable S3-artifact fields. They were omitted, so for an
+      // S3-artifacts project the template's declared Name / NamespaceType / Packaging /
+      // Path / ArtifactIdentifier had NO live counterpart → a false declared drift
+      // (actual=undefined), live-caught here. AWS echoes exactly the declared values, so
+      // projecting them makes the declared compare match; absent (CODEPIPELINE/NO_ARTIFACTS)
+      // → skipped, so no new noise. OverrideArtifactName is a boolean that folds via
+      // isTrivialEmpty when false.
+      ...(art.name !== undefined && { Name: art.name }),
+      ...(art.namespaceType !== undefined && { NamespaceType: art.namespaceType }),
+      ...(art.packaging !== undefined && { Packaging: art.packaging }),
+      ...(art.path !== undefined && { Path: art.path }),
+      ...(art.artifactIdentifier !== undefined && { ArtifactIdentifier: art.artifactIdentifier }),
+      ...(art.overrideArtifactName !== undefined && {
+        OverrideArtifactName: art.overrideArtifactName,
+      }),
+      // EncryptionDisabled turns OFF artifact encryption (security-relevant); omitted
+      // before, so disabling encryption out of band was undetectable. Same FP-safe shape
+      // as S3Logs.EncryptionDisabled below: a live false folds via isTrivialEmpty, true
+      // surfaces.
+      ...(art.encryptionDisabled !== undefined && { EncryptionDisabled: art.encryptionDisabled }),
     };
   const env = p.environment;
   if (env)
