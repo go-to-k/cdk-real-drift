@@ -22,23 +22,38 @@ ZONE_NAME="geoproximity.cdkrd-integ-test.com."
 REC_NAME="geo.geoproximity.cdkrd-integ-test.com."
 CLI="node $ROOT/dist/cli.js"
 
-sweep_zone() {
-  # Belt-and-suspenders: delete any surviving hosted zone by name (Route53 is global).
+zone_id() {
+  aws route53 list-hosted-zones --query "HostedZones[?Name=='$ZONE_NAME'].Id" --output text 2>/dev/null | head -1
+}
+
+# Delete every non-default (non-SOA/NS) record from the zone, leaving the zone itself
+# (delstack removes it as a stack resource). Run this BEFORE delstack: the test mutates
+# the record OUT OF BAND, and an out-of-band-modified record blocks CloudFormation's
+# zone delete → the stack lands in DELETE_FAILED even though the zone could be emptied
+# (the #166 lesson — sweep oob children off the parent before delstack).
+sweep_records() {
   local zid
-  zid="$(aws route53 list-hosted-zones --query "HostedZones[?Name=='$ZONE_NAME'].Id" --output text 2>/dev/null | head -1)"
+  zid="$(zone_id)"
   [ -n "$zid" ] && [ "$zid" != "None" ] || return 0
-  echo "sweeping orphan zone $zid"
   local batch
   batch="$(aws route53 list-resource-record-sets --hosted-zone-id "$zid" --output json 2>/dev/null \
     | python3 -c 'import sys,json; d=json.load(sys.stdin); c=[{"Action":"DELETE","ResourceRecordSet":r} for r in d.get("ResourceRecordSets",[]) if r.get("Type") not in ("SOA","NS")]; print(json.dumps({"Changes":c}) if c else "")')"
-  if [ -n "$batch" ]; then
-    aws route53 change-resource-record-sets --hosted-zone-id "$zid" --change-batch "$batch" >/dev/null 2>&1 || true
-  fi
+  [ -n "$batch" ] && aws route53 change-resource-record-sets --hosted-zone-id "$zid" --change-batch "$batch" >/dev/null 2>&1 || true
+}
+
+# Belt-and-suspenders AFTER delstack: if a zone still survives, empty it and delete it.
+sweep_zone() {
+  local zid
+  zid="$(zone_id)"
+  [ -n "$zid" ] && [ "$zid" != "None" ] || return 0
+  echo "sweeping orphan zone $zid"
+  sweep_records
   aws route53 delete-hosted-zone --id "$zid" >/dev/null 2>&1 || true
 }
 
 cleanup() {
   echo "--- cleanup ---"
+  sweep_records # empty the zone FIRST so delstack's zone delete is not blocked (no DELETE_FAILED)
   delstack cdk -a cdk.out -r "$REGION" -f -y >/dev/null 2>&1 || npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
   sweep_zone
   rm -rf .cdkrd cdk.out
