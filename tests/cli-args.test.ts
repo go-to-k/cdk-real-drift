@@ -44,6 +44,15 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S']).verbose).toBe(false);
   });
 
+  it('recognizes --all (was documented but unparsed → "unknown option" error)', () => {
+    expect(parseCommonArgs(['--all']).all).toBe(true);
+    expect(parseCommonArgs(['S']).all).toBe(false);
+    // --all coexists with positional names (it overrides them to "all" in resolveStacks)
+    const a = parseCommonArgs(['S', '--all']);
+    expect(a.all).toBe(true);
+    expect(a.stackNames).toEqual(['S']);
+  });
+
   it('records --dry-run as a known flag (interpreted by revert)', () => {
     expect(parseCommonArgs(['S', '--dry-run']).stackNames).toEqual(['S']);
   });
