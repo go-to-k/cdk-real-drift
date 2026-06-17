@@ -1,0 +1,8 @@
+{
+  "name": "cdk-real-drift-integ-route53-geoproximity",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture CDK app for the cdk-real-drift CodeBuild projection-FN test. Run via verify-route53-geoproximity.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}
