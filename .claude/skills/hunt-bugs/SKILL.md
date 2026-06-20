@@ -11,7 +11,7 @@ resource / config / CloudFormation notation **cdkrd has not exercised yet**, the
 `check` it against real AWS and watch for misbehavior. cdkrd's logic is heavily
 unit-tested, so the remaining bugs live in the gap between its model of AWS and the
 **actual** live AWS response — only a real deploy surfaces those. Reading the source
-finds *suspected* bugs; deploying finds *real* ones.
+finds _suspected_ bugs; deploying finds _real_ ones.
 
 This is a deliberately exploratory, possibly-expensive workflow. Cost is acceptable
 **only because every deployed stack is deleted and verified gone** — see "Cleanup is
@@ -67,6 +67,7 @@ all fixtures in parallel FIRST (cheap, catches TS errors before any paid deploy)
 
 **Before deploying, record every stack you are about to deploy into the sentinel —
 this arms the cleanup gate:**
+
 ```bash
 .claude/skills/hunt-bugs/bughunt-track.sh add CdkRealDriftIntegS3Rich CdkRealDriftIntegVpcCommon ...
 ```
@@ -123,7 +124,7 @@ Take it all the way to merged — do not leave a green PR hanging:
 
 ### 8. Record what you learned
 
-Save a memory for any recurring surprise (a whole *class* of latent bug, a
+Save a memory for any recurring surprise (a whole _class_ of latent bug, a
 verification gotcha) so the next sweep starts smarter.
 
 ## Cleanup is non-negotiable (gate-enforced)
@@ -152,7 +153,7 @@ the sentinel by hand to bypass the gate.
 - **`record` hides undeclared FPs.** A `record→check→CLEAN` fixture only proves the
   DECLARED dimension is FP-free; undeclared mis-classification is snapshotted away.
   To probe it, `check` BEFORE record and read the `atDefault`/`unresolved`/`[Not
-  Recorded]` breakdown with `--verbose`.
+Recorded]` breakdown with `--verbose`.
 - **Immutable props can't drift.** Don't treat an `unresolved`/unverifiable
   create-only property (Subnet `AvailabilityZone` via `Fn::Select(Fn::GetAZs)`, NAT
   `AllocationId` via `Fn::GetAtt` EIP) as a bug — it's correctly classified. And
