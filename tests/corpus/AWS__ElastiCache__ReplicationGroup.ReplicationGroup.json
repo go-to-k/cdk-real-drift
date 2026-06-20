@@ -1,0 +1,265 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ReplicationGroup",
+    "resourceType": "AWS::ElastiCache::ReplicationGroup",
+    "physicalId": "cdkrd-ec-rich",
+    "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup",
+    "declared": {
+      "AtRestEncryptionEnabled": true,
+      "AutomaticFailoverEnabled": false,
+      "CacheNodeType": "cache.t3.micro",
+      "CacheSubnetGroupName": "cdkrd-elasticache-rich",
+      "Engine": "redis",
+      "NumCacheClusters": 1,
+      "Port": 6379,
+      "ReplicationGroupDescription": "cdkrd elasticache rich",
+      "ReplicationGroupId": "cdkrd-ec-rich",
+      "SecurityGroupIds": ["sg-0803d3c52fa6a8bce"],
+      "SnapshotRetentionLimit": 1,
+      "TransitEncryptionEnabled": true
+    }
+  },
+  "liveRaw": {
+    "ReadEndPoint": {
+      "Addresses": "[cdkrd-ec-rich-001.cdkrd-ec-rich.jzgy0l.use1.cache.amazonaws.com]",
+      "PortsList": ["6379"],
+      "AddressesList": ["cdkrd-ec-rich-001.cdkrd-ec-rich.jzgy0l.use1.cache.amazonaws.com"],
+      "Ports": "[6379]"
+    },
+    "ClusterMode": "disabled",
+    "Port": 6379,
+    "ReaderEndPoint": {
+      "Address": "replica.cdkrd-ec-rich.jzgy0l.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "AutomaticFailoverEnabled": false,
+    "ReplicasPerNodeGroup": 0,
+    "ReplicationGroupDescription": "cdkrd elasticache rich",
+    "MultiAZEnabled": false,
+    "TransitEncryptionEnabled": true,
+    "NetworkType": "ipv4",
+    "ReplicationGroupId": "cdkrd-ec-rich",
+    "Engine": "redis",
+    "Tags": [],
+    "NumCacheClusters": 1,
+    "ConfigurationEndPoint": {},
+    "AtRestEncryptionEnabled": true,
+    "AutoMinorVersionUpgrade": true,
+    "SnapshotWindow": "05:00-06:00",
+    "TransitEncryptionMode": "required",
+    "CacheNodeType": "cache.t3.micro",
+    "SnapshotRetentionLimit": 1,
+    "UserGroupIds": [],
+    "SnapshottingClusterId": "cdkrd-ec-rich-001",
+    "IpDiscovery": "ipv4",
+    "DataTieringEnabled": false,
+    "LogDeliveryConfigurations": [],
+    "PrimaryEndPoint": {
+      "Address": "master.cdkrd-ec-rich.jzgy0l.use1.cache.amazonaws.com",
+      "Port": "6379"
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "ConfigurationEndPoint",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "ReadEndPoint",
+      "ReaderEndPoint"
+    ],
+    "writeOnly": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "EngineVersion",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NotificationTopicArn",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PreferredMaintenanceWindow",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnly": [
+      "AtRestEncryptionEnabled",
+      "AuthToken",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "NodeGroupConfiguration",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "readOnlyPaths": [
+      "ConfigurationEndPoint",
+      "ConfigurationEndPoint.Address",
+      "ConfigurationEndPoint.Port",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "PrimaryEndPoint.Address",
+      "PrimaryEndPoint.Port",
+      "ReadEndPoint",
+      "ReadEndPoint.Addresses",
+      "ReadEndPoint.AddressesList",
+      "ReadEndPoint.Ports",
+      "ReadEndPoint.PortsList",
+      "ReaderEndPoint",
+      "ReaderEndPoint.Address",
+      "ReaderEndPoint.Port"
+    ],
+    "writeOnlyPaths": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "EngineVersion",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NotificationTopicArn",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PreferredMaintenanceWindow",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "AtRestEncryptionEnabled",
+      "AuthToken",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "NodeGroupConfiguration",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "defaults": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    },
+    "defaultPaths": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "CacheSubnetGroupName",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SecurityGroupIds",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "ClusterMode",
+      "actual": "disabled",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "ReplicasPerNodeGroup",
+      "actual": 0,
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshotWindow",
+      "actual": "05:00-06:00",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "TransitEncryptionMode",
+      "actual": "required",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshottingClusterId",
+      "actual": "cdkrd-ec-rich-001",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ReplicationGroup",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-ec-rich",
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+    }
+  ]
+}

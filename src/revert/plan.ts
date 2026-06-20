@@ -413,6 +413,17 @@ export function writeOnlyReincludeOps(
   // present in the declared model from its template intent.
   for (const path of schema.writeOnlyPaths) {
     if (path.includes('*')) continue; // a wildcard (array-element) write-only — no single value to re-include
+    // A property that is write-only AND create-only must NEVER enter an update patch:
+    // Cloud Control hard-rejects any op on a create-only path ("createOnlyProperties
+    // [...] cannot be updated"), failing the WHOLE revert at apply time — even though
+    // the op only re-includes the property to satisfy the read-modify-write contract.
+    // Omitting it is also safe: a create-only property is fixed at creation, so the
+    // provider's update handler preserves it regardless of whether the patch carries it
+    // (unlike a mutable write-only prop, it cannot silently vanish). Live-proven by an
+    // AWS::ElastiCache::ReplicationGroup revert: CacheSubnetGroupName is both write-only
+    // and create-only, so re-including it made every revert fail "createOnlyProperties
+    // [/properties/CacheSubnetGroupName] cannot be updated".
+    if (isUnderCreateOnly(path, schema.createOnlyPaths)) continue;
     const value = valueAtDottedPath(declared, path);
     if (value === undefined || value === UNRESOLVED || hasUnresolved(value)) continue;
     const pointer = toPointer(path);
