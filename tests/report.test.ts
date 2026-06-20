@@ -473,6 +473,37 @@ describe('report', () => {
     });
   });
 
+  describe('unresolved tier (declared value depends on an unresolvable CFn intrinsic — folded, not drift)', () => {
+    const U = (path: string, resourceType = 'AWS::EC2::Subnet'): Finding => ({
+      tier: 'unresolved',
+      logicalId: 'L',
+      resourceType,
+      path,
+    });
+
+    it('folds into info: with a plain-English (not "GetAtt"-only) label, never sets exit 1', () => {
+      const { code, text } = run([
+        U('AvailabilityZone'),
+        U('AllocationId', 'AWS::EC2::NatGateway'),
+      ]);
+      expect(code).toBe(0);
+      expect(text).toMatch(/^result: CLEAN$/m);
+      // the message must explain WHY (unverifiable intrinsic) and must NOT claim every
+      // unresolved value is a Fn::GetAtt — a Subnet AZ is Fn::Select(Fn::GetAZs).
+      expect(text).toContain(
+        "info: unresolved=2 (declared values whose CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value — unverifiable, not drift)"
+      );
+      expect(text).not.toContain('GetAtt unresolved');
+    });
+
+    it('--verbose expands unresolved to a full section listing each declared path', () => {
+      const { text } = run([U('AvailabilityZone')], { verbose: true });
+      expect(text).toContain('[Unresolved: 1]');
+      expect(text).toContain('L.AvailabilityZone (AWS::EC2::Subnet)');
+      expect(text).not.toContain('info:');
+    });
+  });
+
   describe('R37 spacing', () => {
     const skipped: Finding = {
       tier: 'skipped',

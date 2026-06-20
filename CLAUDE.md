@@ -157,6 +157,16 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     live-test + retrospective; named `verify-pr` for layout parity with cdkd).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
     `docs` markers are fresh. Run the relevant skill before committing.
+  - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
+    deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
+    catch false positives (clean `record`→`check` must be CLEAN) and missed
+    detection (mutate a declared MUTABLE prop → `check` must detect → `revert`).
+    Cleanup is enforced by a SENTINEL gate, not a markgate marker:
+    `bughunt-track.sh add <stacks>` arms `.markgate-bughunt-pending` BEFORE any
+    deploy, and the `bughunt-clean-gate` hook blocks `git commit` / `gh pr create` /
+    `gh pr merge` while it is non-empty — released by `bughunt-track.sh clear` only
+    after every tracked stack is deleted (via `delstack`) and `sweep-orphans.sh`
+    reports SWEEP CLEAN. A deployed stack can never be forgotten.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session.** Sessions that believed
   they were alone have collided twice: a README clobber, and a branch created in

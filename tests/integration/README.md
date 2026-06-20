@@ -382,6 +382,36 @@ normalization classes most likely to regress:
 cd dynamodb && bash verify.sh   # …and likewise for each fixture above
 ```
 
+## rich / common false-positive fixtures (integ bug-hunt round)
+
+Added by the `/hunt-bugs` skill — a periodic real-AWS round that deploys
+UNCOVERED, richly-configured resources (prioritizing the high-frequency patterns
+many users actually deploy) and asserts a freshly recorded stack reports CLEAN.
+Each `verify.sh` is the FP shape (deploy → `record --yes` → `check --fail` MUST
+exit 0); `lambda-rich/verify-detect.sh` adds the false-NEGATIVE half.
+
+| fixture       | resource(s)                                          | what it stresses                                              |
+| ------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
+| `s3-rich`     | S3 Bucket (KMS, lifecycle, CORS, intelligent-tiering, enforceSSL, autoDeleteObjects) | the single most-deployed resource, richly configured          |
+| `lambda-rich` | Lambda (arm64, env, tracing, ephemeral, reserved-concurrency, FunctionUrl, logGroup) | common Lambda "production" knobs; `verify-detect.sh` = console-edit detect+revert |
+| `vpc-common`  | ec2.Vpc (subnets / NAT / routes / IGW / S3 endpoint) | dense default-folding + `unresolved` intrinsics across networking |
+| `rich-fp`     | Kinesis, SQS FIFO, SNS FIFO, CloudWatch Dashboard, Secrets Manager | JSON-string bodies, FIFO flags, generated secrets             |
+| `notation-fp` | SNS/SQS via L1 + `Fn::FindInMap` / `Fn::Sub` map / `Fn::If` / `Fn::Select`+`Fn::Split` | CloudFormation intrinsic resolution against live values       |
+| `niche-fp`    | ECR, Step Functions, WAFv2 WebACL (regional), EventBridge Rule | nested rule/visibility configs, JSON LifecyclePolicy/Definition |
+
+```bash
+cd s3-rich && npm install && bash verify.sh   # …and likewise for each fixture above
+cd lambda-rich && npm install && bash verify-detect.sh   # the detect+revert half
+```
+
+Cleanup after any of these is mandatory and gate-enforced. `/hunt-bugs` arms a
+sentinel before deploying (`bughunt-track.sh add <stacks>`); the
+`bughunt-clean-gate` hook then blocks `git commit` / `gh pr create` / `gh pr merge`
+until `bughunt-track.sh verify` (every tracked stack gone + `sweep-orphans.sh`
+SWEEP CLEAN — it catches the `/aws/lambda/*` log group an S3 `autoDeleteObjects`
+custom-resource Lambda leaves behind) passes and `bughunt-track.sh clear` releases
+the gate.
+
 ## harvest
 
 A corpus-harvest fixture (R71): ~18 cheap, fast-create/delete types in one

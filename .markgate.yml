@@ -29,6 +29,13 @@
 #               remains, and it has no companion /run-integ skill yet. 14d TTL
 #               (AWS-side wire-format + Cloud Control behavior drift over time).
 #
+# Bug-hunt cleanup is NOT a markgate gate — it is a sentinel-file gate
+# (.markgate-bughunt-pending + .claude/hooks/bughunt-clean-gate.sh), armed by
+# /hunt-bugs's bughunt-track.sh BEFORE any deploy and released only after every
+# deployed stack is deleted + SWEEP CLEAN. A sentinel (not a content hash) is used
+# deliberately: it tracks outstanding live resources regardless of which fixture
+# files a later commit happens to touch, so a deployed stack can never be forgotten.
+#
 # NOTE: the commit/PR-blocking ENFORCEMENT (the .claude hooks that call markgate)
 # is now installed (R83): check-gate (commit), verify-pr-gate (gh pr create/merge),
 # plus the marker-free branch-gate and non-english-text-gate. Hooks are wired ONLY

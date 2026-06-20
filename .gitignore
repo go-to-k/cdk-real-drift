@@ -65,6 +65,13 @@ cdk.context.json
 # markgate pr-review sentinel
 .markgate-pr-review-sha
 
+# /hunt-bugs cleanup sentinel: lists integ stacks deployed to real AWS; the
+# bughunt-clean-gate.sh PreToolUse hook blocks git commit / gh pr create / gh pr
+# merge while it is non-empty, so bug-hunt resources cannot be forgotten. Written
+# by bughunt-track.sh add, cleared by bughunt-track.sh clear after delete +
+# orphan-zero verification.
+.markgate-bughunt-pending
+
 # cdkd-parity tracking-issue sentinel (per-worktree; written by /check-cdkd-parity)
 .cdkd-parity-issue
 
