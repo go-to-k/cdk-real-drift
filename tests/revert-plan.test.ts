@@ -771,6 +771,42 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
     expect(writeOnlyReincludeOps(declared, undefined, [])).toEqual([]);
   });
 
+  it('does NOT re-include a write-only prop that is ALSO create-only (ElastiCache CacheSubnetGroupName) — CC rejects an op on a create-only path', () => {
+    // AWS::ElastiCache::ReplicationGroup: CacheSubnetGroupName is in BOTH writeOnlyPaths
+    // and createOnlyPaths. Re-including it to satisfy the read-modify-write contract made
+    // every revert fail at apply time ("createOnlyProperties [/properties/
+    // CacheSubnetGroupName] cannot be updated"), e.g. reverting an out-of-band
+    // SnapshotRetentionLimit change. The create-only prop must be omitted from the patch.
+    const ecSchema: SchemaInfo = {
+      readOnly: new Set<string>(),
+      writeOnly: new Set(['CacheSubnetGroupName', 'PreferredMaintenanceWindow']),
+      createOnly: new Set(['CacheSubnetGroupName']),
+      readOnlyPaths: [],
+      writeOnlyPaths: ['CacheSubnetGroupName', 'PreferredMaintenanceWindow'],
+      createOnlyPaths: ['CacheSubnetGroupName'],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const ecDeclared = {
+      SnapshotRetentionLimit: 1,
+      CacheSubnetGroupName: 'cdkrd-elasticache-rich',
+      PreferredMaintenanceWindow: 'sun:05:00-sun:06:00',
+    };
+    const ops = writeOnlyReincludeOps(ecDeclared, ecSchema, [
+      { op: 'add', path: '/SnapshotRetentionLimit', value: 1, human: '' },
+    ]);
+    // The mutable write-only prop is still re-included; the create-only one is not.
+    expect(ops).toEqual([
+      {
+        op: 'add',
+        path: '/PreferredMaintenanceWindow',
+        value: 'sun:05:00-sun:06:00',
+        human:
+          'PreferredMaintenanceWindow -> re-include write-only (Cloud Control read-modify-write contract)',
+      },
+    ]);
+  });
+
   it('re-includes a NESTED write-only prop (IAM User LoginProfile.Password) — no credential reset (WAVE24)', () => {
     // AWS::IAM::User has only the NESTED write-only path LoginProfile.Password; the
     // top-level write-only set is EMPTY, so the old top-level-only loop re-included

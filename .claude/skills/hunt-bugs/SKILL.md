@@ -92,7 +92,44 @@ For at least one common type, mutate a declared MUTABLE property out of band and
 assert `check` detects → `revert` → `check` CLEAN → live value restored
 (`lambda-rich/verify-detect.sh` is the reference).
 
-### 5. On a confirmed bug: fix it — with a unit test (mandatory)
+### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
+
+This is the asset a hunt leaves behind even when it finds no bug. Every live read
+you just paid for is a real `normalize`→`classify` pipeline input; capturing it as
+a golden-corpus case turns this one-time deploy into a permanent **offline**
+regression that runs in plain `vp run test` (no AWS) forever — `tests/corpus/*.json`
+is replayed by `tests/corpus-replay.test.ts`, which re-runs `classifyResource` on
+the recorded inputs and asserts the findings reproduce exactly (R63). A future
+normalization change that would silently re-introduce an FP/FN on this resource
+then fails a unit test instead of waiting for the next paid hunt.
+
+So while a tracked stack is still deployed, record the corpus by setting
+`CDKRD_CORPUS_DIR` on a `check` (it writes one sanitized case per readable
+resource — account ids are stripped at record time):
+
+```bash
+CDKRD_CORPUS_DIR=/tmp/corpus-<name> node "$ROOT/dist/cli.js" check "$STACK" --region "$REGION"
+```
+
+Record on the FRESH deploy BEFORE `record` (no baseline) so the case captures the
+full classification — the `atDefault`/undeclared folding, not a baseline-snapshotted
+clean. Then promote the cases that add coverage into `tests/corpus/`:
+
+- Each file is named `AWS__<Service>__<Type>.<LogicalId>.json`. Copy in the cases
+  for types **not already present** — `ls tests/corpus/ | grep <Type>` first.
+  Genuinely-new resource types are the win; skip near-duplicates of types already
+  covered (VPC/subnet/route-table boilerplate a fixture drags along is usually
+  already represented — don't flood the corpus with it).
+- Run `vp run test` and confirm the new `corpus-replay` cases pass. Commit the new
+  corpus JSONs in the SAME PR as the fixture (and the fix, if any). An intended
+  behavior change updates a case's `expected` in the same diff, making the semantic
+  change reviewable.
+
+The `*-rich` fixtures are exactly the rich configs worth pinning this way, so a
+clean round still ships growing regression coverage — see the "A clean result IS a
+result" gotcha.
+
+### 6. On a confirmed bug: fix it — with a unit test (mandatory)
 
 When a finding is a real bug:
 
@@ -109,12 +146,12 @@ When a finding is a real bug:
 5. **Keep the fixture** as a committed regression integ under
    `tests/integration/<name>/`, in the SAME PR as the fix — never defer the integ.
 
-### 6. Cleanup — non-negotiable (see below), then ship
+### 7. Cleanup — non-negotiable (see below), then ship
 
 Delete every tracked stack, run `bughunt-track.sh verify`, then `clear`. Then
 `/check` + `/check-docs` markers → commit → push → `/verify-pr` → `gh pr create`.
 
-### 7. Merge + remove the worktree
+### 8. Merge + remove the worktree
 
 Take it all the way to merged — do not leave a green PR hanging:
 
@@ -127,7 +164,7 @@ Take it all the way to merged — do not leave a green PR hanging:
    and `git worktree prune`. Confirm with `git worktree list` — only the main
    checkout should remain. (Mirror of CLAUDE.md's integrate-then-remove rule.)
 
-### 8. Record what you learned
+### 9. Record what you learned
 
 Save a memory for any recurring surprise (a whole _class_ of latent bug, a
 verification gotcha) so the next sweep starts smarter.
@@ -170,9 +207,12 @@ Recorded]` breakdown with `--verbose`.
   `|| fail`), or guard with `set +e`.
 - **Always `npm install` + `cdk synth` before deploy** — a synth-time TS error is
   free to catch; a half-failed deploy is not.
-- **A clean result IS a result.** "6 common+rich stacks, zero FPs, detection+revert
-  verified" is a legitimate, valuable outcome. Do NOT manufacture a fix to have
-  something to show.
+- **A clean result IS a result — but it must still leave an asset.** "6 common+rich
+  stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
+  NOT manufacture a fix to have something to show. The deliverable of a bug-free
+  round is the committed `*-rich` fixtures PLUS the golden-corpus cases harvested
+  from their live reads (step 5) — that is how a clean round still grows permanent
+  offline regression coverage instead of evaporating when the stacks are torn down.
 - **Before salvaging leftover fixtures from an interrupted worktree, check for an
   already-merged duplicate.** A half-finished prior hunt can leave uncommitted
   fixtures in a stale worktree, and resuming them is tempting — but a PARALLEL
