@@ -401,11 +401,15 @@ exit 0); `lambda-rich/verify-detect.sh` adds the false-NEGATIVE half.
 | `ddb-rich`    | DynamoDB Table (SIA table-class, TTL, stream, PITR, contributor-insights, LSI + 2 GSI) | rich DynamoDB knobs default-folded at once; `verify-detect.sh` = nested-property (PITR) detect+revert |
 | `sfn-express` | Step Functions EXPRESS SM (CloudWatch LoggingConfiguration + X-Ray tracing) | EXPRESS logging-destination array + tracing default-folding |
 | `sns-fifo`    | SNS FIFO Topic (content-based-dedup + KMS SSE) | FIFO flags + `KmsMasterKeyId` intrinsic ref on a FIFO topic |
+| `kinesis-rich` | Kinesis Data Stream (PROVISIONED mode, 2 shards, 48h retention, KMS SSE) | `StreamModeDetails` + non-default `RetentionPeriodHours` + `StreamEncryption` key ref default-folding |
+| `secrets-rich` | Secrets Manager Secret (`GenerateSecretString`, customer KMS key, description) | minted `SecretString` is opaque/NoEcho on read (a write-only `readGap`) + `KmsKeyId` intrinsic ref |
+| `ecr-rich` | ECR Repository (scan-on-push, IMMUTABLE tags, KMS encryption, lifecycle policy) | JSON `LifecyclePolicy` re-serialization edge; `verify-detect.sh` = `ImageTagMutability` enum detect+revert |
 
 ```bash
 cd s3-rich && npm install && bash verify.sh   # …and likewise for each fixture above
 cd lambda-rich && npm install && bash verify-detect.sh   # the detect+revert half
 cd ddb-rich && npm install && bash verify-detect.sh   # nested-property (PITR) detect+revert
+cd ecr-rich && npm install && bash verify-detect.sh   # ImageTagMutability enum detect+revert
 ```
 
 Cleanup after any of these is mandatory and gate-enforced. `/hunt-bugs` arms a
