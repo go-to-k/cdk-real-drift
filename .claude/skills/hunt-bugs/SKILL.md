@@ -25,8 +25,13 @@ non-negotiable", which is enforced by a gate, not by trust.
    FunctionUrl/logGroup), VPC (subnets/NAT/routes/endpoints), DynamoDB, IAM, API
    Gateway, ECS/Fargate, RDS, SQS/SNS, CloudFront — over exotic edge cases. A bug
    in a daily pattern is worth ten niche ones.
-2. **The two signals.** A freshly deployed stack with NO out-of-band change is the
-   cleanest oracle:
+2. **The two signals ARE the priority — hunt FP and FN above all else.** False
+   positives (drift reported that isn't real) and false negatives (real drift
+   missed) are the bug classes this hunt exists to find; they are what actually
+   damages a user's trust in the tool. Prioritize provoking and confirming them over
+   incidental findings (a crash, a read-gap `skipped=`, cosmetic output) — those are
+   worth noting, but FP/FN are the target. A freshly deployed stack with NO
+   out-of-band change is the cleanest oracle:
    - **False positive (FP)** — the most user-damaging class. After `record`, a
      `check` MUST be CLEAN. Any `declared`-tier drift on a clean recorded stack
      means cdkrd's declared template value normalizes differently from the live
@@ -168,3 +173,14 @@ Recorded]` breakdown with `--verbose`.
 - **A clean result IS a result.** "6 common+rich stacks, zero FPs, detection+revert
   verified" is a legitimate, valuable outcome. Do NOT manufacture a fix to have
   something to show.
+- **Before salvaging leftover fixtures from an interrupted worktree, check for an
+  already-merged duplicate.** A half-finished prior hunt can leave uncommitted
+  fixtures in a stale worktree, and resuming them is tempting — but a PARALLEL
+  session may have already merged the identical dirs under a differently-ordered PR
+  title (this flow's `ecr-rich`/`kinesis-rich`/`secrets-rich` salvage collided with
+  the already-merged `#248 "kinesis-rich, secrets-rich, ecr-rich"`). Run
+  `gh pr list --state merged --search "<type-name>"` AND
+  `git ls-tree -d --name-only origin/main tests/integration/ | grep <name>` for the
+  fixture names FIRST — before any paid re-deploy — and abort if they already exist.
+  A clean abort (remove the worktree; the AWS side was already swept) beats burning a
+  deploy on a duplicate PR that will only conflict.
