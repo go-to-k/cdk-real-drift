@@ -398,10 +398,14 @@ exit 0); `lambda-rich/verify-detect.sh` adds the false-NEGATIVE half.
 | `rich-fp`     | Kinesis, SQS FIFO, SNS FIFO, CloudWatch Dashboard, Secrets Manager | JSON-string bodies, FIFO flags, generated secrets             |
 | `notation-fp` | SNS/SQS via L1 + `Fn::FindInMap` / `Fn::Sub` map / `Fn::If` / `Fn::Select`+`Fn::Split` | CloudFormation intrinsic resolution against live values       |
 | `niche-fp`    | ECR, Step Functions, WAFv2 WebACL (regional), EventBridge Rule | nested rule/visibility configs, JSON LifecyclePolicy/Definition |
+| `ddb-rich`    | DynamoDB Table (SIA table-class, TTL, stream, PITR, contributor-insights, LSI + 2 GSI) | rich DynamoDB knobs default-folded at once; `verify-detect.sh` = nested-property (PITR) detect+revert |
+| `sfn-express` | Step Functions EXPRESS SM (CloudWatch LoggingConfiguration + X-Ray tracing) | EXPRESS logging-destination array + tracing default-folding |
+| `sns-fifo`    | SNS FIFO Topic (content-based-dedup + KMS SSE) | FIFO flags + `KmsMasterKeyId` intrinsic ref on a FIFO topic |
 
 ```bash
 cd s3-rich && npm install && bash verify.sh   # …and likewise for each fixture above
 cd lambda-rich && npm install && bash verify-detect.sh   # the detect+revert half
+cd ddb-rich && npm install && bash verify-detect.sh   # nested-property (PITR) detect+revert
 ```
 
 Cleanup after any of these is mandatory and gate-enforced. `/hunt-bugs` arms a
