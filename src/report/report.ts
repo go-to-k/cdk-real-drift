@@ -54,7 +54,8 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   generated: 'auto-generated identifier not in your template (AWS-assigned at deploy) — not drift',
   ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
   readGap: "declared, but AWS doesn't return it on read so cdkrd can't verify it — not drift",
-  unresolved: 'declared paths needing GetAtt — skipped, not drift',
+  unresolved:
+    "declared, but its value references a CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value, so it can't be compared — skipped, not drift",
   skipped:
     'NOT checked (coverage incomplete) — CC API unsupported / no physical id / custom resource',
 };
@@ -162,7 +163,7 @@ function tierStyle(t: Tier): (s: string) => string {
 function reasonKey(f: Finding): string {
   const n = f.note ?? '';
   if (f.tier === 'ignored') return n.replace(/^ignored by config rule /, '') || 'ignored';
-  if (f.tier === 'unresolved') return 'GetAtt unresolved';
+  if (f.tier === 'unresolved') return 'intrinsic unresolved';
   if (n.includes('write-only')) return 'write-only';
   if (n.startsWith('custom resource')) return 'custom resource';
   if (n.includes('target not resolvable')) return 'override target unresolved';
@@ -326,6 +327,12 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
       ];
       return `readGap=${items.length} (declared but unverifiable — AWS doesn't return them on read, not drift: ${parts.join(', ')})`;
     }
+    // unresolved is jargon too: these are declared values whose CloudFormation intrinsic
+    // (Fn::GetAtt, Fn::GetAZs, …) cdkrd could not resolve to a concrete value, so there is
+    // nothing concrete to compare against live — unverifiable, not drift. The generic
+    // groupReasons breakdown would just echo "intrinsic unresolved N", so spell it out.
+    if (t === 'unresolved')
+      return `unresolved=${items.length} (declared values whose CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value — unverifiable, not drift)`;
     // skipped = resources cdkrd genuinely could NOT read this run (CC-unsupported with
     // no SDK override, read error, missing physical id, custom resource). It is the one
     // info: tier that is a COVERAGE GAP, not a not-drift classification — so it carries
