@@ -1,0 +1,110 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Lg419948D3",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "/cdkrd/logs-rich",
+    "constructPath": "CdkRealDriftIntegLogsRich/Lg",
+    "declared": {
+      "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/59007e9c-d875-4b2c-9f21-42516746acba",
+      "LogGroupName": "/cdkrd/logs-rich",
+      "RetentionInDays": 14,
+      "Tags": [
+        {
+          "Key": "app",
+          "Value": "cdkrd"
+        },
+        {
+          "Key": "env",
+          "Value": "test"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [],
+    "RetentionInDays": 14,
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/59007e9c-d875-4b2c-9f21-42516746acba",
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "STANDARD",
+    "LogGroupName": "/cdkrd/logs-rich",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:/cdkrd/logs-rich:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "cdkrd",
+        "Key": "app"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLogsRich/cda3e030-6cdc-11f1-889e-123f20f98773",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "test",
+        "Key": "env"
+      },
+      {
+        "Value": "CdkRealDriftIntegLogsRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Lg419948D3",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "DataProtectionPolicy": {}
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "defaultPaths": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg419948D3",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "BearerTokenAuthenticationEnabled",
+      "actual": false,
+      "physicalId": "/cdkrd/logs-rich",
+      "constructPath": "CdkRealDriftIntegLogsRich/Lg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg419948D3",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "LogGroupClass",
+      "actual": "STANDARD",
+      "physicalId": "/cdkrd/logs-rich",
+      "constructPath": "CdkRealDriftIntegLogsRich/Lg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg419948D3",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "/cdkrd/logs-rich",
+      "constructPath": "CdkRealDriftIntegLogsRich/Lg"
+    }
+  ]
+}

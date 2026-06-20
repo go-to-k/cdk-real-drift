@@ -1,0 +1,176 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "cdkrd-wafv2-rich|2f1b4ddc-0149-4ee8-83a9-b3ca27f51a05|REGIONAL",
+    "constructPath": "CdkRealDriftIntegWafv2Rich/WebAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Name": "cdkrd-wafv2-rich",
+      "Rules": [
+        {
+          "Name": "AWSCommon",
+          "OverrideAction": {
+            "None": {}
+          },
+          "Priority": 1,
+          "Statement": {
+            "ManagedRuleGroupStatement": {
+              "Name": "AWSManagedRulesCommonRuleSet",
+              "VendorName": "AWS"
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "AWSCommon",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "RateLimit",
+          "Priority": 2,
+          "Statement": {
+            "RateBasedStatement": {
+              "AggregateKeyType": "IP",
+              "Limit": 2000
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "RateLimit",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdWebAcl",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "REGIONAL",
+    "Capacity": 702,
+    "Id": "2f1b4ddc-0149-4ee8-83a9-b3ca27f51a05",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-wafv2-rich/2f1b4ddc-0149-4ee8-83a9-b3ca27f51a05",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [
+      {
+        "Priority": 1,
+        "Statement": {
+          "ManagedRuleGroupStatement": {
+            "VendorName": "AWS",
+            "RuleActionOverrides": [],
+            "ManagedRuleGroupConfigs": [],
+            "ExcludedRules": [],
+            "Name": "AWSManagedRulesCommonRuleSet"
+          }
+        },
+        "OverrideAction": {
+          "None": {}
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "AWSCommon",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "AWSCommon"
+      },
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 2,
+        "Statement": {
+          "RateBasedStatement": {
+            "AggregateKeyType": "IP",
+            "Limit": 2000,
+            "EvaluationWindowSec": 300
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "RateLimit",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "RateLimit"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdWebAcl",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:cdkrd-wafv2-rich:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegWafv2Rich/d26c8bd0-6cdc-11f1-9613-0e4a7d53ffdb",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegWafv2Rich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "WebAcl",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-wafv2-rich"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "cdkrd-wafv2-rich|2f1b4ddc-0149-4ee8-83a9-b3ca27f51a05|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2Rich/WebAcl"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "Rules[RateLimit].Statement.RateBasedStatement.EvaluationWindowSec",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "cdkrd-wafv2-rich|2f1b4ddc-0149-4ee8-83a9-b3ca27f51a05|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2Rich/WebAcl"
+    }
+  ]
+}
