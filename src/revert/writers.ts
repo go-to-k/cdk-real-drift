@@ -395,7 +395,23 @@ const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
   const c = new WAFV2Client({ region: ctx.region });
   const cur = await c.send(new GetWebACLCommand({ Name: name, Id: id, Scope: scope as Scope }));
   if (!cur.WebACL || !cur.LockToken) throw new Error('could not read current WebACL for revert');
-  const m = applyOps(cur.WebACL as unknown as Record<string, unknown>, ops);
+  // A revert op path indexes the model classify COMPARED, which is canonicalized: every
+  // WebACL Rule carries a `Name`, so canonicalizeForCompare SORTS the `Rules` array by it
+  // (the same identity-keyed sort that aligns Tags/Origins). But GetWebACL returns Rules in
+  // their RAW configured order, which a user who declared rules out of Name order returns in
+  // a DIFFERENT order than the sorted finding index. An op like `…/Rules/1/…` would then
+  // land on a DIFFERENT rule than the one classify found drifted — patching an unrelated
+  // (security-relevant) rule and leaving the real drift unreverted (the #180 / #275 index-
+  // misalignment class, here on the SDK-writer path). Canonicalize the current model the
+  // same way so an indexed op hits the SAME rule; Rule order is not significant to WAFv2
+  // (Priority governs evaluation), so re-sending the sorted array changes no behavior.
+  const m = applyOps(
+    canonicalizeForCompare(cur.WebACL as unknown as Record<string, unknown>) as Record<
+      string,
+      unknown
+    >,
+    ops
+  );
   const desc = m.Description;
   await c.send(
     new UpdateWebACLCommand({
