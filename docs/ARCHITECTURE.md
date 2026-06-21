@@ -552,6 +552,15 @@ only when non-zero — unrecorded values are named as such, never folded into
     full config via `UpdateDistribution(IfMatch=ETag)` so AWS's own
     ViewerCertificate round-trips verbatim (robust for the common scalar
     `DistributionConfig` drifts: Comment / DefaultRootObject / Enabled / …).
+    `AWS::WAFv2::WebACL` is the SAME CC-revalidation class: its `UpdateResource`
+    re-validates the whole WebACL and AWS's own empty `Description` ("") fails the
+    schema's Description pattern (proven live — every WebACL revert failed), so revert
+    reads `GetWebACL` (Name|Id|Scope physical id), applies the ops, and re-submits via
+    `UpdateWebACL(LockToken)` OMITTING an empty Description (every other updatable field
+    round-trips verbatim). KNOWN LIMITATION: a `DefaultAction` revert (the Allow⇄Block
+    mutually-exclusive union) still fails — the per-leaf revert op adds the desired
+    branch without removing the live one ("exactly one value" error); that union-op
+    granularity is a plan-level gap affecting the CC path too, deferred.
   - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
     ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
