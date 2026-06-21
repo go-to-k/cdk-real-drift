@@ -287,6 +287,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('my-asg|my-hook');
   });
 
+  it('AutoScaling ScheduledAction: builds the ScheduledActionName|AutoScalingGroupName composite — CHILD first (reverse of LifecycleHook)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AutoScaling::ScheduledAction',
+        physicalId: 'my-action',
+        declared: { AutoScalingGroupName: 'my-asg' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-action|my-asg');
+  });
+
+  it('AutoScaling ScheduledAction: an unresolved ASG name falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AutoScaling::ScheduledAction',
+        physicalId: 'my-action',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-action');
+  });
+
   for (const t of [
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',

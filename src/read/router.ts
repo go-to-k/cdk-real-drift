@@ -90,6 +90,16 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // a declared hook ValidationException-skips (read-gap). Verified live
   // (autoscaling-lifecyclehook-rich).
   'AWS::AutoScaling::LifecycleHook': compositeWith('AutoScalingGroupName'),
+  // AutoScaling ScheduledAction primaryIdentifier is [ScheduledActionName,
+  // AutoScalingGroupName] — CHILD-first, the REVERSE of its sibling LifecycleHook
+  // (parent-first). The CFn physical id is the bare ScheduledActionName; the ASG name
+  // comes from the resolved declared Ref. Without this a declared scheduled action
+  // ValidationException-skips (read-gap). Verified live (autoscaling-scheduledaction-rich).
+  'AWS::AutoScaling::ScheduledAction': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const asg = declared.AutoScalingGroupName;
+    return typeof asg === 'string' && asg.length > 0 ? `${pid}|${asg}` : undefined;
+  },
   // ApiGateway::Deployment is the odd one out: its primaryIdentifier is
   // `[DeploymentId, RestApiId]` — CHILD first (verified live R129: `RestApiId|DeploymentId`
   // returns not-found; only `DeploymentId|RestApiId` reads). The CFn physical id is the
