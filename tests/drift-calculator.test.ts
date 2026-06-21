@@ -80,4 +80,37 @@ describe('calculateResourceDrift', () => {
     expect(deepEqual({ a: [1, 2] }, { a: [1, 2] })).toBe(true);
     expect(deepEqual({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
   });
+
+  describe('mutually-exclusive / disjoint-key object swap (union one-of fields)', () => {
+    it('emits the WHOLE object (not a leaf) when desired + live share no keys', () => {
+      // WAFv2 DefaultAction: desired {Allow:{}} vs live {Block:{}} — a one-of union.
+      // Descending would emit `DefaultAction.Allow` (add) and never remove live Block,
+      // so a revert leaves BOTH. Emit the whole object so the revert REPLACES it.
+      const d = calculateResourceDrift(
+        { DefaultAction: { Allow: {} } },
+        { DefaultAction: { Block: {} } }
+      );
+      expect(d).toEqual([
+        { path: 'DefaultAction', stateValue: { Allow: {} }, awsValue: { Block: {} } },
+      ]);
+    });
+
+    it('still descends (subset semantics) when keys OVERLAP', () => {
+      // common key `Mode` → descend as before; the extra desired key is an add, the
+      // live-only key is left to collectNestedUndeclared (not this calculator).
+      const d = calculateResourceDrift(
+        { Cfg: { Mode: 'A', Extra: 1 } },
+        { Cfg: { Mode: 'B', Other: 9 } }
+      );
+      expect(d).toEqual([
+        { path: 'Cfg.Mode', stateValue: 'A', awsValue: 'B' },
+        { path: 'Cfg.Extra', stateValue: 1, awsValue: undefined },
+      ]);
+    });
+
+    it('an empty desired or empty live object is not treated as a disjoint swap', () => {
+      // empty desired {} vs live {X:1}: nothing declared to compare -> no drift (subset).
+      expect(calculateResourceDrift({ P: {} }, { P: { X: 1 } })).toEqual([]);
+    });
+  });
 });

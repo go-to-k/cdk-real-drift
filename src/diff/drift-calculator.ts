@@ -51,6 +51,20 @@ function diffAt(
       out.push({ path, stateValue: sv, awsValue: av });
       return;
     }
+    // Mutually-exclusive / wholesale object swap: when the desired and live objects
+    // share NO keys, the subset descent below (which walks only desired keys) would
+    // emit the desired-only keys to ADD but never the live-only keys to REMOVE — so a
+    // revert leaves BOTH and AWS rejects it (e.g. WAFv2 DefaultAction `{Allow:{}}` vs
+    // live `{Block:{}}` → "exactly one value" for a one-of field; the live `Block` is
+    // an empty `{}` so collectNestedUndeclared also suppresses it as trivial-empty,
+    // leaving it entirely unreverted). Emit the WHOLE object at the parent path so the
+    // revert REPLACES it wholesale. Gated on fully-disjoint keys, so every overlapping-
+    // key case (the common partial-object drift) keeps the subset semantics unchanged.
+    const svKeys = Object.keys(sv);
+    if (svKeys.length > 0 && Object.keys(av).length > 0 && !svKeys.some((k) => k in av)) {
+      out.push({ path, stateValue: sv, awsValue: av });
+      return;
+    }
     // Subset semantics: only walk keys present in the desired (state) side, so an
     // AWS-added nested key the template never set is not a DECLARED-side change here.
     // (R96: such live-only nested keys are instead caught by classify's
