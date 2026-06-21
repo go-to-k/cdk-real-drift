@@ -84,6 +84,9 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'InvalidAllocationID.NotFound',
   'InvalidAddress.NotFound',
   'EntityNotFoundException',
+  // Cloud Map (ServiceDiscovery) GetNamespace / GetService on a deleted target.
+  'NamespaceNotFound',
+  'ServiceNotFound',
   'ResourceGoneError',
 ]);
 

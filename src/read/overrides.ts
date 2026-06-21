@@ -33,6 +33,11 @@ import {
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
+import {
+  GetNamespaceCommand,
+  GetServiceCommand,
+  ServiceDiscoveryClient,
+} from '@aws-sdk/client-servicediscovery';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
@@ -766,7 +771,73 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   return model;
 };
 
+// AWS::ServiceDiscovery::HttpNamespace — Cloud Control GetResource throws
+// UnsupportedActionException (the whole ServiceDiscovery family is a CC read gap,
+// confirmed live). Read via Cloud Map GetNamespace — the CFn physical id IS the
+// namespace Id (ns-xxxx). Project ONLY CFn-modeled props (Name / Description); Id /
+// Arn / ServiceCount / CreateDate / Properties.HttpProperties.HttpName are
+// AWS-managed/read-only noise. An absent namespace returns undefined (-> skipped,
+// or the router maps a genuinely deleted one to `deleted` when not-found propagates).
+const readServiceDiscoveryHttpNamespace: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetNamespaceCommand({ Id: id }));
+  const ns = r.Namespace;
+  if (!ns) return undefined;
+  const model: Record<string, unknown> = {};
+  if (ns.Name !== undefined) model.Name = ns.Name;
+  if (ns.Description !== undefined) model.Description = ns.Description;
+  return model;
+};
+
+// AWS::ServiceDiscovery::Service — same CC read gap. Read via Cloud Map GetService;
+// the CFn physical id IS the service Id (srv-xxxx). Project the CFn-modeled props,
+// mapping the SDK shapes back to CFn PascalCase. DnsConfig.NamespaceId is a
+// deprecated/read-only echo, deliberately not projected (a service in an HTTP
+// namespace has no DnsConfig at all). HealthCheck* are projected only when present
+// so an HTTP service stays CLEAN. Id / Arn / InstanceCount / CreateDate are noise.
+const readServiceDiscoveryService: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetServiceCommand({ Id: id }));
+  const s = r.Service;
+  if (!s) return undefined;
+  const model: Record<string, unknown> = {};
+  if (s.Name !== undefined) model.Name = s.Name;
+  if (s.Description !== undefined) model.Description = s.Description;
+  if (s.NamespaceId !== undefined) model.NamespaceId = s.NamespaceId;
+  if (s.Type !== undefined) model.Type = s.Type;
+  if (s.DnsConfig)
+    model.DnsConfig = {
+      ...(s.DnsConfig.RoutingPolicy !== undefined && { RoutingPolicy: s.DnsConfig.RoutingPolicy }),
+      ...(s.DnsConfig.DnsRecords !== undefined && {
+        DnsRecords: s.DnsConfig.DnsRecords.map((d) => ({ Type: d.Type, TTL: d.TTL })),
+      }),
+    };
+  if (s.HealthCheckConfig)
+    model.HealthCheckConfig = {
+      ...(s.HealthCheckConfig.Type !== undefined && { Type: s.HealthCheckConfig.Type }),
+      ...(s.HealthCheckConfig.ResourcePath !== undefined && {
+        ResourcePath: s.HealthCheckConfig.ResourcePath,
+      }),
+      ...(s.HealthCheckConfig.FailureThreshold !== undefined && {
+        FailureThreshold: s.HealthCheckConfig.FailureThreshold,
+      }),
+    };
+  if (s.HealthCheckCustomConfig)
+    model.HealthCheckCustomConfig = {
+      ...(s.HealthCheckCustomConfig.FailureThreshold !== undefined && {
+        FailureThreshold: s.HealthCheckCustomConfig.FailureThreshold,
+      }),
+    };
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
+  'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,
   'AWS::CodeBuild::Project': readCodeBuildProject,
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,

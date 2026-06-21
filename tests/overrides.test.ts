@@ -15,6 +15,11 @@ import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-ro
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
+import {
+  GetNamespaceCommand,
+  GetServiceCommand,
+  ServiceDiscoveryClient,
+} from '@aws-sdk/client-servicediscovery';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -34,6 +39,7 @@ const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
 const scheduler = mockClient(SchedulerClient);
 const codebuild = mockClient(CodeBuildClient);
+const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -45,7 +51,20 @@ const POLICY =
   '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:Get","Resource":"*"}]}';
 
 beforeEach(() => {
-  for (const m of [s3, sns, sqs, iam, lambda, budgets, route53, glue, logs, scheduler, codebuild])
+  for (const m of [
+    s3,
+    sns,
+    sqs,
+    iam,
+    lambda,
+    budgets,
+    route53,
+    glue,
+    logs,
+    scheduler,
+    codebuild,
+    serviceDiscovery,
+  ])
     m.reset();
 });
 
@@ -1082,6 +1101,102 @@ describe('SDK overrides', () => {
 
     it('undefined when no name is resolvable', async () => {
       expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('ServiceDiscovery (Cloud Map CC read gap)', () => {
+    it('HttpNamespace: GetNamespace by physical id, projects Name + Description only', async () => {
+      serviceDiscovery.on(GetNamespaceCommand).resolves({
+        Namespace: {
+          Id: 'ns-abc',
+          Arn: 'arn:aws:servicediscovery:us-east-1:123456789012:namespace/ns-abc',
+          Name: 'shop',
+          Description: 'the shop namespace',
+          Type: 'HTTP',
+          ServiceCount: 2,
+          Properties: { HttpProperties: { HttpName: 'shop' } },
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::HttpNamespace'](
+        ctx({ Name: 'shop' }, 'ns-abc')
+      );
+      expect(serviceDiscovery.commandCalls(GetNamespaceCommand)[0]?.args[0].input).toEqual({
+        Id: 'ns-abc',
+      });
+      // Arn / Id / Type / ServiceCount / Properties are AWS-managed noise — projected away.
+      expect(out).toEqual({ Name: 'shop', Description: 'the shop namespace' });
+    });
+
+    it('HttpNamespace: omits Description when AWS returns none', async () => {
+      serviceDiscovery.on(GetNamespaceCommand).resolves({ Namespace: { Name: 'shop' } });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::HttpNamespace'](
+        ctx({ Name: 'shop' }, 'ns-abc')
+      );
+      expect(out).toEqual({ Name: 'shop' });
+    });
+
+    it('HttpNamespace: undefined when physical id is empty (-> skipped)', async () => {
+      expect(
+        await SDK_OVERRIDES['AWS::ServiceDiscovery::HttpNamespace'](ctx({ Name: 'shop' }))
+      ).toBeUndefined();
+    });
+
+    it('Service: GetService by physical id, projects the CFn-modeled props', async () => {
+      serviceDiscovery.on(GetServiceCommand).resolves({
+        Service: {
+          Id: 'srv-abc',
+          Arn: 'arn:aws:servicediscovery:us-east-1:123456789012:service/srv-abc',
+          Name: 'api',
+          Description: 'the api service',
+          NamespaceId: 'ns-abc',
+          Type: 'HTTP',
+          InstanceCount: 3,
+          CreateDate: new Date(0),
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::Service'](
+        ctx({ Name: 'api' }, 'srv-abc')
+      );
+      expect(serviceDiscovery.commandCalls(GetServiceCommand)[0]?.args[0].input).toEqual({
+        Id: 'srv-abc',
+      });
+      // No DnsConfig / HealthCheck* for an HTTP service; Arn / InstanceCount / CreateDate dropped.
+      expect(out).toEqual({
+        Name: 'api',
+        Description: 'the api service',
+        NamespaceId: 'ns-abc',
+        Type: 'HTTP',
+      });
+    });
+
+    it('Service: projects DnsConfig (RoutingPolicy + DnsRecords) and HealthCheckConfig when present', async () => {
+      serviceDiscovery.on(GetServiceCommand).resolves({
+        Service: {
+          Name: 'web',
+          NamespaceId: 'ns-dns',
+          DnsConfig: {
+            NamespaceId: 'ns-dns', // deprecated echo — must be dropped
+            RoutingPolicy: 'MULTIVALUE',
+            DnsRecords: [{ Type: 'A', TTL: 60 }],
+          },
+          HealthCheckConfig: { Type: 'HTTP', ResourcePath: '/health', FailureThreshold: 2 },
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::Service'](
+        ctx({ Name: 'web' }, 'srv-dns')
+      );
+      expect(out).toEqual({
+        Name: 'web',
+        NamespaceId: 'ns-dns',
+        DnsConfig: { RoutingPolicy: 'MULTIVALUE', DnsRecords: [{ Type: 'A', TTL: 60 }] },
+        HealthCheckConfig: { Type: 'HTTP', ResourcePath: '/health', FailureThreshold: 2 },
+      });
+    });
+
+    it('Service: undefined when physical id is empty (-> skipped)', async () => {
+      expect(
+        await SDK_OVERRIDES['AWS::ServiceDiscovery::Service'](ctx({ Name: 'api' }))
+      ).toBeUndefined();
     });
   });
 });

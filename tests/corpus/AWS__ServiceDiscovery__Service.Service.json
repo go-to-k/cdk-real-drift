@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Service",
+    "resourceType": "AWS::ServiceDiscovery::Service",
+    "physicalId": "srv-wwgj4ttzpyzthtl6",
+    "constructPath": "CdkRealDriftIntegCloudmapHttp/Service",
+    "declared": {
+      "Description": "cdkrd cloud map http service",
+      "Name": "cdkrd-cloudmap-service",
+      "NamespaceId": "__cdkrd_corpus_unresolved__",
+      "Type": "HTTP"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-cloudmap-service",
+    "Description": "cdkrd cloud map http service",
+    "NamespaceId": "ns-bw3m2isxdue4vwmt",
+    "Type": "HTTP",
+    "DnsConfig": {}
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "Service",
+      "resourceType": "AWS::ServiceDiscovery::Service",
+      "path": "NamespaceId",
+      "physicalId": "srv-wwgj4ttzpyzthtl6",
+      "constructPath": "CdkRealDriftIntegCloudmapHttp/Service"
+    }
+  ]
+}

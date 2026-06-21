@@ -37,6 +37,10 @@ import {
   PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  ServiceDiscoveryClient,
+  UpdateHttpNamespaceCommand,
+} from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
@@ -256,7 +260,28 @@ const writeElbTargetGroupAttributes: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::ServiceDiscovery::HttpNamespace — Cloud Control cannot read OR write this
+// type (UnsupportedActionException), so revert goes through Cloud Map's own
+// UpdateHttpNamespace, whose ONLY mutable field is Description (Name is immutable).
+// Reconstruct the desired model (current read + revert ops) and write its Description
+// back. (Sibling AWS::ServiceDiscovery::Service is intentionally NOT revertable: a
+// service in an HTTP/API-only namespace cannot be updated at all — UpdateService
+// throws InvalidInput "Service in API-only namespace cannot be updated" — so there is
+// nothing to revert; a DNS-namespace service writer can be added if a real gap surfaces.)
+const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId);
+  if (!id) throw new Error('cannot resolve namespace id for revert');
+  const m = await desiredModel('AWS::ServiceDiscovery::HttpNamespace', ctx, ops);
+  await new ServiceDiscoveryClient({ region: ctx.region }).send(
+    new UpdateHttpNamespaceCommand({
+      Id: id,
+      Namespace: { Description: (str(m.Description) ?? '') as string },
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
   'AWS::SQS::QueuePolicy': writeSqsQueuePolicy,
