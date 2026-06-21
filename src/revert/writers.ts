@@ -27,6 +27,7 @@ import {
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
+import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
 import {
   GetWebACLCommand,
   type Scope,
@@ -408,9 +409,60 @@ const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Glue::Job — Cloud Control CAN read this type, but its UpdateResource REJECTS a
+// property patch when the job uses WorkerType + NumberOfWorkers: AWS ALSO returns a
+// computed `MaxCapacity` (and the deprecated `AllocatedCapacity`) on read, and
+// re-submitting BOTH MaxCapacity and WorkerType fails "Please do not set Max Capacity
+// if using Worker Type and Number of Workers" (proven live; the same CC-revalidation
+// class as CloudFront/WAFv2). Route revert through Glue's own GetJob -> apply ops ->
+// UpdateJob, OMITTING MaxCapacity/AllocatedCapacity when WorkerType is set (update-job
+// accepts their absence). Read-only fields (CreatedOn / LastModifiedOn / Name) are not
+// part of JobUpdate and are dropped by the explicit field copy.
+const GLUE_JOB_UPDATE_FIELDS = [
+  'JobMode',
+  'JobRunQueuingEnabled',
+  'Description',
+  'LogUri',
+  'Role',
+  'ExecutionProperty',
+  'Command',
+  'DefaultArguments',
+  'NonOverridableArguments',
+  'Connections',
+  'MaxRetries',
+  'Timeout',
+  'WorkerType',
+  'NumberOfWorkers',
+  'SecurityConfiguration',
+  'NotificationProperty',
+  'GlueVersion',
+  'CodeGenConfigurationNodes',
+  'ExecutionClass',
+  'SourceControlDetails',
+  'MaintenanceWindow',
+] as const;
+const writeGlueJob: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!name) throw new Error('cannot resolve Glue job name for revert');
+  const c = new GlueClient({ region: ctx.region });
+  const got = await c.send(new GetJobCommand({ JobName: name }));
+  if (!got.Job) throw new Error('could not read current Glue job for revert');
+  const m = applyOps(got.Job as unknown as Record<string, unknown>, ops);
+  const update: Record<string, unknown> = {};
+  for (const k of GLUE_JOB_UPDATE_FIELDS) if (m[k] !== undefined) update[k] = m[k];
+  // MaxCapacity / AllocatedCapacity are mutually exclusive with WorkerType — include
+  // them ONLY for a non-WorkerType job (else update-job rejects sending both).
+  if (m.WorkerType === undefined) {
+    if (m.MaxCapacity !== undefined) update.MaxCapacity = m.MaxCapacity;
+    if (m.AllocatedCapacity !== undefined) update.AllocatedCapacity = m.AllocatedCapacity;
+  }
+  await c.send(new UpdateJobCommand({ JobName: name, JobUpdate: update as never }));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
   'AWS::WAFv2::WebACL': writeWafv2WebAcl,
+  'AWS::Glue::Job': writeGlueJob,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,

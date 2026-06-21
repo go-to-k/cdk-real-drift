@@ -27,6 +27,7 @@ import {
   DocDBClient,
   ModifyDBClusterCommand,
 } from '@aws-sdk/client-docdb';
+import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
 import {
   GetTopicAttributesCommand,
   SetTopicAttributesCommand,
@@ -56,6 +57,7 @@ const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const cloudfront = mockClient(CloudFrontClient);
 const wafv2 = mockClient(WAFV2Client);
+const glue = mockClient(GlueClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -93,6 +95,73 @@ beforeEach(() => {
   docdb.reset();
   cloudfront.reset();
   wafv2.reset();
+  glue.reset();
+});
+
+describe('Glue Job writer (CC UpdateResource rejects MaxCapacity+WorkerType)', () => {
+  const timeoutOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/Timeout',
+    value,
+    human: 'Timeout -> deployed-template value',
+  });
+  it('reverts via GetJob -> UpdateJob, OMITTING MaxCapacity/AllocatedCapacity for a WorkerType job', async () => {
+    // AWS returns a computed MaxCapacity for a WorkerType job; re-sending both via CC
+    // UpdateResource fails "do not set Max Capacity if using Worker Type". The writer
+    // drops MaxCapacity/AllocatedCapacity when WorkerType is set.
+    glue.on(GetJobCommand).resolves({
+      Job: {
+        Name: 'j',
+        Role: 'arn:aws:iam::111111111111:role/r',
+        Command: { Name: 'glueetl', ScriptLocation: 's3://b/s.py' },
+        Timeout: 20,
+        WorkerType: 'G.1X',
+        NumberOfWorkers: 2,
+        GlueVersion: '4.0',
+        MaxCapacity: 0.0625, // AWS-computed, must be dropped
+        AllocatedCapacity: 2, // deprecated alias, dropped
+        CreatedOn: new Date(0), // read-only, not in JobUpdate
+      },
+    } as never);
+    glue.on(UpdateJobCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: 'j' }), [timeoutOp(10)]);
+    const calls = glue.commandCalls(UpdateJobCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as {
+      JobName: string;
+      JobUpdate: Record<string, unknown>;
+    };
+    expect(input.JobName).toBe('j');
+    expect(input.JobUpdate.Timeout).toBe(10); // reverted scalar
+    expect(input.JobUpdate.WorkerType).toBe('G.1X'); // round-tripped
+    expect('MaxCapacity' in input.JobUpdate).toBe(false); // dropped (the bug trigger)
+    expect('AllocatedCapacity' in input.JobUpdate).toBe(false);
+    expect('CreatedOn' in input.JobUpdate).toBe(false); // read-only excluded
+  });
+
+  it('KEEPS MaxCapacity for a non-WorkerType job', async () => {
+    glue.on(GetJobCommand).resolves({
+      Job: {
+        Name: 'j',
+        Role: 'arn:aws:iam::111111111111:role/r',
+        Command: { Name: 'glueetl' },
+        Timeout: 20,
+        MaxCapacity: 10,
+      },
+    } as never);
+    glue.on(UpdateJobCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: 'j' }), [timeoutOp(10)]);
+    const input = glue.commandCalls(UpdateJobCommand)[0]!.args[0].input as unknown as {
+      JobUpdate: Record<string, unknown>;
+    };
+    expect(input.JobUpdate.MaxCapacity).toBe(10);
+  });
+
+  it('throws when the job name is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: '', declared: {} }), [timeoutOp(10)])
+    ).rejects.toThrow(/Glue job name/);
+  });
 });
 
 describe('WAFv2 WebACL writer (CC UpdateResource rejects on empty Description)', () => {
