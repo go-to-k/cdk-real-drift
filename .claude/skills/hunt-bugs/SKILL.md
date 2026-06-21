@@ -145,6 +145,29 @@ When a finding is a real bug:
    is now correct.
 5. **Keep the fixture** as a committed regression integ under
    `tests/integration/<name>/`, in the SAME PR as the fix — never defer the integ.
+6. **If the bug is a CLASS, prove it's closed for EVERY affected type — don't stop
+   at the one resource you happened to hit.** Most real bugs here are not specific
+   to the type that surfaced them: they live in shared code keyed on a schema flag
+   or a normalizer applied to many types (e.g. #252 — a property that is BOTH
+   write-only and create-only was re-included into a Cloud Control patch and
+   rejected; found on ElastiCache, but RDS / DynamoDB / EC2 / Redshift / S3 / EFS …
+   all have such properties). When the root cause generalizes:
+   - **Map the blast radius.** Enumerate which other types/properties share the
+     trigger — e.g. `aws cloudformation describe-type --type RESOURCE --type-name
+<T> --query Schema` and compute the relevant intersection across common types.
+     Name them in the PR so the coverage is visible.
+   - **Add a DATA-DRIVEN invariant test, not just a per-type one.** A hand-built
+     single-type unit test proves the symptom is gone for ONE shape; it does not
+     prove no oversight elsewhere. Drive the test from the golden corpus's REAL
+     schemas: load every `tests/corpus/*.json` (via `reviveSchema`), reproduce the
+     trigger for each, and assert the invariant holds for ALL of them. The corpus
+     already spans ~17 real types, and the test self-extends as the corpus grows —
+     a far stronger guard than enumerating types by hand. (`tests/revert-plan.test.ts`
+     `create-only invariant over all real corpus schemas` is the reference.)
+   - **Confirm it fails without the fix and passes with it**, like any regression
+     test — then you have proof the whole class is closed, not just one instance.
+   - This pairs with step 5's corpus harvest: harvesting rich cases during hunts is
+     what makes the corpus a strong enough substrate to drive these invariants.
 
 ### 7. Cleanup — non-negotiable (see below), then ship
 
