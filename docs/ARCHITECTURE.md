@@ -566,10 +566,16 @@ only when non-zero — unrecorded values are named as such, never folded into
     "do not set Max Capacity if using Worker Type" (proven live), so revert reads
     `GetJob`, applies the ops, and re-submits via `UpdateJob` OMITTING
     MaxCapacity/AllocatedCapacity when WorkerType is set (other JobUpdate fields verbatim;
-    read-only CreatedOn/LastModifiedOn excluded). The recurring shape: a CC type is
-    READABLE but its full-model UpdateResource re-validation rejects a field AWS itself
-    returns — the per-type SDK writer re-submits via the resource's own update API,
-    omitting the offending field. Only a LIVE detect→revert→CLEAN cycle catches these.
+    read-only CreatedOn/LastModifiedOn excluded). `AWS::OpenSearchService::Domain` is the
+    SAME class: CC `UpdateResource` re-submits the full model and AWS's own legacy
+    `override_main_response_version` AdvancedOption is rejected as "Unrecognized advanced
+    option" (proven live); revert goes through `UpdateDomainConfig` (a PARTIAL API)
+    sending ONLY the option properties the ops touch, so the untouched AdvancedOptions is
+    never re-submitted (and an AdvancedOptions revert drops the AWS-managed key). The
+    recurring shape: a CC type is READABLE but its full-model UpdateResource re-validation
+    rejects a field AWS itself returns — the per-type SDK writer re-submits via the
+    resource's own update API, omitting the offending field. Only a LIVE
+    detect→revert→CLEAN cycle catches these.
   - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
     ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
