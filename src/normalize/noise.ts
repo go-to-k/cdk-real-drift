@@ -463,9 +463,35 @@ export function identityField(arr: unknown[]): string | undefined {
     )
   );
 }
-export function canonicalizeTagListsDeep(v: unknown): unknown {
+// Identity-keyed OBJECT arrays that carry a per-element `Name` (so `identityField`
+// would otherwise sort them) but whose ARRAY ORDER is SEMANTICALLY SIGNIFICANT.
+// Sorting such an array is doubly wrong: (a) it MASKS a genuine reorder as no-drift
+// (FP/FN), and (b) the drift finding's array index then points into the SORTED model
+// while the revert (Cloud Control `UpdateResource`) patch addresses the RAW UNSORTED
+// live model — so the patch lands on the WRONG element and the revert silently no-ops
+// (the same index-misalignment class as the policy-statement bug, but CC-side).
+// Keyed by resourceType -> the set of property KEY NAMES (at ANY depth) whose array
+// value must stay in declared order. CodePipeline Stages execute top-to-bottom, and
+// each stage's Actions are returned by Cloud Control in declared order; both compare
+// positionally. The exclusion is type-scoped (only applied when canonicalizeForCompare
+// is given this resourceType), so a same-named array on an unrelated type is unaffected.
+export const ORDER_SIGNIFICANT_ARRAY_KEYS: Record<string, ReadonlySet<string>> = {
+  'AWS::CodePipeline::Pipeline': new Set(['Stages', 'Actions']),
+};
+export function canonicalizeTagListsDeep(v: unknown, orderSig?: ReadonlySet<string>): unknown {
+  return canonicalizeTagLists(v, orderSig, undefined);
+}
+// `keyHere` is the property name the value `v` sits under (undefined at the root and
+// for array ELEMENTS), so an array directly under an order-significant key is left in
+// place while its elements still recurse for nested tag/id-list canonicalization.
+function canonicalizeTagLists(
+  v: unknown,
+  orderSig: ReadonlySet<string> | undefined,
+  keyHere: string | undefined
+): unknown {
   if (Array.isArray(v)) {
-    const mapped = v.map(canonicalizeTagListsDeep);
+    const mapped = v.map((el) => canonicalizeTagLists(el, orderSig, undefined));
+    if (keyHere !== undefined && orderSig?.has(keyHere)) return mapped;
     const idf = mapped.length > 0 ? identityField(mapped) : undefined;
     if (idf) {
       return [...mapped].sort((a, b) => {
@@ -480,7 +506,7 @@ export function canonicalizeTagListsDeep(v: unknown): unknown {
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v as Record<string, unknown>))
-      out[k] = canonicalizeTagListsDeep(val);
+      out[k] = canonicalizeTagLists(val, orderSig, k);
     return out;
   }
   return v;

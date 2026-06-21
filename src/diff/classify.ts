@@ -267,7 +267,8 @@ export function normalizeLiveModel(
 ): Record<string, unknown> {
   const oaiMap = opts.oaiCanonicalIds ?? {};
   const live = canonicalizeForCompare(
-    rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap)
+    rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap),
+    opts.resourceType
   ) as Record<string, unknown>;
   deepStripPaths(live, schema.readOnlyPaths);
   deepStripPaths(live, schema.writeOnlyPaths);
@@ -299,10 +300,10 @@ export function classifyResource(
   // normalize identically (see pipeline.ts).
   const oaiMap = opts.oaiCanonicalIds ?? {};
   const live = normalizeLiveModel(liveRaw, schema, { oaiCanonicalIds: oaiMap, resourceType });
-  const declared = canonicalizeForCompare(rewriteOaiPrincipalsDeep(declaredIn, oaiMap)) as Record<
-    string,
-    unknown
-  >;
+  const declared = canonicalizeForCompare(
+    rewriteOaiPrincipalsDeep(declaredIn, oaiMap),
+    resourceType
+  ) as Record<string, unknown>;
   // Drop a parent's reflected child-aggregate property (e.g. SNS Topic.Subscription)
   // UNLESS the template declares it inline — cdkrd tracks those children as their own
   // resources (+ the `added` enumerator), so comparing the reflection would double-report
