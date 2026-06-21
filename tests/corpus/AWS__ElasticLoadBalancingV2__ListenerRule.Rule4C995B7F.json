@@ -1,0 +1,111 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule4C995B7F",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-ZOGq8SCU7OMY/ae1fe96c6ac55de6/7a6edcf8edb8f8b6/f7898cec75295d48",
+    "constructPath": "CdkRealDriftIntegElbv2ListenerRuleRich/Rule",
+    "declared": {
+      "Actions": [
+        {
+          "FixedResponseConfig": {
+            "ContentType": "text/plain",
+            "MessageBody": "ok",
+            "StatusCode": "200"
+          },
+          "Type": "fixed-response"
+        }
+      ],
+      "Conditions": [
+        {
+          "Field": "path-pattern",
+          "PathPatternConfig": {
+            "Values": ["/api/*", "/v2/*"]
+          }
+        },
+        {
+          "Field": "host-header",
+          "HostHeaderConfig": {
+            "Values": ["example.com", "www.example.com"]
+          }
+        },
+        {
+          "Field": "http-header",
+          "HttpHeaderConfig": {
+            "HttpHeaderName": "X-Custom",
+            "Values": ["a"]
+          }
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkRea-Alb16-ZOGq8SCU7OMY/ae1fe96c6ac55de6/7a6edcf8edb8f8b6",
+      "Priority": 10
+    }
+  },
+  "liveRaw": {
+    "IsDefault": false,
+    "Actions": [
+      {
+        "FixedResponseConfig": {
+          "ContentType": "text/plain",
+          "StatusCode": "200",
+          "MessageBody": "ok"
+        },
+        "Type": "fixed-response"
+      }
+    ],
+    "Priority": 10,
+    "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-ZOGq8SCU7OMY/ae1fe96c6ac55de6/7a6edcf8edb8f8b6/f7898cec75295d48",
+    "Transforms": [],
+    "Conditions": [
+      {
+        "Field": "path-pattern",
+        "Values": ["/api/*", "/v2/*"],
+        "PathPatternConfig": {
+          "Values": ["/api/*", "/v2/*"]
+        }
+      },
+      {
+        "Field": "http-header",
+        "HttpHeaderConfig": {
+          "Values": ["a"],
+          "HttpHeaderName": "X-Custom"
+        },
+        "Values": []
+      },
+      {
+        "Field": "host-header",
+        "Values": ["example.com", "www.example.com"],
+        "HostHeaderConfig": {
+          "Values": ["example.com", "www.example.com"]
+        }
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["IsDefault", "RuleArn"],
+    "writeOnly": ["ListenerArn"],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["IsDefault", "RuleArn"],
+    "writeOnlyPaths": ["Actions.*.AuthenticateOidcConfig.ClientSecret", "ListenerArn"],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Rule4C995B7F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "path": "ListenerArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-ZOGq8SCU7OMY/ae1fe96c6ac55de6/7a6edcf8edb8f8b6/f7898cec75295d48",
+      "constructPath": "CdkRealDriftIntegElbv2ListenerRuleRich/Rule"
+    }
+  ]
+}

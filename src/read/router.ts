@@ -84,6 +84,12 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGateway::Authorizer': compositeWith('RestApiId'),
   'AWS::Cognito::UserPoolDomain': compositeWith('UserPoolId'),
   'AWS::Cognito::UserPoolResourceServer': compositeWith('UserPoolId'),
+  // AutoScaling LifecycleHook primaryIdentifier is [AutoScalingGroupName,
+  // LifecycleHookName] — parent-first. The CFn physical id is the bare
+  // LifecycleHookName; the ASG name comes from the resolved declared Ref. Without this
+  // a declared hook ValidationException-skips (read-gap). Verified live
+  // (autoscaling-lifecyclehook-rich).
+  'AWS::AutoScaling::LifecycleHook': compositeWith('AutoScalingGroupName'),
   // ApiGateway::Deployment is the odd one out: its primaryIdentifier is
   // `[DeploymentId, RestApiId]` — CHILD first (verified live R129: `RestApiId|DeploymentId`
   // returns not-found; only `DeploymentId|RestApiId` reads). The CFn physical id is the
