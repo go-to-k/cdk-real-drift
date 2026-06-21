@@ -1,0 +1,93 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Repo",
+    "resourceType": "AWS::CodeArtifact::Repository",
+    "physicalId": "arn:aws:codeartifact:us-east-1:111111111111:repository/cdkrd-ca-domain/cdkrd-ca-repo",
+    "constructPath": "CdkRealDriftIntegCodeArtifactRich/Repo",
+    "declared": {
+      "Description": "cdk-real-drift integ repository",
+      "DomainName": "cdkrd-ca-domain",
+      "ExternalConnections": ["public:npmjs"],
+      "PermissionsPolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ReadFromRepo",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Action": ["codeartifact:ReadFromRepository", "codeartifact:GetRepositoryEndpoint"],
+            "Resource": "*"
+          }
+        ]
+      },
+      "RepositoryName": "cdkrd-ca-repo",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdk-real-drift integ repository",
+    "PermissionsPolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["codeartifact:ReadFromRepository", "codeartifact:GetRepositoryEndpoint"],
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "ReadFromRepo"
+        }
+      ]
+    },
+    "DomainName": "cdkrd-ca-domain",
+    "RepositoryName": "cdkrd-ca-repo",
+    "ExternalConnections": ["public:npmjs"],
+    "Arn": "arn:aws:codeartifact:us-east-1:111111111111:repository/cdkrd-ca-domain/cdkrd-ca-repo",
+    "DomainOwner": "111111111111",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCodeArtifactRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Repo",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCodeArtifactRich/f1cac490-6d8d-11f1-beb2-0ea31a62190d",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-ca-repo"
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainOwner", "Name"],
+    "writeOnly": [],
+    "createOnly": ["DomainName", "DomainOwner", "RepositoryName"],
+    "readOnlyPaths": ["Arn", "DomainOwner", "Name"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName", "DomainOwner", "RepositoryName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

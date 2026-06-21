@@ -1,0 +1,96 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Domain",
+    "resourceType": "AWS::CodeArtifact::Domain",
+    "physicalId": "arn:aws:codeartifact:us-east-1:111111111111:domain/cdkrd-ca-domain",
+    "constructPath": "CdkRealDriftIntegCodeArtifactRich/Domain",
+    "declared": {
+      "DomainName": "cdkrd-ca-domain",
+      "PermissionsPolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "ReadFromDomain",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Action": [
+              "codeartifact:GetDomainPermissionsPolicy",
+              "codeartifact:ListRepositoriesInDomain",
+              "codeartifact:GetAuthorizationToken"
+            ],
+            "Resource": "*"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Owner": "111111111111",
+    "PermissionsPolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": [
+            "codeartifact:GetDomainPermissionsPolicy",
+            "codeartifact:ListRepositoriesInDomain",
+            "codeartifact:GetAuthorizationToken"
+          ],
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "ReadFromDomain"
+        }
+      ]
+    },
+    "DomainName": "cdkrd-ca-domain",
+    "EncryptionKey": "arn:aws:kms:us-east-1:111111111111:key/f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+    "Arn": "arn:aws:codeartifact:us-east-1:111111111111:domain/cdkrd-ca-domain",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCodeArtifactRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Domain",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCodeArtifactRich/f1cac490-6d8d-11f1-beb2-0ea31a62190d",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-ca-domain"
+  },
+  "schema": {
+    "readOnly": ["Arn", "EncryptionKey", "Name", "Owner"],
+    "writeOnly": [],
+    "createOnly": ["DomainName", "EncryptionKey"],
+    "readOnlyPaths": ["Arn", "EncryptionKey", "Name", "Owner"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName", "EncryptionKey"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
