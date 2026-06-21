@@ -1072,6 +1072,36 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ).toEqual(['ScheduleExpression']);
     });
   });
+
+  // AppSync ApiKey Expires is an epoch-seconds timestamp AWS rounds DOWN to the hour,
+  // so a template's exact epoch reads back as the hour floor — a false declared drift.
+  describe('epoch-hour equivalence (AppSync ApiKey Expires)', () => {
+    const T = 'AWS::AppSync::ApiKey';
+    it('same hour (declared exact vs live hour-floor) is NOT drift', () => {
+      // 1784632175 floors to 1784631600 (the hour) — same hour, not drift.
+      expect(
+        classifyResource(res(T, { Expires: 1784632175 }), { Expires: 1784631600 }, emptySchema)
+      ).toEqual([]);
+    });
+    it('a different hour IS drift', () => {
+      expect(
+        tiers(
+          classifyResource(res(T, { Expires: 1784631600 }), { Expires: 1784638800 }, emptySchema)
+        ).declared
+      ).toEqual(['Expires']);
+    });
+    it('the epoch-hour fold is scoped per-type+path (other types stay strict)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::S3::Bucket', { Expires: 1784632175 }),
+            { Expires: 1784631600 },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Expires']);
+    });
+  });
 });
 
 describe('unordered-array declared false positives (R88, found by the wave-2 integ fixtures)', () => {

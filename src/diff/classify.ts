@@ -35,6 +35,8 @@ import {
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
+  EPOCH_HOUR_PATHS,
+  isEpochHourEqual,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   RATE_EXPRESSION_PATHS,
@@ -558,6 +560,10 @@ export function classifyResource(
         RATE_EXPRESSION_PATHS[resourceType]?.has(d.path) &&
         isEquivalentRateExpression(d.stateValue, d.awsValue)
       )
+        continue;
+      // Per-type epoch-seconds paths AWS rounds DOWN to the hour (AppSync ApiKey
+      // Expires): the same hour is not drift; a change to a different hour still differs.
+      if (EPOCH_HOUR_PATHS[resourceType]?.has(d.path) && isEpochHourEqual(d.stateValue, d.awsValue))
         continue;
       // Per-type DNS-FQDN paths whose trailing `.` is optional (Route53 HostedZone Name:
       // declared `example.com`, CC returns `example.com.`) — equal once stripped.

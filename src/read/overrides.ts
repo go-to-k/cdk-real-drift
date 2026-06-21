@@ -6,6 +6,7 @@
 // differ from the underlying target. Returns CFn-shaped properties for the
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
+import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
@@ -910,7 +911,31 @@ const readDocDbInstance: OverrideReader = async ({ physicalId, declared, region 
   return model;
 };
 
+// AWS::AppSync::ApiKey — Cloud Control GetResource throws UnsupportedActionException
+// (NON_PROVISIONABLE; confirmed live), so a declared API key was `skipped`. Read via
+// AppSync ListApiKeys. The CFn physical id is the ARN
+// `arn:aws:appsync:<region>:<acct>:apis/<apiId>/apikeys/<keyId>` — parse BOTH ids from
+// it (fall back to declared.ApiId). Project the CFn-modeled props: ApiId, Description,
+// Expires (epoch seconds). Description is omitted when AWS returns none/"" so a
+// no-description key stays CLEAN; Expires is undeclared in the common auto-key case
+// (-> recorded, not a declared FP).
+const readAppSyncApiKey: OverrideReader = async ({ physicalId, declared, region }) => {
+  const m = /apis\/([^/]+)\/apikeys\/([^/]+)/.exec(str(physicalId) ?? '');
+  const apiId = m?.[1] ?? str(declared.ApiId);
+  const keyId = m?.[2];
+  if (!apiId) return undefined;
+  const c = new AppSyncClient({ region, ...READ_RETRY });
+  const keys = (await c.send(new ListApiKeysCommand({ apiId }))).apiKeys ?? [];
+  const k = keyId ? keys.find((x) => x.id === keyId) : keys[0];
+  if (!k) return undefined; // key deleted out of band -> router maps undefined to skipped
+  const model: Record<string, unknown> = { ApiId: apiId };
+  if (k.description !== undefined && k.description !== '') model.Description = k.description;
+  if (k.expires !== undefined) model.Expires = k.expires;
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::AppSync::ApiKey': readAppSyncApiKey,
   'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
   'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,
   'AWS::DocDB::DBCluster': readDocDbCluster,
