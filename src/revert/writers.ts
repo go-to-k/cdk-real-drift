@@ -21,6 +21,11 @@
 //     reconstruction would be missing the required limit and would wipe the cost
 //     filters/types on write. Too divergent from the reader to revert safely ->
 //     left not-revertable.
+import {
+  CloudFrontClient,
+  GetDistributionConfigCommand,
+  UpdateDistributionCommand,
+} from '@aws-sdk/client-cloudfront';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
 import {
   ElasticLoadBalancingV2Client,
@@ -318,7 +323,41 @@ const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
   await new DocDBClient({ region: ctx.region }).send(new ModifyDBClusterCommand(input));
 };
 
+// AWS::CloudFront::Distribution — Cloud Control CAN read this type, but its
+// UpdateResource REJECTS even a minimal single-property patch: applying the patch
+// re-validates the WHOLE distribution and the default ViewerCertificate
+// representation trips "IamCertificateId or AcmCertificateArn can be specified only
+// if SslSupportMethod must also be specified and vice-versa" (proven live — EVERY
+// CloudFront revert failed). Route revert through CloudFront's own GetDistributionConfig
+// -> apply ops -> UpdateDistribution(IfMatch=ETag) instead: a full-config round-trip
+// re-submits AWS's own ViewerCertificate verbatim, so it validates. The revert ops are
+// CFn-pointer paths (`/DistributionConfig/<prop>`); applying a SCALAR op to the freshly
+// read SDK config touches only that property, so the CFn-vs-SDK array-shape difference
+// (Origins as `[...]` vs `{Quantity,Items}`) is irrelevant for the common scalar drifts
+// (Comment / DefaultRootObject / Enabled / PriceClass / HttpVersion / WebACLId / …).
+const writeCloudFrontDistribution: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId);
+  if (!id) throw new Error('cannot resolve distribution id for revert');
+  const c = new CloudFrontClient({ region: ctx.region });
+  const cur = await c.send(new GetDistributionConfigCommand({ Id: id }));
+  if (!cur.DistributionConfig || !cur.ETag)
+    throw new Error('could not read current distribution config for revert');
+  const reverted = applyOps({ DistributionConfig: cur.DistributionConfig }, ops) as {
+    DistributionConfig: Record<string, unknown>;
+  };
+  await c.send(
+    new UpdateDistributionCommand({
+      Id: id,
+      IfMatch: cur.ETag,
+      // the SDK DistributionConfig shape is preserved verbatim except for the scalar
+      // properties the revert ops set, so it round-trips validly.
+      DistributionConfig: reverted.DistributionConfig as never,
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,

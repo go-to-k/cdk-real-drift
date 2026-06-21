@@ -1,0 +1,96 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BPolicy3F02723E",
+    "resourceType": "AWS::S3::BucketPolicy",
+    "physicalId": "cdkrd-s3-events-fixture",
+    "constructPath": "CdkRealDriftIntegS3Events/B/Policy",
+    "declared": {
+      "Bucket": "cdkrd-s3-events-fixture",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": "s3:*",
+            "Condition": {
+              "Bool": {
+                "aws:SecureTransport": "false"
+              }
+            },
+            "Effect": "Deny",
+            "Principal": {
+              "AWS": "*"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkrd-s3-events-fixture",
+              "arn:aws:s3:::cdkrd-s3-events-fixture/*"
+            ]
+          },
+          {
+            "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:role/CdkRealDriftIntegS3Events-CustomS3AutoDeleteObjects-3s9P8yV3jIbm"
+            },
+            "Resource": [
+              "arn:aws:s3:::cdkrd-s3-events-fixture",
+              "arn:aws:s3:::cdkrd-s3-events-fixture/*"
+            ]
+          }
+        ],
+        "Version": "2012-10-17"
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkrd-s3-events-fixture",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Deny",
+          "Principal": {
+            "AWS": "*"
+          },
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::cdkrd-s3-events-fixture",
+            "arn:aws:s3:::cdkrd-s3-events-fixture/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:role/CdkRealDriftIntegS3Events-CustomS3AutoDeleteObjects-3s9P8yV3jIbm"
+          },
+          "Action": ["s3:PutBucketPolicy", "s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+          "Resource": [
+            "arn:aws:s3:::cdkrd-s3-events-fixture",
+            "arn:aws:s3:::cdkrd-s3-events-fixture/*"
+          ]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

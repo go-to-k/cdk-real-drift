@@ -1,0 +1,98 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SM934E715A",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:cdkrd-sfn-standard",
+    "constructPath": "CdkRealDriftIntegSfnStandard/SM",
+    "declared": {
+      "DefinitionString": "{\"StartAt\":\"P\",\"States\":{\"P\":{\"Type\":\"Pass\",\"End\":true}}}",
+      "LoggingConfiguration": {
+        "Destinations": [
+          {
+            "CloudWatchLogsLogGroup": {
+              "LogGroupArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegSfnStandard-Logs6819BB44-rIU7E4SKgtxS:*"
+            }
+          }
+        ],
+        "IncludeExecutionData": true,
+        "Level": "ALL"
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfnStandard-SMRole49C19C48-DJxV3EchRGIW",
+      "StateMachineName": "cdkrd-sfn-standard",
+      "StateMachineType": "STANDARD",
+      "TracingConfiguration": {
+        "Enabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\"StartAt\":\"P\",\"States\":{\"P\":{\"Type\":\"Pass\",\"End\":true}}}",
+    "EncryptionConfiguration": {
+      "Type": "AWS_OWNED_KEY"
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": true,
+      "Destinations": [
+        {
+          "CloudWatchLogsLogGroup": {
+            "LogGroupArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegSfnStandard-Logs6819BB44-rIU7E4SKgtxS:*"
+          }
+        }
+      ],
+      "Level": "ALL"
+    },
+    "StateMachineRevisionId": "fe2d772f-09b2-47b5-a6f7-7994e6e1bc36",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:cdkrd-sfn-standard",
+    "StateMachineName": "cdkrd-sfn-standard",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfnStandard-SMRole49C19C48-DJxV3EchRGIW",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSfnStandard/85aa9d20-6d48-11f1-962f-0e40573c42e5",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSfnStandard",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SM934E715A",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-sfn-standard",
+    "StateMachineType": "STANDARD",
+    "TracingConfiguration": {
+      "Enabled": true
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SM934E715A",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "Type": "AWS_OWNED_KEY"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:cdkrd-sfn-standard",
+      "constructPath": "CdkRealDriftIntegSfnStandard/SM"
+    }
+  ]
+}

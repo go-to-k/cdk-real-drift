@@ -1,0 +1,204 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "B08E7C7AF",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrd-s3-events-fixture",
+    "constructPath": "CdkRealDriftIntegS3Events/B",
+    "declared": {
+      "AccelerateConfiguration": {
+        "AccelerationStatus": "Enabled"
+      },
+      "BucketEncryption": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "BucketName": "cdkrd-s3-events-fixture",
+      "MetricsConfigurations": [
+        {
+          "Id": "EntireBucket"
+        }
+      ],
+      "OwnershipControls": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "aws-cdk:auto-delete-objects",
+          "Value": "true"
+        }
+      ],
+      "VersioningConfiguration": {
+        "Status": "Enabled"
+      }
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrd-s3-events-fixture.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrd-s3-events-fixture.s3-website-us-east-1.amazonaws.com",
+    "NotificationConfiguration": {
+      "TopicConfigurations": [],
+      "QueueConfigurations": [],
+      "LambdaConfigurations": [],
+      "EventBridgeConfiguration": {
+        "EventBridgeEnabled": true
+      }
+    },
+    "DualStackDomainName": "cdkrd-s3-events-fixture.s3.dualstack.us-east-1.amazonaws.com",
+    "VersioningConfiguration": {
+      "Status": "Enabled"
+    },
+    "MetricsConfigurations": [
+      {
+        "Id": "EntireBucket"
+      }
+    ],
+    "AbacStatus": "Disabled",
+    "AccelerateConfiguration": {
+      "AccelerationStatus": "Enabled"
+    },
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrd-s3-events-fixture",
+    "RegionalDomainName": "cdkrd-s3-events-fixture.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkrd-s3-events-fixture",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3Events",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "B08E7C7AF",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3Events/81253c10-6d48-11f1-b8e5-0e1487cb39e7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "true",
+        "Key": "aws-cdk:auto-delete-objects"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "B08E7C7AF",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "NotificationConfiguration",
+      "actual": {
+        "TopicConfigurations": [],
+        "QueueConfigurations": [],
+        "LambdaConfigurations": [],
+        "EventBridgeConfiguration": {
+          "EventBridgeEnabled": true
+        }
+      },
+      "physicalId": "cdkrd-s3-events-fixture",
+      "constructPath": "CdkRealDriftIntegS3Events/B"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "B08E7C7AF",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrd-s3-events-fixture",
+      "constructPath": "CdkRealDriftIntegS3Events/B"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "B08E7C7AF",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrd-s3-events-fixture",
+      "constructPath": "CdkRealDriftIntegS3Events/B"
+    }
+  ]
+}

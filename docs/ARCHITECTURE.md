@@ -541,7 +541,17 @@ only when non-zero — unrecorded values are named as such, never folded into
     ([apply-ops.ts](../src/revert/apply-ops.ts), pure) → SDK `Put*`. Covers
     `AWS::S3::BucketPolicy`, `AWS::SNS::TopicPolicy`, `AWS::SQS::QueuePolicy`,
     `AWS::IAM::Policy`, and `AWS::IAM::ManagedPolicy` (`CreatePolicyVersion` +
-    SetAsDefault, pruning the oldest version at the 5-version cap).
+    SetAsDefault, pruning the oldest version at the 5-version cap),
+    `AWS::ServiceDiscovery::HttpNamespace` (`UpdateHttpNamespace`),
+    `AWS::DocDB::DBCluster` (`ModifyDBCluster`), and
+    `AWS::CloudFront::Distribution` — CloudFront is CC-READABLE but its
+    `UpdateResource` REJECTS even a minimal single-property patch (applying it
+    re-validates the whole distribution and the default ViewerCertificate trips a
+    `SslSupportMethod` validation, proven live — EVERY CloudFront revert failed),
+    so revert reads `GetDistributionConfig`, applies the ops, and re-submits the
+    full config via `UpdateDistribution(IfMatch=ETag)` so AWS's own
+    ViewerCertificate round-trips verbatim (robust for the common scalar
+    `DistributionConfig` drifts: Comment / DefaultRootObject / Enabled / …).
   - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
     ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
