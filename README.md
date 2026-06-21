@@ -558,18 +558,25 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
 - **Lambda Permission:** if only the specific statement was removed out of band
   (while the function's policy still exists), it is reported as `skipped`, not
   `deleted` — identifying the exact statement would need its `StatementId`.
-- **IAM ManagedPolicy attachments:** `cdkrd` compares a managed policy's
-  `Roles`/`Users`/`Groups` **attachment** lists **asymmetrically**. A managed policy
-  is commonly attached from several places (the `AWS::IAM::ManagedPolicy`'s own
-  lists, a role's `ManagedPolicyArns`, a separate attachment resource, the console),
-  so the live attachment set is a **union** that legitimately exceeds any one stack's
-  intent. cdkrd therefore reports only a **declared attachment that is MISSING from
-  live** (an out-of-band **detach** — a privilege the stack intends was removed)
-  and **ignores** live-only members (the union). This catches the real removal
-  without the false drift a symmetric compare (e.g. `cdk drift`) raises on every
-  shared policy. A detach is revertable: `revert` re-attaches the declared member
-  (`AttachRolePolicy`/`AttachUserPolicy`/`AttachGroupPolicy`) without touching the
-  union members. The policy **document** (and Path/Description) is compared as usual.
+- **IAM ManagedPolicy attachments:** `cdkrd` tiers a managed policy's
+  `Roles`/`Users`/`Groups` **attachment** lists per member. A managed policy is
+  commonly attached from several places (its own lists, a role's
+  `ManagedPolicyArns`, a separate attachment resource, the console), so the live
+  set is a **union** that legitimately exceeds any one stack's intent — a
+  symmetric compare (e.g. `cdk drift`) false-drifts on every shared policy. So:
+  - a **declared** attachment **missing** from live is an out-of-band **detach**
+    — reported (a privilege the stack intends was removed) and **revertable**:
+    `revert` re-attaches that one member without touching the union;
+  - a **live-only** member (the union) is surfaced as an **undeclared** value,
+    not a false drift — `record` it to accept the current attachments, and a
+    **new, unexpected** attachment (e.g. a console grant to another principal)
+    then shows up as drift against the baseline (detection-only; remove one with
+    `--remove-unrecorded`).
+
+  So both a removed declared attachment and an added unexpected one are caught,
+  without the union false positive. The policy **document** (and
+  Path/Description) is compared as usual.
+
 - **AppSync GraphQL schema.** The `AWS::AppSync::GraphQLSchema` resource (a CDK
   `GraphqlApi`'s schema `Definition`) is reported `skipped`: Cloud Control has
   **no READ** for the type (`UnsupportedActionException`), and AppSync's only

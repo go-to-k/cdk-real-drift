@@ -109,21 +109,27 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
-// Per-type attachment-list properties compared ASYMMETRICALLY (declared∖live only).
+// Per-type attachment-list properties handled by tier rather than a positional compare.
 // AWS::IAM::ManagedPolicy's `Roles`/`Users`/`Groups` name the principals a managed
-// policy is attached to — but the same policy is commonly attached from SEVERAL
-// places (a role's own `ManagedPolicyArns`, a separate AWS::IAM::Policy/attachment
-// resource, another stack, the console), so the LIVE set is a UNION that legitimately
-// exceeds any one stack's intent. A symmetric compare would false-drift on every
-// shared policy (the FP `cdk drift` suffers). So:
+// policy is attached to — but the same policy is commonly attached from SEVERAL places
+// (a role's own `ManagedPolicyArns`, a separate AWS::IAM::Policy/attachment resource,
+// another stack, the console), so the LIVE set is a UNION that legitimately exceeds any
+// one stack's intent. A symmetric compare would false-DRIFT on every shared policy (the
+// FP `cdk drift` raises). So each member is tiered by WHO declared it:
 //   - a DECLARED member MISSING from live -> declared drift (an out-of-band DETACH —
-//     security-relevant: a privilege the stack intends was removed). The real FN the
-//     old "don't compare attachment lists at all" boundary missed.
-//   - a live member NOT declared          -> ignored (the union; never a finding).
-// A property the template does NOT declare at all is the pure union — dropped from
-// the live model below so it never reaches the undeclared loop. Strictly better than
-// both the old cdkrd (missed the detach) and cdk drift (FPs on the extra union
-// members): it catches the removal without the union false positive.
+//     security-relevant: a privilege the stack intends was removed). Revertable
+//     (re-attach the one member). The real FN the old "don't compare attachment lists"
+//     boundary missed.
+//   - a live member NOT declared          -> UNDECLARED inventory (recordable), NOT a
+//     positional FP — the SAME treatment every other undeclared property + identity-
+//     keyed subset array (ELB attribute bags, Cognito Schema) gets. So a known union
+//     member is folded/recordable on a first run, and a NEW unexpected attachment
+//     (a console/rogue grant of the policy's permissions to another principal) then
+//     surfaces as drift vs the recorded baseline — detection cdk drift only matches by
+//     ALSO false-drifting every legitimate union member. record-only (we never auto-
+//     detach a member another owner added; --remove-unrecorded is the explicit opt-in).
+// Catches BOTH a removed declared attachment and an added unexpected one, without the
+// symmetric-compare false drift.
 const IAM_ATTACHMENT_SUBSET: Record<string, ReadonlySet<string>> = {
   'AWS::IAM::ManagedPolicy': new Set(['Roles', 'Users', 'Groups']),
 };
@@ -331,12 +337,14 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
-  // ManagedPolicy attachment lists the template does NOT declare are the pure live
-  // UNION (this policy attached elsewhere) — drop them so they never surface as
-  // undeclared drift. A declared attachment list is kept and compared asymmetrically
-  // in the declared loop below (declared-but-missing = detach; live-only ignored).
+  // ManagedPolicy attachment lists (Roles/Users/Groups). A DECLARED list is handled
+  // per-member in the declared loop below (declared-but-missing = detach; live-only =
+  // undeclared inventory). A list the template does NOT declare at all is left in `live`
+  // so it flows to the undeclared loop as ordinary undeclared inventory (recordable) —
+  // NOT dropped: dropping it hid an unexpected attachment entirely (no record, no later
+  // drift). It is inventory, never a positional FP, so it does not reintroduce the
+  // cdk-drift union false positive.
   const attachmentProps = IAM_ATTACHMENT_SUBSET[resourceType];
-  if (attachmentProps) for (const p of attachmentProps) if (!(p in declared)) delete live[p];
   // R11: a declared TOP-LEVEL write-only key is about to be stripped from `declared`
   // (below). Surface it as ONE readGap finding FIRST so it is never silently dropped
   // — the informational tier exists precisely for "declared but unreadable" props.
@@ -408,19 +416,24 @@ export function classifyResource(
       });
       continue;
     }
-    // ManagedPolicy attachment lists (Roles/Users/Groups): compare ASYMMETRICALLY.
-    // A DECLARED member absent from the live (union) set is an out-of-band DETACH —
-    // emit a declared finding per missing member, carrying the member on
+    // ManagedPolicy attachment lists (Roles/Users/Groups): tier each member by WHO
+    // declared it. A DECLARED member absent from the live (union) set is an out-of-band
+    // DETACH — emit a declared finding per missing member, carrying the member on
     // `attributeKey` so revert re-attaches ONLY that one (never rewriting the whole
-    // list, which would detach the union members another stack/role legitimately
-    // added). A live-only member is the union and is NOT reported. An unresolved
+    // list, which would detach the union members another stack/role legitimately added).
+    // A live member NOT declared is the union — emit it as nested UNDECLARED inventory
+    // (recordable), NOT a positional FP: a known union member folds/records, and a NEW
+    // unexpected attachment then surfaces as drift vs the baseline. An unresolved
     // declared member (an intrinsic the synth couldn't resolve) can't be compared —
     // skip it (the whole-property `unresolved` finding above already noted it).
     if (attachmentProps?.has(k) && Array.isArray(v) && Array.isArray(live[k])) {
-      const liveSet = new Set((live[k] as unknown[]).map((m) => String(m)));
+      const liveArr = live[k] as unknown[];
+      const liveSet = new Set(liveArr.map((m) => String(m)));
+      const declaredSet = new Set<string>();
       for (const member of v) {
         if (member === UNRESOLVED || hasUnresolved(member)) continue;
         if (typeof member !== 'string' && typeof member !== 'number') continue;
+        declaredSet.add(String(member));
         if (liveSet.has(String(member))) continue;
         findings.push({
           tier: 'declared',
@@ -431,6 +444,18 @@ export function classifyResource(
           desired: member,
           actual: undefined,
           note: 'declared attachment not present in live (out-of-band detach)',
+        });
+      }
+      for (const member of liveArr) {
+        if (typeof member !== 'string' && typeof member !== 'number') continue;
+        if (declaredSet.has(String(member))) continue;
+        findings.push({
+          tier: 'undeclared',
+          logicalId,
+          resourceType,
+          path: `${k}[${String(member)}]`,
+          actual: member,
+          nested: true,
         });
       }
       continue;

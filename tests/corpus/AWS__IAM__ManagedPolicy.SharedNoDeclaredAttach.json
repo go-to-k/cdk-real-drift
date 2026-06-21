@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "Hand-curated: the template declares no Roles/Users/Groups. The policy is attached to a Role elsewhere (the pure live union). Must be CLEAN: a non-declared live attachment list is dropped, never an undeclared finding.",
+  "description": "Hand-curated: the template declares no Roles/Users/Groups. The policy is attached to a Role elsewhere — surfaced as ordinary UNDECLARED inventory (recordable), NOT dropped, so an unexpected attachment is visible and a later one drifts.",
   "resource": {
     "logicalId": "SharedABCD1234",
     "resourceType": "AWS::IAM::ManagedPolicy",
@@ -74,5 +74,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Roles",
+      "actual": ["RoleFromElsewhere"],
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    }
+  ]
 }

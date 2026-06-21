@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "Hand-curated: Roles/Users/Groups all declared; one Role present, one User detached, the Group detached. One declared finding per declared-but-missing member; present members and live-only members produce nothing.",
+  "description": "Hand-curated: Roles/Users/Groups declared; one Role present (+ a live-only union Role), one User detached, the Group detached. Declared findings per missing declared member; the union Role is undeclared inventory.",
   "resource": {
     "logicalId": "SharedABCD1234",
     "resourceType": "AWS::IAM::ManagedPolicy",
@@ -78,6 +78,16 @@
     "kmsAliasTargets": {}
   },
   "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Roles[RUnion]",
+      "actual": "RUnion",
+      "nested": true,
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    },
     {
       "tier": "declared",
       "logicalId": "SharedABCD1234",
