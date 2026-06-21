@@ -15,9 +15,11 @@ import {
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
+  CASE_INSENSITIVE_ARRAY_PATHS,
   CASE_INSENSITIVE_PATHS,
   isAllAwsTags,
   identityField,
+  isCaseInsensitiveEqualScalarSet,
   isCaseInsensitiveScalarEqual,
   isEqualUnorderedScalarSet,
   isJsonStringStructEqual,
@@ -31,6 +33,7 @@ import {
   isVersionPrefixMatch,
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
+  GENERATED_TOPLEVEL_PATHS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   resolveGeneratedDefault,
@@ -507,6 +510,14 @@ export function classifyResource(
         isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
       )
         continue;
+      // Per-type case-insensitive HEADER-NAME array paths (apigwv2 CORS
+      // AllowHeaders/ExposeHeaders — AWS lowercases header names): the same header
+      // set modulo case/order is not drift; a genuine header add/remove still differs.
+      if (
+        CASE_INSENSITIVE_ARRAY_PATHS[resourceType]?.has(d.path) &&
+        isCaseInsensitiveEqualScalarSet(d.stateValue, d.awsValue)
+      )
+        continue;
       // Per-type DNS-FQDN paths whose trailing `.` is optional (Route53 HostedZone Name:
       // declared `example.com`, CC returns `example.com.`) — equal once stripped.
       if (
@@ -586,6 +597,14 @@ export function classifyResource(
     // recorded — for ANY type, without a per-type GENERATED_DEFAULTS entry. The bare
     // physical-id echo (value === physicalId) is left to the structural drop below.
     if (isGeneratedName(v, physicalId)) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // A top-level key that is ALWAYS a service-minted generated id (value-independent):
+    // the ApiGatewayV2 AutoDeploy Stage's DeploymentId, re-minted on every auto-deploy
+    // and un-settable. Folded as `generated` (never drift, recorded, or reverted) so it
+    // does not churn into false undeclared drift after any out-of-band API edit.
+    if (GENERATED_TOPLEVEL_PATHS[resourceType]?.has(k)) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }
