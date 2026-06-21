@@ -567,6 +567,15 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   the declaring stack would false-drift on every shared policy. So an out-of-band
   attach/detach is not reported (a deliberate fail-closed boundary, not a missed
   document change).
+- **AppSync GraphQL schema.** The `AWS::AppSync::GraphQLSchema` resource (a CDK
+  `GraphqlApi`'s schema `Definition`) is reported `skipped`: Cloud Control has
+  **no READ** for the type (`UnsupportedActionException`), and AppSync's only
+  schema-read API returns the **compiled introspection** form — AWS scalars /
+  directives / built-in types expanded — not the source SDL you declared, so a
+  faithful comparison is not possible without false drift. The rest of the API
+  **is** checked (the `GraphqlApi` body — auth / X-Ray / logging — plus its
+  DataSources, Resolvers and Functions via the out-of-band added-resource
+  enumerators); only the raw schema text is out of scope.
 - **Stack state.** A stack with no meaningful deployed reality is **skipped with a
   clear note**, not compared to a meaningless CLEAN: `REVIEW_IN_PROGRESS` (a change
   set created but never deployed) and a delete in progress. A stack mid-operation
