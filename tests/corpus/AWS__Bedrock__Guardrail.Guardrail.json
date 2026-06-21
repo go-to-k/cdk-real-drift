@@ -1,0 +1,185 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Guardrail",
+    "resourceType": "AWS::Bedrock::Guardrail",
+    "physicalId": "arn:aws:bedrock:us-east-1:111111111111:guardrail/rpsecce54e2u",
+    "constructPath": "CdkRealDriftIntegBedrockGuardrailRich/Guardrail",
+    "declared": {
+      "BlockedInputMessaging": "Your input was blocked by the guardrail.",
+      "BlockedOutputsMessaging": "The response was blocked by the guardrail.",
+      "ContentPolicyConfig": {
+        "FiltersConfig": [
+          {
+            "InputStrength": "HIGH",
+            "OutputStrength": "HIGH",
+            "Type": "HATE"
+          },
+          {
+            "InputStrength": "MEDIUM",
+            "OutputStrength": "MEDIUM",
+            "Type": "VIOLENCE"
+          }
+        ]
+      },
+      "Description": "cdk-real-drift integ guardrail",
+      "Name": "cdkrd-guardrail",
+      "SensitiveInformationPolicyConfig": {
+        "PiiEntitiesConfig": [
+          {
+            "Action": "ANONYMIZE",
+            "Type": "EMAIL"
+          }
+        ]
+      },
+      "TopicPolicyConfig": {
+        "TopicsConfig": [
+          {
+            "Definition": "Specific advice on whether to buy or sell securities.",
+            "Examples": ["Should I buy this stock?"],
+            "Name": "Investments",
+            "Type": "DENY"
+          }
+        ]
+      },
+      "WordPolicyConfig": {
+        "ManagedWordListsConfig": [
+          {
+            "Type": "PROFANITY"
+          }
+        ],
+        "WordsConfig": [
+          {
+            "Text": "badword"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "FailureRecommendations": [],
+    "GuardrailId": "rpsecce54e2u",
+    "Status": "READY",
+    "StatusReasons": [],
+    "TopicPolicyConfig": {
+      "TopicsTierConfig": {
+        "TierName": "CLASSIC"
+      },
+      "TopicsConfig": [
+        {
+          "Type": "DENY",
+          "Definition": "Specific advice on whether to buy or sell securities.",
+          "Examples": ["Should I buy this stock?"],
+          "Name": "Investments"
+        }
+      ]
+    },
+    "Description": "cdk-real-drift integ guardrail",
+    "CreatedAt": "2026-06-21T17:03:47.072772823Z",
+    "UpdatedAt": "2026-06-21T17:03:47.181429605Z",
+    "Name": "cdkrd-guardrail",
+    "WordPolicyConfig": {
+      "ManagedWordListsConfig": [
+        {
+          "Type": "PROFANITY"
+        }
+      ],
+      "WordsConfig": [
+        {
+          "Text": "badword"
+        }
+      ]
+    },
+    "GuardrailArn": "arn:aws:bedrock:us-east-1:111111111111:guardrail/rpsecce54e2u",
+    "Version": "DRAFT",
+    "BlockedInputMessaging": "Your input was blocked by the guardrail.",
+    "BlockedOutputsMessaging": "The response was blocked by the guardrail.",
+    "SensitiveInformationPolicyConfig": {
+      "RegexesConfig": [],
+      "PiiEntitiesConfig": [
+        {
+          "Type": "EMAIL",
+          "Action": "ANONYMIZE"
+        }
+      ]
+    },
+    "ContentPolicyConfig": {
+      "ContentFiltersTierConfig": {
+        "TierName": "CLASSIC"
+      },
+      "FiltersConfig": [
+        {
+          "OutputStrength": "MEDIUM",
+          "Type": "VIOLENCE",
+          "InputStrength": "MEDIUM"
+        },
+        {
+          "OutputStrength": "HIGH",
+          "Type": "HATE",
+          "InputStrength": "HIGH"
+        }
+      ]
+    },
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [
+      "CreatedAt",
+      "FailureRecommendations",
+      "GuardrailArn",
+      "GuardrailId",
+      "Status",
+      "StatusReasons",
+      "UpdatedAt",
+      "Version"
+    ],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "CreatedAt",
+      "FailureRecommendations",
+      "GuardrailArn",
+      "GuardrailId",
+      "Status",
+      "StatusReasons",
+      "UpdatedAt",
+      "Version"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Guardrail",
+      "resourceType": "AWS::Bedrock::Guardrail",
+      "path": "ContentPolicyConfig.ContentFiltersTierConfig",
+      "actual": {
+        "TierName": "CLASSIC"
+      },
+      "nested": true,
+      "physicalId": "arn:aws:bedrock:us-east-1:111111111111:guardrail/rpsecce54e2u",
+      "constructPath": "CdkRealDriftIntegBedrockGuardrailRich/Guardrail"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Guardrail",
+      "resourceType": "AWS::Bedrock::Guardrail",
+      "path": "TopicPolicyConfig.TopicsTierConfig",
+      "actual": {
+        "TierName": "CLASSIC"
+      },
+      "nested": true,
+      "physicalId": "arn:aws:bedrock:us-east-1:111111111111:guardrail/rpsecce54e2u",
+      "constructPath": "CdkRealDriftIntegBedrockGuardrailRich/Guardrail"
+    }
+  ]
+}

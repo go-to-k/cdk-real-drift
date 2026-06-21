@@ -832,6 +832,50 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
 };
 
+// Per-type NESTED object-array paths AWS returns reordered (dotted from the resource
+// root, e.g. `ContentPolicyConfig.FiltersConfig`). This is the nested twin of
+// UNORDERED_OBJECT_ARRAY_PROPS, which only reaches TOP-LEVEL array keys. Bedrock
+// Guardrail nests its policy-config sets one level deep and AWS canonicalizes the
+// element order (the content filters come back sorted by an internal order, not the
+// template's declaration order), so a positional compare false-flags a reordered-but-
+// identical set as several declared drifts. Each listed array is a SET keyed by an
+// identity field (FiltersConfig/PiiEntitiesConfig by Type, TopicsConfig/RegexesConfig
+// by Name, WordsConfig by Text) so sorting both sides by canonical JSON aligns equal
+// elements positionally; a genuine element add/remove/change still differs after the
+// sort. Observed live on a fresh bedrock-guardrail-rich deploy.
+export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Bedrock::Guardrail': new Set([
+    'ContentPolicyConfig.FiltersConfig',
+    'TopicPolicyConfig.TopicsConfig',
+    'WordPolicyConfig.WordsConfig',
+    'WordPolicyConfig.ManagedWordListsConfig',
+    'SensitiveInformationPolicyConfig.PiiEntitiesConfig',
+    'SensitiveInformationPolicyConfig.RegexesConfig',
+  ]),
+};
+
+// Return a deep clone of `value` (a declared/live property subtree rooted at one
+// top-level key) with the object array at each of `subPaths` (dotted, RELATIVE to that
+// root) sorted into canonical order. Applied to BOTH the declared and live side before
+// the positional nested diff so a reordered-but-equal set aligns; a non-array or absent
+// path is left untouched, and a genuine element change still differs after the sort.
+export function sortNestedObjectArrays(value: unknown, subPaths: readonly string[]): unknown {
+  if (subPaths.length === 0 || value === null || typeof value !== 'object') return value;
+  const clone = structuredClone(value) as Record<string, unknown>;
+  for (const sub of subPaths) {
+    const segs = sub.split('.');
+    let cur: Record<string, unknown> | undefined = clone;
+    for (let i = 0; i < segs.length - 1 && cur; i++) {
+      const next: unknown = cur[segs[i] as string];
+      cur =
+        next !== null && typeof next === 'object' ? (next as Record<string, unknown>) : undefined;
+    }
+    const last = segs[segs.length - 1] as string;
+    if (cur && Array.isArray(cur[last])) cur[last] = sortUnorderedObjectArray(cur[last]);
+  }
+  return clone;
+}
+
 // Stable, key-order-insensitive JSON of a value (objects emit keys sorted), used as a
 // total order to sort an unordered object array deterministically on both sides.
 function canonicalJson(v: unknown): string {

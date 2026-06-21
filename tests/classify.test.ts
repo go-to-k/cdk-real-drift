@@ -1260,6 +1260,42 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
   });
+
+  describe('Bedrock Guardrail nested policy-config arrays (reordered, found by bedrock-guardrail-rich)', () => {
+    const T = 'AWS::Bedrock::Guardrail';
+    const declared = {
+      ContentPolicyConfig: {
+        FiltersConfig: [
+          { Type: 'HATE', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+          { Type: 'VIOLENCE', InputStrength: 'MEDIUM', OutputStrength: 'MEDIUM' },
+        ],
+      },
+    };
+
+    it('AWS returning the nested FiltersConfig in a different order is NOT drift', () => {
+      const live = {
+        ContentPolicyConfig: {
+          FiltersConfig: [
+            { Type: 'VIOLENCE', InputStrength: 'MEDIUM', OutputStrength: 'MEDIUM' },
+            { Type: 'HATE', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+          ],
+        },
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine filter strength change still surfaces (even when reordered)', () => {
+      const live = {
+        ContentPolicyConfig: {
+          FiltersConfig: [
+            { Type: 'VIOLENCE', InputStrength: 'MEDIUM', OutputStrength: 'MEDIUM' },
+            { Type: 'HATE', InputStrength: 'LOW', OutputStrength: 'HIGH' }, // HIGH -> LOW
+          ],
+        },
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
 });
 
 describe('identity-keyed array ADDITIONS are detected, not subset-projected away (R95)', () => {
