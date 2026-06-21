@@ -56,30 +56,45 @@ if [ -n "$git_common" ]; then
 else
   main_root="$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || echo "$target_dir")"
 fi
-sentinel="${main_root}/.markgate-bughunt-pending"
+# Parallel-safe aggregation: each owner tracks ONLY its own file under
+# .markgate-bughunt-pending.d/<owner-key> (bughunt-track.sh), so one owner's `clear`
+# can never release another's pending resources. The gate blocks while ANY owner has
+# pending stacks — the safe direction. The legacy flat file is still honored for
+# back-compat (a session armed before this change, or a stray hand-written file).
+pending_dir="${main_root}/.markgate-bughunt-pending.d"
+legacy="${main_root}/.markgate-bughunt-pending"
 
-# Sentinel absent or empty → no pending bug-hunt resources → pass.
-[ -s "$sentinel" ] || exit 0
+sources=()
+if [ -d "$pending_dir" ]; then
+  while IFS= read -r f; do
+    [ -s "$f" ] && sources+=("$f")
+  done < <(find "$pending_dir" -type f 2>/dev/null)
+fi
+[ -s "$legacy" ] && sources+=("$legacy")
 
-pending=$(grep -cvE '^[[:space:]]*$' "$sentinel" 2>/dev/null || echo 0)
+# No owner files (and no legacy file) with content → nothing pending → pass.
+[ "${#sources[@]}" -gt 0 ] || exit 0
+
+pending=$(cat "${sources[@]}" 2>/dev/null | grep -cvE '^[[:space:]]*$' || echo 0)
 [ "$pending" -gt 0 ] || exit 0
 
 {
   echo "Blocked by bughunt-clean-gate: a /hunt-bugs session still has"
-  echo "${pending} un-deleted stack(s) tracked in:"
-  echo "  ${sentinel}"
+  echo "${pending} un-deleted stack(s) tracked under:"
+  echo "  ${pending_dir}/ (per-owner)"
   echo
   echo "Pending stacks:"
-  sed 's/^/  - /' "$sentinel"
+  cat "${sources[@]}" 2>/dev/null | grep -vE '^[[:space:]]*$' | sed 's/^/  - /'
   echo
-  echo "Required action — delete every tracked stack, verify zero orphans,"
-  echo "then release the gate:"
+  echo "Required action — from the SAME worktree you armed from (or with the same"
+  echo "\$CDKRD_BUGHUNT_OWNER), delete every tracked stack, verify zero orphans,"
+  echo "then release the gate for your owner:"
   echo "  delstack cdk -a cdk.out -r <region> -f -y          # from each fixture dir"
   echo "  .claude/skills/hunt-bugs/bughunt-track.sh verify --region <region>"
   echo "  .claude/skills/hunt-bugs/bughunt-track.sh clear"
   echo
-  echo "Do NOT delete the sentinel by hand to bypass this — the whole point is"
-  echo "that bug-hunt resources cannot be forgotten. Clear it only after the"
+  echo "Do NOT delete the pending files by hand to bypass this — the whole point is"
+  echo "that bug-hunt resources cannot be forgotten. Clear only after the"
   echo "delete + orphan-zero verification actually passed."
 } >&2
 exit 2

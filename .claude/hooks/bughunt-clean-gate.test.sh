@@ -67,6 +67,102 @@ run "armed + git push passes"             1 "git push origin main"  0
 run "armed + echo mentioning git commit"  1 "echo 'run git commit later'"           0
 run "armed + echo mentioning gh pr merge" 1 "echo 'remember to gh pr merge soon'"   0
 
+# ---------------------------------------------------------------------------
+# Parallel-safe (per-owner) coverage + the SPOF regression.
+#
+# The tracker resolves REPO_ROOT from its OWN location (SCRIPT_DIR), so to drive it
+# against a throwaway repo we copy it into that repo's skill path and run the COPY —
+# then the tracker and the cwd-resolving gate agree on the temp repo root. The
+# tracker under test defaults to this worktree's copy, but can be overridden to the
+# OLD single-file tracker via BUGHUNT_TRACKER_OVERRIDE to prove the SPOF case fails
+# against pre-port code.
+# ---------------------------------------------------------------------------
+TRACKER="${BUGHUNT_TRACKER_OVERRIDE:-$(cd "$(dirname "$0")/../skills/hunt-bugs" && pwd)/bughunt-track.sh}"
+
+# gate_exit <tmp> <cmd> -> echoes the hook's exit code
+gate_exit() {
+  local tmp="$1" cmd="$2" payload code
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "$cmd" | jq -Rs .)},\"cwd\":\"$tmp\"}"
+  set +e
+  printf '%s' "$payload" | bash "$HOOK" >/dev/null 2>&1
+  code=$?
+  set -e
+  printf '%s' "$code"
+}
+
+# check <name> <actual> <expect>
+check() {
+  if [ "$2" -eq "$3" ]; then
+    PASS=$((PASS + 1)); echo "ok   - $1 (exit $2)"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL - $1 (got $2, expected $3)"
+  fi
+}
+
+# assert_file <name> <test-expr...> (e.g. -s path / ! -e path)
+assert_file() {
+  local name="$1"; shift
+  if [ "$@" ]; then
+    PASS=$((PASS + 1)); echo "ok   - $name"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL - $name"
+  fi
+}
+
+# Make a throwaway repo with a copy of the tracker at its skill path.
+spof_setup() {
+  local tmp; tmp=$(mktemp -d)
+  (
+    cd "$tmp"
+    git init -q -b main
+    git config user.email t@t
+    git config user.name t
+    : > seed
+    git add -A
+    git commit -q -m init
+  )
+  mkdir -p "$tmp/.claude/skills/hunt-bugs"
+  cp "$TRACKER" "$tmp/.claude/skills/hunt-bugs/bughunt-track.sh"
+  printf '%s' "$tmp"
+}
+
+# Empty .d/ → pass.
+T=$(spof_setup)
+mkdir -p "$T/.markgate-bughunt-pending.d"
+check "empty .d/ passes git commit" "$(gate_exit "$T" "git commit -m x")" 0
+rm -rf "$T"
+
+# Armed via .d/ (per-owner) → block all three gated commands.
+T=$(spof_setup)
+TR="$T/.claude/skills/hunt-bugs/bughunt-track.sh"
+CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" add CdkRealDriftIntegA >/dev/null
+check "armed via .d/ blocks git commit"   "$(gate_exit "$T" "git commit -m x")"        2
+check "armed via .d/ blocks gh pr create" "$(gate_exit "$T" "gh pr create --fill")"    2
+check "armed via .d/ blocks gh pr merge"  "$(gate_exit "$T" "gh pr merge 5 --squash")" 2
+rm -rf "$T"
+
+# SPOF regression: two distinct owners; A's clear must NOT release B's pending stacks.
+T=$(spof_setup)
+TR="$T/.claude/skills/hunt-bugs/bughunt-track.sh"
+CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" add CdkRealDriftIntegA >/dev/null
+CDKRD_BUGHUNT_OWNER=ownerB bash "$TR" add CdkRealDriftIntegB >/dev/null
+check "both owners armed -> gate blocks" "$(gate_exit "$T" "git commit -m x")" 2
+CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" clear >/dev/null
+# THE proof the SPOF is closed — fails on the old single-file tracker (A's clear
+# wiped the whole file, releasing B), passes on the per-owner port.
+check "after A clears, B still pending -> gate STILL blocks" "$(gate_exit "$T" "git commit -m x")" 2
+assert_file "B's owner file survived A's clear" -s "$T/.markgate-bughunt-pending.d/ownerB"
+assert_file "A's owner file removed by A's clear" ! -e "$T/.markgate-bughunt-pending.d/ownerA"
+CDKRD_BUGHUNT_OWNER=ownerB bash "$TR" clear >/dev/null
+check "after both owners clear -> gate releases" "$(gate_exit "$T" "git commit -m x")" 0
+rm -rf "$T"
+
+# Legacy flat file still honored (back-compat with a session armed pre-port).
+T=$(spof_setup)
+printf 'CdkRealDriftIntegLegacy\n' > "$T/.markgate-bughunt-pending"
+check "legacy flat file still blocks" "$(gate_exit "$T" "git commit -m x")" 2
+rm -rf "$T"
+
 echo
 echo "bughunt-clean-gate: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ]
