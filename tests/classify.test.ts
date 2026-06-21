@@ -909,6 +909,26 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // Found live by the batch-rich bug-hunt fixture: CDK's FargateComputeEnvironment
+  // emits `Type: "managed"` (lowercase) but the Batch live read canonicalizes it to
+  // `"MANAGED"` (uppercase), a case-only difference on a create-only enum.
+  describe('case-insensitive scalar path (Batch ComputeEnvironment Type)', () => {
+    const T = 'AWS::Batch::ComputeEnvironment';
+
+    it('lowercase declared `managed` vs uppercase live `MANAGED` is NOT drift', () => {
+      expect(
+        classifyResource(res(T, { Type: 'managed' }), { Type: 'MANAGED' }, emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuinely different Type (managed vs unmanaged) is still drift', () => {
+      expect(
+        tiers(classifyResource(res(T, { Type: 'managed' }), { Type: 'UNMANAGED' }, emptySchema))
+          .declared
+      ).toEqual(['Type']);
+    });
+  });
+
   // Found live by the apigwv2-http-rich bug-hunt fixture: AWS lowercases CORS
   // header names (case-insensitive per RFC 9110), so a declared
   // `AllowHeaders: ["Content-Type","Authorization"]` read back as

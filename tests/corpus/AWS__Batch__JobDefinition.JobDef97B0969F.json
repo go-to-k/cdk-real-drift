@@ -1,0 +1,153 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "JobDef97B0969F",
+    "resourceType": "AWS::Batch::JobDefinition",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+    "constructPath": "CdkRealDriftIntegBatchRich/JobDef",
+    "declared": {
+      "ContainerProperties": {
+        "Environment": [],
+        "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBatchRic-ContainerExecutionRole65F-awudgfkRnWgp",
+        "FargatePlatformConfiguration": {},
+        "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+        "NetworkConfiguration": {
+          "AssignPublicIp": "DISABLED"
+        },
+        "ReadonlyRootFilesystem": false,
+        "ResourceRequirements": [
+          {
+            "Type": "MEMORY",
+            "Value": "512"
+          },
+          {
+            "Type": "VCPU",
+            "Value": "0.25"
+          }
+        ],
+        "RuntimePlatform": {}
+      },
+      "PlatformCapabilities": ["FARGATE"],
+      "RetryStrategy": {
+        "Attempts": 2
+      },
+      "Timeout": {},
+      "Type": "container"
+    }
+  },
+  "liveRaw": {
+    "Type": "container",
+    "Parameters": {},
+    "JobDefinitionArn": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+    "ContainerProperties": {
+      "Secrets": [],
+      "FargatePlatformConfiguration": {
+        "PlatformVersion": "LATEST"
+      },
+      "ReadonlyRootFilesystem": false,
+      "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+      "ResourceRequirements": [
+        {
+          "Type": "MEMORY",
+          "Value": "512"
+        },
+        {
+          "Type": "VCPU",
+          "Value": "0.25"
+        }
+      ],
+      "MountPoints": [],
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBatchRic-ContainerExecutionRole65F-awudgfkRnWgp",
+      "RuntimePlatform": {
+        "OperatingSystemFamily": "LINUX",
+        "CpuArchitecture": "X86_64"
+      },
+      "Volumes": [],
+      "Command": [],
+      "Environment": [],
+      "Ulimits": [],
+      "NetworkConfiguration": {
+        "AssignPublicIp": "DISABLED"
+      }
+    },
+    "JobDefinitionName": "JobDef97B0969F-HFfibEW0TJakGN1M",
+    "PropagateTags": false,
+    "PlatformCapabilities": ["FARGATE"],
+    "RetryStrategy": {
+      "Attempts": 2
+    },
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegBatchRich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegBatchRich/6cf540d0-6d8b-11f1-8efa-0e9a6e70aa4b",
+      "aws:cloudformation:logical-id": "JobDef97B0969F"
+    }
+  },
+  "schema": {
+    "readOnly": ["JobDefinitionArn"],
+    "writeOnly": ["ResourceRetentionPolicy"],
+    "createOnly": ["JobDefinitionName"],
+    "readOnlyPaths": ["JobDefinitionArn"],
+    "writeOnlyPaths": ["ResourceRetentionPolicy", "ResourceRetentionPolicy.SkipDeregisterOnUpdate"],
+    "createOnlyPaths": ["JobDefinitionName"],
+    "defaults": {},
+    "defaultPaths": {
+      "ResourceRetentionPolicy.SkipDeregisterOnUpdate": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "JobDef97B0969F",
+      "resourceType": "AWS::Batch::JobDefinition",
+      "path": "Timeout",
+      "note": "declared but not returned by live read",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+      "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobDef97B0969F",
+      "resourceType": "AWS::Batch::JobDefinition",
+      "path": "JobDefinitionName",
+      "actual": "JobDef97B0969F-HFfibEW0TJakGN1M",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+      "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobDef97B0969F",
+      "resourceType": "AWS::Batch::JobDefinition",
+      "path": "ContainerProperties.FargatePlatformConfiguration.PlatformVersion",
+      "actual": "LATEST",
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+      "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobDef97B0969F",
+      "resourceType": "AWS::Batch::JobDefinition",
+      "path": "ContainerProperties.RuntimePlatform.OperatingSystemFamily",
+      "actual": "LINUX",
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+      "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "JobDef97B0969F",
+      "resourceType": "AWS::Batch::JobDefinition",
+      "path": "ContainerProperties.RuntimePlatform.CpuArchitecture",
+      "actual": "X86_64",
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1",
+      "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
+    }
+  ]
+}

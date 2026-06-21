@@ -1,0 +1,126 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FargateCE1DBBBD09",
+    "resourceType": "AWS::Batch::ComputeEnvironment",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+    "constructPath": "CdkRealDriftIntegBatchRich/FargateCE",
+    "declared": {
+      "ComputeResources": {
+        "MaxvCpus": 16,
+        "SecurityGroupIds": ["sg-002ea2b2ddc4ed9de"],
+        "Subnets": ["subnet-018a74409558db8ef", "subnet-026b612856dec95ea"],
+        "Type": "FARGATE"
+      },
+      "ReplaceComputeEnvironment": false,
+      "State": "ENABLED",
+      "Type": "managed",
+      "UpdatePolicy": {}
+    }
+  },
+  "liveRaw": {
+    "Type": "MANAGED",
+    "ServiceRole": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+    "ComputeEnvironmentName": "FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+    "ComputeResources": {
+      "Subnets": ["subnet-018a74409558db8ef", "subnet-026b612856dec95ea"],
+      "Type": "FARGATE",
+      "MaxvCpus": 16,
+      "InstanceTypes": [],
+      "Ec2Configuration": [],
+      "SecurityGroupIds": ["sg-002ea2b2ddc4ed9de"]
+    },
+    "State": "ENABLED",
+    "ComputeEnvironmentArn": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi"
+  },
+  "schema": {
+    "readOnly": ["ComputeEnvironmentArn"],
+    "writeOnly": ["ReplaceComputeEnvironment", "UpdatePolicy"],
+    "createOnly": ["ComputeEnvironmentName", "EksConfiguration", "Tags", "Type"],
+    "readOnlyPaths": [
+      "ComputeEnvironmentArn",
+      "ComputeResources.Ec2Configuration.*.BatchImageStatus"
+    ],
+    "writeOnlyPaths": [
+      "ComputeResources.UpdateToLatestImageVersion",
+      "ReplaceComputeEnvironment",
+      "UpdatePolicy"
+    ],
+    "createOnlyPaths": [
+      "ComputeEnvironmentName",
+      "ComputeResources.AllocationStrategy",
+      "ComputeResources.BidPercentage",
+      "ComputeResources.Ec2Configuration",
+      "ComputeResources.Ec2KeyPair",
+      "ComputeResources.ImageId",
+      "ComputeResources.InstanceRole",
+      "ComputeResources.InstanceTypes",
+      "ComputeResources.LaunchTemplate",
+      "ComputeResources.PlacementGroup",
+      "ComputeResources.ScalingPolicy",
+      "ComputeResources.SecurityGroupIds",
+      "ComputeResources.SpotIamFleetRole",
+      "ComputeResources.Subnets",
+      "ComputeResources.Tags",
+      "ComputeResources.Type",
+      "EksConfiguration",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {
+      "ReplaceComputeEnvironment": true
+    },
+    "defaultPaths": {
+      "ComputeResources.UpdateToLatestImageVersion": false,
+      "ReplaceComputeEnvironment": true,
+      "UpdatePolicy.TerminateJobsOnUpdate": false,
+      "UpdatePolicy.JobExecutionTimeoutMinutes": 30,
+      "EksConfiguration.EksClusterArn": false,
+      "EksConfiguration.KubernetesNamespace": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "FargateCE1DBBBD09",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ReplaceComputeEnvironment",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "FargateCE1DBBBD09",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "UpdatePolicy",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "FargateCE1DBBBD09",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ServiceRole",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "FargateCE1DBBBD09",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeEnvironmentName",
+      "actual": "FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+    }
+  ]
+}

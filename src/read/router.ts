@@ -23,6 +23,20 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
 > = {
   // physical id = the API ARN (arn:...:apis/<apiId>); CC wants the bare ApiId.
   'AWS::AppSync::GraphQLApi': (pid) => (pid.startsWith('arn:') ? pid.split('/').pop() : pid),
+  // Batch JobDefinition: the CFn physical id is the full ARN
+  // (arn:...:job-definition/<name>:<revision>), but CC's primaryIdentifier is the
+  // bare JobDefinitionName — no ARN wrapper and no `:<revision>` suffix. Verified
+  // live (batch-rich fixture): both the ARN and `<name>:<revision>` return
+  // InvalidRequestException ("Invalid identifier provided"); only the bare name
+  // reads. Without this the JobDefinition is silently `skipped` on every check
+  // (read-gap), so undeclared drift on it is invisible. Job-definition names cannot
+  // contain a colon, so stripping the trailing `:<revision>` is unambiguous; the
+  // bare name resolves to the active revision, which is the one the template
+  // reflects.
+  'AWS::Batch::JobDefinition': (pid) => {
+    const tail = pid.startsWith('arn:') ? (pid.split('/').pop() ?? pid) : pid;
+    return tail.replace(/:\d+$/, '');
+  },
   // The rest are `[<parent ref>, <child id>]` composites: the CFn physical id is
   // only the child id; the parent id comes from the resolved declared Ref. CC's
   // composite-identifier separator is `|` (verified live — R74 Cognito, R76
