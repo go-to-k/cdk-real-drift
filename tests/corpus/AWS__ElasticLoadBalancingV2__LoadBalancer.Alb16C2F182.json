@@ -187,6 +187,136 @@
   },
   "expected": [
     {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[access_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[client_keep_alive.seconds]",
+      "actual": "3600",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[connection_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[health_check_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.desync_mitigation_mode]",
+      "actual": "defensive",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.drop_invalid_header_fields.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.preserve_host_header.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.x_amzn_tls_version_and_cipher_suite.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.xff_client_port.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.xff_header_processing.mode]",
+      "actual": "append",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[waf.fail_open.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[zonal_shift.config.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
       "tier": "atDefault",
       "logicalId": "Alb16C2F182",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",

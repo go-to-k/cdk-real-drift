@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ClusterPg55741FC3",
+    "resourceType": "AWS::RDS::DBClusterParameterGroup",
+    "physicalId": "cdkrealdriftintegaurorarich-clusterpg55741fc3-ojo3zprgslqr",
+    "constructPath": "CdkRealDriftIntegAuroraRich/ClusterPg",
+    "declared": {
+      "Description": "Cluster parameter group for aurora-mysql8.0",
+      "Family": "aurora-mysql8.0",
+      "Parameters": {
+        "character_set_server": "utf8mb4"
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "Cluster parameter group for aurora-mysql8.0",
+    "Parameters": {
+      "character_set_server": "utf8mb4"
+    },
+    "Family": "aurora-mysql8.0",
+    "DBClusterParameterGroupName": "cdkrealdriftintegaurorarich-clusterpg55741fc3-ojo3zprgslqr",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegAuroraRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ClusterPg55741FC3",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAuroraRich/0ded9860-6d42-11f1-9a70-0afffc629ddf",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBClusterParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBClusterParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

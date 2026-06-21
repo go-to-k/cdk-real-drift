@@ -20,28 +20,12 @@
     "EnablePerformanceInsights": false
   },
   "schema": {
-    "readOnly": [
-      "Endpoint",
-      "Id",
-      "Port"
-    ],
+    "readOnly": ["Endpoint", "Id", "Port"],
     "writeOnly": [],
-    "createOnly": [
-      "AvailabilityZone",
-      "DBClusterIdentifier",
-      "DBInstanceIdentifier"
-    ],
-    "readOnlyPaths": [
-      "Endpoint",
-      "Id",
-      "Port"
-    ],
+    "createOnly": ["AvailabilityZone", "DBClusterIdentifier", "DBInstanceIdentifier"],
+    "readOnlyPaths": ["Endpoint", "Id", "Port"],
     "writeOnlyPaths": [],
-    "createOnlyPaths": [
-      "AvailabilityZone",
-      "DBClusterIdentifier",
-      "DBInstanceIdentifier"
-    ],
+    "createOnlyPaths": ["AvailabilityZone", "DBClusterIdentifier", "DBInstanceIdentifier"],
     "defaults": {},
     "defaultPaths": {}
   },

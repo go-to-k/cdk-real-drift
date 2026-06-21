@@ -179,11 +179,142 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "path": "EnablePrefixForIpv6SourceNat",
-      "actual": "off",
+      "path": "LoadBalancerAttributes[access_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[client_keep_alive.seconds]",
+      "actual": "3600",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[connection_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[health_check_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.desync_mitigation_mode]",
+      "actual": "defensive",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.drop_invalid_header_fields.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.preserve_host_header.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.x_amzn_tls_version_and_cipher_suite.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.xff_client_port.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http.xff_header_processing.mode]",
+      "actual": "append",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[routing.http2.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[waf.fail_open.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[zonal_shift.config.enabled]",
+      "actual": "false",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
@@ -202,6 +333,15 @@
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "Name",
       "actual": "CdkrdI-Edge7-ivPMKfmp3Fts",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
+      "constructPath": "CdkrdIntegHarvest4/Edge"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Edge7038544F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "EnablePrefixForIpv6SourceNat",
+      "actual": "off",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
