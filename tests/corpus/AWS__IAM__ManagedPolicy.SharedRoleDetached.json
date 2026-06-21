@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "Hand-curated: the declared Role was detached out of band. A live-only (union) Role remains. Exactly ONE declared detach finding for the missing declared Role; the union Role is ignored.",
+  "description": "Hand-curated: the declared Role was detached out of band (declared detach finding); a different live-only (union) Role surfaces as undeclared inventory. One declared finding for the missing declared Role + one undeclared for the union member.",
   "resource": {
     "logicalId": "SharedABCD1234",
     "resourceType": "AWS::IAM::ManagedPolicy",
@@ -84,6 +84,16 @@
       "attributeKey": "RoleDeclared",
       "desired": "RoleDeclared",
       "note": "declared attachment not present in live (out-of-band detach)",
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Roles[RoleFromElsewhere]",
+      "actual": "RoleFromElsewhere",
+      "nested": true,
       "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
       "constructPath": "IntegStack/Shared"
     }

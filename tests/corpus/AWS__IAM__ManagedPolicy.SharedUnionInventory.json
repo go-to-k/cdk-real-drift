@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "Hand-curated: asymmetric attachment compare. The declared Role IS attached; an EXTRA live Role (the union — attached from another stack/role/console) is present too. Must be CLEAN: a live-only attachment is never a finding.",
+  "description": "Hand-curated: the declared Role IS attached; an EXTRA live Role (the union — attached from another stack/role/console) surfaces as nested UNDECLARED inventory (recordable), NOT a declared FP. Records the known union member so a NEW attachment later drifts.",
   "resource": {
     "logicalId": "SharedABCD1234",
     "resourceType": "AWS::IAM::ManagedPolicy",
@@ -75,5 +75,16 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Roles[RoleFromElsewhere]",
+      "actual": "RoleFromElsewhere",
+      "nested": true,
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    }
+  ]
 }

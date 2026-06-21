@@ -2229,12 +2229,14 @@ describe('nested undeclared on IAM policy statements (identity-less subset desce
   });
 });
 
-// AWS::IAM::ManagedPolicy Roles/Users/Groups compare ASYMMETRICALLY (declared∖live):
-// a declared attachment removed out of band IS reported (detach), while a live-only
-// attachment (the union — the same policy attached elsewhere) is NOT. Strictly better
-// than the old "don't compare attachment lists" boundary (which missed the detach) and
-// than cdk drift (which false-drifts on the union).
-describe('IAM ManagedPolicy asymmetric attachment detach detection', () => {
+// AWS::IAM::ManagedPolicy Roles/Users/Groups are tiered per member: a DECLARED member
+// removed out of band IS reported (detach, declared tier), while a live-only member
+// (the union — the same policy attached elsewhere) surfaces as UNDECLARED inventory
+// (recordable) — not a positional FP, and not dropped, so a NEW unexpected attachment
+// later surfaces as drift vs the baseline. Better than the old "don't compare" boundary
+// (missed the detach), the first cut (dropped the union, missed an unexpected attach),
+// and cdk drift (false-drifts the whole union).
+describe('IAM ManagedPolicy attachment tiering (declared detach + undeclared union)', () => {
   const emptySchema: SchemaInfo = {
     readOnly: new Set(),
     writeOnly: new Set(),
@@ -2265,26 +2267,29 @@ describe('IAM ManagedPolicy asymmetric attachment detach detection', () => {
     expect(detach[0]?.actual).toBeUndefined();
   });
 
-  it('does NOT report a live-only attachment (the union member another stack added)', () => {
+  it('reports a live-only attachment as UNDECLARED inventory (recordable), not declared drift', () => {
     // declared RoleA still attached; RoleX attached elsewhere (role-side ManagedPolicyArns
-    // or the console) — the live union exceeds intent but is not this stack's drift.
+    // or the console) — the union member is NOT a declared FP, but it IS surfaced as
+    // undeclared inventory so it can be recorded and a NEW attachment later drifts.
     const f = classifyResource(
       mp({ Roles: ['RoleA'] }),
       { Roles: ['RoleA', 'RoleX'] },
       emptySchema
     );
-    expect(f.filter((x) => x.tier === 'declared')).toEqual([]);
-    expect(f.filter((x) => x.tier === 'undeclared')).toEqual([]);
+    expect(f.filter((x) => x.tier === 'declared')).toEqual([]); // RoleA present -> no detach
+    const undeclared = f.filter((x) => x.tier === 'undeclared');
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0]).toMatchObject({ path: 'Roles[RoleX]', actual: 'RoleX', nested: true });
   });
 
-  it('CLEAN when every declared attachment is present (extra union members ignored)', () => {
+  it('declared members CLEAN; every extra union member surfaces as undeclared inventory', () => {
     const f = classifyResource(
       mp({ Roles: ['RoleA'], Users: ['UserA'], Groups: ['GroupA'] }),
       { Roles: ['RoleA', 'RoleX'], Users: ['UserA'], Groups: ['GroupA', 'GroupZ'] },
       emptySchema
     );
-    expect(tiers(f).declared).toEqual([]);
-    expect(tiers(f).undeclared).toEqual([]);
+    expect(tiers(f).declared).toEqual([]); // all declared members present
+    expect(tiers(f).undeclared).toEqual(['Groups[GroupZ]', 'Roles[RoleX]']); // the union extras
   });
 
   it('handles Users and Groups detach independently, one finding per missing member', () => {
@@ -2300,14 +2305,19 @@ describe('IAM ManagedPolicy asymmetric attachment detach detection', () => {
     expect(detached).toEqual(['Groups[GroupA]', 'Users[UserA]', 'Users[UserB]']);
   });
 
-  it('drops a NON-declared live attachment list so it is never undeclared drift (union)', () => {
+  it('a NON-declared live attachment list surfaces as undeclared inventory (recordable)', () => {
     // template declares no Roles at all; the policy is attached to a role elsewhere.
+    // It is NOT dropped (that hid an unexpected attachment) — it flows to the undeclared
+    // loop as ordinary undeclared inventory so it can be recorded + watched.
     const f = classifyResource(
       mp({ Description: '' }),
       { Roles: ['RoleX'], Description: '' },
       emptySchema
     );
-    expect(f.some((x) => x.path === 'Roles')).toBe(false);
+    const undeclared = f.filter((x) => x.tier === 'undeclared');
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0]).toMatchObject({ path: 'Roles', actual: ['RoleX'] });
+    expect(f.some((x) => x.tier === 'declared')).toBe(false);
   });
 
   it('skips an UNRESOLVED declared member (an intrinsic) rather than false-drifting it', () => {
@@ -2332,11 +2342,21 @@ describe('IAM ManagedPolicy asymmetric attachment detach detection', () => {
     expect(detach).toHaveLength(1);
   });
 
-  it('CLEAN when the declared attachment list is EMPTY, even with live union members', () => {
-    // an empty declared Roles compares to nothing missing; the live union is ignored.
+  it('an EMPTY declared list reports no detach; live union members are undeclared inventory', () => {
+    // an empty declared Roles has nothing to detach; the live members are all the union.
     const f = classifyResource(mp({ Roles: [] }), { Roles: ['RoleX', 'RoleY'] }, emptySchema);
     expect(tiers(f).declared).toEqual([]);
-    expect(tiers(f).undeclared).toEqual([]);
+    expect(tiers(f).undeclared).toEqual(['Roles[RoleX]', 'Roles[RoleY]']);
+  });
+
+  it('reports a detach AND an unexpected attach at once (declared RoleA gone, RoleB appeared)', () => {
+    const f = classifyResource(mp({ Roles: ['RoleA'] }), { Roles: ['RoleB'] }, emptySchema);
+    const detach = f.filter((x) => x.tier === 'declared' && x.path === 'Roles');
+    expect(detach).toHaveLength(1);
+    expect(detach[0]?.attributeKey).toBe('RoleA'); // declared member removed
+    const undeclared = f.filter((x) => x.tier === 'undeclared');
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0]).toMatchObject({ path: 'Roles[RoleB]', actual: 'RoleB', nested: true }); // unexpected attach
   });
 
   it('reports EVERY declared member when all three lists are fully detached (live all empty)', () => {
