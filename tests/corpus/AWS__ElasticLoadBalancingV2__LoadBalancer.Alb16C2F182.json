@@ -1,0 +1,224 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Alb16C2F182",
+    "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+    "constructPath": "CdkRealDriftIntegAlbRich/Alb",
+    "declared": {
+      "LoadBalancerAttributes": [
+        {
+          "Key": "deletion_protection.enabled",
+          "Value": "false"
+        },
+        {
+          "Key": "routing.http2.enabled",
+          "Value": "true"
+        },
+        {
+          "Key": "idle_timeout.timeout_seconds",
+          "Value": "120"
+        }
+      ],
+      "Name": "cdkrd-alb-rich",
+      "Scheme": "internal",
+      "SecurityGroups": ["sg-06022922575f424a4"],
+      "Subnets": ["subnet-0c6cfbd2761ec8536", "subnet-0a6286029be181fd0"],
+      "Type": "application"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "SecurityGroups": ["sg-06022922575f424a4"],
+    "LoadBalancerAttributes": [
+      {
+        "Value": "",
+        "Key": "access_logs.s3.prefix"
+      },
+      {
+        "Value": "append",
+        "Key": "routing.http.xff_header_processing.mode"
+      },
+      {
+        "Value": "true",
+        "Key": "routing.http2.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "waf.fail_open.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "connection_logs.s3.bucket"
+      },
+      {
+        "Value": "false",
+        "Key": "access_logs.s3.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "zonal_shift.config.enabled"
+      },
+      {
+        "Value": "defensive",
+        "Key": "routing.http.desync_mitigation_mode"
+      },
+      {
+        "Value": "",
+        "Key": "connection_logs.s3.prefix"
+      },
+      {
+        "Value": "",
+        "Key": "health_check_logs.s3.prefix"
+      },
+      {
+        "Value": "false",
+        "Key": "routing.http.x_amzn_tls_version_and_cipher_suite.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "routing.http.preserve_host_header.enabled"
+      },
+      {
+        "Value": "true",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "health_check_logs.s3.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "health_check_logs.s3.bucket"
+      },
+      {
+        "Value": "false",
+        "Key": "routing.http.xff_client_port.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "access_logs.s3.bucket"
+      },
+      {
+        "Value": "false",
+        "Key": "deletion_protection.enabled"
+      },
+      {
+        "Value": "3600",
+        "Key": "client_keep_alive.seconds"
+      },
+      {
+        "Value": "false",
+        "Key": "routing.http.drop_invalid_header_fields.enabled"
+      },
+      {
+        "Value": "120",
+        "Key": "idle_timeout.timeout_seconds"
+      },
+      {
+        "Value": "false",
+        "Key": "connection_logs.s3.enabled"
+      }
+    ],
+    "Scheme": "internal",
+    "DNSName": "internal-cdkrd-alb-rich-1869884205.us-east-1.elb.amazonaws.com",
+    "Name": "cdkrd-alb-rich",
+    "LoadBalancerName": "cdkrd-alb-rich",
+    "Subnets": ["subnet-0a6286029be181fd0", "subnet-0c6cfbd2761ec8536"],
+    "Type": "application",
+    "CanonicalHostedZoneID": "Z35SXDOTRQ7X7K",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+    "EnablePrefixForIpv6SourceNat": "off",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAlbRich/deec7f40-6d23-11f1-845a-0afff5b84213",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegAlbRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Alb16C2F182",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "LoadBalancerFullName": "app/cdkrd-alb-rich/ad889bbaa8149b3c",
+    "SubnetMappings": [
+      {
+        "SubnetId": "subnet-0a6286029be181fd0"
+      },
+      {
+        "SubnetId": "subnet-0c6cfbd2761ec8536"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnly": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnly": ["Name", "Scheme", "Type"],
+    "readOnlyPaths": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnlyPaths": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnlyPaths": ["Name", "Scheme", "Type"],
+    "defaults": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "defaultPaths": {
+      "EnableCapacityReservationProvisionStabilize": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "EnablePrefixForIpv6SourceNat",
+      "actual": "off",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Alb16C2F182",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "SubnetMappings",
+      "actual": [
+        {
+          "SubnetId": "subnet-0a6286029be181fd0"
+        },
+        {
+          "SubnetId": "subnet-0c6cfbd2761ec8536"
+        }
+      ],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
+      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Stream",
+    "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+    "physicalId": "cdkrd-firehose-rich",
+    "constructPath": "CdkRealDriftIntegFirehoseRich/Stream",
+    "declared": {
+      "DeliveryStreamName": "cdkrd-firehose-rich",
+      "DeliveryStreamType": "DirectPut",
+      "ExtendedS3DestinationConfiguration": {
+        "BucketARN": "arn:aws:s3:::cdkrealdriftintegfirehoserich-destc383b82a-xgmrlqjmbyei",
+        "BufferingHints": {
+          "IntervalInSeconds": 300,
+          "SizeInMBs": 5
+        },
+        "CloudWatchLoggingOptions": {
+          "Enabled": true,
+          "LogGroupName": "/cdkrd/firehose-rich",
+          "LogStreamName": "S3Delivery"
+        },
+        "CompressionFormat": "GZIP",
+        "EncryptionConfiguration": {
+          "NoEncryptionConfig": "NoEncryption"
+        },
+        "ErrorOutputPrefix": "errors/",
+        "Prefix": "data/",
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseRich-Role1ABCC5F0-VAW2lQzr56N2"
+      }
+    }
+  },
+  "liveRaw": {
+    "DeliveryStreamType": "DirectPut",
+    "DeliveryStreamName": "cdkrd-firehose-rich",
+    "Arn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/cdkrd-firehose-rich",
+    "ExtendedS3DestinationConfiguration": {
+      "ErrorOutputPrefix": "errors/",
+      "BucketARN": "arn:aws:s3:::cdkrealdriftintegfirehoserich-destc383b82a-xgmrlqjmbyei",
+      "BufferingHints": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "CompressionFormat": "GZIP",
+      "EncryptionConfiguration": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "Prefix": "data/",
+      "CloudWatchLoggingOptions": {
+        "LogStreamName": "S3Delivery",
+        "Enabled": true,
+        "LogGroupName": "/cdkrd/firehose-rich"
+      },
+      "RoleARN": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseRich-Role1ABCC5F0-VAW2lQzr56N2",
+      "S3BackupMode": "Disabled"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "ElasticsearchDestinationConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration"
+    ],
+    "createOnly": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "DirectPutSourceConfiguration.ThroughputHintInMBs",
+      "ElasticsearchDestinationConfiguration",
+      "ElasticsearchDestinationConfiguration.CloudWatchLoggingOptions.Enabled",
+      "ExtendedS3DestinationConfiguration.CustomTimeZone",
+      "ExtendedS3DestinationConfiguration.FileExtension",
+      "HttpEndpointDestinationConfiguration.EndpointConfiguration.AccessKey",
+      "HttpEndpointDestinationConfiguration.ProcessingConfiguration",
+      "HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "HttpEndpointDestinationConfiguration.SecretsManagerConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "RedshiftDestinationConfiguration.Password",
+      "RedshiftDestinationConfiguration.ProcessingConfiguration",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3Configuration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.Enabled",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.RoleARN",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.SecretARN",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration",
+      "SplunkDestinationConfiguration.BufferingHints",
+      "SplunkDestinationConfiguration.CloudWatchLoggingOptions",
+      "SplunkDestinationConfiguration.ProcessingConfiguration",
+      "SplunkDestinationConfiguration.S3Configuration.EncryptionConfiguration.NoEncryptionConfig",
+      "SplunkDestinationConfiguration.SecretsManagerConfiguration"
+    ],
+    "createOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration.VpcConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration.VpcConfiguration",
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "ElasticsearchDestinationConfiguration.VpcConfiguration",
+      "IcebergDestinationConfiguration.CatalogConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Stream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.S3BackupMode",
+      "actual": "Disabled",
+      "nested": true,
+      "physicalId": "cdkrd-firehose-rich",
+      "constructPath": "CdkRealDriftIntegFirehoseRich/Stream"
+    }
+  ]
+}
