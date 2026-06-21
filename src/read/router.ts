@@ -52,6 +52,17 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),
+  // ApiGatewayV2::Authorizer primaryIdentifier is [AuthorizerId, ApiId] — CHILD
+  // first, the REVERSE of its v2 siblings (Stage/Route/Integration are [ApiId,
+  // <child>] parent-first). The CFn physical id is the bare AuthorizerId; ApiId comes
+  // from the resolved declared Ref. Verified live (httpapi-authorizer-rich): the bare
+  // id ValidationException-skips until paired as `AuthorizerId|ApiId`. Child-first like
+  // ECS Service, so not `compositeWith` (that is parent-first).
+  'AWS::ApiGatewayV2::Authorizer': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const apiId = declared.ApiId;
+    return typeof apiId === 'string' && apiId.length > 0 ? `${pid}|${apiId}` : undefined;
+  },
   'AWS::AppConfig::Environment': compositeWith('ApplicationId'),
   'AWS::AppConfig::ConfigurationProfile': compositeWith('ApplicationId'),
   // ApiGateway v1 (REST) parent-first composites `[RestApiId, <child>]` and Cognito
@@ -66,6 +77,11 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGateway::RequestValidator': compositeWith('RestApiId'),
   'AWS::ApiGateway::Resource': compositeWith('RestApiId'),
   'AWS::ApiGateway::Stage': compositeWith('RestApiId'),
+  // Authorizer primaryIdentifier is [RestApiId, AuthorizerId] — parent-first like the
+  // rest of the v1 family. The CFn physical id is the bare AuthorizerId; without this
+  // a DECLARED Lambda/Cognito authorizer ValidationException-skips (read-gap). Verified
+  // live (restapi-authorizer-rich).
+  'AWS::ApiGateway::Authorizer': compositeWith('RestApiId'),
   'AWS::Cognito::UserPoolDomain': compositeWith('UserPoolId'),
   'AWS::Cognito::UserPoolResourceServer': compositeWith('UserPoolId'),
   // ApiGateway::Deployment is the odd one out: its primaryIdentifier is

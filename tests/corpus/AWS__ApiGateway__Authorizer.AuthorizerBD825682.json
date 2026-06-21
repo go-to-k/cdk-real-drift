@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AuthorizerBD825682",
+    "resourceType": "AWS::ApiGateway::Authorizer",
+    "physicalId": "hne9qm",
+    "constructPath": "CdkRealDriftIntegRestApiAuthorizerRich/Authorizer",
+    "declared": {
+      "AuthorizerResultTtlInSeconds": 300,
+      "AuthorizerUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegRestApiAuthorizerR-AuthFnE7829713-magW45Sajha5/invocations",
+      "IdentitySource": "method.request.header.Authorization",
+      "Name": "CdkRealDriftIntegRestApiAuthorizerRichAuthorizerA82D1513",
+      "RestApiId": "p2w35ndg13",
+      "Type": "TOKEN"
+    }
+  },
+  "liveRaw": {
+    "ProviderARNs": [],
+    "Type": "TOKEN",
+    "AuthorizerUri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegRestApiAuthorizerR-AuthFnE7829713-magW45Sajha5/invocations",
+    "AuthorizerId": "hne9qm",
+    "AuthorizerResultTtlInSeconds": 300,
+    "RestApiId": "p2w35ndg13",
+    "IdentitySource": "method.request.header.Authorization",
+    "AuthType": "custom",
+    "Name": "CdkRealDriftIntegRestApiAuthorizerRichAuthorizerA82D1513"
+  },
+  "schema": {
+    "readOnly": ["AuthorizerId"],
+    "writeOnly": [],
+    "createOnly": ["RestApiId"],
+    "readOnlyPaths": ["AuthorizerId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RestApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "AuthorizerBD825682",
+      "resourceType": "AWS::ApiGateway::Authorizer",
+      "path": "AuthType",
+      "actual": "custom",
+      "physicalId": "hne9qm",
+      "constructPath": "CdkRealDriftIntegRestApiAuthorizerRich/Authorizer"
+    }
+  ]
+}

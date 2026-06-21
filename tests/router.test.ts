@@ -198,6 +198,32 @@ describe('readLive (CC identifier adapters, R74)', () => {
     });
   }
 
+  it('ApiGatewayV2 Authorizer: builds the AuthorizerId|ApiId composite — CHILD first (reverse of its siblings)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::Authorizer',
+        physicalId: 'auth123',
+        declared: { ApiId: 'api456' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('auth123|api456');
+  });
+
+  it('ApiGatewayV2 Authorizer: an unresolved ApiId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ApiGatewayV2::Authorizer', physicalId: 'auth123', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('auth123');
+  });
+
   it('ApiGatewayV2 Stage: an unresolved ApiId falls back to the raw physical id', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(
@@ -232,6 +258,7 @@ describe('readLive (CC identifier adapters, R74)', () => {
     'AWS::ApiGateway::RequestValidator',
     'AWS::ApiGateway::Resource',
     'AWS::ApiGateway::Stage',
+    'AWS::ApiGateway::Authorizer',
   ]) {
     it(`${t}: builds the RestApiId|<child> composite identifier`, async () => {
       cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });

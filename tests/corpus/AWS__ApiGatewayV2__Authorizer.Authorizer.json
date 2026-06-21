@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Authorizer",
+    "resourceType": "AWS::ApiGatewayV2::Authorizer",
+    "physicalId": "i4ca08",
+    "constructPath": "CdkRealDriftIntegHttpApiAuthorizerRich/Authorizer",
+    "declared": {
+      "ApiId": "totpua68e1",
+      "AuthorizerType": "JWT",
+      "IdentitySource": ["$request.header.Authorization"],
+      "JwtConfiguration": {
+        "Audience": ["cdkrd-audience"],
+        "Issuer": "https://accounts.google.com"
+      },
+      "Name": "cdkrd-jwt-auth"
+    }
+  },
+  "liveRaw": {
+    "AuthorizerType": "JWT",
+    "JwtConfiguration": {
+      "Issuer": "https://accounts.google.com",
+      "Audience": ["cdkrd-audience"]
+    },
+    "AuthorizerId": "i4ca08",
+    "IdentitySource": ["$request.header.Authorization"],
+    "ApiId": "totpua68e1",
+    "Name": "cdkrd-jwt-auth"
+  },
+  "schema": {
+    "readOnly": ["AuthorizerId"],
+    "writeOnly": [
+      "AuthorizerCredentialsArn",
+      "AuthorizerPayloadFormatVersion",
+      "AuthorizerResultTtlInSeconds",
+      "AuthorizerUri",
+      "EnableSimpleResponses"
+    ],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["AuthorizerId"],
+    "writeOnlyPaths": [
+      "AuthorizerCredentialsArn",
+      "AuthorizerPayloadFormatVersion",
+      "AuthorizerResultTtlInSeconds",
+      "AuthorizerUri",
+      "EnableSimpleResponses"
+    ],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
