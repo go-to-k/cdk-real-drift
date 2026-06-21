@@ -411,6 +411,14 @@ export interface ApplyBaselineOptions {
   // "baseline value removed since record" finding so a constructPath-form ignore rule
   // matches it (a RecordedEntry carries no constructPath of its own).
   constructPathByLogical?: Map<string, string>;
+  // logicalId -> live physical id. Used to restore physicalId onto the synthetic
+  // "baseline value removed since record" finding. A RecordedEntry stores no physical
+  // id, and unlike a LIVE finding (which classifyResource stamps with
+  // resource.physicalId) this one is synthesized here — so without this it reaches
+  // `revert` with NO physical id and buildRevertPlan rejects it ("no physical id"),
+  // making a recorded value removed out of band UN-revertable (a real revert FN: the
+  // value the user chose to keep disappeared, yet `revert` refuses to restore it).
+  physicalIdByLogical?: Map<string, string>;
   warn?: (s: string) => void; // stderr note channel for the promotion case
 }
 
@@ -614,6 +622,11 @@ export function applyBaseline(
       ...(opts.constructPathByLogical?.get(a.logicalId) !== undefined && {
         constructPath: opts.constructPathByLogical.get(a.logicalId),
       }),
+      // physical id so `revert` can act on it (a synthesized finding has no
+      // resource.physicalId source — without this it is rejected as "no physical id").
+      ...(opts.physicalIdByLogical?.get(a.logicalId) !== undefined && {
+        physicalId: opts.physicalIdByLogical.get(a.logicalId),
+      }),
       path: a.path,
       desired: a.value,
       actual: undefined,
@@ -651,6 +664,17 @@ export function constructPathsByLogical(
 ): Map<string, string> {
   const m = new Map<string, string>();
   for (const r of resources) if (r.constructPath !== undefined) m.set(r.logicalId, r.constructPath);
+  return m;
+}
+
+// logicalId -> live physical id, for resources that resolved one. Feeds
+// ApplyBaselineOptions.physicalIdByLogical so the synthetic removed-since-record
+// finding carries a physical id and `revert` can restore the removed value.
+export function physicalIdsByLogical(
+  resources: { logicalId: string; physicalId?: string | undefined }[]
+): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const r of resources) if (r.physicalId !== undefined) m.set(r.logicalId, r.physicalId);
   return m;
 }
 

@@ -10,8 +10,10 @@ import {
   type BaselineFile,
   buildRecorded,
   carryForwardUnreadable,
+  constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
+  physicalIdsByLogical,
   selectRecorded,
   splitRecordedByBaseline,
   writeBaseline,
@@ -578,8 +580,15 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // it still requires the explicit flag.
   const includeRemovals = includeUnrecordedRemovals(removeUnrecorded, interactive, yes);
   const declaredByLogical = declaredKeysByLogical(gathered.desired.resources);
+  // physicalId + constructPath maps so a synthesized "baseline value removed since
+  // record" finding carries them — physicalId lets `revert` actually restore the
+  // removed value (else buildRevertPlan rejects it "no physical id"); constructPath
+  // lets a constructPath-form ignore rule match it during applyIgnores.
+  const physicalIdByLogical = physicalIdsByLogical(gathered.desired.resources);
+  const constructPathByLogical = constructPathsByLogical(gathered.desired.resources);
+  const baselineOpts = { declaredByLogical, physicalIdByLogical, constructPathByLogical };
   const drifted = applyIgnores(
-    applyBaseline(gathered.findings, baseline, { declaredByLogical, warn: console.error }),
+    applyBaseline(gathered.findings, baseline, { ...baselineOpts, warn: console.error }),
     stackName,
     region,
     config
@@ -727,12 +736,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     '\n' + style.infoTier(`verifying convergence (re-reading ${touched.size} resource(s))...`)
   );
   const reconcile = (findings: Finding[]): Finding[] =>
-    applyIgnores(
-      applyBaseline(findings, baseline, { declaredByLogical }),
-      stackName,
-      region,
-      config
-    );
+    applyIgnores(applyBaseline(findings, baseline, baselineOpts), stackName, region, config);
   // regatherTouched drops every `touched` finding (including the synthesized-id `added`
   // deletes) and re-reads only template resources — so a FAILED delete's finding is gone
   // from `post` though the resource still lives. Re-add the failed ones so convergence
