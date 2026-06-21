@@ -19,6 +19,9 @@ import {
   AttachRolePolicyCommand,
   AttachUserPolicyCommand,
   CreatePolicyVersionCommand,
+  DetachGroupPolicyCommand,
+  DetachRolePolicyCommand,
+  DetachUserPolicyCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
   GetPolicyCommand,
@@ -665,6 +668,43 @@ describe('IAM ManagedPolicy writer', () => {
 
     expect(iam.commandCalls(CreatePolicyVersionCommand)).toHaveLength(1);
     expect(iam.commandCalls(AttachRolePolicyCommand)).toHaveLength(1);
+  });
+
+  // An unexpected (live-only) attachment removed via --remove-unrecorded arrives as a
+  // REMOVE op on the nested path `Roles[member]` — detach that member by parsing the path.
+  const removeMemberOp = (prop: string, member: string): PatchOp => ({
+    op: 'remove',
+    path: `/${prop}[${member}]`,
+    prior: member,
+    human: `${prop}[${member}] -> remove (undeclared, not in baseline)`,
+  });
+
+  it('detaches an unexpected member from a `remove` op on the nested Prop[member] path', async () => {
+    iam.on(DetachRolePolicyCommand).resolves({});
+    iam.on(DetachUserPolicyCommand).resolves({});
+    iam.on(DetachGroupPolicyCommand).resolves({});
+
+    await SDK_WRITERS['AWS::IAM::ManagedPolicy'](ctx(), [
+      removeMemberOp('Roles', 'RoleX'),
+      removeMemberOp('Users', 'UserX'),
+      removeMemberOp('Groups', 'GroupX'),
+    ]);
+
+    expect(iam.commandCalls(DetachRolePolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      RoleName: 'RoleX',
+    });
+    expect(iam.commandCalls(DetachUserPolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      UserName: 'UserX',
+    });
+    expect(iam.commandCalls(DetachGroupPolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      GroupName: 'GroupX',
+    });
+    // never re-attaches, and a detach-only revert burns no policy version
+    expect(iam.commandCalls(AttachRolePolicyCommand)).toHaveLength(0);
+    expect(iam.commandCalls(CreatePolicyVersionCommand)).toHaveLength(0);
   });
 });
 

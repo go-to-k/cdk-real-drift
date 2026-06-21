@@ -21,7 +21,7 @@
 // and unit-tested; the prompt is a thin rendering/key shell.
 import { isCancel, Prompt } from '@clack/core';
 import { S_BAR, S_BAR_END, S_BAR_START } from '@clack/prompts';
-import { isNestedUndeclared } from '../revert/plan.js';
+import { isManagedPolicyAttachmentMember, isNestedUndeclared } from '../revert/plan.js';
 import type { Finding } from '../types.js';
 import { style } from '../report/style.js';
 
@@ -46,7 +46,9 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
  */
 export function applicableActions(finding: Finding): FindingAction[] {
   if (finding.tier === 'undeclared')
-    return isNestedUndeclared(finding) ? ['record', 'ignore'] : ['record', 'ignore', 'revert'];
+    return isNestedUndeclared(finding) && !isManagedPolicyAttachmentMember(finding)
+      ? ['record', 'ignore']
+      : ['record', 'ignore', 'revert'];
   if (finding.tier === 'added')
     // A `modelReadFailed` added finding carries only an identity snippet (its full model
     // could not be read this run). buildRecorded DROPS it, so offering `record` is a

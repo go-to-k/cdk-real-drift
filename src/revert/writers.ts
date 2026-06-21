@@ -49,6 +49,9 @@ import {
   AttachRolePolicyCommand,
   AttachUserPolicyCommand,
   CreatePolicyVersionCommand,
+  DetachGroupPolicyCommand,
+  DetachRolePolicyCommand,
+  DetachUserPolicyCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
   IAMClient,
@@ -185,6 +188,20 @@ const isArn = (v: unknown): string | undefined => {
 // Top JSON-pointer segment of an op path (`/Roles/0` -> `Roles`, `/Roles` -> `Roles`).
 const topSeg = (path: string): string => path.split('/').filter(Boolean)[0] ?? '';
 const ATTACHMENT_PROPS = new Set(['Roles', 'Users', 'Groups']);
+// Resolve an op into a ManagedPolicy attachment (prop + member) from EITHER encoding the
+// revert plan emits: a declared DETACH revert (re-attach) arrives as path `Roles` with
+// the member on `attributeKey`; an unexpected-attach removal (--remove-unrecorded) of a
+// live-only member arrives as the nested path `Roles[member]`. Returns undefined for a
+// document op (PolicyDocument/Path/Description), which routes to the version path below.
+const parseAttachmentOp = (o: PatchOp): { prop: string; member: string } | undefined => {
+  const seg = topSeg(o.path);
+  if (ATTACHMENT_PROPS.has(seg)) {
+    const member = o.attributeKey ?? (typeof o.value === 'string' ? o.value : undefined);
+    return member !== undefined ? { prop: seg, member: String(member) } : undefined;
+  }
+  const m = /^(Roles|Users|Groups)\[(.+)\]$/.exec(seg);
+  return m ? { prop: m[1] as string, member: m[2] as string } : undefined;
+};
 
 const writeIamManagedPolicy: SdkWriter = async (ctx, ops) => {
   // CFn physical id for a managed policy IS its arn; fall back to the declared
@@ -193,28 +210,43 @@ const writeIamManagedPolicy: SdkWriter = async (ctx, ops) => {
   if (!arn) throw new Error('cannot resolve managed policy arn for revert');
   const c = new IAMClient({ region: ctx.region });
 
-  // Attachment-list reverts (Roles/Users/Groups): a declared member detached out of
-  // band is re-ATTACHED by member — never by rewriting the whole list, which would
-  // detach the union members another stack/role/console legitimately added (the
-  // classify side only ever emits a detach finding for a declared-but-MISSING member).
-  // The member rides on `attributeKey`. Idempotent: AttachXPolicy on an already-
-  // attached member is a no-op, so a partial prior revert re-runs safely.
-  const attachOps = ops.filter((o) => ATTACHMENT_PROPS.has(topSeg(o.path)));
-  for (const o of attachOps) {
-    const seg = topSeg(o.path);
-    const member = String(o.attributeKey ?? o.value);
-    if (seg === 'Roles')
-      await c.send(new AttachRolePolicyCommand({ PolicyArn: arn, RoleName: member }));
-    else if (seg === 'Users')
-      await c.send(new AttachUserPolicyCommand({ PolicyArn: arn, UserName: member }));
-    else if (seg === 'Groups')
-      await c.send(new AttachGroupPolicyCommand({ PolicyArn: arn, GroupName: member }));
+  // Attachment-list reverts (Roles/Users/Groups), per member — never by rewriting the
+  // whole list (that would touch the union members another stack/role/console
+  // legitimately added):
+  //   - an `add` op re-ATTACHES a declared member detached out of band (AttachXPolicy);
+  //   - a `remove` op DETACHES a live-only (unexpected) member the user chose to remove
+  //     via --remove-unrecorded (DetachXPolicy).
+  // AttachXPolicy on an already-attached member is a no-op, so a partial prior revert
+  // re-runs safely.
+  for (const o of ops) {
+    const parsed = parseAttachmentOp(o);
+    if (!parsed) continue;
+    const { prop, member } = parsed;
+    const detach = o.op === 'remove';
+    if (prop === 'Roles')
+      await c.send(
+        detach
+          ? new DetachRolePolicyCommand({ PolicyArn: arn, RoleName: member })
+          : new AttachRolePolicyCommand({ PolicyArn: arn, RoleName: member })
+      );
+    else if (prop === 'Users')
+      await c.send(
+        detach
+          ? new DetachUserPolicyCommand({ PolicyArn: arn, UserName: member })
+          : new AttachUserPolicyCommand({ PolicyArn: arn, UserName: member })
+      );
+    else if (prop === 'Groups')
+      await c.send(
+        detach
+          ? new DetachGroupPolicyCommand({ PolicyArn: arn, GroupName: member })
+          : new AttachGroupPolicyCommand({ PolicyArn: arn, GroupName: member })
+      );
   }
 
   // Document/Path/Description reverts go through a new default policy version. Skip it
   // entirely when only attachment ops were present, so a detach-only revert does not
   // burn a (capped at 5) policy version re-writing the unchanged document.
-  const docOps = ops.filter((o) => !ATTACHMENT_PROPS.has(topSeg(o.path)));
+  const docOps = ops.filter((o) => parseAttachmentOp(o) === undefined);
   if (docOps.length === 0) return;
   const desired = policyJson(await desiredModel('AWS::IAM::ManagedPolicy', ctx, docOps));
   if (desired === undefined)

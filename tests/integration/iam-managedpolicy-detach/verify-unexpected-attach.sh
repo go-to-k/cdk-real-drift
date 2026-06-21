@@ -71,4 +71,21 @@ $CLI check "$STACK" --region "$REGION" -c "declaredRoleArn=$DECLARED_ARN" --fail
 grep -q "$INTRUDER_ROLE" /tmp/cdkrd-mpa.out || fail "intruder attachment not reported"
 grep -q "appeared since record" /tmp/cdkrd-mpa.out || fail "not flagged as appeared-since-record drift"
 
-echo "INTEG PASS (CdkRealDriftIntegIamManagedPolicyDetach unexpected-attach detected since record)"
+echo "=== revert --remove-unrecorded --yes (DETACH the unexpected member) ==="
+$CLI revert "$STACK" --region "$REGION" -c "declaredRoleArn=$DECLARED_ARN" --remove-unrecorded --yes \
+  | tee /tmp/cdkrd-mpa-revert.out || fail "revert returned non-zero"
+grep -qi "no physical id\|not revertable" /tmp/cdkrd-mpa-revert.out && fail "intruder reported not-revertable"
+echo "(waiting for IAM propagation)"; sleep 10
+
+echo "=== check CLEAN after revert ==="
+$CLI check "$STACK" --region "$REGION" -c "declaredRoleArn=$DECLARED_ARN" --fail
+[ $? -eq 0 ] || fail "drift remains after revert"
+
+echo "=== confirm the intruder is DETACHED and the declared role untouched ==="
+AFTER="$(aws iam list-entities-for-policy --policy-arn "$MANAGED_ARN" --region "$REGION" \
+  --query 'PolicyRoles[].RoleName' --output text)"
+echo "post-revert attached roles: $AFTER"
+echo "$AFTER" | tr '\t' '\n' | grep -qx "$INTRUDER_ROLE" && fail "intruder still attached (detach did not run)"
+echo "$AFTER" | tr '\t' '\n' | grep -qx "$DECLARED_ROLE" || fail "declared role was wrongly detached"
+
+echo "INTEG PASS (CdkRealDriftIntegIamManagedPolicyDetach unexpected-attach detect + --remove-unrecorded detach)"
