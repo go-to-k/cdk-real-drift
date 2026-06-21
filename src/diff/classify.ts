@@ -403,6 +403,37 @@ export function classifyResource(
           actual: liveValue,
         });
       }
+      // Fail-closed (R95): the live bag also carries attribute keys the template never
+      // declared (the ~20 server-default LB/TG attributes, OR an out-of-band custom
+      // attribute). The declared loop above compares ONLY declared keys, so without this
+      // the undeclared keys reached NO dimension — not even `record` — making an
+      // out-of-band change to an UNDECLARED attribute (routing.http2.enabled,
+      // deletion_protection.enabled, access_logs.s3.enabled …) a permanent silent FN,
+      // contradicting cdkrd's core undeclared-property promise. Emit each live-only key as
+      // nested undeclared inventory — the same fail-closed treatment R95 gives every other
+      // identity-keyed array: folded as informational on the first run, snapshotted by
+      // `record`, and a later change vs the baseline then surfaces as real drift. (No
+      // per-key atDefault fold: each attribute key carries its own default, so a single
+      // wildcard would mis-fold; the undeclared values are simply recorded like any other
+      // undeclared property.)
+      const declaredKeys = new Set(
+        v.filter(isKeyValueEntry).map((e) => (e as { Key: string }).Key)
+      );
+      for (const lEl of liveBag) {
+        if (!isKeyValueEntry(lEl)) continue;
+        const key = (lEl as { Key: string }).Key;
+        if (declaredKeys.has(key)) continue;
+        const value = (lEl as { Value: unknown }).Value;
+        if (isTrivialEmpty(value)) continue;
+        findings.push({
+          tier: 'undeclared',
+          logicalId,
+          resourceType,
+          path: `${k}[${key}]`,
+          actual: value,
+          nested: true,
+        });
+      }
       continue;
     }
     // Per-type identity-keyed SUBSET arrays (Cognito UserPool.Schema): the template

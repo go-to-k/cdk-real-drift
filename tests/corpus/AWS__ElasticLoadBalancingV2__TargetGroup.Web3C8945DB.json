@@ -162,38 +162,112 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckEnabled",
-      "actual": true,
+      "path": "TargetGroupAttributes[load_balancing.algorithm.anomaly_mitigation]",
+      "actual": "off",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckPort",
-      "actual": "traffic-port",
+      "path": "TargetGroupAttributes[load_balancing.algorithm.type]",
+      "actual": "round_robin",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckProtocol",
-      "actual": "HTTP",
+      "path": "TargetGroupAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "use_load_balancer_configuration",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "HealthCheckTimeoutSeconds",
-      "actual": 5,
+      "path": "TargetGroupAttributes[slow_start.duration_seconds]",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.app_cookie.duration_seconds]",
+      "actual": "86400",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.lb_cookie.duration_seconds]",
+      "actual": "86400",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.type]",
+      "actual": "lb_cookie",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
@@ -218,11 +292,11 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "Name",
-      "actual": "CdkrdI-Web3C-B2EBJYBQ0UEJ",
+      "path": "HealthCheckEnabled",
+      "actual": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
@@ -241,6 +315,42 @@
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "UnhealthyThresholdCount",
       "actual": 2,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Name",
+      "actual": "CdkrdI-Web3C-B2EBJYBQ0UEJ",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "HTTP",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPort",
+      "actual": "traffic-port",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     }

@@ -11,9 +11,7 @@
       "MasterUserPassword": "__cdkrd_corpus_unresolved__",
       "MasterUsername": "__cdkrd_corpus_unresolved__",
       "StorageEncrypted": true,
-      "VpcSecurityGroupIds": [
-        "sg-02bba2f739c466513"
-      ]
+      "VpcSecurityGroupIds": ["sg-02bba2f739c466513"]
     }
   },
   "liveRaw": {
@@ -28,17 +26,10 @@
     "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/9ee8feba-ae18-445a-bcab-306f7748fb6c",
     "DeletionProtection": false,
     "DBClusterParameterGroupName": "default.docdb5.0",
-    "VpcSecurityGroupIds": [
-      "sg-02bba2f739c466513"
-    ]
+    "VpcSecurityGroupIds": ["sg-02bba2f739c466513"]
   },
   "schema": {
-    "readOnly": [
-      "ClusterResourceId",
-      "Endpoint",
-      "Id",
-      "ReadEndpoint"
-    ],
+    "readOnly": ["ClusterResourceId", "Endpoint", "Id", "ReadEndpoint"],
     "writeOnly": [],
     "createOnly": [
       "AvailabilityZones",
@@ -50,12 +41,7 @@
       "SourceDBClusterIdentifier",
       "StorageEncrypted"
     ],
-    "readOnlyPaths": [
-      "ClusterResourceId",
-      "Endpoint",
-      "Id",
-      "ReadEndpoint"
-    ],
+    "readOnlyPaths": ["ClusterResourceId", "Endpoint", "Id", "ReadEndpoint"],
     "writeOnlyPaths": [],
     "createOnlyPaths": [
       "AvailabilityZones",

@@ -720,10 +720,37 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       { Key: 'client_keep_alive.seconds', Value: '3600' },
     ];
 
-    it('a fresh deploy with extra live attributes is NOT drift (subset compared)', () => {
-      expect(
-        classifyResource(res(T, declared), { LoadBalancerAttributes: liveAll }, emptySchema)
-      ).toEqual([]);
+    it('a fresh deploy with extra live attributes is NOT declared drift (subset compared)', () => {
+      const findings = classifyResource(
+        res(T, declared),
+        { LoadBalancerAttributes: liveAll },
+        emptySchema
+      );
+      // the 2 declared keys match -> zero DECLARED drift (no false positive)
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    });
+
+    it('fail-closed: live-only (undeclared) bag keys ARE emitted as undeclared inventory', () => {
+      // Before the fix the undeclared bag keys reached NO dimension (not even record),
+      // so an out-of-band change to an UNDECLARED attribute (routing.http2.enabled,
+      // access_logs.s3.enabled) was a permanent silent FN. Now each live-only key is
+      // emitted as nested undeclared inventory -> record snapshots it, a later change
+      // surfaces vs the baseline. (This test fails without the fix: findings would be [].)
+      const undeclared = classifyResource(
+        res(T, declared),
+        { LoadBalancerAttributes: liveAll },
+        emptySchema
+      ).filter((f) => f.tier === 'undeclared');
+      expect(undeclared.map((f) => f.path).sort()).toEqual([
+        'LoadBalancerAttributes[access_logs.s3.enabled]',
+        'LoadBalancerAttributes[client_keep_alive.seconds]',
+        'LoadBalancerAttributes[routing.http2.enabled]',
+      ]);
+      // the undeclared finding carries the live value + is nested-flagged (foldable/recordable)
+      const http2 = undeclared.find(
+        (f) => f.path === 'LoadBalancerAttributes[routing.http2.enabled]'
+      );
+      expect(http2).toMatchObject({ actual: 'true', nested: true });
     });
 
     it('a genuine change to a DECLARED attribute still surfaces, named by Key (R78)', () => {
@@ -1246,7 +1273,7 @@ describe('identity-keyed array ADDITIONS are detected, not subset-projected away
     expect(findings.length).toBeGreaterThan(0);
   });
 
-  it('ELB attribute bags still compare as a SUBSET (declared 2, AWS returns extra defaults) — no false drift', () => {
+  it('ELB attribute bags: declared keys subset-compared (no false drift), live-only keys emitted as undeclared (R95 fail-closed)', () => {
     const T = 'AWS::ElasticLoadBalancingV2::LoadBalancer';
     const declared = {
       LoadBalancerAttributes: [
@@ -1262,7 +1289,19 @@ describe('identity-keyed array ADDITIONS are detected, not subset-projected away
         { Key: 'routing.http2.enabled', Value: 'true' },
       ],
     };
-    expect(classifyResource(res(T, declared), liveAll, emptySchema)).toEqual([]);
+    const findings = classifyResource(res(T, declared), liveAll, emptySchema);
+    // the 2 declared keys match -> NO declared (false) drift
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // the live-only keys are now undeclared inventory (R95: additions reported, not hidden)
+    expect(
+      findings
+        .filter((f) => f.tier === 'undeclared')
+        .map((f) => f.path)
+        .sort()
+    ).toEqual([
+      'LoadBalancerAttributes[access_logs.s3.enabled]',
+      'LoadBalancerAttributes[routing.http2.enabled]',
+    ]);
   });
 });
 
