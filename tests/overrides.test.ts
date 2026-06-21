@@ -16,6 +16,7 @@ import {
   GetPolicyVersionCommand,
   GetRolePolicyCommand,
   IAMClient,
+  ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
@@ -138,6 +139,30 @@ describe('SDK overrides', () => {
       ctx({}, 'arn:aws:iam::123:policy/p')
     );
     expect(out!.Description).toBe('');
+  });
+  it('IAM ManagedPolicy: reads the live attachment lists (Roles/Users/Groups), paginated', async () => {
+    iam.on(GetPolicyCommand).resolves({ Policy: { DefaultVersionId: 'v1', Path: '/' } });
+    iam
+      .on(GetPolicyVersionCommand)
+      .resolves({ PolicyVersion: { Document: encodeURIComponent(POLICY) } });
+    // two pages of attached entities, the first truncated with a Marker.
+    iam
+      .on(ListEntitiesForPolicyCommand)
+      .resolvesOnce({ PolicyRoles: [{ RoleName: 'RoleA' }], IsTruncated: true, Marker: 'm1' })
+      .resolves({
+        PolicyRoles: [{ RoleName: 'RoleB' }],
+        PolicyUsers: [{ UserName: 'UserA' }],
+        PolicyGroups: [{ GroupName: 'GroupA' }],
+      });
+    const out = await SDK_OVERRIDES['AWS::IAM::ManagedPolicy'](
+      ctx({}, 'arn:aws:iam::123:policy/p')
+    );
+    expect(out).toMatchObject({
+      Roles: ['RoleA', 'RoleB'],
+      Users: ['UserA'],
+      Groups: ['GroupA'],
+    });
+    expect(iam.commandCalls(ListEntitiesForPolicyCommand)).toHaveLength(2);
   });
 
   it('Lambda Permission: matches statement by Action + Principal', async () => {

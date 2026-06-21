@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "description": "Hand-curated: Roles/Users/Groups all declared; one Role present, one User detached, the Group detached. One declared finding per declared-but-missing member; present members and live-only members produce nothing.",
+  "resource": {
+    "logicalId": "SharedABCD1234",
+    "resourceType": "AWS::IAM::ManagedPolicy",
+    "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+    "constructPath": "IntegStack/Shared",
+    "declared": {
+      "Description": "",
+      "Path": "/",
+      "PolicyDocument": {
+        "Statement": [
+          {
+            "Action": "s3:ListBucket",
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::bkt",
+            "Sid": "ListData"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Roles": ["R1"],
+      "Users": ["U1", "U2"],
+      "Groups": ["G1"]
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "Path": "/",
+    "PolicyDocument": {
+      "Statement": [
+        {
+          "Action": "s3:ListBucket",
+          "Effect": "Allow",
+          "Resource": "arn:aws:s3:::bkt",
+          "Sid": "ListData"
+        }
+      ],
+      "Version": "2012-10-17"
+    },
+    "Roles": ["R1", "RUnion"],
+    "Users": ["U1"],
+    "Groups": []
+  },
+  "schema": {
+    "readOnly": [
+      "AttachmentCount",
+      "CreateDate",
+      "DefaultVersionId",
+      "IsAttachable",
+      "PermissionsBoundaryUsageCount",
+      "PolicyArn",
+      "PolicyId",
+      "UpdateDate"
+    ],
+    "writeOnly": [],
+    "createOnly": ["Description", "ManagedPolicyName", "Path"],
+    "readOnlyPaths": [
+      "AttachmentCount",
+      "CreateDate",
+      "DefaultVersionId",
+      "IsAttachable",
+      "PermissionsBoundaryUsageCount",
+      "PolicyArn",
+      "PolicyId",
+      "UpdateDate"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "ManagedPolicyName", "Path"],
+    "defaults": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Users",
+      "attributeKey": "U2",
+      "desired": "U2",
+      "note": "declared attachment not present in live (out-of-band detach)",
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    },
+    {
+      "tier": "declared",
+      "logicalId": "SharedABCD1234",
+      "resourceType": "AWS::IAM::ManagedPolicy",
+      "path": "Groups",
+      "attributeKey": "G1",
+      "desired": "G1",
+      "note": "declared attachment not present in live (out-of-band detach)",
+      "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+      "constructPath": "IntegStack/Shared"
+    }
+  ]
+}

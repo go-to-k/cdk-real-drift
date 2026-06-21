@@ -103,6 +103,29 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('ManagedPolicy attachment detach -> SDK item, op carries the member on attributeKey', () => {
+    // a declared-but-detached Role finding (path Roles, attributeKey = role name) must
+    // route to the SDK writer (ManagedPolicy is a whole-type writer) and carry the
+    // member so writeIamManagedPolicy re-attaches ONLY that member (AttachRolePolicy).
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::IAM::ManagedPolicy',
+      physicalId: 'arn:aws:iam::111122223333:policy/p',
+      path: 'Roles',
+      attributeKey: 'RoleA',
+      desired: 'RoleA',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Roles',
+      value: 'RoleA',
+      attributeKey: 'RoleA',
+    });
+  });
+
   it('undeclared drift with an recorded prior value -> add op restoring the baseline value', () => {
     const f = F({
       tier: 'undeclared',

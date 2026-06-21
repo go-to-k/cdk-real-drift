@@ -107,6 +107,25 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
+// Per-type attachment-list properties compared ASYMMETRICALLY (declared∖live only).
+// AWS::IAM::ManagedPolicy's `Roles`/`Users`/`Groups` name the principals a managed
+// policy is attached to — but the same policy is commonly attached from SEVERAL
+// places (a role's own `ManagedPolicyArns`, a separate AWS::IAM::Policy/attachment
+// resource, another stack, the console), so the LIVE set is a UNION that legitimately
+// exceeds any one stack's intent. A symmetric compare would false-drift on every
+// shared policy (the FP `cdk drift` suffers). So:
+//   - a DECLARED member MISSING from live -> declared drift (an out-of-band DETACH —
+//     security-relevant: a privilege the stack intends was removed). The real FN the
+//     old "don't compare attachment lists at all" boundary missed.
+//   - a live member NOT declared          -> ignored (the union; never a finding).
+// A property the template does NOT declare at all is the pure union — dropped from
+// the live model below so it never reaches the undeclared loop. Strictly better than
+// both the old cdkrd (missed the detach) and cdk drift (FPs on the extra union
+// members): it catches the removal without the union false positive.
+const IAM_ATTACHMENT_SUBSET: Record<string, ReadonlySet<string>> = {
+  'AWS::IAM::ManagedPolicy': new Set(['Roles', 'Users', 'Groups']),
+};
+
 // R96/R98: recurse the declared and live sides of a property and emit each LIVE-only
 // nested key — a sub-key present in live but never declared, at any depth.
 //   - Plain objects (R96): walk every live key; recurse where declared, emit otherwise.
@@ -310,6 +329,12 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
+  // ManagedPolicy attachment lists the template does NOT declare are the pure live
+  // UNION (this policy attached elsewhere) — drop them so they never surface as
+  // undeclared drift. A declared attachment list is kept and compared asymmetrically
+  // in the declared loop below (declared-but-missing = detach; live-only ignored).
+  const attachmentProps = IAM_ATTACHMENT_SUBSET[resourceType];
+  if (attachmentProps) for (const p of attachmentProps) if (!(p in declared)) delete live[p];
   // R11: a declared TOP-LEVEL write-only key is about to be stripped from `declared`
   // (below). Surface it as ONE readGap finding FIRST so it is never silently dropped
   // — the informational tier exists precisely for "declared but unreadable" props.
@@ -379,6 +404,33 @@ export function classifyResource(
         path: k,
         note: 'declared but not returned by live read',
       });
+      continue;
+    }
+    // ManagedPolicy attachment lists (Roles/Users/Groups): compare ASYMMETRICALLY.
+    // A DECLARED member absent from the live (union) set is an out-of-band DETACH —
+    // emit a declared finding per missing member, carrying the member on
+    // `attributeKey` so revert re-attaches ONLY that one (never rewriting the whole
+    // list, which would detach the union members another stack/role legitimately
+    // added). A live-only member is the union and is NOT reported. An unresolved
+    // declared member (an intrinsic the synth couldn't resolve) can't be compared —
+    // skip it (the whole-property `unresolved` finding above already noted it).
+    if (attachmentProps?.has(k) && Array.isArray(v) && Array.isArray(live[k])) {
+      const liveSet = new Set((live[k] as unknown[]).map((m) => String(m)));
+      for (const member of v) {
+        if (member === UNRESOLVED || hasUnresolved(member)) continue;
+        if (typeof member !== 'string' && typeof member !== 'number') continue;
+        if (liveSet.has(String(member))) continue;
+        findings.push({
+          tier: 'declared',
+          logicalId,
+          resourceType,
+          path: k,
+          attributeKey: String(member),
+          desired: member,
+          actual: undefined,
+          note: 'declared attachment not present in live (out-of-band detach)',
+        });
+      }
       continue;
     }
     // R78: ELB attribute bags compare BY KEY (the template declares a subset of
