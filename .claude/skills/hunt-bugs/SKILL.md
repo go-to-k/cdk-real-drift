@@ -50,7 +50,26 @@ non-negotiable", which is enforced by a gate, not by trust.
    grep -rln "Kinesis\|Dashboard\|Secret\|intelligentTiering\|FunctionUrl" tests/integration/*/app.ts
    ```
    Empty hits = untested = good hunting ground.
-4. **Parallelize, but cap at 3–4 stacks.** Independent stacks (unique names) can
+4. **Probe CC support BEFORE an expensive deploy — skip the CC-gap tail.** For a
+   high-cost or slow stateful/niche type (RDS-family, OpenSearch, MSK, Neptune,
+   DocumentDB, Cloud Map, …), first check whether Cloud Control can even READ it —
+   the FP/FN hunt only has traction on **CC-readable** types (where AWS's live model
+   diverges from the template by normalization). If the type's CC read throws
+   `UnsupportedActionException`, every resource comes back `skipped=N` (surfaced
+   transparently in the `info:` footer — NOT a false negative): a clean `record`→
+   `check` is hollow and a detect is invisible because the resource was never read.
+   Such a type yields **zero FP/FN bugs** and has **no regression value as a fixture**
+   — it is an `SDK_OVERRIDES` reader candidate (a separate feature task), not a hunt
+   target. So do NOT burn a paid deploy on it. Confirm support first:
+   ```bash
+   aws cloudformation describe-type --type RESOURCE --type-name AWS::Foo::Bar \
+     --query 'ProvisioningType'   # FULLY_MUTABLE/IMMUTABLE = provisionable; then probe READ:
+   # if you have a live instance, `cloudcontrol get-resource` — UnsupportedActionException = CC-gap
+   ```
+   (Confirmed CC-gap this way: ServiceDiscovery HttpNamespace+Service, DocumentDB
+   DBCluster/DBInstance, AppSync ApiKey/GraphQLSchema — all `SDK_OVERRIDES` candidates,
+   not hunt targets.)
+5. **Parallelize, but cap at 3–4 stacks.** Independent stacks (unique names) can
    deploy concurrently as background tasks, but more is not better — it makes logs
    and teardown hard to follow. VPC/NAT (~3 min) pace a wave; most others ~1–2 min.
 
