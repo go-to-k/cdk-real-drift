@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiDeploymentStageprod3EB9684E",
+    "resourceType": "AWS::ApiGateway::Stage",
+    "physicalId": "prod",
+    "constructPath": "CdkRealDriftIntegApigwRestRich/Api/DeploymentStage.prod",
+    "declared": {
+      "DeploymentId": "usd4d2",
+      "Description": "cdkrd integ stage",
+      "MethodSettings": [
+        {
+          "DataTraceEnabled": false,
+          "HttpMethod": "*",
+          "ResourcePath": "/*",
+          "ThrottlingBurstLimit": 50,
+          "ThrottlingRateLimit": 100
+        }
+      ],
+      "RestApiId": "we41awg0n3",
+      "StageName": "prod",
+      "TracingEnabled": false
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "usd4d2",
+    "Description": "cdkrd integ stage",
+    "StageName": "prod",
+    "TracingEnabled": false,
+    "RestApiId": "we41awg0n3",
+    "MethodSettings": [
+      {
+        "CacheTtlInSeconds": 300,
+        "ResourcePath": "/*",
+        "CacheDataEncrypted": false,
+        "DataTraceEnabled": false,
+        "ThrottlingBurstLimit": 50,
+        "CachingEnabled": false,
+        "MetricsEnabled": false,
+        "HttpMethod": "*",
+        "ThrottlingRateLimit": 100
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "ApiDeploymentStageprod3EB9684E",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApigwRestRich/6d1e7cb0-6d28-11f1-8024-0e2b461e5e2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegApigwRestRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "CacheClusterEnabled": false
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["RestApiId", "StageName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RestApiId", "StageName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

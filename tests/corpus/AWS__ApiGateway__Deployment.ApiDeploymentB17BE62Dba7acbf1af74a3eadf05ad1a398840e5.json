@@ -1,0 +1,35 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiDeploymentB17BE62Dba7acbf1af74a3eadf05ad1a398840e5",
+    "resourceType": "AWS::ApiGateway::Deployment",
+    "physicalId": "usd4d2",
+    "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Deployment",
+    "declared": {
+      "Description": "cdkrd integ stage",
+      "RestApiId": "we41awg0n3"
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "usd4d2",
+    "Description": "cdkrd integ stage",
+    "RestApiId": "we41awg0n3"
+  },
+  "schema": {
+    "readOnly": ["DeploymentId"],
+    "writeOnly": ["DeploymentCanarySettings", "StageDescription", "StageName"],
+    "createOnly": ["DeploymentCanarySettings", "RestApiId"],
+    "readOnlyPaths": ["DeploymentId"],
+    "writeOnlyPaths": ["DeploymentCanarySettings", "StageDescription", "StageName"],
+    "createOnlyPaths": ["DeploymentCanarySettings", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
