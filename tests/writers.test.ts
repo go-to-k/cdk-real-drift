@@ -313,6 +313,52 @@ describe('WAFv2 WebACL writer (CC UpdateResource rejects on empty Description)',
     ).toBe('real description');
   });
 
+  it('aligns Rules to the canonicalized (Name-sorted) index before applying ops', async () => {
+    // classify SORTS Rules by Name (every rule carries one), so a finding op path indexes
+    // the sorted array. GetWebACL returns Rules in RAW configured order — here declared out
+    // of Name order ([zeta, alpha]) so the sorted order ([alpha, zeta]) differs. An op on
+    // the SECOND sorted rule (zeta, index 1) must land on zeta, NOT on whatever sits at raw
+    // index 1 (alpha). Without canonicalizing cur.WebACL first, the patch would corrupt the
+    // wrong (security-relevant) rule and leave the real drift unreverted (#180/#275 class).
+    wafv2.on(GetWebACLCommand).resolves({
+      LockToken: 'LOCK1',
+      WebACL: {
+        Name: 'cdkrd-acl',
+        Id: 'abc-123',
+        DefaultAction: { Allow: {} },
+        // RAW order: zeta first, alpha second (user declared rules out of Name order)
+        Rules: [
+          { Name: 'zeta', Priority: 0, Action: { Allow: {} } },
+          { Name: 'alpha', Priority: 1, Action: { Block: {} } },
+        ],
+        VisibilityConfig: {
+          SampledRequestsEnabled: false,
+          CloudWatchMetricsEnabled: true,
+          MetricName: 'm',
+        },
+      },
+    } as never);
+    wafv2.on(UpdateWebACLCommand).resolves({});
+    // op targets the SORTED index 1 (= zeta): set its Action to Block
+    const ruleActionOp: PatchOp = {
+      op: 'add',
+      path: '/Rules/1/Action',
+      value: { Block: {} },
+      human: 'Rules.1.Action -> deployed-template value',
+    };
+    await SDK_WRITERS['AWS::WAFv2::WebACL'](ctx({ physicalId: PID }), [ruleActionOp]);
+    const input = wafv2.commandCalls(UpdateWebACLCommand)[0]!.args[0].input as unknown as {
+      Rules: { Name: string; Action: unknown }[];
+    };
+    // re-sent Rules are in sorted (alpha, zeta) order; the op hit ZETA (its Action is now
+    // Block), and ALPHA is untouched — proving the index aligned to the sorted model.
+    const zeta = input.Rules.find((r) => r.Name === 'zeta')!;
+    const alpha = input.Rules.find((r) => r.Name === 'alpha')!;
+    expect(zeta.Action).toEqual({ Block: {} });
+    expect(alpha.Action).toEqual({ Block: {} }); // alpha was already Block, unchanged
+    expect(input.Rules.map((r) => r.Name)).toEqual(['alpha', 'zeta']);
+  });
+
   it('throws when the Name|Id|Scope physical id is malformed', async () => {
     await expect(
       SDK_WRITERS['AWS::WAFv2::WebACL'](ctx({ physicalId: 'just-a-name' }), [sampledOp(true)])

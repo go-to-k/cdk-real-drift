@@ -19,10 +19,30 @@ new CfnWebACL(stack, "WebAcl", {
     cloudWatchMetricsEnabled: true,
     metricName: "cdkrdWebAcl",
   },
+  // Rules are declared in REVERSE Name order (RateLimit before AWSCommon) AND with
+  // priorities matching the array order, NOT the Name order — so the live WebACL's rule
+  // order ([RateLimit, AWSCommon], however AWS returns it) differs from cdkrd's canonical
+  // Name-sorted order ([AWSCommon, RateLimit]). This exercises the revert index-alignment
+  // fix: a per-rule drift finding is indexed in the SORTED space, so the SDK writer must
+  // canonicalize the live model before applying the patch or it lands on the WRONG rule
+  // (see verify-detect-ruleorder.sh).
   rules: [
     {
-      name: "AWSCommon",
+      name: "RateLimit",
       priority: 1,
+      action: { block: {} },
+      statement: {
+        rateBasedStatement: { limit: 2000, aggregateKeyType: "IP" },
+      },
+      visibilityConfig: {
+        sampledRequestsEnabled: true,
+        cloudWatchMetricsEnabled: true,
+        metricName: "RateLimit",
+      },
+    },
+    {
+      name: "AWSCommon",
+      priority: 2,
       overrideAction: { none: {} },
       statement: {
         managedRuleGroupStatement: {
@@ -34,19 +54,6 @@ new CfnWebACL(stack, "WebAcl", {
         sampledRequestsEnabled: true,
         cloudWatchMetricsEnabled: true,
         metricName: "AWSCommon",
-      },
-    },
-    {
-      name: "RateLimit",
-      priority: 2,
-      action: { block: {} },
-      statement: {
-        rateBasedStatement: { limit: 2000, aggregateKeyType: "IP" },
-      },
-      visibilityConfig: {
-        sampledRequestsEnabled: true,
-        cloudWatchMetricsEnabled: true,
-        metricName: "RateLimit",
       },
     },
   ],
