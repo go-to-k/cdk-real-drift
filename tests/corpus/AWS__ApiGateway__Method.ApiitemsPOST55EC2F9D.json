@@ -1,0 +1,109 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiitemsPOST55EC2F9D",
+    "resourceType": "AWS::ApiGateway::Method",
+    "physicalId": "we41awg0n3|to60x5|POST",
+    "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/POST",
+    "declared": {
+      "AuthorizationType": "NONE",
+      "HttpMethod": "POST",
+      "Integration": {
+        "IntegrationResponses": [
+          {
+            "StatusCode": "200"
+          }
+        ],
+        "PassthroughBehavior": "NEVER",
+        "RequestTemplates": {
+          "application/json": "{ \"statusCode\": 200 }"
+        },
+        "Type": "MOCK"
+      },
+      "MethodResponses": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "ResourceId": "to60x5",
+      "RestApiId": "we41awg0n3"
+    }
+  },
+  "liveRaw": {
+    "MethodResponses": [
+      {
+        "StatusCode": "200"
+      }
+    ],
+    "Integration": {
+      "CacheNamespace": "to60x5",
+      "Type": "MOCK",
+      "IntegrationResponses": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "RequestTemplates": {
+        "application/json": "{ \"statusCode\": 200 }"
+      },
+      "ResponseTransferMode": "BUFFERED",
+      "TimeoutInMillis": 29000,
+      "PassthroughBehavior": "NEVER"
+    },
+    "ResourceId": "to60x5",
+    "RestApiId": "we41awg0n3",
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["HttpMethod", "ResourceId", "RestApiId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HttpMethod", "ResourceId", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {
+      "Integration.ResponseTransferMode": "BUFFERED"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "ApiitemsPOST55EC2F9D",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.CacheNamespace",
+      "actual": "to60x5",
+      "nested": true,
+      "physicalId": "we41awg0n3|to60x5|POST",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsPOST55EC2F9D",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.ResponseTransferMode",
+      "actual": "BUFFERED",
+      "nested": true,
+      "physicalId": "we41awg0n3|to60x5|POST",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsPOST55EC2F9D",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.TimeoutInMillis",
+      "actual": 29000,
+      "nested": true,
+      "physicalId": "we41awg0n3|to60x5|POST",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/POST"
+    }
+  ]
+}

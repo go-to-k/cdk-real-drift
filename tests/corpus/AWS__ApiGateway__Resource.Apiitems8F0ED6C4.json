@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Apiitems8F0ED6C4",
+    "resourceType": "AWS::ApiGateway::Resource",
+    "physicalId": "to60x5",
+    "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items",
+    "declared": {
+      "ParentId": "p5qr1hna0d",
+      "PathPart": "items",
+      "RestApiId": "we41awg0n3"
+    }
+  },
+  "liveRaw": {
+    "ParentId": "p5qr1hna0d",
+    "PathPart": "items",
+    "ResourceId": "to60x5",
+    "RestApiId": "we41awg0n3"
+  },
+  "schema": {
+    "readOnly": ["ResourceId"],
+    "writeOnly": [],
+    "createOnly": ["ParentId", "PathPart", "RestApiId"],
+    "readOnlyPaths": ["ResourceId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ParentId", "PathPart", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

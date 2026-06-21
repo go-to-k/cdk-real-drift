@@ -1,0 +1,98 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiF70053CD",
+    "resourceType": "AWS::ApiGateway::RestApi",
+    "physicalId": "we41awg0n3",
+    "constructPath": "CdkRealDriftIntegApigwRestRich/Api",
+    "declared": {
+      "BinaryMediaTypes": ["application/octet-stream", "image/*"],
+      "EndpointConfiguration": {
+        "Types": ["REGIONAL"]
+      },
+      "MinimumCompressionSize": 1024,
+      "Name": "cdkrd-apigw-rest-rich"
+    }
+  },
+  "liveRaw": {
+    "MinimumCompressionSize": 1024,
+    "RootResourceId": "p5qr1hna0d",
+    "SecurityPolicy": "TLS_1_0",
+    "RestApiId": "we41awg0n3",
+    "ApiKeySourceType": "HEADER",
+    "EndpointConfiguration": {
+      "IpAddressType": "ipv4",
+      "Types": ["REGIONAL"]
+    },
+    "DisableExecuteApiEndpoint": false,
+    "Tags": [
+      {
+        "Value": "ApiF70053CD",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApigwRestRich/6d1e7cb0-6d28-11f1-8024-0e2b461e5e2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegApigwRestRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "BinaryMediaTypes": ["application/octet-stream", "image/*"],
+    "Name": "cdkrd-apigw-rest-rich"
+  },
+  "schema": {
+    "readOnly": ["RestApiId", "RootResourceId"],
+    "writeOnly": ["Body", "BodyS3Location", "CloneFrom", "FailOnWarnings", "Mode", "Parameters"],
+    "createOnly": [],
+    "readOnlyPaths": ["RestApiId", "RootResourceId"],
+    "writeOnlyPaths": [
+      "Body",
+      "BodyS3Location",
+      "CloneFrom",
+      "FailOnWarnings",
+      "Mode",
+      "Parameters"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
+      "physicalId": "we41awg0n3",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "ApiKeySourceType",
+      "actual": "HEADER",
+      "physicalId": "we41awg0n3",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "EndpointConfiguration.IpAddressType",
+      "actual": "ipv4",
+      "nested": true,
+      "physicalId": "we41awg0n3",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
+    }
+  ]
+}
