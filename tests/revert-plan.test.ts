@@ -188,6 +188,41 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('a removed-since-record undeclared finding WITH a physical id is revertable (re-adds the value)', () => {
+    // applyBaseline now stamps the synthesized "baseline value removed since record"
+    // finding with the live physical id, so revert can restore the value it carries.
+    const f = F({
+      tier: 'undeclared',
+      path: 'AccelerateConfiguration',
+      desired: { AccelerationStatus: 'Enabled' },
+      actual: undefined,
+      note: 'baseline value removed since record',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AccelerateConfiguration',
+      value: { AccelerationStatus: 'Enabled' },
+    });
+  });
+
+  it('the SAME finding WITHOUT a physical id is notRevertable ("no physical id") — the bug this fixes', () => {
+    const f = F({
+      tier: 'undeclared',
+      physicalId: undefined,
+      path: 'AccelerateConfiguration',
+      desired: { AccelerationStatus: 'Enabled' },
+      actual: undefined,
+      note: 'baseline value removed since record',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('no physical id');
+  });
+
   it('a read-override type that is CC-mutable (Scheduler::Schedule) IS revertable via CC', () => {
     // Found live by the scheduler-rich bug-hunt fixture: AWS::Scheduler::Schedule has an
     // SDK READ override (its CC read handler only looks in the default group) but is CC

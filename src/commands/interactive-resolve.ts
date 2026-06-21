@@ -12,10 +12,13 @@
 import { isCancel, select } from '@clack/prompts';
 import {
   applyBaseline,
+  type ApplyBaselineOptions,
   type BaselineFile,
   buildRecorded,
+  constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
+  physicalIdsByLogical,
   recordedKey,
 } from '../baseline/baseline-file.js';
 import { applyIgnores, type CdkrdConfig, loadConfig } from '../config/config-file.js';
@@ -106,6 +109,16 @@ const pickerLabel = (f: Finding): string =>
     f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''
   }  (${tierTag(f)})`;
 
+// declared/constructPath/physicalId maps for applyBaseline. The physicalId + the
+// constructPath are what a synthesized "baseline value removed since record" finding
+// needs (physicalId so a later in-menu revert can act on it, constructPath so an
+// ignore rule matches); shared so every re-reconciliation here matches stack-actions.
+const baselineOpts = (p: ResolveParams): ApplyBaselineOptions => ({
+  declaredByLogical: declaredKeysByLogical(p.desired.resources),
+  constructPathByLogical: constructPathsByLogical(p.desired.resources),
+  physicalIdByLogical: physicalIdsByLogical(p.desired.resources),
+});
+
 /**
  * Re-evaluate check's exit WITHOUT re-reading AWS: reload the (possibly just-written)
  * baseline + config and re-apply them to the original gather findings. Declared/deleted
@@ -117,9 +130,7 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
   const nb = await loadBaseline(p.stackName, p.desired.accountId, p.region);
   const nc = await loadConfig();
   const reEval = applyIgnores(
-    applyBaseline(p.findings, nb, {
-      declaredByLogical: declaredKeysByLogical(p.desired.resources),
-    }),
+    applyBaseline(p.findings, nb, baselineOpts(p)),
     p.stackName,
     p.region,
     nc
@@ -199,7 +210,7 @@ export function resolveMenuMessage(stackName: string, code: number, establishOnl
 }
 
 export async function resolveInteractively(p: ResolveParams): Promise<number> {
-  const declaredByLogical = declaredKeysByLogical(p.desired.resources);
+  const opts = baselineOpts(p);
   // Whether undeclared REMOVE ops belong in a revert plan — true in a gated TTY prompt.
   const includeRemovals = includeUnrecordedRemovals(p.removeUnrecorded, true, p.yes);
   // Chain state: a record/ignore mutates only local files, so after one runs we reload
@@ -249,7 +260,7 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     baseline = await loadBaseline(p.stackName, p.desired.accountId, p.region);
     config = await loadConfig();
     reconciled = applyIgnores(
-      applyBaseline(p.findings, baseline, { declaredByLogical }),
+      applyBaseline(p.findings, baseline, opts),
       p.stackName,
       p.region,
       config
@@ -277,9 +288,7 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   // deleted drift is outside record's reach and keeps exit 1. Say what remains plainly.
   const nb = await loadBaseline(p.stackName, p.desired.accountId, p.region);
   const reEval = applyIgnores(
-    applyBaseline(p.findings, nb, {
-      declaredByLogical: declaredKeysByLogical(p.desired.resources),
-    }),
+    applyBaseline(p.findings, nb, baselineOpts(p)),
     p.stackName,
     p.region,
     p.config

@@ -11,6 +11,7 @@ import {
   buildRecorded,
   carryForwardUnreadable,
   constructPathsByLogical,
+  physicalIdsByLogical,
   formatPromotedStaleNote,
   identityArrayDelta,
   checkBaselineAccount,
@@ -729,6 +730,36 @@ describe('baseline', () => {
       { logicalId: 'B' }, // no construct path
     ]);
     expect(m.get('A')).toBe('MyStack/A');
+    expect(m.has('B')).toBe(false);
+  });
+
+  it('restores physicalId onto the removed-since-record finding (so revert can act on it)', () => {
+    // Without physicalId the synthesized finding reaches buildRevertPlan with no id and
+    // is rejected "no physical id" — making a removed recorded value un-revertable.
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const out = applyBaseline([], b, {
+      physicalIdByLogical: new Map([['A', 'phys-A']]),
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      path: 'P',
+      physicalId: 'phys-A',
+      note: 'baseline value removed since record',
+    });
+  });
+
+  it('omits physicalId when the resource has no map entry', () => {
+    const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+    const out = applyBaseline([], b, { physicalIdByLogical: new Map() });
+    expect(out[0]!.physicalId).toBeUndefined();
+  });
+
+  it('physicalIdsByLogical maps only resources that resolved a physical id', () => {
+    const m = physicalIdsByLogical([
+      { logicalId: 'A', physicalId: 'phys-A' },
+      { logicalId: 'B' }, // no physical id
+    ]);
+    expect(m.get('A')).toBe('phys-A');
     expect(m.has('B')).toBe(false);
   });
 

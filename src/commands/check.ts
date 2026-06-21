@@ -13,6 +13,7 @@ import {
   constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
+  physicalIdsByLogical,
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
@@ -315,6 +316,7 @@ export async function runCheck(args: string[]): Promise<number> {
           : applyBaseline(findings, baseline, {
               declaredByLogical: declaredKeysByLogical(desired.resources),
               constructPathByLogical: constructPathsByLogical(desired.resources),
+              physicalIdByLogical: physicalIdsByLogical(desired.resources),
               warn: (s: string) => {
                 if (!a.json) console.error(s);
               },
