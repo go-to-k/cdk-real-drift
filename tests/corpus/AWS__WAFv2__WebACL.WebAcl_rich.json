@@ -1,0 +1,382 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "cdkrd-integ-webacl|452f3353-7523-458e-a1ec-ca07d7a04186|REGIONAL",
+    "constructPath": "CdkRealDriftIntegWafv2WebAclRich/WebAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Name": "cdkrd-integ-webacl",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "and-rule",
+          "Priority": 0,
+          "Statement": {
+            "AndStatement": {
+              "Statements": [
+                {
+                  "GeoMatchStatement": {
+                    "CountryCodes": ["US", "CA", "GB"]
+                  }
+                },
+                {
+                  "ByteMatchStatement": {
+                    "FieldToMatch": {
+                      "SingleHeader": {
+                        "Name": "user-agent"
+                      }
+                    },
+                    "PositionalConstraint": "CONTAINS",
+                    "SearchString": "bad-bot",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "LOWERCASE"
+                      },
+                      {
+                        "Priority": 1,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "SizeConstraintStatement": {
+                    "ComparisonOperator": "GT",
+                    "FieldToMatch": {
+                      "Body": {}
+                    },
+                    "Size": 8192,
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "andRule",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Action": {
+            "Count": {}
+          },
+          "Name": "or-not-rule",
+          "Priority": 1,
+          "Statement": {
+            "OrStatement": {
+              "Statements": [
+                {
+                  "NotStatement": {
+                    "Statement": {
+                      "GeoMatchStatement": {
+                        "CountryCodes": ["FR", "DE"]
+                      }
+                    }
+                  }
+                },
+                {
+                  "ByteMatchStatement": {
+                    "FieldToMatch": {
+                      "UriPath": {}
+                    },
+                    "PositionalConstraint": "STARTS_WITH",
+                    "SearchString": "/admin",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "orNotRule",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Name": "aws-common",
+          "OverrideAction": {
+            "None": {}
+          },
+          "Priority": 2,
+          "Statement": {
+            "ManagedRuleGroupStatement": {
+              "Name": "AWSManagedRulesCommonRuleSet",
+              "VendorName": "AWS"
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "awsCommon",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "rate-rule",
+          "Priority": 3,
+          "Statement": {
+            "RateBasedStatement": {
+              "AggregateKeyType": "IP",
+              "Limit": 2000
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "rateRule",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdWebAcl",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "REGIONAL",
+    "Capacity": 727,
+    "Id": "452f3353-7523-458e-a1ec-ca07d7a04186",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-integ-webacl/452f3353-7523-458e-a1ec-ca07d7a04186",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 0,
+        "Statement": {
+          "AndStatement": {
+            "Statements": [
+              {
+                "GeoMatchStatement": {
+                  "CountryCodes": ["US", "CA", "GB"]
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchStringBase64": "YmFkLWJvdA==",
+                  "TextTransformations": [
+                    {
+                      "Type": "LOWERCASE",
+                      "Priority": 0
+                    },
+                    {
+                      "Type": "NONE",
+                      "Priority": 1
+                    }
+                  ],
+                  "PositionalConstraint": "CONTAINS",
+                  "SearchString": "bad-bot",
+                  "FieldToMatch": {
+                    "SingleHeader": {
+                      "Name": "user-agent"
+                    }
+                  }
+                }
+              },
+              {
+                "SizeConstraintStatement": {
+                  "ComparisonOperator": "GT",
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Size": 8192,
+                  "FieldToMatch": {
+                    "Body": {}
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "andRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "and-rule"
+      },
+      {
+        "Action": {
+          "Count": {}
+        },
+        "Priority": 1,
+        "Statement": {
+          "OrStatement": {
+            "Statements": [
+              {
+                "NotStatement": {
+                  "Statement": {
+                    "GeoMatchStatement": {
+                      "CountryCodes": ["FR", "DE"]
+                    }
+                  }
+                }
+              },
+              {
+                "ByteMatchStatement": {
+                  "SearchStringBase64": "L2FkbWlu",
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "PositionalConstraint": "STARTS_WITH",
+                  "SearchString": "/admin",
+                  "FieldToMatch": {
+                    "UriPath": {}
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "orNotRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "or-not-rule"
+      },
+      {
+        "Priority": 2,
+        "Statement": {
+          "ManagedRuleGroupStatement": {
+            "VendorName": "AWS",
+            "RuleActionOverrides": [],
+            "ManagedRuleGroupConfigs": [],
+            "ExcludedRules": [],
+            "Name": "AWSManagedRulesCommonRuleSet"
+          }
+        },
+        "OverrideAction": {
+          "None": {}
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "awsCommon",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "aws-common"
+      },
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 3,
+        "Statement": {
+          "RateBasedStatement": {
+            "AggregateKeyType": "IP",
+            "Limit": 2000,
+            "EvaluationWindowSec": 300
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "rateRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "rate-rule"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdWebAcl",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:cdkrd-integ-webacl:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegWafv2WebAclRich/b197b320-6da0-11f1-8006-0e86d5b6c209",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegWafv2WebAclRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "WebAcl",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-webacl"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "cdkrd-integ-webacl|452f3353-7523-458e-a1ec-ca07d7a04186|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2WebAclRich/WebAcl"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "Rules[rate-rule].Statement.RateBasedStatement.EvaluationWindowSec",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "cdkrd-integ-webacl|452f3353-7523-458e-a1ec-ca07d7a04186|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2WebAclRich/WebAcl"
+    }
+  ]
+}

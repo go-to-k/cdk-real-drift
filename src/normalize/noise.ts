@@ -709,6 +709,25 @@ export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean 
   return dSegs.every((seg, i) => seg === lSegs[i]);
 }
 
+// Per-type property paths where the template declares the literal sentinel
+// `"LATEST"` and AWS resolves it to whatever concrete version is current
+// (Fargate `PlatformVersion`: declared `"LATEST"` reads back the provisioned
+// `"1.4.0"`). "Use the latest" IS satisfied by any concrete version, so a
+// declared `"LATEST"` against a non-empty live string is not drift — reporting
+// it is a false positive every Fargate user who pins PlatformVersion hits. A
+// deliberately narrow rule: ONLY the exact sentinel `"LATEST"` folds (a declared
+// CONCRETE version like `"1.3.0"` still compares normally, so a genuine pin
+// change surfaces). Observed live on the ecs-taskset-rich fixture.
+export const LATEST_SENTINEL_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::ECS::Service': new Set(['PlatformVersion']),
+  'AWS::ECS::TaskSet': new Set(['PlatformVersion']),
+};
+export function isLatestSentinelMatch(declared: unknown, live: unknown): boolean {
+  // only the literal sentinel folds; the live side must be a non-empty concrete
+  // string (a missing/empty live value is a different, real divergence).
+  return declared === 'LATEST' && typeof live === 'string' && live.length > 0;
+}
+
 // PEM-armored values (R125: CloudFront PublicKey EncodedKey; certificate/key
 // bodies generally) round-trip through AWS with surrounding whitespace added or
 // dropped — most commonly a trailing newline the service appends after the

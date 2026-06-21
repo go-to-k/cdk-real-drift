@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TaskSet",
+    "resourceType": "AWS::ECS::TaskSet",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:cluster/CdkRealDriftIntegEcsTaskSetRich-ClusterEB0386A7-3gMnCSpQGBfH|cdkrd-integ-taskset-svc|ecs-svc/9842132290014841026",
+    "constructPath": "CdkRealDriftIntegEcsTaskSetRich/TaskSet",
+    "declared": {
+      "Cluster": "arn:aws:ecs:us-east-1:111111111111:cluster/CdkRealDriftIntegEcsTaskSetRich-ClusterEB0386A7-3gMnCSpQGBfH",
+      "LaunchType": "FARGATE",
+      "NetworkConfiguration": {
+        "AwsVpcConfiguration": {
+          "AssignPublicIp": "ENABLED",
+          "SecurityGroups": ["sg-05118bccfcace1a9e"],
+          "Subnets": ["subnet-03aa71769169b3f5f", "subnet-0a56a5eb3cde5dfbf"]
+        }
+      },
+      "PlatformVersion": "LATEST",
+      "Scale": {
+        "Unit": "PERCENT",
+        "Value": 100
+      },
+      "Service": "cdkrd-integ-taskset-svc",
+      "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsTaskSetRichTaskDef8E541C37:1"
+    }
+  },
+  "liveRaw": {
+    "PlatformVersion": "1.4.0",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsTaskSetRichTaskDef8E541C37:1",
+    "Cluster": "arn:aws:ecs:us-east-1:111111111111:cluster/CdkRealDriftIntegEcsTaskSetRich-ClusterEB0386A7-3gMnCSpQGBfH",
+    "LoadBalancers": [],
+    "Service": "cdkrd-integ-taskset-svc",
+    "NetworkConfiguration": {
+      "AwsVpcConfiguration": {
+        "SecurityGroups": ["sg-05118bccfcace1a9e"],
+        "Subnets": ["subnet-0a56a5eb3cde5dfbf", "subnet-03aa71769169b3f5f"],
+        "AssignPublicIp": "ENABLED"
+      }
+    },
+    "Scale": {
+      "Value": 100,
+      "Unit": "PERCENT"
+    },
+    "Id": "ecs-svc/9842132290014841026",
+    "ServiceRegistries": [],
+    "LaunchType": "FARGATE",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "CapacityProviderStrategy",
+      "Cluster",
+      "ExternalId",
+      "LaunchType",
+      "LoadBalancers",
+      "NetworkConfiguration",
+      "PlatformVersion",
+      "Service",
+      "ServiceRegistries",
+      "TaskDefinition"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CapacityProviderStrategy",
+      "Cluster",
+      "ExternalId",
+      "LaunchType",
+      "LoadBalancers",
+      "NetworkConfiguration",
+      "PlatformVersion",
+      "Service",
+      "ServiceRegistries",
+      "TaskDefinition"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
