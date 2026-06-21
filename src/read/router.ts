@@ -44,6 +44,11 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // physical id (CC then reports an honest ValidationException skip).
   'AWS::Cognito::UserPoolClient': compositeWith('UserPoolId'),
   'AWS::Cognito::UserPoolGroup': compositeWith('UserPoolId'),
+  // UserPoolIdentityProvider primaryIdentifier is [UserPoolId, ProviderName]; the CFn
+  // physical id is the bare ProviderName, so without the composite it ValidationExceptions
+  // and the IdP is silently `skipped` (read-gap). Same UserPoolId|<child> shape as its
+  // siblings — verified live (cognito-idp-rich fixture).
+  'AWS::Cognito::UserPoolIdentityProvider': compositeWith('UserPoolId'),
   'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),

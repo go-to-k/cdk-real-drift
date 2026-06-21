@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Sn",
+    "resourceType": "AWS::VpcLattice::ServiceNetwork",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-0b63db3c0c90af3c7",
+    "constructPath": "CdkRealDriftIntegVpcLatticeRich/Sn",
+    "declared": {
+      "AuthType": "AWS_IAM",
+      "Name": "cdkrd-lattice-sn"
+    }
+  },
+  "liveRaw": {
+    "LastUpdatedAt": "2026-06-21T16:57:21.054Z",
+    "SharingConfig": {
+      "enabled": true
+    },
+    "CreatedAt": "2026-06-21T16:57:21.054Z",
+    "Id": "sn-0b63db3c0c90af3c7",
+    "AuthType": "AWS_IAM",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-0b63db3c0c90af3c7",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegVpcLatticeRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Sn",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcLatticeRich/3df6e700-6d92-11f1-89d5-0afff2a966f7",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-lattice-sn"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedAt", "Id", "LastUpdatedAt"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "CreatedAt", "Id", "LastUpdatedAt"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "AuthType": "NONE"
+    },
+    "defaultPaths": {
+      "AuthType": "NONE"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Sn",
+      "resourceType": "AWS::VpcLattice::ServiceNetwork",
+      "path": "SharingConfig",
+      "actual": {
+        "enabled": true
+      },
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-0b63db3c0c90af3c7",
+      "constructPath": "CdkRealDriftIntegVpcLatticeRich/Sn"
+    }
+  ]
+}

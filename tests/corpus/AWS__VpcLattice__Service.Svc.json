@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Svc",
+    "resourceType": "AWS::VpcLattice::Service",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-0d21f8631bb95265f",
+    "constructPath": "CdkRealDriftIntegVpcLatticeRich/Svc",
+    "declared": {
+      "AuthType": "AWS_IAM",
+      "Name": "cdkrd-lattice-svc",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "DnsEntry": {
+      "DomainName": "cdkrd-lattice-svc-0d21f8631bb95265f.7d67968.vpc-lattice-svcs.us-east-1.on.aws",
+      "HostedZoneId": "Z0681547Z82L3THDFSCZ"
+    },
+    "LastUpdatedAt": "2026-06-21T16:57:21.308Z",
+    "CreatedAt": "2026-06-21T16:57:21.308Z",
+    "AuthType": "AWS_IAM",
+    "Id": "svc-0d21f8631bb95265f",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-0d21f8631bb95265f",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegVpcLatticeRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcLatticeRich/3df6e700-6d92-11f1-89d5-0afff2a966f7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Svc",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-lattice-svc"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedAt", "Id", "LastUpdatedAt", "Status"],
+    "writeOnly": [],
+    "createOnly": ["CustomDomainName", "Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "CreatedAt",
+      "DnsEntry.DomainName",
+      "DnsEntry.HostedZoneId",
+      "Id",
+      "LastUpdatedAt",
+      "Status"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CustomDomainName", "Name"],
+    "defaults": {
+      "AuthType": "NONE"
+    },
+    "defaultPaths": {
+      "AuthType": "NONE"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

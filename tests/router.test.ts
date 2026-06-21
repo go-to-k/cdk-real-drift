@@ -245,7 +245,11 @@ describe('readLive (CC identifier adapters, R74)', () => {
     });
   }
 
-  for (const t of ['AWS::Cognito::UserPoolDomain', 'AWS::Cognito::UserPoolResourceServer']) {
+  for (const t of [
+    'AWS::Cognito::UserPoolDomain',
+    'AWS::Cognito::UserPoolResourceServer',
+    'AWS::Cognito::UserPoolIdentityProvider',
+  ]) {
     it(`${t}: builds the UserPoolId|<child> composite identifier`, async () => {
       cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
       await readLive(

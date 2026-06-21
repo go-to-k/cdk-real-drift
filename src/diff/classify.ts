@@ -41,9 +41,11 @@ import {
   KNOWN_DEFAULTS,
   RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
+  sortNestedObjectArrays,
   sortUnorderedObjectArray,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
+  UNORDERED_NESTED_OBJECT_ARRAY_PATHS,
   UNORDERED_OBJECT_ARRAY_PROPS,
   VERSION_PREFIX_PATHS,
 } from '../normalize/noise.js';
@@ -501,6 +503,13 @@ export function classifyResource(
     // sides by canonical JSON before the positional diff so a reorder is not false
     // drift; a genuine rule change still differs after the sort.
     const unorderedObjArray = UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k);
+    // Per-type NESTED unordered object-array paths under this key (Bedrock Guardrail
+    // ContentPolicyConfig.FiltersConfig etc.): sort the reordered set on both sides so
+    // a positional diff doesn't false-flag it.
+    const nestedUnordered = UNORDERED_NESTED_OBJECT_ARRAY_PATHS[resourceType];
+    const nestedSubPaths = nestedUnordered
+      ? [...nestedUnordered].filter((p) => p.startsWith(`${k}.`)).map((p) => p.slice(k.length + 1))
+      : [];
     let declaredVal: unknown = v;
     let liveVal: unknown = live[k];
     if (subsetSpec && Array.isArray(v) && Array.isArray(live[k])) {
@@ -552,6 +561,9 @@ export function classifyResource(
     } else if (unorderedObjArray) {
       declaredVal = sortUnorderedObjectArray(v);
       liveVal = sortUnorderedObjectArray(live[k]);
+    } else if (nestedSubPaths.length > 0) {
+      declaredVal = sortNestedObjectArrays(v, nestedSubPaths);
+      liveVal = sortNestedObjectArrays(live[k], nestedSubPaths);
     }
     // R95: the live side is compared in FULL — no subset projection. An R75
     // generic `projectLiveToDeclaredSubset` used to drop live elements whose

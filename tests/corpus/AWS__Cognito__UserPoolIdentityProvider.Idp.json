@@ -1,0 +1,122 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Idp",
+    "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+    "physicalId": "Google",
+    "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp",
+    "declared": {
+      "AttributeMapping": {
+        "email": "email",
+        "username": "sub"
+      },
+      "ProviderDetails": {
+        "client_id": "dummy-client-id.apps.googleusercontent.com",
+        "client_secret": "dummy-client-secret",
+        "authorize_scopes": "openid email profile"
+      },
+      "ProviderName": "Google",
+      "ProviderType": "Google",
+      "UserPoolId": "us-east-1_zilenYdN8"
+    }
+  },
+  "liveRaw": {
+    "ProviderName": "Google",
+    "UserPoolId": "us-east-1_zilenYdN8",
+    "AttributeMapping": {
+      "email": "email",
+      "username": "sub"
+    },
+    "ProviderDetails": {
+      "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
+      "authorize_scopes": "openid email profile",
+      "client_secret": "dummy-client-secret",
+      "attributes_url_add_attributes": "true",
+      "token_url": "https://www.googleapis.com/oauth2/v4/token",
+      "client_id": "dummy-client-id.apps.googleusercontent.com",
+      "attributes_url": "https://people.googleapis.com/v1/people/me?personFields=",
+      "oidc_issuer": "https://accounts.google.com",
+      "token_request_method": "POST"
+    },
+    "ProviderType": "Google",
+    "IdpIdentifiers": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ProviderName", "ProviderType", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ProviderName", "ProviderType", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.authorize_url",
+      "actual": "https://accounts.google.com/o/oauth2/v2/auth",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.attributes_url_add_attributes",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.token_url",
+      "actual": "https://www.googleapis.com/oauth2/v4/token",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.attributes_url",
+      "actual": "https://people.googleapis.com/v1/people/me?personFields=",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.oidc_issuer",
+      "actual": "https://accounts.google.com",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Idp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.token_request_method",
+      "actual": "POST",
+      "nested": true,
+      "physicalId": "Google",
+      "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
+    }
+  ]
+}
