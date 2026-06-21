@@ -22,6 +22,7 @@ import {
   isCaseInsensitiveEqualScalarSet,
   isCaseInsensitiveScalarEqual,
   isEqualUnorderedScalarSet,
+  isEquivalentRateExpression,
   isJsonStringStructEqual,
   isPemEqual,
   isStringlyEqualScalar,
@@ -36,6 +37,7 @@ import {
   GENERATED_TOPLEVEL_PATHS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
+  RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
   sortUnorderedObjectArray,
   stripAwsTagsDeep,
@@ -516,6 +518,14 @@ export function classifyResource(
       if (
         CASE_INSENSITIVE_ARRAY_PATHS[resourceType]?.has(d.path) &&
         isCaseInsensitiveEqualScalarSet(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type rate() schedule-expression paths (Synthetics canary Schedule.Expression
+      // — AWS rewrites `rate(60 minutes)` to `rate(1 hour)`): the same total duration is
+      // not drift; a genuine interval change still differs.
+      if (
+        RATE_EXPRESSION_PATHS[resourceType]?.has(d.path) &&
+        isEquivalentRateExpression(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type DNS-FQDN paths whose trailing `.` is optional (Route53 HostedZone Name:

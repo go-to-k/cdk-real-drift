@@ -16,6 +16,16 @@ import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 
+// SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
+// exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
+// UpdateResource revert is valid and they are EXEMPT from the "read-override => not
+// revertable" rule below. AWS::Scheduler::Schedule is the case: its CC read handler
+// only looks in the DEFAULT schedule group (the override reads via Scheduler
+// GetSchedule with the declared GroupName), but CC can update it fine. Verified live —
+// a schedule State revert via CC succeeds for the common default-group case. (A
+// non-default-group schedule would fail at apply with a clear AWS error, not silently.)
+const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>(['AWS::Scheduler::Schedule']);
+
 /**
  * A nested undeclared value (a live sub-key inside a declared object, R96/R98) is
  * detect/record-only — never revertable (toPointer can't build a safe RFC6902 patch for
@@ -234,8 +244,14 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // CC-gap types are revertable only when we have a type-specific SDK writer
-    if (SDK_OVERRIDES[f.resourceType] && !SDK_WRITERS[f.resourceType]) {
+    // CC-gap types are revertable only when we have a type-specific SDK writer — UNLESS
+    // the override is a mere READ workaround on a CC-mutable type (see the set above),
+    // in which case a CC UpdateResource revert is valid and we fall through to it.
+    if (
+      SDK_OVERRIDES[f.resourceType] &&
+      !SDK_WRITERS[f.resourceType] &&
+      !CC_REVERTABLE_DESPITE_READ_OVERRIDE.has(f.resourceType)
+    ) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,

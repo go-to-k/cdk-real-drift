@@ -1,0 +1,151 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Canary11957FE2",
+    "resourceType": "AWS::Synthetics::Canary",
+    "physicalId": "cdkrd-canary",
+    "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary",
+    "declared": {
+      "ArtifactS3Location": "s3://cdkrealdriftintegsynthetic-canaryartifacts16b34762-icjww5o7gj2r",
+      "Code": {
+        "Handler": "index.handler",
+        "Script": "exports.handler = async function () { return 'cdkrd canary ok'; };"
+      },
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSyntheti-CanaryServiceRoleD132250E-sVivB1VUdKXs",
+      "Name": "cdkrd-canary",
+      "RuntimeVersion": "syn-nodejs-puppeteer-16.1",
+      "Schedule": {
+        "DurationInSeconds": "0",
+        "Expression": "rate(60 minutes)"
+      },
+      "StartCanaryAfterCreation": true
+    }
+  },
+  "liveRaw": {
+    "SuccessRetentionPeriod": 31,
+    "RuntimeVersion": "syn-nodejs-puppeteer-16.1",
+    "RunConfig": {
+      "TimeoutInSeconds": 840,
+      "MemoryInMB": 1500,
+      "EphemeralStorage": 1024,
+      "ActiveTracing": false
+    },
+    "FailureRetentionPeriod": 31,
+    "Code": {
+      "Handler": "index.handler"
+    },
+    "Name": "cdkrd-canary",
+    "ProvisionedResourceCleanup": "AUTOMATIC",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSyntheti-CanaryServiceRoleD132250E-sVivB1VUdKXs",
+    "State": "RUNNING",
+    "Schedule": {
+      "DurationInSeconds": "0",
+      "RetryConfig": {
+        "MaxRetries": 0
+      },
+      "Expression": "rate(1 hour)"
+    },
+    "Id": "ba5b9411-9326-4dd4-adf9-80e9673b4d6b",
+    "ArtifactS3Location": "s3://cdkrealdriftintegsynthetic-canaryartifacts16b34762-icjww5o7gj2r",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Id", "State"],
+    "writeOnly": [
+      "DeleteLambdaResourcesOnCanaryDeletion",
+      "DryRunAndUpdate",
+      "ResourcesToReplicateTags",
+      "StartCanaryAfterCreation",
+      "VisualReference",
+      "VisualReferences"
+    ],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Code.SourceLocationArn", "Id", "State"],
+    "writeOnlyPaths": [
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.Script",
+      "DeleteLambdaResourcesOnCanaryDeletion",
+      "DryRunAndUpdate",
+      "ResourcesToReplicateTags",
+      "RunConfig.EnvironmentVariables",
+      "StartCanaryAfterCreation",
+      "VisualReference",
+      "VisualReferences"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "StartCanaryAfterCreation",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "SuccessRetentionPeriod",
+      "actual": 31,
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "RunConfig",
+      "actual": {
+        "TimeoutInSeconds": 840,
+        "MemoryInMB": 1500,
+        "EphemeralStorage": 1024,
+        "ActiveTracing": false
+      },
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "FailureRetentionPeriod",
+      "actual": 31,
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "ProvisionedResourceCleanup",
+      "actual": "AUTOMATIC",
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Canary11957FE2",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "Schedule.RetryConfig",
+      "actual": {
+        "MaxRetries": 0
+      },
+      "nested": true,
+      "physicalId": "cdkrd-canary",
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Schedule",
+    "resourceType": "AWS::Scheduler::Schedule",
+    "physicalId": "cdkrd-schedule-rich",
+    "constructPath": "CdkRealDriftIntegSchedulerRich/Schedule",
+    "declared": {
+      "Description": "cdkrd scheduler rich",
+      "FlexibleTimeWindow": {
+        "Mode": "OFF"
+      },
+      "Name": "cdkrd-schedule-rich",
+      "ScheduleExpression": "rate(1 hour)",
+      "State": "ENABLED",
+      "Target": {
+        "Arn": "arn:aws:sqs:us-east-1:111111111111:cdkrd-scheduler-target",
+        "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSchedulerRich-SchedRole812B2F5C-MfSZzr2FgUhy"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-schedule-rich",
+    "GroupName": "default",
+    "ScheduleExpression": "rate(1 hour)",
+    "ScheduleExpressionTimezone": "UTC",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "State": "ENABLED",
+    "Description": "cdkrd scheduler rich",
+    "ActionAfterCompletion": "NONE",
+    "Target": {
+      "Arn": "arn:aws:sqs:us-east-1:111111111111:cdkrd-scheduler-target",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSchedulerRich-SchedRole812B2F5C-MfSZzr2FgUhy",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {
+      "Target.EcsParameters.CapacityProviderStrategy.*.Weight": 0,
+      "Target.EcsParameters.CapacityProviderStrategy.*.Base": 0
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "GroupName",
+      "actual": "default",
+      "physicalId": "cdkrd-schedule-rich",
+      "constructPath": "CdkRealDriftIntegSchedulerRich/Schedule"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "ScheduleExpressionTimezone",
+      "actual": "UTC",
+      "physicalId": "cdkrd-schedule-rich",
+      "constructPath": "CdkRealDriftIntegSchedulerRich/Schedule"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "ActionAfterCompletion",
+      "actual": "NONE",
+      "physicalId": "cdkrd-schedule-rich",
+      "constructPath": "CdkRealDriftIntegSchedulerRich/Schedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "Target.RetryPolicy",
+      "actual": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "nested": true,
+      "physicalId": "cdkrd-schedule-rich",
+      "constructPath": "CdkRealDriftIntegSchedulerRich/Schedule"
+    }
+  ]
+}

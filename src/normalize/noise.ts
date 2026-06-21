@@ -581,6 +581,38 @@ export function isCaseInsensitiveEqualScalarSet(a: unknown, b: unknown): boolean
   return na.every((v, i) => v === nb[i]);
 }
 
+// Per-type property paths whose value is a `rate(N unit)` schedule expression that the
+// SERVICE canonicalizes to whole units. CloudWatch Synthetics rewrites a canary's
+// `rate(60 minutes)` to `rate(1 hour)` (CDK's Canary emits the minutes form from
+// `Duration.hours(1)`), so a string compare false-flags declared drift on every check.
+// Compared by NUMERIC DURATION, so an equivalent expression is not drift but a genuine
+// interval change still differs. Observed SYNTHETICS-SPECIFIC: EventBridge Scheduler
+// (and Events::Rule) echo the rate expression VERBATIM (proven live — a scheduler
+// fixture declaring `rate(1 hour)` read back identically), so they are deliberately NOT
+// listed; only paths where the service is observed to rewrite belong here.
+export const RATE_EXPRESSION_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Synthetics::Canary': new Set(['Schedule.Expression']),
+};
+const RATE_RE = /^rate\(\s*(\d+)\s+(minute|minutes|hour|hours|day|days)\s*\)$/i;
+const RATE_UNIT_MIN: Record<string, number> = { minute: 1, hour: 60, day: 1440 };
+// True when both values are `rate(N unit)` expressions of the SAME total duration
+// (e.g. `rate(60 minutes)` == `rate(1 hour)`). Only the rate() form is parsed — a
+// cron() expression or any unparseable string returns false (strict compare), so a
+// genuine schedule change still surfaces.
+export function isEquivalentRateExpression(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const minutes = (s: string): number | undefined => {
+    const m = RATE_RE.exec(s.trim());
+    if (!m || m[1] === undefined || m[2] === undefined) return undefined;
+    const unit = m[2].toLowerCase().replace(/s$/, '');
+    const per = RATE_UNIT_MIN[unit];
+    return per === undefined ? undefined : Number(m[1]) * per;
+  };
+  const ma = minutes(a);
+  const mb = minutes(b);
+  return ma !== undefined && mb !== undefined && ma === mb;
+}
+
 // Per-type property paths where a value is a DNS FQDN whose trailing `.` is
 // OPTIONAL and semantically meaningless: AWS::Route53::HostedZone `Name` is declared
 // `example.com` in the template but Cloud Control returns it `example.com.` (the

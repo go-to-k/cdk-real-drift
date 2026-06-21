@@ -165,6 +165,24 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('a read-override type that is CC-mutable (Scheduler::Schedule) IS revertable via CC', () => {
+    // Found live by the scheduler-rich bug-hunt fixture: AWS::Scheduler::Schedule has an
+    // SDK READ override (its CC read handler only looks in the default group) but is CC
+    // FULLY_MUTABLE, so a State revert via CC UpdateResource is valid — it must NOT be
+    // classified "type not revertable yet".
+    const f = F({
+      resourceType: 'AWS::Scheduler::Schedule',
+      path: 'State',
+      desired: 'ENABLED',
+      actual: 'DISABLED',
+      physicalId: 'cdkrd-schedule-rich',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]).toMatchObject({ kind: 'cc', resourceType: 'AWS::Scheduler::Schedule' });
+  });
+
   it('an `added` resource -> a `delete`-kind item keyed on its CC identifier', () => {
     const f = F({
       tier: 'added',
