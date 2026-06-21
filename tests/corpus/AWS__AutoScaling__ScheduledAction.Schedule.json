@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Schedule",
+    "resourceType": "AWS::AutoScaling::ScheduledAction",
+    "physicalId": "CdkRea-Sched-Y8TVCVCJA9P3",
+    "constructPath": "CdkRealDriftIntegAutoScalingScheduledActionRich/Schedule",
+    "declared": {
+      "AutoScalingGroupName": "CdkRealDriftIntegAutoScalingScheduledActionRich-AsgASGD1D7B4E2-u32lj4u16UO0",
+      "DesiredCapacity": 1,
+      "MaxSize": 2,
+      "MinSize": 1,
+      "Recurrence": "0 9 * * MON-FRI",
+      "TimeZone": "UTC"
+    }
+  },
+  "liveRaw": {
+    "MinSize": 1,
+    "Recurrence": "0 9 * * MON-FRI",
+    "ScheduledActionName": "CdkRea-Sched-Y8TVCVCJA9P3",
+    "TimeZone": "UTC",
+    "EndTime": "null",
+    "AutoScalingGroupName": "CdkRealDriftIntegAutoScalingScheduledActionRich-AsgASGD1D7B4E2-u32lj4u16UO0",
+    "StartTime": "2026-06-22T09:00:00Z",
+    "DesiredCapacity": 1,
+    "MaxSize": 2
+  },
+  "schema": {
+    "readOnly": ["ScheduledActionName"],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName"],
+    "readOnlyPaths": ["ScheduledActionName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::AutoScaling::ScheduledAction",
+      "path": "EndTime",
+      "actual": "null",
+      "physicalId": "CdkRea-Sched-Y8TVCVCJA9P3",
+      "constructPath": "CdkRealDriftIntegAutoScalingScheduledActionRich/Schedule"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Schedule",
+      "resourceType": "AWS::AutoScaling::ScheduledAction",
+      "path": "StartTime",
+      "actual": "2026-06-22T09:00:00Z",
+      "physicalId": "CdkRea-Sched-Y8TVCVCJA9P3",
+      "constructPath": "CdkRealDriftIntegAutoScalingScheduledActionRich/Schedule"
+    }
+  ]
+}
