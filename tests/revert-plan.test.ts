@@ -1,5 +1,9 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
+import { type CorpusCase, reviveSchema } from '../src/corpus/record.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import {
   buildRevertPlan,
@@ -983,5 +987,72 @@ describe('tagPreservingOps (revert must not strip aws:* managed tags — the SNS
       const ops = [op({ op: 'remove' })];
       expect(tagPreservingOps(ops, { Tags: { Team: 'x' } })).toBe(ops);
     });
+  });
+});
+
+// Data-driven guarantee for the #252 fix across EVERY real resource schema we have
+// captured. The bug class — a property that is BOTH write-only and create-only
+// being re-included into a Cloud Control UpdateResource patch and then hard-
+// rejected ("createOnlyProperties [...] cannot be updated") — is NOT specific to
+// ElastiCache: the golden corpus alone holds ~17 types with such an intersection
+// (RDS DBInstance, DynamoDB Table, EC2 EIP/Subnet/VPC, EFS MountTarget, S3 Bucket,
+// SNS Subscription, SSM Document, Lambda LayerVersion, Kinesis Firehose,
+// ApiGateway ApiKey, AutoScaling, ApplicationAutoScaling, ElastiCache, ...). This
+// test loads each corpus case's REAL schema, builds a declared model that sets a
+// value at every write-only path (so re-inclusion would fire), and asserts
+// writeOnlyReincludeOps emits NO op for any write-only∩create-only path — for ALL
+// of them. It self-extends: any future type added to the corpus is covered for
+// free. corpus-replay.test.ts covers the classify pipeline; this covers the revert
+// patch path, which corpus-replay does not.
+const corpusDir = join(dirname(fileURLToPath(import.meta.url)), 'corpus');
+
+function setDottedPath(model: Record<string, unknown>, path: string, value: unknown): void {
+  const segs = path.split('.');
+  let node = model;
+  for (let i = 0; i < segs.length - 1; i++) {
+    const seg = segs[i];
+    if (typeof node[seg] !== 'object' || node[seg] === null) node[seg] = {};
+    node = node[seg] as Record<string, unknown>;
+  }
+  node[segs[segs.length - 1]] = value;
+}
+
+// RFC6902 pointer for a non-wildcard dotted path (mirrors plan.ts toPointer for the
+// property names that appear here — plain identifiers, no `~`/`/`).
+const pointerOf = (path: string): string => `/${path.split('.').join('/')}`;
+
+describe('writeOnlyReincludeOps create-only invariant over all real corpus schemas (#252)', () => {
+  const corpusFiles = readdirSync(corpusDir).filter((f) => f.endsWith('.json'));
+
+  it('never re-includes a write-only property that is also create-only — every corpus type', () => {
+    let typesExercised = 0;
+    let propsAsserted = 0;
+    for (const file of corpusFiles) {
+      const c = JSON.parse(readFileSync(join(corpusDir, file), 'utf8')) as CorpusCase;
+      const schema = reviveSchema(c.schema);
+      const createOnly = new Set(schema.createOnlyPaths);
+      const intersection = schema.writeOnlyPaths.filter(
+        (p) => !p.includes('*') && createOnly.has(p)
+      );
+      if (intersection.length === 0) continue;
+      typesExercised++;
+      // Declared model with a value at EVERY non-wildcard write-only path, so the
+      // re-include loop fires for all of them — including the create-only ones,
+      // which the fix must then drop.
+      const declared: Record<string, unknown> = {};
+      for (const p of schema.writeOnlyPaths) {
+        if (p.includes('*')) continue;
+        setDottedPath(declared, p, 'cdkrd-test-value');
+      }
+      const emitted = new Set(writeOnlyReincludeOps(declared, schema, []).map((o) => o.path));
+      for (const p of intersection) {
+        expect(emitted.has(pointerOf(p))).toBe(false);
+        propsAsserted++;
+      }
+    }
+    // Guard the guard: if the corpus stops containing intersection types (e.g. a
+    // refactor drops the schema field), this surfaces it instead of passing vacuously.
+    expect(typesExercised).toBeGreaterThan(5);
+    expect(propsAsserted).toBeGreaterThan(0);
   });
 });
