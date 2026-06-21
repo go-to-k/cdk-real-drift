@@ -310,6 +310,22 @@ export const GENERATED_PATHS: Record<string, string[]> = {
   'AWS::ApiGateway::Method': ['Integration.CacheNamespace'],
 };
 
+// Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated
+// id — value-INDEPENDENT (unlike GENERATED_PATHS/isPhysicalIdSegment, the value is an
+// opaque churning id, not derivable from the physical id). An ApiGatewayV2 Stage with
+// AutoDeploy=true (the CDK HttpApi default) has its `DeploymentId` minted and re-minted
+// by the service on every auto-deployment; the user cannot set it (a manual set is
+// rejected: "Deployment ID cannot be set ... because AutoDeploy is enabled"). It is
+// live-only ONLY in the AutoDeploy case — a non-AutoDeploy stage DECLARES DeploymentId,
+// so it never reaches the undeclared loop — so folding it as `generated` (inventory:
+// never drift, never recorded, never reverted) is safe AND necessary: otherwise the id
+// churns into a false undeclared drift after ANY out-of-band API edit, and a revert of
+// it fails (AutoDeploy rejects the write) so the stack never converges. Observed live on
+// a fresh apigwv2-http-rich deploy.
+export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::ApiGatewayV2::Stage': new Set(['DeploymentId']),
+};
+
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
 // Folds a GENERATED_PATHS value only when it ECHOES an id AWS minted (an ApiGateway
 // Method's CacheNamespace = the parent Resource id, the middle segment of
@@ -536,6 +552,33 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+}
+
+// Per-type property paths whose value is a set of HTTP HEADER NAMES, which AWS
+// stores/echoes LOWERCASED (header names are case-insensitive per RFC 9110). The
+// template keeps the author's casing (CDK CORS `AllowHeaders:
+// ["Content-Type","Authorization"]`), but the live read returns them lowercased
+// (`["content-type","authorization"]`), so a positional/case-sensitive diff
+// reports false declared drift on every check. Compared case- AND order-
+// insensitively (a CORS header list is an unordered set); a genuine header
+// add/remove still differs. Observed live on a fresh apigwv2-http-rich deploy.
+export const CASE_INSENSITIVE_ARRAY_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::ApiGatewayV2::Api': new Set([
+    'CorsConfiguration.AllowHeaders',
+    'CorsConfiguration.ExposeHeaders',
+  ]),
+};
+// True when both values are string arrays holding the same multiset of values
+// modulo ASCII case (order- and case-insensitive). Non-string-array inputs never
+// match — header sets only.
+export function isCaseInsensitiveEqualScalarSet(a: unknown, b: unknown): boolean {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  if (!a.every((v) => typeof v === 'string') || !b.every((v) => typeof v === 'string'))
+    return false;
+  const norm = (arr: unknown[]): string[] => (arr as string[]).map((s) => s.toLowerCase()).sort();
+  const na = norm(a);
+  const nb = norm(b);
+  return na.every((v, i) => v === nb[i]);
 }
 
 // Per-type property paths where a value is a DNS FQDN whose trailing `.` is

@@ -1,0 +1,263 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Domain66AC69E0",
+    "resourceType": "AWS::OpenSearchService::Domain",
+    "physicalId": "cdkrd-opensearch-rich",
+    "constructPath": "CdkRealDriftIntegOpensearchRich/Domain",
+    "declared": {
+      "ClusterConfig": {
+        "DedicatedMasterEnabled": false,
+        "InstanceCount": 1,
+        "InstanceType": "t3.small.search",
+        "MultiAZWithStandbyEnabled": false,
+        "ZoneAwarenessEnabled": false
+      },
+      "DomainEndpointOptions": {
+        "EnforceHTTPS": true,
+        "TLSSecurityPolicy": "Policy-Min-TLS-1-2-2019-07"
+      },
+      "DomainName": "cdkrd-opensearch-rich",
+      "EBSOptions": {
+        "EBSEnabled": true,
+        "VolumeSize": 10,
+        "VolumeType": "gp3"
+      },
+      "EncryptionAtRestOptions": {
+        "Enabled": true
+      },
+      "EngineVersion": "OpenSearch_2.13",
+      "LogPublishingOptions": {},
+      "NodeToNodeEncryptionOptions": {
+        "Enabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "SnapshotOptions": {
+      "AutomatedSnapshotStartHour": 0
+    },
+    "NodeToNodeEncryptionOptions": {
+      "Enabled": true
+    },
+    "DomainEndpoints": {},
+    "DomainEndpointOptions": {
+      "CustomEndpointEnabled": false,
+      "EnforceHTTPS": true,
+      "TLSSecurityPolicy": "Policy-Min-TLS-1-2-2019-07"
+    },
+    "DomainArn": "arn:aws:es:us-east-1:111111111111:domain/cdkrd-opensearch-rich",
+    "CognitoOptions": {
+      "Enabled": false
+    },
+    "AdvancedOptions": {
+      "override_main_response_version": "false",
+      "rest.action.multi.allow_explicit_index": "true"
+    },
+    "IPAddressType": "ipv4",
+    "EBSOptions": {
+      "EBSEnabled": true,
+      "VolumeType": "gp3",
+      "Throughput": 125,
+      "Iops": 3000,
+      "VolumeSize": 10
+    },
+    "Tags": [],
+    "EngineVersion": "OpenSearch_2.13",
+    "SoftwareUpdateOptions": {
+      "AutoSoftwareUpdateEnabled": false
+    },
+    "DomainName": "cdkrd-opensearch-rich",
+    "LogPublishingOptions": {},
+    "AIMLOptions": {
+      "S3VectorsEngine": {
+        "Enabled": false
+      },
+      "ServerlessVectorAcceleration": {
+        "Enabled": false
+      }
+    },
+    "AutomatedSnapshotPauseOptions": {
+      "Enabled": false
+    },
+    "DeploymentStrategyOptions": {
+      "DeploymentStrategy": "CapacityOptimized"
+    },
+    "AdvancedSecurityOptions": {
+      "AnonymousAuthEnabled": false,
+      "InternalUserDatabaseEnabled": false,
+      "Enabled": false,
+      "AnonymousAuthDisableDate": "null"
+    },
+    "DomainEndpoint": "search-cdkrd-opensearch-rich-hmatpq2gdqbiuvdyzaoalwlaei.us-east-1.es.amazonaws.com",
+    "ServiceSoftwareOptions": {
+      "NewVersion": "",
+      "UpdateStatus": "COMPLETED",
+      "Description": "There is no software update available for this domain.",
+      "Cancellable": false,
+      "CurrentVersion": "OpenSearch_2_13_R20260428",
+      "AutomatedUpdateDate": "1970-01-01T00:00:00Z",
+      "UpdateAvailable": false,
+      "OptionalDeployment": true
+    },
+    "IdentityCenterOptions": {},
+    "Id": "111111111111/cdkrd-opensearch-rich",
+    "Arn": "arn:aws:es:us-east-1:111111111111:domain/cdkrd-opensearch-rich",
+    "EncryptionAtRestOptions": {
+      "KmsKeyId": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "Enabled": true
+    },
+    "OffPeakWindowOptions": {
+      "OffPeakWindow": {
+        "WindowStartTime": {
+          "Hours": 2,
+          "Minutes": 0
+        }
+      },
+      "Enabled": true
+    },
+    "ClusterConfig": {
+      "InstanceCount": 1,
+      "MultiAZWithStandbyEnabled": false,
+      "WarmEnabled": false,
+      "DedicatedMasterEnabled": false,
+      "ColdStorageOptions": {
+        "Enabled": false
+      },
+      "InstanceType": "t3.small.search",
+      "ZoneAwarenessEnabled": false
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "DomainArn",
+      "DomainEndpoint",
+      "DomainEndpointV2",
+      "DomainEndpoints",
+      "Id",
+      "ServiceSoftwareOptions"
+    ],
+    "writeOnly": [],
+    "createOnly": ["DomainName", "EncryptionAtRestOptions"],
+    "readOnlyPaths": [
+      "AdvancedSecurityOptions.AnonymousAuthDisableDate",
+      "Arn",
+      "DomainArn",
+      "DomainEndpoint",
+      "DomainEndpointV2",
+      "DomainEndpoints",
+      "Id",
+      "IdentityCenterOptions.IdentityCenterApplicationARN",
+      "IdentityCenterOptions.IdentityStoreId",
+      "ServiceSoftwareOptions"
+    ],
+    "writeOnlyPaths": [
+      "AdvancedSecurityOptions.JWTOptions.PublicKey",
+      "AdvancedSecurityOptions.MasterUserOptions",
+      "AdvancedSecurityOptions.SAMLOptions.MasterBackendRole",
+      "AdvancedSecurityOptions.SAMLOptions.MasterUserName"
+    ],
+    "createOnlyPaths": ["AdvancedSecurityOptions.Enabled", "DomainName", "EncryptionAtRestOptions"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "SnapshotOptions",
+      "actual": {
+        "AutomatedSnapshotStartHour": 0
+      },
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "AdvancedOptions",
+      "actual": {
+        "override_main_response_version": "false",
+        "rest.action.multi.allow_explicit_index": "true"
+      },
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "IPAddressType",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "DeploymentStrategyOptions",
+      "actual": {
+        "DeploymentStrategy": "CapacityOptimized"
+      },
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "OffPeakWindowOptions",
+      "actual": {
+        "OffPeakWindow": {
+          "WindowStartTime": {
+            "Hours": 2,
+            "Minutes": 0
+          }
+        },
+        "Enabled": true
+      },
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EBSOptions.Throughput",
+      "actual": 125,
+      "nested": true,
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EBSOptions.Iops",
+      "actual": 3000,
+      "nested": true,
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Domain66AC69E0",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EncryptionAtRestOptions.KmsKeyId",
+      "actual": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "nested": true,
+      "physicalId": "cdkrd-opensearch-rich",
+      "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
+    }
+  ]
+}

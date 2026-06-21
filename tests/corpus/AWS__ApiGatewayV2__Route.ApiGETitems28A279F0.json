@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiGETitems28A279F0",
+    "resourceType": "AWS::ApiGatewayV2::Route",
+    "physicalId": "s2sushb",
+    "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/GET--items",
+    "declared": {
+      "ApiId": "z1mf4h761f",
+      "AuthorizationType": "NONE",
+      "RouteKey": "GET /items",
+      "Target": "integrations/md6my1q"
+    }
+  },
+  "liveRaw": {
+    "Target": "integrations/md6my1q",
+    "RequestModels": {},
+    "AuthorizationScopes": [],
+    "ApiKeyRequired": false,
+    "RouteKey": "GET /items",
+    "RouteId": "s2sushb",
+    "AuthorizationType": "NONE",
+    "ApiId": "z1mf4h761f"
+  },
+  "schema": {
+    "readOnly": ["RouteId"],
+    "writeOnly": ["AuthorizerId", "RequestParameters"],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["RouteId"],
+    "writeOnlyPaths": ["AuthorizerId", "RequestParameters"],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

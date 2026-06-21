@@ -881,6 +881,119 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ).toEqual(['Name']);
     });
   });
+
+  // Found live by the apigwv2-http-rich bug-hunt fixture: AWS lowercases CORS
+  // header names (case-insensitive per RFC 9110), so a declared
+  // `AllowHeaders: ["Content-Type","Authorization"]` read back as
+  // `["content-type","authorization"]` false-flagged declared drift.
+  describe('case-insensitive header-name array path (apigwv2 CORS AllowHeaders/ExposeHeaders)', () => {
+    const T = 'AWS::ApiGatewayV2::Api';
+    const cors = (headers: string[]) => ({
+      CorsConfiguration: { AllowHeaders: headers, AllowMethods: ['GET', 'POST'] },
+    });
+
+    it('mixed-case declared vs lowercase live CORS AllowHeaders is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(T, cors(['Content-Type', 'Authorization'])),
+          cors(['content-type', 'authorization']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a header set in a different order is NOT drift (unordered)', () => {
+      expect(
+        classifyResource(
+          res(T, cors(['Content-Type', 'Authorization'])),
+          cors(['authorization', 'content-type']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely changed header (same length) is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, cors(['Content-Type', 'Authorization'])),
+            cors(['content-type', 'x-api-key']),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['CorsConfiguration.AllowHeaders']);
+    });
+
+    it('ExposeHeaders is folded case-insensitively too', () => {
+      const expose = (h: string[]) => ({ CorsConfiguration: { ExposeHeaders: h } });
+      expect(
+        classifyResource(
+          res(T, expose(['X-Custom', 'X-Total'])),
+          expose(['x-total', 'x-custom']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('the header-fold rule is scoped per-type+path (other string arrays stay strict)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::S3::Bucket', { CorsConfiguration: { AllowHeaders: ['Content-Type'] } }),
+            { CorsConfiguration: { AllowHeaders: ['content-type'] } },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['CorsConfiguration.AllowHeaders']);
+    });
+  });
+
+  // Found live by the apigwv2-http-rich bug-hunt fixture: the CDK HttpApi $default
+  // stage runs AutoDeploy=true, so AWS mints (and re-mints on every auto-deploy) the
+  // stage's DeploymentId. It is live-only (the user can't declare it under AutoDeploy),
+  // so without folding it records as undeclared, churns into a false drift after any
+  // out-of-band API edit, and a revert of it FAILS ("Deployment ID cannot be set ...
+  // because AutoDeploy is enabled") so the stack never converges.
+  describe('value-independent generated top-level path (apigwv2 AutoDeploy Stage DeploymentId)', () => {
+    const T = 'AWS::ApiGatewayV2::Stage';
+    const stage = (deploymentId: string) => ({
+      StageName: '$default',
+      AutoDeploy: true,
+      DeploymentId: deploymentId,
+    });
+
+    it('a live-only AutoDeploy Stage DeploymentId folds as generated (not undeclared/drift)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { StageName: '$default', AutoDeploy: true }),
+          stage('abc123def'),
+          emptySchema
+        )
+      );
+      expect(t.generated).toEqual(['DeploymentId']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('a DIFFERENT generated id still folds (value-independent — it churns)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { StageName: '$default', AutoDeploy: true }),
+          stage('zzz999new'),
+          emptySchema
+        )
+      );
+      expect(t.generated).toEqual(['DeploymentId']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('the fold is scoped per-type (a DeploymentId on another type stays undeclared)', () => {
+      expect(
+        tiers(
+          classifyResource(res('AWS::S3::Bucket', {}), { DeploymentId: 'abc123def' }, emptySchema)
+        ).undeclared
+      ).toEqual(['DeploymentId']);
+    });
+  });
 });
 
 describe('unordered-array declared false positives (R88, found by the wave-2 integ fixtures)', () => {

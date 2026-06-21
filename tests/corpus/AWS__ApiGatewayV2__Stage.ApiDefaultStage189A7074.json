@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiDefaultStage189A7074",
+    "resourceType": "AWS::ApiGatewayV2::Stage",
+    "physicalId": "$default",
+    "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/DefaultStage",
+    "declared": {
+      "ApiId": "z1mf4h761f",
+      "AutoDeploy": true,
+      "StageName": "$default"
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "1axai8",
+    "AutoDeploy": true,
+    "RouteSettings": {},
+    "StageName": "$default",
+    "StageVariables": {},
+    "ApiId": "z1mf4h761f",
+    "DefaultRouteSettings": {
+      "DetailedMetricsEnabled": false
+    },
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegApigwv2HttpRich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApigwv2HttpRich/1cc87090-6d2d-11f1-8b6e-0e3eb015ac49",
+      "aws:cloudformation:logical-id": "ApiDefaultStage189A7074"
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "StageName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "StageName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "ApiDefaultStage189A7074",
+      "resourceType": "AWS::ApiGatewayV2::Stage",
+      "path": "DeploymentId",
+      "actual": "1axai8",
+      "physicalId": "$default",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/DefaultStage"
+    }
+  ]
+}

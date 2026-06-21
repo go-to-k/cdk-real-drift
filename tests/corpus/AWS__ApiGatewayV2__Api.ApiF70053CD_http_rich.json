@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiF70053CD",
+    "resourceType": "AWS::ApiGatewayV2::Api",
+    "physicalId": "z1mf4h761f",
+    "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api",
+    "declared": {
+      "CorsConfiguration": {
+        "AllowHeaders": ["Content-Type", "Authorization"],
+        "AllowMethods": ["GET", "POST"],
+        "AllowOrigins": ["https://example.com"],
+        "MaxAge": 86400
+      },
+      "Description": "cdkrd http api rich",
+      "Name": "cdkrd-httpapi-rich",
+      "ProtocolType": "HTTP"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "RouteSelectionExpression": "$request.method $request.path",
+    "Description": "cdkrd http api rich",
+    "CorsConfiguration": {
+      "AllowOrigins": ["https://example.com"],
+      "ExposeHeaders": [],
+      "AllowHeaders": ["content-type", "authorization"],
+      "MaxAge": 86400,
+      "AllowMethods": ["GET", "POST"]
+    },
+    "ProtocolType": "HTTP",
+    "ApiEndpoint": "https://z1mf4h761f.execute-api.us-east-1.amazonaws.com",
+    "DisableExecuteApiEndpoint": false,
+    "ApiId": "z1mf4h761f",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegApigwv2HttpRich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApigwv2HttpRich/1cc87090-6d2d-11f1-8b6e-0e3eb015ac49",
+      "aws:cloudformation:logical-id": "ApiF70053CD"
+    },
+    "Name": "cdkrd-httpapi-rich"
+  },
+  "schema": {
+    "readOnly": ["ApiEndpoint", "ApiId"],
+    "writeOnly": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnly": ["ProtocolType"],
+    "readOnlyPaths": ["ApiEndpoint", "ApiId"],
+    "writeOnlyPaths": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "BodyS3Location.Bucket",
+      "BodyS3Location.Etag",
+      "BodyS3Location.Key",
+      "BodyS3Location.Version",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnlyPaths": ["ProtocolType"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "z1mf4h761f",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "RouteSelectionExpression",
+      "actual": "$request.method $request.path",
+      "physicalId": "z1mf4h761f",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api"
+    }
+  ]
+}

@@ -1,0 +1,200 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PipelineC660917D",
+    "resourceType": "AWS::CodePipeline::Pipeline",
+    "physicalId": "cdkrd-pipeline-rich",
+    "constructPath": "CdkRealDriftIntegCodepipelineRich/Pipeline",
+    "declared": {
+      "ArtifactStore": {
+        "Location": "cdkrealdriftintegcodepipelineric-artifacts82dd59a1-8kr0plrd95pv",
+        "Type": "S3"
+      },
+      "Name": "cdkrd-pipeline-rich",
+      "PipelineType": "V2",
+      "RestartExecutionOnUpdate": false,
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipelineR-PipelineRoleD68726F7-l0p742trfc42",
+      "Stages": [
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Source",
+                "Owner": "AWS",
+                "Provider": "S3",
+                "Version": "1"
+              },
+              "Configuration": {
+                "S3Bucket": "cdkrealdriftintegcodepipelineric-artifacts82dd59a1-8kr0plrd95pv",
+                "S3ObjectKey": "source.zip"
+              },
+              "Name": "S3Source",
+              "OutputArtifacts": [
+                {
+                  "Name": "Artifact_Source_S3Source"
+                }
+              ],
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineSourceS3SourceCod-q1Iw340CCx9D",
+              "RunOrder": 1
+            }
+          ],
+          "Name": "Source"
+        },
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Build",
+                "Owner": "AWS",
+                "Provider": "CodeBuild",
+                "Version": "1"
+              },
+              "Configuration": {
+                "ProjectName": "cdkrd-pipeline-build"
+              },
+              "InputArtifacts": [
+                {
+                  "Name": "Artifact_Source_S3Source"
+                }
+              ],
+              "Name": "Build",
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineBuildCodePipeline-yIxaSVx63jq0",
+              "RunOrder": 1
+            }
+          ],
+          "Name": "Build"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Variables": [],
+    "ArtifactStores": [],
+    "Version": "1",
+    "ArtifactStore": {
+      "Type": "S3",
+      "Location": "cdkrealdriftintegcodepipelineric-artifacts82dd59a1-8kr0plrd95pv"
+    },
+    "DisableInboundStageTransitions": [],
+    "Stages": [
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Source",
+              "Version": "1",
+              "Provider": "S3"
+            },
+            "Configuration": {
+              "S3Bucket": "cdkrealdriftintegcodepipelineric-artifacts82dd59a1-8kr0plrd95pv",
+              "S3ObjectKey": "source.zip"
+            },
+            "InputArtifacts": [],
+            "OutputArtifacts": [
+              {
+                "Files": [],
+                "Name": "Artifact_Source_S3Source"
+              }
+            ],
+            "Commands": [],
+            "OutputVariables": [],
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineSourceS3SourceCod-q1Iw340CCx9D",
+            "RunOrder": 1,
+            "Name": "S3Source"
+          }
+        ],
+        "Name": "Source"
+      },
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Build",
+              "Version": "1",
+              "Provider": "CodeBuild"
+            },
+            "Configuration": {
+              "ProjectName": "cdkrd-pipeline-build"
+            },
+            "InputArtifacts": [
+              {
+                "Name": "Artifact_Source_S3Source"
+              }
+            ],
+            "OutputArtifacts": [],
+            "Commands": [],
+            "OutputVariables": [],
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineBuildCodePipeline-yIxaSVx63jq0",
+            "RunOrder": 1,
+            "Name": "Build"
+          }
+        ],
+        "Name": "Build"
+      }
+    ],
+    "PipelineType": "V2",
+    "ExecutionMode": "SUPERSEDED",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipelineR-PipelineRoleD68726F7-l0p742trfc42",
+    "Tags": [],
+    "Name": "cdkrd-pipeline-rich"
+  },
+  "schema": {
+    "readOnly": ["Version"],
+    "writeOnly": ["RestartExecutionOnUpdate"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Version"],
+    "writeOnlyPaths": ["RestartExecutionOnUpdate"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "ExecutionMode": "SUPERSEDED"
+    },
+    "defaultPaths": {
+      "ExecutionMode": "SUPERSEDED"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "PipelineC660917D",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "RestartExecutionOnUpdate",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-pipeline-rich",
+      "constructPath": "CdkRealDriftIntegCodepipelineRich/Pipeline"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PipelineC660917D",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "ExecutionMode",
+      "actual": "SUPERSEDED",
+      "physicalId": "cdkrd-pipeline-rich",
+      "constructPath": "CdkRealDriftIntegCodepipelineRich/Pipeline"
+    }
+  ]
+}

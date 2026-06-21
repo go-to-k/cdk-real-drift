@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiGETitemsItemsProxy62C95830",
+    "resourceType": "AWS::ApiGatewayV2::Integration",
+    "physicalId": "md6my1q",
+    "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/GET--items/ItemsProxy",
+    "declared": {
+      "ApiId": "z1mf4h761f",
+      "IntegrationMethod": "ANY",
+      "IntegrationType": "HTTP_PROXY",
+      "IntegrationUri": "https://example.com",
+      "PayloadFormatVersion": "1.0"
+    }
+  },
+  "liveRaw": {
+    "IntegrationUri": "https://example.com",
+    "PayloadFormatVersion": "1.0",
+    "ConnectionType": "INTERNET",
+    "RequestTemplates": {},
+    "ResponseParameters": {},
+    "TimeoutInMillis": 30000,
+    "IntegrationId": "md6my1q",
+    "ApiId": "z1mf4h761f",
+    "IntegrationMethod": "ANY",
+    "IntegrationType": "HTTP_PROXY"
+  },
+  "schema": {
+    "readOnly": ["IntegrationId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["IntegrationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiGETitemsItemsProxy62C95830",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "ConnectionType",
+      "actual": "INTERNET",
+      "physicalId": "md6my1q",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/GET--items/ItemsProxy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiGETitemsItemsProxy62C95830",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "TimeoutInMillis",
+      "actual": 30000,
+      "physicalId": "md6my1q",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/GET--items/ItemsProxy"
+    }
+  ]
+}
