@@ -71,6 +71,7 @@ cdk.context.json
 # by bughunt-track.sh add, cleared by bughunt-track.sh clear after delete +
 # orphan-zero verification.
 .markgate-bughunt-pending
+.markgate-bughunt-pending.d/
 
 # cdkd-parity tracking-issue sentinel (per-worktree; written by /check-cdkd-parity)
 .cdkd-parity-issue
