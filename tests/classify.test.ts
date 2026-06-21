@@ -1331,6 +1331,56 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
   });
 });
 
+describe('LATEST sentinel declared false positives (Fargate PlatformVersion, found by ecs-taskset-rich)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+  const declaredTiers = (
+    rt: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource(res(rt, declared), live, emptySchema)
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  // The fold must hold for EVERY type that declares a Fargate PlatformVersion.
+  for (const T of ['AWS::ECS::TaskSet', 'AWS::ECS::Service']) {
+    describe(T, () => {
+      it('declared "LATEST" resolved to a concrete version is NOT drift', () => {
+        expect(
+          declaredTiers(T, { PlatformVersion: 'LATEST' }, { PlatformVersion: '1.4.0' })
+        ).toEqual([]);
+      });
+
+      it('a declared CONCRETE version that differs still surfaces (no over-fold)', () => {
+        expect(
+          declaredTiers(T, { PlatformVersion: '1.3.0' }, { PlatformVersion: '1.4.0' }).length
+        ).toBeGreaterThan(0);
+      });
+
+      it('an empty live value is still a real divergence', () => {
+        expect(
+          declaredTiers(T, { PlatformVersion: 'LATEST' }, { PlatformVersion: '' }).length
+        ).toBeGreaterThan(0);
+      });
+    });
+  }
+});
+
 describe('identity-keyed array ADDITIONS are detected, not subset-projected away (R95)', () => {
   const emptySchema: SchemaInfo = {
     readOnly: new Set(),

@@ -32,6 +32,8 @@ import {
   isTrailingDotEqual,
   isTrivialEmpty,
   isVersionPrefixMatch,
+  isLatestSentinelMatch,
+  LATEST_SENTINEL_PATHS,
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
@@ -668,6 +670,14 @@ export function classifyResource(
       if (
         VERSION_PREFIX_PATHS[resourceType]?.has(d.path) &&
         isVersionPrefixMatch(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type `"LATEST"` sentinel paths (Fargate PlatformVersion) — a declared
+      // `"LATEST"` that AWS resolved to the concrete current version is not drift; a
+      // declared concrete version still compares so a genuine pin change differs.
+      if (
+        LATEST_SENTINEL_PATHS[resourceType]?.has(d.path) &&
+        isLatestSentinelMatch(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type unordered scalar-array sets (R74: Cognito UserPoolClient OAuth
