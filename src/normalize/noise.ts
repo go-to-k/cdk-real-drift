@@ -575,6 +575,15 @@ export function isJsonStringStructEqual(a: unknown, b: unknown): boolean {
 // from calculateResourceDrift (e.g. `AliasTarget.DNSName`).
 export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Route53::RecordSet': new Set(['AliasTarget.DNSName']),
+  // Batch ComputeEnvironment `Type` — CDK's `FargateComputeEnvironment` /
+  // `ManagedComputeEnvironment` emits the value LOWERCASE (`managed`) in the
+  // template, but the Batch API accepts it case-insensitively and the live read
+  // canonicalizes it UPPERCASE (`MANAGED`), so a case-sensitive compare false-flags
+  // declared drift on every check of a freshly deployed managed compute environment.
+  // `Type` is create-only (managed<->unmanaged can't be toggled out of band) and the
+  // two valid values differ beyond case, so case-insensitive equality hides no real
+  // drift. Observed live on a fresh batch-rich deploy.
+  'AWS::Batch::ComputeEnvironment': new Set(['Type']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();

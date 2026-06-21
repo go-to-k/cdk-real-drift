@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Queue4A7E3555",
+    "resourceType": "AWS::Batch::JobQueue",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:job-queue/Queue4A7E3555-s5jYfOEpQfvnIKyE",
+    "constructPath": "CdkRealDriftIntegBatchRich/Queue",
+    "declared": {
+      "ComputeEnvironmentOrder": [
+        {
+          "ComputeEnvironment": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+          "Order": 1
+        }
+      ],
+      "Priority": 1,
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "ComputeEnvironmentOrder": [
+      {
+        "ComputeEnvironment": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
+        "Order": 1
+      }
+    ],
+    "Priority": 1,
+    "State": "ENABLED",
+    "JobQueueType": "ECS_FARGATE",
+    "JobQueueName": "Queue4A7E3555-s5jYfOEpQfvnIKyE",
+    "JobQueueArn": "arn:aws:batch:us-east-1:111111111111:job-queue/Queue4A7E3555-s5jYfOEpQfvnIKyE",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegBatchRich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegBatchRich/af1c2340-6d89-11f1-b08f-0affeff18f9f",
+      "aws:cloudformation:logical-id": "Queue4A7E3555"
+    }
+  },
+  "schema": {
+    "readOnly": ["JobQueueArn"],
+    "writeOnly": [],
+    "createOnly": ["JobQueueName", "JobQueueType"],
+    "readOnlyPaths": ["JobQueueArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["JobQueueName", "JobQueueType"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Queue4A7E3555",
+      "resourceType": "AWS::Batch::JobQueue",
+      "path": "JobQueueType",
+      "actual": "ECS_FARGATE",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-queue/Queue4A7E3555-s5jYfOEpQfvnIKyE",
+      "constructPath": "CdkRealDriftIntegBatchRich/Queue"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Queue4A7E3555",
+      "resourceType": "AWS::Batch::JobQueue",
+      "path": "JobQueueName",
+      "actual": "Queue4A7E3555-s5jYfOEpQfvnIKyE",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:job-queue/Queue4A7E3555-s5jYfOEpQfvnIKyE",
+      "constructPath": "CdkRealDriftIntegBatchRich/Queue"
+    }
+  ]
+}

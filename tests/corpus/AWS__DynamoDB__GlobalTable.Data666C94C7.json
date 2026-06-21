@@ -1,0 +1,369 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Data666C94C7",
+    "resourceType": "AWS::DynamoDB::GlobalTable",
+    "physicalId": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+    "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data",
+    "declared": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "sk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "gsi1pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "gsi1sk",
+          "AttributeType": "N"
+        },
+        {
+          "AttributeName": "gsi2pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "lsi1sk",
+          "AttributeType": "N"
+        }
+      ],
+      "BillingMode": "PAY_PER_REQUEST",
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "gsi1",
+          "KeySchema": [
+            {
+              "AttributeName": "gsi1pk",
+              "KeyType": "HASH"
+            },
+            {
+              "AttributeName": "gsi1sk",
+              "KeyType": "RANGE"
+            }
+          ],
+          "Projection": {
+            "ProjectionType": "ALL"
+          }
+        },
+        {
+          "IndexName": "gsi2",
+          "KeySchema": [
+            {
+              "AttributeName": "gsi2pk",
+              "KeyType": "HASH"
+            }
+          ],
+          "Projection": {
+            "ProjectionType": "KEYS_ONLY"
+          }
+        }
+      ],
+      "KeySchema": [
+        {
+          "AttributeName": "pk",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "sk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "LocalSecondaryIndexes": [
+        {
+          "IndexName": "lsi1",
+          "KeySchema": [
+            {
+              "AttributeName": "pk",
+              "KeyType": "HASH"
+            },
+            {
+              "AttributeName": "lsi1sk",
+              "KeyType": "RANGE"
+            }
+          ],
+          "Projection": {
+            "ProjectionType": "ALL"
+          }
+        }
+      ],
+      "Replicas": [
+        {
+          "ContributorInsightsSpecification": {
+            "Enabled": true
+          },
+          "DeletionProtectionEnabled": false,
+          "GlobalSecondaryIndexes": [
+            {
+              "ContributorInsightsSpecification": {
+                "Enabled": true
+              },
+              "IndexName": "gsi1"
+            },
+            {
+              "ContributorInsightsSpecification": {
+                "Enabled": true
+              },
+              "IndexName": "gsi2"
+            }
+          ],
+          "PointInTimeRecoverySpecification": {
+            "PointInTimeRecoveryEnabled": true
+          },
+          "Region": "us-east-1",
+          "TableClass": "STANDARD_INFREQUENT_ACCESS",
+          "Tags": [
+            {
+              "Key": "cost-center",
+              "Value": "1234"
+            },
+            {
+              "Key": "team",
+              "Value": "platform"
+            }
+          ]
+        }
+      ],
+      "SSESpecification": {
+        "SSEEnabled": false
+      },
+      "StreamSpecification": {
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "TimeToLiveSpecification": {
+        "AttributeName": "ttl",
+        "Enabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "TableId": "5c5969c8-8b5c-4ffa-b4db-724ae6df3371",
+    "StreamSpecification": {
+      "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 12000,
+      "WriteUnitsPerSecond": 4000
+    },
+    "Replicas": [
+      {
+        "ContributorInsightsSpecification": {
+          "Mode": "ACCESSED_AND_THROTTLED_KEYS",
+          "Enabled": true
+        },
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "gsi2",
+            "ContributorInsightsSpecification": {
+              "Mode": "ACCESSED_AND_THROTTLED_KEYS",
+              "Enabled": true
+            }
+          },
+          {
+            "IndexName": "gsi1",
+            "ContributorInsightsSpecification": {
+              "Mode": "ACCESSED_AND_THROTTLED_KEYS",
+              "Enabled": true
+            }
+          }
+        ],
+        "Region": "us-east-1",
+        "GlobalTableSettingsReplicationMode": "DISABLED",
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true,
+          "RecoveryPeriodInDays": 35
+        },
+        "TableClass": "STANDARD_INFREQUENT_ACCESS",
+        "DeletionProtectionEnabled": false,
+        "Tags": [
+          {
+            "Value": "1234",
+            "Key": "cost-center"
+          },
+          {
+            "Value": "platform",
+            "Key": "team"
+          }
+        ]
+      }
+    ],
+    "TableName": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+    "AttributeDefinitions": [
+      {
+        "AttributeType": "S",
+        "AttributeName": "gsi1pk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "pk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "sk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "gsi2pk"
+      },
+      {
+        "AttributeType": "N",
+        "AttributeName": "gsi1sk"
+      },
+      {
+        "AttributeType": "N",
+        "AttributeName": "lsi1sk"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "gsi2",
+        "Projection": {
+          "NonKeyAttributes": [],
+          "ProjectionType": "KEYS_ONLY"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "gsi2pk"
+          }
+        ],
+        "WarmThroughput": {
+          "ReadUnitsPerSecond": 12000,
+          "WriteUnitsPerSecond": 4000
+        }
+      },
+      {
+        "IndexName": "gsi1",
+        "Projection": {
+          "NonKeyAttributes": [],
+          "ProjectionType": "ALL"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "gsi1pk"
+          },
+          {
+            "KeyType": "RANGE",
+            "AttributeName": "gsi1sk"
+          }
+        ],
+        "WarmThroughput": {
+          "ReadUnitsPerSecond": 12000,
+          "WriteUnitsPerSecond": 4000
+        }
+      }
+    ],
+    "KeySchema": [
+      {
+        "KeyType": "HASH",
+        "AttributeName": "pk"
+      },
+      {
+        "KeyType": "RANGE",
+        "AttributeName": "sk"
+      }
+    ],
+    "LocalSecondaryIndexes": [
+      {
+        "IndexName": "lsi1",
+        "Projection": {
+          "NonKeyAttributes": [],
+          "ProjectionType": "ALL"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "pk"
+          },
+          {
+            "KeyType": "RANGE",
+            "AttributeName": "lsi1sk"
+          }
+        ]
+      }
+    ],
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+    "StreamArn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN/stream/2026-06-21T15:56:06.862",
+    "TimeToLiveSpecification": {
+      "Enabled": true,
+      "AttributeName": "ttl"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "StreamArn", "TableId"],
+    "writeOnly": ["GlobalTableSourceArn"],
+    "createOnly": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "readOnlyPaths": ["Arn", "StreamArn", "TableId"],
+    "writeOnlyPaths": [
+      "GlobalSecondaryIndexes.*.WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity",
+      "GlobalTableSourceArn",
+      "Replicas.*.GlobalSecondaryIndexes.*.ReadProvisionedThroughputSettings.ReadCapacityAutoScalingSettings.SeedCapacity",
+      "Replicas.*.ReadProvisionedThroughputSettings.ReadCapacityAutoScalingSettings.SeedCapacity",
+      "WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity"
+    ],
+    "createOnlyPaths": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::GlobalTable",
+      "path": "SSESpecification",
+      "note": "declared but not returned by live read",
+      "physicalId": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+      "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::GlobalTable",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "physicalId": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+      "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::GlobalTable",
+      "path": "GlobalSecondaryIndexes[gsi1].WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+      "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::DynamoDB::GlobalTable",
+      "path": "GlobalSecondaryIndexes[gsi2].WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDdbGlobalTableRich-Data666C94C7-52170H86RGPN",
+      "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
+    }
+  ]
+}

@@ -78,6 +78,31 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('abc123xyz');
   });
 
+  it('Batch JobDefinition: the ARN physical id is reduced to the bare name (no :revision)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Batch::JobDefinition',
+        physicalId: 'arn:aws:batch:us-east-1:111111111111:job-definition/MyJobDef-abc:3',
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('MyJobDef-abc');
+  });
+
+  it('Batch JobDefinition: a bare name with a :revision suffix is also stripped', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Batch::JobDefinition', physicalId: 'MyJobDef-abc:3' }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('MyJobDef-abc');
+  });
+
   it('Cognito UserPoolClient: builds the composite UserPoolId|ClientId identifier', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(
