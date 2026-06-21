@@ -1,4 +1,9 @@
 import {
+  CloudFrontClient,
+  GetDistributionConfigCommand,
+  UpdateDistributionCommand,
+} from '@aws-sdk/client-cloudfront';
+import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
   ModifyTargetGroupAttributesCommand,
@@ -48,6 +53,7 @@ const sns = mockClient(SNSClient);
 const sqs = mockClient(SQSClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
+const cloudfront = mockClient(CloudFrontClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -83,6 +89,62 @@ beforeEach(() => {
   sqs.reset();
   serviceDiscovery.reset();
   docdb.reset();
+  cloudfront.reset();
+});
+
+describe('CloudFront Distribution writer (CC UpdateResource rejects partial patch)', () => {
+  const ID = 'E123ABC';
+  const commentOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/DistributionConfig/Comment',
+    value,
+    human: 'Comment -> deployed-template value',
+  });
+  it('reverts via GetDistributionConfig -> apply ops -> UpdateDistribution(IfMatch=ETag)', async () => {
+    // GetDistributionConfig returns the DRIFTED live config + ETag; UpdateDistribution
+    // re-submits the SAME config with only the reverted scalar changed (round-trips the
+    // default ViewerCertificate verbatim, which the CC partial patch could not).
+    cloudfront.on(GetDistributionConfigCommand).resolves({
+      ETag: 'ETAG1',
+      // partial live config stub (the writer round-trips it verbatim) — cast past the
+      // full DistributionConfig required-field type for the test.
+      DistributionConfig: {
+        CallerReference: 'r',
+        Comment: 'DRIFTED',
+        Enabled: true,
+        ViewerCertificate: { CloudFrontDefaultCertificate: true },
+        Origins: { Quantity: 1, Items: [{ Id: 'o1', DomainName: 'a.example.com' }] },
+      } as never,
+    });
+    cloudfront.on(UpdateDistributionCommand).resolves({});
+    await SDK_WRITERS['AWS::CloudFront::Distribution'](ctx({ physicalId: ID }), [
+      commentOp('the desired comment'),
+    ]);
+    const calls = cloudfront.commandCalls(UpdateDistributionCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as {
+      Id: string;
+      IfMatch: string;
+      DistributionConfig: { Comment: string; ViewerCertificate: unknown; Origins: unknown };
+    };
+    expect(input.Id).toBe(ID);
+    expect(input.IfMatch).toBe('ETAG1');
+    // only Comment changed; the rest of the live config round-trips verbatim
+    expect(input.DistributionConfig.Comment).toBe('the desired comment');
+    expect(input.DistributionConfig.ViewerCertificate).toEqual({
+      CloudFrontDefaultCertificate: true,
+    });
+    expect(input.DistributionConfig.Origins).toEqual({
+      Quantity: 1,
+      Items: [{ Id: 'o1', DomainName: 'a.example.com' }],
+    });
+  });
+
+  it('throws when the distribution id is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::CloudFront::Distribution'](ctx({ physicalId: '' }), [commentOp('x')])
+    ).rejects.toThrow(/distribution id/);
+  });
 });
 
 describe('DocDB DBCluster writer (CC read+write gap)', () => {
