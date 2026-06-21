@@ -1261,6 +1261,39 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('ELBv2 ListenerRule Conditions (reordered set, found by elbv2-listenerrule-rich)', () => {
+    const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
+    const declared = {
+      Conditions: [
+        { Field: 'path-pattern', PathPatternConfig: { Values: ['/api/*', '/v2/*'] } },
+        { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        { Field: 'http-header', HttpHeaderConfig: { HttpHeaderName: 'X-Custom', Values: ['a'] } },
+      ],
+    };
+
+    it('AWS returning the Conditions in a different order is NOT drift', () => {
+      const live = {
+        Conditions: [
+          { Field: 'http-header', HttpHeaderConfig: { HttpHeaderName: 'X-Custom', Values: ['a'] } },
+          { Field: 'path-pattern', PathPatternConfig: { Values: ['/api/*', '/v2/*'] } },
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine condition value change still surfaces (even when reordered)', () => {
+      const live = {
+        Conditions: [
+          { Field: 'http-header', HttpHeaderConfig: { HttpHeaderName: 'X-Custom', Values: ['a'] } },
+          { Field: 'path-pattern', PathPatternConfig: { Values: ['/changed/*', '/v2/*'] } },
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Bedrock Guardrail nested policy-config arrays (reordered, found by bedrock-guardrail-rich)', () => {
     const T = 'AWS::Bedrock::Guardrail';
     const declared = {

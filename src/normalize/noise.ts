@@ -830,6 +830,15 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
 // canonical JSON before the positional diff — a genuine rule change still differs.
 export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
+  // ListenerRule `Conditions` is a SET keyed by Field (path-pattern / host-header /
+  // http-header / …) that AWS returns REORDERED relative to the template, so a
+  // positional compare false-flags every condition. Sorting both sides by canonical
+  // JSON aligns them by Field (the first sorted key), and a genuine condition change
+  // still differs. (`Actions` is NOT listed — its element Order is semantic.) The live
+  // model also adds a legacy top-level `Values` mirror to each condition; that is
+  // handled separately as undeclared nested inventory (subset descent walks only the
+  // declared *Config keys). Observed live on a fresh elbv2-listenerrule-rich deploy.
+  'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions']),
 };
 
 // Per-type NESTED object-array paths AWS returns reordered (dotted from the resource

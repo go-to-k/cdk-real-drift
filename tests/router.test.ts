@@ -272,6 +272,21 @@ describe('readLive (CC identifier adapters, R74)', () => {
     });
   }
 
+  it('AutoScaling LifecycleHook: builds the AutoScalingGroupName|LifecycleHookName composite', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AutoScaling::LifecycleHook',
+        physicalId: 'my-hook',
+        declared: { AutoScalingGroupName: 'my-asg' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-asg|my-hook');
+  });
+
   for (const t of [
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',

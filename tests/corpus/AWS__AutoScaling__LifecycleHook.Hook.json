@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Hook",
+    "resourceType": "AWS::AutoScaling::LifecycleHook",
+    "physicalId": "cdkrd-launch-hook",
+    "constructPath": "CdkRealDriftIntegAutoScalingLifecycleHookRich/Hook",
+    "declared": {
+      "AutoScalingGroupName": "CdkRealDriftIntegAutoScalingLifecycleHookRich-AsgASGD1D7B4E2-JOfZ142k6UON",
+      "DefaultResult": "CONTINUE",
+      "HeartbeatTimeout": 300,
+      "LifecycleHookName": "cdkrd-launch-hook",
+      "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING"
+    }
+  },
+  "liveRaw": {
+    "LifecycleHookName": "cdkrd-launch-hook",
+    "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+    "AutoScalingGroupName": "CdkRealDriftIntegAutoScalingLifecycleHookRich-AsgASGD1D7B4E2-JOfZ142k6UON",
+    "HeartbeatTimeout": 300,
+    "DefaultResult": "CONTINUE"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName", "LifecycleHookName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName", "LifecycleHookName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
