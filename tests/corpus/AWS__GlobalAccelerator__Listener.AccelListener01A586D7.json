@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AccelListener01A586D7",
+    "resourceType": "AWS::GlobalAccelerator::Listener",
+    "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1",
+    "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener",
+    "declared": {
+      "AcceleratorArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+      "ClientAffinity": "SOURCE_IP",
+      "PortRanges": [
+        {
+          "FromPort": 80,
+          "ToPort": 80
+        },
+        {
+          "FromPort": 443,
+          "ToPort": 443
+        }
+      ],
+      "Protocol": "TCP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1",
+    "PortRanges": [
+      {
+        "FromPort": 80,
+        "ToPort": 80
+      },
+      {
+        "FromPort": 443,
+        "ToPort": 443
+      }
+    ],
+    "AcceleratorArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+    "Protocol": "TCP",
+    "ClientAffinity": "SOURCE_IP"
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["AcceleratorArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AcceleratorArn"],
+    "defaults": {
+      "Protocol": "TCP",
+      "ClientAffinity": "NONE"
+    },
+    "defaultPaths": {
+      "Protocol": "TCP",
+      "ClientAffinity": "NONE"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

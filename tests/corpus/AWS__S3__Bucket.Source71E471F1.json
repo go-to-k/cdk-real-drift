@@ -1,0 +1,233 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Source71E471F1",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+    "constructPath": "CdkRealDriftIntegS3ReplicationRich/Source",
+    "declared": {
+      "ReplicationConfiguration": {
+        "Role": "arn:aws:iam::111111111111:role/CDKReplicationRole",
+        "Rules": [
+          {
+            "DeleteMarkerReplication": {
+              "Status": "Disabled"
+            },
+            "Destination": {
+              "Bucket": "arn:aws:s3:::cdkrealdriftintegs3replicationrich-destc383b82a-hcib8c1nqpur",
+              "StorageClass": "STANDARD_IA"
+            },
+            "Filter": {
+              "Prefix": "logs/"
+            },
+            "Id": "logs-rule",
+            "Priority": 1,
+            "SourceSelectionCriteria": {
+              "ReplicaModifications": {
+                "Status": "Enabled"
+              }
+            },
+            "Status": "Enabled"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "VersioningConfiguration": {
+        "Status": "Enabled"
+      }
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t.s3-website-us-east-1.amazonaws.com",
+    "DualStackDomainName": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t.s3.dualstack.us-east-1.amazonaws.com",
+    "VersioningConfiguration": {
+      "Status": "Enabled"
+    },
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+    "RegionalDomainName": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+    "ReplicationConfiguration": {
+      "Role": "arn:aws:iam::111111111111:role/CDKReplicationRole",
+      "Rules": [
+        {
+          "Status": "Enabled",
+          "Destination": {
+            "Bucket": "arn:aws:s3:::cdkrealdriftintegs3replicationrich-destc383b82a-hcib8c1nqpur",
+            "StorageClass": "STANDARD_IA"
+          },
+          "Filter": {
+            "Prefix": "logs/"
+          },
+          "Priority": 1,
+          "SourceSelectionCriteria": {
+            "ReplicaModifications": {
+              "Status": "Enabled"
+            }
+          },
+          "Id": "logs-rule",
+          "DeleteMarkerReplication": {
+            "Status": "Disabled"
+          }
+        }
+      ]
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3ReplicationRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Source71E471F1",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3ReplicationRich/7aa5f210-6d90-11f1-93fd-0affc62f8665",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Source71E471F1",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+      "constructPath": "CdkRealDriftIntegS3ReplicationRich/Source"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Source71E471F1",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+      "constructPath": "CdkRealDriftIntegS3ReplicationRich/Source"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Source71E471F1",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+      "constructPath": "CdkRealDriftIntegS3ReplicationRich/Source"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Source71E471F1",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3replicationrich-source71e471f1-rn5nhidh5r0t",
+      "constructPath": "CdkRealDriftIntegS3ReplicationRich/Source"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Assoc",
+    "resourceType": "AWS::SSM::Association",
+    "physicalId": "0e4258fb-3d68-48fd-9094-af868703f303",
+    "constructPath": "CdkRealDriftIntegSsmAssociationRich/Assoc",
+    "declared": {
+      "AssociationName": "cdkrd-assoc",
+      "ComplianceSeverity": "MEDIUM",
+      "MaxConcurrency": "1",
+      "MaxErrors": "1",
+      "Name": "AWS-UpdateSSMAgent",
+      "ScheduleExpression": "rate(7 days)",
+      "Targets": [
+        {
+          "Key": "tag:cdkrd",
+          "Values": ["true"]
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AssociationName": "cdkrd-assoc",
+    "ScheduleExpression": "rate(7 days)",
+    "MaxErrors": "1",
+    "ApplyOnlyAtCronInterval": false,
+    "MaxConcurrency": "1",
+    "ComplianceSeverity": "MEDIUM",
+    "Targets": [
+      {
+        "Values": ["true"],
+        "Key": "tag:cdkrd"
+      }
+    ],
+    "DocumentVersion": "$DEFAULT",
+    "AssociationId": "0e4258fb-3d68-48fd-9094-af868703f303",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSsmAssociationRich/7ab3adb0-6d90-11f1-acfc-0afff087e099",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSsmAssociationRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Assoc",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "AWS-UpdateSSMAgent"
+  },
+  "schema": {
+    "readOnly": ["AssociationId"],
+    "writeOnly": ["WaitForSuccessTimeoutSeconds"],
+    "createOnly": [],
+    "readOnlyPaths": ["AssociationId"],
+    "writeOnlyPaths": ["WaitForSuccessTimeoutSeconds"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Assoc",
+      "resourceType": "AWS::SSM::Association",
+      "path": "DocumentVersion",
+      "actual": "$DEFAULT",
+      "physicalId": "0e4258fb-3d68-48fd-9094-af868703f303",
+      "constructPath": "CdkRealDriftIntegSsmAssociationRich/Assoc"
+    }
+  ]
+}

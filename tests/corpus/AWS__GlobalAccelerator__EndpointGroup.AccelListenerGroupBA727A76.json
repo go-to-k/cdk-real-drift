@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AccelListenerGroupBA727A76",
+    "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+    "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+    "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group",
+    "declared": {
+      "EndpointGroupRegion": "us-east-1",
+      "ListenerArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1",
+    "HealthCheckIntervalSeconds": 30,
+    "EndpointGroupRegion": "us-east-1",
+    "TrafficDialPercentage": 100,
+    "HealthCheckProtocol": "TCP",
+    "EndpointGroupArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+    "ThresholdCount": 3,
+    "HealthCheckPort": 80,
+    "EndpointConfigurations": []
+  },
+  "schema": {
+    "readOnly": ["EndpointGroupArn"],
+    "writeOnly": [],
+    "createOnly": ["EndpointGroupRegion", "ListenerArn"],
+    "readOnlyPaths": ["EndpointGroupArn"],
+    "writeOnlyPaths": ["EndpointConfigurations.*.AttachmentArn"],
+    "createOnlyPaths": ["EndpointGroupRegion", "ListenerArn"],
+    "defaults": {
+      "TrafficDialPercentage": 100,
+      "HealthCheckPort": -1,
+      "HealthCheckProtocol": "TCP",
+      "HealthCheckPath": "/",
+      "HealthCheckIntervalSeconds": 30,
+      "ThresholdCount": 3
+    },
+    "defaultPaths": {
+      "EndpointConfigurations.*.Weight": 100,
+      "EndpointConfigurations.*.ClientIPPreservationEnabled": true,
+      "TrafficDialPercentage": 100,
+      "HealthCheckPort": -1,
+      "HealthCheckProtocol": "TCP",
+      "HealthCheckPath": "/",
+      "HealthCheckIntervalSeconds": 30,
+      "ThresholdCount": 3
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AccelListenerGroupBA727A76",
+      "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+      "path": "HealthCheckIntervalSeconds",
+      "actual": 30,
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AccelListenerGroupBA727A76",
+      "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+      "path": "TrafficDialPercentage",
+      "actual": 100,
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AccelListenerGroupBA727A76",
+      "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "TCP",
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AccelListenerGroupBA727A76",
+      "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+      "path": "ThresholdCount",
+      "actual": 3,
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AccelListenerGroupBA727A76",
+      "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
+      "path": "HealthCheckPort",
+      "actual": 80,
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1/endpoint-group/363328af8002",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
+    }
+  ]
+}

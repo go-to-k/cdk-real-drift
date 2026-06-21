@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AccelFED3756B",
+    "resourceType": "AWS::GlobalAccelerator::Accelerator",
+    "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+    "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel",
+    "declared": {
+      "Enabled": true,
+      "Name": "cdkrd-accel"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "IPV4",
+    "IpAddresses": ["52.223.63.163", "166.117.191.65"],
+    "Ipv4Addresses": ["52.223.63.163", "166.117.191.65"],
+    "DnsName": "a2f206e44dd5e9650.awsglobalaccelerator.com",
+    "AcceleratorArn": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+    "Enabled": true,
+    "Ipv6Addresses": [],
+    "Tags": [],
+    "Name": "cdkrd-accel"
+  },
+  "schema": {
+    "readOnly": ["AcceleratorArn", "DnsName", "DualStackDnsName", "Ipv4Addresses", "Ipv6Addresses"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "AcceleratorArn",
+      "DnsName",
+      "DualStackDnsName",
+      "Ipv4Addresses",
+      "Ipv6Addresses"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {
+      "IpAddressType": "IPV4",
+      "IpAddresses": null,
+      "Enabled": true,
+      "Ipv6Addresses": null
+    },
+    "defaultPaths": {
+      "IpAddressType": "IPV4",
+      "IpAddresses": null,
+      "Enabled": true,
+      "Ipv6Addresses": null
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AccelFED3756B",
+      "resourceType": "AWS::GlobalAccelerator::Accelerator",
+      "path": "IpAddressType",
+      "actual": "IPV4",
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AccelFED3756B",
+      "resourceType": "AWS::GlobalAccelerator::Accelerator",
+      "path": "IpAddresses",
+      "actual": ["52.223.63.163", "166.117.191.65"],
+      "physicalId": "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229",
+      "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel"
+    }
+  ]
+}
