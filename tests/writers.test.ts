@@ -3,6 +3,11 @@ import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
+import {
+  DescribeDomainConfigCommand,
+  OpenSearchClient,
+  UpdateDomainConfigCommand,
+} from '@aws-sdk/client-opensearch';
 import { GetWebACLCommand, UpdateWebACLCommand, WAFV2Client } from '@aws-sdk/client-wafv2';
 import {
   ElasticLoadBalancingV2Client,
@@ -57,6 +62,7 @@ const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const cloudfront = mockClient(CloudFrontClient);
 const wafv2 = mockClient(WAFV2Client);
+const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
@@ -95,7 +101,77 @@ beforeEach(() => {
   docdb.reset();
   cloudfront.reset();
   wafv2.reset();
+  opensearch.reset();
   glue.reset();
+});
+
+describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {
+  const volOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/EBSOptions/VolumeSize',
+    value,
+    human: 'EBSOptions.VolumeSize -> deployed-template value',
+  });
+  it('reverts via UpdateDomainConfig sending ONLY the touched option (untouched AdvancedOptions not re-submitted)', async () => {
+    opensearch.on(DescribeDomainConfigCommand).resolves({
+      DomainConfig: {
+        EBSOptions: { Options: { EBSEnabled: true, VolumeType: 'gp3', VolumeSize: 20 } },
+        // AdvancedOptions carries the AWS-managed legacy key CC re-submit chokes on —
+        // it is NOT touched by the op, so the writer must not send it at all.
+        AdvancedOptions: { Options: { override_main_response_version: 'false' } },
+        ClusterConfig: { Options: { InstanceCount: 1 } },
+      },
+    } as never);
+    opensearch.on(UpdateDomainConfigCommand).resolves({});
+    await SDK_WRITERS['AWS::OpenSearchService::Domain'](ctx({ physicalId: 'my-domain' }), [
+      volOp(10),
+    ]);
+    const calls = opensearch.commandCalls(UpdateDomainConfigCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.DomainName).toBe('my-domain');
+    expect(input.EBSOptions).toEqual({ EBSEnabled: true, VolumeType: 'gp3', VolumeSize: 10 });
+    // untouched options are NOT re-submitted (the bug trigger)
+    expect('AdvancedOptions' in input).toBe(false);
+    expect('ClusterConfig' in input).toBe(false);
+  });
+
+  it('drops the AWS-managed override_main_response_version when AdvancedOptions IS reverted', async () => {
+    opensearch.on(DescribeDomainConfigCommand).resolves({
+      DomainConfig: {
+        AdvancedOptions: {
+          Options: {
+            'rest.action.multi.allow_explicit_index': 'true',
+            override_main_response_version: 'false',
+          },
+        },
+      },
+    } as never);
+    opensearch.on(UpdateDomainConfigCommand).resolves({});
+    await SDK_WRITERS['AWS::OpenSearchService::Domain'](ctx({ physicalId: 'd' }), [
+      {
+        op: 'add',
+        path: '/AdvancedOptions/rest.action.multi.allow_explicit_index',
+        value: 'false',
+        human: 'x',
+      },
+    ]);
+    const ao = (
+      opensearch.commandCalls(UpdateDomainConfigCommand)[0]!.args[0].input as unknown as {
+        AdvancedOptions: Record<string, unknown>;
+      }
+    ).AdvancedOptions;
+    expect('override_main_response_version' in ao).toBe(false);
+    expect(ao['rest.action.multi.allow_explicit_index']).toBe('false');
+  });
+
+  it('throws when the domain name is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::OpenSearchService::Domain'](ctx({ physicalId: '', declared: {} }), [
+        volOp(10),
+      ])
+    ).rejects.toThrow(/OpenSearch domain name/);
+  });
 });
 
 describe('Glue Job writer (CC UpdateResource rejects MaxCapacity+WorkerType)', () => {

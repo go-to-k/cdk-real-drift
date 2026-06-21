@@ -27,6 +27,11 @@ import {
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
+import {
+  DescribeDomainConfigCommand,
+  OpenSearchClient,
+  UpdateDomainConfigCommand,
+} from '@aws-sdk/client-opensearch';
 import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
 import {
   GetWebACLCommand,
@@ -459,7 +464,66 @@ const writeGlueJob: SdkWriter = async (ctx, ops) => {
   await c.send(new UpdateJobCommand({ JobName: name, JobUpdate: update as never }));
 };
 
+// AWS::OpenSearchService::Domain — Cloud Control CAN read this type, but its
+// UpdateResource REJECTS a property patch: it re-submits the full model and AWS's own
+// legacy `override_main_response_version` AdvancedOption (returned on read) is rejected
+// as "Unrecognized advanced option" (proven live; the same CC-revalidation class as
+// CloudFront/WAFv2/Glue). UpdateDomainConfig is a PARTIAL API, so route revert through
+// it sending ONLY the top-level option properties the revert ops actually touch — the
+// untouched AdvancedOptions are never re-submitted. (If AdvancedOptions itself is the
+// drift, the AWS-managed override_main_response_version key is dropped before the call.)
+const OS_UPDATABLE_OPTIONS = new Set([
+  'ClusterConfig',
+  'EBSOptions',
+  'SnapshotOptions',
+  'VPCOptions',
+  'CognitoOptions',
+  'AdvancedOptions',
+  'AccessPolicies',
+  'IPAddressType',
+  'LogPublishingOptions',
+  'EncryptionAtRestOptions',
+  'DomainEndpointOptions',
+  'NodeToNodeEncryptionOptions',
+  'AdvancedSecurityOptions',
+  'AutoTuneOptions',
+  'OffPeakWindowOptions',
+  'SoftwareUpdateOptions',
+]);
+const writeOpenSearchDomain: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['DomainName']);
+  if (!name) throw new Error('cannot resolve OpenSearch domain name for revert');
+  const touched = new Set(
+    ops.map((o) => o.path.replace(/^\//, '').split('/')[0]).filter((p): p is string => !!p)
+  );
+  const c = new OpenSearchClient({ region: ctx.region });
+  const cfg = (await c.send(new DescribeDomainConfigCommand({ DomainName: name }))).DomainConfig as
+    | Record<string, { Options?: unknown }>
+    | undefined;
+  // build a model of ONLY the touched option properties from the current live config,
+  // apply the revert ops, then send each touched updatable property on its own.
+  const model: Record<string, unknown> = {};
+  for (const p of touched) if (cfg?.[p]?.Options !== undefined) model[p] = cfg[p].Options;
+  const reverted = applyOps(model, ops);
+  const input: Record<string, unknown> = { DomainName: name };
+  for (const p of touched) {
+    if (!OS_UPDATABLE_OPTIONS.has(p) || reverted[p] === undefined) continue;
+    if (p === 'AdvancedOptions' && reverted[p] && typeof reverted[p] === 'object') {
+      // drop the AWS-managed legacy key UpdateDomainConfig rejects on re-submit.
+      const { override_main_response_version: _drop, ...rest } = reverted[p] as Record<
+        string,
+        unknown
+      >;
+      input[p] = rest;
+    } else {
+      input[p] = reverted[p];
+    }
+  }
+  await c.send(new UpdateDomainConfigCommand(input as never));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
   'AWS::WAFv2::WebACL': writeWafv2WebAcl,
   'AWS::Glue::Job': writeGlueJob,
