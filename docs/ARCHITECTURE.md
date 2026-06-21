@@ -561,6 +561,15 @@ only when non-zero — unrecorded values are named as such, never folded into
     mutually-exclusive union) still fails — the per-leaf revert op adds the desired
     branch without removing the live one ("exactly one value" error); that union-op
     granularity is a plan-level gap affecting the CC path too, deferred.
+    `AWS::Glue::Job` is the SAME class for a WorkerType job: AWS returns a computed
+    `MaxCapacity` and CC `UpdateResource` re-submits it alongside `WorkerType`, failing
+    "do not set Max Capacity if using Worker Type" (proven live), so revert reads
+    `GetJob`, applies the ops, and re-submits via `UpdateJob` OMITTING
+    MaxCapacity/AllocatedCapacity when WorkerType is set (other JobUpdate fields verbatim;
+    read-only CreatedOn/LastModifiedOn excluded). The recurring shape: a CC type is
+    READABLE but its full-model UpdateResource re-validation rejects a field AWS itself
+    returns — the per-type SDK writer re-submits via the resource's own update API,
+    omitting the offending field. Only a LIVE detect→revert→CLEAN cycle catches these.
   - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
     ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by
