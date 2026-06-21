@@ -1,0 +1,105 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Tgw",
+    "resourceType": "AWS::EC2::TransitGateway",
+    "physicalId": "tgw-0d23de2f49222f09f",
+    "constructPath": "CdkRealDriftIntegTransitGatewayRich/Tgw",
+    "declared": {
+      "AmazonSideAsn": 64512,
+      "AutoAcceptSharedAttachments": "disable",
+      "DefaultRouteTableAssociation": "enable",
+      "DefaultRouteTablePropagation": "enable",
+      "Description": "cdk-real-drift integ transit gateway",
+      "DnsSupport": "enable",
+      "MulticastSupport": "disable",
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "network"
+        }
+      ],
+      "VpnEcmpSupport": "enable"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdk-real-drift integ transit gateway",
+    "EncryptionSupportState": "disabled",
+    "AssociationDefaultRouteTableId": "tgw-rtb-0507484a86237d0ae",
+    "AutoAcceptSharedAttachments": "disable",
+    "TransitGatewayArn": "arn:aws:ec2:us-east-1:111111111111:transit-gateway/tgw-0d23de2f49222f09f",
+    "DefaultRouteTablePropagation": "enable",
+    "TransitGatewayCidrBlocks": [],
+    "PropagationDefaultRouteTableId": "tgw-rtb-0507484a86237d0ae",
+    "DefaultRouteTableAssociation": "enable",
+    "Id": "tgw-0d23de2f49222f09f",
+    "VpnEcmpSupport": "enable",
+    "SecurityGroupReferencingSupport": "disable",
+    "DnsSupport": "enable",
+    "MulticastSupport": "disable",
+    "AmazonSideAsn": 64512,
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegTransitGatewayRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Tgw",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "network",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegTransitGatewayRich/f1c98c10-6d8d-11f1-bc5c-129b1c47b1f9",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["EncryptionSupportState", "Id", "TransitGatewayArn"],
+    "writeOnly": ["EncryptionSupport"],
+    "createOnly": ["AmazonSideAsn", "MulticastSupport"],
+    "readOnlyPaths": ["EncryptionSupportState", "Id", "TransitGatewayArn"],
+    "writeOnlyPaths": ["EncryptionSupport"],
+    "createOnlyPaths": ["AmazonSideAsn", "MulticastSupport"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Tgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "AssociationDefaultRouteTableId",
+      "actual": "tgw-rtb-0507484a86237d0ae",
+      "physicalId": "tgw-0d23de2f49222f09f",
+      "constructPath": "CdkRealDriftIntegTransitGatewayRich/Tgw"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Tgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "PropagationDefaultRouteTableId",
+      "actual": "tgw-rtb-0507484a86237d0ae",
+      "physicalId": "tgw-0d23de2f49222f09f",
+      "constructPath": "CdkRealDriftIntegTransitGatewayRich/Tgw"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Tgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "SecurityGroupReferencingSupport",
+      "actual": "disable",
+      "physicalId": "tgw-0d23de2f49222f09f",
+      "constructPath": "CdkRealDriftIntegTransitGatewayRich/Tgw"
+    }
+  ]
+}
