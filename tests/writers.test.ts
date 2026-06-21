@@ -22,6 +22,11 @@ import {
   SNSClient,
 } from '@aws-sdk/client-sns';
 import {
+  GetNamespaceCommand,
+  ServiceDiscoveryClient,
+  UpdateHttpNamespaceCommand,
+} from '@aws-sdk/client-servicediscovery';
+import {
   GetQueueAttributesCommand,
   SetQueueAttributesCommand,
   SQSClient,
@@ -36,6 +41,7 @@ const iam = mockClient(IAMClient);
 const elb = mockClient(ElasticLoadBalancingV2Client);
 const sns = mockClient(SNSClient);
 const sqs = mockClient(SQSClient);
+const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -69,6 +75,41 @@ beforeEach(() => {
   elb.reset();
   sns.reset();
   sqs.reset();
+  serviceDiscovery.reset();
+});
+
+describe('ServiceDiscovery HttpNamespace writer (CC read+write gap)', () => {
+  const NSID = 'ns-abc';
+  const descOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/Description',
+    value,
+    human: 'Description -> deployed-template value',
+  });
+  it('reverts Description via UpdateHttpNamespace, keyed by the namespace physical id', async () => {
+    // reader (GetNamespace) returns the DRIFTED live value; the revert op carries the desired one.
+    serviceDiscovery
+      .on(GetNamespaceCommand)
+      .resolves({ Namespace: { Name: 'shop', Description: 'DRIFTED' } });
+    serviceDiscovery.on(UpdateHttpNamespaceCommand).resolves({ OperationId: 'op-1' });
+
+    await SDK_WRITERS['AWS::ServiceDiscovery::HttpNamespace'](ctx({ physicalId: NSID }), [
+      descOp('the desired description'),
+    ]);
+
+    const calls = serviceDiscovery.commandCalls(UpdateHttpNamespaceCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      Id: NSID,
+      Namespace: { Description: 'the desired description' },
+    });
+  });
+
+  it('throws when the namespace id is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::ServiceDiscovery::HttpNamespace'](ctx({ physicalId: '' }), [descOp('x')])
+    ).rejects.toThrow(/namespace id/);
+  });
 });
 
 describe('IAM ManagedPolicy writer', () => {

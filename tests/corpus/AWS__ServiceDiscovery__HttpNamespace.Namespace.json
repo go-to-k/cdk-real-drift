@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Namespace",
+    "resourceType": "AWS::ServiceDiscovery::HttpNamespace",
+    "physicalId": "ns-bw3m2isxdue4vwmt",
+    "constructPath": "CdkRealDriftIntegCloudmapHttp/Namespace",
+    "declared": {
+      "Description": "cdkrd cloud map http namespace",
+      "Name": "cdkrd-cloudmap-http"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-cloudmap-http",
+    "Description": "cdkrd cloud map http namespace"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
