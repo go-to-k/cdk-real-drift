@@ -126,6 +126,32 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('an unexpected ManagedPolicy attachment (live-only) is removable ONLY with --remove-unrecorded', () => {
+    // a live-only member is nested undeclared (Roles[member]) — normally record-only —
+    // but ManagedPolicy has a precise DetachXPolicy op, so it IS revertable, gated by
+    // the unrecorded opt-in like any unrecorded undeclared value.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::IAM::ManagedPolicy',
+      physicalId: 'arn:aws:iam::111122223333:policy/p',
+      path: 'Roles[RoleX]',
+      actual: 'RoleX',
+      nested: true,
+      unrecorded: true,
+    });
+    // default revert refuses (unrecorded), but NOT with the "nested, not revertable" reason
+    const noFlag = buildRevertPlan([f], undefined);
+    expect(noFlag.items).toHaveLength(0);
+    expect(noFlag.notRevertable).toHaveLength(1);
+    expect(noFlag.notRevertable[0]!.reason).toContain('unrecorded');
+    expect(noFlag.notRevertable[0]!.reason).not.toContain('nested');
+    // --remove-unrecorded enables the detach (a remove op routed to the SDK writer)
+    const plan = buildRevertPlan([f], undefined, { removeUnrecorded: true });
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/Roles[RoleX]' });
+  });
+
   it('undeclared drift with an recorded prior value -> add op restoring the baseline value', () => {
     const f = F({
       tier: 'undeclared',

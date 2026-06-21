@@ -40,6 +40,21 @@ export function isNestedUndeclared(f: Finding): boolean {
   );
 }
 
+// An out-of-band ManagedPolicy attachment member (a live-only `Roles[x]`/`Users[x]`/
+// `Groups[x]` — the union, surfaced as nested undeclared). Unlike a generic nested
+// undeclared value, this one HAS a precise, flat SDK op to undo it (DetachX-Policy by
+// member), so writeIamManagedPolicy can revert it exactly — it is NOT subject to the
+// "nested undeclared is record-only" bar (which exists because a flat patch can't
+// safely target a deep sub-field). Removal still requires --remove-unrecorded like any
+// unrecorded undeclared value (the unrecorded guard below), so it never auto-detaches.
+export function isManagedPolicyAttachmentMember(f: Finding): boolean {
+  return (
+    f.tier === 'undeclared' &&
+    f.resourceType === 'AWS::IAM::ManagedPolicy' &&
+    /^(Roles|Users|Groups)\[.+\]$/.test(f.path)
+  );
+}
+
 export interface PatchOp {
   op: 'add' | 'remove';
   path: string; // RFC6902 JSON pointer into the resource Properties model
@@ -225,7 +240,7 @@ export function buildRevertPlan(
     // reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested path. A
     // top-level undeclared path is a single key (never contains '.'/'['), and declared
     // drift is a different tier — so this never blocks a top-level revert.
-    if (isNestedUndeclared(f)) {
+    if (isNestedUndeclared(f) && !isManagedPolicyAttachmentMember(f)) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
