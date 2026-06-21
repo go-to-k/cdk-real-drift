@@ -84,6 +84,9 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'InvalidAllocationID.NotFound',
   'InvalidAddress.NotFound',
   'EntityNotFoundException',
+  // DocumentDB describe-db-clusters / describe-db-instances on a deleted target.
+  'DBClusterNotFoundFault',
+  'DBInstanceNotFoundFault',
   // Cloud Map (ServiceDiscovery) GetNamespace / GetService on a deleted target.
   'NamespaceNotFound',
   'ServiceNotFound',

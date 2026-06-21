@@ -21,6 +21,7 @@
 //     reconstruction would be missing the required limit and would wipe the cost
 //     filters/types on write. Too divergent from the reader to revert safely ->
 //     left not-revertable.
+import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
 import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
@@ -280,7 +281,45 @@ const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::DocDB::DBCluster — Cloud Control cannot read OR write this type
+// (UnsupportedActionException), so revert goes through DocDB's own ModifyDBCluster.
+// ModifyDBCluster is a PARTIAL update (only the supplied fields change), so we send
+// ONLY the drifted top-level props that are in the safe-to-modify allowlist below —
+// re-asserting unchanged props would be a no-op but is avoided to keep the call
+// minimal. ApplyImmediately so the revert converges on the next read. EngineVersion is
+// intentionally NOT in the allowlist (a version write can trigger an upgrade); a
+// declared EngineVersion drift stays not-revertable rather than risk a major upgrade.
+// (Sibling AWS::DocDB::DBInstance is read-only/not-revertable for now — its common
+// mutable prop, DBInstanceClass, is a resize that can be added if a real gap surfaces.)
+const DOCDB_CLUSTER_MODIFY_PARAMS = new Set([
+  'BackupRetentionPeriod',
+  'PreferredBackupWindow',
+  'PreferredMaintenanceWindow',
+  'Port',
+  'DeletionProtection',
+]);
+const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['DBClusterIdentifier']);
+  if (!id) throw new Error('cannot resolve DB cluster identifier for revert');
+  const desired = await desiredModel('AWS::DocDB::DBCluster', ctx, ops);
+  const input: { DBClusterIdentifier: string; ApplyImmediately: boolean; [k: string]: unknown } = {
+    DBClusterIdentifier: id,
+    ApplyImmediately: true,
+  };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0];
+    if (top && DOCDB_CLUSTER_MODIFY_PARAMS.has(top) && desired[top] !== undefined) {
+      input[top] = desired[top];
+      any = true;
+    }
+  }
+  if (!any) return;
+  await new DocDBClient({ region: ctx.region }).send(new ModifyDBClusterCommand(input));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
