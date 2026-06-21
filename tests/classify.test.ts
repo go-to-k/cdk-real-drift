@@ -994,6 +994,57 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ).toEqual(['DeploymentId']);
     });
   });
+
+  // Found live by the synthetics-rich bug-hunt fixture: AWS Synthetics rewrites a
+  // canary's rate() schedule to whole units (CDK emits `rate(60 minutes)` from
+  // Duration.hours(1); AWS returns `rate(1 hour)`), false-flagging declared drift.
+  describe('rate() schedule-expression equivalence (Synthetics Canary Schedule.Expression)', () => {
+    const T = 'AWS::Synthetics::Canary';
+    const sched = (expr: string) => ({ Schedule: { Expression: expr } });
+
+    it('rate(60 minutes) vs rate(1 hour) is NOT drift (same duration)', () => {
+      expect(
+        classifyResource(res(T, sched('rate(60 minutes)')), sched('rate(1 hour)'), emptySchema)
+      ).toEqual([]);
+    });
+
+    it('rate(1440 minutes) vs rate(1 day) is NOT drift', () => {
+      expect(
+        classifyResource(res(T, sched('rate(1440 minutes)')), sched('rate(1 day)'), emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuinely different interval is still drift', () => {
+      expect(
+        tiers(classifyResource(res(T, sched('rate(1 hour)')), sched('rate(2 hours)'), emptySchema))
+          .declared
+      ).toEqual(['Schedule.Expression']);
+    });
+
+    it('a cron() expression is compared strictly (only rate() is folded)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, sched('cron(0 10 * * ? *)')),
+            sched('cron(0 12 * * ? *)'),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Schedule.Expression']);
+    });
+
+    it('the rate fold is scoped per-type+path (other types stay strict)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::Scheduler::Schedule', { ScheduleExpression: 'rate(60 minutes)' }),
+            { ScheduleExpression: 'rate(1 hour)' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['ScheduleExpression']);
+    });
+  });
 });
 
 describe('unordered-array declared false positives (R88, found by the wave-2 integ fixtures)', () => {
