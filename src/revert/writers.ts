@@ -45,6 +45,9 @@ import {
   ModifyTargetGroupAttributesCommand,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import {
+  AttachGroupPolicyCommand,
+  AttachRolePolicyCommand,
+  AttachUserPolicyCommand,
   CreatePolicyVersionCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
@@ -179,15 +182,43 @@ const isArn = (v: unknown): string | undefined => {
   const s = str(v);
   return s && s.startsWith('arn:') ? s : undefined;
 };
+// Top JSON-pointer segment of an op path (`/Roles/0` -> `Roles`, `/Roles` -> `Roles`).
+const topSeg = (path: string): string => path.split('/').filter(Boolean)[0] ?? '';
+const ATTACHMENT_PROPS = new Set(['Roles', 'Users', 'Groups']);
+
 const writeIamManagedPolicy: SdkWriter = async (ctx, ops) => {
   // CFn physical id for a managed policy IS its arn; fall back to the declared
   // ManagedPolicyArn when the physical id isn't (yet) the arn shape.
   const arn = isArn(ctx.physicalId) ?? isArn(ctx.declared['ManagedPolicyArn']);
   if (!arn) throw new Error('cannot resolve managed policy arn for revert');
-  const desired = policyJson(await desiredModel('AWS::IAM::ManagedPolicy', ctx, ops));
+  const c = new IAMClient({ region: ctx.region });
+
+  // Attachment-list reverts (Roles/Users/Groups): a declared member detached out of
+  // band is re-ATTACHED by member — never by rewriting the whole list, which would
+  // detach the union members another stack/role/console legitimately added (the
+  // classify side only ever emits a detach finding for a declared-but-MISSING member).
+  // The member rides on `attributeKey`. Idempotent: AttachXPolicy on an already-
+  // attached member is a no-op, so a partial prior revert re-runs safely.
+  const attachOps = ops.filter((o) => ATTACHMENT_PROPS.has(topSeg(o.path)));
+  for (const o of attachOps) {
+    const seg = topSeg(o.path);
+    const member = String(o.attributeKey ?? o.value);
+    if (seg === 'Roles')
+      await c.send(new AttachRolePolicyCommand({ PolicyArn: arn, RoleName: member }));
+    else if (seg === 'Users')
+      await c.send(new AttachUserPolicyCommand({ PolicyArn: arn, UserName: member }));
+    else if (seg === 'Groups')
+      await c.send(new AttachGroupPolicyCommand({ PolicyArn: arn, GroupName: member }));
+  }
+
+  // Document/Path/Description reverts go through a new default policy version. Skip it
+  // entirely when only attachment ops were present, so a detach-only revert does not
+  // burn a (capped at 5) policy version re-writing the unchanged document.
+  const docOps = ops.filter((o) => !ATTACHMENT_PROPS.has(topSeg(o.path)));
+  if (docOps.length === 0) return;
+  const desired = policyJson(await desiredModel('AWS::IAM::ManagedPolicy', ctx, docOps));
   if (desired === undefined)
     throw new Error('cannot revert a managed policy to an absent document');
-  const c = new IAMClient({ region: ctx.region });
 
   const versions = (await c.send(new ListPolicyVersionsCommand({ PolicyArn: arn }))).Versions ?? [];
   if (versions.length >= 5) {

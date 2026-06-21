@@ -2140,6 +2140,170 @@ describe('nested undeclared on IAM policy statements (identity-less subset desce
   });
 });
 
+// AWS::IAM::ManagedPolicy Roles/Users/Groups compare ASYMMETRICALLY (declared∖live):
+// a declared attachment removed out of band IS reported (detach), while a live-only
+// attachment (the union — the same policy attached elsewhere) is NOT. Strictly better
+// than the old "don't compare attachment lists" boundary (which missed the detach) and
+// than cdk drift (which false-drifts on the union).
+describe('IAM ManagedPolicy asymmetric attachment detach detection', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const mp = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'MP',
+    resourceType: 'AWS::IAM::ManagedPolicy',
+    physicalId: 'arn:aws:iam::111122223333:policy/p',
+    declared,
+  });
+
+  it('reports a declared Role removed from the live attachment set (detach)', () => {
+    const f = classifyResource(
+      mp({ Roles: ['RoleA', 'RoleB'] }),
+      { Roles: ['RoleA'] },
+      emptySchema
+    );
+    const detach = f.filter((x) => x.tier === 'declared' && x.path === 'Roles');
+    expect(detach).toHaveLength(1);
+    expect(detach[0]?.attributeKey).toBe('RoleB');
+    expect(detach[0]?.desired).toBe('RoleB');
+    expect(detach[0]?.actual).toBeUndefined();
+  });
+
+  it('does NOT report a live-only attachment (the union member another stack added)', () => {
+    // declared RoleA still attached; RoleX attached elsewhere (role-side ManagedPolicyArns
+    // or the console) — the live union exceeds intent but is not this stack's drift.
+    const f = classifyResource(
+      mp({ Roles: ['RoleA'] }),
+      { Roles: ['RoleA', 'RoleX'] },
+      emptySchema
+    );
+    expect(f.filter((x) => x.tier === 'declared')).toEqual([]);
+    expect(f.filter((x) => x.tier === 'undeclared')).toEqual([]);
+  });
+
+  it('CLEAN when every declared attachment is present (extra union members ignored)', () => {
+    const f = classifyResource(
+      mp({ Roles: ['RoleA'], Users: ['UserA'], Groups: ['GroupA'] }),
+      { Roles: ['RoleA', 'RoleX'], Users: ['UserA'], Groups: ['GroupA', 'GroupZ'] },
+      emptySchema
+    );
+    expect(tiers(f).declared).toEqual([]);
+    expect(tiers(f).undeclared).toEqual([]);
+  });
+
+  it('handles Users and Groups detach independently, one finding per missing member', () => {
+    const f = classifyResource(
+      mp({ Roles: ['RoleA'], Users: ['UserA', 'UserB'], Groups: ['GroupA'] }),
+      { Roles: ['RoleA'], Users: [], Groups: [] },
+      emptySchema
+    );
+    const detached = f
+      .filter((x) => x.tier === 'declared')
+      .map((x) => `${x.path}[${x.attributeKey}]`)
+      .sort();
+    expect(detached).toEqual(['Groups[GroupA]', 'Users[UserA]', 'Users[UserB]']);
+  });
+
+  it('drops a NON-declared live attachment list so it is never undeclared drift (union)', () => {
+    // template declares no Roles at all; the policy is attached to a role elsewhere.
+    const f = classifyResource(
+      mp({ Description: '' }),
+      { Roles: ['RoleX'], Description: '' },
+      emptySchema
+    );
+    expect(f.some((x) => x.path === 'Roles')).toBe(false);
+  });
+
+  it('skips an UNRESOLVED declared member (an intrinsic) rather than false-drifting it', () => {
+    const f = classifyResource(
+      mp({ Roles: ['RoleA', UNRESOLVED] }),
+      { Roles: ['RoleA'] },
+      emptySchema
+    );
+    // the whole property is noted unresolved; no per-member detach for the symbol, and
+    // RoleA (present) is not a detach either.
+    expect(f.filter((x) => x.tier === 'declared' && x.path === 'Roles')).toEqual([]);
+    expect(f.some((x) => x.tier === 'unresolved' && x.path === 'Roles')).toBe(true);
+  });
+
+  it('still reports a RESOLVED detached member even when a SIBLING member is unresolved', () => {
+    const f = classifyResource(
+      mp({ Roles: ['RoleA', UNRESOLVED] }),
+      { Roles: [] }, // RoleA detached out of band
+      emptySchema
+    );
+    const detach = f.filter((x) => x.tier === 'declared' && x.attributeKey === 'RoleA');
+    expect(detach).toHaveLength(1);
+  });
+
+  it('CLEAN when the declared attachment list is EMPTY, even with live union members', () => {
+    // an empty declared Roles compares to nothing missing; the live union is ignored.
+    const f = classifyResource(mp({ Roles: [] }), { Roles: ['RoleX', 'RoleY'] }, emptySchema);
+    expect(tiers(f).declared).toEqual([]);
+    expect(tiers(f).undeclared).toEqual([]);
+  });
+
+  it('reports EVERY declared member when all three lists are fully detached (live all empty)', () => {
+    const f = classifyResource(
+      mp({ Roles: ['R1', 'R2'], Users: ['U1'], Groups: ['G1', 'G2'] }),
+      { Roles: [], Users: [], Groups: [] },
+      emptySchema
+    );
+    const detached = f
+      .filter((x) => x.tier === 'declared')
+      .map((x) => `${x.path}[${x.attributeKey}]`)
+      .sort();
+    expect(detached).toEqual(['Groups[G1]', 'Groups[G2]', 'Roles[R1]', 'Roles[R2]', 'Users[U1]']);
+  });
+
+  it('matches members by exact NAME (the CFn attachment-list shape) — same names are CLEAN', () => {
+    // CFn Roles/Users/Groups are role/user/group NAMES (a Ref to a Role resolves to its
+    // name); the live ListEntitiesForPolicy read returns names too — exact-name compare.
+    const f = classifyResource(
+      mp({ Roles: ['my-app-role'] }),
+      { Roles: ['my-app-role'] },
+      emptySchema
+    );
+    expect(tiers(f).declared).toEqual([]);
+  });
+
+  it('surfaces a document drift AND an attachment detach together (independent findings)', () => {
+    const f = classifyResource(
+      mp({
+        Roles: ['RoleA'],
+        Description: 'intended',
+      }),
+      { Roles: [], Description: 'tampered' },
+      emptySchema
+    );
+    const declared = f.filter((x) => x.tier === 'declared');
+    expect(declared.some((x) => x.path === 'Roles' && x.attributeKey === 'RoleA')).toBe(true);
+    expect(declared.some((x) => x.path === 'Description')).toBe(true);
+    expect(declared).toHaveLength(2);
+  });
+
+  it('does NOT touch a different resource type that happens to have a Roles property', () => {
+    // the asymmetric handler is scoped to AWS::IAM::ManagedPolicy only; another type's
+    // `Roles` array compares normally (a symmetric declared diff), not asymmetrically.
+    const res: DesiredResource = {
+      logicalId: 'X',
+      resourceType: 'AWS::SomeOther::Type',
+      physicalId: 'x',
+      declared: { Roles: ['A'] },
+    };
+    const f = classifyResource(res, { Roles: ['A', 'B'] }, emptySchema);
+    // symmetric compare: the extra live element IS a declared-array diff (not suppressed)
+    expect(f.some((x) => x.tier === 'declared' && x.path === 'Roles')).toBe(true);
+  });
+});
+
 describe('REFLECTED_CHILD_PROPS (drop a parent reflection of its child resources)', () => {
   const schema: SchemaInfo = {
     readOnly: new Set(),

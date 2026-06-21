@@ -15,6 +15,9 @@ import {
   ModifyTargetGroupAttributesCommand,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import {
+  AttachGroupPolicyCommand,
+  AttachRolePolicyCommand,
+  AttachUserPolicyCommand,
   CreatePolicyVersionCommand,
   DeletePolicyVersionCommand,
   DeleteRolePolicyCommand,
@@ -603,6 +606,65 @@ describe('IAM ManagedPolicy writer', () => {
     expect(byAction('zzz:Write')!.Resource).toEqual(['r1']);
     // ...and the unrelated statement was NOT corrupted (stayed r2)
     expect(byAction('aaa:Read')!.Resource).toEqual(['r2']);
+  });
+
+  // A declared attachment detached out of band is re-attached BY MEMBER (the detach
+  // finding carries the member on attributeKey), never by rewriting the whole list.
+  const detachOp = (prop: string, member: string): PatchOp => ({
+    op: 'add',
+    path: `/${prop}`,
+    value: member,
+    attributeKey: member,
+    human: `${prop}[${member}] -> deployed-template value`,
+  });
+
+  it('re-attaches a detached Role/User/Group by member, not by rewriting the list', async () => {
+    iam.on(AttachRolePolicyCommand).resolves({});
+    iam.on(AttachUserPolicyCommand).resolves({});
+    iam.on(AttachGroupPolicyCommand).resolves({});
+
+    await SDK_WRITERS['AWS::IAM::ManagedPolicy'](ctx(), [
+      detachOp('Roles', 'RoleA'),
+      detachOp('Users', 'UserA'),
+      detachOp('Groups', 'GroupA'),
+    ]);
+
+    expect(iam.commandCalls(AttachRolePolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      RoleName: 'RoleA',
+    });
+    expect(iam.commandCalls(AttachUserPolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      UserName: 'UserA',
+    });
+    expect(iam.commandCalls(AttachGroupPolicyCommand)[0]!.args[0].input).toMatchObject({
+      PolicyArn: ARN,
+      GroupName: 'GroupA',
+    });
+  });
+
+  it('a detach-only revert does NOT burn a policy version (no CreatePolicyVersion)', async () => {
+    iam.on(AttachRolePolicyCommand).resolves({});
+    await SDK_WRITERS['AWS::IAM::ManagedPolicy'](ctx(), [detachOp('Roles', 'RoleA')]);
+    expect(iam.commandCalls(CreatePolicyVersionCommand)).toHaveLength(0);
+    expect(iam.commandCalls(ListPolicyVersionsCommand)).toHaveLength(0);
+  });
+
+  it('a combined document + detach revert does both (version + attach)', async () => {
+    stubReader({ Version: '2012-10-17', Statement: [] });
+    iam
+      .on(ListPolicyVersionsCommand)
+      .resolves({ Versions: [{ VersionId: 'v1', IsDefaultVersion: true }] });
+    iam.on(CreatePolicyVersionCommand).resolves({});
+    iam.on(AttachRolePolicyCommand).resolves({});
+
+    await SDK_WRITERS['AWS::IAM::ManagedPolicy'](ctx(), [
+      addOp(DESIRED),
+      detachOp('Roles', 'RoleA'),
+    ]);
+
+    expect(iam.commandCalls(CreatePolicyVersionCommand)).toHaveLength(1);
+    expect(iam.commandCalls(AttachRolePolicyCommand)).toHaveLength(1);
   });
 });
 

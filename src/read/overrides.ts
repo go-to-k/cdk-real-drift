@@ -35,6 +35,7 @@ import {
   GetRolePolicyCommand,
   GetUserPolicyCommand,
   IAMClient,
+  ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
@@ -145,6 +146,28 @@ const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
       new GetPolicyVersionCommand({ PolicyArn: physicalId, VersionId: p.DefaultVersionId })
     )
   ).PolicyVersion;
+  // Live attachment lists (the Roles/Users/Groups this policy is attached to). Read
+  // them so classify can detect an out-of-band DETACH of a member the template
+  // DECLARES — but the comparison is ASYMMETRIC (declared∖live only): the live set is
+  // a UNION that legitimately exceeds any one stack's intent (a role's
+  // `ManagedPolicyArns`, another stack, the console), so live-only members are never
+  // a finding (see IAM_ATTACHMENT_SUBSET in diff/classify.ts). Names, not ARNs —
+  // matching the CFn `Roles`/`Users`/`Groups` property shape (a Ref to a role
+  // resolves to the role NAME). Paginated: a popular managed policy can be attached
+  // to far more than one page of entities.
+  const roles: string[] = [];
+  const users: string[] = [];
+  const groups: string[] = [];
+  let marker: string | undefined;
+  do {
+    const e = await c.send(
+      new ListEntitiesForPolicyCommand({ PolicyArn: physicalId, Marker: marker })
+    );
+    for (const r of e?.PolicyRoles ?? []) if (r.RoleName) roles.push(r.RoleName);
+    for (const u of e?.PolicyUsers ?? []) if (u.UserName) users.push(u.UserName);
+    for (const g of e?.PolicyGroups ?? []) if (g.GroupName) groups.push(g.GroupName);
+    marker = e?.IsTruncated ? e.Marker : undefined;
+  } while (marker);
   // GetPolicy OMITS Description when it is empty, while CDK templates declare
   // `Description: ""` — an undefined-valued key here read as `desired="" actual=
   // undefined` false declared drift (first live policies integ run, R69). An
@@ -153,6 +176,9 @@ const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
     PolicyDocument: parsePolicy(ver?.Document),
     Path: p.Path,
     Description: p.Description ?? '',
+    Roles: roles,
+    Users: users,
+    Groups: groups,
   };
 };
 

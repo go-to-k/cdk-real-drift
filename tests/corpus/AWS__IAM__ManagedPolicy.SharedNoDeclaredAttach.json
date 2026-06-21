@@ -1,11 +1,11 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (first policies integ run), refreshed: the override reader now READS the attachment lists (ListEntitiesForPolicy), so the declared Role is present in liveRaw and the old `Roles` readGap is gone — this case is CLEAN. Description normalized to \"\" (R69).",
+  "description": "Hand-curated: the template declares no Roles/Users/Groups. The policy is attached to a Role elsewhere (the pure live union). Must be CLEAN: a non-declared live attachment list is dropped, never an undeclared finding.",
   "resource": {
-    "logicalId": "WorkerManagedF77ABFB4",
+    "logicalId": "SharedABCD1234",
     "resourceType": "AWS::IAM::ManagedPolicy",
-    "physicalId": "arn:aws:iam::111111111111:policy/CdkdriftIntegPolicies-WorkerManagedF77ABFB4-48Y4dASCdT46",
-    "constructPath": "CdkdriftIntegPolicies/WorkerManaged",
+    "physicalId": "arn:aws:iam::111111111111:policy/SharedExample",
+    "constructPath": "IntegStack/Shared",
     "declared": {
       "Description": "",
       "Path": "/",
@@ -14,30 +14,29 @@
           {
             "Action": "s3:ListBucket",
             "Effect": "Allow",
-            "Resource": "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+            "Resource": "arn:aws:s3:::bkt",
             "Sid": "ListData"
           }
         ],
         "Version": "2012-10-17"
-      },
-      "Roles": ["CdkdriftIntegPolicies-Worker11F36D0F-1DWkHEUxYkKx"]
+      }
     }
   },
   "liveRaw": {
+    "Description": "",
+    "Path": "/",
     "PolicyDocument": {
       "Statement": [
         {
           "Action": "s3:ListBucket",
           "Effect": "Allow",
-          "Resource": "arn:aws:s3:::cdkdriftintegpolicies-data666c94c7-735dbui2tb4i",
+          "Resource": "arn:aws:s3:::bkt",
           "Sid": "ListData"
         }
       ],
       "Version": "2012-10-17"
     },
-    "Path": "/",
-    "Description": "",
-    "Roles": ["CdkdriftIntegPolicies-Worker11F36D0F-1DWkHEUxYkKx"],
+    "Roles": ["RoleFromElsewhere"],
     "Users": [],
     "Groups": []
   },
