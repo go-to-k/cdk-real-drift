@@ -570,8 +570,9 @@ plus, for the SDK-written types: `s3:PutBucketPolicy` / `s3:DeleteBucketPolicy`,
   - a **live-only** member (the union) is surfaced as an **undeclared** value,
     not a false drift — `record` it to accept the current attachments, and a
     **new, unexpected** attachment (e.g. a console grant to another principal)
-    then shows up as drift against the baseline (detection-only; remove one with
-    `--remove-unrecorded`).
+    then shows up as drift against the baseline. Detection-only: like every
+    nested undeclared value it is reported and recordable but not auto-reverted,
+    so detach an unwanted one yourself (`aws iam detach-role-policy`).
 
   So both a removed declared attachment and an added unexpected one are caught,
   without the union false positive. The policy **document** (and
