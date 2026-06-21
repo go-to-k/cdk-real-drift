@@ -3,6 +3,7 @@ import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
+import { GetWebACLCommand, UpdateWebACLCommand, WAFV2Client } from '@aws-sdk/client-wafv2';
 import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
@@ -54,6 +55,7 @@ const sqs = mockClient(SQSClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const cloudfront = mockClient(CloudFrontClient);
+const wafv2 = mockClient(WAFV2Client);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -90,6 +92,87 @@ beforeEach(() => {
   serviceDiscovery.reset();
   docdb.reset();
   cloudfront.reset();
+  wafv2.reset();
+});
+
+describe('WAFv2 WebACL writer (CC UpdateResource rejects on empty Description)', () => {
+  const PID = 'cdkrd-acl|abc-123|REGIONAL';
+  const sampledOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/VisibilityConfig/SampledRequestsEnabled',
+    value,
+    human: 'VisibilityConfig.SampledRequestsEnabled -> deployed-template value',
+  });
+  it('reverts via GetWebACL -> apply ops -> UpdateWebACL, OMITTING the empty Description', async () => {
+    // AWS returns Description: "" (empty); re-sending it via CC UpdateResource fails the
+    // schema pattern. The writer omits it and re-sends every other updatable field.
+    wafv2.on(GetWebACLCommand).resolves({
+      LockToken: 'LOCK1',
+      WebACL: {
+        Name: 'cdkrd-acl',
+        Id: 'abc-123',
+        ARN: 'arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-acl/abc-123',
+        Description: '',
+        DefaultAction: { Allow: {} },
+        Rules: [{ Name: 'r1', Priority: 0 }],
+        VisibilityConfig: {
+          SampledRequestsEnabled: false,
+          CloudWatchMetricsEnabled: true,
+          MetricName: 'm',
+        },
+      },
+    } as never);
+    wafv2.on(UpdateWebACLCommand).resolves({});
+    await SDK_WRITERS['AWS::WAFv2::WebACL'](ctx({ physicalId: PID }), [sampledOp(true)]);
+    const calls = wafv2.commandCalls(UpdateWebACLCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.Name).toBe('cdkrd-acl');
+    expect(input.Id).toBe('abc-123');
+    expect(input.Scope).toBe('REGIONAL');
+    expect(input.LockToken).toBe('LOCK1');
+    // the empty Description is OMITTED (the bug trigger)
+    expect('Description' in input).toBe(false);
+    // the reverted scalar is applied; Rules/DefaultAction round-trip verbatim
+    expect(
+      (input.VisibilityConfig as { SampledRequestsEnabled: boolean }).SampledRequestsEnabled
+    ).toBe(true);
+    expect(input.DefaultAction).toEqual({ Allow: {} });
+    expect(input.Rules).toEqual([{ Name: 'r1', Priority: 0 }]);
+  });
+
+  it('keeps a NON-empty Description (only the empty one is dropped)', async () => {
+    wafv2.on(GetWebACLCommand).resolves({
+      LockToken: 'LOCK1',
+      WebACL: {
+        Name: 'cdkrd-acl',
+        Id: 'abc-123',
+        Description: 'real description',
+        DefaultAction: { Allow: {} },
+        VisibilityConfig: {
+          SampledRequestsEnabled: false,
+          CloudWatchMetricsEnabled: true,
+          MetricName: 'm',
+        },
+      },
+    } as never);
+    wafv2.on(UpdateWebACLCommand).resolves({});
+    await SDK_WRITERS['AWS::WAFv2::WebACL'](ctx({ physicalId: PID }), [sampledOp(true)]);
+    expect(
+      (
+        wafv2.commandCalls(UpdateWebACLCommand)[0]!.args[0].input as unknown as Record<
+          string,
+          unknown
+        >
+      ).Description
+    ).toBe('real description');
+  });
+
+  it('throws when the Name|Id|Scope physical id is malformed', async () => {
+    await expect(
+      SDK_WRITERS['AWS::WAFv2::WebACL'](ctx({ physicalId: 'just-a-name' }), [sampledOp(true)])
+    ).rejects.toThrow(/Name\|Id\|Scope/);
+  });
 });
 
 describe('CloudFront Distribution writer (CC UpdateResource rejects partial patch)', () => {

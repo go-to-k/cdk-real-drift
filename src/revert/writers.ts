@@ -28,6 +28,12 @@ import {
 } from '@aws-sdk/client-cloudfront';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
 import {
+  GetWebACLCommand,
+  type Scope,
+  UpdateWebACLCommand,
+  WAFV2Client,
+} from '@aws-sdk/client-wafv2';
+import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
   ModifyTargetGroupAttributesCommand,
@@ -356,8 +362,55 @@ const writeCloudFrontDistribution: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::WAFv2::WebACL — Cloud Control CAN read this type, but its UpdateResource
+// REJECTS a property patch: applying the patch re-validates the WHOLE WebACL against
+// the CFn schema, and AWS's own live `Description: ""` (empty when none was set) fails
+// the schema's Description pattern constraint — "#/Description: failed validation
+// constraint for keyword [pattern]" (proven live; the same CC re-validation class as
+// CloudFront). Route revert through WAFv2's own GetWebACL -> apply ops -> UpdateWebACL
+// (Name|Id|Scope physical id + LockToken). update-web-acl accepts the absence of
+// Description, so OMIT an empty/invalid one; every other updatable field is re-sent
+// verbatim so nothing is dropped.
+const WAF_UPDATABLE_PASSTHROUGH = [
+  'Rules',
+  'CustomResponseBodies',
+  'CaptchaConfig',
+  'ChallengeConfig',
+  'TokenDomains',
+  'AssociationConfig',
+  'DataProtectionConfig',
+  'OnSourceDDoSProtectionConfig',
+  'ApplicationConfig',
+  'MonetizationConfig',
+] as const;
+const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
+  const [name, id, scope] = (str(ctx.physicalId) ?? '').split('|');
+  if (!name || !id || !scope) throw new Error('cannot resolve WebACL Name|Id|Scope for revert');
+  const c = new WAFV2Client({ region: ctx.region });
+  const cur = await c.send(new GetWebACLCommand({ Name: name, Id: id, Scope: scope as Scope }));
+  if (!cur.WebACL || !cur.LockToken) throw new Error('could not read current WebACL for revert');
+  const m = applyOps(cur.WebACL as unknown as Record<string, unknown>, ops);
+  const desc = m.Description;
+  await c.send(
+    new UpdateWebACLCommand({
+      Name: name,
+      Id: id,
+      Scope: scope as Scope,
+      LockToken: cur.LockToken,
+      DefaultAction: m.DefaultAction as never,
+      VisibilityConfig: m.VisibilityConfig as never,
+      // OMIT an empty Description — AWS returns "" but the schema pattern rejects it.
+      ...(typeof desc === 'string' && desc.length > 0 ? { Description: desc } : {}),
+      ...Object.fromEntries(
+        WAF_UPDATABLE_PASSTHROUGH.filter((k) => m[k] !== undefined).map((k) => [k, m[k]])
+      ),
+    } as never)
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
+  'AWS::WAFv2::WebACL': writeWafv2WebAcl,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
