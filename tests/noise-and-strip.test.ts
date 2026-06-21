@@ -14,7 +14,9 @@ import {
   VERSION_PREFIX_PATHS,
   isTrailingDotEqual,
   TRAILING_DOT_PATHS,
+  ORDER_SIGNIFICANT_ARRAY_KEYS,
 } from '../src/normalize/noise.js';
+import { canonicalizeForCompare } from '../src/normalize/pipeline.js';
 import { parseSchema } from '../src/schema/schema-strip.js';
 
 describe('noise suppressors', () => {
@@ -101,6 +103,86 @@ describe('noise suppressors', () => {
       ],
     };
     expect(canonicalizeTagListsDeep(declared)).not.toEqual(canonicalizeTagListsDeep(changed));
+  });
+
+  it('canonicalizeTagListsDeep: order-significant Name-keyed arrays are NOT sorted (CodePipeline)', () => {
+    // CodePipeline Stages/Actions carry a per-element Name (so identityField would sort
+    // them) but their order is semantically significant AND the revert patch addresses
+    // the raw live model by index — sorting would misalign the finding index. With the
+    // type's order-significant key set, the array must stay in DECLARED order.
+    const orderSig = ORDER_SIGNIFICANT_ARRAY_KEYS['AWS::CodePipeline::Pipeline'];
+    const pipeline = {
+      Stages: [
+        { Name: 'Source', Actions: [{ Name: 'Src', Configuration: { x: '1' } }] },
+        { Name: 'Build', Actions: [{ Name: 'Bld', Configuration: { x: '2' } }] },
+      ],
+    };
+    // default (no orderSig) WOULD reorder Build before Source — proving the regression risk
+    expect(
+      (canonicalizeTagListsDeep(pipeline) as { Stages: { Name: string }[] }).Stages.map(
+        (s) => s.Name
+      )
+    ).toEqual(['Build', 'Source']);
+    // with orderSig, Stages keep declared order (index stays aligned with the raw model)
+    expect(
+      (canonicalizeTagListsDeep(pipeline, orderSig) as { Stages: { Name: string }[] }).Stages.map(
+        (s) => s.Name
+      )
+    ).toEqual(['Source', 'Build']);
+  });
+
+  it('canonicalizeTagListsDeep: order-significant exclusion still recurses into elements (nested Tags sorted)', () => {
+    // the array under an order-significant key is not sorted, but its ELEMENTS still get
+    // canonicalized — a Tags list inside a Stage is still sorted by Key.
+    const orderSig = ORDER_SIGNIFICANT_ARRAY_KEYS['AWS::CodePipeline::Pipeline'];
+    const out = canonicalizeTagListsDeep(
+      {
+        Stages: [
+          {
+            Name: 'B',
+            Tags: [
+              { Key: 'z', Value: '1' },
+              { Key: 'a', Value: '2' },
+            ],
+          },
+          { Name: 'A' },
+        ],
+      },
+      orderSig
+    ) as { Stages: { Name: string; Tags?: { Key: string }[] }[] };
+    expect(out.Stages.map((s) => s.Name)).toEqual(['B', 'A']); // stage order preserved
+    expect(out.Stages[0].Tags?.map((t) => t.Key)).toEqual(['a', 'z']); // nested Tags sorted
+  });
+
+  it('canonicalizeForCompare: passes a type through so CodePipeline Stages compare positionally', () => {
+    const declared = {
+      Stages: [
+        { Name: 'Source', Actions: [{ Name: 'S' }] },
+        { Name: 'Build', Actions: [{ Name: 'B' }] },
+      ],
+    };
+    // type-aware: declared order preserved (no false reorder, index aligned for revert)
+    expect(
+      (
+        canonicalizeForCompare(declared, 'AWS::CodePipeline::Pipeline') as {
+          Stages: { Name: string }[];
+        }
+      ).Stages.map((s) => s.Name)
+    ).toEqual(['Source', 'Build']);
+    // type-LESS (e.g. baseline/writers callers) keeps the legacy sort — unchanged behavior
+    expect(
+      (canonicalizeForCompare(declared) as { Stages: { Name: string }[] }).Stages.map((s) => s.Name)
+    ).toEqual(['Build', 'Source']);
+    // a genuine reorder of stages is now DETECTABLE (type-aware sides differ)
+    const reordered = {
+      Stages: [
+        { Name: 'Build', Actions: [{ Name: 'B' }] },
+        { Name: 'Source', Actions: [{ Name: 'S' }] },
+      ],
+    };
+    expect(canonicalizeForCompare(declared, 'AWS::CodePipeline::Pipeline')).not.toEqual(
+      canonicalizeForCompare(reordered, 'AWS::CodePipeline::Pipeline')
+    );
   });
 
   it('canonicalizeIdArraysDeep: sorts resource-id/ARN arrays (SubnetIds) but not plain scalars', () => {

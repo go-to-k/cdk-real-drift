@@ -10,9 +10,20 @@
 // lists (unordered set -> sorted by Key), then AWS-id arrays (unordered set ->
 // sorted). It does NOT strip AWS-managed fields / aws:* tags / schema paths — those
 // are live-only concerns the caller applies before this.
-import { canonicalizeIdArraysDeep, canonicalizeTagListsDeep } from './noise.js';
+import {
+  canonicalizeIdArraysDeep,
+  canonicalizeTagListsDeep,
+  ORDER_SIGNIFICANT_ARRAY_KEYS,
+} from './noise.js';
 import { normalizePoliciesDeep } from './policy-canonical.js';
 
-export function canonicalizeForCompare(v: unknown): unknown {
-  return canonicalizeIdArraysDeep(canonicalizeTagListsDeep(normalizePoliciesDeep(v)));
+// `resourceType` is optional: when given, identity-keyed object arrays the type marks
+// as ORDER-significant (ORDER_SIGNIFICANT_ARRAY_KEYS — e.g. CodePipeline Stages/Actions)
+// are NOT sorted, so both compare sides keep declared order and a finding's array index
+// stays aligned with the raw live model the revert patches. classify passes the type
+// for BOTH its live and declared sides; the type-less callers (baseline/writers) operate
+// on undeclared snapshot values, which never carry an order-significant declared array.
+export function canonicalizeForCompare(v: unknown, resourceType?: string): unknown {
+  const orderSig = resourceType ? ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType] : undefined;
+  return canonicalizeIdArraysDeep(canonicalizeTagListsDeep(normalizePoliciesDeep(v), orderSig));
 }
