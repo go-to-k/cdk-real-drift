@@ -9,6 +9,11 @@
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
+  DescribeDBClustersCommand,
+  DescribeDBInstancesCommand,
+  DocDBClient,
+} from '@aws-sdk/client-docdb';
+import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
   type MetricFilter,
@@ -835,9 +840,81 @@ const readServiceDiscoveryService: OverrideReader = async ({ physicalId, region 
   return model;
 };
 
+// AWS::DocDB::DBCluster — Cloud Control GetResource throws
+// UnsupportedActionException (the DocumentDB family is a CC read gap, confirmed
+// live; before this the cluster + its props were `skipped`). Read via DocDB
+// DescribeDBClusters — the CFn physical id IS the DBClusterIdentifier. Project the
+// CFn-modeled props, mapping the SDK names back to CFn (EnabledCloudwatchLogsExports
+// -> EnableCloudwatchLogsExports, DBClusterParameterGroup -> DBClusterParameterGroupName,
+// VpcSecurityGroups[].VpcSecurityGroupId -> VpcSecurityGroupIds). Endpoint / Status /
+// ClusterCreateTime / DBClusterArn etc. are AWS-managed noise. AvailabilityZones is
+// deliberately NOT projected — it is create-only and AWS may reorder it, an FP surface
+// with no detection benefit (same rule as Subnet AZ). An absent cluster returns
+// undefined (-> skipped; a genuinely deleted one throws DBClusterNotFoundFault -> deleted).
+const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region }) => {
+  const id = str(physicalId) ?? str(declared.DBClusterIdentifier);
+  if (!id) return undefined;
+  const c = new DocDBClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeDBClustersCommand({ DBClusterIdentifier: id }));
+  const cl = r.DBClusters?.[0];
+  if (!cl) return undefined;
+  const model: Record<string, unknown> = {};
+  if (cl.DBClusterIdentifier !== undefined) model.DBClusterIdentifier = cl.DBClusterIdentifier;
+  if (cl.BackupRetentionPeriod !== undefined)
+    model.BackupRetentionPeriod = cl.BackupRetentionPeriod;
+  if (cl.Port !== undefined) model.Port = cl.Port;
+  if (cl.EngineVersion !== undefined) model.EngineVersion = cl.EngineVersion;
+  if (cl.MasterUsername !== undefined) model.MasterUsername = cl.MasterUsername;
+  if (cl.PreferredBackupWindow !== undefined)
+    model.PreferredBackupWindow = cl.PreferredBackupWindow;
+  if (cl.PreferredMaintenanceWindow !== undefined)
+    model.PreferredMaintenanceWindow = cl.PreferredMaintenanceWindow;
+  if (cl.StorageEncrypted !== undefined) model.StorageEncrypted = cl.StorageEncrypted;
+  if (cl.KmsKeyId !== undefined) model.KmsKeyId = cl.KmsKeyId;
+  if (cl.DeletionProtection !== undefined) model.DeletionProtection = cl.DeletionProtection;
+  if (cl.EnabledCloudwatchLogsExports !== undefined)
+    model.EnableCloudwatchLogsExports = cl.EnabledCloudwatchLogsExports;
+  if (cl.DBClusterParameterGroup !== undefined)
+    model.DBClusterParameterGroupName = cl.DBClusterParameterGroup;
+  const sgs = (cl.VpcSecurityGroups ?? [])
+    .map((g) => g.VpcSecurityGroupId)
+    .filter((s): s is string => s !== undefined);
+  if (sgs.length > 0) model.VpcSecurityGroupIds = sgs;
+  return model;
+};
+
+// AWS::DocDB::DBInstance — same CC read gap. Read via DescribeDBInstances; the CFn
+// physical id IS the DBInstanceIdentifier. Project the CFn-modeled props, mapping
+// PerformanceInsightsEnabled -> EnablePerformanceInsights. AvailabilityZone is
+// create-only and not projected. Endpoint / Status / InstanceCreateTime are noise.
+const readDocDbInstance: OverrideReader = async ({ physicalId, declared, region }) => {
+  const id = str(physicalId) ?? str(declared.DBInstanceIdentifier);
+  if (!id) return undefined;
+  const c = new DocDBClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeDBInstancesCommand({ DBInstanceIdentifier: id }));
+  const inst = r.DBInstances?.[0];
+  if (!inst) return undefined;
+  const model: Record<string, unknown> = {};
+  if (inst.DBInstanceIdentifier !== undefined)
+    model.DBInstanceIdentifier = inst.DBInstanceIdentifier;
+  if (inst.DBInstanceClass !== undefined) model.DBInstanceClass = inst.DBInstanceClass;
+  if (inst.DBClusterIdentifier !== undefined) model.DBClusterIdentifier = inst.DBClusterIdentifier;
+  if (inst.AutoMinorVersionUpgrade !== undefined)
+    model.AutoMinorVersionUpgrade = inst.AutoMinorVersionUpgrade;
+  if (inst.PreferredMaintenanceWindow !== undefined)
+    model.PreferredMaintenanceWindow = inst.PreferredMaintenanceWindow;
+  if (inst.CACertificateIdentifier !== undefined)
+    model.CACertificateIdentifier = inst.CACertificateIdentifier;
+  if (inst.PerformanceInsightsEnabled !== undefined)
+    model.EnablePerformanceInsights = inst.PerformanceInsightsEnabled;
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
   'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,
+  'AWS::DocDB::DBCluster': readDocDbCluster,
+  'AWS::DocDB::DBInstance': readDocDbInstance,
   'AWS::CodeBuild::Project': readCodeBuildProject,
   'AWS::S3::BucketPolicy': readS3BucketPolicy,
   'AWS::SNS::TopicPolicy': readSnsTopicPolicy,

@@ -17,6 +17,11 @@ import {
   PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
 import {
+  DescribeDBClustersCommand,
+  DocDBClient,
+  ModifyDBClusterCommand,
+} from '@aws-sdk/client-docdb';
+import {
   GetTopicAttributesCommand,
   SetTopicAttributesCommand,
   SNSClient,
@@ -42,6 +47,7 @@ const elb = mockClient(ElasticLoadBalancingV2Client);
 const sns = mockClient(SNSClient);
 const sqs = mockClient(SQSClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
+const docdb = mockClient(DocDBClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -76,6 +82,52 @@ beforeEach(() => {
   sns.reset();
   sqs.reset();
   serviceDiscovery.reset();
+  docdb.reset();
+});
+
+describe('DocDB DBCluster writer (CC read+write gap)', () => {
+  const CLID = 'my-cluster';
+  const retentionOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/BackupRetentionPeriod',
+    value,
+    human: 'BackupRetentionPeriod -> deployed-template value',
+  });
+  // the override reader (DescribeDBClusters) returns the DRIFTED live model
+  const stubClusterRead = (over: Record<string, unknown> = {}): void => {
+    docdb.on(DescribeDBClustersCommand).resolves({
+      DBClusters: [{ DBClusterIdentifier: CLID, BackupRetentionPeriod: 5, ...over }],
+    });
+  };
+
+  it('reverts BackupRetentionPeriod via ModifyDBCluster (ApplyImmediately), only the drifted prop', async () => {
+    stubClusterRead();
+    docdb.on(ModifyDBClusterCommand).resolves({});
+    await SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [retentionOp(3)]);
+    const calls = docdb.commandCalls(ModifyDBClusterCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      DBClusterIdentifier: CLID,
+      ApplyImmediately: true,
+      BackupRetentionPeriod: 3,
+    });
+  });
+
+  it('does NOT send EngineVersion (off the safe-modify allowlist -> no accidental upgrade)', async () => {
+    stubClusterRead({ EngineVersion: '4.0.0' });
+    docdb.on(ModifyDBClusterCommand).resolves({});
+    // a hypothetical EngineVersion revert op must be ignored (no modifiable param emitted)
+    await SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [
+      { op: 'add', path: '/EngineVersion', value: '5.0.0', human: 'x' },
+    ]);
+    expect(docdb.commandCalls(ModifyDBClusterCommand)).toHaveLength(0);
+  });
+
+  it('throws when the cluster identifier is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: '', declared: {} }), [retentionOp(3)])
+    ).rejects.toThrow(/cluster identifier/);
+  });
 });
 
 describe('ServiceDiscovery HttpNamespace writer (CC read+write gap)', () => {

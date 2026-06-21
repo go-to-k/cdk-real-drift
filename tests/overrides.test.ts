@@ -1,6 +1,11 @@
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
+  DescribeDBClustersCommand,
+  DescribeDBInstancesCommand,
+  DocDBClient,
+} from '@aws-sdk/client-docdb';
+import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
@@ -40,6 +45,7 @@ const logs = mockClient(CloudWatchLogsClient);
 const scheduler = mockClient(SchedulerClient);
 const codebuild = mockClient(CodeBuildClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
+const docdb = mockClient(DocDBClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -64,6 +70,7 @@ beforeEach(() => {
     scheduler,
     codebuild,
     serviceDiscovery,
+    docdb,
   ])
     m.reset();
 });
@@ -1197,6 +1204,102 @@ describe('SDK overrides', () => {
       expect(
         await SDK_OVERRIDES['AWS::ServiceDiscovery::Service'](ctx({ Name: 'api' }))
       ).toBeUndefined();
+    });
+  });
+
+  describe('DocumentDB (DocDB CC read gap)', () => {
+    it('DBCluster: DescribeDBClusters by physical id, maps SDK names back to CFn', async () => {
+      docdb.on(DescribeDBClustersCommand).resolves({
+        DBClusters: [
+          {
+            DBClusterIdentifier: 'my-cluster',
+            BackupRetentionPeriod: 3,
+            Port: 27017,
+            EngineVersion: '5.0.0',
+            MasterUsername: 'admin',
+            PreferredMaintenanceWindow: 'sun:06:00-sun:06:30',
+            StorageEncrypted: true,
+            DeletionProtection: false,
+            EnabledCloudwatchLogsExports: ['audit'], // -> EnableCloudwatchLogsExports
+            DBClusterParameterGroup: 'default.docdb5.0', // -> DBClusterParameterGroupName
+            VpcSecurityGroups: [
+              { VpcSecurityGroupId: 'sg-1', Status: 'active' },
+              { VpcSecurityGroupId: 'sg-2', Status: 'active' },
+            ],
+            // noise that must be dropped:
+            DBClusterArn: 'arn:aws:rds:us-east-1:123456789012:cluster:my-cluster',
+            Status: 'available',
+            Endpoint: 'my-cluster.cluster-xyz.docdb.amazonaws.com',
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::DocDB::DBCluster'](ctx({}, 'my-cluster'));
+      expect(docdb.commandCalls(DescribeDBClustersCommand)[0]?.args[0].input).toEqual({
+        DBClusterIdentifier: 'my-cluster',
+      });
+      expect(out).toEqual({
+        DBClusterIdentifier: 'my-cluster',
+        BackupRetentionPeriod: 3,
+        Port: 27017,
+        EngineVersion: '5.0.0',
+        MasterUsername: 'admin',
+        PreferredMaintenanceWindow: 'sun:06:00-sun:06:30',
+        StorageEncrypted: true,
+        DeletionProtection: false,
+        EnableCloudwatchLogsExports: ['audit'],
+        DBClusterParameterGroupName: 'default.docdb5.0',
+        VpcSecurityGroupIds: ['sg-1', 'sg-2'],
+      });
+    });
+
+    it('DBCluster: AvailabilityZones is NOT projected (create-only, reorder FP surface)', async () => {
+      docdb.on(DescribeDBClustersCommand).resolves({
+        DBClusters: [{ DBClusterIdentifier: 'c', AvailabilityZones: ['us-east-1a', 'us-east-1b'] }],
+      });
+      const out = await SDK_OVERRIDES['AWS::DocDB::DBCluster'](ctx({}, 'c'));
+      expect(out).toEqual({ DBClusterIdentifier: 'c' });
+    });
+
+    it('DBCluster: falls back to declared.DBClusterIdentifier; undefined when neither resolves', async () => {
+      docdb.on(DescribeDBClustersCommand).resolves({ DBClusters: [{ DBClusterIdentifier: 'd' }] });
+      expect(
+        await SDK_OVERRIDES['AWS::DocDB::DBCluster'](ctx({ DBClusterIdentifier: 'd' }))
+      ).toEqual({ DBClusterIdentifier: 'd' });
+      expect(await SDK_OVERRIDES['AWS::DocDB::DBCluster'](ctx({}))).toBeUndefined();
+    });
+
+    it('DBInstance: DescribeDBInstances by physical id, maps PerformanceInsightsEnabled', async () => {
+      docdb.on(DescribeDBInstancesCommand).resolves({
+        DBInstances: [
+          {
+            DBInstanceIdentifier: 'inst-1',
+            DBInstanceClass: 'db.t3.medium',
+            DBClusterIdentifier: 'my-cluster',
+            AutoMinorVersionUpgrade: true,
+            PreferredMaintenanceWindow: 'mon:00:00-mon:00:30',
+            CACertificateIdentifier: 'rds-ca-2019',
+            PerformanceInsightsEnabled: false, // -> EnablePerformanceInsights
+            // noise:
+            DBInstanceStatus: 'available',
+            Endpoint: { Address: 'x', Port: 27017 },
+            AvailabilityZone: 'us-east-1a',
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::DocDB::DBInstance'](ctx({}, 'inst-1'));
+      expect(out).toEqual({
+        DBInstanceIdentifier: 'inst-1',
+        DBInstanceClass: 'db.t3.medium',
+        DBClusterIdentifier: 'my-cluster',
+        AutoMinorVersionUpgrade: true,
+        PreferredMaintenanceWindow: 'mon:00:00-mon:00:30',
+        CACertificateIdentifier: 'rds-ca-2019',
+        EnablePerformanceInsights: false,
+      });
+    });
+
+    it('DBInstance: undefined when neither physical id nor declared id resolves', async () => {
+      expect(await SDK_OVERRIDES['AWS::DocDB::DBInstance'](ctx({}))).toBeUndefined();
     });
   });
 });

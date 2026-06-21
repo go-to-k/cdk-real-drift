@@ -1,0 +1,74 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ClusterInstance1448F06E4",
+    "resourceType": "AWS::DocDB::DBInstance",
+    "physicalId": "clusterinstance1448f06e4-wptvputpjx2s",
+    "constructPath": "CdkRealDriftIntegDocdbRich/Cluster/Instance1",
+    "declared": {
+      "DBClusterIdentifier": "clustereb0386a7-n9uafygdqpfe",
+      "DBInstanceClass": "db.t3.medium"
+    }
+  },
+  "liveRaw": {
+    "DBInstanceIdentifier": "clusterinstance1448f06e4-wptvputpjx2s",
+    "DBInstanceClass": "db.t3.medium",
+    "DBClusterIdentifier": "clustereb0386a7-n9uafygdqpfe",
+    "AutoMinorVersionUpgrade": false,
+    "PreferredMaintenanceWindow": "fri:03:49-fri:04:19",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "EnablePerformanceInsights": false
+  },
+  "schema": {
+    "readOnly": [
+      "Endpoint",
+      "Id",
+      "Port"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "AvailabilityZone",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier"
+    ],
+    "readOnlyPaths": [
+      "Endpoint",
+      "Id",
+      "Port"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AvailabilityZone",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterInstance1448F06E4",
+      "resourceType": "AWS::DocDB::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "fri:03:49-fri:04:19",
+      "physicalId": "clusterinstance1448f06e4-wptvputpjx2s",
+      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster/Instance1"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterInstance1448F06E4",
+      "resourceType": "AWS::DocDB::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "clusterinstance1448f06e4-wptvputpjx2s",
+      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster/Instance1"
+    }
+  ]
+}
