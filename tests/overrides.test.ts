@@ -1,3 +1,4 @@
+import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
@@ -44,6 +45,7 @@ const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
 const scheduler = mockClient(SchedulerClient);
 const codebuild = mockClient(CodeBuildClient);
+const appsync = mockClient(AppSyncClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 
@@ -71,6 +73,7 @@ beforeEach(() => {
     codebuild,
     serviceDiscovery,
     docdb,
+    appsync,
   ])
     m.reset();
 });
@@ -1300,6 +1303,49 @@ describe('SDK overrides', () => {
 
     it('DBInstance: undefined when neither physical id nor declared id resolves', async () => {
       expect(await SDK_OVERRIDES['AWS::DocDB::DBInstance'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('AppSync ApiKey (CC read gap)', () => {
+    const ARN = 'arn:aws:appsync:us-east-1:123456789012:apis/abc123/apikeys/da2-xyz';
+    it('parses apiId+keyId from the physical-id ARN, ListApiKeys, projects ApiId/Description/Expires', async () => {
+      appsync.on(ListApiKeysCommand).resolves({
+        apiKeys: [
+          { id: 'da2-other', description: 'other', expires: 111 },
+          { id: 'da2-xyz', description: 'the key', expires: 1784631600 },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN));
+      expect(appsync.commandCalls(ListApiKeysCommand)[0]?.args[0].input).toEqual({
+        apiId: 'abc123',
+      });
+      expect(out).toEqual({ ApiId: 'abc123', Description: 'the key', Expires: 1784631600 });
+    });
+
+    it('omits an empty Description (a no-description key stays CLEAN)', async () => {
+      appsync
+        .on(ListApiKeysCommand)
+        .resolves({ apiKeys: [{ id: 'da2-xyz', expires: 1784631600 }] });
+      const out = await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN));
+      expect(out).toEqual({ ApiId: 'abc123', Expires: 1784631600 });
+    });
+
+    it('falls back to declared.ApiId when the physical id is not an ARN', async () => {
+      appsync.on(ListApiKeysCommand).resolves({ apiKeys: [{ id: 'k1', expires: 1 }] });
+      const out = await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({ ApiId: 'fallback-api' }, 'k1'));
+      expect(appsync.commandCalls(ListApiKeysCommand)[0]?.args[0].input).toEqual({
+        apiId: 'fallback-api',
+      });
+      expect(out).toMatchObject({ ApiId: 'fallback-api' });
+    });
+
+    it('undefined when the keyed key is absent (deleted out of band -> skipped)', async () => {
+      appsync.on(ListApiKeysCommand).resolves({ apiKeys: [{ id: 'da2-different' }] });
+      expect(await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN))).toBeUndefined();
+    });
+
+    it('undefined when no apiId can be resolved', async () => {
+      expect(await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}))).toBeUndefined();
     });
   });
 });

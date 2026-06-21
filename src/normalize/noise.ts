@@ -613,6 +613,24 @@ export function isEquivalentRateExpression(a: unknown, b: unknown): boolean {
   return ma !== undefined && mb !== undefined && ma === mb;
 }
 
+// Per-type property paths holding a Unix-epoch (seconds) timestamp that AWS rounds
+// DOWN to the hour on store: AppSync ApiKey `Expires` (documented "rounded down to
+// the nearest hour"), so a template's exact epoch (e.g. 1784632175) reads back as the
+// hour floor (1784631600) — a false declared drift. Compare by hour-floor equality; a
+// genuine expiry change to a DIFFERENT hour still differs.
+export const EPOCH_HOUR_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::AppSync::ApiKey': new Set(['Expires']),
+};
+export function isEpochHourEqual(a: unknown, b: unknown): boolean {
+  const sec = (v: unknown): number | undefined => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN;
+    return Number.isFinite(n) ? Math.floor(n / 3600) : undefined;
+  };
+  const ha = sec(a);
+  const hb = sec(b);
+  return ha !== undefined && hb !== undefined && ha === hb;
+}
+
 // Per-type property paths where a value is a DNS FQDN whose trailing `.` is
 // OPTIONAL and semantically meaningless: AWS::Route53::HostedZone `Name` is declared
 // `example.com` in the template but Cloud Control returns it `example.com.` (the

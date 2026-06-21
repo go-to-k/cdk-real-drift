@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApicdkrddefaultkeyApiKeyA19CF8D8",
+    "resourceType": "AWS::AppSync::ApiKey",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/l6w3tvedu5a6fbyxgt3znjl4kq/apikeys/da2-6tcasyrsyrgythjamryfsr3ycy",
+    "constructPath": "CdkRealDriftIntegAppsyncGraphqlapiRich/Api/cdkrd-default-keyApiKey",
+    "declared": {
+      "ApiId": "l6w3tvedu5a6fbyxgt3znjl4kq",
+      "Expires": 1784632175
+    }
+  },
+  "liveRaw": {
+    "ApiId": "l6w3tvedu5a6fbyxgt3znjl4kq",
+    "Expires": 1784631600
+  },
+  "schema": {
+    "readOnly": ["ApiKey", "ApiKeyId", "Arn"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["ApiKey", "ApiKeyId", "Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
