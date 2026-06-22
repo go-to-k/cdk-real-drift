@@ -5,7 +5,6 @@ can't see**. Detect it, record it, or revert it.
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
-[![CI](https://github.com/go-to-k/cdk-real-drift/actions/workflows/ci.yml/badge.svg)](https://github.com/go-to-k/cdk-real-drift/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 -->
 
@@ -16,7 +15,7 @@ CloudFormation drift detection only compares properties that **appear in your
 template**, so:
 
 ```bash
-$ npx cdk drift ApiStack
+$ npx cdk drift
 ✨  Number of resources with drift: 0
 ```
 
@@ -26,10 +25,10 @@ explainable — the same change shows up:
 ![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
 
 ```console
-$ npx cdkrd check ApiStack
+$ npx cdkrd check
 === cdkrd check: ApiStack (us-east-1) ===
-[CFn-Undeclared Drift: 1] (live-only — not in your CloudFormation template; the differentiator)
-  ApiStack/ApiRole.Policies (AWS::IAM::Role) = [{"PolicyName":"manual-debug-access", ...}]
+[CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
+  ApiStack/ApiRole.Policies (AWS::IAM::Role) — appeared since record = [{"PolicyName":"manual-debug-access", ...}]
 
 result: 1 drift(s) (undeclared=1)
 ```
@@ -43,7 +42,8 @@ _The GIF is regenerated with [`demo/`](demo/) (`bash demo/setup.sh` → `vhs dem
 | Detect **added** out-of-band resources (not in template)            |   ✅    |                ❌                 |
 | **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
 | **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Record** drift into a git-committed file, reviewed like any PR    |   ✅    |                ❌                 |
+| **Ignore / accept** a drift — incl. a **declared** one              |   ✅    |                ❌                 |
+| **Record** undeclared / added state as a reviewed git baseline      |   ✅    |                ❌                 |
 
 ## Quick start
 
@@ -663,6 +663,16 @@ recorded value the only choices are "report `true` forever" or "ignore the
 property forever". The baseline pins `true` and alarms only when it changes.
 Full rationale (with measurements):
 [docs/why-a-baseline-file.md](docs/why-a-baseline-file.md).
+
+**Why do `ignore` rules live in a separate `.cdkrd/config.json` instead of the
+baseline file?**
+Two reasons. (1) The baseline is machine-generated — `record` rewrites it
+_wholesale_ every time, so a hand-written ignore rule kept there would be erased
+on the next `record`. (2) An ignore rule expresses an _app-wide_ intent ("this
+property is managed by an external system"), not a per-stack/account/region fact
+like a recorded value, so it should live once rather than be duplicated into
+every baseline file. `config.json` is the `.driftignore` / Terraform
+`ignore_changes` equivalent; the baseline is closer to state.
 
 **How can `cdkrd` catch a change to a property that is in neither my template
 nor the baseline?**
