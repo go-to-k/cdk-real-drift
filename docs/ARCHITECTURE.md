@@ -423,6 +423,21 @@ CLEAN until reality changes. Widening atDefault coverage (more `KNOWN_DEFAULTS` 
 can never hide a real change, so widening is safe — but the baseline means cdkrd
 never has to know every default to be correct.
 
+How much of the fold does the SCHEMA carry on its own? Almost none. Measured over
+the public CloudFormation resource-schema set (1605 types, 2026-06-22 — re-run with
+`scripts/measure-schema-defaults.mjs`), only **~1% of properties carry a `default`
+annotation** (1.10% top-level, 1.34% incl. nested; just 5.5% of types have any —
+e.g. Lambda `MemorySize`/`Timeout` have none). So `schema.defaults` is negligible:
+the low-noise outcome comes overwhelmingly from (a) properties ABSENT from the live
+read when unset, (b) the `isTrivialEmpty` drop, and (c) the hand-maintained
+`KNOWN_DEFAULTS` / `KNOWN_DEFAULT_PATHS`. The hand tables are therefore the real
+lever, and growing them is done DATA-DRIVEN rather than by guessing: the offline
+first-run-noise sweep (`scripts/measure-noise.sh` →
+[tests/measure-noise.test.ts](../tests/measure-noise.test.ts)) replays classify over
+the golden corpus and ranks every `undeclared` `(type, path)`, flagging the
+constant-looking ones as `*_DEFAULTS` candidates; `/hunt-bugs` runs it after
+deploying uncovered types (recording fresh corpus) to surface new promotions.
+
 **The four false-positive classes found by dogfooding** (8 real cdkd fixtures —
 vpc-lambda / sns-sqs / rds / iam / s3-cloudfront / ecs-fargate / appsync / a mixed
 stack) and fixed, each with paired regression tests asserting _noise suppressed_ AND
