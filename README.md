@@ -8,11 +8,9 @@ Drift detection for AWS CDK that sees what your template can't — including the
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 -->
 
-> **Day to day you run one command: `cdkrd check`.** On a TTY it finds drift and
-> then offers **Record / Revert / Ignore** right there on what it found — so you
-> never invoke the other verbs by hand. `record` / `ignore` / `revert` exist as
-> standalone commands only for non-TTY use (scripting / CI, with `--yes`). In CI
-> you run `cdkrd check --fail`. That's the whole workflow.
+> **Day to day you run one command — `cdkrd check`.** It finds drift and offers
+> **Record / Revert / Ignore** right there; the other verbs are just its non-TTY/CI
+> equivalents (`check --fail` in CI). See [Quick start](#quick-start).
 
 ## Why
 
