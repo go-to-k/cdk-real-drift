@@ -943,9 +943,12 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions']),
 };
 
-// Per-type NESTED object-array paths AWS returns reordered (dotted from the resource
+// Per-type NESTED array paths AWS returns reordered (dotted from the resource
 // root, e.g. `ContentPolicyConfig.FiltersConfig`). This is the nested twin of
-// UNORDERED_OBJECT_ARRAY_PROPS, which only reaches TOP-LEVEL array keys. Bedrock
+// UNORDERED_OBJECT_ARRAY_PROPS, which only reaches TOP-LEVEL array keys. Mostly
+// object-array sets, but a nested SCALAR set works too (DynamoDB NonKeyAttributes):
+// sortNestedObjectArrays/sortUnorderedObjectArray sort by each element's canonical
+// JSON, which orders scalars as well. Bedrock
 // Guardrail nests its policy-config sets one level deep and AWS canonicalizes the
 // element order (the content filters come back sorted by an internal order, not the
 // template's declaration order), so a positional compare false-flags a reordered-but-
@@ -972,8 +975,24 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // Sorting both sides by canonical JSON keys on ContainerPort (the first key), so equal
   // mappings land in the same slot and a genuine port add/remove/change still differs.
   // Observed live on a fresh ecs-taskdef-caps deploy (capabilities/ulimits/dnsSearch on
-  // the same container were NOT reordered — only PortMappings).
-  'AWS::ECS::TaskDefinition': new Set(['ContainerDefinitions.PortMappings']),
+  // the same container were NOT reordered — only PortMappings). `VolumesFrom` (a SET
+  // keyed by SourceContainer) is reordered the same way — declared [logger, app] reads
+  // back [app, logger] — observed on a fresh ecs-taskdef-mounts deploy; MountPoints and
+  // SystemControls on the same container were NOT reordered, so they are not listed.
+  'AWS::ECS::TaskDefinition': new Set([
+    'ContainerDefinitions.PortMappings',
+    'ContainerDefinitions.VolumesFrom',
+  ]),
+  // DynamoDB sorts a GSI's INCLUDE-projection `NonKeyAttributes` alphabetically:
+  // declared ["zeta","alpha","mike","bravo"] reads back ["alpha","bravo","mike","zeta"],
+  // a positional compare false-flags the whole set. This is a nested SCALAR set (plain
+  // attribute names — not id/ARN-shaped, so canonicalizeIdArraysDeep leaves it) nested
+  // under the GlobalSecondaryIndexes ARRAY; sortNestedObjectArrays sorts scalar arrays by
+  // canonical JSON too, so the same machinery aligns it. A genuine attribute add/remove
+  // still changes the multiset. Observed live on a fresh ddb-gsi-projection deploy.
+  // (AWS::DynamoDB::GlobalTable has the identical GSI projection shape — a likely sibling,
+  // left unlisted until observed.)
+  'AWS::DynamoDB::Table': new Set(['GlobalSecondaryIndexes.Projection.NonKeyAttributes']),
 };
 
 // Return a deep clone of `value` (a declared/live property subtree rooted at one

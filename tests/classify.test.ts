@@ -1550,6 +1550,99 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
   });
+
+  describe('ECS TaskDefinition VolumesFrom reordered inside a container (found by ecs-taskdef-mounts)', () => {
+    const T = 'AWS::ECS::TaskDefinition';
+    const declared = {
+      ContainerDefinitions: [
+        {
+          Name: 'sidecar',
+          VolumesFrom: [
+            { SourceContainer: 'logger', ReadOnly: true },
+            { SourceContainer: 'app', ReadOnly: false },
+          ],
+        },
+      ],
+    };
+
+    it('AWS returning VolumesFrom (a SourceContainer set) reordered is NOT drift', () => {
+      const live = {
+        ContainerDefinitions: [
+          {
+            Name: 'sidecar',
+            VolumesFrom: [
+              { SourceContainer: 'app', ReadOnly: false },
+              { SourceContainer: 'logger', ReadOnly: true },
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine VolumesFrom readOnly change still surfaces (no over-fold)', () => {
+      const live = {
+        ContainerDefinitions: [
+          {
+            Name: 'sidecar',
+            VolumesFrom: [
+              { SourceContainer: 'app', ReadOnly: true }, // false -> true
+              { SourceContainer: 'logger', ReadOnly: true },
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('DynamoDB GSI Projection.NonKeyAttributes reordered (nested scalar set, found by ddb-gsi-projection)', () => {
+    const T = 'AWS::DynamoDB::Table';
+    // The reordered set is a SCALAR array nested under the GlobalSecondaryIndexes ARRAY
+    // and one object level (Projection) — exercises both the array-crossing and the
+    // scalar-array branch of sortNestedObjectArrays.
+    const declared = {
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'gsi1',
+          Projection: {
+            ProjectionType: 'INCLUDE',
+            NonKeyAttributes: ['zeta', 'alpha', 'mike', 'bravo'],
+          },
+        },
+      ],
+    };
+
+    it('AWS returning NonKeyAttributes alphabetically sorted is NOT drift', () => {
+      const live = {
+        GlobalSecondaryIndexes: [
+          {
+            IndexName: 'gsi1',
+            Projection: {
+              ProjectionType: 'INCLUDE',
+              NonKeyAttributes: ['alpha', 'bravo', 'mike', 'zeta'],
+            },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine NonKeyAttributes change still surfaces (no over-fold)', () => {
+      const live = {
+        GlobalSecondaryIndexes: [
+          {
+            IndexName: 'gsi1',
+            Projection: {
+              ProjectionType: 'INCLUDE',
+              NonKeyAttributes: ['alpha', 'bravo', 'mike', 'omega'], // zeta -> omega
+            },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
 });
 
 describe('LATEST sentinel declared false positives (Fargate PlatformVersion, found by ecs-taskset-rich)', () => {
