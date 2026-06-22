@@ -226,14 +226,22 @@ describe('diffApiGatewayModels (REST API models)', () => {
     expect(added[0]?.live).toEqual({ Name: 'cdkrdOobModel', RestApiId: API });
   });
 
-  it('flags the built-in Empty/Error models when they are not declared', () => {
+  it('does NOT flag the AWS built-in Empty/Error models (auto-created on every RestApi)', () => {
     const added = diffApiGatewayModels({
       apiId: API,
       declaredModelNames: [],
       liveModels: [{ name: 'Empty' }, { name: 'Error' }],
     });
-    expect(added.map((a) => a.identifier)).toEqual([`${API}|Empty`, `${API}|Error`]);
-    expect(added[0]?.label).toBe('Empty');
+    expect(added).toEqual([]);
+  });
+
+  it('flags a real out-of-band model alongside the ignored built-in Empty/Error', () => {
+    const added = diffApiGatewayModels({
+      apiId: API,
+      declaredModelNames: [],
+      liveModels: [{ name: 'Empty' }, { name: 'Error' }, { name: 'cdkrdOobModel' }],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}|cdkrdOobModel`]);
   });
 
   it('reports no drift when every live model is declared', () => {

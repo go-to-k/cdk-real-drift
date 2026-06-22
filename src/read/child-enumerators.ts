@@ -461,8 +461,12 @@ async function getAllAuthorizers(
 // `["/properties/RestApiId","/properties/RequestValidatorId"]` (identifier
 // `RestApiId|RequestValidatorId`) — that is what CC GetResource / DeleteResource consume.
 // NOTE: every RestApi ships two built-in default models (`Empty`, `Error`) auto-created
-// with the api; they appear live but are not template resources. They are handled by
-// `record` (snapshotted as added) rather than special-cased here.
+// by AWS with the api; they appear live on EVERY RestApi but are never template
+// resources, so a clean no-change deploy would otherwise surface them as `added` on
+// every run. Like the implicit root `/` resource, the GatewayResponse defaults
+// (`defaultResponse: true`), and the ELBv2 listener default rule (`IsDefault`), they
+// are AWS-generated built-ins and are filtered out below rather than left for `record`.
+const BUILTIN_MODEL_NAMES = new Set(['Empty', 'Error']);
 
 // Pure diff: declared model names + live inventory -> the added models. A Model's CFn
 // physical id (Ref) IS its Name, so declared models are matched by Name.
@@ -478,6 +482,9 @@ export function diffApiGatewayModels(input: ApiGatewayModelInput): AddedChild[] 
   const added: AddedChild[] = [];
   for (const m of liveModels) {
     if (declared.has(m.name)) continue;
+    // AWS auto-creates `Empty`/`Error` on every RestApi — never an out-of-band add.
+    // (A user who explicitly declares one is matched by the `declared` check above.)
+    if (BUILTIN_MODEL_NAMES.has(m.name)) continue;
     added.push({
       resourceType: 'AWS::ApiGateway::Model',
       identifier: `${apiId}|${m.name}`, // CC composite RestApiId|Name
