@@ -154,8 +154,10 @@ Three sources, named so "declared" is never ambiguous:
 | **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
 So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
-means the deployed **CloudFormation** template. `CFn-undeclared` and `unrecorded`
-are different axes (template vs baseline file), not synonyms.
+means the deployed **CloudFormation** template. (Want to compare against your
+**local** CDK code instead of the deployed template? That's
+[`--pre-deploy`](#--pre-deploy).) `CFn-undeclared` and `unrecorded` are different
+axes (template vs baseline file), not synonyms.
 
 ### How each kind of drift is judged
 
