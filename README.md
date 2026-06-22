@@ -151,9 +151,9 @@ ApiStack: CLEAN after revert.
 
 ## The model: one verb you run, three it offers
 
-`cdkrd check` is the entry point. The other three verbs are the **actions it
-offers from the prompt** — and the same actions as standalone commands for
-non-TTY use:
+`cdkrd check` is the entry point. On a TTY it finds drift and offers the other
+three as inline actions; all four are standalone commands too, for non-TTY use
+(scripting / CI). Here's what each command does, run on its own:
 
 | verb           | meaning                                                               | writes                               |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------ |
