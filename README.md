@@ -53,9 +53,10 @@ Then act on what `check` prints, from its own interactive prompt:
 1. **Whenever `check` finds drift** — act on it inline from the prompt:
    **Record / Revert / Ignore**. This works from the very first run, not just
    later.
-2. **First run** — there's usually no drift yet, just live-only values to
-   **record** as your baseline (one prompt; writes a git file, nothing to AWS —
-   the switch that arms undeclared / added detection).
+2. **First run** — usually no drift yet, just live-only values to **record** as
+   your baseline (one prompt; writes a git file, nothing to AWS — the switch that
+   arms undeclared / added detection). If it *does* find real drift, you revert or
+   ignore it inline too, same as #1.
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
    drift).
 
