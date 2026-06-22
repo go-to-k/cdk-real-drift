@@ -983,16 +983,25 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
     'ContainerDefinitions.PortMappings',
     'ContainerDefinitions.VolumesFrom',
   ]),
-  // DynamoDB sorts a GSI's INCLUDE-projection `NonKeyAttributes` alphabetically:
-  // declared ["zeta","alpha","mike","bravo"] reads back ["alpha","bravo","mike","zeta"],
-  // a positional compare false-flags the whole set. This is a nested SCALAR set (plain
-  // attribute names — not id/ARN-shaped, so canonicalizeIdArraysDeep leaves it) nested
-  // under the GlobalSecondaryIndexes ARRAY; sortNestedObjectArrays sorts scalar arrays by
+  // DynamoDB sorts an INCLUDE-projection `NonKeyAttributes` set into its own canonical
+  // order: declared ["zeta","alpha","mike","bravo"] reads back reordered, a positional
+  // compare false-flags the whole set. This is a nested SCALAR set (plain attribute names
+  // — not id/ARN-shaped, so canonicalizeIdArraysDeep leaves it) nested under the
+  // (Global|Local)SecondaryIndexes ARRAY; sortNestedObjectArrays sorts scalar arrays by
   // canonical JSON too, so the same machinery aligns it. A genuine attribute add/remove
-  // still changes the multiset. Observed live on a fresh ddb-gsi-projection deploy.
-  // (AWS::DynamoDB::GlobalTable has the identical GSI projection shape — a likely sibling,
-  // left unlisted until observed.)
-  'AWS::DynamoDB::Table': new Set(['GlobalSecondaryIndexes.Projection.NonKeyAttributes']),
+  // still changes the multiset. The GSI path was observed live on a fresh
+  // ddb-gsi-projection deploy; the LSI path and the AWS::DynamoDB::GlobalTable (TableV2)
+  // GSI *and* LSI paths — the identical projection shape on a Table's LSI and on the
+  // GlobalTable type — were observed live on a fresh ddb-nested-sets deploy (declared
+  // ["yankee","bravo","oscar","delta"] read back ["oscar","delta","yankee","bravo"], etc.).
+  'AWS::DynamoDB::Table': new Set([
+    'GlobalSecondaryIndexes.Projection.NonKeyAttributes',
+    'LocalSecondaryIndexes.Projection.NonKeyAttributes',
+  ]),
+  'AWS::DynamoDB::GlobalTable': new Set([
+    'GlobalSecondaryIndexes.Projection.NonKeyAttributes',
+    'LocalSecondaryIndexes.Projection.NonKeyAttributes',
+  ]),
 };
 
 // Return a deep clone of `value` (a declared/live property subtree rooted at one

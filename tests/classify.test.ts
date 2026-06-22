@@ -1643,6 +1643,36 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
   });
+
+  // The siblings of the GSI fold above, found by ddb-nested-sets: the SAME nested
+  // INCLUDE-projection NonKeyAttributes set lives on a Table's LocalSecondaryIndexes
+  // and on the AWS::DynamoDB::GlobalTable (TableV2) type's GSI *and* LSI, all of which
+  // AWS reorders into its own canonical order (declared ["yankee","bravo","oscar",
+  // "delta"] read back ["oscar","delta","yankee","bravo"], etc.). Each must fold the
+  // reorder yet still surface a genuine element change.
+  describe('DynamoDB nested NonKeyAttributes sibling sets reordered (found by ddb-nested-sets)', () => {
+    const idx = (arrKey: string, attrs: string[]) => ({
+      [arrKey]: [
+        { IndexName: 'idx1', Projection: { ProjectionType: 'INCLUDE', NonKeyAttributes: attrs } },
+      ],
+    });
+    const cases = [
+      { T: 'AWS::DynamoDB::Table', arrKey: 'LocalSecondaryIndexes' },
+      { T: 'AWS::DynamoDB::GlobalTable', arrKey: 'GlobalSecondaryIndexes' },
+      { T: 'AWS::DynamoDB::GlobalTable', arrKey: 'LocalSecondaryIndexes' },
+    ];
+    for (const { T, arrKey } of cases) {
+      const declared = idx(arrKey, ['yankee', 'bravo', 'oscar', 'delta']);
+      it(`${T} ${arrKey}: reordered NonKeyAttributes set is NOT drift`, () => {
+        const live = idx(arrKey, ['oscar', 'delta', 'yankee', 'bravo']);
+        expect(declaredTiers(T, declared, live)).toEqual([]);
+      });
+      it(`${T} ${arrKey}: a genuine NonKeyAttributes change still surfaces`, () => {
+        const live = idx(arrKey, ['oscar', 'delta', 'yankee', 'omega']); // bravo -> omega
+        expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+      });
+    }
+  });
 });
 
 describe('LATEST sentinel declared false positives (Fargate PlatformVersion, found by ecs-taskset-rich)', () => {

@@ -1,0 +1,210 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Classic397C6F85",
+    "resourceType": "AWS::DynamoDB::Table",
+    "physicalId": "cdkrd-integ-ddb-nested-sets-classic",
+    "constructPath": "CdkRealDriftIntegDdbNestedSets/Classic",
+    "declared": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "sk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "lsi1sk",
+          "AttributeType": "N"
+        },
+        {
+          "AttributeName": "gsi1pk",
+          "AttributeType": "S"
+        }
+      ],
+      "BillingMode": "PAY_PER_REQUEST",
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "gsi1",
+          "KeySchema": [
+            {
+              "AttributeName": "gsi1pk",
+              "KeyType": "HASH"
+            }
+          ],
+          "Projection": {
+            "NonKeyAttributes": ["zeta", "alpha", "mike", "bravo"],
+            "ProjectionType": "INCLUDE"
+          }
+        }
+      ],
+      "KeySchema": [
+        {
+          "AttributeName": "pk",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "sk",
+          "KeyType": "RANGE"
+        }
+      ],
+      "LocalSecondaryIndexes": [
+        {
+          "IndexName": "lsi1",
+          "KeySchema": [
+            {
+              "AttributeName": "pk",
+              "KeyType": "HASH"
+            },
+            {
+              "AttributeName": "lsi1sk",
+              "KeyType": "RANGE"
+            }
+          ],
+          "Projection": {
+            "NonKeyAttributes": ["yankee", "bravo", "oscar", "delta"],
+            "ProjectionType": "INCLUDE"
+          }
+        }
+      ],
+      "TableName": "cdkrd-integ-ddb-nested-sets-classic"
+    }
+  },
+  "liveRaw": {
+    "SSESpecification": {
+      "SSEEnabled": false
+    },
+    "ContributorInsightsSpecification": {
+      "Enabled": false
+    },
+    "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": false
+    },
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 12000,
+      "WriteUnitsPerSecond": 4000
+    },
+    "TableName": "cdkrd-integ-ddb-nested-sets-classic",
+    "AttributeDefinitions": [
+      {
+        "AttributeType": "S",
+        "AttributeName": "gsi1pk"
+      },
+      {
+        "AttributeType": "N",
+        "AttributeName": "lsi1sk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "pk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "sk"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "gsi1",
+        "ContributorInsightsSpecification": {
+          "Enabled": false
+        },
+        "Projection": {
+          "NonKeyAttributes": ["alpha", "bravo", "zeta", "mike"],
+          "ProjectionType": "INCLUDE"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "gsi1pk"
+          }
+        ],
+        "WarmThroughput": {
+          "ReadUnitsPerSecond": 12000,
+          "WriteUnitsPerSecond": 4000
+        }
+      }
+    ],
+    "KeySchema": [
+      {
+        "KeyType": "HASH",
+        "AttributeName": "pk"
+      },
+      {
+        "KeyType": "RANGE",
+        "AttributeName": "sk"
+      }
+    ],
+    "LocalSecondaryIndexes": [
+      {
+        "IndexName": "lsi1",
+        "Projection": {
+          "NonKeyAttributes": ["oscar", "delta", "yankee", "bravo"],
+          "ProjectionType": "INCLUDE"
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "pk"
+          },
+          {
+            "KeyType": "RANGE",
+            "AttributeName": "lsi1sk"
+          }
+        ]
+      }
+    ],
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/cdkrd-integ-ddb-nested-sets-classic",
+    "DeletionProtectionEnabled": false,
+    "Tags": [],
+    "TimeToLiveSpecification": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "StreamArn"],
+    "writeOnly": ["ImportSourceSpecification"],
+    "createOnly": ["ImportSourceSpecification", "KeySchema", "TableName"],
+    "readOnlyPaths": ["Arn", "StreamArn"],
+    "writeOnlyPaths": ["ImportSourceSpecification"],
+    "createOnlyPaths": ["ImportSourceSpecification", "KeySchema", "TableName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Classic397C6F85",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "physicalId": "cdkrd-integ-ddb-nested-sets-classic",
+      "constructPath": "CdkRealDriftIntegDdbNestedSets/Classic"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Classic397C6F85",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "GlobalSecondaryIndexes[gsi1].WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "nested": true,
+      "physicalId": "cdkrd-integ-ddb-nested-sets-classic",
+      "constructPath": "CdkRealDriftIntegDdbNestedSets/Classic"
+    }
+  ]
+}
