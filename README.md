@@ -49,8 +49,6 @@ result: 1 drift(s) (undeclared=1)
 
 ## Quick start
 
-_Not yet on npm — coming with the first public release._
-
 ```bash
 npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
