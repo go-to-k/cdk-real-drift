@@ -87,6 +87,28 @@ or deselect what you want to keep visible) and writes
 AWS** — commit it; from here on `check` reports CLEAN until reality changes.
 (Declared drift is detected from the very first run, baseline or not.)
 
+**Recording the baseline is what arms undeclared / added detection** — the
+headline feature. Until you record, every live-only value and out-of-band added
+resource is reported as `unrecorded` (informational, **CLEAN**, never fails
+`--fail`); there is nothing to compare it to yet. Record once, and from then
+on a later out-of-band change to any of them surfaces as failing drift. So the
+normal first step on a freshly deployed stack is to record — even when the run
+is fully clean and nothing stands out. In that case the prompt is just two
+options (everything undeclared is already at an AWS default, nothing to list):
+
+```console
+result: CLEAN
+
+ApiStack: no .cdkrd baseline yet — record the current state as your baseline?
+  ❯ Nothing (decide later)
+    Record current state as the .cdkrd baseline (marks this stack reviewed)
+```
+
+**Nothing** is the cursor default only so Enter is always a harmless no-op (it
+never writes); it is not the recommendation. Choosing **Nothing** leaves this
+stack unwatched for undeclared / added drift until you record. (`check --fail` in
+CI never writes a baseline — you record locally and commit the file.)
+
 **Day to day** — someone changes something from the console; the next `check`
 reports it and asks right there:
 
@@ -174,7 +196,12 @@ code or reverting.
   to git. A PR that changes it is a visible, reviewable change to "what real
   state we record". Account id and region are part of the filename, so the same
   stack deployed to several accounts never collides (gitignore personal-account
-  baselines if you prefer).
+  baselines if you prefer). **Recording the baseline is the switch that arms
+  undeclared / added detection**: with no baseline, a live-only value or added
+  resource is `unrecorded` (informational, CLEAN, never fails `--fail`) — there
+  is nothing to compare it to. Once recorded, a later out-of-band change to it is
+  failing drift. So the headline feature is inert on a stack until its first
+  `record`; declared-property and out-of-band-delete detection need no baseline.
 - There is **no watch-list to maintain**. Every `check` snapshots the full live
   model (Cloud Control API + SDK readers for the gap types) and subtracts
   everything explainable — schema read-only/write-only/defaults, AWS-managed
