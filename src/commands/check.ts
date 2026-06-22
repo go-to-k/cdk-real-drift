@@ -336,7 +336,7 @@ export async function runCheck(args: string[]): Promise<number> {
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 
       // R28 (extended R121): drift found in a TTY → offer to resolve it inline
-      // (Record all / Revert all / Ignore all / Decide per finding / Nothing) instead
+      // (Record / Revert / Ignore / Decide per finding / Nothing) instead
       // of making the user re-run a separate verb. Skipped for --json (machine output),
       // --show-all (baseline not applied — record would mean something else), and
       // --pre-deploy (declared-only, baseline-untouched contract). UNRECORDED values do

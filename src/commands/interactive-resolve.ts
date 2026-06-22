@@ -1,10 +1,10 @@
 // check's interactive after-report resolution (R28, extended R121). After `check`
 // reports drift in a TTY, it offers to resolve it inline instead of making the user
 // re-run a separate verb. The top-level choice is:
-//   Record all / Revert all / Ignore all  — one action applied to every applicable
-//                                            finding (each leads to its own multiselect)
-//   Decide per finding                     — assign an action PER finding (the picker)
-//   Nothing                                — leave it (default)
+//   Record / Revert / Ignore  — ONE action; its multiselect then narrows which findings
+//                                (and which ops) it applies to
+//   Decide per finding         — assign a DIFFERENT action PER finding (the picker)
+//   Nothing                    — leave it (default)
 // Each bulk option appears only when >=1 finding can take that action; "Decide per
 // finding" appears only when >1 finding is decidable (with one, the bulk option already
 // IS per-finding). All paths route through the SAME stack-actions code as the standalone
@@ -185,17 +185,25 @@ export function buildResolveOptions(
       // initial baseline (marks the stack reviewed) — name that, not "all undeclared".
       label: establishOnly
         ? 'Record current state as the .cdkrd baseline (marks this stack reviewed)'
-        : 'Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
+        : 'Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
     });
   if (actions.revert)
-    options.push({ value: 'revert-all', label: 'Revert all — write the desired values to AWS' });
+    options.push({ value: 'revert-all', label: 'Revert — write the desired values back to AWS' });
   if (actions.ignore)
     options.push({
       value: 'ignore-all',
-      label: 'Ignore all — stop reporting it (writes .cdkrd/config.json)',
+      label: 'Ignore — stop reporting it (writes .cdkrd/config.json)',
     });
+  // The bulk options above each apply ONE action (the picker then narrows WHICH findings,
+  // and which ops within a finding); "Decide per finding" is the only path that assigns a
+  // DIFFERENT action to each finding — say that, so the contrast is explicit (the values
+  // are 'revert-all'/'ignore-all' for back-compat, but the labels no longer say "all"
+  // since revert's picker starts fully UNSELECTED, R137).
   if (decidableCount > 1)
-    options.push({ value: 'per-finding', label: 'Decide per finding — pick an action for each' });
+    options.push({
+      value: 'per-finding',
+      label: 'Decide per finding — assign a different action to each',
+    });
   return options;
 }
 

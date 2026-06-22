@@ -146,11 +146,12 @@ lives per stack/account/region; the `ignore` rules live once, app-wide, in
 `applyIgnores` reads).
 
 In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121/R125):
-after reporting it prompts `Nothing / Record all / Revert all / Ignore all / Decide
+after reporting it prompts `Nothing / Record / Revert / Ignore / Decide
 per finding` (Nothing is FIRST so the safe no-op is the default cursor; each bulk
 option shown only when ≥1 finding can take it; "Decide per finding" only when >1
 finding is decidable). A cancelled sub-prompt (Esc) returns to this menu (R125). The bulk options apply one
-action to every applicable finding (each leads to that verb's own multiselect);
+action to applicable findings (each leads to that verb's own multiselect, which
+narrows WHICH findings — revert starts fully unselected, R137);
 "Decide per finding" opens the per-finding **action picker**
 ([action-picker.ts](../src/commands/action-picker.ts) — `↑↓` move, `space` cycle
 the focused row's applicable actions, `→` set every row to the focused action,
@@ -260,8 +261,8 @@ checked.
     standalone verbs and check's interactive prompt (`recordStack` / `ignoreStack` /
     `revertStack`), so they can never diverge.
   - **interactive-resolve.ts** — check's after-report resolution (R28/R121/R125): the
-    top-level select (Nothing first as the safe default, then Record all / Revert all /
-    Ignore all / Decide per finding) looped so a cancelled sub-prompt returns to the
+    top-level select (Nothing first as the safe default, then Record / Revert /
+    Ignore / Decide per finding) looped so a cancelled sub-prompt returns to the
     menu (Esc = back), and the per-finding dispatch into the stack actions; returns the
     re-evaluated exit code.
   - **action-picker.ts** — the per-finding action picker (R121), built on `@clack/core`'s

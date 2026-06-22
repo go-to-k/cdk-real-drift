@@ -71,9 +71,9 @@ info:
 
 ApiStack: unrecorded values found — what do you want to do?
   ❯ Nothing (decide later)
-    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
-    Ignore all — stop reporting it (writes .cdkrd/config.json)
-    Decide per finding — pick an action for each
+    Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
+    Ignore — stop reporting it (writes .cdkrd/config.json)
+    Decide per finding — assign a different action to each
 ```
 
 The report always prints **first**, so you see the standout values before deciding
@@ -93,24 +93,30 @@ reports it and asks right there:
 ```console
 ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
-    Record all undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
-    Revert all — write the desired values to AWS
-    Ignore all — stop reporting it (writes .cdkrd/config.json)
-    Decide per finding — pick an action for each
+    Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
+    Revert — write the desired values back to AWS
+    Ignore — stop reporting it (writes .cdkrd/config.json)
+    Decide per finding — assign a different action to each
 ```
 
-- **Record all** records the undeclared values — and any out-of-band **added**
+Each of **Record / Revert / Ignore** applies that ONE action; its multiselect then
+lets you narrow **which** findings (and which ops) it touches. **Decide per
+finding** is the only path that assigns a _different_ action to each finding.
+
+- **Record** records the undeclared values — and any out-of-band **added**
   resources — in the baseline, so `check` stays CLEAN until they change again (a
-  multiselect lets you record some and keep reporting others). Keeps watching.
-- **Ignore all** writes a path rule to `.cdkrd/config.json` so the drift (declared,
-  undeclared, _or_ an out-of-band **added** resource) stops being reported entirely.
-  Stops watching.
+  multiselect lets you record some and keep reporting others; everything is
+  pre-selected). Keeps watching.
+- **Ignore** writes a path rule to `.cdkrd/config.json` so the drift (declared,
+  undeclared, _or_ an out-of-band **added** resource) stops being reported entirely
+  (multiselect, pre-selected). Stops watching.
 - **Decide per finding** opens a picker to assign a different action to each
   finding. On a stack with many findings, **just start typing to filter** the rows
   by name (↑↓ move · space cycles the row's actions · → applies the focused action
   to every _visible_ row · ⌫ clears the filter · enter applies · esc backs out).
-- **Revert all** shows a plan, lets you pick which op(s) to write, confirms, then
-  writes the desired values back to AWS:
+- **Revert** shows a plan, lets you pick which op(s) to write (nothing
+  pre-selected — opt in to each AWS write), confirms, then writes the desired
+  values back to AWS:
 
 ```console
 === cdkrd revert: ApiStack (us-east-1) ===
@@ -295,8 +301,8 @@ the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack
 
 ### Interactive prompts (TTY only — CI is never prompted)
 
-- **`check` with drift** offers `Record all / Revert all / Ignore all / Decide
-per finding / Nothing` inline (shown above). Each option appears only when it
+- **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
+Nothing` inline (shown above). Each option appears only when it
   applies (no Revert if nothing is revertable; "Decide per finding" only with >1
   finding). `Nothing` is the default; Enter keeps plain-check behavior. Every
   option runs exactly the same code as the standalone commands — including the
