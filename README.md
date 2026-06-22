@@ -63,9 +63,10 @@ Then act on what `check` prints, from its own interactive prompt:
 ### First run: record a baseline (and fix any drift it already finds)
 
 The same inline prompt runs on every `check`, the first included — Record / Revert
-/ Ignore, whichever apply. The first run is just *mostly* recording: your template
-never pins every live value (AWS defaults, generated names), so `check` lists the
-live-only values it found and offers to record them as your baseline:
+/ Ignore, whichever apply. Declared drift is caught from run one; the
+*first-run-specific* part is the live-only values your template never pins (AWS
+defaults, generated names), which `check` lists and offers to record as your
+baseline. On a clean stack that's all you see — values to record, no drift:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
