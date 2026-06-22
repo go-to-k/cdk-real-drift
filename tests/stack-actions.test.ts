@@ -921,6 +921,18 @@ describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hin
     expect(msg).not.toContain('\n');
     expect(msg).not.toContain('toggle all');
   });
+
+  it('discloses that folded sub-keys are ALWAYS recorded when foldedCount > 0', () => {
+    const msg = recordSelectMessage('ApiStack', 23);
+    expect(msg).toContain('23 folded sub-key(s) ALWAYS recorded');
+    expect(msg).toContain('--show-all');
+    expect(msg).not.toContain('\n'); // still a single-line header
+  });
+
+  it('no folded disclosure when there is nothing folded', () => {
+    expect(recordSelectMessage('ApiStack', 0)).not.toContain('folded');
+    expect(recordSelectMessage('ApiStack')).not.toContain('folded');
+  });
 });
 
 describe('recordScopeNote (R117 — record snapshots undeclared + added; say what it did NOT approve)', () => {
