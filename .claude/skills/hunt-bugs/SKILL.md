@@ -69,7 +69,34 @@ non-negotiable", which is enforced by a gate, not by trust.
    (Confirmed CC-gap this way: ServiceDiscovery HttpNamespace+Service, DocumentDB
    DBCluster/DBInstance, AppSync ApiKey/GraphQLSchema — all `SDK_OVERRIDES` candidates,
    not hunt targets.)
-5. **Parallelize, but cap at 3–4 stacks.** Independent stacks (unique names) can
+5. **Predict FP classes from the fold allowlists, then audit them OFFLINE before any
+   paid deploy.** The per-type fold tables in `src/normalize/noise.ts` ARE the inventory
+   of FP classes already found — and most are CURATED, KNOWN-INCOMPLETE allowlists
+   (`CASE_INSENSITIVE_PATHS`, `VERSION_PREFIX_PATHS`, `UNORDERED_ARRAY_PROPS` /
+   `UNORDERED_OBJECT_ARRAY_PROPS` / `UNORDERED_NESTED_OBJECT_ARRAY_PATHS`,
+   `RATE_EXPRESSION_PATHS`, `EPOCH_HOUR_PATHS`, `TRAILING_DOT_PATHS`). Each lists only
+   the 1–2 types someone already hit; **any OTHER type sharing that semantic divergence
+   is an unguarded gap.** So you can PREDICT where FPs hide instead of deploying blind:
+   - The recurring FP-generating axes (AWS live value ≡ declared value but ≢ structurally):
+     **set-like array reorder** (DNS RecordSet values, Cognito URL/OAuth lists, WAF
+     sets, SG rules), **partial→concrete version** (`*Version`/`EngineVersion`/
+     `KafkaVersion` a service expands), **case-insensitive enum** (`*Type`/`*Protocol`/
+     `*Status`), **trailing/format normalization** (FQDN dot, ARN `:*`, rate(), epoch),
+     **object↔JSON-string shape** (a `Definition`/`Content`/policy declared as object,
+     read back as string). Suspect any prop named `*Version`/`*Type`/`*Protocol`/
+     `*Status`/trailing-`Name`(FQDN)/`*Arn`/`Schedule*`/map-type/order-insensitive array.
+   - **Audit the gap OFFLINE first (free).** For each candidate, read the allowlist to
+     see what's covered, then grep `tests/corpus/*.json`: compare `resource.declared` vs
+     `liveRaw` for the prop. If a recorded live read EXHIBITS the divergence and
+     `expected` is clean → the trigger is already covered+guarded (`corpus-replay` proves
+     it), skip it. If no corpus case exercises the trigger (e.g. a RecordSet case with
+     only ONE value never tests multi-value reorder), or the service can't even produce
+     the divergence (MSK rejects a partial version → declared==live, NO risk) → that
+     determination is the deliverable. Only deploy the genuine, reproducible gaps. This
+     ruled out a whole class and ~10 wasteful deploys in the PR #303 hunt — fan out
+     parallel read-only agents (one per class) to do the audit. The fix for a confirmed
+     gap is usually a one-line allowlist addition + the unit test + corpus case.
+6. **Parallelize, but cap at 3–4 stacks.** Independent stacks (unique names) can
    deploy concurrently as background tasks, but more is not better — it makes logs
    and teardown hard to follow. VPC/NAT (~3 min) pace a wave; most others ~1–2 min.
 
@@ -271,6 +298,16 @@ Recorded]` breakdown with `--verbose`.
   `|| fail`), or guard with `set +e`.
 - **Always `npm install` + `cdk synth` before deploy** — a synth-time TS error is
   free to catch; a half-failed deploy is not.
+- **`example.com` / `.test` / `.example` are AWS-RESERVED for Route53 hosted zones**
+  (`InvalidDomainNameException` on create). A Route53 fixture must use a non-reserved
+  placeholder domain (e.g. `cdkrd-fphunt-x9z7q.com.`) — a public hosted zone for a
+  domain you don't own still creates fine (it just isn't authoritative).
+- **Not every type is revertable — the FN half may stop at detection.** Route53
+  RecordSet, for instance, has no SDK writer (`revert` says "type not revertable
+  yet"), so a detect→revert→clean cycle can't complete. Prove the FN by mutating the
+  declared value out of band (e.g. `aws route53 change-resource-record-sets`) and
+  asserting `check --fail` exits 1, then restore it manually; note the revert gap as a
+  future `SDK_WRITERS` candidate rather than treating it as a regression.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free
