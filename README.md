@@ -65,26 +65,23 @@ result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; r
 ApiStack: unrecorded values found — what do you want to do?
   ❯ Nothing (decide later)
     Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
+    Revert — write the desired values back to AWS
     Ignore — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — assign a different action to each
 ```
 
 A few things to know about that first run:
 
-- **Record the live-only values as your baseline.** Your template never pins every
-  live value (AWS defaults, generated names); recording accepts today's undeclared
-  state as the norm and *keeps watching*, so a later out-of-band change to it
-  surfaces as drift — the undeclared detection nothing else gives. One prompt;
-  writes a git file, nothing to AWS. (You wouldn't revert these legitimate values,
-  nor ignore and stop watching them — so record is the move.)
-- **A `Not Recorded` value is expected, not a false positive.** The count is the
-  complete inventory; only standouts are listed (defaults / generated names / nested
-  sub-keys fold into the `info:` footer — `--show-all` expands). The report prints
-  **before** the prompt, so you never bulk-record blind. `Nothing` is just the
-  cursor default — a safe no-op, not the recommendation.
-- **Real drift, if any, you revert or ignore right there.** Declared drift is caught
-  from the very first run, so you fix or accept it without recording first; once you
-  have a baseline, undeclared and added drift surface too. A reverted plan:
+- **Record is the move.** It accepts today's live-only values as the norm and
+  *keeps watching*, so a later out-of-band change to them shows up as drift — the
+  undeclared detection nothing else gives. (Revert is offered too, but it *removes*
+  these legitimate values; Ignore stops watching them.)
+- **`Not Recorded` is expected, not a false positive.** The list is the full
+  inventory, standouts only (`--show-all` expands), printed *before* the prompt — so
+  you never record blind.
+- **Declared drift is caught from run one** — revert or ignore it right there, no
+  baseline needed (undeclared / added drift surface once you've recorded). A
+  reverted plan:
 
 ```console
 === cdkrd revert: ApiStack (us-east-1) ===
@@ -104,9 +101,11 @@ it never writes a baseline (you record locally and commit the file).
 
 ## The model: one verb you run, three it offers
 
-`cdkrd check` is the entry point. On a TTY it finds drift and offers the other
-three as inline actions; all four are standalone commands too, for non-TTY use
-(scripting / CI). Here's what each command does, run on its own:
+`cdkrd check` is the entry point: on a TTY it finds drift and offers the other
+three as inline actions.
+
+All four are also standalone commands for non-TTY use (scripting / CI). Here's what
+each does, run on its own:
 
 | verb           | meaning                                                               | writes                               |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------ |
