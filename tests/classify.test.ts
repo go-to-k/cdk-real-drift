@@ -864,13 +864,16 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         { Key: 'deletion_protection.enabled', Value: 'false' },
       ],
     };
-    // AWS returns ~15 attributes; the template declared 2.
+    // AWS returns ~15 attributes; the template declared 2. The live-only keys here are
+    // all at their AWS default EXCEPT waf.fail_open.enabled (default "false") set to
+    // "true" — an out-of-band / non-default value that must stay undeclared (fail-closed).
     const liveAll = [
       { Key: 'access_logs.s3.enabled', Value: 'false' },
       { Key: 'idle_timeout.timeout_seconds', Value: '120' },
       { Key: 'routing.http2.enabled', Value: 'true' },
       { Key: 'deletion_protection.enabled', Value: 'false' },
       { Key: 'client_keep_alive.seconds', Value: '3600' },
+      { Key: 'waf.fail_open.enabled', Value: 'true' },
     ];
 
     it('a fresh deploy with extra live attributes is NOT declared drift (subset compared)', () => {
@@ -883,27 +886,38 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
     });
 
-    it('fail-closed: live-only (undeclared) bag keys ARE emitted as undeclared inventory', () => {
-      // Before the fix the undeclared bag keys reached NO dimension (not even record),
-      // so an out-of-band change to an UNDECLARED attribute (routing.http2.enabled,
-      // access_logs.s3.enabled) was a permanent silent FN. Now each live-only key is
-      // emitted as nested undeclared inventory -> record snapshots it, a later change
-      // surfaces vs the baseline. (This test fails without the fix: findings would be [].)
+    it('live-only bag keys AT their AWS default fold to atDefault (first-run noise)', () => {
+      // The ~15-20 server-default attributes AWS always echoes are first-run noise: a
+      // live-only key whose value equals its curated ELB_ATTRIBUTE_DEFAULTS entry is
+      // surfaced in the atDefault tier (informational, never drift), shrinking the
+      // [Not Recorded] inventory. Equality-gated + per-key, so it can never hide a change.
+      const atDefault = classifyResource(
+        res(T, declared),
+        { LoadBalancerAttributes: liveAll },
+        emptySchema
+      ).filter((f) => f.tier === 'atDefault');
+      expect(atDefault.map((f) => f.path).sort()).toEqual([
+        'LoadBalancerAttributes[access_logs.s3.enabled]',
+        'LoadBalancerAttributes[client_keep_alive.seconds]',
+        'LoadBalancerAttributes[routing.http2.enabled]',
+      ]);
+      expect(atDefault.every((f) => f.nested === true)).toBe(true);
+    });
+
+    it('fail-closed: a live-only bag key NOT at its default stays undeclared inventory', () => {
+      // waf.fail_open.enabled default is "false"; live "true" is NOT the default, so it
+      // must NOT fold to atDefault — it stays undeclared (recorded, a later change vs the
+      // baseline then surfaces as drift). This is the equality gate that keeps the
+      // per-key default fold from ever hiding a real out-of-band value.
       const undeclared = classifyResource(
         res(T, declared),
         { LoadBalancerAttributes: liveAll },
         emptySchema
       ).filter((f) => f.tier === 'undeclared');
-      expect(undeclared.map((f) => f.path).sort()).toEqual([
-        'LoadBalancerAttributes[access_logs.s3.enabled]',
-        'LoadBalancerAttributes[client_keep_alive.seconds]',
-        'LoadBalancerAttributes[routing.http2.enabled]',
+      expect(undeclared.map((f) => f.path)).toEqual([
+        'LoadBalancerAttributes[waf.fail_open.enabled]',
       ]);
-      // the undeclared finding carries the live value + is nested-flagged (foldable/recordable)
-      const http2 = undeclared.find(
-        (f) => f.path === 'LoadBalancerAttributes[routing.http2.enabled]'
-      );
-      expect(http2).toMatchObject({ actual: 'true', nested: true });
+      expect(undeclared[0]).toMatchObject({ actual: 'true', nested: true });
     });
 
     it('a genuine change to a DECLARED attribute still surfaces, named by Key (R78)', () => {
@@ -1857,15 +1871,21 @@ describe('identity-keyed array ADDITIONS are detected, not subset-projected away
         { Key: 'idle_timeout.timeout_seconds', Value: '120' },
         { Key: 'deletion_protection.enabled', Value: 'false' },
         { Key: 'routing.http2.enabled', Value: 'true' },
+        // out-of-band non-default value (default is "false") -> must NOT fold to atDefault
+        { Key: 'waf.fail_open.enabled', Value: 'true' },
       ],
     };
     const findings = classifyResource(res(T, declared), liveAll, emptySchema);
     // the 2 declared keys match -> NO declared (false) drift
     expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-    // the live-only keys are now undeclared inventory (R95: additions reported, not hidden)
+    // R95 fail-closed: a live-only key NOT at its default still surfaces as undeclared
+    // inventory (reported, not hidden), while the at-default keys fold to atDefault.
+    expect(findings.filter((f) => f.tier === 'undeclared').map((f) => f.path)).toEqual([
+      'LoadBalancerAttributes[waf.fail_open.enabled]',
+    ]);
     expect(
       findings
-        .filter((f) => f.tier === 'undeclared')
+        .filter((f) => f.tier === 'atDefault')
         .map((f) => f.path)
         .sort()
     ).toEqual([

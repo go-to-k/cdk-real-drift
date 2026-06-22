@@ -179,7 +179,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[access_logs.s3.enabled]",
@@ -189,7 +189,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[client_keep_alive.seconds]",
@@ -199,7 +199,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[connection_logs.s3.enabled]",
@@ -209,7 +209,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[health_check_logs.s3.enabled]",
@@ -219,7 +219,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
@@ -229,7 +229,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.desync_mitigation_mode]",
@@ -239,7 +239,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.drop_invalid_header_fields.enabled]",
@@ -249,7 +249,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.preserve_host_header.enabled]",
@@ -259,7 +259,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.x_amzn_tls_version_and_cipher_suite.enabled]",
@@ -269,7 +269,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.xff_client_port.enabled]",
@@ -279,7 +279,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http.xff_header_processing.mode]",
@@ -289,7 +289,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[routing.http2.enabled]",
@@ -299,7 +299,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[waf.fail_open.enabled]",
@@ -309,7 +309,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[zonal_shift.config.enabled]",

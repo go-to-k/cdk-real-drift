@@ -42,6 +42,7 @@ import {
   isEpochHourEqual,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
+  ELB_ATTRIBUTE_DEFAULTS,
   RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
   sortNestedObjectArrays,
@@ -510,21 +511,31 @@ export function classifyResource(
       // contradicting cdkrd's core undeclared-property promise. Emit each live-only key as
       // nested undeclared inventory — the same fail-closed treatment R95 gives every other
       // identity-keyed array: folded as informational on the first run, snapshotted by
-      // `record`, and a later change vs the baseline then surfaces as real drift. (No
-      // per-key atDefault fold: each attribute key carries its own default, so a single
-      // wildcard would mis-fold; the undeclared values are simply recorded like any other
-      // undeclared property.)
+      // `record`, and a later change vs the baseline then surfaces as real drift. A
+      // live-only key whose value EQUALS its curated AWS default (ELB_ATTRIBUTE_DEFAULTS)
+      // is instead surfaced in the `atDefault` tier: still inventory (never drift), but it
+      // shrinks the first-run `[Not Recorded]` noise the ~15-20 server-default attributes
+      // otherwise produce. This is a CURATED per-KEY equality-gated fold, NOT the wildcard
+      // an earlier revision warned against — a key absent from the table, or present with a
+      // non-default value, still classifies `undeclared` and is recorded, so a real
+      // out-of-band change never hides.
       const declaredKeys = new Set(
         v.filter(isKeyValueEntry).map((e) => (e as { Key: string }).Key)
       );
+      const attrDefaults = ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {};
       for (const lEl of liveBag) {
         if (!isKeyValueEntry(lEl)) continue;
         const key = (lEl as { Key: string }).Key;
         if (declaredKeys.has(key)) continue;
         const value = (lEl as { Value: unknown }).Value;
         if (isTrivialEmpty(value)) continue;
+        // bag values are stringly; match an equal string directly, and also tolerate a
+        // typed live scalar (boolean/number) echoed against the string default.
+        const isDefault =
+          key in attrDefaults &&
+          (value === attrDefaults[key] || isStringlyEqualScalar(value, attrDefaults[key]));
         findings.push({
-          tier: 'undeclared',
+          tier: isDefault ? 'atDefault' : 'undeclared',
           logicalId,
           resourceType,
           path: `${k}[${key}]`,

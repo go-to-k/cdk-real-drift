@@ -573,6 +573,55 @@ function canonicalizeTagLists(
   return v;
 }
 
+// Per-attribute-key AWS defaults for the ELB attribute bags (LoadBalancerAttributes /
+// TargetGroupAttributes). ELB always echoes ~15-20 attribute keys the template never
+// declares (the server defaults); classify emits each live-only key as nested
+// `undeclared` inventory (R95, fail-closed). For a key whose live value EQUALS its
+// documented constant default, that is first-run NOISE — surface it in the `atDefault`
+// tier instead (informational, never drift, mirrors KNOWN_DEFAULT_PATHS for nested
+// scalar defaults). This is a CURATED, equality-gated, per-KEY table — NOT the wildcard
+// the R95 comment warned against: a key absent here, or present with a non-default value,
+// still classifies `undeclared` (recorded by `record`, a later change surfaces as drift).
+// Values are strings (the bag stores everything stringly); the empty-string keys
+// (access_logs.s3.bucket/prefix, …) are already dropped by isTrivialEmpty. Every value
+// below is OBSERVED constant across every ELB corpus case. Keys whose default is value-
+// identical but type-specific (e.g. an NLB's differing default) stay safe via the
+// equality gate — a non-matching live value simply does not fold.
+export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': {
+    'access_logs.s3.enabled': 'false',
+    'client_keep_alive.seconds': '3600',
+    'connection_logs.s3.enabled': 'false',
+    'health_check_logs.s3.enabled': 'false',
+    // ALB cross-zone load balancing is always on and not configurable -> AWS always
+    // returns "true"; an NLB's default "false" never matches, so it stays undeclared.
+    'load_balancing.cross_zone.enabled': 'true',
+    'routing.http.desync_mitigation_mode': 'defensive',
+    'routing.http.drop_invalid_header_fields.enabled': 'false',
+    'routing.http.preserve_host_header.enabled': 'false',
+    'routing.http.x_amzn_tls_version_and_cipher_suite.enabled': 'false',
+    'routing.http.xff_client_port.enabled': 'false',
+    'routing.http.xff_header_processing.mode': 'append',
+    'routing.http2.enabled': 'true',
+    'waf.fail_open.enabled': 'false',
+    'zonal_shift.config.enabled': 'false',
+  },
+  'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    'load_balancing.algorithm.anomaly_mitigation': 'off',
+    'load_balancing.algorithm.type': 'round_robin',
+    'load_balancing.cross_zone.enabled': 'use_load_balancer_configuration',
+    'slow_start.duration_seconds': '0',
+    // latent stickiness defaults AWS returns even while stickiness.enabled is false
+    'stickiness.app_cookie.duration_seconds': '86400',
+    'stickiness.lb_cookie.duration_seconds': '86400',
+    'stickiness.type': 'lb_cookie',
+    'target_group_health.dns_failover.minimum_healthy_targets.count': '1',
+    'target_group_health.dns_failover.minimum_healthy_targets.percentage': 'off',
+    'target_group_health.unhealthy_state_routing.minimum_healthy_targets.count': '1',
+    'target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage': 'off',
+  },
+};
+
 // (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live
 // side of an identity-keyed array down to only the keys the template declared, to
 // mute the extra default attributes ELB returns (declares 2, AWS returns ~15). But
