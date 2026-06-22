@@ -162,7 +162,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.algorithm.anomaly_mitigation]",
@@ -172,7 +172,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.algorithm.type]",
@@ -182,7 +182,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.cross_zone.enabled]",
@@ -192,7 +192,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[slow_start.duration_seconds]",
@@ -202,7 +202,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.app_cookie.duration_seconds]",
@@ -212,7 +212,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.lb_cookie.duration_seconds]",
@@ -222,7 +222,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.type]",
@@ -232,7 +232,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.count]",
@@ -242,7 +242,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.percentage]",
@@ -252,7 +252,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.count]",
@@ -262,7 +262,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage]",

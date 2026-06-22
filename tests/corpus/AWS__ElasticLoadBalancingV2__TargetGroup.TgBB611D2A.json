@@ -164,7 +164,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.algorithm.anomaly_mitigation]",
@@ -174,7 +174,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.algorithm.type]",
@@ -184,7 +184,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[load_balancing.cross_zone.enabled]",
@@ -194,7 +194,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[slow_start.duration_seconds]",
@@ -204,7 +204,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.app_cookie.duration_seconds]",
@@ -214,7 +214,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.lb_cookie.duration_seconds]",
@@ -224,7 +224,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[stickiness.type]",
@@ -234,7 +234,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.count]",
@@ -244,7 +244,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.percentage]",
@@ -254,7 +254,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.count]",
@@ -264,7 +264,7 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage]",
