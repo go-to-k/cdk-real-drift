@@ -1482,6 +1482,74 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
   });
+
+  describe('ECS TaskDefinition PortMappings reordered inside a container (found by ecs-taskdef-caps)', () => {
+    const T = 'AWS::ECS::TaskDefinition';
+    // The reordered set lives one level under the ContainerDefinitions ARRAY — the nested
+    // path crosses an array, which the Bedrock cases (object-under-object) never exercised.
+    const declared = {
+      ContainerDefinitions: [
+        {
+          Name: 'app',
+          PortMappings: [
+            { ContainerPort: 8080, HostPort: 8080, Protocol: 'tcp' },
+            { ContainerPort: 443, HostPort: 443, Protocol: 'tcp' },
+            { ContainerPort: 80, HostPort: 80, Protocol: 'tcp' },
+          ],
+        },
+      ],
+    };
+
+    it('AWS returning a container PortMappings set in a different order is NOT drift', () => {
+      const live = {
+        ContainerDefinitions: [
+          {
+            Name: 'app',
+            PortMappings: [
+              { ContainerPort: 443, HostPort: 443, Protocol: 'tcp' },
+              { ContainerPort: 8080, HostPort: 8080, Protocol: 'tcp' },
+              { ContainerPort: 80, HostPort: 80, Protocol: 'tcp' },
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('the fold reaches PortMappings in EVERY container (multi-container, ContainerDefinitions also reordered by Name)', () => {
+      const multi = {
+        ContainerDefinitions: [
+          { Name: 'app', PortMappings: [{ ContainerPort: 80 }, { ContainerPort: 443 }] },
+          { Name: 'sidecar', PortMappings: [{ ContainerPort: 9090 }, { ContainerPort: 9091 }] },
+        ],
+      };
+      const live = {
+        ContainerDefinitions: [
+          // ECS returns the containers themselves reordered (Name-keyed) AND each
+          // container's PortMappings reordered.
+          { Name: 'sidecar', PortMappings: [{ ContainerPort: 9091 }, { ContainerPort: 9090 }] },
+          { Name: 'app', PortMappings: [{ ContainerPort: 443 }, { ContainerPort: 80 }] },
+        ],
+      };
+      expect(declaredTiers(T, multi, live)).toEqual([]);
+    });
+
+    it('a genuine container-port change still surfaces (no over-fold)', () => {
+      const live = {
+        ContainerDefinitions: [
+          {
+            Name: 'app',
+            PortMappings: [
+              { ContainerPort: 443, HostPort: 443, Protocol: 'tcp' },
+              { ContainerPort: 8443, HostPort: 8443, Protocol: 'tcp' }, // 8080 -> 8443
+              { ContainerPort: 80, HostPort: 80, Protocol: 'tcp' },
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
 });
 
 describe('LATEST sentinel declared false positives (Fargate PlatformVersion, found by ecs-taskset-rich)', () => {

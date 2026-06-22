@@ -955,6 +955,17 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
     'SensitiveInformationPolicyConfig.PiiEntitiesConfig',
     'SensitiveInformationPolicyConfig.RegexesConfig',
   ]),
+  // ECS reorders a container's `PortMappings` relative to the template: a
+  // task definition declaring ports [8080, 443, 80] reads back [443, 8080, 80] (the
+  // mappings are a SET — order carries no meaning), so a positional compare false-flags
+  // every shifted mapping as declared drift on a freshly deployed + recorded task def.
+  // The path crosses the `ContainerDefinitions` ARRAY (sortNestedObjectArrays recurses
+  // element-wise into it), so this aligns the PortMappings set INSIDE each container.
+  // Sorting both sides by canonical JSON keys on ContainerPort (the first key), so equal
+  // mappings land in the same slot and a genuine port add/remove/change still differs.
+  // Observed live on a fresh ecs-taskdef-caps deploy (capabilities/ulimits/dnsSearch on
+  // the same container were NOT reordered — only PortMappings).
+  'AWS::ECS::TaskDefinition': new Set(['ContainerDefinitions.PortMappings']),
 };
 
 // Return a deep clone of `value` (a declared/live property subtree rooted at one
@@ -964,6 +975,11 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
 // path is left untouched, and a genuine element change still differs after the sort.
 export function sortNestedObjectArrays(value: unknown, subPaths: readonly string[]): unknown {
   if (subPaths.length === 0 || value === null || typeof value !== 'object') return value;
+  // A sub-path may cross an ARRAY (ECS `ContainerDefinitions.PortMappings`: the parent
+  // ContainerDefinitions is itself an array, so PortMappings lives one level down inside
+  // EACH element). Recurse element-wise, applying the same remaining sub-paths inside
+  // every element, so the nested set is sorted within each container.
+  if (Array.isArray(value)) return value.map((el) => sortNestedObjectArrays(el, subPaths));
   const clone = structuredClone(value) as Record<string, unknown>;
   for (const sub of subPaths) {
     const segs = sub.split('.');
