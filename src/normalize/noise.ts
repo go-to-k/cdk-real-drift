@@ -135,6 +135,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       EnableResourceNameDnsAAAARecord: false,
     },
   },
+  // R-noise-sweep (found by the ec2-instance-rich hunt, PR #310 follow-up): a fresh
+  // EC2 Instance reports these three constant service defaults as undeclared on every
+  // first run. They are documented account-/instance-independent defaults — Tenancy
+  // "default" (vs dedicated/host), SourceDestCheck on (the routing default), and the
+  // "stop" shutdown behavior. Resource-specific live values the same read returns
+  // (PrivateIpAddress, SecurityGroups, Volumes, NetworkInterfaces, CpuOptions which is
+  // instance-type-derived, …) are deliberately NOT listed — they are genuine undeclared
+  // inventory. Equality-gated: flip any out of band and it no longer matches, so it
+  // re-surfaces as real undeclared drift.
+  'AWS::EC2::Instance': {
+    Tenancy: 'default',
+    SourceDestCheck: true,
+    InstanceInitiatedShutdownBehavior: 'stop',
+  },
   // R105 (second dogfood-audit wave): more top-level constant service defaults
   // (same exclusions as R104 — no names/ids/ARNs, no region-/account-specific
   // values, no large/evolving config blobs like Athena WorkGroupConfiguration).
