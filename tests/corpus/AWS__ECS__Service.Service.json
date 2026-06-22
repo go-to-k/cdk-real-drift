@@ -1,0 +1,193 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Service",
+    "resourceType": "AWS::ECS::Service",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+    "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service",
+    "declared": {
+      "Cluster": "arn:aws:ecs:us-east-1:111111111111:cluster/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw",
+      "DesiredCount": 0,
+      "LaunchType": "FARGATE",
+      "LoadBalancers": [
+        {
+          "ContainerName": "web",
+          "ContainerPort": 8080,
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-ecs-lb-tg8080/03a4fa548e647ddf"
+        },
+        {
+          "ContainerName": "web",
+          "ContainerPort": 80,
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-ecs-lb-tg80/9e463b788a7bec81"
+        }
+      ],
+      "NetworkConfiguration": {
+        "AwsvpcConfiguration": {
+          "AssignPublicIp": "DISABLED",
+          "SecurityGroups": ["sg-0acc90954e221e57f"],
+          "Subnets": ["subnet-0555c0b9a4a9fec91", "subnet-0f0b2c36e6a7e22ec"]
+        }
+      },
+      "ServiceName": "cdkrd-integ-ecs-lb-svc",
+      "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsServiceLbRichTaskDef9F02A589:1"
+    }
+  },
+  "liveRaw": {
+    "PlatformVersion": "LATEST",
+    "HealthCheckGracePeriodSeconds": 0,
+    "EnableECSManagedTags": false,
+    "EnableExecuteCommand": false,
+    "PlacementConstraints": [],
+    "Cluster": "arn:aws:ecs:us-east-1:111111111111:cluster/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw",
+    "LoadBalancers": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-ecs-lb-tg8080/03a4fa548e647ddf",
+        "ContainerName": "web",
+        "ContainerPort": 8080
+      },
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-ecs-lb-tg80/9e463b788a7bec81",
+        "ContainerName": "web",
+        "ContainerPort": 80
+      }
+    ],
+    "ServiceArn": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+    "DesiredCount": 0,
+    "PlacementStrategies": [],
+    "DeploymentController": {
+      "Type": "ECS"
+    },
+    "LaunchType": "FARGATE",
+    "Name": "cdkrd-integ-ecs-lb-svc",
+    "AvailabilityZoneRebalancing": "ENABLED",
+    "Role": "arn:aws:iam::111111111111:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+    "SchedulingStrategy": "REPLICA",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsServiceLbRichTaskDef9F02A589:1",
+    "ServiceName": "cdkrd-integ-ecs-lb-svc",
+    "NetworkConfiguration": {
+      "AwsvpcConfiguration": {
+        "SecurityGroups": ["sg-0acc90954e221e57f"],
+        "Subnets": ["subnet-0555c0b9a4a9fec91", "subnet-0f0b2c36e6a7e22ec"],
+        "AssignPublicIp": "DISABLED"
+      }
+    },
+    "DeploymentConfiguration": {
+      "BakeTimeInMinutes": 0,
+      "Strategy": "ROLLING",
+      "DeploymentCircuitBreaker": {
+        "Enable": false,
+        "Rollback": false
+      },
+      "MaximumPercent": 200,
+      "MinimumHealthyPercent": 100
+    }
+  },
+  "schema": {
+    "readOnly": ["Name", "ServiceArn"],
+    "writeOnly": [
+      "ForceNewDeployment",
+      "Monitoring",
+      "ServiceConnectConfiguration",
+      "VolumeConfigurations"
+    ],
+    "createOnly": ["Cluster", "LaunchType", "Role", "SchedulingStrategy", "ServiceName"],
+    "readOnlyPaths": ["Name", "ServiceArn"],
+    "writeOnlyPaths": [
+      "ForceNewDeployment",
+      "Monitoring",
+      "ServiceConnectConfiguration",
+      "VolumeConfigurations"
+    ],
+    "createOnlyPaths": ["Cluster", "LaunchType", "Role", "SchedulingStrategy", "ServiceName"],
+    "defaults": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "defaultPaths": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "PlatformVersion",
+      "actual": "LATEST",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "HealthCheckGracePeriodSeconds",
+      "actual": 0,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentController",
+      "actual": {
+        "Type": "ECS"
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "AvailabilityZoneRebalancing",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "Role",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "SchedulingStrategy",
+      "actual": "REPLICA",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentConfiguration",
+      "actual": {
+        "BakeTimeInMinutes": 0,
+        "Strategy": "ROLLING",
+        "DeploymentCircuitBreaker": {
+          "Enable": false,
+          "Rollback": false
+        },
+        "MaximumPercent": 200,
+        "MinimumHealthyPercent": 100
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    }
+  ]
+}
