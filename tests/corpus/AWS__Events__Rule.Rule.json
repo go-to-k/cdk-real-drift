@@ -1,0 +1,163 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "cdkrd-integ-richpattern",
+    "constructPath": "CdkRealDriftIntegEventBridgeRichPattern/Rule",
+    "declared": {
+      "Description": "rich content-filtered pattern",
+      "EventPattern": {
+        "source": ["aws.s3", "custom.app"],
+        "detail-type": ["Object Created"],
+        "detail": {
+          "bucket": {
+            "name": [
+              {
+                "prefix": "cdkrd-"
+              }
+            ]
+          },
+          "object": {
+            "size": [
+              {
+                "numeric": [">", 1024]
+              }
+            ],
+            "key": [
+              {
+                "anything-but": ["tmp/", "cache/"]
+              }
+            ],
+            "etag": [
+              {
+                "exists": true
+              }
+            ]
+          }
+        }
+      },
+      "Name": "cdkrd-integ-richpattern",
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeRichPattern-Target3191CF44-FdVlZWey23Zh",
+          "DeadLetterConfig": {
+            "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeRichPattern-DlqD1FAA4AD-yk2dYDxncxOe"
+          },
+          "Id": "queue",
+          "InputTransformer": {
+            "InputPathsMap": {
+              "bucketName": "$.detail.bucket.name",
+              "objectKey": "$.detail.object.key"
+            },
+            "InputTemplate": "{\"bucket\":<bucketName>,\"key\":<objectKey>}"
+          },
+          "RetryPolicy": {
+            "MaximumEventAgeInSeconds": 3600,
+            "MaximumRetryAttempts": 3
+          }
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "EventPattern": {
+      "detail-type": ["Object Created"],
+      "source": ["aws.s3", "custom.app"],
+      "detail": {
+        "bucket": {
+          "name": [
+            {
+              "prefix": "cdkrd-"
+            }
+          ]
+        },
+        "object": {
+          "size": [
+            {
+              "numeric": [">", 1024]
+            }
+          ],
+          "etag": [
+            {
+              "exists": true
+            }
+          ],
+          "key": [
+            {
+              "anything-but": ["tmp/", "cache/"]
+            }
+          ]
+        }
+      }
+    },
+    "Description": "rich content-filtered pattern",
+    "State": "ENABLED",
+    "Targets": [
+      {
+        "DeadLetterConfig": {
+          "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeRichPattern-DlqD1FAA4AD-yk2dYDxncxOe"
+        },
+        "Id": "queue",
+        "InputTransformer": {
+          "InputPathsMap": {
+            "bucketName": "$.detail.bucket.name",
+            "objectKey": "$.detail.object.key"
+          },
+          "InputTemplate": "{\"bucket\":<bucketName>,\"key\":<objectKey>}"
+        },
+        "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeRichPattern-Target3191CF44-FdVlZWey23Zh",
+        "RetryPolicy": {
+          "MaximumRetryAttempts": 3,
+          "MaximumEventAgeInSeconds": 3600
+        }
+      }
+    ],
+    "Id": "cdkrd-integ-richpattern",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/cdkrd-integ-richpattern",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEventBridgeRichPattern/122fc090-6ddf-11f1-83b9-0e7edd51f2dd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEventBridgeRichPattern",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Rule",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-richpattern"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rule",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "cdkrd-integ-richpattern",
+      "constructPath": "CdkRealDriftIntegEventBridgeRichPattern/Rule"
+    }
+  ]
+}
