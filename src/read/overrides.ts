@@ -19,7 +19,11 @@ import {
   DescribeMetricFiltersCommand,
   type MetricFilter,
 } from '@aws-sdk/client-cloudwatch-logs';
-import { DescribeAddressesCommand, EC2Client } from '@aws-sdk/client-ec2';
+import {
+  DescribeAddressesCommand,
+  DescribeLaunchTemplateVersionsCommand,
+  EC2Client,
+} from '@aws-sdk/client-ec2';
 import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
 import {
   ListResourceRecordSetsCommand,
@@ -344,6 +348,39 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   // `undeclared` drift on EVERY associated EIP on the first check.
   if (str(addr.PublicIpv4Pool)) model.PublicIpv4Pool = addr.PublicIpv4Pool; // declarable; absent for AWS-pool EIPs (FP-safe)
   if (tags && tags.length > 0) model.Tags = tags;
+  return model;
+};
+
+// AWS::EC2::LaunchTemplate — Cloud Control reads the resource but its entire
+// `LaunchTemplateData` body is writeOnly in the registry schema, so CC returns only
+// ids/version numbers and the data was a permanent `readGap` (declared but
+// unverifiable). Read the DEFAULT version's data via EC2
+// DescribeLaunchTemplateVersions — the CFn physical id IS the LaunchTemplateId — and
+// project `LaunchTemplateData` so cdkrd can finally detect drift on it (e.g. a new
+// default version someone published out of band with a changed InstanceType / block
+// device / metadata option). The EC2 `ResponseLaunchTemplateData` shape mirrors the
+// CFn `LaunchTemplateData` shape (same PascalCase keys, same nesting) and AWS returns
+// it FAITHFULLY — it does NOT inject defaults (a probe confirmed a minimal template
+// reads back exactly as declared), so this is essentially a pass-through with low FP
+// risk. `schema-strip.ts` exempts `LaunchTemplateData` from the writeOnly strip for
+// this type (OVERRIDE_READABLE_WRITEONLY) so the projected value is actually compared.
+// LaunchTemplateName (createOnly, readable) is projected too; VersionDescription and
+// the top-level resource TagSpecifications stay writeOnly readGaps (not projected).
+const readEc2LaunchTemplate: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new EC2Client({ region, ...READ_RETRY });
+  // Not-found (InvalidLaunchTemplateId.NotFound) propagates so the router maps a
+  // deleted launch template to `deleted` rather than an empty model.
+  const r = await c.send(
+    new DescribeLaunchTemplateVersionsCommand({ LaunchTemplateId: id, Versions: ['$Default'] })
+  );
+  const v = r.LaunchTemplateVersions?.[0];
+  if (!v) return undefined;
+  const model: Record<string, unknown> = {};
+  if (str(v.LaunchTemplateName)) model.LaunchTemplateName = v.LaunchTemplateName;
+  if (v.LaunchTemplateData !== undefined)
+    model.LaunchTemplateData = v.LaunchTemplateData as Record<string, unknown>;
   return model;
 };
 
@@ -975,6 +1012,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Lambda::Permission': readLambdaPermission,
   'AWS::Budgets::Budget': readBudget,
   'AWS::EC2::EIP': readEc2Eip,
+  'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Logs::MetricFilter': readMetricFilter,
