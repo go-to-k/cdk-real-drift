@@ -132,7 +132,7 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
         .label;
     expect(label(true)).toContain('Record current state as the .cdkrd baseline');
     expect(label(true)).not.toContain('undeclared');
-    expect(label(false)).toContain('Record all undeclared');
+    expect(label(false)).toContain('Record undeclared');
   });
 });
 

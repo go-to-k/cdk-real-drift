@@ -1,6 +1,6 @@
 // Per-finding action picker for check's interactive "Decide per finding" path (R121).
 //
-// The bulk options (Record all / Ignore all / Revert all) apply ONE action to every
+// The bulk options (Record / Ignore / Revert) apply ONE action to every
 // applicable finding. When a stack mixes findings that each deserve a different verb,
 // this picker assigns an action PER finding in a single screen:
 //   ↑↓ = move · space = cycle the focused row's action · → = set every VISIBLE row to
