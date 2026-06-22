@@ -50,19 +50,21 @@ npx cdkrd check                 # checks every stack your app defines
 
 Then act on what `check` prints, from its own interactive prompt:
 
-1. **First run** — record a baseline (one prompt; writes a git file, nothing to
-   AWS). This is the switch that arms undeclared / added detection. (Already
-   drifting? A **declared** drift on that first run can be reverted or ignored
-   right there too — record isn't the only choice.)
-2. **Day to day** — when `check` finds drift, pick **Record / Revert / Ignore**
-   inline.
+1. **Whenever `check` finds drift** — act on it inline from the prompt:
+   **Record / Revert / Ignore**. This works from the very first run, not just
+   later.
+2. **First run** — there's usually no drift yet, just live-only values to
+   **record** as your baseline (one prompt; writes a git file, nothing to AWS —
+   the switch that arms undeclared / added detection).
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
    drift).
 
-### First run: record a baseline
+### First run: record a baseline (and fix any drift it already finds)
 
-Your template never pins every live value (AWS defaults, generated names), so the
-first `check` lists the live-only values it found, then offers to record them:
+The same inline prompt runs on every `check`, the first included — Record / Revert
+/ Ignore, whichever apply. The first run is just *mostly* recording: your template
+never pins every live value (AWS defaults, generated names), so `check` lists the
+live-only values it found and offers to record them as your baseline:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -95,7 +97,7 @@ A few things to know about that first run:
   it and **keeps watching** (a later change re-surfaces as drift); Ignore writes a
   `config.json` rule and **stops watching** for good. On first run you'll almost
   always Record; Ignore is for a live-only value you never want reported. (Full
-  breakdown under [Day to day](#day-to-day-act-on-drift).)
+  breakdown under [After the baseline](#after-the-baseline-the-full-drift-surface).)
 - **Already drifting on day 1? You can revert right away.** Undeclared / added
   detection only arms once you record, but **declared** drift is caught from the
   very first `check`. When it's present, the prompt also offers **Revert** (write
@@ -119,10 +121,12 @@ not the recommendation. Until you record, undeclared / added drift on the stack 
 unwatched. (CI's `check --fail` never writes a baseline; you record locally and
 commit the file.)
 
-### Day to day: act on drift
+### After the baseline: the full drift surface
 
-Someone changes something from the console; the next `check` reports it and asks
-right there:
+It's the same prompt as the first run — what changes is *coverage*: now that you
+have a baseline, undeclared and added drift surface too, not just declared. Someone
+changes something from the console; the next `check` reports it and asks right
+there:
 
 ```console
 ApiStack: drift found — what do you want to do?
@@ -358,7 +362,7 @@ safe side); `--yes` alone in a TTY auto-approves confirmations only (select prom
 still show).
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
-Nothing` (see [Day to day](#day-to-day-act-on-drift)). Each option appears only
+Nothing` (see [After the baseline](#after-the-baseline-the-full-drift-surface)). Each option appears only
   when it applies (no Revert if nothing is revertable; "Decide per finding" only
   with >1 finding). Aborting the Revert confirmation writes nothing.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every op
