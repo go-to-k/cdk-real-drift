@@ -1,14 +1,10 @@
 # cdk-real-drift (`cdkrd`)
 
-Drift detection for AWS CDK that sees what your template can't — including the
-**properties you never declared**. Detect it, record it, or revert it.
-
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-> **Day to day you run one command — `cdkrd check`.** It finds drift and offers
-> **Record / Revert / Ignore** right there; the other verbs are just its non-TTY/CI
-> equivalents (`check --fail` in CI). See [Quick start](#quick-start).
+Drift detection for AWS CDK that sees what your template can't — including the
+**properties you never declared**. Detect it, record it, or revert it.
 
 ## Why
 
