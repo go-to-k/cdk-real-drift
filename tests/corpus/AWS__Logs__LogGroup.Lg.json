@@ -1,0 +1,160 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Lg",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "/cdkrd/integ/dataprotection-rich",
+    "constructPath": "CdkRealDriftIntegLogsDataProtectionRich/Lg",
+    "declared": {
+      "DataProtectionPolicy": {
+        "Name": "cdkrd-data-protection",
+        "Description": "mask PII in logs",
+        "Version": "2021-06-01",
+        "Statement": [
+          {
+            "Sid": "audit",
+            "DataIdentifier": [
+              "arn:aws:dataprotection::aws:data-identifier/EmailAddress",
+              "arn:aws:dataprotection::aws:data-identifier/PhoneNumber-US"
+            ],
+            "Operation": {
+              "Audit": {
+                "FindingsDestination": {}
+              }
+            }
+          },
+          {
+            "Sid": "deidentify",
+            "DataIdentifier": [
+              "arn:aws:dataprotection::aws:data-identifier/EmailAddress",
+              "arn:aws:dataprotection::aws:data-identifier/PhoneNumber-US"
+            ],
+            "Operation": {
+              "Deidentify": {
+                "MaskConfig": {}
+              }
+            }
+          }
+        ]
+      },
+      "FieldIndexPolicies": [
+        {
+          "Fields": ["requestId", "eventName", "userIdentity.arn"]
+        }
+      ],
+      "LogGroupName": "/cdkrd/integ/dataprotection-rich",
+      "RetentionInDays": 7
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [
+      {
+        "Fields": ["requestId", "eventName", "userIdentity.arn"]
+      }
+    ],
+    "RetentionInDays": 7,
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "STANDARD",
+    "LogGroupName": "/cdkrd/integ/dataprotection-rich",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:/cdkrd/integ/dataprotection-rich:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLogsDataProtectionRich/0e4a7010-6ddf-11f1-8736-0eacb13db4b5",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Lg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLogsDataProtectionRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "DataProtectionPolicy": {
+      "Description": "mask PII in logs",
+      "Version": "2021-06-01",
+      "Statement": [
+        {
+          "DataIdentifier": [
+            "arn:aws:dataprotection::aws:data-identifier/EmailAddress",
+            "arn:aws:dataprotection::aws:data-identifier/PhoneNumber-US"
+          ],
+          "Operation": {
+            "Audit": {
+              "FindingsDestination": {}
+            }
+          },
+          "Sid": "audit"
+        },
+        {
+          "DataIdentifier": [
+            "arn:aws:dataprotection::aws:data-identifier/EmailAddress",
+            "arn:aws:dataprotection::aws:data-identifier/PhoneNumber-US"
+          ],
+          "Operation": {
+            "Deidentify": {
+              "MaskConfig": {}
+            }
+          },
+          "Sid": "deidentify"
+        }
+      ],
+      "Name": "cdkrd-data-protection"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "defaultPaths": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "BearerTokenAuthenticationEnabled",
+      "actual": false,
+      "physicalId": "/cdkrd/integ/dataprotection-rich",
+      "constructPath": "CdkRealDriftIntegLogsDataProtectionRich/Lg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "LogGroupClass",
+      "actual": "STANDARD",
+      "physicalId": "/cdkrd/integ/dataprotection-rich",
+      "constructPath": "CdkRealDriftIntegLogsDataProtectionRich/Lg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Lg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "/cdkrd/integ/dataprotection-rich",
+      "constructPath": "CdkRealDriftIntegLogsDataProtectionRich/Lg"
+    }
+  ]
+}
