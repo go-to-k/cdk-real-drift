@@ -337,6 +337,7 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
     findings: applyIgnores(p.findings, p.stackName, p.region, p.config),
     yes: p.yes,
     interactive: true,
+    expandNested: p.verbose, // --show-all skips the interactive flow, so only --verbose expands here
   });
   // !wrote in this interactive path means the multiselect was cancelled (nothing
   // written) — signal "back to the menu" rather than exit.

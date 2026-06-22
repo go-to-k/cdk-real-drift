@@ -133,7 +133,9 @@ finding** is the only path that assigns a _different_ action to each finding.
 - **Record** records the undeclared values — and any out-of-band **added**
   resources — in the baseline, so `check` stays CLEAN until they change again (a
   multiselect lets you record some and keep reporting others; everything is
-  pre-selected). Keeps watching.
+  pre-selected). Mirroring the report, only the **standout** values are itemized;
+  the folded nested sub-keys (`undeclared-subkey`) are recorded as a summarized
+  count (`--show-all` itemizes each). Keeps watching.
 - **Ignore** writes a path rule to `.cdkrd/config.json` so the drift (declared,
   undeclared, _or_ an out-of-band **added** resource) stops being reported entirely
   (multiselect, **nothing pre-selected** — opt in, since ignoring permanently stops
@@ -363,7 +365,10 @@ Nothing` inline (shown above). Each option appears only when it
   unchanged values are auto-kept and surfaced with a
   `keeping N already-recorded unchanged value(s)` note. Deselect a suspicious one
   and it stays reported by `check` — record the intentional changes without
-  rubber-stamping the rest. With no baseline yet, the full set is shown.
+  rubber-stamping the rest. With no baseline yet, the full delta is shown. As in
+  the report, only **standout** values are itemized; the folded nested sub-keys
+  are recorded as a summarized count (when every value is folded, a single confirm
+  replaces the list) — `--show-all` / `--verbose` itemizes each instead.
   `record` snapshots **undeclared** state and out-of-band **added** resources —
   it does not "approve everything". Any **declared / deleted** drift (divergence
   from your template intent) is NOT written to the baseline and cannot be silenced

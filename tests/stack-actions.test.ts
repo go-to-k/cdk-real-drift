@@ -20,6 +20,7 @@ import {
   recordScopeNote,
   recordSelectMessage,
   recordStack,
+  splitFoldedNested,
   availableActions,
   filterRevertPlan,
   formatPlan,
@@ -689,6 +690,42 @@ describe('recordStack non-interactive refusal (R38)', () => {
     } finally {
       if (existsSync(path)) rmSync(path);
     }
+  });
+});
+
+describe('splitFoldedNested (record mirrors the report R96 fold)', () => {
+  const fnd = (logicalId: string, path: string, nested?: boolean): Finding =>
+    ({
+      tier: 'undeclared',
+      logicalId,
+      resourceType: 'T',
+      path,
+      actual: 1,
+      ...(nested ? { nested: true } : {}),
+    }) as Finding;
+  const entry = (logicalId: string, path: string) => ({ logicalId, path });
+
+  it('folds nested undeclared values, itemizes the standouts', () => {
+    const changed = [entry('A', 'Top'), entry('A', 'Conf.Sub'), entry('A', 'Conf.Other')];
+    const findings = [fnd('A', 'Top'), fnd('A', 'Conf.Sub', true), fnd('A', 'Conf.Other', true)];
+    const { standout, folded } = splitFoldedNested(changed, findings, false);
+    expect(standout.map((e) => e.path)).toEqual(['Top']);
+    expect(folded.map((e) => e.path)).toEqual(['Conf.Sub', 'Conf.Other']);
+  });
+
+  it('expandNested itemizes everything (nothing folded) — the --show-all parity', () => {
+    const changed = [entry('A', 'Top'), entry('A', 'Conf.Sub')];
+    const findings = [fnd('A', 'Top'), fnd('A', 'Conf.Sub', true)];
+    const { standout, folded } = splitFoldedNested(changed, findings, true);
+    expect(standout).toHaveLength(2);
+    expect(folded).toHaveLength(0);
+  });
+
+  it('an added-resource / top-level value is never folded (no nested finding)', () => {
+    const changed = [entry('A', '')]; // added-resource entry (empty path)
+    const { standout, folded } = splitFoldedNested(changed, [], false);
+    expect(standout).toHaveLength(1);
+    expect(folded).toHaveLength(0);
   });
 });
 

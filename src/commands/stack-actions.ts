@@ -98,6 +98,28 @@ export function recordSelectMessage(stackName: string): string {
 }
 
 /**
+ * Split the to-record delta into STANDOUT (itemized in the record multiselect) and FOLDED
+ * (nested live-only sub-keys — the `undeclared-subkey` mass the report folds, R96). Folded
+ * entries are auto-recorded as a summarized count instead of dozens of rows. `expandNested`
+ * (--show-all / --verbose) turns the fold off so every nested value is itemized. An entry is
+ * folded when its matching gather finding is a `nested` undeclared value. Pure + exported.
+ */
+export function splitFoldedNested<T extends { logicalId: string; path: string }>(
+  changed: T[],
+  findings: Finding[],
+  expandNested: boolean | undefined
+): { standout: T[]; folded: T[] } {
+  if (expandNested) return { standout: changed, folded: [] };
+  const nestedKeys = new Set(
+    findings
+      .filter((f) => f.nested === true && f.tier === 'undeclared')
+      .map((f) => `${f.logicalId}::${f.path}`)
+  );
+  const isFolded = (e: T): boolean => nestedKeys.has(`${e.logicalId}::${e.path}`);
+  return { standout: changed.filter((e) => !isFolded(e)), folded: changed.filter(isFolded) };
+}
+
+/**
  * Post-record scope note (or undefined). `record` snapshots UNDECLARED state and (PR4)
  * out-of-band `added` resources into the baseline — but it CANNOT silence DECLARED or
  * DELETED drift, which is divergence from your template intent a baseline does not
@@ -204,6 +226,12 @@ export interface RecordStackParams {
   // records exactly these (keyed by recordedKey). Already-recorded unchanged values are
   // still auto-kept, so this never drops the rest of the baseline.
   preselectedKeys?: Set<string>;
+  // Mirror the report's R96 fold: by default the record multiselect itemizes only the
+  // STANDOUT (non-nested) undeclared values and auto-records the nested live-only sub-keys
+  // (the `undeclared-subkey` mass the report folds) as a summarized count, instead of
+  // listing dozens of nested rows. `--show-all` / `--verbose` sets this true to itemize
+  // every nested value individually (the report's --show-all parity).
+  expandNested?: boolean;
 }
 
 /**
@@ -232,7 +260,8 @@ export interface RecordResult {
  * interactive prompt — neither re-gathers.)
  */
 export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
-  const { stackName, region, desired, findings, yes, interactive, preselectedKeys } = p;
+  const { stackName, region, desired, findings, yes, interactive, preselectedKeys, expandNested } =
+    p;
   const existing = await loadBaseline(stackName, desired.accountId, region);
   if (!yes && existing)
     console.error(
@@ -271,22 +300,47 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       if (preselectedKeys) {
         picked = changed.map((e) => recordedKey(e)).filter((k) => preselectedKeys.has(k));
       } else {
-        const fromPrompt = await bulkMultiselect(
-          recordSelectMessage(stackName),
-          // default = all selected (→/← bulk-toggle from there)
-          changed.map((e) => ({
-            value: recordedKey(e),
-            // an `added`-resource entry (PR4) has an empty path — the whole resource is
-            // the value — so omit the trailing dot and tag it as a resource snapshot.
-            label: e.path ? `${e.logicalId}.${e.path}` : `${e.logicalId} (added resource)`,
-            selected: true,
-          }))
-        );
-        if (fromPrompt === undefined) {
-          console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
-          return { wrote: false, refused: false };
+        // Mirror the report's R96 fold: itemize only the STANDOUT (non-nested) values;
+        // the nested live-only sub-keys (the `undeclared-subkey` mass) are auto-recorded
+        // as a summarized count rather than dozens of rows. `--show-all`/`--verbose`
+        // (expandNested) lists every nested value individually instead.
+        const { standout, folded } = splitFoldedNested(changed, findings, expandNested);
+        if (standout.length === 0) {
+          // Nothing to itemize (every changed value is a folded nested sub-key — the
+          // common all-nested first run). Confirm the bulk record instead of showing an
+          // empty multiselect; the folded count is the decision.
+          const proceed = await confirm({
+            message: `${stackName}: record ${folded.length} undeclared sub-key value(s)? (--show-all to itemize each)`,
+            initialValue: true,
+          });
+          if (isCancel(proceed) || !proceed) {
+            console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
+            return { wrote: false, refused: false };
+          }
+          picked = changed.map((e) => recordedKey(e));
+        } else {
+          const fromPrompt = await bulkMultiselect(
+            recordSelectMessage(stackName),
+            // default = all selected (→/← bulk-toggle from there)
+            standout.map((e) => ({
+              value: recordedKey(e),
+              // an `added`-resource entry (PR4) has an empty path — the whole resource is
+              // the value — so omit the trailing dot and tag it as a resource snapshot.
+              label: e.path ? `${e.logicalId}.${e.path}` : `${e.logicalId} (added resource)`,
+              selected: true,
+            }))
+          );
+          if (fromPrompt === undefined) {
+            console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
+            return { wrote: false, refused: false };
+          }
+          // the folded nested values are always recorded alongside the picked standouts
+          picked = [...fromPrompt, ...folded.map((e) => recordedKey(e))];
         }
-        picked = fromPrompt;
+        if (folded.length > 0)
+          console.error(
+            `note: ${stackName}: +${folded.length} folded undeclared sub-key value(s) recorded (--show-all to itemize)`
+          );
       }
       const selectedChanged = selectRecorded(findings, new Set(picked));
       recorded = [...unchanged, ...selectedChanged]; // auto-kept unchanged + the user's picks
