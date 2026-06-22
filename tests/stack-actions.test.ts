@@ -713,7 +713,7 @@ describe('splitFoldedNested (record mirrors the report R96 fold)', () => {
     expect(folded.map((e) => e.path)).toEqual(['Conf.Sub', 'Conf.Other']);
   });
 
-  it('expandNested itemizes everything (nothing folded) — the --show-all parity', () => {
+  it('expandNested itemizes everything (nothing folded) — the --verbose fold-expansion', () => {
     const changed = [entry('A', 'Top'), entry('A', 'Conf.Sub')];
     const findings = [fnd('A', 'Top'), fnd('A', 'Conf.Sub', true)];
     const { standout, folded } = splitFoldedNested(changed, findings, true);
@@ -925,7 +925,8 @@ describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hin
   it('discloses that folded sub-keys are ALWAYS recorded when foldedCount > 0', () => {
     const msg = recordSelectMessage('ApiStack', 23);
     expect(msg).toContain('23 folded sub-key(s) ALWAYS recorded');
-    expect(msg).toContain('--show-all');
+    expect(msg).toContain('--verbose');
+    expect(msg).not.toContain('--show-all'); // --show-all is the separate inventory mode
     expect(msg).not.toContain('\n'); // still a single-line header
   });
 

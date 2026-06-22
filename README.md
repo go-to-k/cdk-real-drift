@@ -371,7 +371,7 @@ Nothing` (see [Day to day](#day-to-day-act-on-drift)). Each option appears only
   (new + changed values, pre-selected); already-recorded unchanged values are
   auto-kept. Deselect a suspicious one and it stays reported by `check`. Only the
   **standout** values are listed; the folded nested sub-keys (`undeclared-subkey`)
-  are **always recorded** and the picker header discloses their count (`--show-all`
+  are **always recorded** and the picker header discloses their count (`--verbose`
   itemizes each). `record` writes only undeclared + added state — any declared /
   deleted drift is NOT written and `record` prints a note that it still stands
   (resolve with `revert` or `cdk deploy`).
