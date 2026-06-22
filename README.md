@@ -1,7 +1,7 @@
 # cdk-real-drift (`cdkrd`)
 
-Drift detection for AWS CDK — including the **undeclared properties `cdk drift`
-can't see**. Detect it, record it, or revert it.
+Drift detection for AWS CDK that sees what your template can't — including the
+**properties you never declared**. Detect it, record it, or revert it.
 
 <!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
