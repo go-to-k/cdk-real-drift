@@ -386,6 +386,43 @@ all live changes
          (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended
 ```
 
+### Why a given value does (or does not) appear
+
+The subtraction above resolves, per live property value, to one outcome. This is the
+decision tree `classify` walks for a value at key `k` NOT in the template
+(`src/diff/classify.ts`, the undeclared loop) — it answers the common "why is THIS
+showing / why is THAT silent" question in one place:
+
+```
+a live value at key k, not declared in the template
+  ├─ == a schema default (CFn `default` annotation) OR == KNOWN_DEFAULTS[type][k]
+  │        → atDefault   (folded into info:, NOT drift, NOT recorded; equality-gated,
+  │                       so a value changed AWAY from the default re-tags as undeclared)
+  ├─ == this resource's OWN minted value (generated name / ARN name-segment /
+  │     GENERATED_PATHS id-echo) → generated   (folded like atDefault; only the
+  │                       resource's own identity, never a reference to ANOTHER resource)
+  ├─ pure structural noise: all-`aws:*` tags · == physicalId echo · trivially-empty
+  │     (`false` / `""` / `[]` / `{}`, isTrivialEmpty) → DROPPED   (no finding at all)
+  └─ otherwise → undeclared → reconciled against the baseline:
+        ├─ recorded & unchanged → suppressed (CLEAN)
+        ├─ recorded & changed   → DRIFT
+        └─ not recorded         → [Not Recorded] inventory (informational, NOT drift)
+```
+
+So three independent things make a value SILENT without a baseline: it is absent
+from the live read, it is dropped as noise, or it equals a default cdkrd can PROVE
+(a schema default or KNOWN_DEFAULTS). A value reaches **[Not Recorded]** precisely
+when cdkrd CANNOT prove it is a default/generated/noise and it is not yet in the
+baseline — including a property whose default cdkrd simply does not know yet (a
+long-tail / minor resource type). That is **expected, not a bug or a false
+positive**: it is the accepted residual of the subtractive bet (the long-tail
+"explainable defaults not in any schema" risk named in Bet 1 above), and the
+baseline is the universal backstop — `record` once accepts it and the stack stays
+CLEAN until reality changes. Widening atDefault coverage (more `KNOWN_DEFAULTS` /
+`KNOWN_DEFAULT_PATHS`) shrinks that residual; because the fold is equality-gated it
+can never hide a real change, so widening is safe — but the baseline means cdkrd
+never has to know every default to be correct.
+
 **The four false-positive classes found by dogfooding** (8 real cdkd fixtures —
 vpc-lambda / sns-sqs / rds / iam / s3-cloudfront / ecs-fargate / appsync / a mixed
 stack) and fixed, each with paired regression tests asserting _noise suppressed_ AND

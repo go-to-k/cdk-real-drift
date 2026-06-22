@@ -109,6 +109,56 @@ const pickerLabel = (f: Finding): string =>
     f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''
   }  (${tierTag(f)})`;
 
+// Mirrors report.ts's R96 fold: a NESTED unrecorded undeclared value (a live-only sub-key
+// inside a declared object) collapses out of the report body by default — the live model
+// carries many such sub-keys, so listing them all re-floods the first run. The interactive
+// pickers mirror that fold: they default to the SHOWN findings and gate the folded ones
+// behind an explicit "include folded" choice, so a picker never silently balloons from the
+// report's small drift count to a wall of nested values (the 3-vs-26 surprise) — and, for
+// ignore, never blind-ignores values the user never saw. `--verbose` means the report
+// already listed them in full, so nothing is folded. Pure + exported for unit tests.
+export const isFoldedFinding = (f: Finding, verbose: boolean): boolean =>
+  !verbose && f.unrecorded === true && f.nested === true;
+
+// The two scope rows shown when check folded undeclared inventory out of the report:
+// decide on just what was shown, or pull the folded values in too. Pure + exported.
+export function buildScopeOptions(
+  shownCount: number,
+  foldedCount: number
+): { value: string; label: string }[] {
+  return [
+    { value: 'shown', label: `Just the ${shownCount} shown in the report` },
+    {
+      value: 'all',
+      label: `Also the ${foldedCount} folded undeclared value(s) (${shownCount + foldedCount} total)`,
+    },
+  ];
+}
+
+/**
+ * Ask which findings the ignore / per-finding picker should cover when check folded
+ * undeclared inventory out of the report body. Returns 'shown' (default) or 'all', or
+ * `null` on cancel (→ back to the menu). No prompt — and 'all' returned — when there is no
+ * meaningful split: nothing folded, nothing else shown, or `--yes` (the caller asked not
+ * to be prompted, so it gets the full set, matching the pre-gate `--yes` behaviour). The
+ * `--yes` case never reaches the AWS-mutating revert through here (revert has no gate).
+ */
+async function chooseScope(
+  stackName: string,
+  shownCount: number,
+  foldedCount: number,
+  yes: boolean
+): Promise<'shown' | 'all' | null> {
+  if (yes || foldedCount === 0 || shownCount === 0) return 'all';
+  const choice = await select({
+    message: `${stackName}: the report folded ${foldedCount} undeclared value(s) — which to decide on?`,
+    options: buildScopeOptions(shownCount, foldedCount),
+    initialValue: 'shown',
+  });
+  if (isCancel(choice)) return null;
+  return choice as 'shown' | 'all';
+}
+
 // declared/constructPath/physicalId maps for applyBaseline. The physicalId + the
 // constructPath are what a synthesized "baseline value removed since record" finding
 // needs (physicalId so a later in-menu revert can act on it, constructPath so an
@@ -315,12 +365,21 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
 }
 
 async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
-  // pass the reconciled findings; ignoreStack filters to the ignorable tiers
-  // (declared / undeclared / added) and shows its own multiselect (default all) when
-  // !yes, mirroring `cdkrd ignore`.
+  // ignoreStack filters to the ignorable tiers (declared / undeclared / added) and shows
+  // its own multiselect (default NONE selected, R137) when !yes, mirroring `cdkrd ignore`.
+  // Pre-split here so the folded undeclared inventory is gated behind chooseScope: the
+  // picker defaults to the report's SHOWN findings, not a wall of nested values.
+  const ignorable = p.reconciled.filter(
+    (f) => f.tier === 'declared' || f.tier === 'undeclared' || f.tier === 'added'
+  );
+  const foldedCount = ignorable.filter((f) => isFoldedFinding(f, p.verbose)).length;
+  const scope = await chooseScope(p.stackName, ignorable.length - foldedCount, foldedCount, p.yes);
+  if (scope === null) return null; // scope prompt cancelled → back to the menu
+  const findings =
+    scope === 'all' ? ignorable : ignorable.filter((f) => !isFoldedFinding(f, p.verbose));
   const result = await ignoreStack({
     stackName: p.stackName,
-    findings: p.reconciled,
+    findings,
     yes: p.yes,
     interactive: true,
   });
@@ -359,10 +418,17 @@ async function revertAll(p: ResolveParams): Promise<SubResult | null> {
 }
 
 async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubResult | null> {
-  const rows = decidable.map((f) => ({ label: pickerLabel(f), applicable: applicableActions(f) }));
+  // Gate the folded undeclared inventory the same way ignore does: default the picker to
+  // the report's SHOWN findings, ask before pulling the folded nested values in.
+  const foldedCount = decidable.filter((f) => isFoldedFinding(f, p.verbose)).length;
+  const scope = await chooseScope(p.stackName, decidable.length - foldedCount, foldedCount, p.yes);
+  if (scope === null) return null; // scope prompt cancelled → back to the menu
+  const scoped =
+    scope === 'all' ? decidable : decidable.filter((f) => !isFoldedFinding(f, p.verbose));
+  const rows = scoped.map((f) => ({ label: pickerLabel(f), applicable: applicableActions(f) }));
   const chosen = await actionPicker(`${p.stackName}: assign an action to each finding`, rows);
   if (chosen === undefined) return null; // picker cancelled (Esc) → back to the menu
-  const groups = groupByAction(decidable, chosen);
+  const groups = groupByAction(scoped, chosen);
   if (groups.record.length + groups.ignore.length + groups.revert.length === 0)
     return { exit: p.code, awsMutated: false };
 
