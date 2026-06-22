@@ -293,6 +293,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::DynamoDB::Table': {
     'PointInTimeRecoverySpecification.RecoveryPeriodInDays': 35,
   },
+  'AWS::ECS::TaskDefinition': {
+    // A container that does not reserve CPU reads back Cpu: 0 (the documented "no
+    // reservation" default) for EVERY container, so a multi-container task def floods
+    // the first run with `ContainerDefinitions[*].Cpu = 0` not-recorded noise. Fold the
+    // constant default to atDefault; a container that actually reserves CPU (Cpu != 0)
+    // no longer matches and surfaces. Observed live on the ecs-taskdef-caps deploy.
+    'ContainerDefinitions.*.Cpu': 0,
+  },
   'AWS::Glue::Database': {
     'DatabaseInput.CreateTableDefaultPermissions': [
       {

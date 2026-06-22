@@ -234,7 +234,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TaskDef",
       "resourceType": "AWS::ECS::TaskDefinition",
       "path": "ContainerDefinitions[app].Cpu",
@@ -244,7 +244,7 @@
       "constructPath": "CdkRealDriftIntegEcsTaskDefCaps/TaskDef"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TaskDef",
       "resourceType": "AWS::ECS::TaskDefinition",
       "path": "ContainerDefinitions[sidecar].Cpu",
