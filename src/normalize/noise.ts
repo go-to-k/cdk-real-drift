@@ -928,6 +928,54 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
 // identical elements). Consulted by classify's declared loop, equality-gated:
 // the two sides must be the SAME multiset — a genuine element change still
 // reports.
+// Per-type path patterns for a `[{ParameterName, ParameterValue}]` array that the
+// service treats as an IDENTITY-KEYED SET (keyed by ParameterName) AND default-fills:
+// the template declares a SUBSET, the service REORDERS the set and INJECTS its own
+// server defaults. Kinesis Firehose's processor `Parameters` is the case (observed live
+// on a fresh firehose-processors-rich deploy: a Lambda processor declared
+// [RoleArn, BufferSizeInMBs, BufferIntervalInSeconds, LambdaArn] reads back reordered as
+// [LambdaArn, NumberOfRetries, RoleArn, BufferSizeInMBs, BufferIntervalInSeconds] — the
+// service injected NumberOfRetries=3). ParameterName is not in IDENTITY_FIELDS, so the
+// whole array false-flags as one `declared` drift. Matched against the dotted drift path
+// (which carries the Processors array index, e.g. `…Processors.0.Parameters`).
+export const PARAMETER_NAME_SUBSET_PATHS: Record<string, RegExp> = {
+  'AWS::KinesisFirehose::DeliveryStream': /(^|\.)Processors\.\d+\.Parameters$/,
+};
+// Align a declared `[{ParameterName,ParameterValue}]` array to a live one BY
+// ParameterName. Returns the live-only entries (server-injected / out-of-band params the
+// template never declared) when every DECLARED param is present in live with an equal
+// value (declared ⊆ live, reorder-insensitive) — the caller suppresses the false
+// whole-array `declared` drift and surfaces the live-only entries as undeclared
+// inventory (fail-closed, recorded). Returns null when a declared param is MISSING from
+// live or its value differs (a genuine declared drift the caller must keep), or when
+// either side is not a pure ParameterName/ParameterValue array.
+export function alignParameterNameSubset(declared: unknown, live: unknown): unknown[] | null {
+  if (!Array.isArray(declared) || !Array.isArray(live)) return null;
+  const toMap = (arr: unknown[]): Map<string, unknown> | null => {
+    const m = new Map<string, unknown>();
+    for (const e of arr) {
+      if (
+        !e ||
+        typeof e !== 'object' ||
+        typeof (e as Record<string, unknown>).ParameterName !== 'string'
+      )
+        return null;
+      const r = e as Record<string, unknown>;
+      m.set(r.ParameterName as string, r.ParameterValue);
+    }
+    return m;
+  };
+  const dm = toMap(declared);
+  const lm = toMap(live);
+  if (!dm || !lm) return null;
+  for (const [name, dVal] of dm) {
+    if (!lm.has(name)) return null;
+    const lVal = lm.get(name);
+    if (dVal !== lVal && !isStringlyEqualScalar(dVal, lVal)) return null;
+  }
+  return live.filter((e) => !dm.has((e as Record<string, unknown>).ParameterName as string));
+}
+
 export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::Cognito::UserPoolClient': new Set([
     'AllowedOAuthFlows',

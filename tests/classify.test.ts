@@ -993,6 +993,95 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  describe('Firehose processor Parameters subset (ParameterName-keyed reorder + server default-fill)', () => {
+    const T = 'AWS::KinesisFirehose::DeliveryStream';
+    const declared = {
+      ExtendedS3DestinationConfiguration: {
+        ProcessingConfiguration: {
+          Enabled: true,
+          Processors: [
+            {
+              Type: 'Lambda',
+              Parameters: [
+                { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+                { ParameterName: 'BufferSizeInMBs', ParameterValue: '1' },
+                {
+                  ParameterName: 'LambdaArn',
+                  ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+    const liveProcessing = (params: unknown[]) => ({
+      ExtendedS3DestinationConfiguration: {
+        ProcessingConfiguration: {
+          Enabled: true,
+          Processors: [{ Type: 'Lambda', Parameters: params }],
+        },
+      },
+    });
+
+    it('a reordered set + server-injected param is NOT declared drift; the live-only param surfaces as undeclared', () => {
+      // AWS reorders the set (LambdaArn first) and injects NumberOfRetries=3 — exactly the
+      // shape observed live on firehose-processors-rich. Declared subset of live by
+      // ParameterName -> no declared FP.
+      const findings = classifyResource(
+        res(T, declared),
+        liveProcessing([
+          { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+          { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
+          { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+          { ParameterName: 'BufferSizeInMBs', ParameterValue: '1' },
+        ]),
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+      const undeclared = findings.filter((f) => f.tier === 'undeclared');
+      expect(undeclared.map((f) => f.path)).toEqual([
+        'ExtendedS3DestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
+      ]);
+      expect(undeclared[0]).toMatchObject({
+        nested: true,
+        actual: { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
+      });
+    });
+
+    it('a genuine change to a DECLARED parameter value still surfaces as declared drift (fail-closed)', () => {
+      // BufferSizeInMBs declared "1", live "5" -> alignParameterNameSubset returns null
+      // (a declared param value differs), so the whole-array finding is KEPT as drift.
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveProcessing([
+          { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+          { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
+          { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+          { ParameterName: 'BufferSizeInMBs', ParameterValue: '5' },
+        ]),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]?.path).toBe(
+        'ExtendedS3DestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters'
+      );
+    });
+
+    it('a declared parameter MISSING from live is declared drift, not silently dropped', () => {
+      // live omits BufferSizeInMBs entirely -> declared NOT a subset of live -> kept.
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveProcessing([
+          { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+          { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+        ]),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+    });
+  });
+
   describe('JSON-string vs declared object (SSM Document.Content)', () => {
     const T = 'AWS::SSM::Document';
     const content = {

@@ -1,0 +1,218 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Stream",
+    "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+    "physicalId": "cdkrd-firehose-processors-rich",
+    "constructPath": "CdkRealDriftIntegFirehoseProcessorsRich/Stream",
+    "declared": {
+      "DeliveryStreamName": "cdkrd-firehose-processors-rich",
+      "DeliveryStreamType": "DirectPut",
+      "ExtendedS3DestinationConfiguration": {
+        "BucketARN": "arn:aws:s3:::cdkrealdriftintegfirehoseprocessorsri-destc383b82a-wbrqmtqjxnd3",
+        "BufferingHints": {
+          "IntervalInSeconds": 300,
+          "SizeInMBs": 5
+        },
+        "CompressionFormat": "GZIP",
+        "ErrorOutputPrefix": "errors/",
+        "Prefix": "data/",
+        "ProcessingConfiguration": {
+          "Enabled": true,
+          "Processors": [
+            {
+              "Parameters": [
+                {
+                  "ParameterName": "RoleArn",
+                  "ParameterValue": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseProcessorsRic-Role1ABCC5F0-o0Fm1cSOw7Jp"
+                },
+                {
+                  "ParameterName": "BufferSizeInMBs",
+                  "ParameterValue": "1"
+                },
+                {
+                  "ParameterName": "BufferIntervalInSeconds",
+                  "ParameterValue": "61"
+                },
+                {
+                  "ParameterName": "LambdaArn",
+                  "ParameterValue": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegFirehoseProcess-TransformC0C45E96-kmYuNdoe0sYD"
+                }
+              ],
+              "Type": "Lambda"
+            }
+          ]
+        },
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseProcessorsRic-Role1ABCC5F0-o0Fm1cSOw7Jp"
+      }
+    }
+  },
+  "liveRaw": {
+    "DeliveryStreamType": "DirectPut",
+    "DeliveryStreamName": "cdkrd-firehose-processors-rich",
+    "Arn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/cdkrd-firehose-processors-rich",
+    "ExtendedS3DestinationConfiguration": {
+      "ErrorOutputPrefix": "errors/",
+      "BucketARN": "arn:aws:s3:::cdkrealdriftintegfirehoseprocessorsri-destc383b82a-wbrqmtqjxnd3",
+      "BufferingHints": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "CompressionFormat": "GZIP",
+      "EncryptionConfiguration": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "Prefix": "data/",
+      "ProcessingConfiguration": {
+        "Enabled": true,
+        "Processors": [
+          {
+            "Type": "Lambda",
+            "Parameters": [
+              {
+                "ParameterValue": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegFirehoseProcess-TransformC0C45E96-kmYuNdoe0sYD",
+                "ParameterName": "LambdaArn"
+              },
+              {
+                "ParameterValue": "3",
+                "ParameterName": "NumberOfRetries"
+              },
+              {
+                "ParameterValue": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseProcessorsRic-Role1ABCC5F0-o0Fm1cSOw7Jp",
+                "ParameterName": "RoleArn"
+              },
+              {
+                "ParameterValue": "1",
+                "ParameterName": "BufferSizeInMBs"
+              },
+              {
+                "ParameterValue": "61",
+                "ParameterName": "BufferIntervalInSeconds"
+              }
+            ]
+          }
+        ]
+      },
+      "CloudWatchLoggingOptions": {
+        "Enabled": false
+      },
+      "RoleARN": "arn:aws:iam::111111111111:role/CdkRealDriftIntegFirehoseProcessorsRic-Role1ABCC5F0-o0Fm1cSOw7Jp",
+      "S3BackupMode": "Disabled"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "ElasticsearchDestinationConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration"
+    ],
+    "createOnly": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "DirectPutSourceConfiguration.ThroughputHintInMBs",
+      "ElasticsearchDestinationConfiguration",
+      "ElasticsearchDestinationConfiguration.CloudWatchLoggingOptions.Enabled",
+      "ExtendedS3DestinationConfiguration.CustomTimeZone",
+      "ExtendedS3DestinationConfiguration.FileExtension",
+      "HttpEndpointDestinationConfiguration.EndpointConfiguration.AccessKey",
+      "HttpEndpointDestinationConfiguration.ProcessingConfiguration",
+      "HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "HttpEndpointDestinationConfiguration.SecretsManagerConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "RedshiftDestinationConfiguration.Password",
+      "RedshiftDestinationConfiguration.ProcessingConfiguration",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3Configuration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.Enabled",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.RoleARN",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.SecretARN",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration",
+      "SplunkDestinationConfiguration.BufferingHints",
+      "SplunkDestinationConfiguration.CloudWatchLoggingOptions",
+      "SplunkDestinationConfiguration.ProcessingConfiguration",
+      "SplunkDestinationConfiguration.S3Configuration.EncryptionConfiguration.NoEncryptionConfig",
+      "SplunkDestinationConfiguration.SecretsManagerConfiguration"
+    ],
+    "createOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration.VpcConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration.VpcConfiguration",
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "ElasticsearchDestinationConfiguration.VpcConfiguration",
+      "IcebergDestinationConfiguration.CatalogConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Stream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]",
+      "actual": {
+        "ParameterValue": "3",
+        "ParameterName": "NumberOfRetries"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-firehose-processors-rich",
+      "constructPath": "CdkRealDriftIntegFirehoseProcessorsRich/Stream"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Stream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.EncryptionConfiguration",
+      "actual": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-firehose-processors-rich",
+      "constructPath": "CdkRealDriftIntegFirehoseProcessorsRich/Stream"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Stream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.S3BackupMode",
+      "actual": "Disabled",
+      "nested": true,
+      "physicalId": "cdkrd-firehose-processors-rich",
+      "constructPath": "CdkRealDriftIntegFirehoseProcessorsRich/Stream"
+    }
+  ]
+}
