@@ -53,10 +53,13 @@ Then act on what `check` prints, from its own interactive prompt:
 1. **Whenever `check` finds drift** — act on it inline from the prompt:
    **Record / Revert / Ignore**. This works from the very first run, not just
    later.
-2. **First run** — usually no drift yet, just live-only values to **record** as
-   your baseline (one prompt; writes a git file, nothing to AWS — the switch that
-   arms undeclared / added detection). If real drift *is* present, you revert or
-   ignore it inline too, same as #1.
+2. **First run** — usually no drift yet, just live-only values (AWS defaults,
+   generated names) to **record** as your baseline. Recording is the payoff move:
+   it accepts today's undeclared state as the norm and *keeps watching*, so any
+   later out-of-band change to it shows up as drift — the undeclared detection
+   nothing else gives you. (You wouldn't revert these — they're legitimate — nor
+   ignore them and stop watching.) One prompt; writes a git file, nothing to AWS.
+   Genuine drift, if present, you revert or ignore inline (#1).
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
    drift).
 
