@@ -589,7 +589,13 @@ only when non-zero — unrecorded values are named as such, never folded into
     emits one declared finding per changed Key (`Finding.attributeKey`), and the
     writer sends ONLY those `Key=Value`s — a CC index patch would misalign against
     the full live bag (the template declares a subset) and exceed ELB's
-    20-attribute-per-call cap. Scoped to the EXACT top-level path: deeper
+    20-attribute-per-call cap. A CloudWatch Logs log group's
+    `BearerTokenAuthenticationEnabled` reverts via `PutBearerTokenAuthentication`
+    (the dedicated control-plane API): CC `UpdateResource` FAILS on this newer
+    boolean — its LogGroup update handler's downstream call errors with "The
+    security token included in the request is invalid" (proven live) — so the
+    writer toggles it directly (a `remove` reverts to the schema default DISABLED;
+    an `add` carries the desired boolean). Scoped to the EXACT top-level path: deeper
     `Policies.*` declared drift still patches via CC. A resource with both kinds
     of findings splits into one `cc` item and one `sdk` item.
 - **Not revertable (reported honestly, never silently skipped)**:

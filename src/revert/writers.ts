@@ -26,6 +26,10 @@ import {
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
+import {
+  CloudWatchLogsClient,
+  PutBearerTokenAuthenticationCommand,
+} from '@aws-sdk/client-cloudwatch-logs';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
 import {
   DescribeDomainConfigCommand,
@@ -601,6 +605,33 @@ const writeOpenSearchDomain: SdkWriter = async (ctx, ops) => {
   await c.send(new UpdateDomainConfigCommand(input as never));
 };
 
+// AWS::Logs::LogGroup.BearerTokenAuthenticationEnabled — Cloud Control CAN read this
+// type, but its UpdateResource FAILS on this (newer) boolean: the CC LogGroup update
+// handler's downstream CloudWatch Logs call errors with "The security token included in
+// the request is invalid" (proven live; the property has a dedicated control-plane API
+// the generic UpdateLogGroup path does not drive). CloudWatch Logs exposes
+// PutBearerTokenAuthentication for exactly this toggle, so route the revert through it.
+// The op is the BearerTokenAuthenticationEnabled toggle: a `remove` (undeclared, not in
+// baseline) reverts to the schema default of DISABLED; an `add` carries the desired
+// boolean (declared drift / recorded baseline value). The LogGroup physical id IS its
+// name, which PutBearerTokenAuthentication accepts as logGroupIdentifier.
+const writeLogGroupBearerTokenAuth: SdkWriter = async (ctx, ops) => {
+  const lg = str(ctx.physicalId) ?? str(ctx.declared['LogGroupName']);
+  if (!lg) throw new Error('cannot resolve log group name for revert');
+  const c = new CloudWatchLogsClient({ region: ctx.region });
+  for (const op of ops) {
+    // plan.ts groups this prop-scoped item to the single BearerTokenAuthenticationEnabled
+    // path, so there is one op; a `remove` means "back to default (disabled)".
+    const enabled = op.op === 'add' ? op.value === true : false;
+    await c.send(
+      new PutBearerTokenAuthenticationCommand({
+        logGroupIdentifier: lg,
+        bearerTokenAuthenticationEnabled: enabled,
+      })
+    );
+  }
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -621,6 +652,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 // drift at Policies.0...) still go through Cloud Control as before.
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
+  'AWS::Logs::LogGroup': { BearerTokenAuthenticationEnabled: writeLogGroupBearerTokenAuth },
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {
     LoadBalancerAttributes: writeElbLoadBalancerAttributes,
   },
