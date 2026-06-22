@@ -155,12 +155,12 @@ ApiStack: CLEAN after revert.
 offers from the prompt** — and the same actions as standalone commands for
 non-TTY use:
 
-| verb           | meaning                                                               | writes                     |
-| -------------- | --------------------------------------------------------------------- | -------------------------- |
-| `cdkrd check`  | find drift (the one you run)                                          | nothing                    |
-| `cdkrd record` | "this undeclared / added state is the norm — tell me if it _changes_" | a git file (baseline)      |
-| `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`) |
-| `cdkrd revert` | "this state is WRONG" — write the desired value back                  | AWS (plan + confirm)       |
+| verb           | meaning                                                               | writes                               |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------ |
+| `cdkrd check`  | find drift (the one you run)                                          | nothing — the 3 below do the writing |
+| `cdkrd record` | "this undeclared / added state is the norm — tell me if it _changes_" | a git file (baseline)                |
+| `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`)           |
+| `cdkrd revert` | "this state is WRONG" — write the desired value back                  | AWS (plan + confirm)                 |
 
 The one distinction to keep straight:
 
@@ -177,11 +177,13 @@ writes one.
 
 ## How it works
 
-cdkrd compares the **live AWS resource** against your **CloudFormation template**
-(the one you DEPLOYED by default; the local synth with `--pre-deploy`). It does
-**not** read your CDK code — it's reality vs intent, not `cdk diff`, so undeployed
-code changes never show up as drift (see [`--pre-deploy`](#--pre-deploy) for the
-opt-in inversion).
+cdkrd compares the **live AWS resource** against your **CloudFormation template** —
+the one you DEPLOYED by default, or the local CDK synth with `--pre-deploy`. The
+yardstick is always that template (deployed or synthesized), **not** a line-by-line
+diff of your CDK source the way `cdk diff` works — it's reality vs intent. So by
+default, undeployed code changes never show up as drift; `--pre-deploy` inverts
+that, checking live state against the freshly synthesized template (see
+[`--pre-deploy`](#--pre-deploy)).
 
 ### The vocabulary
 
