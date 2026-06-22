@@ -71,12 +71,18 @@ ApiStack: unrecorded values found — what do you want to do?
     Decide per finding — assign a different action to each
 ```
 
+What each choice does here:
+
+- **Record** — accept the live-only values as the norm; cdkrd watches them and
+  re-flags any later out-of-band change. The usual first-run choice, and the switch
+  that arms undeclared / added detection.
+- **Revert** — write the desired value back to AWS: *removes* an undeclared
+  live-only value (rarely what you want for a legitimate default), or restores a
+  declared one.
+- **Ignore** — stop reporting it, for good (watching off).
+
 A few things to know about that first run:
 
-- **Record is the move.** It accepts today's live-only values as the norm and
-  *keeps watching*, so a later out-of-band change to them shows up as drift — the
-  undeclared detection nothing else gives. (Revert is offered too, but it *removes*
-  these legitimate values; Ignore stops watching them.)
 - **`Not Recorded` is expected, not a false positive.** The list is the full
   inventory, standouts only (`--show-all` expands), printed *before* the prompt — so
   you never record blind.
