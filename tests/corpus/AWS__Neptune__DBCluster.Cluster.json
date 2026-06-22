@@ -1,0 +1,185 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::Neptune::DBCluster",
+    "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+    "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster",
+    "declared": {
+      "DBSubnetGroupName": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+      "DeletionProtection": false,
+      "EngineVersion": "1.3"
+    }
+  },
+  "liveRaw": {
+    "StorageEncrypted": false,
+    "EngineVersion": "1.3.5.0",
+    "AssociatedRoles": [],
+    "AvailabilityZones": ["ap-northeast-1c", "ap-northeast-1d", "ap-northeast-1a"],
+    "Port": "8182",
+    "DBClusterIdentifier": "neptunedbcluster-jmhbhbdjulu9",
+    "PreferredMaintenanceWindow": "sat:14:01-sat:14:31",
+    "IamAuthEnabled": false,
+    "DBSubnetGroupName": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+    "DeletionProtection": false,
+    "PreferredBackupWindow": "21:15-21:45",
+    "DBPort": 8182,
+    "ClusterResourceId": "cluster-HUBGEUVUYBS2BWC2IOTHYJVVCY",
+    "Endpoint": "neptunedbcluster-jmhbhbdjulu9.cluster-c8xglnroz2jt.ap-northeast-1.neptune.amazonaws.com",
+    "VpcSecurityGroupIds": ["sg-09a4346aa4ef78d16"],
+    "NetworkType": "IPV4",
+    "ReadEndpoint": "neptunedbcluster-jmhbhbdjulu9.cluster-ro-c8xglnroz2jt.ap-northeast-1.neptune.amazonaws.com",
+    "CopyTagsToSnapshot": false,
+    "DBClusterParameterGroupName": "default.neptune1.3",
+    "BackupRetentionPeriod": 1,
+    "Tags": [
+      {
+        "Value": "Cluster",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:ap-northeast-1:111111111111:stack/CdkRealDriftIntegNeptuneRich/d4b6c970-6e1a-11f1-b5f4-061b70f4ac69",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegNeptuneRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": ["ClusterResourceId", "Endpoint", "Port", "ReadEndpoint"],
+    "writeOnly": [
+      "DBInstanceParameterGroupName",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "AvailabilityZones",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "GlobalClusterIdentifier",
+      "KmsKeyId",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "readOnlyPaths": ["ClusterResourceId", "Endpoint", "Port", "ReadEndpoint"],
+    "writeOnlyPaths": [
+      "DBInstanceParameterGroupName",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZones",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "GlobalClusterIdentifier",
+      "KmsKeyId",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "defaults": {
+      "BackupRetentionPeriod": 1,
+      "RestoreType": "full-copy"
+    },
+    "defaultPaths": {
+      "BackupRetentionPeriod": 1,
+      "RestoreType": "full-copy"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "AvailabilityZones",
+      "actual": ["ap-northeast-1c", "ap-northeast-1d", "ap-northeast-1a"],
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sat:14:01-sat:14:31",
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "PreferredBackupWindow",
+      "actual": "21:15-21:45",
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "DBPort",
+      "actual": 8182,
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-09a4346aa4ef78d16"],
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "DBClusterParameterGroupName",
+      "actual": "default.neptune1.3",
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Neptune::DBCluster",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "neptunedbcluster-jmhbhbdjulu9",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
+    }
+  ]
+}

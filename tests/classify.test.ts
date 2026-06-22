@@ -695,12 +695,44 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       expect(
         tiers(
           classifyResource(
-            client({ CallbackURLs: ['https://b.example', 'https://a.example'] }),
-            { CallbackURLs: ['https://a.example', 'https://b.example'] },
+            client({ ReadAttributes: ['email', 'name'] }),
+            { ReadAttributes: ['name', 'email'] },
             emptySchema
           )
         ).declared
-      ).toEqual(['CallbackURLs']);
+      ).toEqual(['ReadAttributes']);
+    });
+
+    // Live-observed FP (cognito-callbackurls fixture): Cognito reorders the
+    // CallbackURLs / LogoutURLs sets — declared [zeta,alpha,mike] read back
+    // [alpha,mike,zeta]. Same set-reorder class as the OAuth lists, now folded.
+    it('UNORDERED_ARRAY_PROPS: Cognito CallbackURLs/LogoutURLs reorder is NOT drift', () => {
+      const client = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'WebClient',
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        physicalId: 'client123',
+        declared,
+      });
+      for (const prop of ['CallbackURLs', 'LogoutURLs']) {
+        // reordered same set -> no drift
+        expect(
+          classifyResource(
+            client({ [prop]: ['https://z.example', 'https://a.example', 'https://m.example'] }),
+            { [prop]: ['https://a.example', 'https://m.example', 'https://z.example'] },
+            emptySchema
+          )
+        ).toEqual([]);
+        // a genuine URL add/remove still changes the multiset -> reports
+        expect(
+          tiers(
+            classifyResource(
+              client({ [prop]: ['https://z.example', 'https://a.example'] }),
+              { [prop]: ['https://a.example', 'https://NEW.example'] },
+              emptySchema
+            )
+          ).declared
+        ).toEqual([prop]);
+      }
     });
 
     it('UNORDERED_ARRAY_PROPS: WAFv2 IPSet Addresses in a different order is NOT drift (R84)', () => {
@@ -728,6 +760,36 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
           )
         ).declared
       ).toEqual(['Addresses']);
+    });
+
+    // Live-observed FP (route53-multivalue fixture): a multi-value DNS RecordSet's
+    // ResourceRecords are a SET — Route53 echoes them in its own canonical order
+    // (declared TXT [zeta,alpha,mike] read back [mike,alpha,zeta]; A IPs reordered).
+    it('UNORDERED_ARRAY_PROPS: Route53 RecordSet ResourceRecords reorder is NOT drift', () => {
+      const rec = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'TxtRecord',
+        resourceType: 'AWS::Route53::RecordSet',
+        physicalId: 'rec-1',
+        declared,
+      });
+      // same value set, reordered — no drift
+      expect(
+        classifyResource(
+          rec({ ResourceRecords: ['"zeta"', '"alpha"', '"mike"'] }),
+          { ResourceRecords: ['"mike"', '"alpha"', '"zeta"'] },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine value change still reports
+      expect(
+        tiers(
+          classifyResource(
+            rec({ ResourceRecords: ['203.0.113.30', '203.0.113.10'] }),
+            { ResourceRecords: ['203.0.113.99', '203.0.113.10'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['ResourceRecords']);
     });
 
     it('undeclared EventSelectors equal to the default folds to atDefault; a changed one surfaces', () => {
@@ -2049,6 +2111,26 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     expect(declaredPaths('AWS::Other::Thing', { Version: '8.0' }, { Version: '8.0.45' })).toEqual([
       'Version',
     ]);
+  });
+
+  // Live-observed FP (neptune-rich fixture): Neptune accepts a major.minor
+  // EngineVersion and reads back the concrete 4-segment patch it provisioned.
+  it('Neptune DBCluster EngineVersion "1.3" resolved to live "1.3.5.0" is NOT declared drift', () => {
+    expect(
+      declaredPaths(
+        'AWS::Neptune::DBCluster',
+        { EngineVersion: '1.3' },
+        { EngineVersion: '1.3.5.0' }
+      )
+    ).toEqual([]);
+    // a genuine track change still differs
+    expect(
+      declaredPaths(
+        'AWS::Neptune::DBCluster',
+        { EngineVersion: '1.2' },
+        { EngineVersion: '1.3.5.0' }
+      )
+    ).toEqual(['EngineVersion']);
   });
 
   it('MasterUsername resolved to UNRESOLVED (dynamic ref) is unresolved, not declared drift', () => {

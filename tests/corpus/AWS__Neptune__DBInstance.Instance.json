@@ -1,0 +1,121 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Instance",
+    "resourceType": "AWS::Neptune::DBInstance",
+    "physicalId": "neptunedbinstance-l2b64zeeyarj",
+    "constructPath": "CdkRealDriftIntegNeptuneRich/Instance",
+    "declared": {
+      "DBClusterIdentifier": "neptunedbcluster-jmhbhbdjulu9",
+      "DBInstanceClass": "db.t4g.medium"
+    }
+  },
+  "liveRaw": {
+    "DBParameterGroupName": "default.neptune1.3",
+    "Endpoint": "neptunedbinstance-l2b64zeeyarj.c8xglnroz2jt.ap-northeast-1.neptune.amazonaws.com",
+    "DBInstanceClass": "db.t4g.medium",
+    "Port": "8182",
+    "DBClusterIdentifier": "neptunedbcluster-jmhbhbdjulu9",
+    "AvailabilityZone": "ap-northeast-1c",
+    "PreferredMaintenanceWindow": "tue:20:02-tue:20:32",
+    "AutoMinorVersionUpgrade": true,
+    "PubliclyAccessible": false,
+    "DBSubnetGroupName": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+    "DBInstanceIdentifier": "neptunedbinstance-l2b64zeeyarj",
+    "Tags": [
+      {
+        "Value": "Instance",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:ap-northeast-1:111111111111:stack/CdkRealDriftIntegNeptuneRich/d4b6c970-6e1a-11f1-b5f4-061b70f4ac69",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegNeptuneRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Endpoint", "Port"],
+    "writeOnly": ["AllowMajorVersionUpgrade", "DBSnapshotIdentifier"],
+    "createOnly": [
+      "AutoMinorVersionUpgrade",
+      "AvailabilityZone",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBParameterGroupName",
+      "DBSnapshotIdentifier",
+      "DBSubnetGroupName",
+      "PreferredMaintenanceWindow"
+    ],
+    "readOnlyPaths": ["Endpoint", "Port"],
+    "writeOnlyPaths": ["AllowMajorVersionUpgrade", "DBSnapshotIdentifier"],
+    "createOnlyPaths": [
+      "AutoMinorVersionUpgrade",
+      "AvailabilityZone",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBParameterGroupName",
+      "DBSnapshotIdentifier",
+      "DBSubnetGroupName",
+      "PreferredMaintenanceWindow"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Instance",
+      "resourceType": "AWS::Neptune::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "default.neptune1.3",
+      "physicalId": "neptunedbinstance-l2b64zeeyarj",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Instance"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Instance",
+      "resourceType": "AWS::Neptune::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "ap-northeast-1c",
+      "physicalId": "neptunedbinstance-l2b64zeeyarj",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Instance"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Instance",
+      "resourceType": "AWS::Neptune::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "tue:20:02-tue:20:32",
+      "physicalId": "neptunedbinstance-l2b64zeeyarj",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Instance"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Instance",
+      "resourceType": "AWS::Neptune::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "neptunedbinstance-l2b64zeeyarj",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Instance"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Instance",
+      "resourceType": "AWS::Neptune::DBInstance",
+      "path": "DBSubnetGroupName",
+      "actual": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+      "physicalId": "neptunedbinstance-l2b64zeeyarj",
+      "constructPath": "CdkRealDriftIntegNeptuneRich/Instance"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Client",
+    "resourceType": "AWS::Cognito::UserPoolClient",
+    "physicalId": "vse1lkm5r2r10drv0be31kv7u",
+    "constructPath": "CdkRealDriftIntegCognitoCallbackUrls/Client",
+    "declared": {
+      "AllowedOAuthFlows": ["code", "implicit"],
+      "AllowedOAuthFlowsUserPoolClient": true,
+      "AllowedOAuthScopes": ["openid", "email", "profile"],
+      "CallbackURLs": [
+        "https://zeta.example.com/callback",
+        "https://alpha.example.com/callback",
+        "https://mike.example.com/callback"
+      ],
+      "ClientName": "cdkrd-fp-callbackurls-client",
+      "LogoutURLs": [
+        "https://zeta.example.com/logout",
+        "https://alpha.example.com/logout",
+        "https://mike.example.com/logout"
+      ],
+      "SupportedIdentityProviders": ["COGNITO"],
+      "UserPoolId": "ap-northeast-1_AbxqQaf8G"
+    }
+  },
+  "liveRaw": {
+    "GenerateSecret": false,
+    "CallbackURLs": [
+      "https://alpha.example.com/callback",
+      "https://mike.example.com/callback",
+      "https://zeta.example.com/callback"
+    ],
+    "EnablePropagateAdditionalUserContextData": false,
+    "AuthSessionValidity": 3,
+    "AllowedOAuthScopes": ["email", "openid", "profile"],
+    "TokenValidityUnits": {},
+    "ReadAttributes": [],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "SupportedIdentityProviders": ["COGNITO"],
+    "Name": "cdkrd-fp-callbackurls-client",
+    "ClientName": "cdkrd-fp-callbackurls-client",
+    "UserPoolId": "ap-northeast-1_AbxqQaf8G",
+    "AllowedOAuthFlows": ["code", "implicit"],
+    "ExplicitAuthFlows": [],
+    "LogoutURLs": [
+      "https://alpha.example.com/logout",
+      "https://mike.example.com/logout",
+      "https://zeta.example.com/logout"
+    ],
+    "ClientId": "vse1lkm5r2r10drv0be31kv7u",
+    "RefreshTokenValidity": 30,
+    "WriteAttributes": [],
+    "EnableTokenRevocation": true
+  },
+  "schema": {
+    "readOnly": ["ClientId", "ClientSecret", "Name"],
+    "writeOnly": [],
+    "createOnly": ["GenerateSecret", "UserPoolId"],
+    "readOnlyPaths": ["ClientId", "ClientSecret", "Name"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GenerateSecret", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Client",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "AuthSessionValidity",
+      "actual": 3,
+      "physicalId": "vse1lkm5r2r10drv0be31kv7u",
+      "constructPath": "CdkRealDriftIntegCognitoCallbackUrls/Client"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Client",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "RefreshTokenValidity",
+      "actual": 30,
+      "physicalId": "vse1lkm5r2r10drv0be31kv7u",
+      "constructPath": "CdkRealDriftIntegCognitoCallbackUrls/Client"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Client",
+      "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "EnableTokenRevocation",
+      "actual": true,
+      "physicalId": "vse1lkm5r2r10drv0be31kv7u",
+      "constructPath": "CdkRealDriftIntegCognitoCallbackUrls/Client"
+    }
+  ]
+}
