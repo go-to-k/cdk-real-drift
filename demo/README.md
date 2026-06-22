@@ -27,8 +27,9 @@ bash demo/setup.sh        # deploy + baseline + inject the out-of-band drift
 bash demo/teardown.sh     # drop the injected policy + destroy the stack
 ```
 
-The `Sleep` values in `cdkrd.tape` cover the live AWS calls (`cdk drift` takes
-~40s); trim the resulting GIF if you want it snappier.
+The `Sleep` value in `cdkrd.tape` covers the live `cdkrd check` call; trim the
+resulting GIF if you want it snappier. The GIF shows only `cdkrd check` — the
+`cdk drift` reports-0 contrast lives in the top-level README prose above the GIF.
 
 The top-level `README.md` already embeds `demo/demo.gif`, so re-recording just
 overwrites the committed file — no README edit needed.
