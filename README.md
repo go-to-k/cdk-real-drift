@@ -134,8 +134,9 @@ finding** is the only path that assigns a _different_ action to each finding.
   resources — in the baseline, so `check` stays CLEAN until they change again (a
   multiselect lets you record some and keep reporting others; everything is
   pre-selected). Mirroring the report, only the **standout** values are itemized;
-  the folded nested sub-keys (`undeclared-subkey`) are recorded as a summarized
-  count (`--show-all` itemizes each). Keeps watching.
+  the folded nested sub-keys (`undeclared-subkey`) are **always recorded** and the
+  picker header discloses the count (deselect a standout to "record the rest";
+  `--show-all` itemizes each nested value). Keeps watching.
 - **Ignore** writes a path rule to `.cdkrd/config.json` so the drift (declared,
   undeclared, _or_ an out-of-band **added** resource) stops being reported entirely
   (multiselect, **nothing pre-selected** — opt in, since ignoring permanently stops

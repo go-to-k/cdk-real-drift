@@ -90,11 +90,20 @@ export function formatSurvivingDrift(remaining: Finding[], cap = 10): string[] {
 
 /**
  * Header for record's multiselect (R49, R116). The key hints (space / → / ← / enter)
- * are rendered by `bulkMultiselect` itself, so this is just the one-line prompt. Pure +
- * exported so the wording is unit-tested.
+ * are rendered by `bulkMultiselect` itself, so this is just the one-line prompt. When
+ * `foldedCount` > 0 it DISCLOSES that those nested sub-keys are recorded too — the picker
+ * lists only the standout rows, so without this the user could see (say) one row and not
+ * realise enter also records the folded values. The folded values are NOT individually
+ * deselectable here: "record only the standout, keep the folded reported" has no use case
+ * (the folded would just nag forever), whereas deselecting a standout to "record the rest"
+ * IS useful — so standouts toggle, the folded always record. Pure + exported.
  */
-export function recordSelectMessage(stackName: string): string {
-  return `${stackName}: select undeclared value(s) to record (unselected stay reported)`;
+export function recordSelectMessage(stackName: string, foldedCount = 0): string {
+  const fold =
+    foldedCount > 0
+      ? `; +${foldedCount} folded sub-key(s) ALWAYS recorded too (--show-all to itemize)`
+      : '';
+  return `${stackName}: select undeclared value(s) to record (unselected stay reported)${fold}`;
 }
 
 /**
@@ -196,8 +205,8 @@ function revertOpKey(item: RevertItem, op: RevertItem['ops'][number]): string {
   // (/LoadBalancerAttributes) and differ only by attributeKey, so without it every
   // bag attribute collapses to one multiselect row and toggles as a unit. Non-bag
   // ops have no attributeKey, so their key is unchanged.
-  const attr = op.attributeKey !== undefined ? ` ${op.attributeKey}` : '';
-  return `${item.logicalId} ${item.kind} ${op.path}${attr}`;
+  const attr = op.attributeKey !== undefined ? `${op.attributeKey}` : '';
+  return `${item.logicalId}${item.kind}${op.path}${attr}`;
 }
 
 /** Keep only the selected ops; items left with no ops drop out. Pure + exported. */
@@ -300,15 +309,17 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       if (preselectedKeys) {
         picked = changed.map((e) => recordedKey(e)).filter((k) => preselectedKeys.has(k));
       } else {
-        // Mirror the report's R96 fold: itemize only the STANDOUT (non-nested) values;
-        // the nested live-only sub-keys (the `undeclared-subkey` mass) are auto-recorded
-        // as a summarized count rather than dozens of rows. `--show-all`/`--verbose`
-        // (expandNested) lists every nested value individually instead.
+        // Mirror the report's R96 fold: itemize only the STANDOUT (non-nested) values; the
+        // folded nested sub-keys (the `undeclared-subkey` mass) are ALWAYS recorded and the
+        // header discloses the count. They are deliberately NOT individually deselectable —
+        // "record only the standout, keep the folded reported" has no use case (the folded
+        // would just nag forever), while deselecting a standout to "record the rest" stays
+        // possible (the folded still record). To record nothing, cancel (esc). `--show-all`/
+        // `--verbose` (expandNested) itemizes every nested value as its own row instead.
         const { standout, folded } = splitFoldedNested(changed, findings, expandNested);
         if (standout.length === 0) {
-          // Nothing to itemize (every changed value is a folded nested sub-key — the
-          // common all-nested first run). Confirm the bulk record instead of showing an
-          // empty multiselect; the folded count is the decision.
+          // Nothing to itemize (every changed value is a folded nested sub-key — the common
+          // all-nested first run). A Yes/No commit replaces the empty multiselect.
           const proceed = await confirm({
             message: `${stackName}: record ${folded.length} undeclared sub-key value(s)? (--show-all to itemize each)`,
             initialValue: true,
@@ -320,7 +331,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
           picked = changed.map((e) => recordedKey(e));
         } else {
           const fromPrompt = await bulkMultiselect(
-            recordSelectMessage(stackName),
+            recordSelectMessage(stackName, folded.length),
             // default = all selected (→/← bulk-toggle from there)
             standout.map((e) => ({
               value: recordedKey(e),
@@ -337,10 +348,6 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
           // the folded nested values are always recorded alongside the picked standouts
           picked = [...fromPrompt, ...folded.map((e) => recordedKey(e))];
         }
-        if (folded.length > 0)
-          console.error(
-            `note: ${stackName}: +${folded.length} folded undeclared sub-key value(s) recorded (--show-all to itemize)`
-          );
       }
       const selectedChanged = selectRecorded(findings, new Set(picked));
       recorded = [...unchanged, ...selectedChanged]; // auto-kept unchanged + the user's picks
