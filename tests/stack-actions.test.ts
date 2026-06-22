@@ -29,6 +29,7 @@ import {
   revertConfirmMessage,
   revertSelectOptions,
   revertStack,
+  summarizeRevertResults,
 } from '../src/commands/stack-actions.js';
 
 describe('includeUnrecordedRemovals (R113 — surface undeclared REMOVE in a gated prompt)', () => {
@@ -267,6 +268,82 @@ describe('formatPlan (R35 — NOT-revertable folds to a per-reason summary)', ()
     );
     expect(lines[2]).toContain('If the live values are RIGHT, record them');
     expect(lines[3]).toContain('REMOVED, re-run revert with --remove-unrecorded');
+  });
+
+  it('a resource split into a cc item + a prop-scoped sdk item renders ONE block (not two)', () => {
+    // e.g. a Logs LogGroup whose RetentionInDays reverts via Cloud Control while
+    // BearerTokenAuthenticationEnabled reverts via the SDK writer — two plan items, same
+    // logical id. The listing must merge them into one header + all ops.
+    const plan: RevertPlan = {
+      items: [
+        {
+          logicalId: 'LG',
+          displayId: 'Stack/LogGroup',
+          resourceType: 'AWS::Logs::LogGroup',
+          physicalId: '/aws/lambda/fn',
+          kind: 'cc',
+          ops: [
+            {
+              op: 'add',
+              path: '/RetentionInDays',
+              value: 731,
+              human: 'RetentionInDays -> deployed-template value',
+            },
+          ],
+        },
+        {
+          logicalId: 'LG',
+          displayId: 'Stack/LogGroup',
+          resourceType: 'AWS::Logs::LogGroup',
+          physicalId: '/aws/lambda/fn',
+          kind: 'sdk',
+          ops: [
+            {
+              op: 'remove',
+              path: '/BearerTokenAuthenticationEnabled',
+              human: 'BearerTokenAuthenticationEnabled -> remove (undeclared, not in baseline)',
+            },
+          ],
+        },
+      ],
+      notRevertable: [],
+    };
+    const lines = formatPlan('s', 'r', plan, {});
+    expect(lines.filter((l) => l === '\n  Stack/LogGroup (AWS::Logs::LogGroup)')).toHaveLength(1);
+    expect(lines).toContain('    - RetentionInDays -> deployed-template value');
+    expect(lines).toContain(
+      '    - BearerTokenAuthenticationEnabled -> remove (undeclared, not in baseline)'
+    );
+  });
+});
+
+describe('summarizeRevertResults (one outcome per resource even when it split into cc+sdk items)', () => {
+  it('all items for a resource ok -> a single reverted entry', () => {
+    const out = summarizeRevertResults([
+      { logicalId: 'LG', displayId: 'Stack/LogGroup', ok: true },
+      { logicalId: 'LG', displayId: 'Stack/LogGroup', ok: true },
+    ]);
+    expect(out).toEqual([{ displayId: 'Stack/LogGroup', ok: true }]);
+  });
+
+  it('any item failing -> a single FAILED entry joining the errors (never a duplicate success)', () => {
+    const out = summarizeRevertResults([
+      { logicalId: 'LG', displayId: 'Stack/LogGroup', ok: true },
+      { logicalId: 'LG', displayId: 'Stack/LogGroup', ok: false, error: 'boom' },
+    ]);
+    expect(out).toEqual([{ displayId: 'Stack/LogGroup', ok: false, error: 'boom' }]);
+  });
+
+  it('distinct resources keep distinct entries in first-seen order', () => {
+    const out = summarizeRevertResults([
+      { logicalId: 'B', displayId: 'Stack/B', ok: true },
+      { logicalId: 'A', displayId: 'Stack/A', ok: false, error: 'e1' },
+      { logicalId: 'A', displayId: 'Stack/A', ok: false, error: 'e2' },
+    ]);
+    expect(out).toEqual([
+      { displayId: 'Stack/B', ok: true },
+      { displayId: 'Stack/A', ok: false, error: 'e1; e2' },
+    ]);
   });
 });
 

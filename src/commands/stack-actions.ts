@@ -456,9 +456,29 @@ export function formatPlan(
       '      if they should be REMOVED, re-run revert with --remove-unrecorded.'
     );
   }
+  // A resource can split into MORE THAN ONE plan item (a Cloud Control `cc` item plus a
+  // prop-scoped `sdk` item route through different writers — e.g. a Logs LogGroup whose
+  // RetentionInDays reverts via CC while BearerTokenAuthenticationEnabled reverts via the
+  // SDK writer). Merge them into ONE block per resource so the listing reads per-resource,
+  // not per-writer-group (two identical-header blocks for the same resource is confusing).
+  const planByResource = new Map<
+    string,
+    { displayId: string; resourceType: string; humans: string[] }
+  >();
   for (const item of plan.items) {
-    lines.push(`\n  ${item.displayId} (${item.resourceType})`);
-    for (const op of item.ops) lines.push(`    - ${op.human}`);
+    const g = planByResource.get(item.logicalId);
+    const humans = item.ops.map((op) => op.human);
+    if (g) g.humans.push(...humans);
+    else
+      planByResource.set(item.logicalId, {
+        displayId: item.displayId,
+        resourceType: item.resourceType,
+        humans,
+      });
+  }
+  for (const g of planByResource.values()) {
+    lines.push(`\n  ${g.displayId} (${g.resourceType})`);
+    for (const h of g.humans) lines.push(`    - ${h}`);
   }
   if (plan.notRevertable.length > 0) {
     if (opts.verbose) {
@@ -480,6 +500,31 @@ export function formatPlan(
     }
   }
   return lines;
+}
+
+/** Collapse per-item apply results into ONE outcome per resource (logical id). A
+ *  resource that split into a `cc` item and a prop-scoped `sdk` item produced two
+ *  results; print a single `reverted:` line for it when every item succeeded, and a
+ *  single `FAILED:` line (joining the failing writers' errors) when any did not — so a
+ *  fully reverted resource never prints twice and a partial failure is never shown as a
+ *  plain success. Insertion order (first item per resource) is preserved. */
+export function summarizeRevertResults(
+  applied: readonly { logicalId: string; displayId: string; ok: boolean; error?: string }[]
+): { displayId: string; ok: boolean; error?: string }[] {
+  const byResource = new Map<string, { displayId: string; ok: boolean; errors: string[] }>();
+  for (const a of applied) {
+    const g = byResource.get(a.logicalId) ?? { displayId: a.displayId, ok: true, errors: [] };
+    if (!a.ok) {
+      g.ok = false;
+      if (a.error) g.errors.push(a.error);
+    }
+    byResource.set(a.logicalId, g);
+  }
+  return [...byResource.values()].map((g) =>
+    g.ok
+      ? { displayId: g.displayId, ok: true }
+      : { displayId: g.displayId, ok: false, error: g.errors.join('; ') }
+  );
 }
 
 function printPlan(
@@ -675,6 +720,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // correctly vanishes from `post`, but a FAILED one would vanish too (reading as CLEAN).
   // Track the failed ones and re-add their findings so they still count as drift.
   const failedDeleteIds = new Set<string>();
+  const applied: { logicalId: string; displayId: string; ok: boolean; error?: string }[] = [];
   for (const item of plan.items) {
     let r: { ok: boolean; error?: string };
     if (item.kind === 'delete') {
@@ -719,12 +765,22 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       const ccItem = { ...item, ops: extra.length > 0 ? [...tagged, ...extra] : tagged };
       r = await applyRevertItem(cc, ccItem, identifier);
     }
-    console.log(
-      r.ok
-        ? style.ok(`  reverted: ${item.displayId}`)
-        : style.fail(`  FAILED: ${item.displayId} — ${r.error}`)
-    );
+    applied.push({
+      logicalId: item.logicalId,
+      displayId: item.displayId,
+      ok: r.ok,
+      ...(r.error !== undefined && { error: r.error }),
+    });
     if (!r.ok) worst = Math.max(worst, 2);
+  }
+  // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
+  // produced two results) so a fully reverted resource never prints `reverted:` twice.
+  for (const s of summarizeRevertResults(applied)) {
+    console.log(
+      s.ok
+        ? style.ok(`  reverted: ${s.displayId}`)
+        : style.fail(`  FAILED: ${s.displayId} — ${s.error}`)
+    );
   }
 
   // Re-check convergence — scoped to the resources the revert just touched (R44).
