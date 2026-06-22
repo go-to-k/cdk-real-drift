@@ -360,6 +360,18 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULTS['AWS::IAM::Role'].MaxSessionDuration).toBe(3600);
   });
 
+  it('EC2 Instance known defaults present — the 3 constant defaults a fresh instance reports (PR #310 follow-up)', () => {
+    // Tenancy/SourceDestCheck/InstanceInitiatedShutdownBehavior are account-/
+    // instance-independent constant defaults; the ec2-instance-rich corpus case
+    // exercises the fold. Resource-specific live values (PrivateIpAddress,
+    // SecurityGroups, CpuOptions, …) are deliberately NOT folded.
+    expect(KNOWN_DEFAULTS['AWS::EC2::Instance']).toEqual({
+      Tenancy: 'default',
+      SourceDestCheck: true,
+      InstanceInitiatedShutdownBehavior: 'stop',
+    });
+  });
+
   it('S3 suspended versioning is a known default — the off state a revert lands on (R46)', () => {
     expect(KNOWN_DEFAULTS['AWS::S3::Bucket'].VersioningConfiguration).toEqual({
       Status: 'Suspended',
