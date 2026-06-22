@@ -355,7 +355,7 @@
       "constructPath": "CdkrdIntegHarvest3/Users"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "DeletionProtection",
@@ -375,7 +375,7 @@
       "constructPath": "CdkrdIntegHarvest3/Users"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "MfaConfiguration",
@@ -622,7 +622,7 @@
       "constructPath": "CdkrdIntegHarvest3/Users"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Users0A0EEA89",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolTier",

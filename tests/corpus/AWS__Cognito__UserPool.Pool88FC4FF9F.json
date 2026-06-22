@@ -342,7 +342,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "DeletionProtection",
@@ -362,7 +362,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "MfaConfiguration",
@@ -630,7 +630,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolTier",

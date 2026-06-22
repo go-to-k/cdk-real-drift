@@ -61,7 +61,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Client4A7F64DF",
       "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "AuthSessionValidity",
@@ -79,7 +79,7 @@
       "constructPath": "CdkRealDriftIntegCognito/Client"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Client4A7F64DF",
       "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "EnableTokenRevocation",

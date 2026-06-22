@@ -603,6 +603,25 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t({ VisibilityTimeout: 60 }).undeclared).toEqual(['VisibilityTimeout']);
   });
 
+  it('noise-sweep batch: the default folds, a flipped (security-relevant) value surfaces', () => {
+    const t = (rt: string, live: Record<string, unknown>) =>
+      tiers(classifyResource(bare(rt), live, emptySchema));
+    // Cognito DeletionProtection: default INACTIVE folds; turning it ON is meaningful → surfaces
+    expect(t('AWS::Cognito::UserPool', { DeletionProtection: 'INACTIVE' }).atDefault).toEqual([
+      'DeletionProtection',
+    ]);
+    expect(t('AWS::Cognito::UserPool', { DeletionProtection: 'ACTIVE' }).undeclared).toEqual([
+      'DeletionProtection',
+    ]);
+    // KMS Key Enabled: default true folds. (Enabled:false is dropped upstream as
+    // trivially-empty, pre-existing — not this batch's concern.)
+    expect(t('AWS::KMS::Key', { Enabled: true }).atDefault).toEqual(['Enabled']);
+    // ECR mutability: default MUTABLE folds; IMMUTABLE surfaces
+    expect(t('AWS::ECR::Repository', { ImageTagMutability: 'IMMUTABLE' }).undeclared).toEqual([
+      'ImageTagMutability',
+    ]);
+  });
+
   it('R104: StateMachineType STANDARD folds, EXPRESS stays undeclared (equality-gated curation)', () => {
     const t = (v: string) =>
       tiers(

@@ -32,7 +32,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Profile6F32097C",
       "resourceType": "AWS::IAM::InstanceProfile",
       "path": "Path",

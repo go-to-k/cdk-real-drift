@@ -63,7 +63,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::ApiGatewayV2::Api",
       "path": "IpAddressType",

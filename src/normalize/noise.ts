@@ -116,6 +116,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ThroughputMode: 'bursting',
     BackupPolicy: { Status: 'DISABLED' },
     FileSystemProtection: { ReplicationOverwriteProtection: 'ENABLED' },
+    PerformanceMode: 'generalPurpose', // R-noise-sweep: default; switching to maxIO no longer matches and surfaces
   },
   'AWS::StepFunctions::StateMachine': {
     StateMachineType: 'STANDARD',
@@ -139,6 +140,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // values, no large/evolving config blobs like Athena WorkGroupConfiguration).
   'AWS::ApiGatewayV2::Api': {
     RouteSelectionExpression: '$request.method $request.path',
+    IpAddressType: 'ipv4', // R-noise-sweep: default; flipping to dualstack no longer matches and surfaces
   },
   'AWS::ApiGatewayV2::Integration': {
     ConnectionType: 'INTERNET',
@@ -155,6 +157,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::ECR::Repository': {
     EncryptionConfiguration: { EncryptionType: 'AES256' },
+    ImageTagMutability: 'MUTABLE', // R-noise-sweep: default; switching to IMMUTABLE no longer matches and surfaces
   },
   'AWS::Kinesis::Stream': {
     MaxRecordSizeInKiB: 1024,
@@ -167,6 +170,42 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::SNS::Subscription': {
     FilterPolicyScope: 'MessageAttributes',
+  },
+  // R-noise-sweep (data-driven from scripts/measure-noise.sh over the golden corpus):
+  // constant, documented AWS defaults for common types — never names/ids/ARNs, never
+  // region-/account-/AZ-/time-specific values, never engine-derived (RDS windows/port/
+  // option-group). Equality-gated like every entry: flip the value out of band and it
+  // no longer matches, so it re-surfaces as real undeclared drift.
+  'AWS::Cognito::UserPool': {
+    MfaConfiguration: 'OFF',
+    DeletionProtection: 'INACTIVE',
+    UserPoolTier: 'ESSENTIALS',
+  },
+  'AWS::Cognito::UserPoolClient': {
+    EnableTokenRevocation: true,
+    AuthSessionValidity: 3,
+  },
+  'AWS::ECS::Service': {
+    SchedulingStrategy: 'REPLICA',
+  },
+  'AWS::AppSync::GraphQLApi': {
+    ApiType: 'GRAPHQL',
+    Visibility: 'GLOBAL',
+    IntrospectionConfig: 'ENABLED',
+  },
+  'AWS::KMS::Key': {
+    Enabled: true,
+  },
+  'AWS::IAM::Group': {
+    Path: '/',
+  },
+  'AWS::IAM::InstanceProfile': {
+    Path: '/',
+  },
+  'AWS::Scheduler::Schedule': {
+    GroupName: 'default',
+    ActionAfterCompletion: 'NONE',
+    ScheduleExpressionTimezone: 'UTC',
   },
 };
 
