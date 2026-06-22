@@ -101,7 +101,7 @@ export function formatSurvivingDrift(remaining: Finding[], cap = 10): string[] {
 export function recordSelectMessage(stackName: string, foldedCount = 0): string {
   const fold =
     foldedCount > 0
-      ? `; +${foldedCount} folded sub-key(s) ALWAYS recorded too (--show-all to itemize)`
+      ? `; +${foldedCount} folded sub-key(s) ALWAYS recorded too (--verbose to itemize)`
       : '';
   return `${stackName}: select undeclared value(s) to record (unselected stay reported)${fold}`;
 }
@@ -110,8 +110,8 @@ export function recordSelectMessage(stackName: string, foldedCount = 0): string 
  * Split the to-record delta into STANDOUT (itemized in the record multiselect) and FOLDED
  * (nested live-only sub-keys — the `undeclared-subkey` mass the report folds, R96). Folded
  * entries are auto-recorded as a summarized count instead of dozens of rows. `expandNested`
- * (--show-all / --verbose) turns the fold off so every nested value is itemized. An entry is
- * folded when its matching gather finding is a `nested` undeclared value. Pure + exported.
+ * (--verbose) turns the fold off so every nested value is itemized. An entry is folded when
+ * its matching gather finding is a `nested` undeclared value. Pure + exported.
  */
 export function splitFoldedNested<T extends { logicalId: string; path: string }>(
   changed: T[],
@@ -238,8 +238,9 @@ export interface RecordStackParams {
   // Mirror the report's R96 fold: by default the record multiselect itemizes only the
   // STANDOUT (non-nested) undeclared values and auto-records the nested live-only sub-keys
   // (the `undeclared-subkey` mass the report folds) as a summarized count, instead of
-  // listing dozens of nested rows. `--show-all` / `--verbose` sets this true to itemize
-  // every nested value individually (the report's --show-all parity).
+  // listing dozens of nested rows. `--verbose` sets this true to itemize every nested
+  // value individually (mirrors the report's --verbose fold-expansion; --show-all is the
+  // separate inventory mode and suppresses the interactive prompt, so it never reaches here).
   expandNested?: boolean;
 }
 
@@ -314,14 +315,15 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
         // header discloses the count. They are deliberately NOT individually deselectable —
         // "record only the standout, keep the folded reported" has no use case (the folded
         // would just nag forever), while deselecting a standout to "record the rest" stays
-        // possible (the folded still record). To record nothing, cancel (esc). `--show-all`/
-        // `--verbose` (expandNested) itemizes every nested value as its own row instead.
+        // possible (the folded still record). To record nothing, cancel (esc). `--verbose`
+        // (expandNested) itemizes every nested value as its own row instead (`--show-all` is
+        // the separate inventory mode — it suppresses this prompt, so it can't itemize here).
         const { standout, folded } = splitFoldedNested(changed, findings, expandNested);
         if (standout.length === 0) {
           // Nothing to itemize (every changed value is a folded nested sub-key — the common
           // all-nested first run). A Yes/No commit replaces the empty multiselect.
           const proceed = await confirm({
-            message: `${stackName}: record ${folded.length} undeclared sub-key value(s)? (--show-all to itemize each)`,
+            message: `${stackName}: record ${folded.length} undeclared sub-key value(s)? (--verbose to itemize each)`,
             initialValue: true,
           });
           if (isCancel(proceed) || !proceed) {

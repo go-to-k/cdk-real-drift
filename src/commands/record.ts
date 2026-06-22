@@ -53,7 +53,7 @@ export async function runRecord(args: string[]): Promise<number> {
         findings: applyIgnores(findings, stackName, region, config),
         yes: a.yes,
         interactive: isInteractive(),
-        expandNested: a.showAll || a.verbose, // itemize nested sub-keys instead of folding them
+        expandNested: a.verbose, // --verbose itemizes the nested sub-keys (--show-all is the separate inventory mode, not a picker-detail flag)
       });
       // a non-interactive record that needed a decision but had no --yes refuses (R38)
       if (result.refused) worst = Math.max(worst, 2);
