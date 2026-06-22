@@ -54,7 +54,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HourlyPing",
       "resourceType": "AWS::Scheduler::Schedule",
       "path": "ActionAfterCompletion",
@@ -63,7 +63,7 @@
       "constructPath": "CdkrdIntegHarvest3/HourlyPing"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HourlyPing",
       "resourceType": "AWS::Scheduler::Schedule",
       "path": "ScheduleExpressionTimezone",

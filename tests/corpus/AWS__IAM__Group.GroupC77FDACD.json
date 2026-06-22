@@ -28,7 +28,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "GroupC77FDACD",
       "resourceType": "AWS::IAM::Group",
       "path": "Path",

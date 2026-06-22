@@ -92,7 +92,7 @@
       "constructPath": "CdkrdIntegHarvest/Images"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Images2D38C313",
       "resourceType": "AWS::ECR::Repository",
       "path": "ImageTagMutability",

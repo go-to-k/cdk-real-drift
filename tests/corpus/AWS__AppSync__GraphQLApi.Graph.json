@@ -74,7 +74,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "ApiType",
@@ -83,7 +83,7 @@
       "constructPath": "CdkrdIntegHarvest3/Graph"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "IntrospectionConfig",
@@ -110,7 +110,7 @@
       "constructPath": "CdkrdIntegHarvest3/Graph"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "Visibility",

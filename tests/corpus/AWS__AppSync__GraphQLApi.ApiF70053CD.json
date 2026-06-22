@@ -95,7 +95,7 @@
       "constructPath": "CdkRealDriftIntegAppsyncGraphqlapiRich/Api"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "IntrospectionConfig",
@@ -113,7 +113,7 @@
       "constructPath": "CdkRealDriftIntegAppsyncGraphqlapiRich/Api"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "ApiType",
@@ -122,7 +122,7 @@
       "constructPath": "CdkRealDriftIntegAppsyncGraphqlapiRich/Api"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "Visibility",

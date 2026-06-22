@@ -156,7 +156,7 @@
       "constructPath": "CdkdriftIntegHarvest10/Service/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ServiceD69D759B",
       "resourceType": "AWS::ECS::Service",
       "path": "SchedulingStrategy",
