@@ -982,6 +982,36 @@ export function isStringlyEqualScalarArray(a: unknown, b: unknown): boolean {
   return a.every((v, i) => v === b[i] || isStringlyEqualScalar(v, b[i]));
 }
 
+// A whole OBJECT/MAP whose only differences are typed<->string scalar coercions is
+// not drift. A free-form `Map<String,String>` (Glue Table/Database `Parameters`,
+// DockerLabels, Lambda env `Variables`, map `Tags`) whose KEYS contain the path
+// grammar's separators (a Glue `projection.enabled` key) is emitted by the
+// drift-calculator as ONE parent-path record carrying the WHOLE map — it never
+// descends, so the per-leaf `isStringlyEqualScalar` never sees the values. CDK emits
+// the typed JSON form for some values (boolean `projection.enabled: true`, a numeric
+// `skip.header.line.count: 2`) while AWS stores every map value as a STRING
+// (`"true"`, `"2"`), so a single such value makes the strict `deepEqual` fail and the
+// whole map false-drifts. This recurses both sides key-by-key (order-insensitive),
+// folding each leaf via the same typed<->string collapse. A genuinely
+// added/removed key, or a real value change, still differs — so real drift is kept.
+// Not Glue-specific: it folds the coercion for ANY whole-emitted free-form map.
+export function isStringlyEqualDeep(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (isStringlyEqualScalar(a, b)) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => isStringlyEqualDeep(v, b[i]));
+  }
+  if (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null) {
+    const ao = a as Record<string, unknown>;
+    const bo = b as Record<string, unknown>;
+    const ak = Object.keys(ao);
+    if (ak.length !== Object.keys(bo).length) return false;
+    return ak.every((k) => Object.hasOwn(bo, k) && isStringlyEqualDeep(ao[k], bo[k]));
+  }
+  return false;
+}
+
 // A1: trivially-empty/off values AWS returns for unset features. Objects recurse:
 // a struct whose EVERY value is itself trivially empty is a feature-off struct —
 // e.g. the empty VpcConfig ({Ipv6AllowedForDualStack:false, SecurityGroupIds:[],
