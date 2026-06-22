@@ -11,7 +11,7 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
-import { awsManagedTags } from '../normalize/noise.js';
+import { awsManagedTags, KNOWN_DEFAULTS } from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
@@ -25,6 +25,25 @@ import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 // a schedule State revert via CC succeeds for the common default-group case. (A
 // non-default-group schedule would fail at apply with a clear AWS error, not silently.)
 const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>(['AWS::Scheduler::Schedule']);
+
+// Properties whose undeclared "appeared since record" revert must EXPLICITLY write the
+// AWS default value (an `add` of KNOWN_DEFAULTS[type][path]) instead of an RFC6902
+// `remove`. The default revert for such a value is `remove`, which for most types makes
+// the provider clear the property (IAM Role Description -> "", Tags -> untagged) or
+// delete a sub-config that AWS then re-defaults (S3 DeleteBucketOwnershipControls,
+// VersioningConfiguration -> Suspended). But a handful of providers leave the property
+// UNCHANGED when it is simply absent from the desired model — so `remove` is a SILENT
+// no-op (Cloud Control reports SUCCESS yet the live value persists). IAM's UpdateRole is
+// the proven case: it ignores a missing MaxSessionDuration, so reverting an out-of-band
+// 7200 back toward the 3600 default never converged. For these, write the known default
+// explicitly. Keyed `${resourceType}\0${propertyPath}`; the value comes from the same
+// KNOWN_DEFAULTS table (single source of truth), so an entry here without a matching
+// KNOWN_DEFAULTS default falls through to `remove`. Curated rather than "every
+// KNOWN_DEFAULTS entry" on purpose: KNOWN_DEFAULTS holds read-side COMPARE shapes (some
+// projected/normalized, not valid CC write inputs), and most entries already converge
+// via `remove` — broadening blindly would regress them and risk writing an unwritable
+// shape. Add a property here only once a `remove` no-op is observed for it.
+const REVERT_SET_DEFAULT_PATHS = new Set<string>(['AWS::IAM::Role\0MaxSessionDuration']);
 
 /**
  * A nested undeclared value (a live sub-key inside a declared object, R96/R98) is
@@ -390,6 +409,20 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
       value: wasRecorded.value,
       prior: f.actual,
       human: `${f.path} -> baseline value`,
+    };
+  }
+  // A property the provider won't reset on absence (REVERT_SET_DEFAULT_PATHS): write the
+  // known AWS default explicitly instead of a no-op `remove` (e.g. IAM Role
+  // MaxSessionDuration). The value is the same KNOWN_DEFAULTS default that mutes an
+  // at-default first sighting; if it is somehow absent we fall through to `remove`.
+  const knownDefault = KNOWN_DEFAULTS[f.resourceType]?.[f.path];
+  if (knownDefault !== undefined && REVERT_SET_DEFAULT_PATHS.has(`${f.resourceType}\0${f.path}`)) {
+    return {
+      op: 'add',
+      path: pointer,
+      value: knownDefault,
+      prior: f.actual,
+      human: `${f.path} -> AWS default (undeclared, not in baseline)`,
     };
   }
   return {

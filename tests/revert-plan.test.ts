@@ -183,6 +183,37 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.ops[0]).not.toHaveProperty('value');
   });
 
+  it('appeared-since-record undeclared drift on a SET-DEFAULT property -> add op writing the AWS default', () => {
+    // IAM Role MaxSessionDuration is in REVERT_SET_DEFAULT_PATHS: IAM's UpdateRole leaves
+    // the value UNCHANGED when it is absent, so a bare `remove` is a silent no-op (Cloud
+    // Control reports SUCCESS yet the live 7200 persists). Revert must write the known
+    // 3600 default explicitly instead.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::IAM::Role',
+      path: 'MaxSessionDuration',
+      actual: 7200,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MaxSessionDuration',
+      value: 3600,
+      prior: 7200,
+    });
+  });
+
+  it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
+    // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
+    // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
+    // The set-default path must NOT fire for it (it is a curated set, not "every
+    // KNOWN_DEFAULTS entry").
+    const f = F({ tier: 'undeclared', path: 'OwnershipControls', actual: { Rules: [] } });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/OwnershipControls' });
+    expect(plan.items[0]!.ops[0]).not.toHaveProperty('value');
+  });
+
   it('UNRECORDED undeclared value -> notRevertable (refuse destructive bulk remove, R62)', () => {
     const f = F({
       tier: 'undeclared',
