@@ -364,7 +364,7 @@ all live changes
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)
-    (scalars only — a typed vs string *array* like [80,443] vs ["80","443"] still reports; fail-safe noise)
+    (scalars only — a typed vs string *array* like [80,443] vs ["80","443"] folds element-wise via isStringlyEqualScalarArray; a whole free-form `Map<String,String>` emitted as ONE record because a key holds a `.` — Glue Table `Parameters` `projection.enabled:true` vs live `"true"` — folds recursively via isStringlyEqualDeep, key-order-insensitive; a real key add/remove or value change still reports; fail-safe noise)
   − declared object vs its JSON-STRING live form (SSM Document.Content, R75) → equal (isJsonStringStructEqual)
   − PEM-armored value with only surrounding-whitespace differences (CloudFront PublicKey EncodedKey — AWS appends a trailing newline after the END marker, R125) → equal (isPemEqual); both sides must be PEM-armored, so a genuine key/cert change still differs
   − declared SUBSET of an ELB attribute bag (Load/TargetGroupAttributes) → DECLARED keys compared BY KEY (ELB_ATTRIBUTE_BAGS, R78); the live-only keys (the ~20 server defaults + any out-of-band custom attribute) are emitted as nested `undeclared` inventory — fail-closed like every other identity-keyed array — so `record` snapshots them and a later out-of-band change to an UNDECLARED attribute surfaces as drift instead of being silently dropped. NB (R95): the full-live compare is generic — every identity-keyed array (Tags, Origins, ELB bags, …) reports an out-of-band ADDED/CHANGED element rather than suppressing it
