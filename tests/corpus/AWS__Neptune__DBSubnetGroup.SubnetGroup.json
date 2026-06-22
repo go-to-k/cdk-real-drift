@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SubnetGroup",
+    "resourceType": "AWS::Neptune::DBSubnetGroup",
+    "physicalId": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+    "constructPath": "CdkRealDriftIntegNeptuneRich/SubnetGroup",
+    "declared": {
+      "DBSubnetGroupDescription": "Neptune subnet group across isolated subnets",
+      "SubnetIds": ["subnet-096153aa1c6f8b052", "subnet-0e59da24a202d6669"]
+    }
+  },
+  "liveRaw": {
+    "DBSubnetGroupName": "neptunedbsubnetgroup-w5v1jnrqmuw8",
+    "DBSubnetGroupDescription": "Neptune subnet group across isolated subnets",
+    "SubnetIds": ["subnet-096153aa1c6f8b052", "subnet-0e59da24a202d6669"],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegNeptuneRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SubnetGroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:ap-northeast-1:111111111111:stack/CdkRealDriftIntegNeptuneRich/d4b6c970-6e1a-11f1-b5f4-061b70f4ac69",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBSubnetGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBSubnetGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,130 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Machine",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+    "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine",
+    "declared": {
+      "Definition": {
+        "StartAt": "Pass1",
+        "States": {
+          "Pass1": {
+            "Type": "Pass",
+            "Result": {
+              "ok": true
+            },
+            "Next": "Pass2"
+          },
+          "Pass2": {
+            "Type": "Pass",
+            "End": true
+          }
+        }
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfnDefinitionObjec-SfnRole127BDE63-Muc0qWKiYvNt",
+      "StateMachineName": "cdkrd-fp-def-object"
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\n  \"StartAt\" : \"Pass1\",\n  \"States\" : {\n    \"Pass1\" : {\n      \"Next\" : \"Pass2\",\n      \"Result\" : {\n        \"ok\" : true\n      },\n      \"Type\" : \"Pass\"\n    },\n    \"Pass2\" : {\n      \"End\" : true,\n      \"Type\" : \"Pass\"\n    }\n  }\n}",
+    "EncryptionConfiguration": {
+      "Type": "AWS_OWNED_KEY"
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": false,
+      "Level": "OFF"
+    },
+    "StateMachineRevisionId": "INITIAL",
+    "Arn": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+    "StateMachineName": "cdkrd-fp-def-object",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSfnDefinitionObjec-SfnRole127BDE63-Muc0qWKiYvNt",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:ap-northeast-1:111111111111:stack/CdkRealDriftIntegSfnDefinitionObject/c97db5a0-6e1a-11f1-a902-0652c5538151",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSfnDefinitionObject",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Machine",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-fp-def-object",
+    "StateMachineType": "STANDARD",
+    "TracingConfiguration": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Machine",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "Definition",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Machine",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "DefinitionString",
+      "actual": "{\"StartAt\":\"Pass1\",\"States\":{\"Pass1\":{\"Next\":\"Pass2\",\"Result\":{\"ok\":true},\"Type\":\"Pass\"},\"Pass2\":{\"End\":true,\"Type\":\"Pass\"}}}",
+      "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Machine",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "Type": "AWS_OWNED_KEY"
+      },
+      "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Machine",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": {
+        "IncludeExecutionData": false,
+        "Level": "OFF"
+      },
+      "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Machine",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineType",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::MSK::Cluster",
+    "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+    "constructPath": "CdkRealDriftIntegMskCluster/Cluster",
+    "declared": {
+      "BrokerNodeGroupInfo": {
+        "ClientSubnets": ["subnet-09a11945e971c7995", "subnet-08b8255b5e8df3035"],
+        "InstanceType": "kafka.t3.small",
+        "StorageInfo": {
+          "EBSStorageInfo": {
+            "VolumeSize": 10
+          }
+        }
+      },
+      "ClusterName": "cdkrd-fp-msk",
+      "KafkaVersion": "3.6.0",
+      "NumberOfBrokerNodes": 2
+    }
+  },
+  "liveRaw": {
+    "BrokerNodeGroupInfo": {
+      "SecurityGroups": ["sg-059dd37aa34acef10"],
+      "ClientSubnets": ["subnet-09a11945e971c7995", "subnet-08b8255b5e8df3035"],
+      "ConnectivityInfo": {
+        "NetworkType": "IPV4",
+        "VpcConnectivity": {
+          "ClientAuthentication": {
+            "Sasl": {
+              "Iam": {
+                "Enabled": false
+              },
+              "Scram": {
+                "Enabled": false
+              }
+            },
+            "Tls": {
+              "Enabled": false
+            }
+          }
+        },
+        "PublicAccess": {
+          "Type": "DISABLED"
+        }
+      },
+      "StorageInfo": {
+        "EBSStorageInfo": {
+          "VolumeSize": 10
+        }
+      },
+      "BrokerAZDistribution": "DEFAULT",
+      "InstanceType": "kafka.t3.small"
+    },
+    "EnhancedMonitoring": "DEFAULT",
+    "KafkaVersion": "3.6.0",
+    "NumberOfBrokerNodes": 2,
+    "EncryptionInfo": {
+      "EncryptionAtRest": {
+        "DataVolumeKMSKeyId": "arn:aws:kms:ap-northeast-1:111111111111:key/a2715ad0-2ae0-410e-8c6f-09e3de34ff91"
+      },
+      "EncryptionInTransit": {
+        "ClientBroker": "TLS",
+        "InCluster": true
+      }
+    },
+    "OpenMonitoring": {
+      "Prometheus": {
+        "JmxExporter": {
+          "EnabledInBroker": false
+        },
+        "NodeExporter": {
+          "EnabledInBroker": false
+        }
+      }
+    },
+    "CurrentVersion": "K3P5ROKL5A1OLE",
+    "ClusterName": "cdkrd-fp-msk",
+    "Arn": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+    "StorageMode": "LOCAL",
+    "LoggingInfo": {
+      "BrokerLogs": {
+        "S3": {
+          "Enabled": false
+        },
+        "Firehose": {
+          "Enabled": false
+        },
+        "CloudWatchLogs": {
+          "Enabled": false
+        }
+      }
+    },
+    "Tags": {}
+  },
+  "schema": {
+    "readOnly": ["Arn", "CurrentVersion"],
+    "writeOnly": ["ZookeeperAccess"],
+    "createOnly": ["ClusterName"],
+    "readOnlyPaths": ["Arn", "CurrentVersion"],
+    "writeOnlyPaths": ["ZookeeperAccess"],
+    "createOnlyPaths": [
+      "BrokerNodeGroupInfo.BrokerAZDistribution",
+      "BrokerNodeGroupInfo.ClientSubnets",
+      "BrokerNodeGroupInfo.SecurityGroups",
+      "ClusterName",
+      "EncryptionInfo.EncryptionAtRest",
+      "EncryptionInfo.EncryptionInTransit.InCluster"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "EnhancedMonitoring",
+      "actual": "DEFAULT",
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "EncryptionInfo",
+      "actual": {
+        "EncryptionAtRest": {
+          "DataVolumeKMSKeyId": "arn:aws:kms:ap-northeast-1:111111111111:key/a2715ad0-2ae0-410e-8c6f-09e3de34ff91"
+        },
+        "EncryptionInTransit": {
+          "ClientBroker": "TLS",
+          "InCluster": true
+        }
+      },
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "StorageMode",
+      "actual": "LOCAL",
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "BrokerNodeGroupInfo.SecurityGroups",
+      "actual": ["sg-059dd37aa34acef10"],
+      "nested": true,
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "BrokerNodeGroupInfo.ConnectivityInfo",
+      "actual": {
+        "NetworkType": "IPV4",
+        "VpcConnectivity": {
+          "ClientAuthentication": {
+            "Sasl": {
+              "Iam": {
+                "Enabled": false
+              },
+              "Scram": {
+                "Enabled": false
+              }
+            },
+            "Tls": {
+              "Enabled": false
+            }
+          }
+        },
+        "PublicAccess": {
+          "Type": "DISABLED"
+        }
+      },
+      "nested": true,
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "BrokerNodeGroupInfo.BrokerAZDistribution",
+      "actual": "DEFAULT",
+      "nested": true,
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    }
+  ]
+}

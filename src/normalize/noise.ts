@@ -697,6 +697,13 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // Aurora clusters resolve a partial track the same way (declared `"8.0"` /
   // `"5.7.mysql_aurora.2"` reads back the full provisioned patch version).
   'AWS::RDS::DBCluster': new Set(['EngineVersion']),
+  // Live-observed on a fresh neptune-rich deploy: Neptune accepts a major.minor
+  // EngineVersion (declared `"1.3"`) and provisions the latest patch in that track,
+  // reading back the concrete 4-segment version (`"1.3.5.0"`) — the same partial->
+  // concrete shape as RDS. A genuine track change still differs (the leading-run
+  // check fails). MSK KafkaVersion is NOT added: MSK validates KafkaVersion against
+  // an exact supported-version list and rejects a partial, so declared == live.
+  'AWS::Neptune::DBCluster': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
@@ -816,11 +823,26 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
     'AllowedOAuthFlows',
     'AllowedOAuthScopes',
     'ExplicitAuthFlows',
+    // Live-observed on a fresh cognito-callbackurls deploy: Cognito stores the
+    // CallbackURLs / LogoutURLs as SETS and echoes them in its own canonical order
+    // (declared [zeta,alpha,mike] read back [alpha,mike,zeta]) — a positional compare
+    // false-drifts the URL list with identical elements. Same set-reorder class as the
+    // sibling OAuth lists above; a genuine URL add/remove still changes the multiset.
+    'CallbackURLs',
+    'LogoutURLs',
   ]),
   // R84 (observed live on a fresh harvest6 deploy): WAFv2 stores the IP address
   // set and echoes it in its own canonical order, so a fresh deploy reports the
   // declared CIDR list as drift with identical elements in a different order.
   'AWS::WAFv2::IPSet': new Set(['Addresses']),
+  // Live-observed on a fresh route53-multivalue deploy: a DNS RecordSet's multiple
+  // ResourceRecords are a SET (a multi-value A/TXT/MX record — DNS resolvers treat
+  // the values as unordered), and Route53 echoes them in its own canonical order
+  // (declared TXT [zeta,alpha,mike] read back [mike,alpha,zeta]; A IPs reordered).
+  // A positional compare false-drifts identical value sets; a genuine value
+  // add/remove still changes the multiset. (Weighted/latency routing uses separate
+  // RecordSets with SetIdentifier, not ordered ResourceRecords, so this is FP-safe.)
+  'AWS::Route53::RecordSet': new Set(['ResourceRecords']),
 };
 
 // True when both values are scalar arrays containing the same multiset of
