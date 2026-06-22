@@ -1,0 +1,292 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TaskDef",
+    "resourceType": "AWS::ECS::TaskDefinition",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-mounts:2",
+    "constructPath": "CdkRealDriftIntegEcsTaskDefMounts/TaskDef",
+    "declared": {
+      "ContainerDefinitions": [
+        {
+          "Essential": true,
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "MemoryReservation": 256,
+          "MountPoints": [
+            {
+              "ContainerPath": "/cache",
+              "ReadOnly": false,
+              "SourceVolume": "cache"
+            },
+            {
+              "ContainerPath": "/data",
+              "ReadOnly": true,
+              "SourceVolume": "data"
+            }
+          ],
+          "Name": "app",
+          "SystemControls": [
+            {
+              "Namespace": "net.ipv4.tcp_keepalive_time",
+              "Value": "600"
+            },
+            {
+              "Namespace": "net.core.somaxconn",
+              "Value": "1024"
+            }
+          ]
+        },
+        {
+          "Essential": false,
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "MemoryReservation": 64,
+          "Name": "logger"
+        },
+        {
+          "Essential": false,
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "MemoryReservation": 64,
+          "Name": "sidecar",
+          "VolumesFrom": [
+            {
+              "ReadOnly": true,
+              "SourceContainer": "logger"
+            },
+            {
+              "ReadOnly": false,
+              "SourceContainer": "app"
+            }
+          ]
+        }
+      ],
+      "Cpu": "256",
+      "Family": "cdkrd-ecs-taskdef-mounts",
+      "Memory": "512",
+      "NetworkMode": "bridge",
+      "RequiresCompatibilities": ["EC2"],
+      "Volumes": [
+        {
+          "Name": "cache"
+        },
+        {
+          "Name": "data"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Volumes": [
+      {
+        "Host": {},
+        "Name": "cache"
+      },
+      {
+        "Host": {},
+        "Name": "data"
+      }
+    ],
+    "InferenceAccelerators": [],
+    "Memory": "512",
+    "PlacementConstraints": [],
+    "ContainerDefinitions": [
+      {
+        "MemoryReservation": 64,
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": false,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "logger",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      },
+      {
+        "MemoryReservation": 64,
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [
+          {
+            "ReadOnly": false,
+            "SourceContainer": "app"
+          },
+          {
+            "ReadOnly": true,
+            "SourceContainer": "logger"
+          }
+        ],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": false,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "sidecar",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      },
+      {
+        "MemoryReservation": 256,
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": true,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "app",
+        "MountPoints": [
+          {
+            "ReadOnly": false,
+            "SourceVolume": "cache",
+            "ContainerPath": "/cache"
+          },
+          {
+            "ReadOnly": true,
+            "SourceVolume": "data",
+            "ContainerPath": "/data"
+          }
+        ],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [
+          {
+            "Value": "600",
+            "Namespace": "net.ipv4.tcp_keepalive_time"
+          },
+          {
+            "Value": "1024",
+            "Namespace": "net.core.somaxconn"
+          }
+        ],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      }
+    ],
+    "Family": "cdkrd-ecs-taskdef-mounts",
+    "Cpu": "256",
+    "RequiresCompatibilities": ["EC2"],
+    "NetworkMode": "bridge",
+    "Tags": [],
+    "TaskDefinitionArn": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-mounts:2"
+  },
+  "schema": {
+    "readOnly": ["TaskDefinitionArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "readOnlyPaths": ["TaskDefinitionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ContainerDefinitions.*.VersionConsistency": "enabled"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-mounts:2",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefMounts/TaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[logger].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-mounts:2",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefMounts/TaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[sidecar].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-mounts:2",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefMounts/TaskDef"
+    }
+  ]
+}
