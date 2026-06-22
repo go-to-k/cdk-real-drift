@@ -91,6 +91,19 @@ interface SubsetArraySpec {
 const stripCognitoAttrPrefix = (id: string): string => id.replace(/^(custom|dev):/, '');
 const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpec>> = {
   'AWS::Cognito::UserPool': { Schema: { idField: 'Name', normalizeId: stripCognitoAttrPrefix } },
+  // An EC2 Instance's BlockDeviceMappings is a SET keyed by DeviceName, and the live
+  // model is a SUPERSET of the template's in two ways: (1) the API enriches each declared
+  // mapping's `Ebs` block with defaults the template never set (SnapshotId, the encrypting
+  // KmsKeyId, the resolved Iops/Throughput); (2) a volume ATTACHED out of band — or via a
+  // sibling AWS::EC2::VolumeAttachment — appears as an EXTRA mapping (e.g. `/dev/sdf`) the
+  // Instance template never declared. A positional/whole-array compare then false-flags the
+  // entire BlockDeviceMappings as declared drift on every fresh deploy. Aligning declared
+  // mappings to live BY DeviceName lets each declared mapping subset-compare against its live
+  // twin (the enriched Ebs keys are an undeclared superset, not a declared change) and emits
+  // each live-only mapping as nested undeclared inventory. A genuinely removed declared
+  // mapping (no live DeviceName match) still surfaces as declared drift. Observed live on a
+  // fresh ec2-instance-rich deploy (a gp3 root volume + an attached data volume).
+  'AWS::EC2::Instance': { BlockDeviceMappings: { idField: 'DeviceName' } },
 };
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&

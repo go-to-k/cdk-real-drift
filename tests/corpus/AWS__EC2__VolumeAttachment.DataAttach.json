@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DataAttach",
+    "resourceType": "AWS::EC2::VolumeAttachment",
+    "physicalId": "vol-010c7274153ce356a|i-0b7c750351d0a5aa6",
+    "constructPath": "CdkRealDriftIntegEc2Rich/DataAttach",
+    "declared": {
+      "Device": "/dev/sdf",
+      "InstanceId": "i-0b7c750351d0a5aa6",
+      "VolumeId": "vol-010c7274153ce356a"
+    }
+  },
+  "liveRaw": {
+    "VolumeId": "vol-010c7274153ce356a",
+    "InstanceId": "i-0b7c750351d0a5aa6",
+    "Device": "/dev/sdf",
+    "EbsCardIndex": 0
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Device", "EbsCardIndex", "InstanceId", "VolumeId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Device", "EbsCardIndex", "InstanceId", "VolumeId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "DataAttach",
+      "resourceType": "AWS::EC2::VolumeAttachment",
+      "path": "EbsCardIndex",
+      "actual": 0,
+      "physicalId": "vol-010c7274153ce356a|i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/DataAttach"
+    }
+  ]
+}

@@ -2833,6 +2833,102 @@ describe('Cognito UserPool Schema identity-keyed subset (WAVE23 — declared att
   });
 });
 
+describe('EC2 Instance BlockDeviceMappings identity-keyed subset (found by ec2-instance-rich)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const inst = (declared: Record<string, unknown>) => ({
+    logicalId: 'Host',
+    resourceType: 'AWS::EC2::Instance',
+    physicalId: 'i-0abc',
+    declared,
+  });
+  // The template declares only the root mapping with a minimal Ebs block.
+  const declaredRoot = {
+    DeviceName: '/dev/xvda',
+    Ebs: { DeleteOnTermination: true, Encrypted: true, VolumeSize: 8, VolumeType: 'gp3' },
+  };
+  // AWS enriches the matching live mapping with defaults the template never set
+  // (SnapshotId, the encrypting KmsKeyId, the resolved Iops) and may reorder the keys.
+  const liveRoot = {
+    Ebs: {
+      SnapshotId: 'snap-08bb176df19e6f6ca',
+      VolumeType: 'gp3',
+      KmsKeyId: 'arn:aws:kms:us-east-1:111111111111:key/abc',
+      Encrypted: true,
+      Iops: 3000,
+      VolumeSize: 8,
+      DeleteOnTermination: true,
+    },
+    DeviceName: '/dev/xvda',
+  };
+  // A volume attached out of band / via a sibling VolumeAttachment appears as an EXTRA
+  // live mapping the Instance template never declared.
+  const liveAttached = {
+    Ebs: {
+      SnapshotId: '',
+      VolumeType: 'gp3',
+      KmsKeyId: 'arn:aws:kms:us-east-1:111111111111:key/abc',
+      Encrypted: true,
+      Iops: 3000,
+      VolumeSize: 10,
+      DeleteOnTermination: false,
+    },
+    DeviceName: '/dev/sdf',
+  };
+
+  it('a subset root mapping + an extra live mapping does NOT false-drift the whole array', () => {
+    const findings = classifyResource(
+      inst({ BlockDeviceMappings: [declaredRoot] }),
+      { BlockDeviceMappings: [liveRoot, liveAttached] },
+      bare
+    );
+    // the enriched Ebs keys + the extra /dev/sdf mapping must NOT be a declared drift
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // the live-only mapping surfaces as nested undeclared inventory, keyed by DeviceName
+    const undeclared = findings.filter(
+      (f) => f.tier === 'undeclared' && f.path === 'BlockDeviceMappings[/dev/sdf]'
+    );
+    expect(undeclared).toHaveLength(1);
+  });
+
+  it('an out-of-band change to a DECLARED Ebs sub-value is reported as declared drift', () => {
+    const declaredDrift = classifyResource(
+      inst({ BlockDeviceMappings: [declaredRoot] }),
+      // root volume grown out of band 8 -> 16
+      {
+        BlockDeviceMappings: [
+          { ...liveRoot, Ebs: { ...liveRoot.Ebs, VolumeSize: 16 } },
+          liveAttached,
+        ],
+      },
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+    expect(declaredDrift[0]).toMatchObject({
+      path: 'BlockDeviceMappings.0.Ebs.VolumeSize',
+      desired: 8,
+      actual: 16,
+    });
+  });
+
+  it('a declared mapping absent from live (DeviceName removed) is declared drift', () => {
+    const declaredDrift = classifyResource(
+      inst({ BlockDeviceMappings: [declaredRoot] }),
+      { BlockDeviceMappings: [liveAttached] }, // /dev/xvda no longer present
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+  });
+});
+
 describe('Name-keyed object arrays are identity-aligned (WAVE24 — ECS env vars, Alarm dimensions)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
