@@ -148,6 +148,28 @@ The `*-rich` fixtures are exactly the rich configs worth pinning this way, so a
 clean round still ships growing regression coverage — see the "A clean result IS a
 result" gotcha.
 
+### 5.5 First-run-noise sweep (shrink `[Not Recorded]` via KNOWN_DEFAULTS)
+
+After promoting new corpus, run the offline first-run-noise sweep — the newly
+harvested cases are exactly the fresh data it mines:
+
+```bash
+bash scripts/measure-noise.sh
+```
+
+It replays classify over `tests/corpus/*.json` and ranks every `undeclared`
+`(type, path)`, flagging the constant-looking ones as `CANDIDATE`s to promote into
+`KNOWN_DEFAULTS` (top-level) / `KNOWN_DEFAULT_PATHS` (nested) in
+`src/normalize/noise.ts`. This matters because the CFn schema annotates a `default`
+on only ~1% of properties (see `scripts/measure-schema-defaults.mjs` and
+docs/ARCHITECTURE.md § 6), so these hand tables — not the schema — are what keeps a
+first run's `[Not Recorded]` inventory small. Promote a candidate only when its
+value is a genuine CONSTANT service default (not a per-resource id/ARN/name/AZ/window
+the heuristic may over-flag); the fold is equality-gated, so a correct promotion can
+never hide a real change, and a recorded value that later moves off the default
+still surfaces. Add the entries + a `noise-and-strip` test in the SAME PR. This is a
+quality/noise pass, not a bug — skip it on a round that ships no new corpus.
+
 ### 6. On a confirmed bug: fix it — with a unit test (mandatory)
 
 When a finding is a real bug:
