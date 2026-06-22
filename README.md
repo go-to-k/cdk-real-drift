@@ -51,7 +51,9 @@ npx cdkrd check                 # checks every stack your app defines
 Then act on what `check` prints, from its own interactive prompt:
 
 1. **First run** — record a baseline (one prompt; writes a git file, nothing to
-   AWS). This is the switch that arms undeclared / added detection.
+   AWS). This is the switch that arms undeclared / added detection. (Already
+   drifting? A **declared** drift on that first run can be reverted or ignored
+   right there too — record isn't the only choice.)
 2. **Day to day** — when `check` finds drift, pick **Record / Revert / Ignore**
    inline.
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
