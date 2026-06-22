@@ -1447,6 +1447,63 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  // A path-pattern condition's `Values` is a SET ALB reorders into its own canonical
+  // order (found by elbv2-rule-values: declared ["/zebra/*","/alpha/*","/mango/*"] read
+  // back ["/alpha/*","/zebra/*","/mango/*"]). The set is nested under the Conditions
+  // ARRAY, which is ITSELF an unordered object set — so this exercises the compose path
+  // (inner Values sorted first, then the Conditions array sorted by canonical JSON).
+  describe('ELBv2 ListenerRule nested PathPatternConfig.Values set (found by elbv2-rule-values)', () => {
+    const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
+    const declared = {
+      Conditions: [
+        {
+          Field: 'path-pattern',
+          PathPatternConfig: { Values: ['/zebra/*', '/alpha/*', '/mango/*'] },
+        },
+        { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+      ],
+    };
+
+    it('ALB reordering the nested Values set is NOT drift', () => {
+      const live = {
+        Conditions: [
+          {
+            Field: 'path-pattern',
+            PathPatternConfig: { Values: ['/alpha/*', '/zebra/*', '/mango/*'] },
+          },
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('Values reorder AND Conditions reorder together is NOT drift (compose)', () => {
+      const live = {
+        Conditions: [
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+          {
+            Field: 'path-pattern',
+            PathPatternConfig: { Values: ['/mango/*', '/alpha/*', '/zebra/*'] },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine Values change still surfaces (no over-fold)', () => {
+      const live = {
+        Conditions: [
+          {
+            Field: 'path-pattern',
+            PathPatternConfig: { Values: ['/alpha/*', '/zebra/*', '/CHANGED/*'] },
+          },
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Bedrock Guardrail nested policy-config arrays (reordered, found by bedrock-guardrail-rich)', () => {
     const T = 'AWS::Bedrock::Guardrail';
     const declared = {

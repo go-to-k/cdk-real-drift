@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule4C995B7F",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-Gjv9j13vSOgr/5e8f46be04d0d5a6/160b3a942ed8a17a/90945430e6a97c3a",
+    "constructPath": "CdkRealDriftIntegElbv2RuleValues/Rule",
+    "declared": {
+      "Actions": [
+        {
+          "ForwardConfig": {
+            "TargetGroups": [
+              {
+                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkRea-TgBE8-MAXLUPEBVX4E/a3cc689fffb5423f",
+                "Weight": 20
+              },
+              {
+                "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkRea-TgA40-HVAG8LLXGCIQ/f356184c27741057",
+                "Weight": 10
+              }
+            ]
+          },
+          "Type": "forward"
+        }
+      ],
+      "Conditions": [
+        {
+          "Field": "path-pattern",
+          "PathPatternConfig": {
+            "Values": ["/zebra/*", "/alpha/*", "/mango/*"]
+          }
+        },
+        {
+          "Field": "host-header",
+          "HostHeaderConfig": {
+            "Values": ["zzz.example.com", "aaa.example.com"]
+          }
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkRea-Alb16-Gjv9j13vSOgr/5e8f46be04d0d5a6/160b3a942ed8a17a",
+      "Priority": 10
+    }
+  },
+  "liveRaw": {
+    "IsDefault": false,
+    "Actions": [
+      {
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkRea-TgBE8-MAXLUPEBVX4E/a3cc689fffb5423f",
+              "Weight": 20
+            },
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkRea-TgA40-HVAG8LLXGCIQ/f356184c27741057",
+              "Weight": 10
+            }
+          ]
+        }
+      }
+    ],
+    "Priority": 10,
+    "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-Gjv9j13vSOgr/5e8f46be04d0d5a6/160b3a942ed8a17a/90945430e6a97c3a",
+    "Transforms": [],
+    "Conditions": [
+      {
+        "Field": "path-pattern",
+        "Values": ["/alpha/*", "/zebra/*", "/mango/*"],
+        "PathPatternConfig": {
+          "Values": ["/alpha/*", "/zebra/*", "/mango/*"]
+        }
+      },
+      {
+        "Field": "host-header",
+        "Values": ["zzz.example.com", "aaa.example.com"],
+        "HostHeaderConfig": {
+          "Values": ["zzz.example.com", "aaa.example.com"]
+        }
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["IsDefault", "RuleArn"],
+    "writeOnly": ["ListenerArn"],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["IsDefault", "RuleArn"],
+    "writeOnlyPaths": ["Actions.*.AuthenticateOidcConfig.ClientSecret", "ListenerArn"],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Rule4C995B7F",
+      "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "path": "ListenerArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-Gjv9j13vSOgr/5e8f46be04d0d5a6/160b3a942ed8a17a/90945430e6a97c3a",
+      "constructPath": "CdkRealDriftIntegElbv2RuleValues/Rule"
+    }
+  ]
+}
