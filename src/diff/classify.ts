@@ -27,6 +27,7 @@ import {
   isPemEqual,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
+  isStringlyEqualDeep,
   isGeneratedName,
   isPhysicalIdSegment,
   isTrailingDotEqual,
@@ -623,6 +624,13 @@ export function classifyResource(
       // declared `[80, 443]` vs live `["80", "443"]`. Same typed<->string collapse,
       // element-wise; a genuine element change still differs.
       if (isStringlyEqualScalarArray(d.stateValue, d.awsValue)) continue;
+      // CFn free-form `Map<String,String>` (Glue Table Parameters, DockerLabels,
+      // Lambda env Variables, map Tags) emitted WHOLE at its parent path because a
+      // key holds a `.` — its values are all live STRINGS while CDK declares some
+      // typed (boolean `projection.enabled`, numeric counts). Fold the whole-map
+      // typed<->string coercion recursively; a real key add/remove or value change
+      // still differs. Not Glue-specific — any whole-emitted free-form map.
+      if (isStringlyEqualDeep(d.stateValue, d.awsValue)) continue;
       // A declared object whose live form is the same value as a JSON STRING
       // (R75: SSM Document.Content) — equal after parse, key-order-insensitive.
       if (isJsonStringStructEqual(d.stateValue, d.awsValue)) continue;

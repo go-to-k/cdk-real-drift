@@ -289,6 +289,35 @@ describe('noise suppressors', () => {
     expect(isStringlyEqualScalarArray(80, '80')).toBe(false);
   });
 
+  it('isStringlyEqualDeep: whole free-form map typed<->string coercion folds, real drift kept', async () => {
+    const { isStringlyEqualDeep } = await import('../src/normalize/noise.js');
+    // the reported repro: Glue Parameters map emitted whole — one boolean value
+    // declared typed by CDK but stored as a string by Glue (Map<String,String>)
+    expect(
+      isStringlyEqualDeep(
+        { 'projection.enabled': true, 'skip.header.line.count': 2, 'projection.date.type': 'date' },
+        {
+          'projection.date.type': 'date',
+          'skip.header.line.count': '2',
+          'projection.enabled': 'true',
+        }
+      )
+    ).toBe(true);
+    // numeric formatting variants fold per-leaf (R67) too
+    expect(isStringlyEqualDeep({ a: 5 }, { a: '5.0' })).toBe(true);
+    // nested objects / arrays recurse
+    expect(isStringlyEqualDeep({ a: { b: [80, 443] } }, { a: { b: ['80', '443'] } })).toBe(true);
+    // a genuine value change still differs (real drift preserved)
+    expect(isStringlyEqualDeep({ a: true }, { a: 'false' })).toBe(false);
+    // an added/removed key is real drift — NOT folded
+    expect(isStringlyEqualDeep({ a: '1', b: '2' }, { a: '1' })).toBe(false);
+    expect(isStringlyEqualDeep({ a: '1' }, { a: '1', b: '2' })).toBe(false);
+    // disjoint-key object swap (WAFv2 DefaultAction) is not folded
+    expect(isStringlyEqualDeep({ Allow: {} }, { Block: {} })).toBe(false);
+    // array order still matters
+    expect(isStringlyEqualDeep([80, 443], ['443', '80'])).toBe(false);
+  });
+
   it('isAllAwsTags: every element an aws:* {Key,Value}', () => {
     expect(isAllAwsTags([{ Key: 'aws:cloudformation:stack-id', Value: 'x' }])).toBe(true);
     expect(

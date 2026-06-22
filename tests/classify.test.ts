@@ -123,6 +123,78 @@ describe('classifyResource (the heart)', () => {
     );
     expect(drifted.declared).toEqual(['Ports']);
   });
+
+  // Reported bug: a Glue Table's `TableInput.Parameters` is a free-form
+  // Map<String,String> whose keys hold a `.` (`projection.enabled`), so the
+  // drift-calculator emits the WHOLE map as one record. CDK declares some values
+  // typed (boolean `projection.enabled: true`) while AWS stores every value as a
+  // string ("true") — the strict deepEqual then false-drifts the whole map. The
+  // typed<->string coercion must fold across the whole map; a real key add/remove
+  // or value change still surfaces.
+  it('whole free-form map typed<->string coercion is not declared drift, real change still is', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'LogsTable',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'logs-table',
+      declared: {
+        TableInput: {
+          Parameters: {
+            'projection.enabled': true, // CDK emits a typed boolean
+            'skip.header.line.count': 2, // CDK emits a typed number
+            'projection.date.type': 'date',
+            'projection.date.range': '2024/04/01/00, NOW',
+          },
+        },
+      },
+    };
+    // AWS returns every Map<String,String> value as a string, keys reordered.
+    const clean = tiers(
+      classifyResource(
+        res,
+        {
+          TableInput: {
+            Parameters: {
+              'projection.date.type': 'date',
+              'projection.date.range': '2024/04/01/00, NOW',
+              'skip.header.line.count': '2',
+              'projection.enabled': 'true',
+            },
+          },
+        },
+        emptySchema
+      )
+    );
+    expect(clean.declared).toEqual([]);
+    // A genuine value change in one map entry still surfaces as declared drift.
+    const drifted = tiers(
+      classifyResource(
+        res,
+        {
+          TableInput: {
+            Parameters: {
+              'projection.date.type': 'date',
+              'projection.date.range': 'CHANGED, NOW',
+              'skip.header.line.count': '2',
+              'projection.enabled': 'true',
+            },
+          },
+        },
+        emptySchema
+      )
+    );
+    // the whole free-form map is one record, so the drift path is the map property
+    expect(drifted.declared).toEqual(['TableInput.Parameters']);
+  });
 });
 
 // R10: classifyResource threads optional { accountId, region } into isArnNameMatch.
