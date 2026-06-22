@@ -40,6 +40,10 @@ import {
 } from '@aws-sdk/client-docdb';
 import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
 import {
+  CloudWatchLogsClient,
+  PutBearerTokenAuthenticationCommand,
+} from '@aws-sdk/client-cloudwatch-logs';
+import {
   GetTopicAttributesCommand,
   SetTopicAttributesCommand,
   SNSClient,
@@ -70,6 +74,7 @@ const cloudfront = mockClient(CloudFrontClient);
 const wafv2 = mockClient(WAFV2Client);
 const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
+const logs = mockClient(CloudWatchLogsClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -109,6 +114,7 @@ beforeEach(() => {
   wafv2.reset();
   opensearch.reset();
   glue.reset();
+  logs.reset();
 });
 
 describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {
@@ -922,5 +928,62 @@ describe('policy writers revert ALL attachment targets (not just the first)', ()
     expect(
       sqs.commandCalls(SetQueueAttributesCommand).map((c) => c.args[0].input.QueueUrl)
     ).toEqual(['https://sqs/q1', 'https://sqs/q2']);
+  });
+});
+
+describe('Logs LogGroup BearerTokenAuthenticationEnabled prop-scoped writer (CC UpdateResource fails on this property)', () => {
+  const LG = '/aws/lambda/my-fn';
+  const removeOp: PatchOp = {
+    op: 'remove',
+    path: '/BearerTokenAuthenticationEnabled',
+    prior: true,
+    human: 'BearerTokenAuthenticationEnabled -> remove (undeclared, not in baseline)',
+  };
+  const bearerAddOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/BearerTokenAuthenticationEnabled',
+    value,
+    human: 'BearerTokenAuthenticationEnabled -> deployed-template value',
+  });
+
+  it('resolveSdkWriter routes BearerTokenAuthenticationEnabled to the prop-scoped writer', () => {
+    expect(resolveSdkWriter('AWS::Logs::LogGroup', [removeOp])).toBeDefined();
+    // a deeper / other LogGroup path keeps going through Cloud Control (no SDK writer)
+    expect(
+      resolveSdkWriter('AWS::Logs::LogGroup', [
+        { op: 'remove', path: '/RetentionInDays', human: '' },
+      ])
+    ).toBeUndefined();
+  });
+
+  it('a remove (undeclared, not in baseline) DISABLES bearer-token auth via PutBearerTokenAuthentication', async () => {
+    logs.on(PutBearerTokenAuthenticationCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::Logs::LogGroup', [removeOp])!;
+    await writer(ctx({ physicalId: LG }), [removeOp]);
+    const calls = logs.commandCalls(PutBearerTokenAuthenticationCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input).toEqual({
+      logGroupIdentifier: LG,
+      bearerTokenAuthenticationEnabled: false,
+    });
+  });
+
+  it('an add carries the desired boolean (declared / baseline restore)', async () => {
+    logs.on(PutBearerTokenAuthenticationCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::Logs::LogGroup', [bearerAddOp(true)])!;
+    await writer(ctx({ physicalId: LG }), [bearerAddOp(true)]);
+    expect(logs.commandCalls(PutBearerTokenAuthenticationCommand)[0].args[0].input).toEqual({
+      logGroupIdentifier: LG,
+      bearerTokenAuthenticationEnabled: true,
+    });
+  });
+
+  it('falls back to declared LogGroupName when the physical id is absent', async () => {
+    logs.on(PutBearerTokenAuthenticationCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::Logs::LogGroup', [removeOp])!;
+    await writer(ctx({ physicalId: '', declared: { LogGroupName: LG } }), [removeOp]);
+    expect(
+      logs.commandCalls(PutBearerTokenAuthenticationCommand)[0].args[0].input.logGroupIdentifier
+    ).toBe(LG);
   });
 });
