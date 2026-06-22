@@ -55,7 +55,7 @@ Then act on what `check` prints, from its own interactive prompt:
    later.
 2. **First run** — usually no drift yet, just live-only values to **record** as
    your baseline (one prompt; writes a git file, nothing to AWS — the switch that
-   arms undeclared / added detection). If it *does* find real drift, you revert or
+   arms undeclared / added detection). If real drift *is* present, you revert or
    ignore it inline too, same as #1.
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
    drift).
