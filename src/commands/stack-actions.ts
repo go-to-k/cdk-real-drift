@@ -365,10 +365,28 @@ export function ignoreSelectMessage(stackName: string): string {
 const ignoreFindingKey = (f: Finding): string => `${f.logicalId}::${f.path}`;
 
 /**
+ * The ignore multiselect rows. EVERY row starts UNSELECTED (→ selects all) — mirroring
+ * revert's picker (R137): ignore STOPS watching permanently, and check's interactive flow
+ * can route folded undeclared inventory here, so a default-all selection would let an
+ * Enter ignore values the user never saw in the report. Opt-in, not opt-out. Pure +
+ * exported so the "starts unselected" invariant is unit-tested without a TTY.
+ */
+export function ignoreSelectOptions(
+  ignorable: Finding[]
+): { value: string; label: string; selected: boolean }[] {
+  return ignorable.map((f) => ({
+    value: ignoreFindingKey(f),
+    label: `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''} (${f.tier})`,
+    selected: false,
+  }));
+}
+
+/**
  * Write `ignore` rules into `.cdkrd/config.json` for the chosen declared/undeclared
  * findings — they stop being reported entirely (re-tagged `ignored` on the next check),
  * the "stop watching" counterpart to record's "keep watching". Interactive runs pick
- * WHICH findings to ignore (default all selected); `--yes` ignores all shown.
+ * WHICH findings to ignore (default NONE selected — → selects all, R137); `--yes`
+ * ignores all shown.
  * Non-interactively without `--yes` it refuses (a required decision, like record, R38).
  * Idempotent: rules already in the file are reported, not duplicated. Shared by `cdkrd
  * ignore` and (PR-B2) check's interactive flow, so both write rules identically.
@@ -395,11 +413,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
     }
     const picked = await bulkMultiselect(
       ignoreSelectMessage(stackName),
-      ignorable.map((f) => ({
-        value: ignoreFindingKey(f),
-        label: `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''} (${f.tier})`,
-        selected: true,
-      }))
+      ignoreSelectOptions(ignorable)
     );
     if (picked === undefined) {
       console.error(`note: ${stackName}: ignore cancelled — config unchanged`);

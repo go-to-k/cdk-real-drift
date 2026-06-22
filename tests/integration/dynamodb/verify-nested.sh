@@ -7,7 +7,7 @@
 #   - R96 (object-nested):                PointInTimeRecoverySpecification.RecoveryPeriodInDays
 #
 # Asserts the full live chain:
-#   1. baseline-free check FOLDS nested into the info: footer (`nested=N`), exit 0;
+#   1. baseline-free check FOLDS nested into the info: footer (`undeclared-subkey=N`), exit 0;
 #   2. --show-all expands BOTH the R98 bracketed path and the R96 dotted path;
 #   3. record --yes then check --fail is CLEAN (record records the nested values);
 #   4. a REAL out-of-band mutation of the undeclared RecoveryPeriodInDays (35 -> 20
@@ -59,7 +59,7 @@ $CLI check "$STACK" --region "$REGION" | tee /tmp/cdkrd-nested-1.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (inventory only), got $rc"
 grep -q "DECLARED DRIFT" /tmp/cdkrd-nested-1.out && fail "fresh deploy reported DECLARED drift"
-grep -qE "nested=[1-9]" /tmp/cdkrd-nested-1.out || fail "expected a 'nested=N' fold in the info footer"
+grep -qE "undeclared-subkey=[1-9]" /tmp/cdkrd-nested-1.out || fail "expected an 'undeclared-subkey=N' fold in the info footer"
 
 echo "=== 2. --show-all expands BOTH the R98 array-element and R96 object-nested paths ==="
 $CLI check "$STACK" --region "$REGION" --show-all | tee /tmp/cdkrd-nested-2.out

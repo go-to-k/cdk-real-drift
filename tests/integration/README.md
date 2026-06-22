@@ -71,7 +71,7 @@ These do NOT run in CI (they need credentials and mutate a real account):
 - **After changing nested-undeclared detection** (`collectNestedUndeclared` in
   `src/diff/classify.ts`) or the revert nested guard (`src/revert/plan.ts`): run
   `dynamodb/verify-nested.sh` — it deploys a table whose GSI and PITR config
-  materialize nested undeclared values (R96/R98), asserts the `info: nested=N`
+  materialize nested undeclared values (R96/R98), asserts the `info: undeclared-subkey=N`
   fold + `--show-all` expansion live, then mutates the undeclared
   `RecoveryPeriodInDays` out of band and asserts the drift is detected and
   reported NOT-revertable (R99).

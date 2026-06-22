@@ -14,12 +14,17 @@ vi.mock('../src/commands/stack-actions.js', async (importOriginal) => {
   return {
     ...actual,
     revertStack: vi.fn().mockResolvedValue({ exit: 0, aborted: false }),
+    ignoreStack: vi.fn().mockResolvedValue({ wrote: false, refused: false, added: 0 }),
   };
 });
 
 import { select } from '@clack/prompts';
-import { resolveInteractively } from '../src/commands/interactive-resolve.js';
-import { revertStack } from '../src/commands/stack-actions.js';
+import {
+  buildScopeOptions,
+  isFoldedFinding,
+  resolveInteractively,
+} from '../src/commands/interactive-resolve.js';
+import { ignoreStack, revertStack } from '../src/commands/stack-actions.js';
 import type { Finding } from '../src/types.js';
 
 const declaredDrift: Finding = {
@@ -67,5 +72,93 @@ describe('resolveInteractively — read-only check never auto-confirms an AWS wr
     vi.mocked(select).mockResolvedValueOnce('revert-all');
     await resolveInteractively(params(false));
     expect(vi.mocked(revertStack).mock.calls[0]![0]).toMatchObject({ yes: false });
+  });
+});
+
+describe('isFoldedFinding — mirrors report.ts R96 fold (unrecorded + nested)', () => {
+  const f = (extra: Partial<Finding>): Finding =>
+    ({
+      tier: 'undeclared',
+      logicalId: 'L',
+      resourceType: 'T',
+      path: 'a.b',
+      actual: 1,
+      ...extra,
+    }) as Finding;
+  it('a nested unrecorded value is folded', () => {
+    expect(isFoldedFinding(f({ unrecorded: true, nested: true }), false)).toBe(true);
+  });
+  it('a top-level unrecorded value (not nested) is NOT folded — it lists in the report', () => {
+    expect(isFoldedFinding(f({ unrecorded: true }), false)).toBe(false);
+  });
+  it('a nested but RECORDED/drift value is NOT folded', () => {
+    expect(isFoldedFinding(f({ nested: true }), false)).toBe(false);
+  });
+  it('--verbose expands everything, so nothing is folded', () => {
+    expect(isFoldedFinding(f({ unrecorded: true, nested: true }), true)).toBe(false);
+  });
+});
+
+describe('buildScopeOptions — the shown-vs-include-folded rows', () => {
+  it('labels the two scopes with their counts and a running total', () => {
+    const opts = buildScopeOptions(3, 23);
+    expect(opts.map((o) => o.value)).toEqual(['shown', 'all']);
+    expect(opts[0]!.label).toContain('3 shown');
+    expect(opts[1]!.label).toContain('23 folded');
+    expect(opts[1]!.label).toContain('26 total');
+  });
+});
+
+describe('scope gate narrows the ignore picker to the report-shown findings (default)', () => {
+  const undeclaredFolded = (path: string): Finding =>
+    ({
+      tier: 'undeclared',
+      logicalId: 'B',
+      resourceType: 'AWS::S3::Bucket',
+      path,
+      actual: 'x',
+      unrecorded: true,
+      nested: true,
+    }) as Finding;
+  const withFolded = (yes: boolean) => {
+    const reconciled = [declaredDrift, undeclaredFolded('Conf.A'), undeclaredFolded('Conf.B')];
+    return { ...params(yes), findings: reconciled, reconciled } as Parameters<
+      typeof resolveInteractively
+    >[0];
+  };
+
+  beforeEach(() => {
+    vi.mocked(ignoreStack).mockClear();
+    vi.mocked(ignoreStack).mockResolvedValue({ wrote: false, refused: false, added: 0 });
+    vi.mocked(select).mockReset();
+  });
+
+  it('choosing "Ignore" then scope "shown" passes ONLY the 1 shown drift (not the 2 folded)', async () => {
+    vi.mocked(select)
+      .mockResolvedValueOnce('ignore-all') // top menu
+      .mockResolvedValueOnce('shown') // scope gate
+      .mockResolvedValueOnce('nothing'); // re-shown menu → exit (ignoreStack returned wrote:false)
+    await resolveInteractively(withFolded(false));
+    expect(ignoreStack).toHaveBeenCalledTimes(1);
+    const passed = vi.mocked(ignoreStack).mock.calls[0]![0].findings;
+    expect(passed).toHaveLength(1);
+    expect(passed[0]!.tier).toBe('declared');
+  });
+
+  it('choosing scope "all" passes the shown drift AND the 2 folded undeclared values', async () => {
+    vi.mocked(select)
+      .mockResolvedValueOnce('ignore-all')
+      .mockResolvedValueOnce('all')
+      .mockResolvedValueOnce('nothing');
+    await resolveInteractively(withFolded(false));
+    expect(vi.mocked(ignoreStack).mock.calls[0]![0].findings).toHaveLength(3);
+  });
+
+  it('--yes skips the scope prompt and passes the full set (1 top-menu select only)', async () => {
+    vi.mocked(select).mockResolvedValueOnce('ignore-all').mockResolvedValueOnce('nothing');
+    await resolveInteractively(withFolded(true));
+    expect(vi.mocked(ignoreStack).mock.calls[0]![0].findings).toHaveLength(3);
+    // exactly two select calls: top menu + the re-shown menu — no scope prompt in between
+    expect(vi.mocked(select)).toHaveBeenCalledTimes(2);
   });
 });

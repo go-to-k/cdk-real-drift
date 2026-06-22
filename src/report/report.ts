@@ -349,9 +349,12 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     })
     .filter((s): s is string => s !== null);
   // R96: the folded nested-unrecorded count joins the info: footer (--show-all lists them).
+  // Labelled `undeclared-subkey` rather than the bare `nested` — "nested" reads as a
+  // nested STACK, but these are undeclared live-only sub-keys INSIDE a declared object,
+  // not a stack relationship.
   if (nestedFolded.length > 0)
     summaries.push(
-      `nested=${nestedFolded.length} (undeclared values nested in a declared object — record to record; --show-all to list)`
+      `undeclared-subkey=${nestedFolded.length} (undeclared live-only values inside a declared object — record to record; --show-all to list)`
     );
   if (summaries.length === 1) {
     log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));

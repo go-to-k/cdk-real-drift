@@ -588,13 +588,13 @@ describe('R96 nested unrecorded folding', () => {
     const { text } = run([NU('TopLevel'), NU('Conf.A', true), NU('Conf.B', true)]);
     expect(text).toContain('[Not Recorded: 1]');
     expect(text).toContain('L.TopLevel');
-    expect(text).toContain('nested=2');
+    expect(text).toContain('undeclared-subkey=2');
     expect(text).not.toContain('Conf.A');
   });
   it('--show-all expands nested into the body (no fold line)', () => {
     const { text } = run([NU('Conf.A', true)], { expandAtDefault: true });
     expect(text).toContain('L.Conf.A');
-    expect(text).not.toContain('nested=1');
+    expect(text).not.toContain('undeclared-subkey=1');
   });
   it('--verbose also expands nested', () => {
     const { text } = run([NU('Conf.A', true)], { verbose: true });

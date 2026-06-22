@@ -80,9 +80,14 @@ The report always prints **first**, so you see the standout values before decidi
 (no blind bulk-record). The count is the **complete** undeclared inventory, but
 only the handful that **stand out** are listed — AWS defaults, auto-generated
 names/identifiers, and nested sub-keys you never touched fold into the `info:`
-footer (`atDefault=` / `generated=` / `nested=`, `--show-all` expands them).
-Choosing Record opens a checklist (everything pre-selected — Enter to record all,
-or deselect what you want to keep visible) and writes
+footer (`atDefault=` / `generated=` / `undeclared-subkey=`, `--show-all`
+expands them).
+A listed `Not Recorded` value is **expected, not a bug or a false positive** — it
+just means cdkrd cannot yet prove the value is an AWS default and it is not in your
+baseline yet (sometimes simply because cdkrd does not know that resource type's
+default). You are not meant to "fix" it; `record` it once to accept the current
+state. Choosing Record opens a checklist (everything pre-selected — Enter to record
+all, or deselect what you want to keep visible) and writes
 `.cdkrd/ApiStack.<account>.<region>.json` — **a git file, nothing written to
 AWS** — commit it; from here on `check` reports CLEAN until reality changes.
 (Declared drift is detected from the very first run, baseline or not.)
@@ -131,9 +136,14 @@ finding** is the only path that assigns a _different_ action to each finding.
   pre-selected). Keeps watching.
 - **Ignore** writes a path rule to `.cdkrd/config.json` so the drift (declared,
   undeclared, _or_ an out-of-band **added** resource) stops being reported entirely
-  (multiselect, pre-selected). Stops watching.
+  (multiselect, **nothing pre-selected** — opt in, since ignoring permanently stops
+  watching). Stops watching. If `check` folded undeclared inventory out of the
+  report, Ignore first asks whether to act on just the shown drift (default) or
+  include the folded values too — so the picker never silently lists values you
+  never saw.
 - **Decide per finding** opens a picker to assign a different action to each
-  finding. On a stack with many findings, **just start typing to filter** the rows
+  finding (same shown-vs-folded scope question as Ignore when inventory was
+  folded). On a stack with many findings, **just start typing to filter** the rows
   by name (↑↓ move · space cycles the row's actions · → applies the focused action
   to every _visible_ row · ⌫ clears the filter · enter applies · esc backs out).
 - **Revert** shows a plan, lets you pick which op(s) to write (nothing
