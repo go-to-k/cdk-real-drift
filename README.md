@@ -89,7 +89,17 @@ A few things to know about that first run:
   blind.
 - **Recording writes only a git file** — `.cdkrd/ApiStack.<account>.<region>.json`,
   nothing to AWS. Commit it; from then on `check` is CLEAN until reality changes.
-- **Declared drift needs no baseline** — it's detected from the very first run.
+- **Record vs Ignore — both silence the value, differently.** Record **snapshots**
+  it and **keeps watching** (a later change re-surfaces as drift); Ignore writes a
+  `config.json` rule and **stops watching** for good. On first run you'll almost
+  always Record; Ignore is for a live-only value you never want reported. (Full
+  breakdown under [Day to day](#day-to-day-act-on-drift).)
+- **Already drifting on day 1? You can revert right away.** Undeclared / added
+  detection only arms once you record, but **declared** drift is caught from the
+  very first `check`. When it's present, the prompt also offers **Revert** (write
+  the template value back) and **Ignore** — so you fix or accept it immediately,
+  with no need to record first. (`record` covers undeclared / added values only,
+  never declared drift.)
 
 Even a fully clean fresh deploy still prompts to record, so the day-1 baseline is
 always established through `check` itself:
