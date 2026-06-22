@@ -1002,6 +1002,18 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
     'GlobalSecondaryIndexes.Projection.NonKeyAttributes',
     'LocalSecondaryIndexes.Projection.NonKeyAttributes',
   ]),
+  // An ALB ListenerRule path-pattern condition's `Values` is a SET of patterns OR'd
+  // together (order carries no meaning — a request matches if ANY value matches), and
+  // ALB returns them in its OWN canonical order: declared ["/zebra/*","/alpha/*",
+  // "/mango/*"] reads back ["/alpha/*","/zebra/*","/mango/*"], so a positional compare
+  // false-flags the whole set. The set is nested one object level (PathPatternConfig)
+  // under the `Conditions` ARRAY, so sortNestedObjectArrays recurses element-wise and
+  // sorts the scalar Values array. Observed live on a fresh elbv2-rule-values deploy.
+  // (HostHeaderConfig.Values was tested in the SAME deploy with a deliberately
+  // non-sorted set and ALB PRESERVED its order, so it is NOT listed — observed-only.)
+  // `Conditions` is ALSO an UNORDERED_OBJECT_ARRAY_PROPS set; classify composes the
+  // two — inner Values sorted first, then the Conditions array sorted by canonical JSON.
+  'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions.PathPatternConfig.Values']),
 };
 
 // Return a deep clone of `value` (a declared/live property subtree rooted at one

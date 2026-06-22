@@ -600,8 +600,18 @@ export function classifyResource(
       declaredVal = declaredSorted;
       liveVal = liveAligned;
     } else if (unorderedObjArray) {
-      declaredVal = sortUnorderedObjectArray(v);
-      liveVal = sortUnorderedObjectArray(live[k]);
+      // A key in BOTH UNORDERED_OBJECT_ARRAY_PROPS and UNORDERED_NESTED_OBJECT_ARRAY_PATHS
+      // (ELBv2 ListenerRule `Conditions`) needs both folds: sort each element's nested
+      // unordered set FIRST (so its canonical JSON is normalized), THEN sort the object
+      // array itself. Without the inner sort, the outer canonical-JSON sort sees a
+      // reordered-but-equal nested set as a different element and the positional diff
+      // still false-flags it.
+      declaredVal = sortUnorderedObjectArray(
+        nestedSubPaths.length > 0 ? sortNestedObjectArrays(v, nestedSubPaths) : v
+      );
+      liveVal = sortUnorderedObjectArray(
+        nestedSubPaths.length > 0 ? sortNestedObjectArrays(live[k], nestedSubPaths) : live[k]
+      );
     } else if (nestedSubPaths.length > 0) {
       declaredVal = sortNestedObjectArrays(v, nestedSubPaths);
       liveVal = sortNestedObjectArrays(live[k], nestedSubPaths);
