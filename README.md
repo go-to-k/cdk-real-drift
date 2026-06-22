@@ -3,10 +3,8 @@
 Drift detection for AWS CDK that sees what your template can't — including the
 **properties you never declared**. Detect it, record it, or revert it.
 
-<!-- badges (enable on publish):
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
--->
 
 > **Day to day you run one command — `cdkrd check`.** It finds drift and offers
 > **Record / Revert / Ignore** right there; the other verbs are just its non-TTY/CI
@@ -62,9 +60,6 @@ Then act on what `check` prints, from its own interactive prompt:
    inline.
 3. **In CI** — `npx cdkrd check --fail` (read-only, never prompts, exits 1 on
    drift).
-
-Requirements: Node.js >= 20, AWS credentials via the standard SDK chain
-(env vars, `--profile`, SSO).
 
 ### First run: record a baseline
 
