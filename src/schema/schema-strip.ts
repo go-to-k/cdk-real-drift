@@ -27,12 +27,37 @@ export async function getSchemaInfo(
   return info;
 }
 
+// Top-level writeOnly properties that an SDK_OVERRIDES reader (read/overrides.ts) CAN
+// actually read back, so they must NOT be writeOnly-stripped / readGap'd for these types
+// — the override populates them and they should be compared like any readable property.
+// Kept in sync with SDK_OVERRIDES: AWS::EC2::LaunchTemplate `LaunchTemplateData` is
+// writeOnly in the registry schema (CC returns only ids/versions), but readEc2LaunchTemplate
+// reads the default version's data via DescribeLaunchTemplateVersions. (VersionDescription
+// and the top-level TagSpecifications stay writeOnly — the override does not project them.)
+export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
+  'AWS::EC2::LaunchTemplate': ['LaunchTemplateData'],
+};
+
+// Remove the override-readable writeOnly props from a type's writeOnly sets so the
+// classify pipeline compares (not strips/readGaps) the value the override now supplies.
+// Exported for unit testing without an AWS call.
+export function exemptOverrideReadable(info: SchemaInfo, resourceType: string): SchemaInfo {
+  const exempt = OVERRIDE_READABLE_WRITEONLY[resourceType];
+  if (!exempt?.length) return info;
+  const isExempt = (p: string): boolean => exempt.some((e) => p === e || p.startsWith(`${e}.`));
+  return {
+    ...info,
+    writeOnly: new Set([...info.writeOnly].filter((k) => !exempt.includes(k))),
+    writeOnlyPaths: info.writeOnlyPaths.filter((p) => !isExempt(p)),
+  };
+}
+
 async function fetch(client: CloudFormationClient, resourceType: string): Promise<SchemaInfo> {
   try {
     const r = await client.send(
       new DescribeTypeCommand({ Type: 'RESOURCE', TypeName: resourceType })
     );
-    return parseSchema(r.Schema ?? '{}');
+    return exemptOverrideReadable(parseSchema(r.Schema ?? '{}'), resourceType);
   } catch {
     return EMPTY;
   }

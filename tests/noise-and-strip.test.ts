@@ -17,7 +17,11 @@ import {
   ORDER_SIGNIFICANT_ARRAY_KEYS,
 } from '../src/normalize/noise.js';
 import { canonicalizeForCompare } from '../src/normalize/pipeline.js';
-import { parseSchema } from '../src/schema/schema-strip.js';
+import {
+  exemptOverrideReadable,
+  OVERRIDE_READABLE_WRITEONLY,
+  parseSchema,
+} from '../src/schema/schema-strip.js';
 
 describe('noise suppressors', () => {
   it('isTrivialEmpty: false / "" / [] / {} only', () => {
@@ -487,6 +491,38 @@ describe('parseSchema', () => {
     expect(info.readOnlyPaths).toContain('Lifecycle.Rules.*.X');
     expect([...info.writeOnly]).toEqual(['AccessControl']);
     expect(info.defaults).toEqual({ Path: '/' });
+  });
+
+  it('exemptOverrideReadable un-marks a writeOnly prop an SDK override can read (EC2 LaunchTemplate)', () => {
+    // EC2 LaunchTemplate: LaunchTemplateData/VersionDescription/TagSpecifications are all
+    // writeOnly, but the readEc2LaunchTemplate override reads LaunchTemplateData back.
+    const raw = parseSchema(
+      JSON.stringify({
+        writeOnlyProperties: [
+          '/properties/LaunchTemplateData',
+          '/properties/VersionDescription',
+          '/properties/TagSpecifications',
+        ],
+      })
+    );
+    expect([...raw.writeOnly].sort()).toEqual([
+      'LaunchTemplateData',
+      'TagSpecifications',
+      'VersionDescription',
+    ]);
+    const exempt = exemptOverrideReadable(raw, 'AWS::EC2::LaunchTemplate');
+    // LaunchTemplateData is now compared (removed from both the set and the paths); the
+    // other two writeOnly props stay readGaps.
+    expect([...exempt.writeOnly].sort()).toEqual(['TagSpecifications', 'VersionDescription']);
+    expect(exempt.writeOnlyPaths).not.toContain('LaunchTemplateData');
+    // OVERRIDE_READABLE_WRITEONLY entry exists for the type and only lists that prop.
+    expect(OVERRIDE_READABLE_WRITEONLY['AWS::EC2::LaunchTemplate']).toEqual(['LaunchTemplateData']);
+  });
+
+  it('exemptOverrideReadable is a no-op for an unlisted type', () => {
+    const raw = parseSchema(JSON.stringify({ writeOnlyProperties: ['/properties/Secret'] }));
+    const out = exemptOverrideReadable(raw, 'AWS::Other::Thing');
+    expect([...out.writeOnly]).toEqual(['Secret']);
   });
 
   it('parses createOnly + conditionalCreateOnly (both = needs replacement)', () => {

@@ -1,0 +1,126 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LaunchTemplate",
+    "resourceType": "AWS::EC2::LaunchTemplate",
+    "physicalId": "lt-0ee512f7b48b406e1",
+    "constructPath": "CdkRealDriftIntegEc2LaunchTemplateRich/LaunchTemplate",
+    "declared": {
+      "LaunchTemplateData": {
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/xvda",
+            "Ebs": {
+              "Encrypted": true,
+              "VolumeSize": 8,
+              "VolumeType": "gp3"
+            }
+          },
+          {
+            "DeviceName": "/dev/xvdb",
+            "Ebs": {
+              "DeleteOnTermination": true,
+              "VolumeSize": 20,
+              "VolumeType": "gp3"
+            }
+          }
+        ],
+        "CreditSpecification": {
+          "CpuCredits": "standard"
+        },
+        "InstanceType": "t3.micro",
+        "MetadataOptions": {
+          "HttpEndpoint": "enabled",
+          "HttpPutResponseHopLimit": 2,
+          "HttpTokens": "required"
+        },
+        "Monitoring": {
+          "Enabled": true
+        },
+        "TagSpecifications": [
+          {
+            "ResourceType": "instance",
+            "Tags": [
+              {
+                "Key": "Name",
+                "Value": "cdkrd-lt-instance"
+              },
+              {
+                "Key": "Tier",
+                "Value": "web"
+              }
+            ]
+          }
+        ]
+      },
+      "LaunchTemplateName": "cdkrd-integ-launchtemplate"
+    }
+  },
+  "liveRaw": {
+    "LaunchTemplateName": "cdkrd-integ-launchtemplate",
+    "LaunchTemplateData": {
+      "BlockDeviceMappings": [
+        {
+          "DeviceName": "/dev/xvda",
+          "Ebs": {
+            "Encrypted": true,
+            "VolumeSize": 8,
+            "VolumeType": "gp3"
+          }
+        },
+        {
+          "DeviceName": "/dev/xvdb",
+          "Ebs": {
+            "DeleteOnTermination": true,
+            "VolumeSize": 20,
+            "VolumeType": "gp3"
+          }
+        }
+      ],
+      "InstanceType": "t3.micro",
+      "Monitoring": {
+        "Enabled": true
+      },
+      "TagSpecifications": [
+        {
+          "ResourceType": "instance",
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "cdkrd-lt-instance"
+            },
+            {
+              "Key": "Tier",
+              "Value": "web"
+            }
+          ]
+        }
+      ],
+      "CreditSpecification": {
+        "CpuCredits": "standard"
+      },
+      "MetadataOptions": {
+        "HttpTokens": "required",
+        "HttpPutResponseHopLimit": 2,
+        "HttpEndpoint": "enabled"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["DefaultVersionNumber", "LatestVersionNumber", "LaunchTemplateId"],
+    "writeOnly": ["TagSpecifications", "VersionDescription"],
+    "createOnly": ["LaunchTemplateName"],
+    "readOnlyPaths": ["DefaultVersionNumber", "LatestVersionNumber", "LaunchTemplateId"],
+    "writeOnlyPaths": ["TagSpecifications", "VersionDescription"],
+    "createOnlyPaths": ["LaunchTemplateName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

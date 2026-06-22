@@ -508,8 +508,8 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `sns:GetTopicAttributes`, `sqs:GetQueueAttributes`, `iam:GetRolePolicy`,
   `iam:GetUserPolicy`, `iam:GetGroupPolicy`, `iam:GetPolicy`, `iam:GetPolicyVersion`,
   `lambda:GetPolicy`, `budgets:ViewBudget`, `ec2:DescribeAddresses`,
-  `route53:ListResourceRecordSets`, `glue:GetTable`, `logs:DescribeMetricFilters`,
-  `scheduler:GetSchedule`
+  `ec2:DescribeLaunchTemplateVersions`, `route53:ListResourceRecordSets`,
+  `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`
 - Optional: `kms:ListAliases` — enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the
