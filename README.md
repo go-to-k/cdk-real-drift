@@ -81,14 +81,7 @@ What each choice does here:
   declared one.
 - **Ignore** — stop reporting it, for good (watching off).
 
-A few things to know about that first run:
-
-- **`Not Recorded` is expected, not a false positive.** The list is the full
-  inventory, standouts only (`--show-all` expands), printed *before* the prompt — so
-  you never record blind.
-- **Declared drift is caught from run one** — revert or ignore it right there, no
-  baseline needed (undeclared / added drift surface once you've recorded). A
-  reverted plan:
+Reverting writes to AWS and confirms first:
 
 ```console
 === cdkrd revert: ApiStack (us-east-1) ===
@@ -121,13 +114,9 @@ each does, run on its own:
 | `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`)           |
 | `cdkrd revert` | "this state is WRONG" — write the desired value back                  | AWS (plan + confirm)                 |
 
-The one distinction to keep straight:
-
-- **`record` keeps watching** — it snapshots the undeclared value (or added
-  resource) and re-surfaces drift if it later changes. Undeclared / added only.
-- **`ignore` stops watching** — it writes a path rule (declared, undeclared, _or_
-  added) and the finding is never reported again. It's the only in-tool way to
-  accept a **declared** drift without editing code or reverting.
+The scopes differ: `record` is **undeclared / added only**, while `ignore` works on
+**any** tier — it's the only in-tool way to accept a **declared** drift without
+editing code or reverting.
 
 `check`, `record`, and `ignore` never write to AWS. `revert` is the one mutating
 verb and always confirms first (`--dry-run` to preview, `--yes` to skip the
@@ -240,12 +229,12 @@ Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `cdkrd check 'Dev*'`  | glob, matched against the app's stack names                   |
 | `cdkrd check MyStack` | one stack, selected by name from the app                      |
 
-`cdkrd` is **CDK-only**: it always resolves your CDK app to discover which stacks
-exist and to label findings by construct path. The app comes from `cdk.json` (when
-run in the project directory) or from `--app`: a command (`--app "node bin/app.js"`)
-or a pre-synthesized assembly (`--app cdk.out` — read, not executed); `$CDKRD_APP`
-also works. The drift comparison still reads each stack's **deployed** template +
-live state from AWS — synth only tells cdkrd which stacks to look at.
+cdkrd resolves your CDK app to discover which stacks exist and to label findings by
+construct path. The app comes from `cdk.json` (when run in the project directory) or
+from `--app`: a command (`--app "node bin/app.js"`) or a pre-synthesized assembly
+(`--app cdk.out` — read, not executed); `$CDKRD_APP` also works. The drift
+comparison still reads each stack's **deployed** template + live state from AWS —
+synth only tells cdkrd which stacks to look at.
 
 ## Commands & options
 
