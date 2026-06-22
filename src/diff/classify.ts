@@ -43,6 +43,8 @@ import {
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS,
+  PARAMETER_NAME_SUBSET_PATHS,
+  alignParameterNameSubset,
   RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
   sortNestedObjectArrays,
@@ -642,6 +644,29 @@ export function classifyResource(
       // so the unresolvable leaf never becomes a false `declared` drift vs the symbol,
       // while its RESOLVED siblings still compare normally (the WAVE20-F1 fix).
       if (d.stateValue === UNRESOLVED || hasUnresolved(d.stateValue)) continue;
+      // A `[{ParameterName,ParameterValue}]` set the service reorders + default-fills
+      // (Firehose processor `Parameters`): when every declared param is present in live
+      // with an equal value (declared subset of live), the whole-array `declared` diff is
+      // a false positive — suppress it and surface the live-only (server-injected) params
+      // as nested undeclared inventory (recorded; a later change still surfaces). A genuine
+      // declared param change returns null and the finding is kept as real drift.
+      const paramSubsetRe = PARAMETER_NAME_SUBSET_PATHS[resourceType];
+      if (paramSubsetRe?.test(d.path)) {
+        const liveOnly = alignParameterNameSubset(d.stateValue, d.awsValue);
+        if (liveOnly) {
+          for (const lo of liveOnly) {
+            findings.push({
+              tier: 'undeclared',
+              logicalId,
+              resourceType,
+              path: `${d.path}[${String((lo as Record<string, unknown>).ParameterName)}]`,
+              actual: lo,
+              nested: true,
+            });
+          }
+          continue;
+        }
+      }
       // a bare name declared for a field AWS returns as the full ARN is not drift
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN
