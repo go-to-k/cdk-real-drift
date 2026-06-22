@@ -37,8 +37,6 @@ $ npx cdkrd check
 result: 1 drift(s) (undeclared=1)
 ```
 
-_The GIF is regenerated with [`demo/`](demo/) (`bash demo/setup.sh` → `vhs demo/cdkrd.tape`)._
-
 | Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
 | ------------------------------------------------------------------- | :-----: | :-------------------------------: |
 | Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
