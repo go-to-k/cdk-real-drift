@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EventsD32975C2",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsRichExtras-EventsD32975C2-iHNiTcQGOGLx",
+    "constructPath": "CdkRealDriftIntegSnsRichExtras/Events",
+    "declared": {
+      "DisplayName": "cdkrd events topic",
+      "SignatureVersion": "2",
+      "TracingConfig": "Active"
+    }
+  },
+  "liveRaw": {
+    "SignatureVersion": "2",
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsRichExtras-EventsD32975C2-iHNiTcQGOGLx",
+    "TracingConfig": "Active",
+    "DisplayName": "cdkrd events topic",
+    "FifoTopic": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSnsRichExtras/4bf65500-6eca-11f1-8c6b-12abecc628fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSnsRichExtras",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "EventsD32975C2",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ArchivePolicy": {},
+    "TopicName": "CdkRealDriftIntegSnsRichExtras-EventsD32975C2-iHNiTcQGOGLx"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "EventsD32975C2",
+      "resourceType": "AWS::SNS::Topic",
+      "path": "TopicName",
+      "actual": "CdkRealDriftIntegSnsRichExtras-EventsD32975C2-iHNiTcQGOGLx",
+      "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsRichExtras-EventsD32975C2-iHNiTcQGOGLx",
+      "constructPath": "CdkRealDriftIntegSnsRichExtras/Events"
+    }
+  ]
+}
