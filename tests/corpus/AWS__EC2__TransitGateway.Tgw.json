@@ -93,7 +93,7 @@
       "constructPath": "CdkRealDriftIntegTransitGatewayRich/Tgw"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Tgw",
       "resourceType": "AWS::EC2::TransitGateway",
       "path": "SecurityGroupReferencingSupport",

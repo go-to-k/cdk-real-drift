@@ -72,7 +72,7 @@
       "constructPath": "CdkrdIntegHarvest6/Pipe"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pipe",
       "resourceType": "AWS::Pipes::Pipe",
       "path": "DesiredState",

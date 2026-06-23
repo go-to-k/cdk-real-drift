@@ -247,7 +247,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "DatabaseInsightsMode",
@@ -265,7 +265,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "StorageThroughput",
@@ -274,7 +274,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "MonitoringInterval",
@@ -319,7 +319,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "AutoMinorVersionUpgrade",
@@ -364,7 +364,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "NetworkType",
@@ -373,7 +373,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "EngineLifecycleSupport",
@@ -400,7 +400,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "BackupTarget",

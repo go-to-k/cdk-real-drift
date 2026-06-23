@@ -119,7 +119,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
       "path": "EnhancedMonitoring",
@@ -145,7 +145,7 @@
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
       "path": "StorageMode",
@@ -194,7 +194,7 @@
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
       "path": "BrokerNodeGroupInfo.BrokerAZDistribution",

@@ -53,6 +53,33 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxRetries",
+      "actual": 0,
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "JobMode",
+      "actual": "SCRIPT",
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "Timeout",
+      "actual": 2880,
+      "physicalId": "cdkrd-harvest5",
+      "constructPath": "CdkrdIntegHarvest5/GlueJob"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "GlueJob",
       "resourceType": "AWS::Glue::Job",
@@ -69,33 +96,6 @@
       "actual": {
         "MaxConcurrentRuns": 1
       },
-      "physicalId": "cdkrd-harvest5",
-      "constructPath": "CdkrdIntegHarvest5/GlueJob"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "GlueJob",
-      "resourceType": "AWS::Glue::Job",
-      "path": "JobMode",
-      "actual": "SCRIPT",
-      "physicalId": "cdkrd-harvest5",
-      "constructPath": "CdkrdIntegHarvest5/GlueJob"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "GlueJob",
-      "resourceType": "AWS::Glue::Job",
-      "path": "MaxRetries",
-      "actual": 0,
-      "physicalId": "cdkrd-harvest5",
-      "constructPath": "CdkrdIntegHarvest5/GlueJob"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "GlueJob",
-      "resourceType": "AWS::Glue::Job",
-      "path": "Timeout",
-      "actual": 2880,
       "physicalId": "cdkrd-harvest5",
       "constructPath": "CdkrdIntegHarvest5/GlueJob"
     }

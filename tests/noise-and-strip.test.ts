@@ -438,6 +438,62 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {
+    // Constant, documented service defaults common stateful/streaming types report as
+    // first-run undeclared noise. Verified against the golden corpus (RDS DBInstance
+    // values unanimous across 3 instances spanning aurora-mysql + mysql8.0) and
+    // exercised by the corpus-replay cases. Equality-gated: a non-default value still
+    // surfaces. Resource-/AZ-/window-/engine-derived values are deliberately excluded.
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBInstance']).toEqual({
+      AutoMinorVersionUpgrade: true,
+      BackupTarget: 'region',
+      DatabaseInsightsMode: 'standard',
+      EngineLifecycleSupport: 'open-source-rds-extended-support',
+      MonitoringInterval: 0,
+      NetworkType: 'IPV4',
+      StorageThroughput: 0,
+    });
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].NetworkType).toBe('IPV4');
+    expect(KNOWN_DEFAULTS['AWS::ElastiCache::ReplicationGroup']).toEqual({
+      AutoMinorVersionUpgrade: true,
+      ClusterMode: 'disabled',
+      IpDiscovery: 'ipv4',
+      NetworkType: 'ipv4',
+      ReplicasPerNodeGroup: 0,
+    });
+    expect(KNOWN_DEFAULTS['AWS::Neptune::DBInstance'].AutoMinorVersionUpgrade).toBe(true);
+    expect(KNOWN_DEFAULTS['AWS::EC2::VPCEndpoint'].IpAddressType).toBe('ipv4');
+    expect(KNOWN_DEFAULTS['AWS::EC2::TransitGateway'].SecurityGroupReferencingSupport).toBe(
+      'disable'
+    );
+    expect(KNOWN_DEFAULTS['AWS::EC2::FlowLog'].MaxAggregationInterval).toBe(600);
+    expect(KNOWN_DEFAULTS['AWS::Pipes::Pipe'].DesiredState).toBe('RUNNING');
+    expect(KNOWN_DEFAULTS['AWS::Synthetics::Canary']).toEqual({
+      FailureRetentionPeriod: 31,
+      SuccessRetentionPeriod: 31,
+      ProvisionedResourceCleanup: 'AUTOMATIC',
+    });
+    expect(KNOWN_DEFAULTS['AWS::MSK::Cluster']).toEqual({
+      EnhancedMonitoring: 'DEFAULT',
+      StorageMode: 'LOCAL',
+    });
+    expect(KNOWN_DEFAULTS['AWS::OpenSearchService::Domain'].IPAddressType).toBe('ipv4');
+    expect(KNOWN_DEFAULTS['AWS::Glue::Job']).toEqual({ JobMode: 'SCRIPT', MaxRetries: 0 });
+    // nested
+    expect(KNOWN_DEFAULT_PATHS['AWS::WAFv2::WebACL']).toEqual({
+      'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::SES::EmailIdentity']).toEqual({
+      'MailFromAttributes.BehaviorOnMxFailure': 'USE_DEFAULT_VALUE',
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::Batch::JobDefinition']).toEqual({
+      'ContainerProperties.RuntimePlatform.CpuArchitecture': 'X86_64',
+      'ContainerProperties.RuntimePlatform.OperatingSystemFamily': 'LINUX',
+      'ContainerProperties.FargatePlatformConfiguration.PlatformVersion': 'LATEST',
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::CodeBuild::Project']['Artifacts.Packaging']).toBe('NONE');
+  });
+
   it('S3 suspended versioning is a known default — the off state a revert lands on (R46)', () => {
     expect(KNOWN_DEFAULTS['AWS::S3::Bucket'].VersioningConfiguration).toEqual({
       Status: 'Suspended',

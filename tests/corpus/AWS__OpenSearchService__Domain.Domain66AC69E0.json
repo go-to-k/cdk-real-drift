@@ -193,7 +193,7 @@
       "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "IPAddressType",

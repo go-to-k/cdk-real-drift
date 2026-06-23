@@ -120,7 +120,7 @@
       "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobDef97B0969F",
       "resourceType": "AWS::Batch::JobDefinition",
       "path": "ContainerProperties.FargatePlatformConfiguration.PlatformVersion",
@@ -130,7 +130,7 @@
       "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobDef97B0969F",
       "resourceType": "AWS::Batch::JobDefinition",
       "path": "ContainerProperties.RuntimePlatform.OperatingSystemFamily",
@@ -140,7 +140,7 @@
       "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobDef97B0969F",
       "resourceType": "AWS::Batch::JobDefinition",
       "path": "ContainerProperties.RuntimePlatform.CpuArchitecture",

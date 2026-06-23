@@ -190,7 +190,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "ClusterMode",
@@ -199,7 +199,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "ReplicasPerNodeGroup",
@@ -208,7 +208,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "NetworkType",
@@ -217,7 +217,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "AutoMinorVersionUpgrade",
@@ -253,7 +253,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "IpDiscovery",

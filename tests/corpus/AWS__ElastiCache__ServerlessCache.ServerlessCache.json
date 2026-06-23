@@ -73,7 +73,7 @@
       "constructPath": "CdkdriftIntegHarvest13/ServerlessCache"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ServerlessCache",
       "resourceType": "AWS::ElastiCache::ServerlessCache",
       "path": "SnapshotRetentionLimit",
