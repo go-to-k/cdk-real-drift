@@ -376,6 +376,20 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('AppSync + Logs SubscriptionFilter known defaults present (bug-hunt: appsync-resolver-rich / logs-subscriptionfilter-rich)', () => {
+    // Constant service defaults a fresh deploy reports as first-run undeclared
+    // inventory; equality-gated, so a value set away from the default still surfaces.
+    // Exercised by the AppSync Resolver/Function/GraphQLApi and SubscriptionFilter
+    // corpus cases.
+    expect(KNOWN_DEFAULTS['AWS::AppSync::Resolver']).toEqual({ MaxBatchSize: 0 });
+    expect(KNOWN_DEFAULTS['AWS::AppSync::FunctionConfiguration']).toEqual({ MaxBatchSize: 0 });
+    expect(KNOWN_DEFAULTS['AWS::AppSync::GraphQLApi'].QueryDepthLimit).toBe(0);
+    expect(KNOWN_DEFAULTS['AWS::AppSync::GraphQLApi'].ResolverCountLimit).toBe(0);
+    expect(KNOWN_DEFAULTS['AWS::Logs::SubscriptionFilter']).toEqual({
+      Distribution: 'ByLogStream',
+    });
+  });
+
   it('S3 suspended versioning is a known default — the off state a revert lands on (R46)', () => {
     expect(KNOWN_DEFAULTS['AWS::S3::Bucket'].VersioningConfiguration).toEqual({
       Status: 'Suspended',

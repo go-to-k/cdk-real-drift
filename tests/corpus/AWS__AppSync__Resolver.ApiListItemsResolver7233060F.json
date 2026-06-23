@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiListItemsResolver7233060F",
+    "resourceType": "AWS::AppSync::Resolver",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/listItems",
+    "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/ListItemsResolver",
+    "declared": {
+      "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+      "FieldName": "listItems",
+      "Kind": "PIPELINE",
+      "PipelineConfig": {
+        "Functions": ["when6p45nzgp3ipwtdsmrkgb6y"]
+      },
+      "RequestMappingTemplate": "## before pipeline\n{\n  \"version\": \"2018-05-29\"\n}\n",
+      "ResponseMappingTemplate": "## after pipeline\n$util.toJson($ctx.result)\n",
+      "TypeName": "Query"
+    }
+  },
+  "liveRaw": {
+    "TypeName": "Query",
+    "PipelineConfig": {
+      "Functions": ["when6p45nzgp3ipwtdsmrkgb6y"]
+    },
+    "RequestMappingTemplate": "## before pipeline\n{\n  \"version\": \"2018-05-29\"\n}\n",
+    "ResponseMappingTemplate": "## after pipeline\n$util.toJson($ctx.result)\n",
+    "Kind": "PIPELINE",
+    "MaxBatchSize": 0,
+    "ResolverArn": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/listItems",
+    "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+    "FieldName": "listItems"
+  },
+  "schema": {
+    "readOnly": ["ResolverArn"],
+    "writeOnly": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnly": ["ApiId", "FieldName", "TypeName"],
+    "readOnlyPaths": ["ResolverArn"],
+    "writeOnlyPaths": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnlyPaths": ["ApiId", "FieldName", "TypeName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiListItemsResolver7233060F",
+      "resourceType": "AWS::AppSync::Resolver",
+      "path": "MaxBatchSize",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/listItems",
+      "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/ListItemsResolver"
+    }
+  ]
+}

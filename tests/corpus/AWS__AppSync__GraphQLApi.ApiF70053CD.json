@@ -86,7 +86,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "QueryDepthLimit",
@@ -104,7 +104,7 @@
       "constructPath": "CdkRealDriftIntegAppsyncGraphqlapiRich/Api"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "ResolverCountLimit",

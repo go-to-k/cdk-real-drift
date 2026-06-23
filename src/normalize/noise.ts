@@ -206,6 +206,27 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ApiType: 'GRAPHQL',
     Visibility: 'GLOBAL',
     IntrospectionConfig: 'ENABLED',
+    // Observed live on a fresh appsync-resolver-rich deploy: an API that declares
+    // neither limit reads back the "no limit" sentinel 0 for both, so every default
+    // AppSync API otherwise reports them as first-run undeclared inventory.
+    QueryDepthLimit: 0,
+    ResolverCountLimit: 0,
+  },
+  // AppSync Resolvers / Functions default MaxBatchSize to 0 (no batch invocation)
+  // when the template declares no batching — observed live on a fresh
+  // appsync-resolver-rich deploy across UNIT + PIPELINE resolvers and the Function.
+  // Equality-gated: a real batch size set out of band still surfaces.
+  'AWS::AppSync::Resolver': {
+    MaxBatchSize: 0,
+  },
+  'AWS::AppSync::FunctionConfiguration': {
+    MaxBatchSize: 0,
+  },
+  // Logs SubscriptionFilter defaults Distribution to "ByLogStream" when undeclared
+  // (the only other value is "Random") — observed live on a fresh
+  // logs-subscriptionfilter-rich deploy.
+  'AWS::Logs::SubscriptionFilter': {
+    Distribution: 'ByLogStream',
   },
   'AWS::KMS::Key': {
     Enabled: true,

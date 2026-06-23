@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ListFn7192A255",
+    "resourceType": "AWS::AppSync::FunctionConfiguration",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/functions/when6p45nzgp3ipwtdsmrkgb6y",
+    "constructPath": "CdkRealDriftIntegAppsyncResolverRich/ListFn",
+    "declared": {
+      "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+      "DataSourceName": "ItemsDs",
+      "FunctionVersion": "2018-05-29",
+      "Name": "listItemsFn",
+      "RequestMappingTemplate": "{\"version\" : \"2017-02-28\", \"operation\" : \"Scan\", \"consistentRead\": false}",
+      "ResponseMappingTemplate": "$util.toJson($ctx.result.items)"
+    }
+  },
+  "liveRaw": {
+    "FunctionId": "when6p45nzgp3ipwtdsmrkgb6y",
+    "FunctionArn": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/functions/when6p45nzgp3ipwtdsmrkgb6y",
+    "DataSourceName": "ItemsDs",
+    "RequestMappingTemplate": "{\"version\" : \"2017-02-28\", \"operation\" : \"Scan\", \"consistentRead\": false}",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result.items)",
+    "FunctionVersion": "2018-05-29",
+    "MaxBatchSize": 0,
+    "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+    "Name": "listItemsFn"
+  },
+  "schema": {
+    "readOnly": ["FunctionArn", "FunctionId"],
+    "writeOnly": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["FunctionArn", "FunctionId"],
+    "writeOnlyPaths": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ListFn7192A255",
+      "resourceType": "AWS::AppSync::FunctionConfiguration",
+      "path": "MaxBatchSize",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/functions/when6p45nzgp3ipwtdsmrkgb6y",
+      "constructPath": "CdkRealDriftIntegAppsyncResolverRich/ListFn"
+    }
+  ]
+}

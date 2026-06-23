@@ -129,6 +129,19 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     const cluster = declared.Cluster;
     return typeof cluster === 'string' && cluster.length > 0 ? `${pid}|${cluster}` : undefined;
   },
+  // Logs SubscriptionFilter primaryIdentifier is [FilterName, LogGroupName] — CHILD
+  // first (the FilterName, then the parent LogGroupName), the same child-first shape
+  // as ECS Service. The CFn physical id is the bare FilterName; the LogGroupName comes
+  // from the resolved declared Ref. Without this a declared subscription filter is a CC
+  // ValidationException skip on every check (read-gap), so both undeclared drift on it
+  // AND an out-of-band FilterPattern change are invisible. Verified live
+  // (logs-subscriptionfilter-rich): `FilterName|LogGroupName` reads; the reverse order
+  // 404s ("The specified log group does not exist").
+  'AWS::Logs::SubscriptionFilter': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const lg = declared.LogGroupName;
+    return typeof lg === 'string' && lg.length > 0 ? `${pid}|${lg}` : undefined;
+  },
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the

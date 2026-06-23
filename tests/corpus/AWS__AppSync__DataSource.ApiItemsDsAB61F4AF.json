@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiItemsDsAB61F4AF",
+    "resourceType": "AWS::AppSync::DataSource",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/datasources/ItemsDs",
+    "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/ItemsDs",
+    "declared": {
+      "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+      "DynamoDBConfig": {
+        "AwsRegion": "us-east-1",
+        "TableName": "CdkRealDriftIntegAppsyncResolverRich-Items5C12978B-19XRA5X51VIDH"
+      },
+      "Name": "ItemsDs",
+      "ServiceRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegAppsyncR-ApiItemsDsServiceRole1CF9-uR1EgWRDcuMe",
+      "Type": "AMAZON_DYNAMODB"
+    }
+  },
+  "liveRaw": {
+    "DataSourceArn": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/datasources/ItemsDs",
+    "Type": "AMAZON_DYNAMODB",
+    "ServiceRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegAppsyncR-ApiItemsDsServiceRole1CF9-uR1EgWRDcuMe",
+    "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+    "DynamoDBConfig": {
+      "TableName": "CdkRealDriftIntegAppsyncResolverRich-Items5C12978B-19XRA5X51VIDH",
+      "AwsRegion": "us-east-1",
+      "Versioned": false,
+      "UseCallerCredentials": false
+    },
+    "Name": "ItemsDs"
+  },
+  "schema": {
+    "readOnly": ["DataSourceArn"],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "Name"],
+    "readOnlyPaths": ["DataSourceArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
