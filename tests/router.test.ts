@@ -442,6 +442,42 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('9dgubo');
   });
 
+  // TransitGatewayRouteTablePropagation: composite [TransitGatewayRouteTableId,
+  // TransitGatewayAttachmentId] built from TWO declared props (the CFn Ref is the
+  // underscore `attach_rtb` console id, NOT the CC composite). Route-table FIRST.
+  it('EC2 TransitGatewayRouteTablePropagation: builds rtb|attach from two declared props', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::TransitGatewayRouteTablePropagation',
+        physicalId: 'tgw-attach-aaa_tgw-rtb-bbb',
+        declared: {
+          TransitGatewayRouteTableId: 'tgw-rtb-bbb',
+          TransitGatewayAttachmentId: 'tgw-attach-aaa',
+        },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('tgw-rtb-bbb|tgw-attach-aaa');
+  });
+
+  it('EC2 TransitGatewayRouteTablePropagation: an unresolved segment falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::TransitGatewayRouteTablePropagation',
+        physicalId: 'tgw-attach-aaa_tgw-rtb-bbb',
+        declared: { TransitGatewayRouteTableId: 'tgw-rtb-bbb' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('tgw-attach-aaa_tgw-rtb-bbb');
+  });
+
   // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].
   for (const t of ['AWS::AppConfig::Environment', 'AWS::AppConfig::ConfigurationProfile']) {
     it(`${t}: builds the ApplicationId|<child> composite identifier`, async () => {

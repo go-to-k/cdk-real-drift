@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Route",
+    "resourceType": "AWS::EC2::TransitGatewayRoute",
+    "physicalId": "tgw-rtb-09d2f815e70b07f71|10.99.0.0/16",
+    "constructPath": "CdkRealDriftIntegTgwRouteTableReadGap/Route",
+    "declared": {
+      "DestinationCidrBlock": "10.99.0.0/16",
+      "TransitGatewayAttachmentId": "tgw-attach-0574d2639343e443f",
+      "TransitGatewayRouteTableId": "tgw-rtb-09d2f815e70b07f71"
+    }
+  },
+  "liveRaw": {
+    "TransitGatewayRouteTableId": "tgw-rtb-09d2f815e70b07f71",
+    "DestinationCidrBlock": "10.99.0.0/16",
+    "Blackhole": false,
+    "Id": "tgw-rtb-09d2f815e70b07f71_10.99.0.0/16",
+    "TransitGatewayAttachmentId": "tgw-attach-0574d2639343e443f"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [
+      "Blackhole",
+      "DestinationCidrBlock",
+      "TransitGatewayAttachmentId",
+      "TransitGatewayRouteTableId"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Blackhole",
+      "DestinationCidrBlock",
+      "TransitGatewayAttachmentId",
+      "TransitGatewayRouteTableId"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Route",
+      "resourceType": "AWS::EC2::TransitGatewayRoute",
+      "path": "Id",
+      "actual": "tgw-rtb-09d2f815e70b07f71_10.99.0.0/16",
+      "physicalId": "tgw-rtb-09d2f815e70b07f71|10.99.0.0/16",
+      "constructPath": "CdkRealDriftIntegTgwRouteTableReadGap/Route"
+    }
+  ]
+}

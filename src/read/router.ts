@@ -193,6 +193,24 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     const lg = declared.LogGroupName;
     return typeof lg === 'string' && lg.length > 0 ? `${pid}|${lg}` : undefined;
   },
+  // TransitGatewayRouteTablePropagation primaryIdentifier is [TransitGatewayRouteTableId,
+  // TransitGatewayAttachmentId], but its CFn physical id (Ref) is the AWS console id
+  // format `${attachmentId}_${routeTableId}` (underscore, ATTACHMENT first) — NOT the CC
+  // composite, so CC GetResource ValidationException-skips it (read-gap). Unlike the
+  // child-first adapters, BOTH composite segments are declared props, so build the
+  // pipe composite directly from the resolved declared Refs (route-table FIRST, matching
+  // the primaryIdentifier order). Verified live (tgw-routetable-readgap): `rtb|attach`
+  // reads, the reverse and the underscore physical id both fail. (The sibling
+  // RouteTableAssociation and TransitGatewayRoute need NO adapter — their CFn Ref is
+  // ALREADY the full `rtb|attach` / `rtb|cidr` pipe composite.)
+  'AWS::EC2::TransitGatewayRouteTablePropagation': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const rtb = declared.TransitGatewayRouteTableId;
+    const att = declared.TransitGatewayAttachmentId;
+    return typeof rtb === 'string' && rtb.length > 0 && typeof att === 'string' && att.length > 0
+      ? `${rtb}|${att}`
+      : undefined;
+  },
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
