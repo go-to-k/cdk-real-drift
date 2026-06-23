@@ -205,7 +205,7 @@
       "constructPath": "CdkRealDriftIntegFirehoseProcessorsRich/Stream"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Stream",
       "resourceType": "AWS::KinesisFirehose::DeliveryStream",
       "path": "ExtendedS3DestinationConfiguration.S3BackupMode",

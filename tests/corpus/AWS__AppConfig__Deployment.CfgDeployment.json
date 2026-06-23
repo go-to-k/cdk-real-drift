@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CfgDeployment",
+    "resourceType": "AWS::AppConfig::Deployment",
+    "physicalId": "1",
+    "constructPath": "CdkRealDriftIntegAppconfigDeploymentReadgap/CfgDeployment",
+    "declared": {
+      "ApplicationId": "op3xb7a",
+      "ConfigurationProfileId": "7wzsy97",
+      "ConfigurationVersion": "1",
+      "DeploymentStrategyId": "t27xew3",
+      "EnvironmentId": "vl7a755"
+    }
+  },
+  "liveRaw": {
+    "DeploymentStrategyId": "t27xew3",
+    "ConfigurationProfileId": "7wzsy97",
+    "EnvironmentId": "vl7a755",
+    "ConfigurationVersion": "1",
+    "State": "COMPLETE",
+    "DeploymentNumber": "1",
+    "ApplicationId": "op3xb7a",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAppconfigDeploymentReadgap/2be95c10-6ed1-11f1-b056-0ee26e63283b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegAppconfigDeploymentReadgap",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CfgDeployment",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["DeploymentNumber", "State"],
+    "writeOnly": ["DynamicExtensionParameters"],
+    "createOnly": [
+      "ApplicationId",
+      "ConfigurationProfileId",
+      "ConfigurationVersion",
+      "DeploymentStrategyId",
+      "Description",
+      "DynamicExtensionParameters",
+      "EnvironmentId",
+      "KmsKeyIdentifier",
+      "Tags"
+    ],
+    "readOnlyPaths": ["DeploymentNumber", "State"],
+    "writeOnlyPaths": ["DynamicExtensionParameters"],
+    "createOnlyPaths": [
+      "ApplicationId",
+      "ConfigurationProfileId",
+      "ConfigurationVersion",
+      "DeploymentStrategyId",
+      "Description",
+      "DynamicExtensionParameters",
+      "EnvironmentId",
+      "KmsKeyIdentifier",
+      "Tags"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

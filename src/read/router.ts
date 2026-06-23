@@ -65,6 +65,36 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   },
   'AWS::AppConfig::Environment': compositeWith('ApplicationId'),
   'AWS::AppConfig::ConfigurationProfile': compositeWith('ApplicationId'),
+  // AppConfig HostedConfigurationVersion + Deployment are 3-SEGMENT composites whose
+  // CFn physical id is only the LAST segment (the VersionNumber / DeploymentNumber), so
+  // the bare id is a CC ValidationException skip (read-gap) until paired with both
+  // parents from the resolved declared Refs — in primaryIdentifier order. Verified live
+  // (appconfig-deployment-readgap): HostedConfigurationVersion reads as
+  // `ApplicationId|ConfigurationProfileId|VersionNumber`; Deployment reads as
+  // `ApplicationId|EnvironmentId|DeploymentNumber`. An unresolved parent → fall back to
+  // the bare physical id (honest skip).
+  'AWS::AppConfig::HostedConfigurationVersion': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const appId = declared.ApplicationId;
+    const profileId = declared.ConfigurationProfileId;
+    return typeof appId === 'string' &&
+      appId.length > 0 &&
+      typeof profileId === 'string' &&
+      profileId.length > 0
+      ? `${appId}|${profileId}|${pid}`
+      : undefined;
+  },
+  'AWS::AppConfig::Deployment': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const appId = declared.ApplicationId;
+    const envId = declared.EnvironmentId;
+    return typeof appId === 'string' &&
+      appId.length > 0 &&
+      typeof envId === 'string' &&
+      envId.length > 0
+      ? `${appId}|${envId}|${pid}`
+      : undefined;
+  },
   // ApiGateway v1 (REST) parent-first composites `[RestApiId, <child>]` and Cognito
   // `[UserPoolId, <child>]` — same parent-first `|` shape as above. The CFn physical
   // id is only the child (Model→Name, RequestValidator→RequestValidatorId,

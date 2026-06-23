@@ -429,6 +429,51 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('env1');
   });
 
+  it('AppConfig HostedConfigurationVersion: builds the ApplicationId|ConfigurationProfileId|VersionNumber 3-seg composite', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AppConfig::HostedConfigurationVersion',
+        physicalId: '1',
+        declared: { ApplicationId: 'app99', ConfigurationProfileId: 'prof7' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('app99|prof7|1');
+  });
+
+  it('AppConfig Deployment: builds the ApplicationId|EnvironmentId|DeploymentNumber 3-seg composite', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::AppConfig::Deployment',
+        physicalId: '1',
+        declared: { ApplicationId: 'app99', EnvironmentId: 'env5' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('app99|env5|1');
+  });
+
+  it('AppConfig 3-seg composites: an unresolved parent falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    for (const t of ['AWS::AppConfig::HostedConfigurationVersion', 'AWS::AppConfig::Deployment']) {
+      cc.reset();
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: '1', declared: { ApplicationId: 'app99' } }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('1');
+    }
+  });
+
   // R79: ApplicationAutoScaling ScalingPolicy [Arn, ScalableDimension] — the
   // dimension is parsed from the resolved ScalingTargetId (the ScalableTarget
   // physical id `resourceId|scalableDimension|serviceNamespace`).

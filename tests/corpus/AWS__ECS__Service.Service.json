@@ -125,7 +125,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Service",
       "resourceType": "AWS::ECS::Service",
       "path": "HealthCheckGracePeriodSeconds",

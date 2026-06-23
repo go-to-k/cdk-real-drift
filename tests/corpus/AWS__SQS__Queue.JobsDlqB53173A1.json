@@ -59,16 +59,7 @@
       "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DeduplicationScope",
-      "actual": "queue",
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
-      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "JobsDlqB53173A1",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
+      "path": "ReceiveMessageWaitTimeSeconds",
       "actual": 0,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
@@ -83,7 +74,7 @@
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
       "path": "MaximumMessageSize",
@@ -95,26 +86,8 @@
       "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
-      "path": "MessageRetentionPeriod",
-      "actual": 345600,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
-      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "JobsDlqB53173A1",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
-      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "JobsDlqB53173A1",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "ReceiveMessageWaitTimeSeconds",
-      "actual": 0,
+      "path": "VisibilityTimeout",
+      "actual": 30,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     },
@@ -131,8 +104,35 @@
       "tier": "atDefault",
       "logicalId": "JobsDlqB53173A1",
       "resourceType": "AWS::SQS::Queue",
-      "path": "VisibilityTimeout",
-      "actual": 30,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
+      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "JobsDlqB53173A1",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
+      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "JobsDlqB53173A1",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DeduplicationScope",
+      "actual": "queue",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
+      "constructPath": "CdkrdIntegHarvest2/JobsDlq"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "JobsDlqB53173A1",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDlqB53173A1-BEgYQfzn3hUc.fifo",
       "constructPath": "CdkrdIntegHarvest2/JobsDlq"
     }

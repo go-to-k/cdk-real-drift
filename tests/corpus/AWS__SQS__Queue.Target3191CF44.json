@@ -37,35 +37,8 @@
       "tier": "atDefault",
       "logicalId": "Target3191CF44",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
-      "constructPath": "CdkRealDriftIntegEvents/Target"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Target3191CF44",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
-      "constructPath": "CdkRealDriftIntegEvents/Target"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Target3191CF44",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MessageRetentionPeriod",
-      "actual": 345600,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
-      "constructPath": "CdkRealDriftIntegEvents/Target"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "Target3191CF44",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
       "constructPath": "CdkRealDriftIntegEvents/Target"
     },
@@ -82,8 +55,26 @@
       "tier": "atDefault",
       "logicalId": "Target3191CF44",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+      "constructPath": "CdkRealDriftIntegEvents/Target"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Target3191CF44",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+      "constructPath": "CdkRealDriftIntegEvents/Target"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Target3191CF44",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
       "constructPath": "CdkRealDriftIntegEvents/Target"
     },
@@ -93,6 +84,15 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",
       "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
+      "constructPath": "CdkRealDriftIntegEvents/Target"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Target3191CF44",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegEvents-Target3191CF44-1f6RO2SlTsMe",
       "constructPath": "CdkRealDriftIntegEvents/Target"
     }
