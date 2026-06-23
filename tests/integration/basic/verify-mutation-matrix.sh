@@ -82,21 +82,21 @@ expect_clean "baseline"
 echo "=== M1 declared-change: suspend versioning (template says Enabled) ==="
 aws s3api put-bucket-versioning --bucket "$BUCKET" \
   --versioning-configuration Status=Suspended --region "$REGION" || fail "M1 inject"
-expect_drift "M1" "DECLARED DRIFT" "VersioningConfiguration"
+expect_drift "M1" "CFn-Declared Drift" "VersioningConfiguration"
 $CLI revert "$STACK" --region "$REGION" --yes || fail "M1 revert"
 expect_clean "M1"
 
 echo "=== M2 undeclared-add: acceleration appears after a complete record (R62) ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Enabled --region "$REGION" || fail "M2 inject"
-expect_drift "M2" "UNDECLARED DRIFT" "AccelerateConfiguration" "appeared since record"
+expect_drift "M2" "Undeclared Drift" "AccelerateConfiguration" "appeared since record"
 $CLI record "$STACK" --region "$REGION" --yes || fail "M2 record"
 expect_clean "M2"
 
 echo "=== M3 undeclared-change: recorded acceleration value flips ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Suspended --region "$REGION" || fail "M3 inject"
-expect_drift "M3" "UNDECLARED DRIFT" "AccelerateConfiguration"
+expect_drift "M3" "Undeclared Drift" "AccelerateConfiguration"
 $CLI record "$STACK" --region "$REGION" --yes || fail "M3 record"
 expect_clean "M3"
 
@@ -104,13 +104,13 @@ echo "=== M4 undeclared-add: out-of-band CORS configuration ==="
 aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration \
   '{"CORSRules":[{"AllowedMethods":["GET"],"AllowedOrigins":["https://example.com"]}]}' \
   || fail "M4 inject"
-expect_drift "M4" "UNDECLARED DRIFT" "CorsConfiguration" "appeared since record"
+expect_drift "M4" "Undeclared Drift" "CorsConfiguration" "appeared since record"
 $CLI record "$STACK" --region "$REGION" --yes || fail "M4 record"
 expect_clean "M4"
 
 echo "=== M5 value-remove: the recorded CORS configuration disappears ==="
 aws s3api delete-bucket-cors --bucket "$BUCKET" --region "$REGION" || fail "M5 inject"
-expect_drift "M5" "UNDECLARED DRIFT" "CorsConfiguration" "baseline value removed since record"
+expect_drift "M5" "Undeclared Drift" "CorsConfiguration" "baseline value removed since record"
 $CLI record "$STACK" --region "$REGION" --yes || fail "M5 record"
 expect_clean "M5"
 
