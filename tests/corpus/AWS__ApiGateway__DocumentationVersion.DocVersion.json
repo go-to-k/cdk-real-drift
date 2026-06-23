@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DocVersion",
+    "resourceType": "AWS::ApiGateway::DocumentationVersion",
+    "physicalId": "v1|1t4cmgrq0f",
+    "constructPath": "CdkRealDriftIntegApigwDocVersionRich/DocVersion",
+    "declared": {
+      "Description": "cdkrd test documentation version",
+      "DocumentationVersion": "v1",
+      "RestApiId": "1t4cmgrq0f"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd test documentation version",
+    "DocumentationVersion": "v1",
+    "RestApiId": "1t4cmgrq0f"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DocumentationVersion", "RestApiId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DocumentationVersion", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

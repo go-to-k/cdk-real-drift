@@ -3488,6 +3488,52 @@ describe('EC2 Instance BlockDeviceMappings identity-keyed subset (found by ec2-i
   });
 });
 
+describe('Cognito UserPoolUser UserAttributes identity-keyed subset (found by cognito-userpooluser-rich)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const user = (declared: Record<string, unknown>) => ({
+    logicalId: 'User',
+    resourceType: 'AWS::Cognito::UserPoolUser',
+    physicalId: 'us-east-1_pool|cdkrd-user',
+    declared,
+  });
+  // Template declares only `email`; AWS injects the server-generated immutable `sub`.
+  const declaredEmail = { Name: 'email', Value: 'cdkrd@example.com' };
+  const liveEmail = { Value: 'cdkrd@example.com', Name: 'email' }; // key order differs
+  const liveSub = { Value: '04c894d8-20e1-70ed-175e-9a01d11f7f45', Name: 'sub' };
+
+  it('the AWS-injected sub attribute does NOT false-drift the whole UserAttributes array', () => {
+    const findings = classifyResource(
+      user({ UserAttributes: [declaredEmail] }),
+      { UserAttributes: [liveEmail, liveSub] },
+      bare
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // sub surfaces as nested undeclared inventory, keyed by Name
+    const undeclared = findings.filter(
+      (f) => f.tier === 'undeclared' && f.path === 'UserAttributes[sub]'
+    );
+    expect(undeclared).toHaveLength(1);
+  });
+
+  it('an out-of-band change to the DECLARED email attribute is reported as declared drift', () => {
+    const declaredDrift = classifyResource(
+      user({ UserAttributes: [declaredEmail] }),
+      { UserAttributes: [{ Name: 'email', Value: 'changed@example.com' }, liveSub] },
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+  });
+});
+
 describe('Name-keyed object arrays are identity-aligned (WAVE24 — ECS env vars, Alarm dimensions)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),

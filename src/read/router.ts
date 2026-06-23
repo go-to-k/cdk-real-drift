@@ -49,6 +49,13 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // and the IdP is silently `skipped` (read-gap). Same UserPoolId|<child> shape as its
   // siblings — verified live (cognito-idp-rich fixture).
   'AWS::Cognito::UserPoolIdentityProvider': compositeWith('UserPoolId'),
+  // UserPoolUser primaryIdentifier is [UserPoolId, Username] — parent-first. The CFn
+  // physical id (Ref) is the bare Username, so without the composite CC GetResource
+  // ValidationException-skips and the user is silently `skipped` (read-gap: undeclared
+  // drift on the user is invisible). Same UserPoolId|<child> shape as its UserPoolClient
+  // / UserPoolGroup / UserPoolDomain siblings. Verified live (cognito-userpooluser-rich):
+  // `UserPoolId|Username` reads; the reverse order returns NotFound.
+  'AWS::Cognito::UserPoolUser': compositeWith('UserPoolId'),
   'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),

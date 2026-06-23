@@ -351,6 +351,10 @@ describe('readLive (CC identifier adapters, R74)', () => {
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',
     'AWS::Cognito::UserPoolIdentityProvider',
+    // UserPoolUser [UserPoolId, Username] — parent-first; CFn Ref is the bare Username,
+    // so without the adapter the user is a CC ValidationException skip (read-gap).
+    // Verified live (cognito-userpooluser-rich): UserPoolId|Username reads, reverse 404s.
+    'AWS::Cognito::UserPoolUser',
   ]) {
     it(`${t}: builds the UserPoolId|<child> composite identifier`, async () => {
       cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });

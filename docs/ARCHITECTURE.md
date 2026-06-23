@@ -92,7 +92,8 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    composite is the SERVICE arn FIRST then the cluster (`${physicalId}|${Cluster}`
    — the inverse of `compositeWith`'s parent-first order); plus the ApiGateway v1
    parent-first `[RestApiId, <child>]` (Model/RequestValidator/Resource/Stage) and
-   Cognito `[UserPoolId, <child>]` (UserPoolDomain/UserPoolResourceServer) composites,
+   Cognito `[UserPoolId, <child>]`
+   (UserPoolDomain/UserPoolResourceServer/UserPoolUser) composites,
    and the CHILD-first `[<child>, RestApiId]` (`${physicalId}|${RestApiId}`) cases
    ApiGateway::Deployment (R129) and ApiGateway::DocumentationPart — all verified
    live (skipped 7→0; DocumentationPart found by the cognito/apigw-rest-subres hunt);

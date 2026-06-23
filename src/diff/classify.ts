@@ -107,6 +107,18 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   // mapping (no live DeviceName match) still surfaces as declared drift. Observed live on a
   // fresh ec2-instance-rich deploy (a gp3 root volume + an attached data volume).
   'AWS::EC2::Instance': { BlockDeviceMappings: { idField: 'DeviceName' } },
+  // A Cognito UserPoolUser's UserAttributes is a SET keyed by Name where the live model
+  // is a SUPERSET of the template's: AWS ALWAYS injects the server-generated immutable
+  // `sub` (the user id), plus `email_verified`/`phone_number_verified` once those
+  // attributes exist — none of which the template declares. A positional/whole-array
+  // compare then false-flags the entire UserAttributes as declared drift on every fresh
+  // deploy of a user that declares any attribute (e.g. just `email`). Aligning declared
+  // attributes to live BY Name lets each declared attribute subset-compare against its
+  // live twin and emits the live-only attributes (sub, *_verified) as nested undeclared
+  // inventory (foldable, recordable). A genuinely changed declared attribute (e.g. a new
+  // email) still surfaces. Exposed once UserPoolUser became CC-readable (router.ts adapter
+  // above); observed live on a fresh cognito-userpooluser-rich deploy (sub injected).
+  'AWS::Cognito::UserPoolUser': { UserAttributes: { idField: 'Name' } },
 };
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&
