@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MatrixRuleF1E32BBB",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "cdkrd-integ-pattern-rule",
+    "constructPath": "CdkRealDriftIntegEventbridgePatternRich/MatrixRule",
+    "declared": {
+      "EventPattern": {
+        "source": ["aws.ecs", "aws.ec2", "aws.batch"],
+        "detail-type": ["zeta-event", "alpha-event", "mike-event"],
+        "detail": {
+          "state": ["terminated", "running", "pending"]
+        }
+      },
+      "Name": "cdkrd-integ-pattern-rule",
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "EventPattern": {
+      "detail-type": ["zeta-event", "alpha-event", "mike-event"],
+      "source": ["aws.ecs", "aws.ec2", "aws.batch"],
+      "detail": {
+        "state": ["terminated", "running", "pending"]
+      }
+    },
+    "State": "ENABLED",
+    "Targets": [],
+    "Id": "cdkrd-integ-pattern-rule",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/cdkrd-integ-pattern-rule",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEventbridgePatternRich/4de259a0-6ee2-11f1-81b5-124122232bd7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEventbridgePatternRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MatrixRuleF1E32BBB",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-pattern-rule"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixRuleF1E32BBB",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "cdkrd-integ-pattern-rule",
+      "constructPath": "CdkRealDriftIntegEventbridgePatternRich/MatrixRule"
+    }
+  ]
+}

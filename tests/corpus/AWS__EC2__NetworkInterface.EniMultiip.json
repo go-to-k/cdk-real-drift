@@ -1,0 +1,196 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Eni",
+    "resourceType": "AWS::EC2::NetworkInterface",
+    "physicalId": "eni-01ce38782d866c24f",
+    "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni",
+    "declared": {
+      "Description": "cdkrd integ multi-ip network interface",
+      "PrivateIpAddresses": [
+        {
+          "Primary": true,
+          "PrivateIpAddress": "10.0.0.10"
+        },
+        {
+          "Primary": false,
+          "PrivateIpAddress": "10.0.0.200"
+        },
+        {
+          "Primary": false,
+          "PrivateIpAddress": "10.0.0.50"
+        },
+        {
+          "Primary": false,
+          "PrivateIpAddress": "10.0.0.150"
+        }
+      ],
+      "SubnetId": "subnet-08cb471bab414eb4c"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd integ multi-ip network interface",
+    "PrivateIpAddress": "10.0.0.10",
+    "PrimaryIpv6Address": "",
+    "PrivateIpAddresses": [
+      {
+        "PrivateIpAddress": "10.0.0.10",
+        "Primary": true
+      },
+      {
+        "PrivateIpAddress": "10.0.0.200",
+        "Primary": false
+      },
+      {
+        "PrivateIpAddress": "10.0.0.50",
+        "Primary": false
+      },
+      {
+        "PrivateIpAddress": "10.0.0.150",
+        "Primary": false
+      }
+    ],
+    "SecondaryPrivateIpAddressCount": 3,
+    "Ipv6PrefixCount": 0,
+    "PrimaryPrivateIpAddress": "10.0.0.10",
+    "Ipv4Prefixes": [],
+    "Ipv4PrefixCount": 0,
+    "GroupSet": ["sg-0dd629030dbd15c82"],
+    "Ipv6Prefixes": [],
+    "SubnetId": "subnet-08cb471bab414eb4c",
+    "SourceDestCheck": true,
+    "InterfaceType": "interface",
+    "SecondaryPrivateIpAddresses": ["10.0.0.200", "10.0.0.50", "10.0.0.150"],
+    "VpcId": "vpc-0fcf6cf7ef21b2203",
+    "Id": "eni-01ce38782d866c24f",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegEniMultiipRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Eni",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEniMultiipRich/4d2cec50-6ee2-11f1-936a-12e3eb1881c1",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "PublicIpDnsNameOptions": {
+      "DnsHostnameType": "",
+      "PublicIpv4DnsName": "",
+      "PublicDualStackDnsName": "",
+      "PublicIpv6DnsName": ""
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "Id",
+      "PrimaryIpv6Address",
+      "PrimaryPrivateIpAddress",
+      "PublicIpDnsNameOptions",
+      "SecondaryPrivateIpAddresses",
+      "VpcId"
+    ],
+    "writeOnly": ["PublicIpDnsHostnameTypeSpecification"],
+    "createOnly": [
+      "ConnectionTrackingSpecification",
+      "EnablePrimaryIpv6",
+      "InterfaceType",
+      "PrivateIpAddress",
+      "PrivateIpAddresses",
+      "SubnetId"
+    ],
+    "readOnlyPaths": [
+      "Id",
+      "PrimaryIpv6Address",
+      "PrimaryPrivateIpAddress",
+      "PublicIpDnsNameOptions",
+      "SecondaryPrivateIpAddresses",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["PublicIpDnsHostnameTypeSpecification"],
+    "createOnlyPaths": [
+      "ConnectionTrackingSpecification",
+      "EnablePrimaryIpv6",
+      "InterfaceType",
+      "PrivateIpAddress",
+      "PrivateIpAddresses",
+      "SubnetId"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.10",
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "SecondaryPrivateIpAddressCount",
+      "actual": 3,
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv6PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv4PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "GroupSet",
+      "actual": ["sg-0dd629030dbd15c82"],
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "SourceDestCheck",
+      "actual": true,
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "InterfaceType",
+      "actual": "interface",
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    }
+  ]
+}
