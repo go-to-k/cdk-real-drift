@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "QueueCdkRealDriftIntegSnsFilterpolicyRichTopicDB62B9A22D250F41",
+    "resourceType": "AWS::SNS::Subscription",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-TopicBFC7AF6E-K1qULk3vOzd3:ea92533b-72e4-41bd-9d99-ce9f1ddfb9fb",
+    "constructPath": "CdkRealDriftIntegSnsFilterpolicyRich/Queue/CdkRealDriftIntegSnsFilterpolicyRichTopicDB62B9A2",
+    "declared": {
+      "Endpoint": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-Queue4A7E3555-1LrWUZAyQsJp",
+      "FilterPolicy": {
+        "tier": ["gold", "bronze", "silver"],
+        "region": ["us-west-2", "eu-west-1", "ap-south-1"]
+      },
+      "Protocol": "sqs",
+      "RawMessageDelivery": true,
+      "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-TopicBFC7AF6E-K1qULk3vOzd3"
+    }
+  },
+  "liveRaw": {
+    "RawMessageDelivery": true,
+    "Endpoint": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-Queue4A7E3555-1LrWUZAyQsJp",
+    "FilterPolicy": {
+      "tier": ["gold", "bronze", "silver"],
+      "region": ["us-west-2", "eu-west-1", "ap-south-1"]
+    },
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-TopicBFC7AF6E-K1qULk3vOzd3",
+    "FilterPolicyScope": "MessageAttributes",
+    "Arn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-TopicBFC7AF6E-K1qULk3vOzd3:ea92533b-72e4-41bd-9d99-ce9f1ddfb9fb",
+    "Protocol": "sqs"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["Region"],
+    "createOnly": ["Endpoint", "Protocol", "Region", "TopicArn"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["Region"],
+    "createOnlyPaths": ["Endpoint", "Protocol", "Region", "TopicArn"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "QueueCdkRealDriftIntegSnsFilterpolicyRichTopicDB62B9A22D250F41",
+      "resourceType": "AWS::SNS::Subscription",
+      "path": "FilterPolicyScope",
+      "actual": "MessageAttributes",
+      "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsFilterpolicyRich-TopicBFC7AF6E-K1qULk3vOzd3:ea92533b-72e4-41bd-9d99-ce9f1ddfb9fb",
+      "constructPath": "CdkRealDriftIntegSnsFilterpolicyRich/Queue/CdkRealDriftIntegSnsFilterpolicyRichTopicDB62B9A2"
+    }
+  ]
+}
