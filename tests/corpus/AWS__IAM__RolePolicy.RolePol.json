@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RolePol",
+    "resourceType": "AWS::IAM::RolePolicy",
+    "physicalId": "cdkrd-inline-role|CdkRealDriftIntegIamInlinepolicyReadga-Role1ABCC5F0-mKcXhktffN8N",
+    "constructPath": "CdkRealDriftIntegIamInlinepolicyReadgap/RolePol",
+    "declared": {
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": ["logs:CreateLogGroup"],
+            "Resource": "*"
+          }
+        ]
+      },
+      "PolicyName": "cdkrd-inline-role",
+      "RoleName": "CdkRealDriftIntegIamInlinepolicyReadga-Role1ABCC5F0-mKcXhktffN8N"
+    }
+  },
+  "liveRaw": {
+    "RoleName": "CdkRealDriftIntegIamInlinepolicyReadga-Role1ABCC5F0-mKcXhktffN8N",
+    "PolicyName": "cdkrd-inline-role",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["logs:CreateLogGroup"],
+          "Resource": "*",
+          "Effect": "Allow"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["PolicyName", "RoleName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PolicyName", "RoleName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

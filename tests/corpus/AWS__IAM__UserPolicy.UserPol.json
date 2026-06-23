@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "UserPol",
+    "resourceType": "AWS::IAM::UserPolicy",
+    "physicalId": "cdkrd-inline-user|CdkRealDriftIntegIamInlinepolicyReadga-User00B015A1-XkZobepSw9Lq",
+    "constructPath": "CdkRealDriftIntegIamInlinepolicyReadgap/UserPol",
+    "declared": {
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": "*"
+          }
+        ]
+      },
+      "PolicyName": "cdkrd-inline-user",
+      "UserName": "CdkRealDriftIntegIamInlinepolicyReadga-User00B015A1-XkZobepSw9Lq"
+    }
+  },
+  "liveRaw": {
+    "UserName": "CdkRealDriftIntegIamInlinepolicyReadga-User00B015A1-XkZobepSw9Lq",
+    "PolicyName": "cdkrd-inline-user",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["s3:GetObject"],
+          "Resource": "*",
+          "Effect": "Allow"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["PolicyName", "UserName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PolicyName", "UserName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

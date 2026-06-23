@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Assoc",
+    "resourceType": "AWS::WAFv2::WebACLAssociation",
+    "physicalId": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_suMiTfZwE|arn:aws:wafv2:us-east-1:111111111111:regional/webacl/Acl-iJvYQv2pC84g/f0755f63-6d44-4116-a4a8-9d306885e51d",
+    "constructPath": "CdkRealDriftIntegWafv2WebaclassociationReadgap/Assoc",
+    "declared": {
+      "ResourceArn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_suMiTfZwE",
+      "WebACLArn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/Acl-iJvYQv2pC84g/f0755f63-6d44-4116-a4a8-9d306885e51d"
+    }
+  },
+  "liveRaw": {
+    "ResourceArn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_suMiTfZwE",
+    "WebACLArn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/Acl-iJvYQv2pC84g/f0755f63-6d44-4116-a4a8-9d306885e51d"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ResourceArn", "WebACLArn"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceArn", "WebACLArn"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
