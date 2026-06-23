@@ -1,0 +1,35 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PoolDomainCFC71F56",
+    "resourceType": "AWS::Cognito::UserPoolDomain",
+    "physicalId": "cdkrd-fphunt-x9z7q",
+    "constructPath": "CdkRealDriftIntegCognitoUserpooldomainRich/Pool/Domain",
+    "declared": {
+      "Domain": "cdkrd-fphunt-x9z7q",
+      "UserPoolId": "us-east-1_yg5MUJsqL"
+    }
+  },
+  "liveRaw": {
+    "CloudFrontDistribution": "d3oia8etllorh5.cloudfront.net",
+    "UserPoolId": "us-east-1_yg5MUJsqL",
+    "Domain": "cdkrd-fphunt-x9z7q"
+  },
+  "schema": {
+    "readOnly": ["CloudFrontDistribution"],
+    "writeOnly": ["ManagedLoginVersion"],
+    "createOnly": ["Domain", "UserPoolId"],
+    "readOnlyPaths": ["CloudFrontDistribution"],
+    "writeOnlyPaths": ["ManagedLoginVersion"],
+    "createOnlyPaths": ["Domain", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

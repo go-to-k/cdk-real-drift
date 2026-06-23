@@ -317,6 +317,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('my-action');
   });
 
+  it('Logs SubscriptionFilter: builds the FilterName|LogGroupName composite — CHILD first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Logs::SubscriptionFilter',
+        physicalId: 'cdkrd-errors',
+        declared: { LogGroupName: '/aws/my-log-group' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-errors|/aws/my-log-group');
+  });
+
+  it('Logs SubscriptionFilter: an unresolved LogGroupName falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Logs::SubscriptionFilter',
+        physicalId: 'cdkrd-errors',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-errors');
+  });
+
   for (const t of [
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',

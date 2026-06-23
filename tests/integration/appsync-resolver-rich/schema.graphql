@@ -1,0 +1,13 @@
+type Item {
+  id: ID!
+  name: String
+}
+
+type Query {
+  getItem(id: ID!): Item
+  listItems: [Item]
+}
+
+type Mutation {
+  putItem(name: String): Item
+}

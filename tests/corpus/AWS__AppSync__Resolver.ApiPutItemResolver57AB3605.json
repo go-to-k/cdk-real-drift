@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiPutItemResolver57AB3605",
+    "resourceType": "AWS::AppSync::Resolver",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Mutation/resolvers/putItem",
+    "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/PutItemResolver",
+    "declared": {
+      "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+      "DataSourceName": "ItemsDs",
+      "FieldName": "putItem",
+      "Kind": "UNIT",
+      "RequestMappingTemplate": "\n      #set($input = $ctx.args)\n      \n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"PutItem\",\n        \"key\" : {\n      \"id\" : $util.dynamodb.toDynamoDBJson($util.autoId())\n    },\n        \"attributeValues\": $util.dynamodb.toMapValuesJson($input)\n      }",
+      "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+      "TypeName": "Mutation"
+    }
+  },
+  "liveRaw": {
+    "TypeName": "Mutation",
+    "DataSourceName": "ItemsDs",
+    "RequestMappingTemplate": "\n      #set($input = $ctx.args)\n      \n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"PutItem\",\n        \"key\" : {\n      \"id\" : $util.dynamodb.toDynamoDBJson($util.autoId())\n    },\n        \"attributeValues\": $util.dynamodb.toMapValuesJson($input)\n      }",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+    "Kind": "UNIT",
+    "MaxBatchSize": 0,
+    "ResolverArn": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Mutation/resolvers/putItem",
+    "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+    "FieldName": "putItem"
+  },
+  "schema": {
+    "readOnly": ["ResolverArn"],
+    "writeOnly": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnly": ["ApiId", "FieldName", "TypeName"],
+    "readOnlyPaths": ["ResolverArn"],
+    "writeOnlyPaths": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnlyPaths": ["ApiId", "FieldName", "TypeName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiPutItemResolver57AB3605",
+      "resourceType": "AWS::AppSync::Resolver",
+      "path": "MaxBatchSize",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Mutation/resolvers/putItem",
+      "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/PutItemResolver"
+    }
+  ]
+}

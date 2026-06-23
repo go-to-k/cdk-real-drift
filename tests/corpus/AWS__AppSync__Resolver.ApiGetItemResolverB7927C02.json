@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiGetItemResolverB7927C02",
+    "resourceType": "AWS::AppSync::Resolver",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/getItem",
+    "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/GetItemResolver",
+    "declared": {
+      "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+      "DataSourceName": "ItemsDs",
+      "FieldName": "getItem",
+      "Kind": "UNIT",
+      "RequestMappingTemplate": "{\"version\": \"2017-02-28\", \"operation\": \"GetItem\", \"consistentRead\": false, \"key\": {\"id\": $util.dynamodb.toDynamoDBJson($ctx.args.id)}}",
+      "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+      "TypeName": "Query"
+    }
+  },
+  "liveRaw": {
+    "TypeName": "Query",
+    "DataSourceName": "ItemsDs",
+    "RequestMappingTemplate": "{\"version\": \"2017-02-28\", \"operation\": \"GetItem\", \"consistentRead\": false, \"key\": {\"id\": $util.dynamodb.toDynamoDBJson($ctx.args.id)}}",
+    "ResponseMappingTemplate": "$util.toJson($ctx.result)",
+    "Kind": "UNIT",
+    "MaxBatchSize": 0,
+    "ResolverArn": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/getItem",
+    "ApiId": "bqzf66pdszga5eljqduo2xfzvu",
+    "FieldName": "getItem"
+  },
+  "schema": {
+    "readOnly": ["ResolverArn"],
+    "writeOnly": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnly": ["ApiId", "FieldName", "TypeName"],
+    "readOnlyPaths": ["ResolverArn"],
+    "writeOnlyPaths": [
+      "CodeS3Location",
+      "RequestMappingTemplateS3Location",
+      "ResponseMappingTemplateS3Location"
+    ],
+    "createOnlyPaths": ["ApiId", "FieldName", "TypeName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiGetItemResolverB7927C02",
+      "resourceType": "AWS::AppSync::Resolver",
+      "path": "MaxBatchSize",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bqzf66pdszga5eljqduo2xfzvu/types/Query/resolvers/getItem",
+      "constructPath": "CdkRealDriftIntegAppsyncResolverRich/Api/GetItemResolver"
+    }
+  ]
+}
