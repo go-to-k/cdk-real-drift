@@ -2749,6 +2749,18 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     ).toEqual(['EngineVersion']);
   });
 
+  // Live-observed FP (docdb-version-fp fixture): DocumentDB accepts a partial
+  // EngineVersion "5.0" and reads back the concrete "5.0.0".
+  it('DocDB DBCluster EngineVersion "5.0" resolved to live "5.0.0" is NOT declared drift', () => {
+    expect(
+      declaredPaths('AWS::DocDB::DBCluster', { EngineVersion: '5.0' }, { EngineVersion: '5.0.0' })
+    ).toEqual([]);
+    // a genuine version change still differs
+    expect(
+      declaredPaths('AWS::DocDB::DBCluster', { EngineVersion: '4.0' }, { EngineVersion: '5.0.0' })
+    ).toEqual(['EngineVersion']);
+  });
+
   it('MasterUsername resolved to UNRESOLVED (dynamic ref) is unresolved, not declared drift', () => {
     // loadDesired resolves the {{resolve:secretsmanager:…}} dynamic reference to
     // UNRESOLVED; classify then emits an `unresolved` finding, never `declared`.

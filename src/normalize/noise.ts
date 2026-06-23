@@ -989,6 +989,11 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // check fails). MSK KafkaVersion is NOT added: MSK validates KafkaVersion against
   // an exact supported-version list and rejects a partial, so declared == live.
   'AWS::Neptune::DBCluster': new Set(['EngineVersion']),
+  // Live-observed on a fresh docdb-version-fp deploy: Amazon DocumentDB accepts a
+  // partial EngineVersion (declared `"5.0"`) and provisions the concrete patch version,
+  // reading back `"5.0.0"` — the same partial->concrete shape as RDS/Aurora/Neptune.
+  // A genuine version change still differs (the leading-run check fails).
+  'AWS::DocDB::DBCluster': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
