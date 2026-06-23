@@ -593,9 +593,19 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     'client_keep_alive.seconds': '3600',
     'connection_logs.s3.enabled': 'false',
     'health_check_logs.s3.enabled': 'false',
+    // ALB idle_timeout default (observed live on a bare ALB that declared no
+    // idleTimeout). NLB has no idle_timeout attribute, so no cross-type conflict.
+    'idle_timeout.timeout_seconds': '60',
     // ALB cross-zone load balancing is always on and not configurable -> AWS always
-    // returns "true"; an NLB's default "false" never matches, so it stays undeclared.
+    // returns "true". NB: an NLB's cross_zone default is "false" — the OPPOSITE — and
+    // this table is keyed only by resourceType (shared ALB/NLB), so the two cannot both
+    // fold; the ALB value wins and an NLB's cross_zone stays `undeclared` (a known minor
+    // residual; the equality gate keeps it correct, never mis-folding).
     'load_balancing.cross_zone.enabled': 'true',
+    // NLB-only attribute keys (an ALB never returns them, so no conflict) — observed live
+    // on a bare internal NLB.
+    'dns_record.client_routing_policy': 'any_availability_zone',
+    'secondary_ips.auto_assigned.per_subnet': '0',
     'routing.http.desync_mitigation_mode': 'defensive',
     'routing.http.drop_invalid_header_fields.enabled': 'false',
     'routing.http.preserve_host_header.enabled': 'false',

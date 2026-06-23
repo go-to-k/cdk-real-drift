@@ -920,6 +920,52 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(undeclared[0]).toMatchObject({ actual: 'true', nested: true });
     });
 
+    it('a bare ALB idle_timeout default (60) and NLB-only keys fold to atDefault', () => {
+      // A bare ALB declares no idleTimeout -> idle_timeout.timeout_seconds reads back the
+      // live default "60"; a fresh NLB returns dns_record.client_routing_policy and
+      // secondary_ips.auto_assigned.per_subnet. All are curated defaults -> atDefault.
+      const atDefault = classifyResource(
+        res(T, {
+          LoadBalancerAttributes: [{ Key: 'deletion_protection.enabled', Value: 'false' }],
+        }),
+        {
+          LoadBalancerAttributes: [
+            { Key: 'deletion_protection.enabled', Value: 'false' },
+            { Key: 'idle_timeout.timeout_seconds', Value: '60' },
+            { Key: 'dns_record.client_routing_policy', Value: 'any_availability_zone' },
+            { Key: 'secondary_ips.auto_assigned.per_subnet', Value: '0' },
+          ],
+        },
+        emptySchema
+      ).filter((f) => f.tier === 'atDefault');
+      expect(atDefault.map((f) => f.path).sort()).toEqual([
+        'LoadBalancerAttributes[dns_record.client_routing_policy]',
+        'LoadBalancerAttributes[idle_timeout.timeout_seconds]',
+        'LoadBalancerAttributes[secondary_ips.auto_assigned.per_subnet]',
+      ]);
+    });
+
+    it("an NLB's cross_zone default (false) does NOT fold (the ALB-keyed table holds true) and stays undeclared", () => {
+      // The table is keyed only by resourceType, and ALB cross_zone default "true" wins;
+      // an NLB's "false" must NOT mis-fold against "true" — the equality gate keeps it
+      // `undeclared` (recorded, fail-closed), a known minor residual noise on NLBs.
+      const undeclared = classifyResource(
+        res(T, {
+          LoadBalancerAttributes: [{ Key: 'deletion_protection.enabled', Value: 'false' }],
+        }),
+        {
+          LoadBalancerAttributes: [
+            { Key: 'deletion_protection.enabled', Value: 'false' },
+            { Key: 'load_balancing.cross_zone.enabled', Value: 'false' },
+          ],
+        },
+        emptySchema
+      ).filter((f) => f.tier === 'undeclared');
+      expect(undeclared.map((f) => f.path)).toEqual([
+        'LoadBalancerAttributes[load_balancing.cross_zone.enabled]',
+      ]);
+    });
+
     it('a genuine change to a DECLARED attribute still surfaces, named by Key (R78)', () => {
       const drifted = liveAll.map((a) =>
         a.Key === 'idle_timeout.timeout_seconds' ? { ...a, Value: '300' } : a
