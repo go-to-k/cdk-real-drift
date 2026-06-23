@@ -61,14 +61,38 @@ non-negotiable", which is enforced by a gate, not by trust.
    Such a type yields **zero FP/FN bugs** and has **no regression value as a fixture**
    — it is an `SDK_OVERRIDES` reader candidate (a separate feature task), not a hunt
    target. So do NOT burn a paid deploy on it. Confirm support first:
+
    ```bash
    aws cloudformation describe-type --type RESOURCE --type-name AWS::Foo::Bar \
      --query 'ProvisioningType'   # FULLY_MUTABLE/IMMUTABLE = provisionable; then probe READ:
    # if you have a live instance, `cloudcontrol get-resource` — UnsupportedActionException = CC-gap
    ```
+
    (Confirmed CC-gap this way: ServiceDiscovery HttpNamespace+Service, DocumentDB
    DBCluster/DBInstance, AppSync ApiKey/GraphQLSchema — all `SDK_OVERRIDES` candidates,
    not hunt targets.)
+
+   **A `read` handler being present is NOT enough — also check the
+   `primaryIdentifier` ARITY.** A type can have a CC `read` handler yet still be
+   silently `skipped` with a `ValidationException` (a DIFFERENT read-gap class than
+   `UnsupportedActionException`) when its `primaryIdentifier` is COMPOSITE (more than
+   one segment) but its CFn physical id is only the CHILD segment — Cloud Control
+   `GetResource` then rejects the bare id. This is a `CC_IDENTIFIER_ADAPTERS` fix
+   (derive the `parent|child` / `child|parent` composite from the resolved declared
+   Ref), NOT an `SDK_OVERRIDES` one. Probe it offline before deploying:
+
+   ```bash
+   aws cloudformation describe-type --type RESOURCE --type-name AWS::Foo::Bar \
+     --query 'Schema' --output text | python3 -c "import json,sys; s=json.load(sys.stdin); print(s['primaryIdentifier'])"
+   ```
+
+   `primaryIdentifier` length > 1, the type is CC-`read`-able, it is NOT already in
+   `CC_IDENTIFIER_ADAPTERS` / `SDK_OVERRIDES`, and the CFn `Ref` returns only the
+   child segment → a likely declared-read gap worth a (cheap) deploy to confirm the
+   exact composite order (the order is unreliable to guess — verify live, e.g. with
+   `aws cloudcontrol get-resource`). Confirmed this way: Logs SubscriptionFilter
+   (`FilterName|LogGroupName`, PR #344).
+
 5. **Predict FP classes from the fold allowlists, then audit them OFFLINE before any
    paid deploy.** The per-type fold tables in `src/normalize/noise.ts` ARE the inventory
    of FP classes already found — and most are CURATED, KNOWN-INCOMPLETE allowlists
