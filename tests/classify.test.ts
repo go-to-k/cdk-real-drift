@@ -1719,6 +1719,44 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     }
   });
 
+  // A Redshift ClusterParameterGroup's `Parameters` is a SET of {ParameterName,
+  // ParameterValue} AWS returns SORTED by ParameterName (found by
+  // redshift-paramgroup-reorder: declared [require_ssl, enable_user_activity_logging,
+  // max_concurrency_scaling_clusters] read back alphabetically). ParameterName is NOT
+  // an IDENTITY_FIELD, so only the per-type fold aligns it.
+  describe('Redshift ClusterParameterGroup Parameters (ParameterName-keyed reordered set)', () => {
+    const T = 'AWS::Redshift::ClusterParameterGroup';
+    const declared = {
+      Parameters: [
+        { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        { ParameterName: 'enable_user_activity_logging', ParameterValue: 'true' },
+        { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+      ],
+    };
+
+    it('AWS returning the Parameters sorted by ParameterName is NOT drift', () => {
+      const live = {
+        Parameters: [
+          { ParameterName: 'enable_user_activity_logging', ParameterValue: 'true' },
+          { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+          { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine parameter value change still surfaces (even when reordered)', () => {
+      const live = {
+        Parameters: [
+          { ParameterName: 'enable_user_activity_logging', ParameterValue: 'false' }, // true -> false
+          { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+          { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('ELBv2 ListenerRule Conditions (reordered set, found by elbv2-listenerrule-rich)', () => {
     const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
     const declared = {

@@ -1242,6 +1242,18 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   'AWS::IAM::Role': new Set(['Policies']),
   'AWS::IAM::User': new Set(['Policies']),
   'AWS::IAM::Group': new Set(['Policies']),
+  // A Redshift ClusterParameterGroup's `Parameters` is a SET of {ParameterName,
+  // ParameterValue} that AWS returns SORTED by ParameterName, not in template order: a
+  // group declaring [require_ssl, enable_user_activity_logging, max_concurrency_scaling
+  // _clusters] reads back [enable_user_activity_logging, max_concurrency_scaling_clusters,
+  // require_ssl] (alphabetical), so a positional compare false-flags every shifted
+  // parameter's ParameterName AND ParameterValue as declared drift on a freshly recorded
+  // group. ParameterName is NOT an IDENTITY_FIELD, so only the per-type fold aligns it.
+  // Sorting both sides by canonical JSON aligns equal parameters; a genuine value change
+  // still differs. Observed live on a fresh redshift-paramgroup-reorder deploy. (The
+  // sibling RDS DB/DBClusterParameterGroup `Parameters` is a free-form Map<String,String>,
+  // not this array shape, so it is key-canonicalized — not folded here.)
+  'AWS::Redshift::ClusterParameterGroup': new Set(['Parameters']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
