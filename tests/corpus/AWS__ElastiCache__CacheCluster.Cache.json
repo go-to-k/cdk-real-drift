@@ -1,0 +1,184 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cache",
+    "resourceType": "AWS::ElastiCache::CacheCluster",
+    "physicalId": "cdk-ca-vpzewz5xmqaf",
+    "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache",
+    "declared": {
+      "CacheNodeType": "cache.t3.micro",
+      "CacheSubnetGroupName": "cdkrealdriftintegelasticachecacheclusterrich-subnetgroup-uwqxjwtvpyts",
+      "Engine": "redis",
+      "EngineVersion": "7.1",
+      "NumCacheNodes": 1,
+      "Port": 6379,
+      "VpcSecurityGroupIds": ["sg-0489652fb7df45d10"]
+    }
+  },
+  "liveRaw": {
+    "EngineVersion": "7.1",
+    "CacheSubnetGroupName": "cdkrealdriftintegelasticachecacheclusterrich-subnetgroup-uwqxjwtvpyts",
+    "Port": 6379,
+    "CacheParameterGroupName": "default.redis7",
+    "PreferredMaintenanceWindow": "sat:03:00-sat:04:00",
+    "AutoMinorVersionUpgrade": true,
+    "NumCacheNodes": 1,
+    "ConfigurationEndpoint": {
+      "Address": "",
+      "Port": ""
+    },
+    "SnapshotWindow": "07:30-08:30",
+    "CacheNodeType": "cache.t3.micro",
+    "SnapshotRetentionLimit": 0,
+    "RedisEndpoint": {
+      "Address": "cdk-ca-vpzewz5xmqaf.jzgy0l.0001.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "TransitEncryptionEnabled": false,
+    "PreferredAvailabilityZones": ["us-east-1a"],
+    "VpcSecurityGroupIds": ["sg-0489652fb7df45d10"],
+    "NetworkType": "ipv4",
+    "IpDiscovery": "ipv4",
+    "ClusterName": "cdk-ca-vpzewz5xmqaf",
+    "LogDeliveryConfigurations": [],
+    "Engine": "redis",
+    "Tags": [],
+    "AZMode": "single-az"
+  },
+  "schema": {
+    "readOnly": ["ConfigurationEndpoint", "RedisEndpoint"],
+    "writeOnly": [
+      "CacheSecurityGroupNames",
+      "PreferredAvailabilityZone",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnly": [
+      "CacheSubnetGroupName",
+      "ClusterName",
+      "Engine",
+      "IpDiscovery",
+      "NetworkType",
+      "Port",
+      "PreferredAvailabilityZones",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "readOnlyPaths": [
+      "ConfigurationEndpoint",
+      "ConfigurationEndpoint.Address",
+      "ConfigurationEndpoint.Port",
+      "RedisEndpoint",
+      "RedisEndpoint.Address",
+      "RedisEndpoint.Port"
+    ],
+    "writeOnlyPaths": [
+      "CacheSecurityGroupNames",
+      "PreferredAvailabilityZone",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "CacheSubnetGroupName",
+      "ClusterName",
+      "Engine",
+      "IpDiscovery",
+      "NetworkType",
+      "Port",
+      "PreferredAvailabilityZones",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "CacheParameterGroupName",
+      "actual": "default.redis7",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sat:03:00-sat:04:00",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "SnapshotWindow",
+      "actual": "07:30-08:30",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "PreferredAvailabilityZones",
+      "actual": ["us-east-1a"],
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cache",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "AZMode",
+      "actual": "single-az",
+      "physicalId": "cdk-ca-vpzewz5xmqaf",
+      "constructPath": "CdkRealDriftIntegElasticacheCacheclusterRich/Cache"
+    }
+  ]
+}

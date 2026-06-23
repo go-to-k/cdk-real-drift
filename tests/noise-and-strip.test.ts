@@ -391,6 +391,34 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('ENI / DBProxy / CacheCluster known defaults present (bug-hunt: eni-rich / dbproxy-rich / elasticache-cachecluster-rich)', () => {
+    // Constant, documented service defaults a fresh resource reports as first-run
+    // undeclared inventory; equality-gated, so a value set away from the default still
+    // surfaces. Exercised by the AWS__EC2__NetworkInterface / AWS__RDS__DBProxy /
+    // AWS__ElastiCache__CacheCluster corpus cases. Resource-/AZ-/window-specific live
+    // values (ENI PrivateIpAddress(es), CacheCluster Snapshot/MaintenanceWindow,
+    // PreferredAvailabilityZones, the engine-version-derived CacheParameterGroupName)
+    // are deliberately NOT folded — they are genuine undeclared inventory.
+    expect(KNOWN_DEFAULTS['AWS::EC2::NetworkInterface']).toEqual({
+      InterfaceType: 'interface',
+      Ipv4PrefixCount: 0,
+      Ipv6PrefixCount: 0,
+      SecondaryPrivateIpAddressCount: 0,
+    });
+    expect(KNOWN_DEFAULTS['AWS::ElastiCache::CacheCluster']).toEqual({
+      NetworkType: 'ipv4',
+      IpDiscovery: 'ipv4',
+      AZMode: 'single-az',
+      AutoMinorVersionUpgrade: true,
+      SnapshotRetentionLimit: 0,
+    });
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBProxy']).toEqual({
+      TargetConnectionNetworkType: 'IPV4',
+      DefaultAuthScheme: 'NONE',
+      EndpointNetworkType: 'IPV4',
+    });
+  });
+
   it('first-run-noise folds from the measure-noise sweep (PR follow-up) — common-type constant defaults', () => {
     // Each value was OBSERVED unanimous across the golden corpus and is a genuine
     // constant service default; equality-gated, so a non-default value still surfaces.
