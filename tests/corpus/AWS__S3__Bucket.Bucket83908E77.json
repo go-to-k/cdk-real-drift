@@ -1,0 +1,301 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Bucket83908E77",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+    "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "aws-cdk:auto-delete-objects",
+          "Value": "true"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+    "RegionalDomainName": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "DomainName": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q.s3-website-us-east-1.amazonaws.com",
+    "NotificationConfiguration": {
+      "TopicConfigurations": [
+        {
+          "Filter": {
+            "S3Key": {
+              "Rules": [
+                {
+                  "Value": "notify/",
+                  "Name": "Prefix"
+                },
+                {
+                  "Value": ".txt",
+                  "Name": "Suffix"
+                }
+              ]
+            }
+          },
+          "Event": "s3:ObjectCreated:*",
+          "Topic": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegS3NotifRich-TopicBFC7AF6E-f1Nqnm4YWlvQ"
+        }
+      ],
+      "QueueConfigurations": [
+        {
+          "Filter": {
+            "S3Key": {
+              "Rules": [
+                {
+                  "Value": "archive/",
+                  "Name": "Prefix"
+                }
+              ]
+            }
+          },
+          "Event": "s3:ObjectRemoved:*",
+          "Queue": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegS3NotifRich-Queue4A7E3555-I27JfKyA8Np8"
+        }
+      ],
+      "LambdaConfigurations": [
+        {
+          "Function": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegS3NotifRich-Handler886CB40B-OgVc3Yp44j29",
+          "Filter": {
+            "S3Key": {
+              "Rules": [
+                {
+                  "Value": ".jpg",
+                  "Name": "Suffix"
+                },
+                {
+                  "Value": "uploads/",
+                  "Name": "Prefix"
+                }
+              ]
+            }
+          },
+          "Event": "s3:ObjectCreated:*"
+        }
+      ]
+    },
+    "DualStackDomainName": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q.s3.dualstack.us-east-1.amazonaws.com",
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3NotifRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Bucket83908E77",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3NotifRich/159adfe0-6f0f-11f1-9905-0e2f5ec28615",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "true",
+        "Key": "aws-cdk:auto-delete-objects"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket83908E77",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+      "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket83908E77",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+      "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket83908E77",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+      "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket83908E77",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+      "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Bucket83908E77",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "NotificationConfiguration",
+      "actual": {
+        "TopicConfigurations": [
+          {
+            "Filter": {
+              "S3Key": {
+                "Rules": [
+                  {
+                    "Value": "notify/",
+                    "Name": "Prefix"
+                  },
+                  {
+                    "Value": ".txt",
+                    "Name": "Suffix"
+                  }
+                ]
+              }
+            },
+            "Event": "s3:ObjectCreated:*",
+            "Topic": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegS3NotifRich-TopicBFC7AF6E-f1Nqnm4YWlvQ"
+          }
+        ],
+        "QueueConfigurations": [
+          {
+            "Filter": {
+              "S3Key": {
+                "Rules": [
+                  {
+                    "Value": "archive/",
+                    "Name": "Prefix"
+                  }
+                ]
+              }
+            },
+            "Event": "s3:ObjectRemoved:*",
+            "Queue": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegS3NotifRich-Queue4A7E3555-I27JfKyA8Np8"
+          }
+        ],
+        "LambdaConfigurations": [
+          {
+            "Function": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegS3NotifRich-Handler886CB40B-OgVc3Yp44j29",
+            "Filter": {
+              "S3Key": {
+                "Rules": [
+                  {
+                    "Value": "uploads/",
+                    "Name": "Prefix"
+                  },
+                  {
+                    "Value": ".jpg",
+                    "Name": "Suffix"
+                  }
+                ]
+              }
+            },
+            "Event": "s3:ObjectCreated:*"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3notifrich-bucket83908e77-gvld7at4mo0q",
+      "constructPath": "CdkRealDriftIntegS3NotifRich/Bucket"
+    }
+  ]
+}

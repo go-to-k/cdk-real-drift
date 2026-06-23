@@ -1,0 +1,90 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "InlineGroup",
+    "resourceType": "AWS::IAM::Group",
+    "physicalId": "CdkRealDriftIntegIamPermBoundaryRich-InlineGroup-ciyoJYGJIlhd",
+    "constructPath": "CdkRealDriftIntegIamPermBoundaryRich/InlineGroup",
+    "declared": {
+      "Path": "/cdkrd/",
+      "Policies": [
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "readObjects"
+        },
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "describeOnly"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegIamPermBoundaryRich-InlineGroup-ciyoJYGJIlhd",
+    "Path": "/cdkrd/",
+    "Policies": [
+      {
+        "PolicyName": "describeOnly",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "readObjects",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["s3:GetObject", "s3:ListBucket"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "Arn": "arn:aws:iam::111111111111:group/cdkrd/CdkRealDriftIntegIamPermBoundaryRich-InlineGroup-ciyoJYGJIlhd"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["GroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

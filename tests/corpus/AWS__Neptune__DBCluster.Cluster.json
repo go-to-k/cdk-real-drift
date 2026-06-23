@@ -114,7 +114,7 @@
       "logicalId": "Cluster",
       "resourceType": "AWS::Neptune::DBCluster",
       "path": "AvailabilityZones",
-      "actual": ["ap-northeast-1c", "ap-northeast-1d", "ap-northeast-1a"],
+      "actual": ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"],
       "physicalId": "neptunedbcluster-jmhbhbdjulu9",
       "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
     },

@@ -92,13 +92,19 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    composite is the SERVICE arn FIRST then the cluster (`${physicalId}|${Cluster}`
    — the inverse of `compositeWith`'s parent-first order); plus the ApiGateway v1
    parent-first `[RestApiId, <child>]` (Model/RequestValidator/Resource/Stage) and
-   Cognito `[UserPoolId, <child>]` (UserPoolDomain/UserPoolResourceServer) composites,
+   Cognito `[UserPoolId, <child>]`
+   (UserPoolDomain/UserPoolResourceServer/UserPoolUser) composites,
    and the CHILD-first `[<child>, RestApiId]` (`${physicalId}|${RestApiId}`) cases
    ApiGateway::Deployment (R129) and ApiGateway::DocumentationPart — all verified
    live (skipped 7→0; DocumentationPart found by the cognito/apigw-rest-subres hunt);
    note
    ApiGateway::Method needs NO adapter, its CFn physical id is already the full
-   `RestApiId|ResourceId|HttpMethod` — `CC_IDENTIFIER_ADAPTERS`
+   `RestApiId|ResourceId|HttpMethod`; plus
+   EC2::TransitGatewayRouteTablePropagation, whose `[TransitGatewayRouteTableId,
+TransitGatewayAttachmentId]` composite is built from TWO declared props (its
+   CFn Ref is the underscore `attach_rtb` console id, not the CC pipe composite
+   — the sibling RouteTableAssociation/Route Refs ARE already the pipe composite,
+   so they need no adapter) — `CC_IDENTIFIER_ADAPTERS`
    in router.ts maps those without leaving the CC read path, which is strictly
    cheaper than an SDK override (no new dependency, no projection). The same adapter
    resolves the revert UpdateResource identifier (stack-actions.ts), not just the

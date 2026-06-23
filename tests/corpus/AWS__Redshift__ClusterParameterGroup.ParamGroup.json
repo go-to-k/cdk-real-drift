@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ParamGroup",
+    "resourceType": "AWS::Redshift::ClusterParameterGroup",
+    "physicalId": "cdkrealdriftintegredshiftparamgroupreorder-paramgroup-a1g5k8jfibhe",
+    "constructPath": "CdkRealDriftIntegRedshiftParamGroupReorder/ParamGroup",
+    "declared": {
+      "Description": "cdkrd redshift param-group reorder test",
+      "ParameterGroupFamily": "redshift-1.0",
+      "Parameters": [
+        {
+          "ParameterName": "require_ssl",
+          "ParameterValue": "true"
+        },
+        {
+          "ParameterName": "enable_user_activity_logging",
+          "ParameterValue": "true"
+        },
+        {
+          "ParameterName": "max_concurrency_scaling_clusters",
+          "ParameterValue": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd redshift param-group reorder test",
+    "Parameters": [
+      {
+        "ParameterValue": "true",
+        "ParameterName": "enable_user_activity_logging"
+      },
+      {
+        "ParameterValue": "1",
+        "ParameterName": "max_concurrency_scaling_clusters"
+      },
+      {
+        "ParameterValue": "true",
+        "ParameterName": "require_ssl"
+      }
+    ],
+    "ParameterGroupName": "cdkrealdriftintegredshiftparamgroupreorder-paramgroup-a1g5k8jfibhe",
+    "ParameterGroupFamily": "redshift-1.0",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Main54E5BC70",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+    "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main",
+    "declared": {
+      "KmsMasterKeyId": "arn:aws:kms:us-east-1:111111111111:key/b902a1ca-92e0-47f4-b068-7df387a16245",
+      "RedrivePolicy": {
+        "deadLetterTargetArn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+        "maxReceiveCount": 5
+      },
+      "VisibilityTimeout": 45
+    }
+  },
+  "liveRaw": {
+    "SqsManagedSseEnabled": false,
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "DelaySeconds": 0,
+    "KmsMasterKeyId": "arn:aws:kms:us-east-1:111111111111:key/b902a1ca-92e0-47f4-b068-7df387a16245",
+    "RedrivePolicy": {
+      "maxReceiveCount": 5,
+      "deadLetterTargetArn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne"
+    },
+    "MessageRetentionPeriod": 345600,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 45,
+    "KmsDataKeyReusePeriodSeconds": 300,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+    "QueueName": "CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "KmsDataKeyReusePeriodSeconds",
+      "actual": 300,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-Main54E5BC70-n2BpPP6JwibD",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
+    }
+  ]
+}

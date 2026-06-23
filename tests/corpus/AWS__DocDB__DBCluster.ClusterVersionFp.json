@@ -1,0 +1,136 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::DocDB::DBCluster",
+    "physicalId": "cluster-sgjbomufexjn",
+    "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster",
+    "declared": {
+      "DBSubnetGroupName": "subnetgroup-oygmx6qcdlnl",
+      "EngineVersion": "5.0",
+      "MasterUserPassword": "Cdkrd-Test-Pw-9281",
+      "MasterUsername": "cdkrduser"
+    }
+  },
+  "liveRaw": {
+    "DBClusterIdentifier": "cluster-sgjbomufexjn",
+    "BackupRetentionPeriod": 1,
+    "Port": 27017,
+    "EngineVersion": "5.0.0",
+    "MasterUsername": "cdkrduser",
+    "PreferredBackupWindow": "07:23-07:53",
+    "PreferredMaintenanceWindow": "sat:09:55-sat:10:25",
+    "StorageEncrypted": false,
+    "DeletionProtection": false,
+    "DBClusterParameterGroupName": "default.docdb5.0",
+    "VpcSecurityGroupIds": ["sg-00bae803921b5e299"]
+  },
+  "schema": {
+    "readOnly": ["ClusterResourceId", "Endpoint", "Id", "ReadEndpoint"],
+    "writeOnly": [],
+    "createOnly": [
+      "AvailabilityZones",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "KmsKeyId",
+      "MasterUsername",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted"
+    ],
+    "readOnlyPaths": ["ClusterResourceId", "Endpoint", "Id", "ReadEndpoint"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AvailabilityZones",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "KmsKeyId",
+      "MasterUsername",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "DBSubnetGroupName",
+      "note": "declared but not returned by live read",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "MasterUserPassword",
+      "note": "declared but not returned by live read",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "Port",
+      "actual": 27017,
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "PreferredBackupWindow",
+      "actual": "07:23-07:53",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sat:09:55-sat:10:25",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "DBClusterParameterGroupName",
+      "actual": "default.docdb5.0",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-00bae803921b5e299"],
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    }
+  ]
+}

@@ -219,6 +219,30 @@ describe('noise suppressors', () => {
     expect(canonicalizeIdArraysDeep(['GET', 'CUSTOM'])).toEqual(['GET', 'CUSTOM']);
   });
 
+  it('canonicalizeIdArraysDeep: sorts AvailabilityZones name/id sets (no hex suffix)', () => {
+    // Observed live (RDS DBCluster corpus): AWS reads an AZ list back in assignment
+    // order [us-east-1c, us-east-1a, us-east-1b], NOT declared order — but ID_RE can't
+    // match an AZ name (no hex suffix), so it needs the parallel isAvailabilityZone test.
+    const declared = canonicalizeIdArraysDeep({
+      AvailabilityZones: ['us-east-1a', 'us-east-1b', 'us-east-1c'],
+    });
+    const live = canonicalizeIdArraysDeep({
+      AvailabilityZones: ['us-east-1c', 'us-east-1a', 'us-east-1b'],
+    });
+    expect(declared).toEqual(live);
+    // AZ IDs (use1-az1) are folded too
+    expect(canonicalizeIdArraysDeep(['use1-az2', 'use1-az1'])).toEqual(['use1-az1', 'use1-az2']);
+    // a 3-segment region name (us-gov-east-1a) is still an AZ
+    expect(canonicalizeIdArraysDeep(['us-gov-east-1b', 'us-gov-east-1a']) as string[]).toEqual([
+      'us-gov-east-1a',
+      'us-gov-east-1b',
+    ]);
+    // a plain non-AZ scalar list keeps its order (could be semantically ordered)
+    expect(canonicalizeIdArraysDeep({ Order: ['zone-b', 'zone-a'] })).toEqual({
+      Order: ['zone-b', 'zone-a'],
+    });
+  });
+
   it('canonicalizeIdArraysDeep: does NOT sort the order-significant Lambda Layers ARN list', () => {
     // Lambda Function.Layers is order-significant (later layers overlay earlier).
     // The generic ARN sort would suppress a genuine reorder — a false negative.

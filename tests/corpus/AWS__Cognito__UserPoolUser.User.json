@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "User",
+    "resourceType": "AWS::Cognito::UserPoolUser",
+    "physicalId": "cdkrd-readgap-user",
+    "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User",
+    "declared": {
+      "MessageAction": "SUPPRESS",
+      "UserAttributes": [
+        {
+          "Name": "email",
+          "Value": "cdkrd@example.com"
+        }
+      ],
+      "UserPoolId": "us-east-1_hjCwjERRp",
+      "Username": "cdkrd-readgap-user"
+    }
+  },
+  "liveRaw": {
+    "UserPoolId": "us-east-1_hjCwjERRp",
+    "Username": "cdkrd-readgap-user",
+    "UserAttributes": [
+      {
+        "Value": "cdkrd@example.com",
+        "Name": "email"
+      },
+      {
+        "Value": "04c894d8-20e1-70ed-175e-9a01d11f7f45",
+        "Name": "sub"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [
+      "ClientMetadata",
+      "DesiredDeliveryMediums",
+      "ForceAliasCreation",
+      "MessageAction",
+      "ValidationData"
+    ],
+    "createOnly": [
+      "ClientMetadata",
+      "DesiredDeliveryMediums",
+      "ForceAliasCreation",
+      "MessageAction",
+      "UserAttributes",
+      "UserPoolId",
+      "Username",
+      "ValidationData"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [
+      "ClientMetadata",
+      "DesiredDeliveryMediums",
+      "ForceAliasCreation",
+      "MessageAction",
+      "ValidationData"
+    ],
+    "createOnlyPaths": [
+      "ClientMetadata",
+      "DesiredDeliveryMediums",
+      "ForceAliasCreation",
+      "MessageAction",
+      "UserAttributes",
+      "UserPoolId",
+      "Username",
+      "ValidationData"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "User",
+      "resourceType": "AWS::Cognito::UserPoolUser",
+      "path": "MessageAction",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-readgap-user",
+      "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "User",
+      "resourceType": "AWS::Cognito::UserPoolUser",
+      "path": "UserAttributes[sub]",
+      "actual": {
+        "Value": "04c894d8-20e1-70ed-175e-9a01d11f7f45",
+        "Name": "sub"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-readgap-user",
+      "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EncryptionPolicy",
+    "resourceType": "AWS::OpenSearchServerless::SecurityPolicy",
+    "physicalId": "encryption|cdkrd-readgap-enc",
+    "constructPath": "CdkRealDriftIntegOssSecurityPolicyReadGap/EncryptionPolicy",
+    "declared": {
+      "Description": "cdkrd oss security-policy read-gap test",
+      "Name": "cdkrd-readgap-enc",
+      "Policy": "{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/cdkrd-readgap-*\"]}],\"AWSOwnedKey\":true}",
+      "Type": "encryption"
+    }
+  },
+  "liveRaw": {
+    "Policy": "{\"Rules\": [{\"Resource\": [\"collection/cdkrd-readgap-*\"],\"ResourceType\": \"collection\"}],\"AWSOwnedKey\": true}",
+    "Type": "encryption",
+    "Description": "cdkrd oss security-policy read-gap test",
+    "Name": "cdkrd-readgap-enc"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name", "Type"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Type"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

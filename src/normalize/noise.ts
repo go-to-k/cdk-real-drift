@@ -989,6 +989,11 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // check fails). MSK KafkaVersion is NOT added: MSK validates KafkaVersion against
   // an exact supported-version list and rejects a partial, so declared == live.
   'AWS::Neptune::DBCluster': new Set(['EngineVersion']),
+  // Live-observed on a fresh docdb-version-fp deploy: Amazon DocumentDB accepts a
+  // partial EngineVersion (declared `"5.0"`) and provisions the concrete patch version,
+  // reading back `"5.0.0"` — the same partial->concrete shape as RDS/Aurora/Neptune.
+  // A genuine version change still differs (the leading-run check fails).
+  'AWS::DocDB::DBCluster': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
@@ -1036,11 +1041,13 @@ export function isPemEqual(a: unknown, b: unknown): boolean {
   return norm(a) === norm(b);
 }
 
-// AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, AvailabilityZones,
-// VPCSecurityGroups, ...) are UNORDERED sets too, but unlike tags their elements
+// AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, VPCSecurityGroups, ...)
+// are UNORDERED sets too, but unlike tags their elements
 // are bare scalars, so the tag canonicalizer doesn't touch them and a positional
 // diff reports false drift whenever CDK's order != AWS's. Sort only arrays whose
 // EVERY element is an AWS resource id (`subnet-0ab…`, `sg-…`, `vpc-…`) or an ARN —
+// (AvailabilityZones name/id lists are the same kind of set but lack the hex suffix;
+// they are handled by the parallel isAvailabilityZone test below) —
 // these are never order-significant. A plain scalar list like an enum sequence
 // (["a","b"]) is left untouched, so genuinely ordered lists keep reporting drift.
 // KNOWN LIMITATION: the heuristic is shape-based, so a list whose every element is
@@ -1051,6 +1058,21 @@ export function isPemEqual(a: unknown, b: unknown): boolean {
 const ID_RE = /^[a-z][a-z0-9]*-[0-9a-f]{6,}$/;
 const isIdLike = (s: unknown): boolean =>
   typeof s === 'string' && (s.startsWith('arn:') || ID_RE.test(s));
+
+// Availability-Zone NAMES (`us-east-1a`, `ap-northeast-1c`, `us-gov-east-1b`) and AZ
+// IDs (`use1-az1`, `apne1-az2`) have NO hex suffix, so ID_RE above does NOT match them
+// — yet an AvailabilityZones / PreferredAvailabilityZones / PreferredCacheClusterAZs
+// list is a SET (which AZs to span, order carries no meaning) that AWS returns in
+// account/assignment order, NOT declared order (observed live: an RDS DBCluster reads
+// back `[us-east-1c, us-east-1a, us-east-1b]`). Without folding, a positional compare
+// false-flags a declared AZ list, and a recorded undeclared AZ list re-read in a
+// different order false-drifts as "changed since record". An array whose EVERY element
+// is an AZ name/id is safe to sort (no AZ list is order-significant). Same content-based,
+// no-per-type-table philosophy as isIdLike.
+const AZ_NAME_RE = /^[a-z]{2}-[a-z]+(-[a-z]+)?-\d{1,2}[a-z]$/;
+const AZ_ID_RE = /^[a-z]{3,5}\d-az\d+$/;
+const isAvailabilityZone = (s: unknown): boolean =>
+  typeof s === 'string' && (AZ_NAME_RE.test(s) || AZ_ID_RE.test(s));
 
 // HTTP-method enum sets (CloudFront DefaultCacheBehavior.AllowedMethods /
 // CachedMethods, ...) are UNORDERED: the template lists them in one order, AWS
@@ -1080,7 +1102,7 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
     if (
       mapped.length > 1 &&
       !hasOrderSignificantId(mapped) &&
-      (mapped.every(isIdLike) || mapped.every(isHttpMethod))
+      (mapped.every(isIdLike) || mapped.every(isHttpMethod) || mapped.every(isAvailabilityZone))
     )
       return [...(mapped as string[])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     return mapped;
@@ -1226,6 +1248,34 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // handled separately as undeclared nested inventory (subset descent walks only the
   // declared *Config keys). Observed live on a fresh elbv2-listenerrule-rich deploy.
   'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions']),
+  // An IAM principal's inline `Policies` is a SET of {PolicyName, PolicyDocument}
+  // that AWS returns SORTED by PolicyName, not in template order: a role declaring
+  // [readObjects, describeOnly] reads back [describeOnly, readObjects] (alphabetical),
+  // so a positional compare false-flags every shifted policy's PolicyName AND its
+  // whole PolicyDocument as declared drift on a freshly recorded role. The element key
+  // `PolicyName` is NOT one of canonicalizeTagListsDeep's IDENTITY_FIELDS
+  // (Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer can't align it —
+  // hence the per-type opt-in. Sorting runs AFTER canonicalizeForCompare, so each
+  // element's PolicyDocument is already statement-canonicalized; sorting both sides by
+  // canonical JSON then aligns equal policies and a genuine policy add/remove/change
+  // still differs. Observed live on a fresh iam-permboundary-rich deploy. The identical
+  // inline-policy-set shape lives on IAM User and Group (CFn `Policies` of the same
+  // {PolicyName, PolicyDocument} element) — folded by the same set-semantics reasoning.
+  'AWS::IAM::Role': new Set(['Policies']),
+  'AWS::IAM::User': new Set(['Policies']),
+  'AWS::IAM::Group': new Set(['Policies']),
+  // A Redshift ClusterParameterGroup's `Parameters` is a SET of {ParameterName,
+  // ParameterValue} that AWS returns SORTED by ParameterName, not in template order: a
+  // group declaring [require_ssl, enable_user_activity_logging, max_concurrency_scaling
+  // _clusters] reads back [enable_user_activity_logging, max_concurrency_scaling_clusters,
+  // require_ssl] (alphabetical), so a positional compare false-flags every shifted
+  // parameter's ParameterName AND ParameterValue as declared drift on a freshly recorded
+  // group. ParameterName is NOT an IDENTITY_FIELD, so only the per-type fold aligns it.
+  // Sorting both sides by canonical JSON aligns equal parameters; a genuine value change
+  // still differs. Observed live on a fresh redshift-paramgroup-reorder deploy. (The
+  // sibling RDS DB/DBClusterParameterGroup `Parameters` is a free-form Map<String,String>,
+  // not this array shape, so it is key-canonicalized — not folded here.)
+  'AWS::Redshift::ClusterParameterGroup': new Set(['Parameters']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource

@@ -1,0 +1,45 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Association",
+    "resourceType": "AWS::EC2::TransitGatewayRouteTableAssociation",
+    "physicalId": "tgw-rtb-09d2f815e70b07f71|tgw-attach-0574d2639343e443f",
+    "constructPath": "CdkRealDriftIntegTgwRouteTableReadGap/Association",
+    "declared": {
+      "TransitGatewayAttachmentId": "tgw-attach-0574d2639343e443f",
+      "TransitGatewayRouteTableId": "tgw-rtb-09d2f815e70b07f71"
+    }
+  },
+  "liveRaw": {
+    "TransitGatewayRouteTableId": "tgw-rtb-09d2f815e70b07f71",
+    "Id": "tgw-attach-0574d2639343e443f_tgw-rtb-09d2f815e70b07f71",
+    "TransitGatewayAttachmentId": "tgw-attach-0574d2639343e443f"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["TransitGatewayAttachmentId", "TransitGatewayRouteTableId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TransitGatewayAttachmentId", "TransitGatewayRouteTableId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Association",
+      "resourceType": "AWS::EC2::TransitGatewayRouteTableAssociation",
+      "path": "Id",
+      "actual": "tgw-attach-0574d2639343e443f_tgw-rtb-09d2f815e70b07f71",
+      "physicalId": "tgw-rtb-09d2f815e70b07f71|tgw-attach-0574d2639343e443f",
+      "constructPath": "CdkRealDriftIntegTgwRouteTableReadGap/Association"
+    }
+  ]
+}

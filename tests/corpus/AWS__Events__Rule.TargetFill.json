@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule4C995B7F",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkRealDriftIntegEventBridgeTargetFill-Rule4C995B7F-VAPt7dQpHcKW",
+    "constructPath": "CdkRealDriftIntegEventBridgeTargetFill/Rule",
+    "declared": {
+      "ScheduleExpression": "rate(1 hour)",
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Arn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegEventBridgeTargetFill-TopicBFC7AF6E-TJSlcFkJuMvi",
+          "Id": "Target0"
+        },
+        {
+          "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeTargetFill-Queue4A7E3555-akLFdv4ovzNo",
+          "Id": "Target1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "ScheduleExpression": "rate(1 hour)",
+    "State": "ENABLED",
+    "Targets": [
+      {
+        "Id": "Target1",
+        "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegEventBridgeTargetFill-Queue4A7E3555-akLFdv4ovzNo"
+      },
+      {
+        "Id": "Target0",
+        "Arn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegEventBridgeTargetFill-TopicBFC7AF6E-TJSlcFkJuMvi"
+      }
+    ],
+    "Id": "CdkRealDriftIntegEventBridgeTargetFill-Rule4C995B7F-VAPt7dQpHcKW",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkRealDriftIntegEventBridgeTargetFill-Rule4C995B7F-VAPt7dQpHcKW",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEventBridgeTargetFill/c9b437a0-6f1a-11f1-9a8b-1295351781e9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEventBridgeTargetFill",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Rule4C995B7F",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "CdkRealDriftIntegEventBridgeTargetFill-Rule4C995B7F-VAPt7dQpHcKW"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["EventBusName", "Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EventBusName", "Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rule4C995B7F",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkRealDriftIntegEventBridgeTargetFill-Rule4C995B7F-VAPt7dQpHcKW",
+      "constructPath": "CdkRealDriftIntegEventBridgeTargetFill/Rule"
+    }
+  ]
+}

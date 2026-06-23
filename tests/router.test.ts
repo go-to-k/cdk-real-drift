@@ -351,6 +351,10 @@ describe('readLive (CC identifier adapters, R74)', () => {
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',
     'AWS::Cognito::UserPoolIdentityProvider',
+    // UserPoolUser [UserPoolId, Username] — parent-first; CFn Ref is the bare Username,
+    // so without the adapter the user is a CC ValidationException skip (read-gap).
+    // Verified live (cognito-userpooluser-rich): UserPoolId|Username reads, reverse 404s.
+    'AWS::Cognito::UserPoolUser',
   ]) {
     it(`${t}: builds the UserPoolId|<child> composite identifier`, async () => {
       cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
@@ -436,6 +440,42 @@ describe('readLive (CC identifier adapters, R74)', () => {
       '1'
     );
     expect(sent()).toBe('9dgubo');
+  });
+
+  // TransitGatewayRouteTablePropagation: composite [TransitGatewayRouteTableId,
+  // TransitGatewayAttachmentId] built from TWO declared props (the CFn Ref is the
+  // underscore `attach_rtb` console id, NOT the CC composite). Route-table FIRST.
+  it('EC2 TransitGatewayRouteTablePropagation: builds rtb|attach from two declared props', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::TransitGatewayRouteTablePropagation',
+        physicalId: 'tgw-attach-aaa_tgw-rtb-bbb',
+        declared: {
+          TransitGatewayRouteTableId: 'tgw-rtb-bbb',
+          TransitGatewayAttachmentId: 'tgw-attach-aaa',
+        },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('tgw-rtb-bbb|tgw-attach-aaa');
+  });
+
+  it('EC2 TransitGatewayRouteTablePropagation: an unresolved segment falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::TransitGatewayRouteTablePropagation',
+        physicalId: 'tgw-attach-aaa_tgw-rtb-bbb',
+        declared: { TransitGatewayRouteTableId: 'tgw-rtb-bbb' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('tgw-attach-aaa_tgw-rtb-bbb');
   });
 
   // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].

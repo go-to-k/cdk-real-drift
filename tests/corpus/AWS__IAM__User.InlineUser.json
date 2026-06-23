@@ -1,0 +1,90 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "InlineUser",
+    "resourceType": "AWS::IAM::User",
+    "physicalId": "CdkRealDriftIntegIamPermBoundaryRich-InlineUser-gfze0kfkhbIQ",
+    "constructPath": "CdkRealDriftIntegIamPermBoundaryRich/InlineUser",
+    "declared": {
+      "Path": "/cdkrd/",
+      "Policies": [
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "readObjects"
+        },
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "describeOnly"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Path": "/cdkrd/",
+    "Policies": [
+      {
+        "PolicyName": "describeOnly",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "readObjects",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["s3:GetObject", "s3:ListBucket"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "UserName": "CdkRealDriftIntegIamPermBoundaryRich-InlineUser-gfze0kfkhbIQ",
+    "Arn": "arn:aws:iam::111111111111:user/cdkrd/CdkRealDriftIntegIamPermBoundaryRich-InlineUser-gfze0kfkhbIQ"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["UserName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["LoginProfile.Password"],
+    "createOnlyPaths": ["UserName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

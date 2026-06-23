@@ -1,0 +1,134 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BoundedRole588C8D80",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkRealDriftIntegIamPermBoundar-BoundedRole588C8D80-BE2hX19NSRIu",
+    "constructPath": "CdkRealDriftIntegIamPermBoundaryRich/BoundedRole",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Statement": [
+          {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "lambda.amazonaws.com"
+            }
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Description": "cdkrd iam-permboundary-rich test role",
+      "Path": "/cdkrd/",
+      "PermissionsBoundary": "arn:aws:iam::aws:policy/ReadOnlyAccess",
+      "Policies": [
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["s3:GetObject", "s3:ListBucket"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "readObjects"
+        },
+        {
+          "PolicyDocument": {
+            "Statement": [
+              {
+                "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+                "Effect": "Allow",
+                "Resource": "*"
+              }
+            ],
+            "Version": "2012-10-17"
+          },
+          "PolicyName": "describeOnly"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Path": "/cdkrd/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkRealDriftIntegIamPermBoundar-BoundedRole588C8D80-BE2hX19NSRIu",
+    "Description": "cdkrd iam-permboundary-rich test role",
+    "Policies": [
+      {
+        "PolicyName": "describeOnly",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["ec2:DescribeInstances", "ec2:DescribeTags"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      },
+      {
+        "PolicyName": "readObjects",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": ["s3:GetObject", "s3:ListBucket"],
+              "Resource": "*",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ],
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "lambda.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/cdkrd/CdkRealDriftIntegIamPermBoundar-BoundedRole588C8D80-BE2hX19NSRIu",
+    "RoleId": "AROAXXXJN2LN6VGSPO5LT",
+    "PermissionsBoundary": "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    },
+    "defaultPaths": {
+      "Path": "/"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "BoundedRole588C8D80",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkRealDriftIntegIamPermBoundar-BoundedRole588C8D80-BE2hX19NSRIu",
+      "constructPath": "CdkRealDriftIntegIamPermBoundaryRich/BoundedRole"
+    }
+  ]
+}

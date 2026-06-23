@@ -1,0 +1,225 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AsgASGD1D7B4E2",
+    "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+    "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+    "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG",
+    "declared": {
+      "DesiredCapacity": "0",
+      "LaunchTemplate": {
+        "LaunchTemplateId": "lt-0dff137e76f0d8185",
+        "Version": "__cdkrd_corpus_unresolved__"
+      },
+      "MaxSize": "1",
+      "MinSize": "0",
+      "VPCZoneIdentifier": ["subnet-06c7c103a4855631d", "subnet-0160154bfd91e9031"]
+    }
+  },
+  "liveRaw": {
+    "LoadBalancerNames": [],
+    "ServiceLinkedRoleARN": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+    "TargetGroupARNs": [],
+    "AvailabilityZoneIds": ["use1-az1", "use1-az2"],
+    "AutoScalingGroupARN": "arn:aws:autoscaling:us-east-1:111111111111:autoScalingGroup:2936b0c6-99f8-472a-aa0a-375fde7ee57d:autoScalingGroupName/CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+    "Cooldown": "300",
+    "AvailabilityZones": ["us-east-1a", "us-east-1b"],
+    "AvailabilityZoneDistribution": {
+      "CapacityDistributionStrategy": "balanced-best-effort"
+    },
+    "DesiredCapacity": "0",
+    "HealthCheckGracePeriod": 0,
+    "MetricsCollection": [],
+    "InstanceLifecyclePolicy": {
+      "RetentionTriggers": {
+        "TerminateHookAbandon": "terminate"
+      }
+    },
+    "MaxSize": "1",
+    "NewInstancesProtectedFromScaleIn": false,
+    "MinSize": "0",
+    "TerminationPolicies": ["Default"],
+    "LaunchTemplate": {
+      "LaunchTemplateName": "LtFD2A8520_gmZKM55uh5RZ",
+      "Version": "1",
+      "LaunchTemplateId": "lt-0dff137e76f0d8185"
+    },
+    "AutoScalingGroupName": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+    "VPCZoneIdentifier": ["subnet-0160154bfd91e9031", "subnet-06c7c103a4855631d"],
+    "CapacityReservationSpecification": {
+      "CapacityReservationPreference": "default"
+    },
+    "Tags": [
+      {
+        "ResourceId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+        "Value": "AsgASGD1D7B4E2",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:logical-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAsgAzReorder/99288e70-6f1e-11f1-8340-12caf25d8893",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+        "Value": "CdkRealDriftIntegAsgAzReorder",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-name",
+        "PropagateAtLaunch": true
+      }
+    ],
+    "HealthCheckType": "EC2"
+  },
+  "schema": {
+    "readOnly": ["AutoScalingGroupARN"],
+    "writeOnly": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnly": [
+      "AutoScalingGroupName",
+      "InstanceId",
+      "LaunchConfigurationName",
+      "LaunchTemplate",
+      "MixedInstancesPolicy",
+      "VPCZoneIdentifier"
+    ],
+    "readOnlyPaths": ["AutoScalingGroupARN"],
+    "writeOnlyPaths": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnlyPaths": [
+      "AutoScalingGroupName",
+      "InstanceId",
+      "LaunchConfigurationName",
+      "LaunchTemplate",
+      "MixedInstancesPolicy",
+      "VPCZoneIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "LaunchTemplate",
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "ServiceLinkedRoleARN",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneIds",
+      "actual": ["use1-az1", "use1-az2"],
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Cooldown",
+      "actual": "300",
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a", "us-east-1b"],
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneDistribution",
+      "actual": {
+        "CapacityDistributionStrategy": "balanced-best-effort"
+      },
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckGracePeriod",
+      "actual": 0,
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "InstanceLifecyclePolicy",
+      "actual": {
+        "RetentionTriggers": {
+          "TerminateHookAbandon": "terminate"
+        }
+      },
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "TerminationPolicies",
+      "actual": ["Default"],
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "CapacityReservationSpecification",
+      "actual": {
+        "CapacityReservationPreference": "default"
+      },
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckType",
+      "actual": "EC2",
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "AsgASGD1D7B4E2",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "LaunchTemplate.LaunchTemplateName",
+      "actual": "LtFD2A8520_gmZKM55uh5RZ",
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegAsgAzReorder-AsgASGD1D7B4E2-1cV2XvY6XINi",
+      "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
+    }
+  ]
+}

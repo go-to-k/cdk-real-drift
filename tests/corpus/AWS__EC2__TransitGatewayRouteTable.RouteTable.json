@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RouteTable",
+    "resourceType": "AWS::EC2::TransitGatewayRouteTable",
+    "physicalId": "tgw-rtb-09d2f815e70b07f71",
+    "constructPath": "CdkRealDriftIntegTgwRouteTableReadGap/RouteTable",
+    "declared": {
+      "TransitGatewayId": "tgw-0deacb4feee2f250c"
+    }
+  },
+  "liveRaw": {
+    "TransitGatewayRouteTableId": "tgw-rtb-09d2f815e70b07f71",
+    "TransitGatewayId": "tgw-0deacb4feee2f250c",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegTgwRouteTableReadGap/33403460-6f18-11f1-8850-12bc8aa3685f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegTgwRouteTableReadGap",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RouteTable",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["TransitGatewayRouteTableId"],
+    "writeOnly": [],
+    "createOnly": ["TransitGatewayId"],
+    "readOnlyPaths": ["TransitGatewayRouteTableId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TransitGatewayId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

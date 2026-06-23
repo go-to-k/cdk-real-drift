@@ -1652,6 +1652,111 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  // An IAM principal's inline `Policies` is a SET of {PolicyName, PolicyDocument}
+  // AWS returns SORTED by PolicyName, not in template order (found by
+  // iam-permboundary-rich: declared [readObjects, describeOnly] read back
+  // [describeOnly, readObjects]). PolicyName is NOT an IDENTITY_FIELD, so only the
+  // per-type fold aligns it. The same inline-policy-set shape lives on Role/User/Group.
+  describe('IAM Role/User/Group inline Policies (PolicyName-keyed reordered set, found by iam-permboundary-rich)', () => {
+    const declared = {
+      Policies: [
+        {
+          PolicyName: 'readObjects',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              { Effect: 'Allow', Action: ['s3:GetObject', 's3:ListBucket'], Resource: '*' },
+            ],
+          },
+        },
+        {
+          PolicyName: 'describeOnly',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: ['ec2:DescribeInstances', 'ec2:DescribeTags'],
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    // AWS echoes the set sorted by PolicyName: describeOnly before readObjects.
+    const liveSorted = {
+      Policies: [declared.Policies[1], declared.Policies[0]],
+    };
+
+    for (const T of ['AWS::IAM::Role', 'AWS::IAM::User', 'AWS::IAM::Group']) {
+      it(`${T}: AWS returning the inline Policies sorted by PolicyName is NOT drift`, () => {
+        expect(declaredTiers(T, declared, liveSorted)).toEqual([]);
+      });
+
+      it(`${T}: a genuine inline-policy change (an added Action) still surfaces`, () => {
+        const liveChanged = {
+          Policies: [
+            {
+              PolicyName: 'describeOnly',
+              PolicyDocument: {
+                Version: '2012-10-17',
+                Statement: [
+                  {
+                    Effect: 'Allow',
+                    // s3:DeleteObject added out of band
+                    Action: ['ec2:DescribeInstances', 'ec2:DescribeTags', 's3:DeleteObject'],
+                    Resource: '*',
+                  },
+                ],
+              },
+            },
+            declared.Policies[0],
+          ],
+        };
+        expect(declaredTiers(T, declared, liveChanged).length).toBeGreaterThan(0);
+      });
+    }
+  });
+
+  // A Redshift ClusterParameterGroup's `Parameters` is a SET of {ParameterName,
+  // ParameterValue} AWS returns SORTED by ParameterName (found by
+  // redshift-paramgroup-reorder: declared [require_ssl, enable_user_activity_logging,
+  // max_concurrency_scaling_clusters] read back alphabetically). ParameterName is NOT
+  // an IDENTITY_FIELD, so only the per-type fold aligns it.
+  describe('Redshift ClusterParameterGroup Parameters (ParameterName-keyed reordered set)', () => {
+    const T = 'AWS::Redshift::ClusterParameterGroup';
+    const declared = {
+      Parameters: [
+        { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        { ParameterName: 'enable_user_activity_logging', ParameterValue: 'true' },
+        { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+      ],
+    };
+
+    it('AWS returning the Parameters sorted by ParameterName is NOT drift', () => {
+      const live = {
+        Parameters: [
+          { ParameterName: 'enable_user_activity_logging', ParameterValue: 'true' },
+          { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+          { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine parameter value change still surfaces (even when reordered)', () => {
+      const live = {
+        Parameters: [
+          { ParameterName: 'enable_user_activity_logging', ParameterValue: 'false' }, // true -> false
+          { ParameterName: 'max_concurrency_scaling_clusters', ParameterValue: '1' },
+          { ParameterName: 'require_ssl', ParameterValue: 'true' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('ELBv2 ListenerRule Conditions (reordered set, found by elbv2-listenerrule-rich)', () => {
     const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
     const declared = {
@@ -2644,6 +2749,18 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     ).toEqual(['EngineVersion']);
   });
 
+  // Live-observed FP (docdb-version-fp fixture): DocumentDB accepts a partial
+  // EngineVersion "5.0" and reads back the concrete "5.0.0".
+  it('DocDB DBCluster EngineVersion "5.0" resolved to live "5.0.0" is NOT declared drift', () => {
+    expect(
+      declaredPaths('AWS::DocDB::DBCluster', { EngineVersion: '5.0' }, { EngineVersion: '5.0.0' })
+    ).toEqual([]);
+    // a genuine version change still differs
+    expect(
+      declaredPaths('AWS::DocDB::DBCluster', { EngineVersion: '4.0' }, { EngineVersion: '5.0.0' })
+    ).toEqual(['EngineVersion']);
+  });
+
   it('MasterUsername resolved to UNRESOLVED (dynamic ref) is unresolved, not declared drift', () => {
     // loadDesired resolves the {{resolve:secretsmanager:…}} dynamic reference to
     // UNRESOLVED; classify then emits an `unresolved` finding, never `declared`.
@@ -3415,6 +3532,52 @@ describe('EC2 Instance BlockDeviceMappings identity-keyed subset (found by ec2-i
     const declaredDrift = classifyResource(
       inst({ BlockDeviceMappings: [declaredRoot] }),
       { BlockDeviceMappings: [liveAttached] }, // /dev/xvda no longer present
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+  });
+});
+
+describe('Cognito UserPoolUser UserAttributes identity-keyed subset (found by cognito-userpooluser-rich)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const user = (declared: Record<string, unknown>) => ({
+    logicalId: 'User',
+    resourceType: 'AWS::Cognito::UserPoolUser',
+    physicalId: 'us-east-1_pool|cdkrd-user',
+    declared,
+  });
+  // Template declares only `email`; AWS injects the server-generated immutable `sub`.
+  const declaredEmail = { Name: 'email', Value: 'cdkrd@example.com' };
+  const liveEmail = { Value: 'cdkrd@example.com', Name: 'email' }; // key order differs
+  const liveSub = { Value: '04c894d8-20e1-70ed-175e-9a01d11f7f45', Name: 'sub' };
+
+  it('the AWS-injected sub attribute does NOT false-drift the whole UserAttributes array', () => {
+    const findings = classifyResource(
+      user({ UserAttributes: [declaredEmail] }),
+      { UserAttributes: [liveEmail, liveSub] },
+      bare
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // sub surfaces as nested undeclared inventory, keyed by Name
+    const undeclared = findings.filter(
+      (f) => f.tier === 'undeclared' && f.path === 'UserAttributes[sub]'
+    );
+    expect(undeclared).toHaveLength(1);
+  });
+
+  it('an out-of-band change to the DECLARED email attribute is reported as declared drift', () => {
+    const declaredDrift = classifyResource(
+      user({ UserAttributes: [declaredEmail] }),
+      { UserAttributes: [{ Name: 'email', Value: 'changed@example.com' }, liveSub] },
       bare
     ).filter((f) => f.tier === 'declared');
     expect(declaredDrift).toHaveLength(1);
