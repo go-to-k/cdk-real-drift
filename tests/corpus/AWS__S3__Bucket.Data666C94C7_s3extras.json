@@ -1,0 +1,356 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Data666C94C7",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+    "constructPath": "CdkRealDriftIntegS3RichExtras/Data",
+    "declared": {
+      "AccelerateConfiguration": {
+        "AccelerationStatus": "Enabled"
+      },
+      "IntelligentTieringConfigurations": [
+        {
+          "Id": "logsTier",
+          "Prefix": "logs/",
+          "Status": "Enabled",
+          "Tierings": [
+            {
+              "AccessTier": "ARCHIVE_ACCESS",
+              "Days": 90
+            }
+          ]
+        },
+        {
+          "Id": "dataTier",
+          "Prefix": "data/",
+          "Status": "Enabled",
+          "Tierings": [
+            {
+              "AccessTier": "ARCHIVE_ACCESS",
+              "Days": 90
+            },
+            {
+              "AccessTier": "DEEP_ARCHIVE_ACCESS",
+              "Days": 180
+            }
+          ]
+        }
+      ],
+      "InventoryConfigurations": [
+        {
+          "Destination": {
+            "BucketArn": "arn:aws:s3:::cdkrealdriftintegs3richextras-destc383b82a-tgyp27tmzfxo",
+            "Format": "CSV",
+            "Prefix": "inv1"
+          },
+          "Enabled": true,
+          "Id": "inv-daily",
+          "IncludedObjectVersions": "All",
+          "ScheduleFrequency": "Weekly"
+        },
+        {
+          "Destination": {
+            "BucketArn": "arn:aws:s3:::cdkrealdriftintegs3richextras-destc383b82a-tgyp27tmzfxo",
+            "Format": "CSV",
+            "Prefix": "inv2"
+          },
+          "Enabled": true,
+          "Id": "inv-weekly",
+          "IncludedObjectVersions": "All",
+          "ScheduleFrequency": "Weekly"
+        }
+      ],
+      "MetricsConfigurations": [
+        {
+          "Id": "EntireBucket"
+        },
+        {
+          "Id": "LogsOnly",
+          "Prefix": "logs/"
+        }
+      ],
+      "OwnershipControls": {
+        "Rules": [
+          {
+            "ObjectOwnership": "ObjectWriter"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "aws-cdk:auto-delete-objects",
+          "Value": "true"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "InventoryConfigurations": [
+      {
+        "Destination": {
+          "BucketArn": "arn:aws:s3:::cdkrealdriftintegs3richextras-destc383b82a-tgyp27tmzfxo",
+          "Format": "CSV",
+          "Prefix": "inv1"
+        },
+        "OptionalFields": [],
+        "IncludedObjectVersions": "All",
+        "Enabled": true,
+        "Id": "inv-daily",
+        "ScheduleFrequency": "Weekly"
+      },
+      {
+        "Destination": {
+          "BucketArn": "arn:aws:s3:::cdkrealdriftintegs3richextras-destc383b82a-tgyp27tmzfxo",
+          "Format": "CSV",
+          "Prefix": "inv2"
+        },
+        "OptionalFields": [],
+        "IncludedObjectVersions": "All",
+        "Enabled": true,
+        "Id": "inv-weekly",
+        "ScheduleFrequency": "Weekly"
+      }
+    ],
+    "DomainName": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln.s3-website-us-east-1.amazonaws.com",
+    "NotificationConfiguration": {
+      "TopicConfigurations": [],
+      "QueueConfigurations": [],
+      "LambdaConfigurations": [],
+      "EventBridgeConfiguration": {
+        "EventBridgeEnabled": true
+      }
+    },
+    "DualStackDomainName": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln.s3.dualstack.us-east-1.amazonaws.com",
+    "MetricsConfigurations": [
+      {
+        "Id": "EntireBucket"
+      },
+      {
+        "TagFilters": [null],
+        "Id": "LogsOnly",
+        "Prefix": "logs/"
+      }
+    ],
+    "IntelligentTieringConfigurations": [
+      {
+        "Status": "Enabled",
+        "Tierings": [
+          {
+            "AccessTier": "ARCHIVE_ACCESS",
+            "Days": 90
+          },
+          {
+            "AccessTier": "DEEP_ARCHIVE_ACCESS",
+            "Days": 180
+          }
+        ],
+        "TagFilters": [null],
+        "Id": "dataTier",
+        "Prefix": "data/"
+      },
+      {
+        "Status": "Enabled",
+        "Tierings": [
+          {
+            "AccessTier": "ARCHIVE_ACCESS",
+            "Days": 90
+          }
+        ],
+        "TagFilters": [null],
+        "Id": "logsTier",
+        "Prefix": "logs/"
+      }
+    ],
+    "AbacStatus": "Disabled",
+    "AccelerateConfiguration": {
+      "AccelerationStatus": "Enabled"
+    },
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+    "RegionalDomainName": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "ObjectWriter"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3RichExtras",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Data666C94C7",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3RichExtras/4c11cc40-6eca-11f1-9205-0e6c4e574109",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "true",
+        "Key": "aws-cdk:auto-delete-objects"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "NotificationConfiguration",
+      "actual": {
+        "TopicConfigurations": [],
+        "QueueConfigurations": [],
+        "LambdaConfigurations": [],
+        "EventBridgeConfiguration": {
+          "EventBridgeEnabled": true
+        }
+      },
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "IntelligentTieringConfigurations[dataTier].TagFilters",
+      "actual": [null],
+      "nested": true,
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "IntelligentTieringConfigurations[logsTier].TagFilters",
+      "actual": [null],
+      "nested": true,
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "MetricsConfigurations[LogsOnly].TagFilters",
+      "actual": [null],
+      "nested": true,
+      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
+      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
+    }
+  ]
+}

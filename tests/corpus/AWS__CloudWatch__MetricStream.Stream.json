@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Stream",
+    "resourceType": "AWS::CloudWatch::MetricStream",
+    "physicalId": "CdkRealDriftIntegCloudwatchMetricstream-Stream-sf0BAdBHT2jN",
+    "constructPath": "CdkRealDriftIntegCloudwatchMetricstream/Stream",
+    "declared": {
+      "FirehoseArn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/CdkRealDriftIntegCloudwatchMetricstream-Fh-vKgUW1ELqlFW",
+      "IncludeFilters": [
+        {
+          "MetricNames": ["CPUUtilization", "NetworkIn"],
+          "Namespace": "AWS/EC2"
+        },
+        {
+          "MetricNames": [],
+          "Namespace": "AWS/Lambda"
+        },
+        {
+          "Namespace": "AWS/S3"
+        }
+      ],
+      "OutputFormat": "json",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCloudwatchMetricstr-MsRole2C85F6C4-0QNhw38qXmuL"
+    }
+  },
+  "liveRaw": {
+    "CreationDate": "Tue Jun 23 06:07:47 UTC 2026",
+    "FirehoseArn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/CdkRealDriftIntegCloudwatchMetricstream-Fh-vKgUW1ELqlFW",
+    "IncludeLinkedAccountsMetrics": false,
+    "IncludeFilters": [
+      {
+        "MetricNames": ["CPUUtilization", "NetworkIn"],
+        "Namespace": "AWS/EC2"
+      },
+      {
+        "MetricNames": [],
+        "Namespace": "AWS/Lambda"
+      },
+      {
+        "MetricNames": [],
+        "Namespace": "AWS/S3"
+      }
+    ],
+    "State": "running",
+    "OutputFormat": "json",
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:metric-stream/CdkRealDriftIntegCloudwatchMetricstream-Stream-sf0BAdBHT2jN",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCloudwatchMetricstr-MsRole2C85F6C4-0QNhw38qXmuL",
+    "Tags": [],
+    "LastUpdateDate": "Tue Jun 23 06:07:47 UTC 2026",
+    "Name": "CdkRealDriftIntegCloudwatchMetricstream-Stream-sf0BAdBHT2jN"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreationDate", "LastUpdateDate", "State"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "CreationDate", "LastUpdateDate", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
