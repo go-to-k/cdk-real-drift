@@ -75,7 +75,7 @@ What each choice does here:
 - **Record** — accept the live-only values as the norm; cdkrd watches them and
   re-flags any later out-of-band change. The usual first-run choice, and the switch
   that arms undeclared / added detection.
-- **Revert** — write the desired value back to AWS: *removes* an undeclared
+- **Revert** — write the desired value back to AWS: _removes_ an undeclared
   live-only value (rarely what you want for a legitimate default), or restores a
   declared one.
 - **Ignore** — stop reporting it, for good (watching off).

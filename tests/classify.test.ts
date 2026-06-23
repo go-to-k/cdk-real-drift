@@ -1140,7 +1140,10 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
               {
                 Type: 'Lambda',
                 Parameters: [
-                  { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+                  {
+                    ParameterName: 'LambdaArn',
+                    ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f',
+                  },
                   { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
                 ],
               },
@@ -1160,7 +1163,10 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
                   Parameters: [
                     { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
                     { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
-                    { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+                    {
+                      ParameterName: 'LambdaArn',
+                      ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f',
+                    },
                   ],
                 },
               ],
