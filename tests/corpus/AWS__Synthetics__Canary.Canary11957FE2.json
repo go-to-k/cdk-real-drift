@@ -95,7 +95,7 @@
       "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Canary11957FE2",
       "resourceType": "AWS::Synthetics::Canary",
       "path": "SuccessRetentionPeriod",
@@ -118,7 +118,7 @@
       "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Canary11957FE2",
       "resourceType": "AWS::Synthetics::Canary",
       "path": "FailureRetentionPeriod",
@@ -127,7 +127,7 @@
       "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Canary11957FE2",
       "resourceType": "AWS::Synthetics::Canary",
       "path": "ProvisionedResourceCleanup",

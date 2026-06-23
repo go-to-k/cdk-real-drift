@@ -197,7 +197,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "DatabaseInsightsMode",
@@ -233,7 +233,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "NetworkType",
@@ -242,7 +242,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "EngineLifecycleSupport",
@@ -278,7 +278,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "AutoMinorVersionUpgrade",

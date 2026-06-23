@@ -277,6 +277,75 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     DefaultAuthScheme: 'NONE',
     EndpointNetworkType: 'IPV4',
   },
+  // R-noise-sweep (offline audit of the golden corpus via scripts/measure-noise.sh):
+  // constant, documented service defaults common stateful/streaming types report as
+  // first-run undeclared inventory. Same exclusions as every entry above — NO
+  // names/ids/ARNs, no AZ (us-east-1x / use1-azN), no randomized window
+  // (Snapshot/Maintenance/Backup), no engine-/version-derived value (EngineVersion,
+  // OptionGroupName, *ParameterGroupName, port), no per-resource IP. Equality-gated:
+  // flip any out of band and it no longer matches, so it re-surfaces as real drift.
+  // The RDS DBInstance values were observed UNANIMOUS across 3 corpus instances
+  // spanning different engines (aurora-mysql + mysql8.0), confirming they are
+  // constant service defaults, not engine-derived.
+  'AWS::RDS::DBInstance': {
+    AutoMinorVersionUpgrade: true,
+    BackupTarget: 'region',
+    DatabaseInsightsMode: 'standard',
+    EngineLifecycleSupport: 'open-source-rds-extended-support',
+    MonitoringInterval: 0,
+    NetworkType: 'IPV4',
+    StorageThroughput: 0,
+  },
+  'AWS::RDS::DBCluster': {
+    AutoMinorVersionUpgrade: true,
+    DatabaseInsightsMode: 'standard',
+    EngineLifecycleSupport: 'open-source-rds-extended-support',
+    NetworkType: 'IPV4',
+  },
+  'AWS::Neptune::DBInstance': {
+    AutoMinorVersionUpgrade: true,
+  },
+  'AWS::Neptune::DBCluster': {
+    NetworkType: 'IPV4',
+  },
+  'AWS::ElastiCache::ReplicationGroup': {
+    AutoMinorVersionUpgrade: true,
+    ClusterMode: 'disabled',
+    IpDiscovery: 'ipv4',
+    NetworkType: 'ipv4',
+    ReplicasPerNodeGroup: 0,
+  },
+  'AWS::ElastiCache::ServerlessCache': {
+    SnapshotRetentionLimit: 0,
+  },
+  'AWS::OpenSearchService::Domain': {
+    IPAddressType: 'ipv4',
+  },
+  'AWS::EC2::VPCEndpoint': {
+    IpAddressType: 'ipv4',
+  },
+  'AWS::EC2::TransitGateway': {
+    SecurityGroupReferencingSupport: 'disable',
+  },
+  'AWS::EC2::FlowLog': {
+    MaxAggregationInterval: 600,
+  },
+  'AWS::Pipes::Pipe': {
+    DesiredState: 'RUNNING',
+  },
+  'AWS::Synthetics::Canary': {
+    FailureRetentionPeriod: 31,
+    SuccessRetentionPeriod: 31,
+    ProvisionedResourceCleanup: 'AUTOMATIC',
+  },
+  'AWS::MSK::Cluster': {
+    EnhancedMonitoring: 'DEFAULT',
+    StorageMode: 'LOCAL',
+  },
+  'AWS::Glue::Job': {
+    JobMode: 'SCRIPT',
+    MaxRetries: 0,
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
@@ -341,6 +410,9 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
   'AWS::CodeBuild::Project': {
     'Environment.ImagePullCredentialsType': 'CODEBUILD',
+    // A project with no explicit artifacts (NO_ARTIFACTS source) reads back the
+    // Packaging default NONE — R-noise-sweep, observed live.
+    'Artifacts.Packaging': 'NONE',
   },
   'AWS::Cognito::UserPool': {
     'AdminCreateUserConfig.UnusedAccountValidityDays': 7,
@@ -399,6 +471,27 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::KinesisFirehose::DeliveryStream': {
     // S3 backup is Disabled by default when a destination declares no backup mode.
     'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
+  },
+  // R-noise-sweep (offline corpus audit): nested constant defaults the schema does
+  // not annotate. Equality-gated; a non-default value still surfaces.
+  'AWS::WAFv2::WebACL': {
+    // A rate-based rule with no explicit window reads back the 5-minute (300s) default.
+    'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
+  },
+  'AWS::SES::EmailIdentity': {
+    // A custom MAIL FROM domain reads back the documented default fallback behavior.
+    'MailFromAttributes.BehaviorOnMxFailure': 'USE_DEFAULT_VALUE',
+  },
+  'AWS::MSK::Cluster': {
+    // Brokers spread across AZs read back the DEFAULT distribution when unspecified.
+    'BrokerNodeGroupInfo.BrokerAZDistribution': 'DEFAULT',
+  },
+  'AWS::Batch::JobDefinition': {
+    // A Fargate job definition reads back the documented runtime-platform defaults
+    // (x86_64 / Linux) and the LATEST Fargate platform version when none is declared.
+    'ContainerProperties.RuntimePlatform.CpuArchitecture': 'X86_64',
+    'ContainerProperties.RuntimePlatform.OperatingSystemFamily': 'LINUX',
+    'ContainerProperties.FargatePlatformConfiguration.PlatformVersion': 'LATEST',
   },
 };
 

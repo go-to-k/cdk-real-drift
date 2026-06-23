@@ -196,7 +196,7 @@
       "constructPath": "CdkdriftIntegHarvest13/OpenSearch"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "OpenSearch587998CD",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "IPAddressType",

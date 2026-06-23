@@ -369,7 +369,7 @@
       "constructPath": "CdkRealDriftIntegWafv2WebAclRich/WebAcl"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "WebAcl",
       "resourceType": "AWS::WAFv2::WebACL",
       "path": "Rules[rate-rule].Statement.RateBasedStatement.EvaluationWindowSec",

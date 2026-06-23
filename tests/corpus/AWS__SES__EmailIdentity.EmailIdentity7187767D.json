@@ -116,7 +116,7 @@
       "constructPath": "CdkdriftIntegHarvest11/EmailIdentity"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EmailIdentity7187767D",
       "resourceType": "AWS::SES::EmailIdentity",
       "path": "MailFromAttributes.BehaviorOnMxFailure",
