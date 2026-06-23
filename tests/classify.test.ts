@@ -1617,6 +1617,41 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('Cognito UserPoolResourceServer Scopes (ScopeName-keyed reordered set, cognito-userpool-sets)', () => {
+    const T = 'AWS::Cognito::UserPoolResourceServer';
+    // declared in scrambled (non-alphabetical) order; AWS echoes the set SORTED by
+    // ScopeName. ScopeName is NOT an IDENTITY_FIELD, so only the per-type fold aligns it.
+    const declared = {
+      Scopes: [
+        { ScopeName: 'zeta.write', ScopeDescription: 'zeta scope' },
+        { ScopeName: 'alpha.read', ScopeDescription: 'alpha scope' },
+        { ScopeName: 'mike.admin', ScopeDescription: 'mike scope' },
+      ],
+    };
+
+    it('AWS returning the Scopes sorted by ScopeName is NOT drift', () => {
+      const live = {
+        Scopes: [
+          { ScopeName: 'alpha.read', ScopeDescription: 'alpha scope' },
+          { ScopeName: 'mike.admin', ScopeDescription: 'mike scope' },
+          { ScopeName: 'zeta.write', ScopeDescription: 'zeta scope' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine scope change (a renamed ScopeName) still surfaces', () => {
+      const live = {
+        Scopes: [
+          { ScopeName: 'alpha.read', ScopeDescription: 'alpha scope' },
+          { ScopeName: 'mike.admin', ScopeDescription: 'mike scope' },
+          { ScopeName: 'zeta.delete', ScopeDescription: 'zeta scope' }, // write -> delete
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('ELBv2 ListenerRule Conditions (reordered set, found by elbv2-listenerrule-rich)', () => {
     const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
     const declared = {

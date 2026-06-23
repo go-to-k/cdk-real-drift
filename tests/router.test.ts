@@ -404,6 +404,40 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('dep123');
   });
 
+  // ApiGateway::DocumentationPart is CHILD-first [DocumentationPartId, RestApiId] —
+  // verified live (cognito/apigw-rest-subres hunt) that `RestApiId|DocumentationPartId`
+  // returns NotFound; only `DocumentationPartId|RestApiId` reads. Without the adapter the
+  // bare DocumentationPartId is a CC ValidationException skip (read-gap).
+  it('ApiGateway DocumentationPart: builds the DocumentationPartId|RestApiId composite — child FIRST', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::DocumentationPart',
+        physicalId: '9dgubo',
+        declared: { RestApiId: 'api456' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('9dgubo|api456');
+  });
+
+  it('ApiGateway DocumentationPart: an unresolved RestApiId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::DocumentationPart',
+        physicalId: '9dgubo',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('9dgubo');
+  });
+
   // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].
   for (const t of ['AWS::AppConfig::Environment', 'AWS::AppConfig::ConfigurationProfile']) {
     it(`${t}: builds the ApplicationId|<child> composite identifier`, async () => {
