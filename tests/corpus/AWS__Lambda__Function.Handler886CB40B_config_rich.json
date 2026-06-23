@@ -1,0 +1,183 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Handler886CB40B",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+    "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler",
+    "declared": {
+      "Code": {
+        "ZipFile": "def handler(event, context):\n    return {'ok': True}\n"
+      },
+      "DeadLetterConfig": {
+        "TargetArn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegLambdaConfigRich-DlqD1FAA4AD-HIEDs1Z4x7X9"
+      },
+      "Description": "cdkrd lambda-config-rich test handler",
+      "Environment": {
+        "Variables": {
+          "STAGE": "test",
+          "FEATURE_FLAG": "on"
+        }
+      },
+      "Handler": "index.handler",
+      "LoggingConfig": {
+        "ApplicationLogLevel": "INFO",
+        "LogFormat": "JSON",
+        "LogGroup": "CdkRealDriftIntegLambdaConfigRich-Logs6819BB44-QAP7lFiD0Okm",
+        "SystemLogLevel": "WARN"
+      },
+      "MemorySize": 256,
+      "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaCo-HandlerServiceRoleFCDC14A-zJlg5Dv3Ox7f",
+      "Runtime": "python3.12",
+      "RuntimeManagementConfig": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "SnapStart": {
+        "ApplyOn": "PublishedVersions"
+      },
+      "Timeout": 15,
+      "TracingConfig": {
+        "Mode": "Active"
+      }
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 256,
+    "Description": "cdkrd lambda-config-rich test handler",
+    "TracingConfig": {
+      "Mode": "Active"
+    },
+    "DeadLetterConfig": {
+      "TargetArn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegLambdaConfigRich-DlqD1FAA4AD-HIEDs1Z4x7X9"
+    },
+    "Timeout": 15,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "PublishedVersions"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaCo-HandlerServiceRoleFCDC14A-zJlg5Dv3Ox7f",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+    "Runtime": "python3.12",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "JSON",
+      "ApplicationLogLevel": "INFO",
+      "LogGroup": "CdkRealDriftIntegLambdaConfigRich-Logs6819BB44-QAP7lFiD0Okm",
+      "SystemLogLevel": "WARN"
+    },
+    "RecursiveLoop": "Terminate",
+    "Environment": {
+      "Variables": {
+        "STAGE": "test",
+        "FEATURE_FLAG": "on"
+      }
+    },
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegLambdaConfigRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Handler886CB40B",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLambdaConfigRich/bc590b20-6eee-11f1-993d-0e2943754679",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {},
+    "defaultPaths": {
+      "DurableConfig.RetentionPeriodInDays": 14
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Handler886CB40B",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "SnapStart",
+      "note": "write-only — cannot be read back",
+      "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Handler886CB40B",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Handler886CB40B",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Handler886CB40B",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Handler886CB40B",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TopicBFC7AF6E",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsArchiveRich-Topic-CB408FAC.fifo",
+    "constructPath": "CdkRealDriftIntegSnsArchiveRich/Topic",
+    "declared": {
+      "ArchivePolicy": {
+        "MessageRetentionPeriod": 30
+      },
+      "ContentBasedDeduplication": true,
+      "DisplayName": "cdkrd sns archive rich",
+      "FifoTopic": true,
+      "SignatureVersion": "2",
+      "TopicName": "CdkRealDriftIntegSnsArchiveRich-Topic-CB408FAC.fifo",
+      "TracingConfig": "Active"
+    }
+  },
+  "liveRaw": {
+    "SignatureVersion": "2",
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegSnsArchiveRich-Topic-CB408FAC.fifo",
+    "TracingConfig": "Active",
+    "DisplayName": "cdkrd sns archive rich",
+    "FifoTopic": true,
+    "ContentBasedDeduplication": true,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSnsArchiveRich/bc5cdbb0-6eee-11f1-8770-0affd52f7795",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSnsArchiveRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TopicBFC7AF6E",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ArchivePolicy": {
+      "MessageRetentionPeriod": "30"
+    },
+    "TopicName": "CdkRealDriftIntegSnsArchiveRich-Topic-CB408FAC.fifo"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
