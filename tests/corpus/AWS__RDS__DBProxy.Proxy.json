@@ -1,0 +1,121 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Proxy",
+    "resourceType": "AWS::RDS::DBProxy",
+    "physicalId": "cdkrd-integ-proxy",
+    "constructPath": "CdkRealDriftIntegDbproxyRich/Proxy",
+    "declared": {
+      "Auth": [
+        {
+          "AuthScheme": "SECRETS",
+          "IAMAuth": "DISABLED",
+          "SecretArn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:DbSecret685A0FA5-5MzrpuuXXhEx-6e1Syj"
+        }
+      ],
+      "DBProxyName": "cdkrd-integ-proxy",
+      "DebugLogging": false,
+      "EngineFamily": "POSTGRESQL",
+      "IdleClientTimeout": 1800,
+      "RequireTLS": true,
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDbproxyRich-ProxyRoleEB89BDF8-n1xVN4CQtcPC",
+      "VpcSecurityGroupIds": ["sg-0fbee10ed0f2fee43"],
+      "VpcSubnetIds": ["subnet-0459bc20c028fa2ba", "subnet-05d9a303dfd4ee2cc"]
+    }
+  },
+  "liveRaw": {
+    "DBProxyArn": "arn:aws:rds:us-east-1:111111111111:db-proxy:prx-06da2a15ab99f91c5",
+    "DBProxyName": "cdkrd-integ-proxy",
+    "DebugLogging": false,
+    "VpcSubnetIds": ["subnet-05d9a303dfd4ee2cc", "subnet-0459bc20c028fa2ba"],
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDbproxyRich-ProxyRoleEB89BDF8-n1xVN4CQtcPC",
+    "RequireTLS": true,
+    "Endpoint": "cdkrd-integ-proxy.proxy-caxxotukouxo.us-east-1.rds.amazonaws.com",
+    "VpcId": "vpc-02510b0a02ea6d4d2",
+    "IdleClientTimeout": 1800,
+    "TargetConnectionNetworkType": "IPV4",
+    "DefaultAuthScheme": "NONE",
+    "VpcSecurityGroupIds": ["sg-0fbee10ed0f2fee43"],
+    "Auth": [
+      {
+        "SecretArn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:DbSecret685A0FA5-5MzrpuuXXhEx-6e1Syj",
+        "IAMAuth": "DISABLED",
+        "ClientPasswordAuthType": "POSTGRES_SCRAM_SHA_256",
+        "AuthScheme": "SECRETS"
+      }
+    ],
+    "EngineFamily": "POSTGRESQL",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegDbproxyRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Proxy",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegDbproxyRich/88807520-6ed7-11f1-bb8c-0affea89e2cd",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "EndpointNetworkType": "IPV4"
+  },
+  "schema": {
+    "readOnly": ["DBProxyArn", "Endpoint", "VpcId"],
+    "writeOnly": [],
+    "createOnly": [
+      "DBProxyName",
+      "EndpointNetworkType",
+      "EngineFamily",
+      "TargetConnectionNetworkType",
+      "VpcSubnetIds"
+    ],
+    "readOnlyPaths": ["DBProxyArn", "Endpoint", "VpcId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DBProxyName",
+      "EndpointNetworkType",
+      "EngineFamily",
+      "TargetConnectionNetworkType",
+      "VpcSubnetIds"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Proxy",
+      "resourceType": "AWS::RDS::DBProxy",
+      "path": "TargetConnectionNetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrd-integ-proxy",
+      "constructPath": "CdkRealDriftIntegDbproxyRich/Proxy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Proxy",
+      "resourceType": "AWS::RDS::DBProxy",
+      "path": "DefaultAuthScheme",
+      "actual": "NONE",
+      "physicalId": "cdkrd-integ-proxy",
+      "constructPath": "CdkRealDriftIntegDbproxyRich/Proxy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Proxy",
+      "resourceType": "AWS::RDS::DBProxy",
+      "path": "EndpointNetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrd-integ-proxy",
+      "constructPath": "CdkRealDriftIntegDbproxyRich/Proxy"
+    }
+  ]
+}

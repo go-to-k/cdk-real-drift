@@ -252,6 +252,31 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ActionAfterCompletion: 'NONE',
     ScheduleExpressionTimezone: 'UTC',
   },
+  // R-noise-sweep (found by the eni-rich / dbproxy-rich / elasticache-cachecluster-rich
+  // hunt): constant, documented service defaults a fresh resource reports as undeclared
+  // on every first run. Resource-/AZ-/window-specific values the same read returns
+  // (ENI PrivateIpAddress(es), CacheCluster Snapshot/MaintenanceWindow,
+  // PreferredAvailabilityZones, CacheParameterGroupName which is engine-version-derived)
+  // are deliberately NOT listed — they are genuine undeclared inventory. Equality-gated:
+  // flip any out of band and it no longer matches, so it re-surfaces as real drift.
+  'AWS::EC2::NetworkInterface': {
+    InterfaceType: 'interface',
+    Ipv4PrefixCount: 0,
+    Ipv6PrefixCount: 0,
+    SecondaryPrivateIpAddressCount: 0,
+  },
+  'AWS::ElastiCache::CacheCluster': {
+    NetworkType: 'ipv4',
+    IpDiscovery: 'ipv4',
+    AZMode: 'single-az',
+    AutoMinorVersionUpgrade: true,
+    SnapshotRetentionLimit: 0,
+  },
+  'AWS::RDS::DBProxy': {
+    TargetConnectionNetworkType: 'IPV4',
+    DefaultAuthScheme: 'NONE',
+    EndpointNetworkType: 'IPV4',
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
