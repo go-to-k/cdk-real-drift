@@ -70,7 +70,7 @@
       "tier": "atDefault",
       "logicalId": "JobsDF1CC2D4",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
+      "path": "ReceiveMessageWaitTimeSeconds",
       "actual": 0,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
       "constructPath": "CdkrdIntegHarvest2/Jobs"
@@ -85,11 +85,29 @@
       "constructPath": "CdkrdIntegHarvest2/Jobs"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "JobsDF1CC2D4",
       "resourceType": "AWS::SQS::Queue",
       "path": "MaximumMessageSize",
       "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
+      "constructPath": "CdkrdIntegHarvest2/Jobs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "JobsDF1CC2D4",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
+      "constructPath": "CdkrdIntegHarvest2/Jobs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "JobsDF1CC2D4",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
       "constructPath": "CdkrdIntegHarvest2/Jobs"
     },
@@ -108,24 +126,6 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "QueueName",
       "actual": "CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
-      "constructPath": "CdkrdIntegHarvest2/Jobs"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "JobsDF1CC2D4",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "ReceiveMessageWaitTimeSeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
-      "constructPath": "CdkrdIntegHarvest2/Jobs"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "JobsDF1CC2D4",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-JobsDF1CC2D4-55t0xhloKlDd.fifo",
       "constructPath": "CdkrdIntegHarvest2/Jobs"
     }

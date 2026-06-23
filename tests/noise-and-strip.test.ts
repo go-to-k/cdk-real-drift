@@ -10,6 +10,7 @@ import {
   isTrivialEmpty,
   isVersionPrefixMatch,
   KNOWN_DEFAULTS,
+  KNOWN_DEFAULT_PATHS,
   stripAwsTagsDeep,
   VERSION_PREFIX_PATHS,
   isTrailingDotEqual,
@@ -387,6 +388,25 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULTS['AWS::AppSync::GraphQLApi'].ResolverCountLimit).toBe(0);
     expect(KNOWN_DEFAULTS['AWS::Logs::SubscriptionFilter']).toEqual({
       Distribution: 'ByLogStream',
+    });
+  });
+
+  it('first-run-noise folds from the measure-noise sweep (PR follow-up) — common-type constant defaults', () => {
+    // Each value was OBSERVED unanimous across the golden corpus and is a genuine
+    // constant service default; equality-gated, so a non-default value still surfaces.
+    expect(KNOWN_DEFAULTS['AWS::SQS::Queue'].MaximumMessageSize).toBe(1048576);
+    expect(KNOWN_DEFAULTS['AWS::Cognito::UserPoolClient'].RefreshTokenValidity).toBe(30);
+    expect(KNOWN_DEFAULTS['AWS::ECS::Service'].HealthCheckGracePeriodSeconds).toBe(0);
+    expect(KNOWN_DEFAULT_PATHS['AWS::ECS::Service']).toEqual({
+      'DeploymentConfiguration.Strategy': 'ROLLING',
+      'DeploymentConfiguration.BakeTimeInMinutes': 0,
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::OpenSearchService::Domain']).toEqual({
+      'EBSOptions.Iops': 3000,
+      'EBSOptions.Throughput': 125,
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::KinesisFirehose::DeliveryStream']).toEqual({
+      'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
     });
   });
 

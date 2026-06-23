@@ -136,7 +136,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",
       "path": "HealthCheckGracePeriodSeconds",
@@ -192,7 +192,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",
       "path": "DeploymentConfiguration.BakeTimeInMinutes",
@@ -202,7 +202,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",
       "path": "DeploymentConfiguration.Strategy",

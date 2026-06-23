@@ -53,35 +53,8 @@
       "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MessageRetentionPeriod",
-      "actual": 345600,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
-      "constructPath": "CdkrdIntegHarvest2/Inbox"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "InboxA8E05DC3",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
@@ -98,8 +71,26 @@
       "tier": "atDefault",
       "logicalId": "InboxA8E05DC3",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     },
@@ -109,6 +100,15 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",
       "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
+      "constructPath": "CdkrdIntegHarvest2/Inbox"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "InboxA8E05DC3",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest2-InboxA8E05DC3-hBjRn2Y5QXx2",
       "constructPath": "CdkrdIntegHarvest2/Inbox"
     }

@@ -51,26 +51,8 @@
       "tier": "atDefault",
       "logicalId": "MatrixQueueEEAE6F08",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
-      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "MatrixQueueEEAE6F08",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
-      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "MatrixQueueEEAE6F08",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
       "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
     },
@@ -87,8 +69,26 @@
       "tier": "atDefault",
       "logicalId": "MatrixQueueEEAE6F08",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
+      "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "MatrixQueueEEAE6F08",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest3-MatrixQueueEEAE6F08-Df0ZjowYewgM",
       "constructPath": "CdkrdIntegHarvest3/MatrixQueue"
     }

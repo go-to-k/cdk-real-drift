@@ -68,26 +68,8 @@
       "tier": "atDefault",
       "logicalId": "Main54E5BC70",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
-      "constructPath": "CdkRealDriftIntegSqs/Main"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Main54E5BC70",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
-      "constructPath": "CdkRealDriftIntegSqs/Main"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "Main54E5BC70",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
       "constructPath": "CdkRealDriftIntegSqs/Main"
     },
@@ -104,8 +86,26 @@
       "tier": "atDefault",
       "logicalId": "Main54E5BC70",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
+      "constructPath": "CdkRealDriftIntegSqs/Main"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
+      "constructPath": "CdkRealDriftIntegSqs/Main"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Main54E5BC70",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-Main54E5BC70-YkLGtyHzwGys",
       "constructPath": "CdkRealDriftIntegSqs/Main"
     }

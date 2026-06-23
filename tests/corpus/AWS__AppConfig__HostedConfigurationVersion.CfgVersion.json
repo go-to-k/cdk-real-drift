@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CfgVersion",
+    "resourceType": "AWS::AppConfig::HostedConfigurationVersion",
+    "physicalId": "1",
+    "constructPath": "CdkRealDriftIntegAppconfigDeploymentReadgap/CfgVersion",
+    "declared": {
+      "ApplicationId": "op3xb7a",
+      "ConfigurationProfileId": "7wzsy97",
+      "Content": "{\"feature\":{\"enabled\":true}}",
+      "ContentType": "application/json"
+    }
+  },
+  "liveRaw": {
+    "ConfigurationProfileId": "7wzsy97",
+    "ContentType": "application/json",
+    "Content": "{\"feature\":{\"enabled\":true}}",
+    "ApplicationId": "op3xb7a",
+    "VersionNumber": "1"
+  },
+  "schema": {
+    "readOnly": ["VersionNumber"],
+    "writeOnly": ["LatestVersionNumber"],
+    "createOnly": [
+      "ApplicationId",
+      "ConfigurationProfileId",
+      "Content",
+      "ContentType",
+      "Description",
+      "LatestVersionNumber",
+      "VersionLabel"
+    ],
+    "readOnlyPaths": ["VersionNumber"],
+    "writeOnlyPaths": ["LatestVersionNumber"],
+    "createOnlyPaths": [
+      "ApplicationId",
+      "ConfigurationProfileId",
+      "Content",
+      "ContentType",
+      "Description",
+      "LatestVersionNumber",
+      "VersionLabel"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

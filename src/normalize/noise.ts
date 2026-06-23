@@ -91,6 +91,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MessageRetentionPeriod: 345600,
     ReceiveMessageWaitTimeSeconds: 0,
     SqsManagedSseEnabled: true,
+    // AWS now provisions a 1 MiB max message size by default (observed unanimous
+    // across 10 corpus queues that declare none); a queue that pins a smaller value
+    // still surfaces (equality-gated).
+    MaximumMessageSize: 1048576,
     FifoThroughputLimit: 'perQueue', // FIFO queues only
     DeduplicationScope: 'queue', // FIFO queues only
   },
@@ -198,9 +202,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Cognito::UserPoolClient': {
     EnableTokenRevocation: true,
     AuthSessionValidity: 3,
+    // Cognito's default refresh-token validity is 30 (days, the default unit) when a
+    // client declares none — observed unanimous across the corpus clients.
+    RefreshTokenValidity: 30,
   },
   'AWS::ECS::Service': {
     SchedulingStrategy: 'REPLICA',
+    // A service with no load-balancer health-check grace reads back 0 (the default) —
+    // observed unanimous across the corpus services.
+    HealthCheckGracePeriodSeconds: 0,
   },
   'AWS::AppSync::GraphQLApi': {
     ApiType: 'GRAPHQL',
@@ -348,6 +358,22 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Scheduler::Schedule': {
     'Target.RetryPolicy': { MaximumEventAgeInSeconds: 86400, MaximumRetryAttempts: 185 },
+  },
+  'AWS::ECS::Service': {
+    // A service declaring no deployment configuration reads back AWS's defaults — the
+    // ROLLING strategy with a 0-minute bake time. Observed unanimous across the corpus.
+    'DeploymentConfiguration.Strategy': 'ROLLING',
+    'DeploymentConfiguration.BakeTimeInMinutes': 0,
+  },
+  'AWS::OpenSearchService::Domain': {
+    // A gp3 EBS volume reads back the gp3 baseline 3000 IOPS / 125 MiB/s throughput
+    // when the template leaves them unset — server defaults, not user intent.
+    'EBSOptions.Iops': 3000,
+    'EBSOptions.Throughput': 125,
+  },
+  'AWS::KinesisFirehose::DeliveryStream': {
+    // S3 backup is Disabled by default when a destination declares no backup mode.
+    'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
   },
 };
 

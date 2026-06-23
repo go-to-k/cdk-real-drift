@@ -38,35 +38,8 @@
       "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
-      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "PipeSrc0E082391",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
-      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "PipeSrc0E082391",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MessageRetentionPeriod",
-      "actual": 345600,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
-      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "PipeSrc0E082391",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
@@ -83,8 +56,26 @@
       "tier": "atDefault",
       "logicalId": "PipeSrc0E082391",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PipeSrc0E082391",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PipeSrc0E082391",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     },
@@ -94,6 +85,15 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",
       "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
+      "constructPath": "CdkrdIntegHarvest6/PipeSrc"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "PipeSrc0E082391",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkrdIntegHarvest6-PipeSrc0E082391-2hmrNLVPmm0V",
       "constructPath": "CdkrdIntegHarvest6/PipeSrc"
     }

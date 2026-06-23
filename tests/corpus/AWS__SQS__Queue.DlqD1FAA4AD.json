@@ -39,26 +39,8 @@
       "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
-      "path": "DelaySeconds",
-      "actual": 0,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
-      "constructPath": "CdkRealDriftIntegSqs/Dlq"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "DlqD1FAA4AD",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "MaximumMessageSize",
-      "actual": 1048576,
-      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
-      "constructPath": "CdkRealDriftIntegSqs/Dlq"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "DlqD1FAA4AD",
-      "resourceType": "AWS::SQS::Queue",
-      "path": "QueueName",
-      "actual": "CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     },
@@ -75,8 +57,17 @@
       "tier": "atDefault",
       "logicalId": "DlqD1FAA4AD",
       "resourceType": "AWS::SQS::Queue",
-      "path": "SqsManagedSseEnabled",
-      "actual": true,
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
+      "constructPath": "CdkRealDriftIntegSqs/Dlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     },
@@ -86,6 +77,15 @@
       "resourceType": "AWS::SQS::Queue",
       "path": "VisibilityTimeout",
       "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
+      "constructPath": "CdkRealDriftIntegSqs/Dlq"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
       "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqs-DlqD1FAA4AD-JVro9NWZxliC",
       "constructPath": "CdkRealDriftIntegSqs/Dlq"
     }
