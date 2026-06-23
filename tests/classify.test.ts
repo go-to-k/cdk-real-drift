@@ -1080,6 +1080,54 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ).filter((f) => f.tier === 'declared');
       expect(declaredF).toHaveLength(1);
     });
+
+    it('the fold is destination-agnostic: a Redshift (non-ExtendedS3) Processors path also folds', () => {
+      // PARAMETER_NAME_SUBSET_PATHS matches the dotted-path SUFFIX `Processors.<n>.Parameters`,
+      // so the same reorder + default-fill on any destination config that carries a
+      // ProcessingConfiguration (RedshiftDestinationConfiguration, AmazonopensearchserviceDestinationConfiguration,
+      // SplunkDestinationConfiguration, …) is suppressed too — not just ExtendedS3.
+      const redshiftDeclared = {
+        RedshiftDestinationConfiguration: {
+          ProcessingConfiguration: {
+            Enabled: true,
+            Processors: [
+              {
+                Type: 'Lambda',
+                Parameters: [
+                  { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+                  { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+                ],
+              },
+            ],
+          },
+        },
+      };
+      const findings = classifyResource(
+        res(T, redshiftDeclared),
+        {
+          RedshiftDestinationConfiguration: {
+            ProcessingConfiguration: {
+              Enabled: true,
+              Processors: [
+                {
+                  Type: 'Lambda',
+                  Parameters: [
+                    { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+                    { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
+                    { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+      expect(findings.filter((f) => f.tier === 'undeclared').map((f) => f.path)).toEqual([
+        'RedshiftDestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
+      ]);
+    });
   });
 
   describe('JSON-string vs declared object (SSM Document.Content)', () => {
