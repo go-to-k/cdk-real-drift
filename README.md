@@ -49,9 +49,8 @@ npx cdkrd check                 # checks every stack your app defines
 ```
 
 `check` is the only command you run by hand. It prints what it found, then offers
-the applicable actions inline — **Record / Revert / Ignore** — from run one, not
-only once you've recorded a baseline: even on the very first run you can revert or
-ignore, not just record ([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
+the applicable actions inline — **Record / Revert / Ignore** — from the very first
+run, no baseline required ([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
 Day one usually looks like this — a clean stack with live-only values to record, no
 drift:
 
