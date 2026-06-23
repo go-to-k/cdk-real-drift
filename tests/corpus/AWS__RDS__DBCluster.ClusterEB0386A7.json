@@ -264,7 +264,7 @@
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "AvailabilityZones",
-      "actual": ["us-east-1c", "us-east-1a", "us-east-1b"],
+      "actual": ["us-east-1a", "us-east-1b", "us-east-1c"],
       "physicalId": "cdkrealdriftintegaurorarich-clustereb0386a7-o3epflljsjiq",
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
