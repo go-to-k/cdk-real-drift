@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DlqD1FAA4AD",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+    "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq",
+    "declared": {
+      "KmsDataKeyReusePeriodSeconds": 600,
+      "KmsMasterKeyId": "arn:aws:kms:us-east-1:111111111111:key/b902a1ca-92e0-47f4-b068-7df387a16245",
+      "RedriveAllowPolicy": {
+        "redrivePermission": "allowAll"
+      }
+    }
+  },
+  "liveRaw": {
+    "SqsManagedSseEnabled": false,
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "DelaySeconds": 0,
+    "KmsMasterKeyId": "arn:aws:kms:us-east-1:111111111111:key/b902a1ca-92e0-47f4-b068-7df387a16245",
+    "MessageRetentionPeriod": 345600,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 30,
+    "KmsDataKeyReusePeriodSeconds": 600,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+    "RedriveAllowPolicy": {
+      "redrivePermission": "allowAll"
+    },
+    "QueueName": "CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne"
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "DlqD1FAA4AD",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegSqsRedriveRich-DlqD1FAA4AD-JQ3wnQWv4pne",
+      "constructPath": "CdkRealDriftIntegSqsRedriveRich/Dlq"
+    }
+  ]
+}

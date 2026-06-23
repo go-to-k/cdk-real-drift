@@ -1652,6 +1652,73 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  // An IAM principal's inline `Policies` is a SET of {PolicyName, PolicyDocument}
+  // AWS returns SORTED by PolicyName, not in template order (found by
+  // iam-permboundary-rich: declared [readObjects, describeOnly] read back
+  // [describeOnly, readObjects]). PolicyName is NOT an IDENTITY_FIELD, so only the
+  // per-type fold aligns it. The same inline-policy-set shape lives on Role/User/Group.
+  describe('IAM Role/User/Group inline Policies (PolicyName-keyed reordered set, found by iam-permboundary-rich)', () => {
+    const declared = {
+      Policies: [
+        {
+          PolicyName: 'readObjects',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              { Effect: 'Allow', Action: ['s3:GetObject', 's3:ListBucket'], Resource: '*' },
+            ],
+          },
+        },
+        {
+          PolicyName: 'describeOnly',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: ['ec2:DescribeInstances', 'ec2:DescribeTags'],
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    // AWS echoes the set sorted by PolicyName: describeOnly before readObjects.
+    const liveSorted = {
+      Policies: [declared.Policies[1], declared.Policies[0]],
+    };
+
+    for (const T of ['AWS::IAM::Role', 'AWS::IAM::User', 'AWS::IAM::Group']) {
+      it(`${T}: AWS returning the inline Policies sorted by PolicyName is NOT drift`, () => {
+        expect(declaredTiers(T, declared, liveSorted)).toEqual([]);
+      });
+
+      it(`${T}: a genuine inline-policy change (an added Action) still surfaces`, () => {
+        const liveChanged = {
+          Policies: [
+            {
+              PolicyName: 'describeOnly',
+              PolicyDocument: {
+                Version: '2012-10-17',
+                Statement: [
+                  {
+                    Effect: 'Allow',
+                    // s3:DeleteObject added out of band
+                    Action: ['ec2:DescribeInstances', 'ec2:DescribeTags', 's3:DeleteObject'],
+                    Resource: '*',
+                  },
+                ],
+              },
+            },
+            declared.Policies[0],
+          ],
+        };
+        expect(declaredTiers(T, declared, liveChanged).length).toBeGreaterThan(0);
+      });
+    }
+  });
+
   describe('ELBv2 ListenerRule Conditions (reordered set, found by elbv2-listenerrule-rich)', () => {
     const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
     const declared = {

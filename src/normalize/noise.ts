@@ -1226,6 +1226,22 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // handled separately as undeclared nested inventory (subset descent walks only the
   // declared *Config keys). Observed live on a fresh elbv2-listenerrule-rich deploy.
   'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions']),
+  // An IAM principal's inline `Policies` is a SET of {PolicyName, PolicyDocument}
+  // that AWS returns SORTED by PolicyName, not in template order: a role declaring
+  // [readObjects, describeOnly] reads back [describeOnly, readObjects] (alphabetical),
+  // so a positional compare false-flags every shifted policy's PolicyName AND its
+  // whole PolicyDocument as declared drift on a freshly recorded role. The element key
+  // `PolicyName` is NOT one of canonicalizeTagListsDeep's IDENTITY_FIELDS
+  // (Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer can't align it —
+  // hence the per-type opt-in. Sorting runs AFTER canonicalizeForCompare, so each
+  // element's PolicyDocument is already statement-canonicalized; sorting both sides by
+  // canonical JSON then aligns equal policies and a genuine policy add/remove/change
+  // still differs. Observed live on a fresh iam-permboundary-rich deploy. The identical
+  // inline-policy-set shape lives on IAM User and Group (CFn `Policies` of the same
+  // {PolicyName, PolicyDocument} element) — folded by the same set-semantics reasoning.
+  'AWS::IAM::Role': new Set(['Policies']),
+  'AWS::IAM::User': new Set(['Policies']),
+  'AWS::IAM::Group': new Set(['Policies']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
