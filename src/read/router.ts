@@ -142,6 +142,20 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
       ? `${pid}|${restApiId}`
       : undefined;
   },
+  // ApiGateway::DocumentationPart is child-first like Deployment: its primaryIdentifier
+  // is `[DocumentationPartId, RestApiId]` (verified live — `RestApiId|DocumentationPartId`
+  // returns NotFound; only `DocumentationPartId|RestApiId` reads). The CFn physical id is
+  // the bare DocumentationPartId; RestApiId comes from the resolved declared Ref. Without
+  // this a declared documentation part is a CC ValidationException skip on every check
+  // (read-gap), so undeclared drift on it is invisible. (RequestValidator/Model are
+  // parent-first and already adapted above.)
+  'AWS::ApiGateway::DocumentationPart': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const restApiId = declared.RestApiId;
+    return typeof restApiId === 'string' && restApiId.length > 0
+      ? `${pid}|${restApiId}`
+      : undefined;
+  },
   // ApplicationAutoScaling ScalingPolicy: primaryIdentifier is [Arn,
   // ScalableDimension]. The CFn physical id IS the PolicyARN, but ScalableDimension
   // is not a direct ScalingPolicy property — it rides on the resolved

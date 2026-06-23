@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ResourceServer",
+    "resourceType": "AWS::Cognito::UserPoolResourceServer",
+    "physicalId": "cdkrd-api",
+    "constructPath": "CdkRealDriftIntegCognitoUserPoolSets/ResourceServer",
+    "declared": {
+      "Identifier": "cdkrd-api",
+      "Name": "cdkrd-resource-server",
+      "Scopes": [
+        {
+          "ScopeDescription": "zeta scope",
+          "ScopeName": "zeta.write"
+        },
+        {
+          "ScopeDescription": "alpha scope",
+          "ScopeName": "alpha.read"
+        },
+        {
+          "ScopeDescription": "mike scope",
+          "ScopeName": "mike.admin"
+        }
+      ],
+      "UserPoolId": "us-east-1_1CWC05xF7"
+    }
+  },
+  "liveRaw": {
+    "UserPoolId": "us-east-1_1CWC05xF7",
+    "Identifier": "cdkrd-api",
+    "Scopes": [
+      {
+        "ScopeName": "alpha.read",
+        "ScopeDescription": "alpha scope"
+      },
+      {
+        "ScopeName": "mike.admin",
+        "ScopeDescription": "mike scope"
+      },
+      {
+        "ScopeName": "zeta.write",
+        "ScopeDescription": "zeta scope"
+      }
+    ],
+    "Name": "cdkrd-resource-server"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Identifier", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Identifier", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

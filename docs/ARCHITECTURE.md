@@ -93,8 +93,10 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    — the inverse of `compositeWith`'s parent-first order); plus the ApiGateway v1
    parent-first `[RestApiId, <child>]` (Model/RequestValidator/Resource/Stage) and
    Cognito `[UserPoolId, <child>]` (UserPoolDomain/UserPoolResourceServer) composites,
-   and ApiGateway::Deployment which is CHILD-first `[DeploymentId, RestApiId]`
-   (`${physicalId}|${RestApiId}`) — all R129, verified live (skipped 7→0); note
+   and the CHILD-first `[<child>, RestApiId]` (`${physicalId}|${RestApiId}`) cases
+   ApiGateway::Deployment (R129) and ApiGateway::DocumentationPart — all verified
+   live (skipped 7→0; DocumentationPart found by the cognito/apigw-rest-subres hunt);
+   note
    ApiGateway::Method needs NO adapter, its CFn physical id is already the full
    `RestApiId|ResourceId|HttpMethod` — `CC_IDENTIFIER_ADAPTERS`
    in router.ts maps those without leaving the CC read path, which is strictly

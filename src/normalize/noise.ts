@@ -1204,6 +1204,19 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
 // canonical JSON before the positional diff — a genuine rule change still differs.
 export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
+  // Cognito UserPoolResourceServer `Scopes` is a SET of {ScopeName, ScopeDescription}
+  // OAuth scopes that AWS echoes SORTED by ScopeName, not in template order (declared
+  // [zeta.write, alpha.read, mike.admin] reads back [alpha.read, mike.admin, zeta.write]),
+  // so a positional compare false-flags every shifted scope's ScopeName AND
+  // ScopeDescription as declared drift on a freshly recorded resource server. The
+  // element key `ScopeName` is NOT one of canonicalizeTagListsDeep's IDENTITY_FIELDS
+  // (Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer can't align it —
+  // hence the per-type opt-in. Sorting both sides by canonical JSON aligns equal scopes;
+  // a genuine scope add/remove/change still differs. Observed live on a fresh
+  // cognito-userpool-sets deploy. (The sibling UserPool `AliasAttributes` set was tested
+  // in the SAME deploy with a deliberately non-sorted list and Cognito PRESERVED its
+  // order, so it is NOT folded — observed-only.)
+  'AWS::Cognito::UserPoolResourceServer': new Set(['Scopes']),
   // ListenerRule `Conditions` is a SET keyed by Field (path-pattern / host-header /
   // http-header / …) that AWS returns REORDERED relative to the template, so a
   // positional compare false-flags every condition. Sorting both sides by canonical

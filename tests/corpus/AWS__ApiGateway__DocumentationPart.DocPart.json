@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DocPart",
+    "resourceType": "AWS::ApiGateway::DocumentationPart",
+    "physicalId": "9dgubo",
+    "constructPath": "CdkRealDriftIntegApigwRestSubres/DocPart",
+    "declared": {
+      "Location": {
+        "Type": "API"
+      },
+      "Properties": "{\"description\":\"cdkrd doc part\"}",
+      "RestApiId": "zllyn0eobd"
+    }
+  },
+  "liveRaw": {
+    "RestApiId": "zllyn0eobd",
+    "Properties": "{\"description\":\"cdkrd doc part\"}",
+    "DocumentationPartId": "9dgubo",
+    "Location": {
+      "Type": "API"
+    }
+  },
+  "schema": {
+    "readOnly": ["DocumentationPartId"],
+    "writeOnly": [],
+    "createOnly": ["Location", "RestApiId"],
+    "readOnlyPaths": ["DocumentationPartId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Location", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
