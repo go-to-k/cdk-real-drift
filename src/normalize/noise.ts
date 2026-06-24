@@ -781,6 +781,45 @@ export function identityField(arr: unknown[]): string | undefined {
     )
   );
 }
+
+// AWS sometimes GENERATES an identity field the template omitted — most commonly
+// `S3 LifecycleConfiguration.Rules[].Id`: `bucket.addLifecycleRule({...})` without an
+// `id` is the CDK default, so the template carries no `Id`, but S3 assigns a random one
+// and echoes it on read. The live element then has the identity field while the declared
+// element does not, so the per-side identity sort (`canonicalizeTagLists` / `identityField`)
+// sorts the LIVE array by the generated id but leaves the DECLARED array in template order
+// — misaligning every element into a wall of false `declared` drift (observed live: three
+// no-id lifecycle rules reported 8 phantom drifts). AWS preserves the array's declared
+// order (Cloud Control read), so the safe fix is to NOT let an asymmetric identity field
+// drive the sort: walk the declared/live pair in parallel and, at any object array where
+// an IDENTITY_FIELD is present on EVERY element of one side but NOT every element of the
+// other, delete that field from BOTH sides. Neither side is then keyed by it, both stay in
+// positional order, and the compare aligns. A field present on BOTH sides (CloudFront
+// Origins Id, Tags Key, …) is untouched, so the existing identity-keyed canonicalization is
+// unaffected. Mutates the passed (cloned) structures in place; run BEFORE canonicalization.
+export function stripAsymmetricIdentityFields(declared: unknown, live: unknown): void {
+  const isObj = (x: unknown): x is Record<string, unknown> =>
+    !!x && typeof x === 'object' && !Array.isArray(x);
+  if (Array.isArray(declared) && Array.isArray(live)) {
+    if (declared.length > 0 && live.length > 0 && declared.every(isObj) && live.every(isObj)) {
+      for (const f of IDENTITY_FIELDS) {
+        const decAll = declared.every((e) => typeof (e as Record<string, unknown>)[f] === 'string');
+        const liveAll = live.every((e) => typeof (e as Record<string, unknown>)[f] === 'string');
+        if (decAll !== liveAll) {
+          for (const e of declared) delete (e as Record<string, unknown>)[f];
+          for (const e of live) delete (e as Record<string, unknown>)[f];
+        }
+      }
+    }
+    const n = Math.min(declared.length, live.length);
+    for (let i = 0; i < n; i++) stripAsymmetricIdentityFields(declared[i], live[i]);
+    return;
+  }
+  if (isObj(declared) && isObj(live)) {
+    for (const k of Object.keys(declared))
+      if (k in live) stripAsymmetricIdentityFields(declared[k], live[k]);
+  }
+}
 // Identity-keyed OBJECT arrays that carry a per-element `Name` (so `identityField`
 // would otherwise sort them) but whose ARRAY ORDER is SEMANTICALLY SIGNIFICANT.
 // Sorting such an array is doubly wrong: (a) it MASKS a genuine reorder as no-drift
