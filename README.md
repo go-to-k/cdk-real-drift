@@ -120,7 +120,7 @@ each does, run on its own:
 | `cdkrd check`  | find drift (the one you run)                                          | nothing; the 3 below do the writing  |
 | `cdkrd record` | "this undeclared / added state is the norm; tell me if it _changes_"  | a git file (baseline)                |
 | `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`)           |
-| `cdkrd revert` | "this state is WRONG"; write the desired value back                   | AWS (plan + confirm)                 |
+| `cdkrd revert` | "this state is wrong"; write the desired value back                   | AWS (plan + confirm)                 |
 
 The scopes differ: `record` is **undeclared / added only**, while `ignore` works on
 **any** tier. It's the only in-tool way to accept a **declared** drift without
@@ -152,8 +152,8 @@ Three sources, named so "declared" is never ambiguous:
 | term                           | source                                        | meaning                                                 |
 | ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
 | **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
-| **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
-| **Added Resource**             | the live resource                             | a whole resource exists live but is NOT in the template |
+| **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but not in the template |
+| **Added Resource**             | the live resource                             | a whole resource exists live but is not in the template |
 | **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
 Note that `CFn-declared` means **in the deployed template**, not "in my CDK code"
@@ -279,17 +279,17 @@ CI (with `--yes`).
 | `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                 |
 | `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                    |
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                      |
-| `--all`                    | target EVERY stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
+| `--all`                    | target every stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                            |
 | `--fail`                   | (check) exit 1 on drift + never prompt, for scripts/CI; without it, check reports drift but exits 0                                             |
-| `--strict`                 | (check) exit 1 when COVERAGE is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
-| `--show-all`               | inventory mode: show ALL current undeclared state, ignoring the baseline                                                                        |
-| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason NOT-revertable summary to full lists                                   |
+| `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
+| `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                        |
+| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                   |
 | `--pre-deploy`             | (check) compare live vs the LOCAL synth template: the declared drift your next `cdk deploy` would silently overwrite                            |
 | `--undeclared-only`        | (check) undeclared drift only: pair cdkrd with `cdk drift` for the declared side                                                                |
-| `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                          |
+| `--declared-only`          | (check) declared drift vs the deployed template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                          |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                                        |
-| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them |
+| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them |
 | `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                   |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
@@ -318,7 +318,7 @@ Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each op
   **standout** values are listed; the folded nested sub-keys (`undeclared-subkey`)
   are **always recorded** and the picker header discloses their count (`--verbose`
   itemizes each). `record` writes only undeclared + added state; any declared /
-  deleted drift is NOT written and `record` prints a note that it still stands
+  deleted drift is not written and `record` prints a note that it still stands
   (resolve with `revert` or `cdk deploy`).
 - **`Decide per finding`** assigns a different action to each finding. On a busy
   stack, **just start typing to filter** the rows (↑↓ move · space cycles a row's
