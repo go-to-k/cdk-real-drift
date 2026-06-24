@@ -145,42 +145,35 @@ undeployed code changes don't show up as drift by default. `--pre-deploy` invert
 that, checking live state against the freshly synthesized template (see
 [`--pre-deploy`](#--pre-deploy)).
 
-### The vocabulary
+### The kinds of drift
 
-Three sources, named so "declared" is never ambiguous:
+Named so "declared" is never ambiguous (`CFn-declared` means **in the deployed
+template**, not your CDK code and not your `.cdkrd` baseline):
 
-| term                           | source                                        | meaning                                                 |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
-| **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
-| **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but not in the template |
-| **Added Resource**             | the live resource                             | a whole resource exists live but is not in the template |
-| **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
+| term                           | source                               | how it's judged                                                        |
+| ------------------------------ | ------------------------------------ | --------------------------------------------------------------------- |
+| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed |
+| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                      |
+| **Added resource**             | a whole resource not in the template | reconciled against the baseline like an undeclared property (see below) |
+| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                          |
 
-Note that `CFn-declared` means **in the deployed template**, not "in my CDK code"
-and not "in my `.cdkrd` baseline". And `CFn-undeclared` (a template axis) is not
-the same as `unrecorded` (a baseline-file axis).
+(`CFn-undeclared` is a template axis; `recorded` / `unrecorded` is a separate
+baseline-file axis: whether you've snapshotted that value yet.)
 
-### How each kind of drift is judged
+The mechanics:
 
-- **Declared** properties are compared against the **deployed template**: no
-  baseline involved, drift is detected from the first run.
-- **Undeclared** (live-only) properties are compared against the **baseline** you
-  record: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed to
-  git, where a PR that changes it is a reviewable change to "what real state we
-  record". Account id + region are in the filename, so the same stack in several
-  accounts never collides.
 - **Recording arms undeclared / added detection.** Until a stack's first `record`,
   a live-only value or added resource is `unrecorded` (informational, CLEAN, never
-  fails `--fail`); once recorded, a later out-of-band change to it is failing drift.
-  Declared-property and out-of-band-delete detection need no baseline.
+  fails `--fail`); once recorded, a later out-of-band change is failing drift. The
+  baseline is a git-committed JSON file at
+  `.cdkrd/<stack>.<accountId>.<region>.json` (so a change to it is reviewable;
+  account id + region in the name prevent cross-account collisions).
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
-  model (Cloud Control API + SDK readers for the gap types) and subtracts
-  everything explainable: schema read-only/write-only/defaults, AWS-managed
-  fields, `aws:*` tags, policy-document and ordering noise. What survives is signal.
-- **Anything not confidently comparable is reported honestly** as informational
-  (`readGap` / `unresolved` / `skipped`), never guessed, so no false drift.
-- **A resource deleted out of band** is the most blatant drift there is. cdkrd
-  reports it in the `deleted` tier, and it always fails under `--fail`.
+  model (Cloud Control API + SDK readers for the gap types) and subtracts everything
+  explainable: schema read-only/write-only/defaults, AWS-managed fields, `aws:*`
+  tags, policy-document and ordering noise. What survives is signal.
+- **Anything not confidently comparable is reported honestly** (`readGap` /
+  `unresolved` / `skipped`), never guessed, so no false drift.
 
 ### Added out-of-band resources
 
