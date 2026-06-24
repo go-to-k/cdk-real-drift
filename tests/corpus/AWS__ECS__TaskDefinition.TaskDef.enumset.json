@@ -1,0 +1,128 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TaskDef",
+    "resourceType": "AWS::ECS::TaskDefinition",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-enumset:2",
+    "constructPath": "CdkRealDriftIntegEnumsetReorder/TaskDef",
+    "declared": {
+      "ContainerDefinitions": [
+        {
+          "Essential": true,
+          "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+          "Name": "app"
+        }
+      ],
+      "Cpu": "256",
+      "Family": "cdkrd-enumset",
+      "Memory": "512",
+      "NetworkMode": "awsvpc",
+      "RequiresCompatibilities": ["FARGATE", "EC2"]
+    }
+  },
+  "liveRaw": {
+    "Volumes": [],
+    "InferenceAccelerators": [],
+    "Memory": "512",
+    "PlacementConstraints": [],
+    "ContainerDefinitions": [
+      {
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+        "Essential": true,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "app",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      }
+    ],
+    "Family": "cdkrd-enumset",
+    "Cpu": "256",
+    "RequiresCompatibilities": ["EC2", "FARGATE"],
+    "NetworkMode": "awsvpc",
+    "Tags": [],
+    "TaskDefinitionArn": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-enumset:2"
+  },
+  "schema": {
+    "readOnly": ["TaskDefinitionArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "readOnlyPaths": ["TaskDefinitionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ContainerDefinitions.*.VersionConsistency": "enabled"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-enumset:2",
+      "constructPath": "CdkRealDriftIntegEnumsetReorder/TaskDef"
+    }
+  ]
+}
