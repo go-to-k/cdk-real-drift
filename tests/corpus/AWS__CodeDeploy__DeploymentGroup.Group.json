@@ -1,0 +1,144 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Group",
+    "resourceType": "AWS::CodeDeploy::DeploymentGroup",
+    "physicalId": "cdkrd-readgap-dg",
+    "constructPath": "CdkRealDriftIntegCodeDeployDeploymentGroupReadgap/Group",
+    "declared": {
+      "AlarmConfiguration": {
+        "Alarms": [
+          {
+            "Name": "zeta-CdkRealDriftIntegCodeDeployDeploymentGroupReadgap"
+          },
+          {
+            "Name": "alpha-CdkRealDriftIntegCodeDeployDeploymentGroupReadgap"
+          }
+        ],
+        "Enabled": true
+      },
+      "ApplicationName": "CdkRealDriftIntegCodeDeployDeploymentGroupReadgap-App-XzN9elTm5vrt",
+      "AutoRollbackConfiguration": {
+        "Enabled": true,
+        "Events": ["DEPLOYMENT_STOP_ON_ALARM", "DEPLOYMENT_FAILURE"]
+      },
+      "DeploymentConfigName": "CodeDeployDefault.OneAtATime",
+      "DeploymentGroupName": "cdkrd-readgap-dg",
+      "DeploymentStyle": {
+        "DeploymentOption": "WITHOUT_TRAFFIC_CONTROL",
+        "DeploymentType": "IN_PLACE"
+      },
+      "Ec2TagSet": {
+        "Ec2TagSetList": [
+          {
+            "Ec2TagGroup": [
+              {
+                "Key": "App",
+                "Type": "KEY_AND_VALUE",
+                "Value": "cdkrd"
+              },
+              {
+                "Key": "Tier",
+                "Type": "KEY_AND_VALUE",
+                "Value": "web"
+              }
+            ]
+          }
+        ]
+      },
+      "ServiceRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodeDeployDepl-ServiceRole4288B192-cliuKmJod31M",
+      "TriggerConfigurations": [
+        {
+          "TriggerEvents": ["DeploymentFailure", "DeploymentSuccess", "DeploymentStart"],
+          "TriggerName": "deploy-events",
+          "TriggerTargetArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegCodeDeployDeploymentGroupReadgap-TriggerTopic92976BC4-JWKRrjz7yAe6"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "CdkRealDriftIntegCodeDeployDeploymentGroupReadgap-App-XzN9elTm5vrt",
+    "DeploymentStyle": {
+      "DeploymentType": "IN_PLACE",
+      "DeploymentOption": "WITHOUT_TRAFFIC_CONTROL"
+    },
+    "ServiceRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodeDeployDepl-ServiceRole4288B192-cliuKmJod31M",
+    "AutoScalingGroups": [],
+    "Ec2TagSet": {
+      "Ec2TagSetList": [
+        {
+          "Ec2TagGroup": [
+            {
+              "Type": "KEY_AND_VALUE",
+              "Value": "cdkrd",
+              "Key": "App"
+            },
+            {
+              "Type": "KEY_AND_VALUE",
+              "Value": "web",
+              "Key": "Tier"
+            }
+          ]
+        }
+      ]
+    },
+    "OutdatedInstancesStrategy": "UPDATE",
+    "TriggerConfigurations": [
+      {
+        "TriggerName": "deploy-events",
+        "TriggerEvents": ["DeploymentFailure", "DeploymentSuccess", "DeploymentStart"],
+        "TriggerTargetArn": "arn:aws:sns:us-east-1:111111111111:CdkRealDriftIntegCodeDeployDeploymentGroupReadgap-TriggerTopic92976BC4-JWKRrjz7yAe6"
+      }
+    ],
+    "DeploymentConfigName": "CodeDeployDefault.OneAtATime",
+    "AlarmConfiguration": {
+      "IgnorePollAlarmFailure": false,
+      "Alarms": [
+        {
+          "Name": "zeta-CdkRealDriftIntegCodeDeployDeploymentGroupReadgap"
+        },
+        {
+          "Name": "alpha-CdkRealDriftIntegCodeDeployDeploymentGroupReadgap"
+        }
+      ],
+      "Enabled": true
+    },
+    "Ec2TagFilters": [],
+    "TerminationHookEnabled": false,
+    "ECSServices": [],
+    "AutoRollbackConfiguration": {
+      "Events": ["DEPLOYMENT_STOP_ON_ALARM", "DEPLOYMENT_FAILURE"],
+      "Enabled": true
+    },
+    "DeploymentGroupName": "cdkrd-readgap-dg",
+    "Tags": [],
+    "OnPremisesInstanceTagFilters": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApplicationName", "DeploymentGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApplicationName", "DeploymentGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Group",
+      "resourceType": "AWS::CodeDeploy::DeploymentGroup",
+      "path": "OutdatedInstancesStrategy",
+      "actual": "UPDATE",
+      "physicalId": "cdkrd-readgap-dg",
+      "constructPath": "CdkRealDriftIntegCodeDeployDeploymentGroupReadgap/Group"
+    }
+  ]
+}

@@ -129,6 +129,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ConnectivityType: 'public',
     AvailabilityMode: 'zonal',
   },
+  'AWS::CodeDeploy::DeploymentGroup': {
+    // The schema carries no explicit `default`, but its description states the value
+    // applied when the property is "unspecified" is UPDATE — CodeDeploy always echoes
+    // it back on a group that never declared it (live-observed,
+    // codedeploy-deploymentgroup-readgap). Equality-gated, so a switch to IGNORE
+    // still surfaces.
+    OutdatedInstancesStrategy: 'UPDATE',
+  },
   'AWS::EFS::FileSystem': {
     ThroughputMode: 'bursting',
     BackupPolicy: { Status: 'DISABLED' },
@@ -1329,6 +1337,16 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // add/remove still changes the multiset. (Weighted/latency routing uses separate
   // RecordSets with SetIdentifier, not ordered ResourceRecords, so this is FP-safe.)
   'AWS::Route53::RecordSet': new Set(['ResourceRecords']),
+  // Live-observed on a fresh codedeploy-deploymentgroup-readgap deploy: a deployment
+  // group's AutoRollbackConfiguration.Events is a SET of rollback-trigger enums that
+  // CodeDeploy echoes SORTED alphabetically, not in template order (declared
+  // [DEPLOYMENT_STOP_ON_ALARM, DEPLOYMENT_FAILURE] read back [DEPLOYMENT_FAILURE,
+  // DEPLOYMENT_STOP_ON_ALARM]) — a positional compare false-drifts the identical event
+  // set. A genuine event add/remove still changes the multiset. (The sibling
+  // TriggerConfigurations[].TriggerEvents set was observed to PRESERVE template order on
+  // the same deploy, so it is deliberately NOT folded.) The path is nested but the
+  // declared-loop suppression keys on the full dotted `d.path`, so the dotted key works.
+  'AWS::CodeDeploy::DeploymentGroup': new Set(['AutoRollbackConfiguration.Events']),
 };
 
 // True when both values are scalar arrays containing the same multiset of

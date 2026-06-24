@@ -811,6 +811,80 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['ResourceRecords']);
     });
 
+    // Live-observed FP (codedeploy-deploymentgroup-readgap fixture): a deployment
+    // group's AutoRollbackConfiguration.Events is a SET of rollback-trigger enums that
+    // CodeDeploy echoes SORTED alphabetically. The path is NESTED, so this also pins
+    // that the declared-loop fold keys on the full dotted `d.path`.
+    it('UNORDERED_ARRAY_PROPS: CodeDeploy DeploymentGroup nested AutoRollbackConfiguration.Events reorder is NOT drift', () => {
+      const dg = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Group',
+        resourceType: 'AWS::CodeDeploy::DeploymentGroup',
+        physicalId: 'cdkrd-readgap-dg',
+        declared,
+      });
+      // same event set, reordered (AWS sorts) -> no drift
+      expect(
+        classifyResource(
+          dg({
+            AutoRollbackConfiguration: {
+              Enabled: true,
+              Events: ['DEPLOYMENT_STOP_ON_ALARM', 'DEPLOYMENT_FAILURE'],
+            },
+          }),
+          {
+            AutoRollbackConfiguration: {
+              Enabled: true,
+              Events: ['DEPLOYMENT_FAILURE', 'DEPLOYMENT_STOP_ON_ALARM'],
+            },
+          },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine event change still reports the nested path
+      expect(
+        tiers(
+          classifyResource(
+            dg({
+              AutoRollbackConfiguration: {
+                Enabled: true,
+                Events: ['DEPLOYMENT_STOP_ON_ALARM', 'DEPLOYMENT_FAILURE'],
+              },
+            }),
+            {
+              AutoRollbackConfiguration: {
+                Enabled: true,
+                Events: ['DEPLOYMENT_FAILURE', 'DEPLOYMENT_STOP_ON_REQUEST'],
+              },
+            },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['AutoRollbackConfiguration.Events']);
+    });
+
+    // Live-observed (same fixture): CodeDeploy always echoes OutdatedInstancesStrategy
+    // = "UPDATE" on a group that never declared it (documented unspecified behavior).
+    it('KNOWN_DEFAULTS: undeclared CodeDeploy OutdatedInstancesStrategy=UPDATE folds to atDefault; IGNORE surfaces', () => {
+      const res = (live: Record<string, unknown>) =>
+        classifyResource(
+          {
+            logicalId: 'Group',
+            resourceType: 'AWS::CodeDeploy::DeploymentGroup',
+            physicalId: 'cdkrd-readgap-dg',
+            declared: {},
+          },
+          live,
+          emptySchema
+        );
+      expect(tiers(res({ OutdatedInstancesStrategy: 'UPDATE' })).atDefault).toEqual([
+        'OutdatedInstancesStrategy',
+      ]);
+      // an out-of-band switch to IGNORE is no longer the default -> surfaces as undeclared
+      expect(tiers(res({ OutdatedInstancesStrategy: 'IGNORE' })).undeclared).toEqual([
+        'OutdatedInstancesStrategy',
+      ]);
+    });
+
     it('undeclared EventSelectors equal to the default folds to atDefault; a changed one surfaces', () => {
       expect(
         tiers(

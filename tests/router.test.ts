@@ -287,6 +287,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('my-asg|my-hook');
   });
 
+  it('CodeDeploy DeploymentGroup: builds the ApplicationName|DeploymentGroupName composite — parent first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::CodeDeploy::DeploymentGroup',
+        physicalId: 'cdkrd-readgap-dg',
+        declared: { ApplicationName: 'my-app' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-app|cdkrd-readgap-dg');
+  });
+
+  it('CodeDeploy DeploymentGroup: an unresolved ApplicationName falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::CodeDeploy::DeploymentGroup',
+        physicalId: 'cdkrd-readgap-dg',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-readgap-dg');
+  });
+
   it('AutoScaling ScheduledAction: builds the ScheduledActionName|AutoScalingGroupName composite — CHILD first (reverse of LifecycleHook)', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(

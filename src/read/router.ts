@@ -127,6 +127,15 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // a declared hook ValidationException-skips (read-gap). Verified live
   // (autoscaling-lifecyclehook-rich).
   'AWS::AutoScaling::LifecycleHook': compositeWith('AutoScalingGroupName'),
+  // CodeDeploy DeploymentGroup primaryIdentifier is [ApplicationName,
+  // DeploymentGroupName] — parent-first. The CFn physical id (Ref) is the bare
+  // DeploymentGroupName; the ApplicationName comes from the resolved declared Ref.
+  // Without this a declared deployment group is a CC ValidationException skip on every
+  // check (read-gap), so both undeclared drift on it AND an out-of-band change to a
+  // declared property (DeploymentConfigName, AlarmConfiguration, …) are invisible.
+  // Verified live (codedeploy-deploymentgroup-readgap): `ApplicationName|DeploymentGroupName`
+  // reads; the reverse order returns NotFound ("No application found for name").
+  'AWS::CodeDeploy::DeploymentGroup': compositeWith('ApplicationName'),
   // AutoScaling ScheduledAction primaryIdentifier is [ScheduledActionName,
   // AutoScalingGroupName] — CHILD-first, the REVERSE of its sibling LifecycleHook
   // (parent-first). The CFn physical id is the bare ScheduledActionName; the ASG name
