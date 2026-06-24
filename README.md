@@ -418,12 +418,12 @@ record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 
-| tier                                             | what it folds                                                                                                                                                                                                |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `atDefault`                                      | undeclared values sitting at a known AWS default (a Lambda `TracingConfig: PassThrough`, default Block Public Access). Equality-gated: a change away from the default still surfaces. Applies at any depth.  |
-| `generated`                                      | undeclared values that are the name/identifier AWS/CDK minted (a topic's auto `TopicName`, a default `LoggingConfig`). Keyed off the physical id; equality-gated; never recorded.                            |
-| `nested`                                         | undeclared values living as a sub-key inside a property you _did_ declare (a CloudFront `Origins[<id>]` gaining a `ConnectionTimeout`). `record` records them; `--show-all` lists them.                      |
-| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                                                           |
+| tier                                             | what it folds                                                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `atDefault`                                      | an undeclared value sitting at a known AWS default (e.g. Lambda `TracingConfig: PassThrough`). Equality-gated, so a change away from it re-surfaces; never recorded. |
+| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                          |
+| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`). Recordable; `--show-all` lists it. |
+| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                     |
 
 `^result:` is the greppable verdict. Colorized on a TTY (`NO_COLOR` respected);
 piped / CI / `--json` output is plain text.
