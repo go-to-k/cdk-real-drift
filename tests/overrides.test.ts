@@ -10,7 +10,12 @@ import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
-import { GetClassifierCommand, GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import {
+  GetClassifierCommand,
+  GetTableCommand,
+  GetWorkflowCommand,
+  GlueClient,
+} from '@aws-sdk/client-glue';
 import {
   GetPolicyCommand,
   GetPolicyVersionCommand,
@@ -738,6 +743,43 @@ describe('SDK overrides', () => {
 
     it('undefined when no classifier name can be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::Glue::Classifier'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('Glue Workflow', () => {
+    it('projects the CFn-modeled props, dropping AWS-managed run/graph state', async () => {
+      glue.on(GetWorkflowCommand).resolves({
+        Workflow: {
+          Name: 'w',
+          Description: 'etl',
+          DefaultRunProperties: { env: 'test' },
+          MaxConcurrentRuns: 3,
+          // AWS-managed noise that must NOT appear:
+          CreatedOn: new Date(0),
+          LastModifiedOn: new Date(0),
+          LastRun: { Name: 'w', Status: 'COMPLETED' },
+          Graph: { Nodes: [] },
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::Glue::Workflow'](ctx({ Name: 'w' }, 'w'));
+      expect(out).toEqual({
+        Name: 'w',
+        Description: 'etl',
+        DefaultRunProperties: { env: 'test' },
+        MaxConcurrentRuns: 3,
+      });
+    });
+
+    it('omits optional props the live workflow does not set', async () => {
+      glue
+        .on(GetWorkflowCommand)
+        .resolves({ Workflow: { Name: 'w', MaxConcurrentRuns: 1 } } as never);
+      const out = await SDK_OVERRIDES['AWS::Glue::Workflow'](ctx({ Name: 'w' }, 'w'));
+      expect(out).toEqual({ Name: 'w', MaxConcurrentRuns: 1 });
+    });
+
+    it('undefined when no workflow name can be resolved', async () => {
+      expect(await SDK_OVERRIDES['AWS::Glue::Workflow'](ctx({}))).toBeUndefined();
     });
   });
 

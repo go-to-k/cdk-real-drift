@@ -44,10 +44,12 @@ import {
   GetClassifierCommand,
   GetJobCommand,
   GetTableCommand,
+  GetWorkflowCommand,
   GlueClient,
   UpdateClassifierCommand,
   UpdateJobCommand,
   UpdateTableCommand,
+  UpdateWorkflowCommand,
 } from '@aws-sdk/client-glue';
 import {
   CloudWatchLogsClient,
@@ -346,6 +348,44 @@ describe('Glue Classifier writer (CC UnsupportedActionException)', () => {
     await expect(
       SDK_WRITERS['AWS::Glue::Classifier'](ctx({ physicalId: '', declared: {} }), [delimOp('x')])
     ).rejects.toThrow(/Glue classifier target/);
+  });
+});
+
+describe('Glue Workflow writer (CC UnsupportedActionException)', () => {
+  const runsOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/MaxConcurrentRuns',
+    value,
+    human: 'MaxConcurrentRuns -> deployed-template value',
+  });
+  it('reverts via GetWorkflow -> UpdateWorkflow, writing back ALL mutable fields (no wipe)', async () => {
+    glue.on(GetWorkflowCommand).resolves({
+      Workflow: {
+        Name: 'w',
+        Description: 'etl',
+        DefaultRunProperties: { env: 'test' },
+        MaxConcurrentRuns: 7,
+      },
+    } as never);
+    glue.on(UpdateWorkflowCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: 'w', declared: { Name: 'w' } }), [
+      runsOp(3),
+    ]);
+    const calls = glue.commandCalls(UpdateWorkflowCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.Name).toBe('w');
+    expect(input.MaxConcurrentRuns).toBe(3); // reverted
+    // the other live fields are re-sent so UpdateWorkflow's whole-object overwrite never wipes them
+    expect(input.Description).toBe('etl');
+    expect(input.DefaultRunProperties).toEqual({ env: 'test' });
+  });
+
+  it('throws when the workflow name is unresolvable', async () => {
+    glue.on(GetWorkflowCommand).resolves({ Workflow: undefined } as never);
+    await expect(
+      SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: '', declared: {} }), [runsOp(3)])
+    ).rejects.toThrow(/Glue workflow target/);
   });
 });
 

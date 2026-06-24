@@ -47,6 +47,7 @@ import {
   UpdateClassifierCommand,
   UpdateJobCommand,
   UpdateTableCommand,
+  UpdateWorkflowCommand,
 } from '@aws-sdk/client-glue';
 import {
   GetWebACLCommand,
@@ -640,6 +641,26 @@ const writeGlueClassifier: SdkWriter = async (ctx, ops) => {
   await new GlueClient({ region: ctx.region }).send(new UpdateClassifierCommand(input as never));
 };
 
+// AWS::Glue::Workflow — read via the GetWorkflow override (CC UnsupportedActionException),
+// so it was not revertable. Glue UpdateWorkflow takes the mutable props (Description /
+// DefaultRunProperties / MaxConcurrentRuns); reconstruct the desired model (current + revert
+// ops) and write the present ones back, targeting by the declared/physical Name.
+const writeGlueWorkflow: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Glue::Workflow', ctx, ops);
+  const name = str(m.Name) ?? str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!name) throw new Error('cannot resolve Glue workflow target for revert');
+  await new GlueClient({ region: ctx.region }).send(
+    new UpdateWorkflowCommand({
+      Name: name,
+      ...(m.Description !== undefined && { Description: str(m.Description) }),
+      ...(m.DefaultRunProperties !== undefined && {
+        DefaultRunProperties: m.DefaultRunProperties as Record<string, string>,
+      }),
+      ...(m.MaxConcurrentRuns !== undefined && { MaxConcurrentRuns: Number(m.MaxConcurrentRuns) }),
+    })
+  );
+};
+
 // AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
 // composite id), so it is read via DescribeMetricFilters and was not revertable.
 // CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
@@ -805,6 +826,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Job': writeGlueJob,
   'AWS::Glue::Table': writeGlueTable,
   'AWS::Glue::Classifier': writeGlueClassifier,
+  'AWS::Glue::Workflow': writeGlueWorkflow,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
