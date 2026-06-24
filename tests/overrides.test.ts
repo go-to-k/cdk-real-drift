@@ -10,7 +10,7 @@ import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
-import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import { GetClassifierCommand, GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
 import {
   GetPolicyCommand,
   GetPolicyVersionCommand,
@@ -689,6 +689,55 @@ describe('SDK overrides', () => {
 
     it('undefined when database/table cannot be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::Glue::Table'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('Glue Classifier', () => {
+    it('projects the CSV one-of member, dropping AWS-managed + non-CFn fields (Serde/Version)', async () => {
+      glue.on(GetClassifierCommand).resolves({
+        Classifier: {
+          CsvClassifier: {
+            Name: 'c',
+            Delimiter: ',',
+            QuoteSymbol: '"',
+            ContainsHeader: 'PRESENT',
+            // non-CFn / AWS-managed noise that must NOT appear:
+            Serde: 'None',
+            Version: 3,
+            CreationTime: new Date(0),
+            LastUpdated: new Date(0),
+          },
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::Glue::Classifier'](
+        ctx({ CsvClassifier: { Name: 'c', Delimiter: ',' } }, 'c')
+      );
+      expect(out).toEqual({
+        CsvClassifier: { Name: 'c', Delimiter: ',', QuoteSymbol: '"', ContainsHeader: 'PRESENT' },
+      });
+    });
+
+    it('projects the Grok one-of member (physical id = classifier name)', async () => {
+      glue.on(GetClassifierCommand).resolves({
+        Classifier: {
+          GrokClassifier: {
+            Name: 'g',
+            Classification: 'syslog',
+            GrokPattern: '%{GREEDYDATA:m}',
+            Version: 1,
+          },
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::Glue::Classifier'](
+        ctx({ GrokClassifier: { Name: 'g' } }, 'g')
+      );
+      expect(out).toEqual({
+        GrokClassifier: { Name: 'g', Classification: 'syslog', GrokPattern: '%{GREEDYDATA:m}' },
+      });
+    });
+
+    it('undefined when no classifier name can be resolved', async () => {
+      expect(await SDK_OVERRIDES['AWS::Glue::Classifier'](ctx({}))).toBeUndefined();
     });
   });
 

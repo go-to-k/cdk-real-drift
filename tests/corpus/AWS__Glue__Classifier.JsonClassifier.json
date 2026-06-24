@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "JsonClassifier",
+    "resourceType": "AWS::Glue::Classifier",
+    "physicalId": "cdkrd-json-classifier",
+    "constructPath": "CdkRealDriftIntegGlueClassifierReadgap/JsonClassifier",
+    "declared": {
+      "JsonClassifier": {
+        "JsonPath": "$.records[*]",
+        "Name": "cdkrd-json-classifier"
+      }
+    }
+  },
+  "liveRaw": {
+    "JsonClassifier": {
+      "Name": "cdkrd-json-classifier",
+      "JsonPath": "$.records[*]"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -41,9 +41,11 @@ import {
   ModifyDBInstanceCommand,
 } from '@aws-sdk/client-docdb';
 import {
+  GetClassifierCommand,
   GetJobCommand,
   GetTableCommand,
   GlueClient,
+  UpdateClassifierCommand,
   UpdateJobCommand,
   UpdateTableCommand,
 } from '@aws-sdk/client-glue';
@@ -309,6 +311,41 @@ describe('Glue Table writer (CC cannot read/write the Glue family)', () => {
     await expect(
       SDK_WRITERS['AWS::Glue::Table'](ctx({ physicalId: '', declared: {} }), [descOp('x')])
     ).rejects.toThrow(/Glue table target/);
+  });
+});
+
+describe('Glue Classifier writer (CC UnsupportedActionException)', () => {
+  const delimOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/CsvClassifier/Delimiter',
+    value,
+    human: 'CsvClassifier.Delimiter -> deployed-template value',
+  });
+  it('reverts via GetClassifier -> UpdateClassifier, writing back the one-of member', async () => {
+    glue.on(GetClassifierCommand).resolves({
+      Classifier: {
+        CsvClassifier: { Name: 'c', Delimiter: '|', QuoteSymbol: '"', Version: 2 },
+      },
+    } as never);
+    glue.on(UpdateClassifierCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Classifier'](
+      ctx({ physicalId: 'c', declared: { CsvClassifier: { Name: 'c', Delimiter: ',' } } }),
+      [delimOp(',')]
+    );
+    const calls = glue.commandCalls(UpdateClassifierCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as { CsvClassifier: Record<string, unknown> };
+    expect(input.CsvClassifier.Name).toBe('c');
+    expect(input.CsvClassifier.Delimiter).toBe(','); // reverted
+    expect(input.CsvClassifier.QuoteSymbol).toBe('"'); // round-tripped
+    expect(input.CsvClassifier).not.toHaveProperty('Version'); // managed field dropped by reader
+  });
+
+  it('throws when no classifier member can be resolved', async () => {
+    glue.on(GetClassifierCommand).resolves({ Classifier: undefined } as never);
+    await expect(
+      SDK_WRITERS['AWS::Glue::Classifier'](ctx({ physicalId: '', declared: {} }), [delimOp('x')])
+    ).rejects.toThrow(/Glue classifier target/);
   });
 });
 

@@ -44,6 +44,7 @@ import {
 import {
   GetJobCommand,
   GlueClient,
+  UpdateClassifierCommand,
   UpdateJobCommand,
   UpdateTableCommand,
 } from '@aws-sdk/client-glue';
@@ -616,6 +617,29 @@ const writeGlueTable: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Glue::Classifier — read via the GetClassifier override (CC UnsupportedActionException),
+// so it was not revertable. Glue UpdateClassifier is a WHOLE one-of overwrite ({CsvClassifier
+// | GrokClassifier | JsonClassifier | XMLClassifier}); the override reader returns the full
+// CFn-modeled member, so reconstruct the desired member (current + revert ops) and write it
+// back. Mirrors writeGlueTable (GetTable → UpdateTable). Covers the common drifts — an
+// out-of-band Delimiter / GrokPattern / JsonPath edit.
+const writeGlueClassifier: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Glue::Classifier', ctx, ops);
+  const input: Record<string, unknown> = {};
+  for (const k of ['CsvClassifier', 'GrokClassifier', 'JsonClassifier', 'XMLClassifier']) {
+    const member = m[k];
+    // require a Name — UpdateClassifier targets the classifier by it, and it guards against
+    // a partial member an op might fabricate when the live read returned nothing.
+    if (member && typeof member === 'object' && str((member as Record<string, unknown>).Name)) {
+      input[k] = member;
+      break;
+    }
+  }
+  if (Object.keys(input).length === 0)
+    throw new Error('cannot resolve Glue classifier target for revert');
+  await new GlueClient({ region: ctx.region }).send(new UpdateClassifierCommand(input as never));
+};
+
 // AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
 // composite id), so it is read via DescribeMetricFilters and was not revertable.
 // CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
@@ -780,6 +804,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::WAFv2::WebACL': writeWafv2WebAcl,
   'AWS::Glue::Job': writeGlueJob,
   'AWS::Glue::Table': writeGlueTable,
+  'AWS::Glue::Classifier': writeGlueClassifier,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
