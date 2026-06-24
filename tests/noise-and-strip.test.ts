@@ -788,6 +788,46 @@ describe('parseSchema', () => {
     expect(info.defaultPaths).toEqual({ B: 1 });
   });
 
+  // insertionOrder:false + SCALAR items -> unorderedScalarPaths (schema-driven reorder
+  // fold, no per-type table). insertionOrder:true/absent, OBJECT items, and arrays
+  // nested through an array element (a `*` path) are all excluded.
+  it('parseSchema collects insertionOrder:false SCALAR arrays into unorderedScalarPaths', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        definitions: {
+          Cfg: {
+            type: 'object',
+            properties: {
+              Regions: { type: 'array', insertionOrder: false, items: { type: 'string' } },
+            },
+          },
+          Rule: { type: 'object', properties: { Name: { type: 'string' } } },
+        },
+        properties: {
+          // scalar set, AWS-declared unordered -> collected
+          Launch: { type: 'array', insertionOrder: false, items: { type: 'string' } },
+          // ordered (default true) -> NOT collected
+          Layers: { type: 'array', items: { type: 'string' } },
+          // object array, even unordered -> NOT collected (handled elsewhere)
+          Rules: { type: 'array', insertionOrder: false, items: { $ref: '#/definitions/Rule' } },
+          // nested under an object -> collected with dotted path
+          HealthCheckConfig: { $ref: '#/definitions/Cfg' },
+          // nested THROUGH an array element -> '*' path, skipped
+          Groups: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                Ports: { type: 'array', insertionOrder: false, items: { type: 'number' } },
+              },
+            },
+          },
+        },
+      })
+    );
+    expect(info.unorderedScalarPaths).toEqual(['HealthCheckConfig.Regions', 'Launch']);
+  });
+
   // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
   // full patch `"8.0.45"`. A declared dotted-version that is a leading-segment PREFIX
   // of the live full version is not drift; a genuine track change still differs.

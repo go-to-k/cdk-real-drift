@@ -788,11 +788,15 @@ export function classifyResource(
         isLatestSentinelMatch(d.stateValue, d.awsValue)
       )
         continue;
-      // Per-type unordered scalar-array sets (R74: Cognito UserPoolClient OAuth
-      // flow/scope lists) — same elements in the service's canonical order is
-      // not drift; a genuine element change still differs after sorting.
+      // Unordered scalar-array sets — same elements in the service's canonical order
+      // is not drift; a genuine element change still differs after sorting. Two
+      // sources: the per-type allowlist (R74: Cognito OAuth lists, and the many sets
+      // AWS sorts that the schema marks insertionOrder:true) AND the schema-driven
+      // `unorderedScalarPaths` (arrays AWS itself declares insertionOrder:false — no
+      // table needed, FN-safe).
       if (
-        UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path) &&
+        (UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path) ||
+          schema.unorderedScalarPaths?.includes(d.path)) &&
         isEqualUnorderedScalarSet(d.stateValue, d.awsValue)
       )
         continue;

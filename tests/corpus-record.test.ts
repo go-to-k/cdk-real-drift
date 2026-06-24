@@ -59,6 +59,7 @@ describe('corpus recording (R63)', () => {
       createOnlyPaths: [],
       defaults: {},
       defaultPaths: {},
+      unorderedScalarPaths: ['Tags'],
     };
     const findings: Finding[] = [
       {
@@ -84,6 +85,9 @@ describe('corpus recording (R63)', () => {
     // schema sets serialized as sorted arrays; revive restores Sets
     expect(c.schema.readOnly).toEqual(['Arn']);
     expect(reviveSchema(c.schema).readOnly.has('Arn')).toBe(true);
+    // insertionOrder:false scalar paths round-trip through serialize + revive
+    expect(c.schema.unorderedScalarPaths).toEqual(['Tags']);
+    expect(reviveSchema(c.schema).unorderedScalarPaths).toEqual(['Tags']);
     // JSON-safe end to end
     expect(() => JSON.stringify(c)).not.toThrow();
   });

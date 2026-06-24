@@ -105,7 +105,8 @@
     "defaults": {},
     "defaultPaths": {
       "ContainerDefinitions.*.VersionConsistency": "enabled"
-    }
+    },
+    "unorderedScalarPaths": ["RequiresCompatibilities"]
   },
   "opts": {
     "accountId": "111111111111",
