@@ -88,6 +88,15 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "RestApiGET0F59260B",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "84xvb60zri|6pva1vasg4|GET",
+      "constructPath": "CdkrdIntegHarvest/RestApi/Default/GET"
+    },
+    {
       "tier": "generated",
       "logicalId": "RestApiGET0F59260B",
       "resourceType": "AWS::ApiGateway::Method",

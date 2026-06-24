@@ -462,6 +462,63 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('PR #355-followup noise sweep: constant defaults on common daily-driver types', () => {
+    // Each value was OBSERVED unanimous (>=2 cases) across the golden corpus and is a
+    // documented constant service default — equality-gated, so a non-default value still
+    // surfaces. Resource-/engine-/state-specific values were deliberately excluded.
+    // Ports / fixed enums.
+    expect(KNOWN_DEFAULTS['AWS::DocDB::DBCluster'].Port).toBe(27017);
+    expect(KNOWN_DEFAULTS['AWS::Neptune::DBCluster'].DBPort).toBe(8182);
+    expect(KNOWN_DEFAULTS['AWS::SQS::Queue'].KmsDataKeyReusePeriodSeconds).toBe(300);
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].EngineMode).toBe('provisioned');
+    expect(KNOWN_DEFAULTS['AWS::SSM::Association'].DocumentVersion).toBe('$DEFAULT');
+    // AutoScaling.
+    expect(KNOWN_DEFAULTS['AWS::AutoScaling::AutoScalingGroup']).toEqual({
+      Cooldown: '300',
+      HealthCheckType: 'EC2',
+      HealthCheckGracePeriod: 0,
+    });
+    // CloudWatch alarms (Alarm.ActionsEnabled already folds via its schema default).
+    expect(KNOWN_DEFAULTS['AWS::CloudWatch::Alarm'].TreatMissingData).toBe('missing');
+    expect(KNOWN_DEFAULTS['AWS::CloudWatch::CompositeAlarm'].ActionsEnabled).toBe(true);
+    expect(KNOWN_DEFAULTS['AWS::CloudWatch::MetricStream']).toEqual({
+      IncludeLinkedAccountsMetrics: false,
+      State: 'running',
+    });
+    // KMS key defaults.
+    expect(KNOWN_DEFAULTS['AWS::KMS::Key']).toEqual({
+      Enabled: true,
+      KeySpec: 'SYMMETRIC_DEFAULT',
+      KeyUsage: 'ENCRYPT_DECRYPT',
+      Origin: 'AWS_KMS',
+    });
+    // Boolean feature flags off by default on very common types.
+    expect(KNOWN_DEFAULTS['AWS::DynamoDB::Table'].DeletionProtectionEnabled).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::Logs::LogGroup']).toEqual({
+      LogGroupClass: 'STANDARD',
+      DeletionProtectionEnabled: false,
+      BearerTokenAuthenticationEnabled: false,
+    });
+    expect(KNOWN_DEFAULTS['AWS::EC2::Subnet'].AssignIpv6AddressOnCreation).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::EC2::Subnet'].EnableDns64).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::EC2::Subnet'].Ipv6Native).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ApiGateway::Method'].ApiKeyRequired).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Route'].ApiKeyRequired).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ApiGateway::RestApi'].DisableExecuteApiEndpoint).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Api'].DisableExecuteApiEndpoint).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::AppSync::GraphQLApi'].XrayEnabled).toBe(false);
+    expect(
+      KNOWN_DEFAULTS['AWS::Cognito::UserPoolClient'].EnablePropagateAdditionalUserContextData
+    ).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ECS::Service'].EnableExecuteCommand).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::ECS::Service'].AvailabilityZoneRebalancing).toBe('ENABLED');
+    expect(KNOWN_DEFAULTS['AWS::ElasticLoadBalancingV2::ListenerRule'].IsDefault).toBe(false);
+    expect(KNOWN_DEFAULTS['AWS::Glue::Crawler'].LakeFormationConfiguration).toEqual({
+      AccountId: '',
+      UseLakeFormationCredentials: false,
+    });
+  });
+
   it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {
     // Constant, documented service defaults common stateful/streaming types report as
     // first-run undeclared noise. Verified against the golden corpus (RDS DBInstance
@@ -476,6 +533,13 @@ describe('noise suppressors', () => {
       MonitoringInterval: 0,
       NetworkType: 'IPV4',
       StorageThroughput: 0,
+      CopyTagsToSnapshot: false,
+      DedicatedLogVolume: false,
+      EnableIAMDatabaseAuthentication: false,
+      EnablePerformanceInsights: false,
+      ManageMasterUserPassword: false,
+      MultiAZ: false,
+      StorageEncrypted: false,
     });
     expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].NetworkType).toBe('IPV4');
     expect(KNOWN_DEFAULTS['AWS::ElastiCache::ReplicationGroup']).toEqual({

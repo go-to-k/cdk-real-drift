@@ -64,8 +64,8 @@
       "tier": "atDefault",
       "logicalId": "AliasedFnServiceRole4A9555AA",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest5-AliasedFnServiceRole4A9555AA-tJxxoWH4IQ2C",
       "constructPath": "CdkrdIntegHarvest5/AliasedFn/ServiceRole"
     },
@@ -82,8 +82,8 @@
       "tier": "atDefault",
       "logicalId": "AliasedFnServiceRole4A9555AA",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest5-AliasedFnServiceRole4A9555AA-tJxxoWH4IQ2C",
       "constructPath": "CdkrdIntegHarvest5/AliasedFn/ServiceRole"
     }

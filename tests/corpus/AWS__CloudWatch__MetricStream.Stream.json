@@ -66,5 +66,15 @@
     "kmsAliasTargets": {},
     "oaiCanonicalIds": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Stream",
+      "resourceType": "AWS::CloudWatch::MetricStream",
+      "path": "IncludeLinkedAccountsMetrics",
+      "actual": false,
+      "physicalId": "CdkRealDriftIntegCloudwatchMetricstream-Stream-sf0BAdBHT2jN",
+      "constructPath": "CdkRealDriftIntegCloudwatchMetricstream/Stream"
+    }
+  ]
 }

@@ -76,6 +76,15 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsGET2CEFDB25",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "we41awg0n3|to60x5|GET",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/GET"
+    },
+    {
       "tier": "generated",
       "logicalId": "ApiitemsGET2CEFDB25",
       "resourceType": "AWS::ApiGateway::Method",

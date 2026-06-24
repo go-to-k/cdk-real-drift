@@ -128,7 +128,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "Cooldown",
@@ -157,7 +157,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "HealthCheckGracePeriod",

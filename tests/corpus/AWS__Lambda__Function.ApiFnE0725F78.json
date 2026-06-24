@@ -95,26 +95,6 @@
       "tier": "atDefault",
       "logicalId": "ApiFnE0725F78",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Architectures",
-      "actual": ["x86_64"],
-      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
-      "constructPath": "CdkrdIntegHarvest4/ApiFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "ApiFnE0725F78",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "EphemeralStorage",
-      "actual": {
-        "Size": 512
-      },
-      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
-      "constructPath": "CdkrdIntegHarvest4/ApiFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "ApiFnE0725F78",
-      "resourceType": "AWS::Lambda::Function",
       "path": "MemorySize",
       "actual": 128,
       "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
@@ -124,8 +104,10 @@
       "tier": "atDefault",
       "logicalId": "ApiFnE0725F78",
       "resourceType": "AWS::Lambda::Function",
-      "path": "PackageType",
-      "actual": "Zip",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
       "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
       "constructPath": "CdkrdIntegHarvest4/ApiFn"
     },
@@ -133,8 +115,8 @@
       "tier": "atDefault",
       "logicalId": "ApiFnE0725F78",
       "resourceType": "AWS::Lambda::Function",
-      "path": "RecursiveLoop",
-      "actual": "Terminate",
+      "path": "Timeout",
+      "actual": 3,
       "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
       "constructPath": "CdkrdIntegHarvest4/ApiFn"
     },
@@ -153,19 +135,8 @@
       "tier": "atDefault",
       "logicalId": "ApiFnE0725F78",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Timeout",
-      "actual": 3,
-      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
-      "constructPath": "CdkrdIntegHarvest4/ApiFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "ApiFnE0725F78",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "TracingConfig",
-      "actual": {
-        "Mode": "PassThrough"
-      },
+      "path": "PackageType",
+      "actual": "Zip",
       "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
       "constructPath": "CdkrdIntegHarvest4/ApiFn"
     },
@@ -178,6 +149,35 @@
         "LogFormat": "Text",
         "LogGroup": "/aws/lambda/CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo"
       },
+      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+      "constructPath": "CdkrdIntegHarvest4/ApiFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiFnE0725F78",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+      "constructPath": "CdkrdIntegHarvest4/ApiFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiFnE0725F78",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
+      "constructPath": "CdkrdIntegHarvest4/ApiFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiFnE0725F78",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
       "physicalId": "CdkrdIntegHarvest4-ApiFnE0725F78-SOgyYQxFviSo",
       "constructPath": "CdkrdIntegHarvest4/ApiFn"
     }

@@ -74,6 +74,15 @@
       "tier": "atDefault",
       "logicalId": "Client",
       "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "EnablePropagateAdditionalUserContextData",
+      "actual": false,
+      "physicalId": "vse1lkm5r2r10drv0be31kv7u",
+      "constructPath": "CdkRealDriftIntegCognitoCallbackUrls/Client"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Client",
+      "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "AuthSessionValidity",
       "actual": 3,
       "physicalId": "vse1lkm5r2r10drv0be31kv7u",

@@ -51,8 +51,10 @@
       "tier": "undeclared",
       "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
       "resourceType": "AWS::Lambda::Version",
-      "path": "CodeSha256",
-      "actual": "pYaOwiRWhhzD/erZKRp1WZbhCcuhmh7CovRZdCS9P3w=",
+      "path": "RuntimePolicy",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
       "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
       "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion"
     },
@@ -60,10 +62,8 @@
       "tier": "undeclared",
       "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
       "resourceType": "AWS::Lambda::Version",
-      "path": "RuntimePolicy",
-      "actual": {
-        "UpdateRuntimeOn": "Auto"
-      },
+      "path": "CodeSha256",
+      "actual": "pYaOwiRWhhzD/erZKRp1WZbhCcuhmh7CovRZdCS9P3w=",
       "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdIntegHarvest5-AliasedFn19257E6A-xOPAiBQg8vye:1",
       "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion"
     }

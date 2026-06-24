@@ -102,37 +102,10 @@
       "tier": "atDefault",
       "logicalId": "MatrixFn0598BE1E",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Architectures",
-      "actual": ["x86_64"],
-      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
-      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "MatrixFn0598BE1E",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "EphemeralStorage",
+      "path": "TracingConfig",
       "actual": {
-        "Size": 512
+        "Mode": "PassThrough"
       },
-      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
-      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "MatrixFn0598BE1E",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "PackageType",
-      "actual": "Zip",
-      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
-      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "MatrixFn0598BE1E",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "RecursiveLoop",
-      "actual": "Terminate",
       "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
       "constructPath": "CdkrdIntegHarvest3/MatrixFn"
     },
@@ -151,10 +124,8 @@
       "tier": "atDefault",
       "logicalId": "MatrixFn0598BE1E",
       "resourceType": "AWS::Lambda::Function",
-      "path": "TracingConfig",
-      "actual": {
-        "Mode": "PassThrough"
-      },
+      "path": "PackageType",
+      "actual": "Zip",
       "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
       "constructPath": "CdkrdIntegHarvest3/MatrixFn"
     },
@@ -167,6 +138,35 @@
         "LogFormat": "Text",
         "LogGroup": "/aws/lambda/CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT"
       },
+      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFn0598BE1E",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFn0598BE1E",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
+      "constructPath": "CdkrdIntegHarvest3/MatrixFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MatrixFn0598BE1E",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
       "physicalId": "CdkrdIntegHarvest3-MatrixFn0598BE1E-j93ctthsA8NT",
       "constructPath": "CdkrdIntegHarvest3/MatrixFn"
     }

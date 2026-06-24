@@ -134,6 +134,15 @@
       "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "EnableExecuteCommand",
+      "actual": false,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceLbRich-ClusterEB0386A7-FMszPytjsWuw/cdkrd-integ-ecs-lb-svc",
+      "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Service",
       "resourceType": "AWS::ECS::Service",

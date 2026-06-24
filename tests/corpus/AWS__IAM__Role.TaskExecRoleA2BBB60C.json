@@ -62,8 +62,8 @@
       "tier": "atDefault",
       "logicalId": "TaskExecRoleA2BBB60C",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest6-TaskExecRoleA2BBB60C-ZjmLxEi5vU5I",
       "constructPath": "CdkrdIntegHarvest6/TaskExecRole"
     },
@@ -80,8 +80,8 @@
       "tier": "atDefault",
       "logicalId": "TaskExecRoleA2BBB60C",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest6-TaskExecRoleA2BBB60C-ZjmLxEi5vU5I",
       "constructPath": "CdkrdIntegHarvest6/TaskExecRole"
     }

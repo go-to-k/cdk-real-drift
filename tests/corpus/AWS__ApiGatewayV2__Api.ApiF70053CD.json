@@ -79,6 +79,15 @@
       "actual": "$request.method $request.path",
       "physicalId": "rno3u8uv0f",
       "constructPath": "CdkrdIntegHarvest4/Api"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "rno3u8uv0f",
+      "constructPath": "CdkrdIntegHarvest4/Api"
     }
   ]
 }

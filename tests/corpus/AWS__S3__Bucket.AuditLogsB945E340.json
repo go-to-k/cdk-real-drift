@@ -126,6 +126,21 @@
       "tier": "atDefault",
       "logicalId": "AuditLogsB945E340",
       "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrdintegharvest3-auditlogsb945e340-0v3maaeqpkte",
+      "constructPath": "CdkrdIntegHarvest3/AuditLogs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AuditLogsB945E340",
+      "resourceType": "AWS::S3::Bucket",
       "path": "BucketEncryption",
       "actual": {
         "ServerSideEncryptionConfiguration": [
@@ -137,21 +152,6 @@
             "ServerSideEncryptionByDefault": {
               "SSEAlgorithm": "AES256"
             }
-          }
-        ]
-      },
-      "physicalId": "cdkrdintegharvest3-auditlogsb945e340-0v3maaeqpkte",
-      "constructPath": "CdkrdIntegHarvest3/AuditLogs"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "AuditLogsB945E340",
-      "resourceType": "AWS::S3::Bucket",
-      "path": "OwnershipControls",
-      "actual": {
-        "Rules": [
-          {
-            "ObjectOwnership": "BucketOwnerEnforced"
           }
         ]
       },

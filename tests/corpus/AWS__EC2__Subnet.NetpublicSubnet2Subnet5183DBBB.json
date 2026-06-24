@@ -123,11 +123,37 @@
   },
   "expected": [
     {
+      "tier": "unresolved",
+      "logicalId": "NetpublicSubnet2Subnet5183DBBB",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZone",
+      "physicalId": "subnet-0e4bae13856face36",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NetpublicSubnet2Subnet5183DBBB",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "EnableDns64",
+      "actual": false,
+      "physicalId": "subnet-0e4bae13856face36",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "NetpublicSubnet2Subnet5183DBBB",
       "resourceType": "AWS::EC2::Subnet",
       "path": "AvailabilityZoneId",
       "actual": "use1-az2",
+      "physicalId": "subnet-0e4bae13856face36",
+      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NetpublicSubnet2Subnet5183DBBB",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AssignIpv6AddressOnCreation",
+      "actual": false,
       "physicalId": "subnet-0e4bae13856face36",
       "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
     },
@@ -145,10 +171,11 @@
       "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
     },
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "NetpublicSubnet2Subnet5183DBBB",
       "resourceType": "AWS::EC2::Subnet",
-      "path": "AvailabilityZone",
+      "path": "Ipv6Native",
+      "actual": false,
       "physicalId": "subnet-0e4bae13856face36",
       "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/Subnet"
     }

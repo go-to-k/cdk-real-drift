@@ -138,11 +138,37 @@
   },
   "expected": [
     {
+      "tier": "unresolved",
+      "logicalId": "WorkersVpcPublicSubnet1Subnet76E41816",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AvailabilityZone",
+      "physicalId": "subnet-0434e5718302e4709",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WorkersVpcPublicSubnet1Subnet76E41816",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "EnableDns64",
+      "actual": false,
+      "physicalId": "subnet-0434e5718302e4709",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "WorkersVpcPublicSubnet1Subnet76E41816",
       "resourceType": "AWS::EC2::Subnet",
       "path": "AvailabilityZoneId",
       "actual": "use1-az1",
+      "physicalId": "subnet-0434e5718302e4709",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WorkersVpcPublicSubnet1Subnet76E41816",
+      "resourceType": "AWS::EC2::Subnet",
+      "path": "AssignIpv6AddressOnCreation",
+      "actual": false,
       "physicalId": "subnet-0434e5718302e4709",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
     },
@@ -160,10 +186,11 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
     },
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPublicSubnet1Subnet76E41816",
       "resourceType": "AWS::EC2::Subnet",
-      "path": "AvailabilityZone",
+      "path": "Ipv6Native",
+      "actual": false,
       "physicalId": "subnet-0434e5718302e4709",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/Subnet"
     }

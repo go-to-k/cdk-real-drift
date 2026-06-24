@@ -69,7 +69,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Assoc",
       "resourceType": "AWS::SSM::Association",
       "path": "DocumentVersion",

@@ -80,8 +80,8 @@
       "tier": "atDefault",
       "logicalId": "TestRole6C9272DF",
       "resourceType": "AWS::IAM::Role",
-      "path": "MaxSessionDuration",
-      "actual": 3600,
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
       "constructPath": "CdkRealDriftIntegIam/TestRole"
     },
@@ -89,8 +89,8 @@
       "tier": "atDefault",
       "logicalId": "TestRole6C9272DF",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
       "physicalId": "CdkRealDriftIntegIam-TestRole6C9272DF-tZZ2sot0XbeC",
       "constructPath": "CdkRealDriftIntegIam/TestRole"
     },

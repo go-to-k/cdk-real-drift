@@ -50,8 +50,18 @@
       "tier": "atDefault",
       "logicalId": "VpcHandler",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Architectures",
-      "actual": ["x86_64"],
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "corpus-vpc-handler"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcHandler",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
       "physicalId": "corpus-vpc-handler"
     },
     {
@@ -68,18 +78,8 @@
       "tier": "atDefault",
       "logicalId": "VpcHandler",
       "resourceType": "AWS::Lambda::Function",
-      "path": "PackageType",
-      "actual": "Zip",
-      "physicalId": "corpus-vpc-handler"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "VpcHandler",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "TracingConfig",
-      "actual": {
-        "Mode": "PassThrough"
-      },
+      "path": "Architectures",
+      "actual": ["x86_64"],
       "physicalId": "corpus-vpc-handler"
     }
   ]

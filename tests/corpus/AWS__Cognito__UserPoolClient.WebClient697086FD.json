@@ -63,6 +63,15 @@
       "tier": "atDefault",
       "logicalId": "WebClient697086FD",
       "resourceType": "AWS::Cognito::UserPoolClient",
+      "path": "EnablePropagateAdditionalUserContextData",
+      "actual": false,
+      "physicalId": "7d78lu0gfopub8hldk8ogl5asn",
+      "constructPath": "CdkrdIntegHarvest3/WebClient"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WebClient697086FD",
+      "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "AuthSessionValidity",
       "actual": 3,
       "physicalId": "7d78lu0gfopub8hldk8ogl5asn",

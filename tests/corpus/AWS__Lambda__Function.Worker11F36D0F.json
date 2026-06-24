@@ -128,9 +128,9 @@
       "tier": "atDefault",
       "logicalId": "Worker11F36D0F",
       "resourceType": "AWS::Lambda::Function",
-      "path": "EphemeralStorage",
+      "path": "RuntimeManagementConfig",
       "actual": {
-        "Size": 512
+        "UpdateRuntimeOn": "Auto"
       },
       "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
       "constructPath": "CdkrdIntegHarvest2/Worker"
@@ -141,6 +141,18 @@
       "resourceType": "AWS::Lambda::Function",
       "path": "PackageType",
       "actual": "Zip",
+      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
+      "constructPath": "CdkrdIntegHarvest2/Worker"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Worker11F36D0F",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv"
+      },
       "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
       "constructPath": "CdkrdIntegHarvest2/Worker"
     },
@@ -157,21 +169,9 @@
       "tier": "atDefault",
       "logicalId": "Worker11F36D0F",
       "resourceType": "AWS::Lambda::Function",
-      "path": "RuntimeManagementConfig",
+      "path": "EphemeralStorage",
       "actual": {
-        "UpdateRuntimeOn": "Auto"
-      },
-      "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
-      "constructPath": "CdkrdIntegHarvest2/Worker"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "Worker11F36D0F",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "LoggingConfig",
-      "actual": {
-        "LogFormat": "Text",
-        "LogGroup": "/aws/lambda/CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv"
+        "Size": 512
       },
       "physicalId": "CdkrdIntegHarvest2-Worker11F36D0F-9jtMp4eDVKIv",
       "constructPath": "CdkrdIntegHarvest2/Worker"

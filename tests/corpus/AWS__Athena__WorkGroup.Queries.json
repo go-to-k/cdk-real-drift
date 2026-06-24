@@ -65,15 +65,6 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
-      "logicalId": "Queries",
-      "resourceType": "AWS::Athena::WorkGroup",
-      "path": "State",
-      "actual": "ENABLED",
-      "physicalId": "cdkrd-harvest",
-      "constructPath": "CdkrdIntegHarvest/Queries"
-    },
-    {
       "tier": "readGap",
       "logicalId": "Queries",
       "resourceType": "AWS::Athena::WorkGroup",
@@ -95,6 +86,15 @@
         "PublishCloudWatchMetricsEnabled": true,
         "RequesterPaysEnabled": false
       },
+      "physicalId": "cdkrd-harvest",
+      "constructPath": "CdkrdIntegHarvest/Queries"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Queries",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "State",
+      "actual": "ENABLED",
       "physicalId": "cdkrd-harvest",
       "constructPath": "CdkrdIntegHarvest/Queries"
     }

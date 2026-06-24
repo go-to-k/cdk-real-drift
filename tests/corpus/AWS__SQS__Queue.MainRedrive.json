@@ -85,7 +85,7 @@
       "constructPath": "CdkRealDriftIntegSqsRedriveRich/Main"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Main54E5BC70",
       "resourceType": "AWS::SQS::Queue",
       "path": "KmsDataKeyReusePeriodSeconds",

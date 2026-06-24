@@ -42,22 +42,22 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
-      "logicalId": "CorpusBucket",
-      "resourceType": "AWS::S3::Bucket",
-      "path": "VersioningConfiguration",
-      "actual": {
-        "Status": "Suspended"
-      },
-      "physicalId": "corpus-bucket"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "CorpusBucket",
       "resourceType": "AWS::S3::Bucket",
       "path": "AccelerateConfiguration",
       "actual": {
         "AccelerationStatus": "Enabled"
+      },
+      "physicalId": "corpus-bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CorpusBucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "VersioningConfiguration",
+      "actual": {
+        "Status": "Suspended"
       },
       "physicalId": "corpus-bucket"
     }

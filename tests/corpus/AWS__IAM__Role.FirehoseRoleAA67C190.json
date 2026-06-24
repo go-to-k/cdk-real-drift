@@ -92,8 +92,8 @@
       "tier": "atDefault",
       "logicalId": "FirehoseRoleAA67C190",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
       "constructPath": "CdkrdIntegHarvest3/FirehoseRole"
     },
@@ -110,8 +110,8 @@
       "tier": "atDefault",
       "logicalId": "FirehoseRoleAA67C190",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
       "constructPath": "CdkrdIntegHarvest3/FirehoseRole"
     }

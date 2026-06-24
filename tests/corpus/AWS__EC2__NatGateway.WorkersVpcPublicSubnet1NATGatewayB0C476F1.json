@@ -96,11 +96,19 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
+      "tier": "unresolved",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "AvailabilityMode",
-      "actual": "zonal",
+      "path": "AllocationId",
+      "physicalId": "nat-07e873bd1eb79666a",
+      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
+      "resourceType": "AWS::EC2::NatGateway",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.62",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     },
@@ -117,25 +125,17 @@
       "tier": "undeclared",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "PrivateIpAddress",
-      "actual": "10.0.0.62",
-      "physicalId": "nat-07e873bd1eb79666a",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
-      "resourceType": "AWS::EC2::NatGateway",
       "path": "VpcId",
       "actual": "vpc-0b4c09b4fa46530e9",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     },
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPublicSubnet1NATGatewayB0C476F1",
       "resourceType": "AWS::EC2::NatGateway",
-      "path": "AllocationId",
+      "path": "AvailabilityMode",
+      "actual": "zonal",
       "physicalId": "nat-07e873bd1eb79666a",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/NATGateway"
     }

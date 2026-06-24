@@ -57,8 +57,8 @@
       "tier": "atDefault",
       "logicalId": "HourlyPing",
       "resourceType": "AWS::Scheduler::Schedule",
-      "path": "ActionAfterCompletion",
-      "actual": "NONE",
+      "path": "ScheduleExpressionTimezone",
+      "actual": "UTC",
       "physicalId": "CdkrdIntegHarvest3-HourlyPing-1FRBZJC1OF6LB",
       "constructPath": "CdkrdIntegHarvest3/HourlyPing"
     },
@@ -66,8 +66,8 @@
       "tier": "atDefault",
       "logicalId": "HourlyPing",
       "resourceType": "AWS::Scheduler::Schedule",
-      "path": "ScheduleExpressionTimezone",
-      "actual": "UTC",
+      "path": "ActionAfterCompletion",
+      "actual": "NONE",
       "physicalId": "CdkrdIntegHarvest3-HourlyPing-1FRBZJC1OF6LB",
       "constructPath": "CdkrdIntegHarvest3/HourlyPing"
     },

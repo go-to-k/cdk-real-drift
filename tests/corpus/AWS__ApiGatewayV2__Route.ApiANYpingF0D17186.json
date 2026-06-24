@@ -37,5 +37,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiANYpingF0D17186",
+      "resourceType": "AWS::ApiGatewayV2::Route",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "lghabc6",
+      "constructPath": "CdkrdIntegHarvest4/Api/ANY--ping"
+    }
+  ]
 }

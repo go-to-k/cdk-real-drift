@@ -92,6 +92,15 @@
       "tier": "atDefault",
       "logicalId": "Patch",
       "resourceType": "AWS::SSM::PatchBaseline",
+      "path": "RejectedPatchesAction",
+      "actual": "ALLOW_AS_DEPENDENCY",
+      "physicalId": "pb-0dc7b8f7d8aa1a1a3",
+      "constructPath": "CdkrdIntegHarvest6/Patch"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Patch",
+      "resourceType": "AWS::SSM::PatchBaseline",
       "path": "ApprovedPatchesComplianceLevel",
       "actual": "UNSPECIFIED",
       "physicalId": "pb-0dc7b8f7d8aa1a1a3",
@@ -112,15 +121,6 @@
       "resourceType": "AWS::SSM::PatchBaseline",
       "path": "DefaultBaseline",
       "actual": false,
-      "physicalId": "pb-0dc7b8f7d8aa1a1a3",
-      "constructPath": "CdkrdIntegHarvest6/Patch"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Patch",
-      "resourceType": "AWS::SSM::PatchBaseline",
-      "path": "RejectedPatchesAction",
-      "actual": "ALLOW_AS_DEPENDENCY",
       "physicalId": "pb-0dc7b8f7d8aa1a1a3",
       "constructPath": "CdkrdIntegHarvest6/Patch"
     }

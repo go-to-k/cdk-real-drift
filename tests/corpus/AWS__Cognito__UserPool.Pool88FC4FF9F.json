@@ -332,45 +332,6 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
-      "logicalId": "Pool88FC4FF9F",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
-      "actual": 7,
-      "nested": true,
-      "physicalId": "us-east-1_BUaNF3GfH",
-      "constructPath": "CdkdriftIntegHarvest8/Pool8"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Pool88FC4FF9F",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "DeletionProtection",
-      "actual": "INACTIVE",
-      "physicalId": "us-east-1_BUaNF3GfH",
-      "constructPath": "CdkdriftIntegHarvest8/Pool8"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Pool88FC4FF9F",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "EmailConfiguration",
-      "actual": {
-        "EmailSendingAccount": "COGNITO_DEFAULT"
-      },
-      "physicalId": "us-east-1_BUaNF3GfH",
-      "constructPath": "CdkdriftIntegHarvest8/Pool8"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Pool88FC4FF9F",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "MfaConfiguration",
-      "actual": "OFF",
-      "physicalId": "us-east-1_BUaNF3GfH",
-      "constructPath": "CdkdriftIntegHarvest8/Pool8"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
@@ -388,6 +349,15 @@
           "AllowedFirstAuthFactors": ["PASSWORD"]
         }
       },
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "MfaConfiguration",
+      "actual": "OFF",
       "physicalId": "us-east-1_BUaNF3GfH",
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
@@ -621,6 +591,24 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "UserPoolTier",
+      "actual": "ESSENTIALS",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "DeletionProtection",
+      "actual": "INACTIVE",
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
@@ -630,11 +618,23 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
+      "tier": "undeclared",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "EmailConfiguration",
+      "actual": {
+        "EmailSendingAccount": "COGNITO_DEFAULT"
+      },
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
       "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "UserPoolTier",
-      "actual": "ESSENTIALS",
+      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
+      "actual": 7,
+      "nested": true,
       "physicalId": "us-east-1_BUaNF3GfH",
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     }

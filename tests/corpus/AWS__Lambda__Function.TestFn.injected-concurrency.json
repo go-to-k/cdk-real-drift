@@ -97,8 +97,78 @@
       "tier": "atDefault",
       "logicalId": "TestFn04335C60",
       "resourceType": "AWS::Lambda::Function",
-      "path": "Architectures",
-      "actual": ["x86_64"],
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "ReservedConcurrentExecutions",
+      "actual": 1,
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92"
+      },
+      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
+      "constructPath": "CdkRealDriftIntegLambda/TestFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TestFn04335C60",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
       "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
       "constructPath": "CdkRealDriftIntegLambda/TestFn"
     },
@@ -117,78 +187,8 @@
       "tier": "atDefault",
       "logicalId": "TestFn04335C60",
       "resourceType": "AWS::Lambda::Function",
-      "path": "MemorySize",
-      "actual": 128,
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "PackageType",
-      "actual": "Zip",
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "RecursiveLoop",
-      "actual": "Terminate",
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "RuntimeManagementConfig",
-      "actual": {
-        "UpdateRuntimeOn": "Auto"
-      },
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "Timeout",
-      "actual": 3,
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "TracingConfig",
-      "actual": {
-        "Mode": "PassThrough"
-      },
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "LoggingConfig",
-      "actual": {
-        "LogFormat": "Text",
-        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92"
-      },
-      "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
-      "constructPath": "CdkRealDriftIntegLambda/TestFn"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "TestFn04335C60",
-      "resourceType": "AWS::Lambda::Function",
-      "path": "ReservedConcurrentExecutions",
-      "actual": 1,
+      "path": "Architectures",
+      "actual": ["x86_64"],
       "physicalId": "CdkRealDriftIntegLambda-TestFn04335C60-jyxmUSaHcl92",
       "constructPath": "CdkRealDriftIntegLambda/TestFn"
     }

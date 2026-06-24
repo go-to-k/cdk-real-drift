@@ -89,7 +89,7 @@
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::DocDB::DBCluster",
       "path": "Port",
