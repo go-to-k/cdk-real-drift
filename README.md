@@ -8,9 +8,9 @@ Drift detection for AWS CDK that sees what your template can't, including the
 
 ## Why
 
-Someone attaches an extra inline policy to one of your roles from the console.
-CloudFormation drift detection only compares properties that **appear in your
-template**, so it reports nothing:
+Someone tweaks one of your resources from the console: an extra inline policy on a
+role, a bucket setting you never declared. CloudFormation drift detection only
+compares properties that **appear in your template**, so it reports nothing:
 
 ```bash
 $ npx cdk drift
@@ -31,15 +31,15 @@ $ npx cdkrd check
 result: 1 drift(s) (undeclared=1)
 ```
 
-| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
-| ------------------------------------------------------------------- | :-----: | :-------------------------------: |
-| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
-| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
-| Detect **added** out-of-band resources (not in template)            |   ✅    |                ❌                 |
-| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
-| **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Ignore / accept** a drift, incl. a **declared** one               |   ✅    |                ❌                 |
-| **Record** undeclared / added state as a reviewed git baseline      |   ✅    |                ❌                 |
+| Capability                                                     | `cdkrd` | `cdk drift` / CFn drift detection |
+| -------------------------------------------------------------- | :-----: | :-------------------------------: |
+| Drift on **declared** props (+ out-of-band deletes)            |   ✅    |                ✅                 |
+| Drift on **undeclared** props                                  |   ✅    |                ❌                 |
+| **Added** out-of-band resources (not in template)             |   ✅    |                ❌                 |
+| **Revert** declared drift                                      |   ✅    |  ✅ `cdk deploy --revert-drift`   |
+| **Revert** undeclared drift                                    |   ✅    |                ❌                 |
+| **Ignore / accept** a drift, incl. a **declared** one          |   ✅    |                ❌                 |
+| **Record** undeclared / added state as a reviewed git baseline |   ✅    |                ❌                 |
 
 ## Quick start
 
@@ -138,11 +138,10 @@ prompt mechanics (multiselect, Decide per finding, key bindings) are under
 
 ## How it works
 
-cdkrd compares the **live AWS resource** against your **CloudFormation template**:
-the one you DEPLOYED by default, or the local CDK synth with `--pre-deploy`. The
-yardstick is always that template (deployed or synthesized), **not** a line-by-line
-diff of your CDK source the way `cdk diff` works. It's reality vs intent. So by
-default, undeployed code changes never show up as drift; `--pre-deploy` inverts
+cdkrd compares the **live AWS resource** against your deployed **CloudFormation
+template** (or your local synth with `--pre-deploy`). It's reality vs intent,
+**not** a line-by-line diff of your CDK source the way `cdk diff` works, so
+undeployed code changes don't show up as drift by default. `--pre-deploy` inverts
 that, checking live state against the freshly synthesized template (see
 [`--pre-deploy`](#--pre-deploy)).
 
@@ -157,11 +156,9 @@ Three sources, named so "declared" is never ambiguous:
 | **Added Resource**             | the live resource                             | a whole resource exists live but is NOT in the template |
 | **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
 
-So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline"; it
-means the deployed **CloudFormation** template. (Want to compare against your
-**local** CDK code instead of the deployed template? That's
-[`--pre-deploy`](#--pre-deploy).) `CFn-undeclared` and `unrecorded` are different
-axes (template vs baseline file), not synonyms.
+Note that `CFn-declared` means **in the deployed template**, not "in my CDK code"
+and not "in my `.cdkrd` baseline". And `CFn-undeclared` (a template axis) is not
+the same as `unrecorded` (a baseline-file axis).
 
 ### How each kind of drift is judged
 
