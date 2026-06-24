@@ -26,6 +26,7 @@ import {
 } from '@aws-sdk/client-ec2';
 import {
   GetClassifierCommand,
+  GetConnectionCommand,
   GetTableCommand,
   GetWorkflowCommand,
   GlueClient,
@@ -633,6 +634,64 @@ const readGlueWorkflow: OverrideReader = async ({ physicalId, declared, region }
   return out;
 };
 
+// AWS::Glue::Connection — CC API GetResource throws UnsupportedActionException, so the
+// connection was silently `skipped` and an out-of-band change to its network/JDBC settings
+// (ConnectionType, PhysicalConnectionRequirements [subnet/SG/AZ], ConnectionProperties,
+// Description) was invisible — a security-relevant FN on a common ETL data-source resource.
+// Read via Glue GetConnection with HidePassword:true so NO credential ever enters the
+// baseline. Project the CFn `ConnectionInput` shape, dropping AWS-managed status/timestamps.
+// SECRET note: any returned ConnectionProperties.*PASSWORD key is dropped (HidePassword
+// returns the encrypted blob on some paths, and a secret must never land in the .cdkrd
+// baseline). `SECRET_ID` is KEPT — it is a Secrets Manager ARN (config, not a secret), so
+// an out-of-band repoint to a different secret stays detectable. The modern SECRET_ID /
+// NETWORK pattern carries no inline password, so this is FP-clean there; a legacy
+// inline-PASSWORD connection's password just stays a readGap. Read-ONLY (no SDK writer):
+// closing the FN [detection] is the value; a revert that omitted an un-read credential
+// could clear a JDBC password, so it is deferred.
+const GLUE_CONNECTION_MANAGED = new Set([
+  'CreationTime',
+  'LastUpdatedTime',
+  'LastUpdatedBy',
+  'Status',
+  'StatusReason',
+  'LastConnectionValidationTime',
+  'ConnectionSchemaVersion',
+]);
+const GLUE_CONNECTION_SECRET_KEYS = /PASSWORD/i;
+const readGlueConnection: OverrideReader = async ({ physicalId, declared, region }) => {
+  const declInput = declared.ConnectionInput as Record<string, unknown> | undefined;
+  const name = str(physicalId) ?? str(declInput?.Name);
+  if (!name) return undefined;
+  const catalogId = str(declared.CatalogId);
+  const c = new GlueClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new GetConnectionCommand({
+      Name: name,
+      HidePassword: true,
+      ...(catalogId && { CatalogId: catalogId }),
+    })
+  );
+  const conn = r.Connection;
+  if (!conn) return undefined;
+  const ci: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(conn)) {
+    if (GLUE_CONNECTION_MANAGED.has(k) || k === 'Name') continue;
+    ci[k] = v;
+  }
+  ci.Name = conn.Name;
+  // never let a credential into the baseline, regardless of HidePassword behaviour
+  if (ci.ConnectionProperties && typeof ci.ConnectionProperties === 'object') {
+    ci.ConnectionProperties = Object.fromEntries(
+      Object.entries(ci.ConnectionProperties as Record<string, unknown>).filter(
+        ([k]) => !GLUE_CONNECTION_SECRET_KEYS.test(k)
+      )
+    );
+  }
+  const out: Record<string, unknown> = { ConnectionInput: ci };
+  if (catalogId) out.CatalogId = catalogId;
+  return out;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -1077,6 +1136,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,
   'AWS::Glue::Workflow': readGlueWorkflow,
+  'AWS::Glue::Connection': readGlueConnection,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };

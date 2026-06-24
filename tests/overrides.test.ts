@@ -12,6 +12,7 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   GetClassifierCommand,
+  GetConnectionCommand,
   GetTableCommand,
   GetWorkflowCommand,
   GlueClient,
@@ -780,6 +781,57 @@ describe('SDK overrides', () => {
 
     it('undefined when no workflow name can be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::Glue::Workflow'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('Glue Connection', () => {
+    it('projects ConnectionInput, dropping AWS-managed status/timestamps and *PASSWORD keys (keeping SECRET_ID)', async () => {
+      glue.on(GetConnectionCommand).resolves({
+        Connection: {
+          Name: 'c',
+          ConnectionType: 'JDBC',
+          Description: 'etl',
+          ConnectionProperties: {
+            JDBC_CONNECTION_URL: 'jdbc:mysql://h:3306/db',
+            JDBC_ENFORCE_SSL: 'true',
+            SECRET_ID: 'arn:aws:secretsmanager:us-east-1:1:secret:s',
+            PASSWORD: 'should-be-dropped',
+            ENCRYPTED_PASSWORD: 'also-dropped',
+          },
+          // AWS-managed noise that must NOT appear:
+          CreationTime: new Date(0),
+          LastUpdatedTime: new Date(0),
+          LastUpdatedBy: 'arn:aws:iam::1:user/x',
+          Status: 'READY',
+          ConnectionSchemaVersion: 1,
+        },
+      } as never);
+      const out = (await SDK_OVERRIDES['AWS::Glue::Connection'](
+        ctx({ ConnectionInput: { Name: 'c' } }, 'c')
+      )) as { ConnectionInput: Record<string, unknown> };
+      expect(out.ConnectionInput).toEqual({
+        Name: 'c',
+        ConnectionType: 'JDBC',
+        Description: 'etl',
+        ConnectionProperties: {
+          JDBC_CONNECTION_URL: 'jdbc:mysql://h:3306/db',
+          JDBC_ENFORCE_SSL: 'true',
+          SECRET_ID: 'arn:aws:secretsmanager:us-east-1:1:secret:s',
+        },
+      });
+    });
+
+    it('reads GetConnection with HidePassword:true (no credential into the baseline)', async () => {
+      glue
+        .on(GetConnectionCommand)
+        .resolves({ Connection: { Name: 'c', ConnectionType: 'NETWORK' } } as never);
+      await SDK_OVERRIDES['AWS::Glue::Connection'](ctx({ ConnectionInput: { Name: 'c' } }, 'c'));
+      const call = glue.commandCalls(GetConnectionCommand)[0]!;
+      expect((call.args[0].input as { HidePassword?: boolean }).HidePassword).toBe(true);
+    });
+
+    it('undefined when no connection name can be resolved', async () => {
+      expect(await SDK_OVERRIDES['AWS::Glue::Connection'](ctx({}))).toBeUndefined();
     });
   });
 
