@@ -33,8 +33,8 @@ result: 1 drift(s) (undeclared=1)
 
 | Capability                                                     | `cdkrd` | `cdk drift` / CFn drift detection |
 | -------------------------------------------------------------- | :-----: | :-------------------------------: |
-| Drift on **declared** props (+ out-of-band deletes)            |   ✅    |                ✅                 |
-| Drift on **undeclared** props                                  |   ✅    |                ❌                 |
+| Drift on **declared** properties (+ out-of-band deletes)       |   ✅    |                ✅                 |
+| Drift on **undeclared** properties                             |   ✅    |                ❌                 |
 | **Added** out-of-band resources (not in template)             |   ✅    |                ❌                 |
 | **Revert** declared drift                                      |   ✅    |  ✅ `cdk deploy --revert-drift`   |
 | **Revert** undeclared drift                                    |   ✅    |                ❌                 |
@@ -274,7 +274,7 @@ CI (with `--yes`).
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                      |
 | `--all`                    | target every stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                            |
-| `--fail`                   | (check) exit 1 on drift + never prompt, for scripts/CI; without it, check reports drift but exits 0                                             |
+| `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                           |
 | `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
 | `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                        |
 | `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                   |
@@ -297,8 +297,8 @@ safe side); `--yes` alone in a TTY auto-approves confirmations only (select prom
 still show).
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
-Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each option appears only
-  when it applies (no Revert if nothing is revertable; "Decide per finding" only
+  Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
+  option appears only when it applies (no Revert if nothing is revertable; "Decide per finding" only
   with >1 finding). Aborting the Revert confirmation writes nothing.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every op
   starts unselected**: it's the one command that writes to AWS, so you opt in to
@@ -405,7 +405,7 @@ info:
 - **`[Not Recorded: N]`**: undeclared values you haven't recorded yet. Listed in
   full, but not drift; `result:` points you at `cdkrd record`. Once a resource is
   fully snapshotted, a value that _appears_ later is real drift (`appeared since
-record`).
+  record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 
