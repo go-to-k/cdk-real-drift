@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Conn",
+    "resourceType": "AWS::Glue::Connection",
+    "physicalId": "cdkrd-network-conn",
+    "constructPath": "CdkRealDriftIntegGlueConnectionReadgap/Conn",
+    "declared": {
+      "CatalogId": "111111111111",
+      "ConnectionInput": {
+        "ConnectionType": "NETWORK",
+        "Description": "cdkrd glue connection read-gap probe",
+        "Name": "cdkrd-network-conn",
+        "PhysicalConnectionRequirements": {
+          "AvailabilityZone": "us-east-1a",
+          "SecurityGroupIdList": ["sg-05b4f0f1fea3ca458"],
+          "SubnetId": "subnet-02330922de6602c51"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "ConnectionInput": {
+      "Description": "cdkrd glue connection read-gap probe",
+      "ConnectionType": "NETWORK",
+      "ConnectionProperties": {},
+      "PhysicalConnectionRequirements": {
+        "SubnetId": "subnet-02330922de6602c51",
+        "SecurityGroupIdList": ["sg-05b4f0f1fea3ca458"],
+        "AvailabilityZone": "us-east-1a"
+      },
+      "Name": "cdkrd-network-conn"
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["CatalogId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CatalogId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
