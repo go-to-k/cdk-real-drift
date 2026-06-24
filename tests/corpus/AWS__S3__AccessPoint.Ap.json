@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Ap",
+    "resourceType": "AWS::S3::AccessPoint",
+    "physicalId": "cdkrd-ap",
+    "constructPath": "CdkRealDriftIntegS3AccessPoint/Ap",
+    "declared": {
+      "Bucket": "cdkrealdriftintegs3accesspoint-data666c94c7-mekpxz72dqw5",
+      "Name": "cdkrd-ap",
+      "Policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "111111111111"
+            },
+            "Action": ["s3:GetObject"],
+            "Resource": "arn:aws:s3:us-east-1:111111111111:accesspoint/cdkrd-ap/object/*"
+          }
+        ]
+      },
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": true,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:us-east-1:111111111111:accesspoint/cdkrd-ap/object/*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          }
+        }
+      ]
+    },
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "Bucket": "cdkrealdriftintegs3accesspoint-data666c94c7-mekpxz72dqw5",
+    "Alias": "cdkrd-ap-gdorjbegei6f8zc78ra57j8e3yru1use1a-s3alias",
+    "BucketAccountId": "111111111111",
+    "Arn": "arn:aws:s3:us-east-1:111111111111:accesspoint/cdkrd-ap",
+    "NetworkOrigin": "Internet",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3AccessPoint/b7706a40-6f84-11f1-ad00-0affe791820b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegS3AccessPoint",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Ap",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-ap"
+  },
+  "schema": {
+    "readOnly": ["Alias", "Arn", "NetworkOrigin"],
+    "writeOnly": [],
+    "createOnly": ["Bucket", "BucketAccountId", "Name", "VpcConfiguration"],
+    "readOnlyPaths": ["Alias", "Arn", "NetworkOrigin"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket", "BucketAccountId", "Name", "VpcConfiguration"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Ap",
+      "resourceType": "AWS::S3::AccessPoint",
+      "path": "BucketAccountId",
+      "actual": "111111111111",
+      "physicalId": "cdkrd-ap",
+      "constructPath": "CdkRealDriftIntegS3AccessPoint/Ap"
+    }
+  ]
+}
