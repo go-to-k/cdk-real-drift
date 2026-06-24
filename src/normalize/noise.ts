@@ -58,6 +58,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
   'AWS::Events::Rule': { EventBusName: 'default' },
   'AWS::Athena::WorkGroup': { State: 'ENABLED' },
+  // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
+  // fixture): a broker created without these knobs reports all three as undeclared
+  // first-run noise. AuthenticationStrategy is SIMPLE unless LDAP is configured;
+  // EncryptionOptions falls back to the AWS-owned key when no KMS key is declared;
+  // DataReplicationMode is NONE unless cross-region data replication (CRDR) is
+  // enabled. Equality-gated like every KNOWN_DEFAULTS entry — a broker that sets a
+  // KMS key / LDAP / CRDR reads back a non-matching value and stays undeclared.
+  'AWS::AmazonMQ::Broker': {
+    AuthenticationStrategy: 'SIMPLE',
+    EncryptionOptions: { UseAwsOwnedKey: true },
+    DataReplicationMode: 'NONE',
+  },
   // Chatbot applies the AdministratorAccess guardrail when none is declared
   // (verified live on a default-config SlackChannelConfiguration).
   'AWS::Chatbot::SlackChannelConfiguration': {

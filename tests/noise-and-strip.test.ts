@@ -441,6 +441,11 @@ describe('noise suppressors', () => {
       DefaultAuthScheme: 'NONE',
       EndpointNetworkType: 'IPV4',
     });
+    expect(KNOWN_DEFAULTS['AWS::AmazonMQ::Broker']).toEqual({
+      AuthenticationStrategy: 'SIMPLE',
+      EncryptionOptions: { UseAwsOwnedKey: true },
+      DataReplicationMode: 'NONE',
+    });
   });
 
   it('first-run-noise folds from the measure-noise sweep (PR follow-up) — common-type constant defaults', () => {
