@@ -24,7 +24,12 @@ import {
   DescribeLaunchTemplateVersionsCommand,
   EC2Client,
 } from '@aws-sdk/client-ec2';
-import { GetClassifierCommand, GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import {
+  GetClassifierCommand,
+  GetTableCommand,
+  GetWorkflowCommand,
+  GlueClient,
+} from '@aws-sdk/client-glue';
 import {
   ListResourceRecordSetsCommand,
   type ListResourceRecordSetsCommandOutput,
@@ -608,6 +613,26 @@ const readGlueClassifier: OverrideReader = async ({ physicalId, declared, region
   return out;
 };
 
+// AWS::Glue::Workflow — CC API GetResource throws UnsupportedActionException, so the
+// workflow was silently `skipped` and an out-of-band change to its Description /
+// DefaultRunProperties / MaxConcurrentRuns was invisible. Read via Glue GetWorkflow. The
+// CFn physical id is the workflow name; project the CFn-modeled scalar/map props, dropping
+// AWS-managed run/graph state (CreatedOn / LastModifiedOn / LastRun / Graph) and `Tags`
+// (handled by the shared aws:* tag strip). MaxConcurrentRuns is a number CFn declares.
+const readGlueWorkflow: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.Name);
+  if (!name) return undefined;
+  const c = new GlueClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetWorkflowCommand({ Name: name }));
+  const w = r.Workflow;
+  if (!w) return undefined;
+  const out: Record<string, unknown> = { Name: w.Name };
+  if (w.Description !== undefined) out.Description = w.Description;
+  if (w.DefaultRunProperties !== undefined) out.DefaultRunProperties = w.DefaultRunProperties;
+  if (w.MaxConcurrentRuns !== undefined) out.MaxConcurrentRuns = w.MaxConcurrentRuns;
+  return out;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -1051,6 +1076,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,
+  'AWS::Glue::Workflow': readGlueWorkflow,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };

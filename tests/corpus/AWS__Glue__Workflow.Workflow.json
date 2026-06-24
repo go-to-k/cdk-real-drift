@@ -1,0 +1,45 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Workflow",
+    "resourceType": "AWS::Glue::Workflow",
+    "physicalId": "cdkrd-workflow",
+    "constructPath": "CdkRealDriftIntegGlueWorkflowReadgap/Workflow",
+    "declared": {
+      "DefaultRunProperties": {
+        "env": "test",
+        "team": "data"
+      },
+      "Description": "cdkrd glue-workflow read-gap probe",
+      "MaxConcurrentRuns": 3,
+      "Name": "cdkrd-workflow"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-workflow",
+    "Description": "cdkrd glue-workflow read-gap probe",
+    "DefaultRunProperties": {
+      "env": "test",
+      "team": "data"
+    },
+    "MaxConcurrentRuns": 3
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

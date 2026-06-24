@@ -1,0 +1,7 @@
+{
+  "name": "cdk-real-drift-integ-glue-workflow-readgap",
+  "private": true, "version": "0.0.0",
+  "description": "Fixture CDK app for the cdk-real-drift glue-workflow-readgap integration test. Run via verify.sh / verify-detect.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}
