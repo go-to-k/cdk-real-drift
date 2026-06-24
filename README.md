@@ -88,21 +88,6 @@ What each choice does here:
   declared one.
 - **Ignore**: stop reporting it, for good (watching off).
 
-Reverting writes to AWS and confirms first:
-
-```console
-=== cdkrd revert: ApiStack (us-east-1) ===
-
-  ApiStack/ApiRole (AWS::IAM::Role)
-    - Policies -> remove (undeclared, not in baseline)
-
-Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
-  reverted: ApiStack/ApiRole
-
-verifying convergence (re-reading 1 resource(s))...
-ApiStack: CLEAN after revert.
-```
-
 In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
 drift; it never writes a baseline (you record locally and commit the file).
 
@@ -128,7 +113,20 @@ editing code or reverting.
 `check`, `record`, and `ignore` never write to AWS. `revert` is the one mutating
 verb and always confirms first (`--dry-run` to preview, `--yes` to skip the
 prompt). Baselines stay a reviewed, git-committed artifact either way; CI never
-writes one.
+writes one. It re-reads each touched resource afterward to verify it converged:
+
+```console
+=== cdkrd revert: ApiStack (us-east-1) ===
+
+  ApiStack/ApiRole (AWS::IAM::Role)
+    - Policies -> remove (undeclared, not in baseline)
+
+Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
+  reverted: ApiStack/ApiRole
+
+verifying convergence (re-reading 1 resource(s))...
+ApiStack: CLEAN after revert.
+```
 
 Picking an action lets you choose **which** findings it touches; after a Record or
 Ignore the prompt re-offers anything still drifting, so you finish in one run. Full
