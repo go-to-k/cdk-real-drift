@@ -3,14 +3,14 @@
 [![npm](https://img.shields.io/npm/v/cdk-real-drift)](https://www.npmjs.com/package/cdk-real-drift)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-Drift detection for AWS CDK that sees what your template can't — including the
+Drift detection for AWS CDK that sees what your template can't, including the
 **properties you never declared**. Detect it, record it, or revert it.
 
 ## Why
 
-Someone attaches an extra inline policy to one of your roles from the console.
-CloudFormation drift detection only compares properties that **appear in your
-template**, so it reports nothing:
+Someone tweaks one of your resources from the console: an extra inline policy on a
+role, a bucket setting you never declared. CloudFormation drift detection only
+compares properties that **appear in your template**, so it reports nothing:
 
 ```bash
 $ npx cdk drift
@@ -18,7 +18,7 @@ $ npx cdk drift
 ```
 
 `cdkrd` reads the **full** live resource model and subtracts everything
-explainable — the same change shows up:
+explainable, so the same change shows up:
 
 ![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
 
@@ -31,15 +31,15 @@ $ npx cdkrd check
 result: 1 drift(s) (undeclared=1)
 ```
 
-| Capability                                                          | `cdkrd` | `cdk drift` / CFn drift detection |
-| ------------------------------------------------------------------- | :-----: | :-------------------------------: |
-| Detect drift on **declared** properties (incl. out-of-band deletes) |   ✅    |                ✅                 |
-| Detect drift on **undeclared** properties                           |   ✅    |                ❌                 |
-| Detect **added** out-of-band resources (not in template)            |   ✅    |                ❌                 |
-| **Revert** declared drift                                           |   ✅    |  ✅ `cdk deploy --revert-drift`   |
-| **Revert** undeclared drift                                         |   ✅    |                ❌                 |
-| **Ignore / accept** a drift — incl. a **declared** one              |   ✅    |                ❌                 |
-| **Record** undeclared / added state as a reviewed git baseline      |   ✅    |                ❌                 |
+| Capability                                                     | `cdkrd` | `cdk drift` / CFn drift detection |
+| -------------------------------------------------------------- | :-----: | :-------------------------------: |
+| Drift on **declared** properties (+ out-of-band deletes)       |   ✅    |                ✅                 |
+| Drift on **undeclared** properties                             |   ✅    |                ❌                 |
+| **Added** out-of-band resources (not in template)             |   ✅    |                ❌                 |
+| **Revert** declared drift                                      |   ✅    |  ✅ `cdk deploy --revert-drift`   |
+| **Revert** undeclared drift                                    |   ✅    |                ❌                 |
+| **Ignore / accept** a drift, incl. a **declared** one          |   ✅    |                ❌                 |
+| **Record** undeclared / added state as a reviewed git baseline |   ✅    |                ❌                 |
 
 ## Quick start
 
@@ -48,11 +48,20 @@ npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
 ```
 
-`check` is the only command you run by hand. It prints what it found, then offers
-the applicable actions inline — **Record / Revert / Ignore** — from the very first
-run, no baseline required ([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
-Day one usually looks like this — a clean stack with live-only values to record, no
-drift:
+`check` is the only command you run by hand, and there's nothing to set up first.
+It prints what it found, then offers the actions that apply right in the prompt:
+**Record**, **Revert**, or **Ignore**
+([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
+
+On a fresh project, `check` already detects drift on the properties your template
+declares (and any resource deleted out of band). The live-only values, the ones
+that exist on the real resource but aren't in your template, are shown as
+informational rather than drift. **Record** them when you want cdkrd to watch them:
+that saves a snapshot (the `.cdkrd` baseline file), and any later out-of-band change
+to them is then reported as drift. The baseline is all cdkrd needs to track
+undeclared properties, and you create it whenever you're ready, not up front.
+
+So a typical first run is a clean stack with live-only values you can record:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -72,13 +81,13 @@ ApiStack: unrecorded values found — what do you want to do?
 
 What each choice does here:
 
-- **Record** — accept the live-only values as the norm; cdkrd watches them and
-  re-flags any later out-of-band change. The usual first-run choice, and the switch
-  that arms undeclared / added detection.
-- **Revert** — write the desired value back to AWS: _removes_ an undeclared
+- **Record**: accept the live-only values as the norm. cdkrd watches them and
+  re-flags any later out-of-band change. This is the usual first-run choice, and the
+  switch that arms undeclared / added detection.
+- **Revert**: write the desired value back to AWS. This _removes_ an undeclared
   live-only value (rarely what you want for a legitimate default), or restores a
   declared one.
-- **Ignore** — stop reporting it, for good (watching off).
+- **Ignore**: stop reporting it, for good (watching off).
 
 Reverting writes to AWS and confirms first:
 
@@ -95,8 +104,8 @@ verifying convergence (re-reading 1 resource(s))...
 ApiStack: CLEAN after revert.
 ```
 
-In CI, run `npx cdkrd check --fail` — read-only, never prompts, exits 1 on drift;
-it never writes a baseline (you record locally and commit the file).
+In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
+drift; it never writes a baseline (you record locally and commit the file).
 
 ## The model: one verb you run, three it offers
 
@@ -108,75 +117,63 @@ each does, run on its own:
 
 | verb           | meaning                                                               | writes                               |
 | -------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| `cdkrd check`  | find drift (the one you run)                                          | nothing — the 3 below do the writing |
-| `cdkrd record` | "this undeclared / added state is the norm — tell me if it _changes_" | a git file (baseline)                |
+| `cdkrd check`  | find drift (the one you run)                                          | nothing; the 3 below do the writing  |
+| `cdkrd record` | "this undeclared / added state is the norm; tell me if it _changes_"  | a git file (baseline)                |
 | `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`)           |
-| `cdkrd revert` | "this state is WRONG" — write the desired value back                  | AWS (plan + confirm)                 |
+| `cdkrd revert` | "this state is wrong"; write the desired value back                   | AWS (plan + confirm)                 |
 
 The scopes differ: `record` is **undeclared / added only**, while `ignore` works on
-**any** tier — it's the only in-tool way to accept a **declared** drift without
+**any** tier. It's the only in-tool way to accept a **declared** drift without
 editing code or reverting.
 
 `check`, `record`, and `ignore` never write to AWS. `revert` is the one mutating
 verb and always confirms first (`--dry-run` to preview, `--yes` to skip the
-prompt). Baselines stay a reviewed, git-committed artifact either way — CI never
+prompt). Baselines stay a reviewed, git-committed artifact either way; CI never
 writes one.
 
 Picking an action lets you choose **which** findings it touches; after a Record or
 Ignore the prompt re-offers anything still drifting, so you finish in one run. Full
 prompt mechanics (multiselect, Decide per finding, key bindings) are under
-[Interactive prompts](#interactive-prompts-tty-only--ci-is-never-prompted).
+[Interactive prompts](#interactive-prompts-tty-only-ci-is-never-prompted).
 
 ## How it works
 
-cdkrd compares the **live AWS resource** against your **CloudFormation template** —
-the one you DEPLOYED by default, or the local CDK synth with `--pre-deploy`. The
-yardstick is always that template (deployed or synthesized), **not** a line-by-line
-diff of your CDK source the way `cdk diff` works — it's reality vs intent. So by
-default, undeployed code changes never show up as drift; `--pre-deploy` inverts
+cdkrd compares the **live AWS resource** against your deployed **CloudFormation
+template** (or your local synth with `--pre-deploy`). It's reality vs intent,
+**not** a line-by-line diff of your CDK source the way `cdk diff` works, so
+undeployed code changes don't show up as drift by default. `--pre-deploy` inverts
 that, checking live state against the freshly synthesized template (see
 [`--pre-deploy`](#--pre-deploy)).
 
-### The vocabulary
+### The kinds of drift
 
-Three sources, named so "declared" is never ambiguous:
+Named so "declared" is never ambiguous (`CFn-declared` means **in the deployed
+template**, not your CDK code and not your `.cdkrd` baseline):
 
-| term                           | source                                        | meaning                                                 |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------------------- |
-| **CFn-declared**               | your CloudFormation template                  | the property IS in the template; the live value drifted |
-| **CFn-undeclared** (live-only) | the live resource                             | the property is on the resource but NOT in the template |
-| **Added Resource**             | the live resource                             | a whole resource exists live but is NOT in the template |
-| **recorded / unrecorded**      | your `.cdkrd` baseline file (a separate axis) | whether you have snapshotted that live-only value yet   |
+| term                           | source                               | how it's judged                                                        |
+| ------------------------------ | ------------------------------------ | --------------------------------------------------------------------- |
+| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed |
+| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                      |
+| **Added resource**             | a whole resource not in the template | reconciled against the baseline like an undeclared property (see below) |
+| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                          |
 
-So `CFn-declared` ≠ "declared in my CDK code" and ≠ "in my `.cdkrd` baseline" — it
-means the deployed **CloudFormation** template. (Want to compare against your
-**local** CDK code instead of the deployed template? That's
-[`--pre-deploy`](#--pre-deploy).) `CFn-undeclared` and `unrecorded` are different
-axes (template vs baseline file), not synonyms.
+(`CFn-undeclared` is a template axis; `recorded` / `unrecorded` is a separate
+baseline-file axis: whether you've snapshotted that value yet.)
 
-### How each kind of drift is judged
+The mechanics:
 
-- **Declared** properties are compared against the **deployed template** — no
-  baseline involved, drift is detected from the first run.
-- **Undeclared** (live-only) properties are compared against the **baseline** you
-  record: a JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`, committed to
-  git, where a PR that changes it is a reviewable change to "what real state we
-  record". Account id + region are in the filename, so the same stack in several
-  accounts never collides.
-- **Recording the baseline is the switch that arms undeclared / added detection.**
-  With no baseline, a live-only value or added resource is `unrecorded`
-  (informational, CLEAN, never fails `--fail`) — there's nothing to compare it to.
-  Once recorded, a later out-of-band change to it is failing drift. So the headline
-  feature is inert until a stack's first `record`; declared-property and
-  out-of-band-delete detection need no baseline.
+- **Recording arms undeclared / added detection.** Until a stack's first `record`,
+  a live-only value or added resource is `unrecorded` (informational, CLEAN, never
+  fails `--fail`); once recorded, a later out-of-band change is failing drift. The
+  baseline is a git-committed JSON file at
+  `.cdkrd/<stack>.<accountId>.<region>.json` (so a change to it is reviewable;
+  account id + region in the name prevent cross-account collisions).
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
-  model (Cloud Control API + SDK readers for the gap types) and subtracts
-  everything explainable — schema read-only/write-only/defaults, AWS-managed
-  fields, `aws:*` tags, policy-document and ordering noise. What survives is signal.
-- **Anything not confidently comparable is reported honestly** as informational
-  (`readGap` / `unresolved` / `skipped`), never guessed — so no false drift.
-- **A resource deleted out of band** — the most blatant drift there is — is
-  reported in the `deleted` tier and always fails under `--fail`.
+  model (Cloud Control API + SDK readers for the gap types) and subtracts everything
+  explainable: schema read-only/write-only/defaults, AWS-managed fields, `aws:*`
+  tags, policy-document and ordering noise. What survives is signal.
+- **Anything not confidently comparable is reported honestly** (`readGap` /
+  `unresolved` / `skipped`), never guessed, so no false drift.
 
 ### Added out-of-band resources
 
@@ -199,22 +196,22 @@ snapshots its full live model and watches it, `ignore` accepts it, or `revert`
 <details>
 <summary>Covered parent types (the <code>CHILD_ENUMERATORS</code> registry, growing per type)</summary>
 
-- **API Gateway REST** — resources, methods, authorizers, models, request
+- **API Gateway REST**: resources, methods, authorizers, models, request
   validators, gateway responses
-- **API Gateway V2** (HTTP / WebSocket) — routes, integrations, authorizers, stages
-- **SNS** — topic subscriptions
-- **Lambda** — event source mappings, function URLs, aliases, versions
-- **EventBridge** — bus rules
-- **Cognito** — user pool clients, groups, resource servers
-- **AppSync** — data sources, resolvers, functions
-- **CloudWatch Logs** — metric filters, subscription filters
-- **ELBv2** — listeners, listener rules
-- **EC2** — VPC subnets, route table routes
-- **ECS** — cluster services
-- **KMS** — key aliases
-- **AppConfig** — application environments, configuration profiles
-- **EFS** — file system mount targets
-- **RDS** — database cluster instances
+- **API Gateway V2** (HTTP / WebSocket): routes, integrations, authorizers, stages
+- **SNS**: topic subscriptions
+- **Lambda**: event source mappings, function URLs, aliases, versions
+- **EventBridge**: bus rules
+- **Cognito**: user pool clients, groups, resource servers
+- **AppSync**: data sources, resolvers, functions
+- **CloudWatch Logs**: metric filters, subscription filters
+- **ELBv2**: listeners, listener rules
+- **EC2**: VPC subnets, route table routes
+- **ECS**: cluster services
+- **KMS**: key aliases
+- **AppConfig**: application environments, configuration profiles
+- **EFS**: file system mount targets
+- **RDS**: database cluster instances
 
 </details>
 
@@ -231,8 +228,8 @@ Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 cdkrd resolves your CDK app to discover which stacks exist and to label findings by
 construct path. The app comes from `cdk.json` (when run in the project directory) or
 from `--app`: a command (`--app "node bin/app.js"`) or a pre-synthesized assembly
-(`--app cdk.out` — read, not executed); `$CDKRD_APP` also works. The drift
-comparison still reads each stack's **deployed** template + live state from AWS —
+(`--app cdk.out`, read not executed); `$CDKRD_APP` also works. The drift
+comparison still reads each stack's **deployed** template + live state from AWS;
 synth only tells cdkrd which stacks to look at.
 
 ## Commands & options
@@ -250,14 +247,14 @@ CI (with `--yes`).
 
 ### Exit codes
 
-- `check` is **report-only by default** — drift prints but exits `0` (a note names
+- `check` is **report-only by default**: drift prints but exits `0` (a note names
   the flag).
 - **`--fail`** (the `cdk diff --fail` / `cdk drift --fail` convention) exits `1` on
-  drift and suppresses all prompts — the one flag for scripts and CI.
+  drift and suppresses all prompts. It's the one flag for scripts and CI.
 - **`--strict`** is the orthogonal **coverage** axis: it exits `1` when a run was
   incomplete (any resource skipped, or a nested stack not recursed into). The gap
-  is always surfaced regardless — as the `skipped=N` footer line / a loud
-  `warning:` — `--strict` only decides whether it fails the build.
+  is always surfaced regardless (as the `skipped=N` footer line or a loud
+  `warning:`); `--strict` only decides whether it fails the build.
 - Errors always exit `2`; `revert` exits `1` when drift remains after it.
 
 ```yaml
@@ -273,25 +270,25 @@ CI (with `--yes`).
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); stacks with explicit `env.region` are auto-detected                                      |
 | `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                 |
-| `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`) — stack auto-discovery + construct paths                   |
+| `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                    |
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                      |
-| `--all`                    | target EVERY stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
+| `--all`                    | target every stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                            |
-| `--fail`                   | (check) exit 1 on drift + never prompt — for scripts/CI; without it, check reports drift but exits 0                                            |
-| `--strict`                 | (check) exit 1 when COVERAGE is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
-| `--show-all`               | inventory mode: show ALL current undeclared state, ignoring the baseline                                                                        |
-| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason NOT-revertable summary — to full lists                                 |
-| `--pre-deploy`             | (check) compare live vs the LOCAL synth template — the declared drift your next `cdk deploy` would silently overwrite                           |
-| `--undeclared-only`        | (check) undeclared drift only — pair cdkrd with `cdk drift` for the declared side                                                               |
-| `--declared-only`          | (check) declared drift vs the DEPLOYED template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                          |
+| `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                           |
+| `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
+| `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                        |
+| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                   |
+| `--pre-deploy`             | (check) compare live vs the LOCAL synth template: the declared drift your next `cdk deploy` would silently overwrite                            |
+| `--undeclared-only`        | (check) undeclared drift only: pair cdkrd with `cdk drift` for the declared side                                                                |
+| `--declared-only`          | (check) declared drift vs the deployed template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                          |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                                        |
-| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a NO-PROMPT run (`--yes`/CI); an interactive revert already lists them |
+| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them |
 | `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                   |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
-the line) are errors (exit `2`) — a typo'd flag never silently becomes a stack name.
+the line) are errors (exit `2`): a typo'd flag never silently becomes a stack name.
 
-### Interactive prompts (TTY only — CI is never prompted)
+### Interactive prompts (TTY only, CI is never prompted)
 
 Every option runs exactly the same code as the standalone commands. Prompts are
 skipped under `--json`, `--show-all`, `--pre-deploy`, and `--fail`. A non-TTY run
@@ -300,11 +297,11 @@ safe side); `--yes` alone in a TTY auto-approves confirmations only (select prom
 still show).
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
-Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each option appears only
-  when it applies (no Revert if nothing is revertable; "Decide per finding" only
+  Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
+  option appears only when it applies (no Revert if nothing is revertable; "Decide per finding" only
   with >1 finding). Aborting the Revert confirmation writes nothing.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every op
-  starts unselected** — it's the one command that writes to AWS, so you opt in to
+  starts unselected**: it's the one command that writes to AWS, so you opt in to
   each write. REMOVE ops (deleting a live value not in your template) are labeled
   `(REMOVE)`. **space** toggles · **→** selects all · **←** clears all · **enter**
   confirms. `--yes` applies the full plan.
@@ -313,13 +310,13 @@ Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each op
   auto-kept. Deselect a suspicious one and it stays reported by `check`. Only the
   **standout** values are listed; the folded nested sub-keys (`undeclared-subkey`)
   are **always recorded** and the picker header discloses their count (`--verbose`
-  itemizes each). `record` writes only undeclared + added state — any declared /
-  deleted drift is NOT written and `record` prints a note that it still stands
+  itemizes each). `record` writes only undeclared + added state; any declared /
+  deleted drift is not written and `record` prints a note that it still stands
   (resolve with `revert` or `cdk deploy`).
 - **`Decide per finding`** assigns a different action to each finding. On a busy
   stack, **just start typing to filter** the rows (↑↓ move · space cycles a row's
   actions · → applies the focused action to every visible row · enter applies).
-- **Folded inventory** — if `check` folded undeclared values out of the report,
+- **Folded inventory**: if `check` folded undeclared values out of the report,
   Ignore / Decide first ask whether to act on just the shown drift (default) or the
   folded values too, so the picker never lists values you never saw.
 
@@ -343,7 +340,7 @@ $ npx cdkrd check --pre-deploy
 result: 1 drift(s) (declared=1)
 ```
 
-`desired` is what your local code is about to set; `actual` is live now — someone
+`desired` is what your local code is about to set; `actual` is live now: someone
 bumped memory to 2048 out of band. Port it into code (or decide it should go away)
 before deploying. As a pipeline gate:
 
@@ -357,11 +354,11 @@ against the _deployed_ template) and never touches the baseline.
 
 ### Ignoring externally-managed properties
 
-Some properties are _legitimately_ rewritten by another system — Application Auto
-Scaling moving an ECS Service `DesiredCount`, autoscaled DynamoDB capacity. A
-recorded snapshot would re-flag every move. Run **`cdkrd ignore`** to pick the
+Some properties are _legitimately_ rewritten by another system, such as Application
+Auto Scaling moving an ECS Service `DesiredCount`, or autoscaled DynamoDB capacity.
+A recorded snapshot would re-flag every move. Run **`cdkrd ignore`** to pick the
 drift to suppress, or hand-edit the git-committed `.cdkrd/config.json` (strict
-JSON — no comments / trailing commas, unknown keys rejected):
+JSON: no comments / trailing commas, unknown keys rejected):
 
 ```json
 {
@@ -374,13 +371,13 @@ JSON — no comments / trailing commas, unknown keys rejected):
 ```
 
 - Every rule is an object `{ "path", "stack"?, "region"? }`. `cdkrd ignore` writes
-  the unscoped form — `path` is an exact `<constructPath>.<path>` (or
+  the unscoped form: `path` is an exact `<constructPath>.<path>` (or
   `<logicalId>.<path>` on a non-CDK stack); the optional `stack` / `region` scopes
   are a hand-edit.
 - All three fields accept the same `*` / `?` glob, and a parent `path` covers child
-  paths. **Region is an independent axis** from stack name — the same stack in
+  paths. **Region is an independent axis** from stack name; the same stack in
   several regions may drift in only one.
-- Matching findings move to the informational `ignored` tier — visible under
+- Matching findings move to the informational `ignored` tier: visible under
   `--verbose`, never exit-affecting, excluded from `revert` and `record`. A
   **deleted resource is never ignorable**.
 
@@ -403,21 +400,21 @@ info:
   run with --verbose for the list
 ```
 
-- **Drift tiers** — `deleted` / `declared` / `undeclared` — are always listed in
+- **Drift tiers** (`deleted` / `declared` / `undeclared`) are always listed in
   full and drive the `--fail` exit. They are the point.
-- **`[Not Recorded: N]`** — undeclared values you haven't recorded yet. Listed in
+- **`[Not Recorded: N]`**: undeclared values you haven't recorded yet. Listed in
   full, but not drift; `result:` points you at `cdkrd record`. Once a resource is
   fully snapshotted, a value that _appears_ later is real drift (`appeared since
-record`).
+  record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 
-| tier                                             | what it folds                                                                                                                                                                                                |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `atDefault`                                      | undeclared values sitting at a known AWS default (a Lambda `TracingConfig: PassThrough`, default Block Public Access). Equality-gated — a change away from the default still surfaces. Applies at any depth. |
-| `generated`                                      | undeclared values that are the name/identifier AWS/CDK minted (a topic's auto `TopicName`, a default `LoggingConfig`). Keyed off the physical id; equality-gated; never recorded.                            |
-| `nested`                                         | undeclared values living as a sub-key inside a property you _did_ declare (a CloudFront `Origins[<id>]` gaining a `ConnectionTimeout`). `record` records them; `--show-all` lists them.                      |
-| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                                                           |
+| tier                                             | what it folds                                                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `atDefault`                                      | an undeclared value sitting at a known AWS default (e.g. Lambda `TracingConfig: PassThrough`). Equality-gated, so a change away from it re-surfaces; never recorded. |
+| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                          |
+| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`). Recordable; `--show-all` lists it. |
+| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                     |
 
 `^result:` is the greppable verdict. Colorized on a TTY (`NO_COLOR` respected);
 piped / CI / `--json` output is plain text.
@@ -435,7 +432,7 @@ After publication this shape is a backward-compatible API.
 
 ## IAM permissions
 
-`check` / `record` are **read-only** — the AWS managed `ReadOnlyAccess` policy
+`check` / `record` are **read-only**: the AWS managed `ReadOnlyAccess` policy
 covers them. **If you never run `revert`, cdkrd needs no write permissions at all.**
 
 <details>
@@ -443,7 +440,7 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 
 - `cloudformation:GetTemplate`, `ListStackResources`, `DescribeStacks`,
   `DescribeType`; `ListExports` (only for templates using `Fn::ImportValue`)
-- `cloudcontrol:GetResource` — Cloud Control invokes each type's own read handler,
+- `cloudcontrol:GetResource`: Cloud Control invokes each type's own read handler,
   so it needs that type's read permissions (this is why `ReadOnlyAccess` is the
   simple answer)
 - SDK readers for the Cloud-Control-gap types: `s3:GetBucketPolicy`,
@@ -452,7 +449,7 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `lambda:GetPolicy`, `budgets:ViewBudget`, `ec2:DescribeAddresses`,
   `ec2:DescribeLaunchTemplateVersions`, `route53:ListResourceRecordSets`,
   `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`
-- Optional: `kms:ListAliases` — enables strict verification that a declared
+- Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the
   swap would otherwise go undetected), so the reduced coverage is never silent.
@@ -476,10 +473,9 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 ## Limitations
 
 `cdkrd` is **fail-closed**: anything it can't confidently compare is reported as
-informational, never guessed (zero false drift). The full list of what it does not
-do — revert's boundaries, nested stacks, per-type read gaps (Lambda Permission,
-IAM ManagedPolicy attachments, AppSync schema), stack-state handling — is in
-[docs/limitations.md](docs/limitations.md).
+informational, never guessed (zero false drift). For the full list of what it does
+not do (revert's boundaries, nested stacks, per-type read gaps, stack-state
+handling), see [docs/limitations.md](docs/limitations.md).
 
 ## FAQ
 
