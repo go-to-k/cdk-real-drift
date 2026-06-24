@@ -29,6 +29,7 @@ import {
 import {
   CloudWatchLogsClient,
   PutBearerTokenAuthenticationCommand,
+  PutMetricFilterCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
 import {
@@ -36,7 +37,12 @@ import {
   OpenSearchClient,
   UpdateDomainConfigCommand,
 } from '@aws-sdk/client-opensearch';
-import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
+import {
+  GetJobCommand,
+  GlueClient,
+  UpdateJobCommand,
+  UpdateTableCommand,
+} from '@aws-sdk/client-glue';
 import {
   GetWebACLCommand,
   type Scope,
@@ -547,6 +553,62 @@ const writeGlueJob: SdkWriter = async (ctx, ops) => {
   await c.send(new UpdateJobCommand({ JobName: name, JobUpdate: update as never }));
 };
 
+// AWS::Glue::Table — Cloud Control GetResource throws UnsupportedActionException for the
+// whole Glue family, so it is read via the Glue GetTable override and was not revertable.
+// Glue UpdateTable is a WHOLE-TableInput overwrite, and the override reader already
+// returns the full CFn-modeled TableInput (Name/Description/Owner/Retention/TableType/
+// Parameters/PartitionKeys/StorageDescriptor/…), so reconstruct the desired TableInput
+// (current + revert ops) and write it back. Mirrors the sibling writeGlueJob (GetJob →
+// UpdateJob). The reverted TableInput is complete, so the overwrite is safe.
+const writeGlueTable: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Glue::Table', ctx, ops);
+  const dbName = str(m.DatabaseName) ?? str(ctx.declared['DatabaseName']);
+  const tableInput = m.TableInput as Record<string, unknown> | undefined;
+  if (!dbName || !tableInput || !str(tableInput.Name))
+    throw new Error('cannot resolve Glue table target for revert');
+  const catalogId = str(m.CatalogId) ?? str(ctx.declared['CatalogId']);
+  await new GlueClient({ region: ctx.region }).send(
+    new UpdateTableCommand({
+      DatabaseName: dbName,
+      TableInput: tableInput as never,
+      ...(catalogId && { CatalogId: catalogId }),
+    })
+  );
+};
+
+// AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
+// composite id), so it is read via DescribeMetricFilters and was not revertable.
+// CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
+// reader returns the full CFn model (FilterPattern + MetricTransformations [+
+// ApplyOnTransformedLogs]), so reconstruct the desired model (current + revert ops) and
+// PUT it back. Covers the common drifts: an out-of-band FilterPattern edit or a changed
+// MetricTransformation value.
+const writeMetricFilter: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Logs::MetricFilter', ctx, ops);
+  const logGroup = str(m.LogGroupName) ?? str(ctx.declared['LogGroupName']);
+  const filterName = str(m.FilterName) ?? str(ctx.physicalId) ?? str(ctx.declared['FilterName']);
+  if (!logGroup || !filterName) throw new Error('cannot resolve metric filter target for revert');
+  const transforms = ((m.MetricTransformations as Record<string, unknown>[]) ?? []).map((t) => ({
+    metricName: str(t.MetricName),
+    metricNamespace: str(t.MetricNamespace),
+    metricValue: str(t.MetricValue),
+    ...(t.DefaultValue !== undefined && { defaultValue: Number(t.DefaultValue) }),
+    ...(t.Unit !== undefined && { unit: t.Unit as string }),
+    ...(t.Dimensions !== undefined && { dimensions: t.Dimensions as Record<string, string> }),
+  }));
+  await new CloudWatchLogsClient({ region: ctx.region }).send(
+    new PutMetricFilterCommand({
+      logGroupName: logGroup,
+      filterName,
+      filterPattern: str(m.FilterPattern) ?? '',
+      metricTransformations: transforms as never,
+      ...(m.ApplyOnTransformedLogs !== undefined && {
+        applyOnTransformedLogs: m.ApplyOnTransformedLogs as boolean,
+      }),
+    })
+  );
+};
+
 // AWS::OpenSearchService::Domain — Cloud Control CAN read this type, but its
 // UpdateResource REJECTS a property patch: it re-submits the full model and AWS's own
 // legacy `override_main_response_version` AdvancedOption (returned on read) is rejected
@@ -637,6 +699,8 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
   'AWS::WAFv2::WebACL': writeWafv2WebAcl,
   'AWS::Glue::Job': writeGlueJob,
+  'AWS::Glue::Table': writeGlueTable,
+  'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,

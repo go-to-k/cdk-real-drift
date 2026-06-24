@@ -38,10 +38,18 @@ import {
   DocDBClient,
   ModifyDBClusterCommand,
 } from '@aws-sdk/client-docdb';
-import { GetJobCommand, GlueClient, UpdateJobCommand } from '@aws-sdk/client-glue';
+import {
+  GetJobCommand,
+  GetTableCommand,
+  GlueClient,
+  UpdateJobCommand,
+  UpdateTableCommand,
+} from '@aws-sdk/client-glue';
 import {
   CloudWatchLogsClient,
+  DescribeMetricFiltersCommand,
   PutBearerTokenAuthenticationCommand,
+  PutMetricFilterCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   GetTopicAttributesCommand,
@@ -249,6 +257,100 @@ describe('Glue Job writer (CC UpdateResource rejects MaxCapacity+WorkerType)', (
     await expect(
       SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: '', declared: {} }), [timeoutOp(10)])
     ).rejects.toThrow(/Glue job name/);
+  });
+});
+
+describe('Glue Table writer (CC cannot read/write the Glue family)', () => {
+  const descOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/TableInput/Description',
+    value,
+    human: 'TableInput.Description -> deployed-template value',
+  });
+  it('reverts via GetTable -> UpdateTable, rebuilding the full desired TableInput', async () => {
+    glue.on(GetTableCommand).resolves({
+      Table: {
+        Name: 't',
+        Description: 'CHANGED out of band',
+        TableType: 'EXTERNAL_TABLE',
+        Parameters: { classification: 'json' },
+        StorageDescriptor: { Location: 's3://b/t/' },
+      },
+    } as never);
+    glue.on(UpdateTableCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Table'](
+      ctx({ physicalId: 'db|t', declared: { DatabaseName: 'db' } }),
+      [descOp('the declared description')]
+    );
+    const calls = glue.commandCalls(UpdateTableCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as {
+      DatabaseName: string;
+      TableInput: Record<string, unknown>;
+    };
+    expect(input.DatabaseName).toBe('db');
+    expect(input.TableInput.Name).toBe('t');
+    expect(input.TableInput.Description).toBe('the declared description'); // reverted
+    expect(input.TableInput.TableType).toBe('EXTERNAL_TABLE'); // round-tripped
+    expect((input.TableInput.Parameters as Record<string, string>).classification).toBe('json');
+  });
+
+  it('throws when the table target is unresolvable', async () => {
+    glue.on(GetTableCommand).resolves({ Table: undefined } as never);
+    await expect(
+      SDK_WRITERS['AWS::Glue::Table'](ctx({ physicalId: '', declared: {} }), [descOp('x')])
+    ).rejects.toThrow(/Glue table target/);
+  });
+});
+
+describe('Logs MetricFilter writer (CC GetResource ValidationException on composite id)', () => {
+  const reader = (filterPattern: string): void => {
+    logs.on(DescribeMetricFiltersCommand).resolves({
+      metricFilters: [
+        {
+          filterName: 'f',
+          filterPattern,
+          metricTransformations: [
+            { metricName: 'Errors', metricNamespace: 'App', metricValue: '1', defaultValue: 0 },
+          ],
+        },
+      ],
+    } as never);
+  };
+  const patternOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/FilterPattern',
+    value,
+    human: 'FilterPattern -> deployed-template value',
+  });
+  it('reverts via DescribeMetricFilters -> PutMetricFilter (upsert of the whole filter)', async () => {
+    reader('"CHANGED"');
+    logs.on(PutMetricFilterCommand).resolves({});
+    await SDK_WRITERS['AWS::Logs::MetricFilter'](
+      ctx({ physicalId: 'f', declared: { LogGroupName: '/aws/lambda/x' } }),
+      [patternOp('"ERROR"')]
+    );
+    const calls = logs.commandCalls(PutMetricFilterCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as {
+      logGroupName: string;
+      filterName: string;
+      filterPattern: string;
+      metricTransformations: Record<string, unknown>[];
+    };
+    expect(input.logGroupName).toBe('/aws/lambda/x');
+    expect(input.filterName).toBe('f');
+    expect(input.filterPattern).toBe('"ERROR"'); // reverted
+    expect(input.metricTransformations[0]!.metricName).toBe('Errors'); // round-tripped
+    expect(input.metricTransformations[0]!.defaultValue).toBe(0);
+  });
+
+  it('throws when the filter target is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::Logs::MetricFilter'](ctx({ physicalId: '', declared: {} }), [
+        patternOp('"x"'),
+      ])
+    ).rejects.toThrow(/metric filter target/);
   });
 });
 
