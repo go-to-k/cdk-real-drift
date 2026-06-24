@@ -1,0 +1,242 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Broker",
+    "resourceType": "AWS::AmazonMQ::Broker",
+    "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+    "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker",
+    "declared": {
+      "AutoMinorVersionUpgrade": true,
+      "BrokerName": "cdkrd-mq-version",
+      "DeploymentMode": "SINGLE_INSTANCE",
+      "EngineType": "ACTIVEMQ",
+      "EngineVersion": "5.18",
+      "HostInstanceType": "mq.t3.micro",
+      "PubliclyAccessible": true,
+      "Users": [
+        {
+          "Password": "CdkrdTestPassword123",
+          "Username": "cdkrdadmin"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SecurityGroups": ["sg-0a26e23e2310ee0c9"],
+    "AuthenticationStrategy": "SIMPLE",
+    "SubnetIds": ["subnet-0ddbb00e7c1d5b679"],
+    "StompEndpoints": [
+      "stomp+ssl://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:61614"
+    ],
+    "MqttEndpoints": [
+      "mqtt+ssl://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:8883"
+    ],
+    "AmqpEndpoints": [
+      "amqp+ssl://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:5671"
+    ],
+    "DeploymentMode": "SINGLE_INSTANCE",
+    "EngineType": "ACTIVEMQ",
+    "EncryptionOptions": {
+      "UseAwsOwnedKey": true
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAmazonMqVersionFp/c59a3000-6f71-11f1-9c5c-0affc1cb51fd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegAmazonMqVersionFp",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Broker",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "StorageType": "EFS",
+    "ConfigurationRevision": "1",
+    "MaintenanceWindowStartTime": {
+      "DayOfWeek": "FRIDAY",
+      "TimeOfDay": "20:00",
+      "TimeZone": "UTC"
+    },
+    "HostInstanceType": "mq.t3.micro",
+    "AutoMinorVersionUpgrade": true,
+    "Logs": {
+      "Audit": false,
+      "General": false
+    },
+    "ConsoleURLs": [
+      "https://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:8162"
+    ],
+    "ConfigurationId": "c-08ecab16-ef30-45c5-b637-a6af7378c9a8",
+    "DataReplicationMode": "NONE",
+    "BrokerName": "cdkrd-mq-version",
+    "EngineVersionCurrent": "5.18.7",
+    "WssEndpoints": [
+      "wss://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:61619"
+    ],
+    "IpAddresses": ["3.220.149.135"],
+    "OpenWireEndpoints": [
+      "ssl://b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86-1.mq.us-east-1.amazonaws.com:61617"
+    ],
+    "Id": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+    "PubliclyAccessible": true,
+    "Arn": "arn:aws:mq:us-east-1:111111111111:broker:cdkrd-mq-version:b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86"
+  },
+  "schema": {
+    "readOnly": [
+      "AmqpEndpoints",
+      "Arn",
+      "ConfigurationId",
+      "ConfigurationRevision",
+      "ConsoleURLs",
+      "EngineVersionCurrent",
+      "Id",
+      "IpAddresses",
+      "MqttEndpoints",
+      "OpenWireEndpoints",
+      "StompEndpoints",
+      "WssEndpoints"
+    ],
+    "writeOnly": ["Configuration", "DataReplicationPrimaryBrokerArn", "EngineVersion", "Users"],
+    "createOnly": [
+      "AuthenticationStrategy",
+      "BrokerName",
+      "DeploymentMode",
+      "EncryptionOptions",
+      "EngineType",
+      "PubliclyAccessible",
+      "StorageType",
+      "SubnetIds"
+    ],
+    "readOnlyPaths": [
+      "AmqpEndpoints",
+      "Arn",
+      "ConfigurationId",
+      "ConfigurationRevision",
+      "ConsoleURLs",
+      "EngineVersionCurrent",
+      "Id",
+      "IpAddresses",
+      "MqttEndpoints",
+      "OpenWireEndpoints",
+      "StompEndpoints",
+      "WssEndpoints"
+    ],
+    "writeOnlyPaths": [
+      "Configuration",
+      "DataReplicationPrimaryBrokerArn",
+      "EngineVersion",
+      "LdapServerMetadata.ServiceAccountPassword",
+      "Users"
+    ],
+    "createOnlyPaths": [
+      "AuthenticationStrategy",
+      "BrokerName",
+      "DeploymentMode",
+      "EncryptionOptions",
+      "EngineType",
+      "PubliclyAccessible",
+      "StorageType",
+      "SubnetIds"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "EngineVersion",
+      "note": "write-only — cannot be read back",
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "Users",
+      "note": "write-only — cannot be read back",
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "SecurityGroups",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "AuthenticationStrategy",
+      "actual": "SIMPLE",
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "SubnetIds",
+      "actual": ["subnet-0ddbb00e7c1d5b679"],
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "EncryptionOptions",
+      "actual": {
+        "UseAwsOwnedKey": true
+      },
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "StorageType",
+      "actual": "EFS",
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "MaintenanceWindowStartTime",
+      "actual": {
+        "DayOfWeek": "FRIDAY",
+        "TimeOfDay": "20:00",
+        "TimeZone": "UTC"
+      },
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "DataReplicationMode",
+      "actual": "NONE",
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    }
+  ]
+}
