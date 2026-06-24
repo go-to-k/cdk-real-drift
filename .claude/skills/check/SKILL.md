@@ -21,14 +21,19 @@ Run these sequentially and report results:
    `vp run lint:fix`**: CI runs `vp check` (which includes formatting), and
    `lint:fix` does NOT touch formatting — so a `lint:fix`-only run can pass
    locally while CI fails with formatting issues on the same branch.
-3. `vp run build` — `vp pack` (tsdown ESM bundle to `dist/`).
-4. `vp run test` — `vp test run` (Vitest unit tests; `tests/integration/**` is
-   excluded by `vite.config.ts`).
+3. `vp pack` (tsdown ESM bundle to `dist/`). **Invoke `vp pack` DIRECTLY, not
+   `vp run build`**: the `run`-task wrapper caches and can REPLAY a stale `dist/`
+   that does not reflect the current `src/` — a fresh `vp pack` always rebuilds.
+   A stale `dist/` has caused a false-negative live-test (a `cdkrd check` ran an
+   old binary that lacked the change under test).
+4. `vp test run` (Vitest unit tests; `tests/integration/**` is excluded by
+   `vite.config.ts`). **Invoke `vp test run` DIRECTLY, not `vp run test`** — same
+   cache-replay foot-gun: `vp run test` can replay a stale pass.
 
 When piping any of the above to `tail` / `head` / `grep`, **check the actual
 output content** for `Error` / `Command failed` markers — `$?` after a pipeline
 reflects the LAST stage (usually 0), NOT the build tool's exit. When in doubt,
-capture without piping: `vp run X > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
+capture without piping: `vp <cmd> > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
 
 ## Output
 
@@ -38,7 +43,7 @@ Report as a table:
 | -------------------------------- | --------- |
 | typecheck (`vp run typecheck`)   | pass/fail |
 | lint + format (`vp check --fix`) | pass/fail |
-| build (`vp run build`)           | pass/fail |
+| build (`vp pack`)                | pass/fail |
 | tests (N files, M tests)         | pass/fail |
 
 If all pass, confirm "All checks passed."

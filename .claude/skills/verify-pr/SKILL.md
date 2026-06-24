@@ -29,13 +29,16 @@ Run each check and report pass/fail:
    - `vp run typecheck` passes
    - `vp check --fix` passes (lint + format; use this, not `lint:fix` — see
      `/check`)
-   - `vp run build` succeeds
+   - `vp pack` succeeds. **Invoke `vp pack` DIRECTLY, not `vp run build`** — the
+     `run`-task wrapper caches and can REPLAY a stale `dist/`, which has caused a
+     false-negative live-test (step 6 ran an old binary lacking the change).
    - When piping to `tail` / `head` / `grep`, check the actual output for
      `Error` / `Command failed` — `$?` after a pipeline reflects the last stage,
-     not the build tool. When in doubt: `vp run X > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
+     not the build tool. When in doubt: `vp <cmd> > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
 
 2. **Tests**
-   - `vp run test` — all unit tests pass; report file + test counts.
+   - `vp test run` — all unit tests pass; report file + test counts. **Invoke
+     `vp test run` DIRECTLY, not `vp run test`** (same cache-replay foot-gun).
    - **Coverage of changes**: compare `git diff HEAD~5 --name-only` for `src/`
      vs `tests/`. If logic was added/changed in `src/` with no corresponding test
      added/updated, flag as **fail** and add the missing tests before proceeding.
@@ -60,7 +63,9 @@ Run each check and report pass/fail:
 6. **Live-test changed behavior**
    - Unit tests verify code correctness; this verifies _feature_ correctness
      against the runtime the user actually sees.
-   - Build the latest source: `vp run build`.
+   - Build the latest source: `vp pack` (DIRECTLY — not `vp run build`, whose
+     cache can replay a stale `dist/` and make this live-test exercise an old
+     binary).
    - For each user-visible change (CLI command, output format, flag, error
      message), run the actual command path and confirm the output matches the
      spec:
