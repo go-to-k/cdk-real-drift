@@ -169,12 +169,10 @@ the same as `unrecorded` (a baseline-file axis).
   git, where a PR that changes it is a reviewable change to "what real state we
   record". Account id + region are in the filename, so the same stack in several
   accounts never collides.
-- **Recording the baseline is the switch that arms undeclared / added detection.**
-  With no baseline, a live-only value or added resource is `unrecorded`
-  (informational, CLEAN, never fails `--fail`); there's nothing to compare it to.
-  Once recorded, a later out-of-band change to it is failing drift. So the headline
-  feature is inert until a stack's first `record`; declared-property and
-  out-of-band-delete detection need no baseline.
+- **Recording arms undeclared / added detection.** Until a stack's first `record`,
+  a live-only value or added resource is `unrecorded` (informational, CLEAN, never
+  fails `--fail`); once recorded, a later out-of-band change to it is failing drift.
+  Declared-property and out-of-band-delete detection need no baseline.
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
   model (Cloud Control API + SDK readers for the gap types) and subtracts
   everything explainable: schema read-only/write-only/defaults, AWS-managed
@@ -482,10 +480,9 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 ## Limitations
 
 `cdkrd` is **fail-closed**: anything it can't confidently compare is reported as
-informational, never guessed (zero false drift). The full list of what it does not
-do (revert's boundaries, nested stacks, per-type read gaps for Lambda Permission,
-IAM ManagedPolicy attachments, and AppSync schema, plus stack-state handling) is in
-[docs/limitations.md](docs/limitations.md).
+informational, never guessed (zero false drift). For the full list of what it does
+not do (revert's boundaries, nested stacks, per-type read gaps, stack-state
+handling), see [docs/limitations.md](docs/limitations.md).
 
 ## FAQ
 
