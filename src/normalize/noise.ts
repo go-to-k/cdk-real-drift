@@ -97,6 +97,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MaximumMessageSize: 1048576,
     FifoThroughputLimit: 'perQueue', // FIFO queues only
     DeduplicationScope: 'queue', // FIFO queues only
+    KmsDataKeyReusePeriodSeconds: 300, // default 5 min; appears only on SSE-KMS queues
   },
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
     HealthCheckEnabled: true,
@@ -131,6 +132,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ApiKeySourceType: 'HEADER',
     SecurityPolicy: 'TLS_1_0',
     EndpointConfiguration: { IpAddressType: 'ipv4', Types: ['EDGE'] },
+    DisableExecuteApiEndpoint: false,
   },
   'AWS::EC2::Subnet': {
     PrivateDnsNameOptionsOnLaunch: {
@@ -138,6 +140,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       HostnameType: 'ip-name',
       EnableResourceNameDnsAAAARecord: false,
     },
+    // IPv6 feature flags AWS reports off by default on every IPv4 subnet.
+    AssignIpv6AddressOnCreation: false,
+    EnableDns64: false,
+    Ipv6Native: false,
   },
   // R-noise-sweep (found by the ec2-instance-rich hunt, PR #310 follow-up): a fresh
   // EC2 Instance reports these three constant service defaults as undeclared on every
@@ -159,6 +165,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGatewayV2::Api': {
     RouteSelectionExpression: '$request.method $request.path',
     IpAddressType: 'ipv4', // R-noise-sweep: default; flipping to dualstack no longer matches and surfaces
+    DisableExecuteApiEndpoint: false,
   },
   'AWS::ApiGatewayV2::Integration': {
     ConnectionType: 'INTERNET',
@@ -172,6 +179,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::DynamoDB::Table': {
     BillingMode: 'PROVISIONED',
+    DeletionProtectionEnabled: false,
   },
   'AWS::ECR::Repository': {
     EncryptionConfiguration: { EncryptionType: 'AES256' },
@@ -205,12 +213,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // Cognito's default refresh-token validity is 30 (days, the default unit) when a
     // client declares none — observed unanimous across the corpus clients.
     RefreshTokenValidity: 30,
+    EnablePropagateAdditionalUserContextData: false,
   },
   'AWS::ECS::Service': {
     SchedulingStrategy: 'REPLICA',
     // A service with no load-balancer health-check grace reads back 0 (the default) —
     // observed unanimous across the corpus services.
     HealthCheckGracePeriodSeconds: 0,
+    AvailabilityZoneRebalancing: 'ENABLED', // AWS default for new services
+    EnableExecuteCommand: false,
   },
   'AWS::AppSync::GraphQLApi': {
     ApiType: 'GRAPHQL',
@@ -221,6 +232,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // AppSync API otherwise reports them as first-run undeclared inventory.
     QueryDepthLimit: 0,
     ResolverCountLimit: 0,
+    XrayEnabled: false,
   },
   // AppSync Resolvers / Functions default MaxBatchSize to 0 (no batch invocation)
   // when the template declares no batching — observed live on a fresh
@@ -240,6 +252,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::KMS::Key': {
     Enabled: true,
+    KeySpec: 'SYMMETRIC_DEFAULT',
+    KeyUsage: 'ENCRYPT_DECRYPT',
+    Origin: 'AWS_KMS',
   },
   'AWS::IAM::Group': {
     Path: '/',
@@ -295,18 +310,30 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MonitoringInterval: 0,
     NetworkType: 'IPV4',
     StorageThroughput: 0,
+    // Boolean feature flags off by default (observed unanimous across the corpus
+    // instances). NOT folded: per-resource/engine values (Port, EngineVersion,
+    // LicenseModel, MasterUsername, StorageType, *ParameterGroupName, CACertificateIdentifier).
+    CopyTagsToSnapshot: false,
+    DedicatedLogVolume: false,
+    EnableIAMDatabaseAuthentication: false,
+    EnablePerformanceInsights: false,
+    ManageMasterUserPassword: false,
+    MultiAZ: false,
+    StorageEncrypted: false,
   },
   'AWS::RDS::DBCluster': {
     AutoMinorVersionUpgrade: true,
     DatabaseInsightsMode: 'standard',
     EngineLifecycleSupport: 'open-source-rds-extended-support',
     NetworkType: 'IPV4',
+    EngineMode: 'provisioned', // default; serverless/parallelquery are explicit opt-ins
   },
   'AWS::Neptune::DBInstance': {
     AutoMinorVersionUpgrade: true,
   },
   'AWS::Neptune::DBCluster': {
     NetworkType: 'IPV4',
+    DBPort: 8182, // Neptune's fixed default port
   },
   'AWS::ElastiCache::ReplicationGroup': {
     AutoMinorVersionUpgrade: true,
@@ -345,6 +372,59 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Glue::Job': {
     JobMode: 'SCRIPT',
     MaxRetries: 0,
+  },
+  // R-noise-sweep (PR #355 follow-up): constant service defaults a fresh resource
+  // reports as undeclared on every first run. Each is a documented account-/region-
+  // independent default (NOT a per-resource id/name/AZ/window/port-that-varies-by-engine),
+  // equality-gated like every KNOWN_DEFAULTS entry — flip one out of band and it no
+  // longer matches, so it re-surfaces as real drift.
+  'AWS::AutoScaling::AutoScalingGroup': {
+    Cooldown: '300', // default cooldown 300s (CC returns it as a string)
+    HealthCheckType: 'EC2',
+    HealthCheckGracePeriod: 0,
+  },
+  'AWS::DocDB::DBCluster': {
+    Port: 27017, // DocDB's fixed default port
+  },
+  'AWS::SSM::Association': {
+    DocumentVersion: '$DEFAULT', // default when no explicit version is pinned
+  },
+  // CloudWatch alarm defaults. A metric Alarm's `ActionsEnabled` already folds via its
+  // CFn schema default, so only `TreatMissingData` (the documented "missing" default,
+  // surfaced as undeclared whenever a template omits it — the common case) is added here.
+  // DatapointsToAlarm is NOT folded — it defaults to EvaluationPeriods (a per-alarm value,
+  // not a constant); EvaluationPeriods/Threshold/ComparisonOperator are required so they
+  // are always declared, never first-run noise. CompositeAlarm has NO schema default for
+  // `ActionsEnabled` (observed undeclared in the corpus), so it needs the explicit fold.
+  'AWS::CloudWatch::Alarm': {
+    TreatMissingData: 'missing',
+  },
+  'AWS::CloudWatch::CompositeAlarm': {
+    ActionsEnabled: true,
+  },
+  'AWS::CloudWatch::MetricStream': {
+    IncludeLinkedAccountsMetrics: false,
+    State: 'running', // steady state after a successful create
+  },
+  'AWS::Logs::LogGroup': {
+    LogGroupClass: 'STANDARD',
+    DeletionProtectionEnabled: false,
+    BearerTokenAuthenticationEnabled: false,
+  },
+  'AWS::ApiGateway::Method': {
+    ApiKeyRequired: false,
+  },
+  'AWS::ApiGatewayV2::Route': {
+    ApiKeyRequired: false,
+  },
+  'AWS::ElasticLoadBalancingV2::ListenerRule': {
+    IsDefault: false, // a declared rule is never the listener's default rule
+  },
+  // A Glue Crawler with no Lake Formation config reads back the "off" sentinel object
+  // (empty AccountId + creds disabled) — whole-object equality-gated, so configuring
+  // Lake Formation still surfaces.
+  'AWS::Glue::Crawler': {
+    LakeFormationConfiguration: { AccountId: '', UseLakeFormationCredentials: false },
   },
 };
 

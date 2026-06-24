@@ -64,8 +64,8 @@
       "tier": "atDefault",
       "logicalId": "GlueRoleDEDFFD2C",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest5-GlueRoleDEDFFD2C-ogFxtucP6XBp",
       "constructPath": "CdkrdIntegHarvest5/GlueRole"
     },
@@ -82,8 +82,8 @@
       "tier": "atDefault",
       "logicalId": "GlueRoleDEDFFD2C",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest5-GlueRoleDEDFFD2C-ogFxtucP6XBp",
       "constructPath": "CdkrdIntegHarvest5/GlueRole"
     }

@@ -148,6 +148,15 @@
       "constructPath": "CdkRealDriftIntegDdbGsiProjection/Table"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Table",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "cdkrd-integ-ddb-gsi-projection",
+      "constructPath": "CdkRealDriftIntegDdbGsiProjection/Table"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Table",
       "resourceType": "AWS::DynamoDB::Table",

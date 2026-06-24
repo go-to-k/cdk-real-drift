@@ -94,6 +94,15 @@
       "actual": "$request.method $request.path",
       "physicalId": "t72tv8phdi",
       "constructPath": "CdkrdIntegHarvest/HttpApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HttpApi",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "t72tv8phdi",
+      "constructPath": "CdkrdIntegHarvest/HttpApi"
     }
   ]
 }

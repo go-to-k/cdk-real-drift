@@ -54,11 +54,12 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
+      "tier": "declared",
       "logicalId": "MatrixLogsDDD521D9",
       "resourceType": "AWS::Logs::LogGroup",
-      "path": "BearerTokenAuthenticationEnabled",
-      "actual": false,
+      "path": "RetentionInDays",
+      "desired": 7,
+      "actual": 30,
       "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
       "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
     },
@@ -66,7 +67,7 @@
       "tier": "atDefault",
       "logicalId": "MatrixLogsDDD521D9",
       "resourceType": "AWS::Logs::LogGroup",
-      "path": "DeletionProtectionEnabled",
+      "path": "BearerTokenAuthenticationEnabled",
       "actual": false,
       "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
       "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
@@ -81,12 +82,11 @@
       "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
     },
     {
-      "tier": "declared",
+      "tier": "atDefault",
       "logicalId": "MatrixLogsDDD521D9",
       "resourceType": "AWS::Logs::LogGroup",
-      "path": "RetentionInDays",
-      "desired": 7,
-      "actual": 30,
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
       "physicalId": "CdkrdIntegHarvest3-MatrixLogsDDD521D9-Zn23SPxJoN6J",
       "constructPath": "CdkrdIntegHarvest3/MatrixLogs"
     }

@@ -50,7 +50,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Composite0B9667B9",
       "resourceType": "AWS::CloudWatch::CompositeAlarm",
       "path": "ActionsEnabled",

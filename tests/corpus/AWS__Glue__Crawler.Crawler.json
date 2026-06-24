@@ -76,5 +76,18 @@
     "kmsAliasTargets": {},
     "oaiCanonicalIds": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Crawler",
+      "resourceType": "AWS::Glue::Crawler",
+      "path": "LakeFormationConfiguration",
+      "actual": {
+        "AccountId": "",
+        "UseLakeFormationCredentials": false
+      },
+      "physicalId": "cdkrd-crawler",
+      "constructPath": "CdkdriftIntegHarvest11/Crawler"
+    }
+  ]
 }

@@ -130,8 +130,10 @@
       "tier": "undeclared",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
-      "path": "Name",
-      "actual": "Edge-iCCoPGcllLnA",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
       "physicalId": "Edge-iCCoPGcllLnA|8db5286a-695e-41b6-beba-f4207a727afc|REGIONAL",
       "constructPath": "CdkrdIntegHarvest2/Edge"
     },
@@ -139,10 +141,8 @@
       "tier": "undeclared",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
-      "path": "OnSourceDDoSProtectionConfig",
-      "actual": {
-        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
-      },
+      "path": "Name",
+      "actual": "Edge-iCCoPGcllLnA",
       "physicalId": "Edge-iCCoPGcllLnA|8db5286a-695e-41b6-beba-f4207a727afc|REGIONAL",
       "constructPath": "CdkrdIntegHarvest2/Edge"
     }

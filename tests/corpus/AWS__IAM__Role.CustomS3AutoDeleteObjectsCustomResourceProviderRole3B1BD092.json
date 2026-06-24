@@ -64,8 +64,8 @@
       "tier": "atDefault",
       "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
       "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
     },
@@ -82,8 +82,8 @@
       "tier": "atDefault",
       "logicalId": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkdriftIntegBasic-CustomS3AutoDeleteObjectsCustomR-4YM5iKfd6ZFF",
       "constructPath": "CdkdriftIntegBasic/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
     }

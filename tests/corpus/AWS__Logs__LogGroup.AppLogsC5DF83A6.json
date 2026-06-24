@@ -81,8 +81,8 @@
       "tier": "atDefault",
       "logicalId": "AppLogsC5DF83A6",
       "resourceType": "AWS::Logs::LogGroup",
-      "path": "DeletionProtectionEnabled",
-      "actual": false,
+      "path": "LogGroupClass",
+      "actual": "STANDARD",
       "physicalId": "CdkrdIntegHarvest-AppLogsC5DF83A6-66Qaf6Ss2V6h",
       "constructPath": "CdkrdIntegHarvest/AppLogs"
     },
@@ -90,8 +90,8 @@
       "tier": "atDefault",
       "logicalId": "AppLogsC5DF83A6",
       "resourceType": "AWS::Logs::LogGroup",
-      "path": "LogGroupClass",
-      "actual": "STANDARD",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
       "physicalId": "CdkrdIntegHarvest-AppLogsC5DF83A6-66Qaf6Ss2V6h",
       "constructPath": "CdkrdIntegHarvest/AppLogs"
     }

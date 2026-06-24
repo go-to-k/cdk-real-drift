@@ -132,6 +132,15 @@
       "actual": "PROVISIONED",
       "physicalId": "CdkRealDriftIntegDdbResourcePolicyRich-TableCD117FA1-TCIZLHHU2N65",
       "constructPath": "CdkRealDriftIntegDdbResourcePolicyRich/Table"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TableCD117FA1",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "CdkRealDriftIntegDdbResourcePolicyRich-TableCD117FA1-TCIZLHHU2N65",
+      "constructPath": "CdkRealDriftIntegDdbResourcePolicyRich/Table"
     }
   ]
 }

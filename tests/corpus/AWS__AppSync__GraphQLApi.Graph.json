@@ -113,6 +113,15 @@
       "tier": "atDefault",
       "logicalId": "Graph",
       "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "XrayEnabled",
+      "actual": false,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",
+      "constructPath": "CdkrdIntegHarvest3/Graph"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Graph",
+      "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "Visibility",
       "actual": "GLOBAL",
       "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/bb3dolsy4jf4vgdelqzpaojuqq",

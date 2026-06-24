@@ -132,6 +132,15 @@
       "tier": "atDefault",
       "logicalId": "TableCD117FA1",
       "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "CdkRealDriftIntegDdbKinesisRich-TableCD117FA1-11L4APTFUSFM8",
+      "constructPath": "CdkRealDriftIntegDdbKinesisRich/Table"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TableCD117FA1",
+      "resourceType": "AWS::DynamoDB::Table",
       "path": "PointInTimeRecoverySpecification.RecoveryPeriodInDays",
       "actual": 35,
       "nested": true,

@@ -132,7 +132,7 @@
       "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "Cooldown",
@@ -161,7 +161,7 @@
       "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "HealthCheckGracePeriod",
@@ -203,7 +203,7 @@
       "constructPath": "CdkRealDriftIntegAsgAzReorder/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "HealthCheckType",

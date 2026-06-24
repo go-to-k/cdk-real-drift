@@ -52,9 +52,9 @@
       "tier": "undeclared",
       "logicalId": "Mailer",
       "resourceType": "AWS::SES::ConfigurationSet",
-      "path": "ReputationOptions",
+      "path": "SendingOptions",
       "actual": {
-        "ReputationMetricsEnabled": true
+        "SendingEnabled": true
       },
       "physicalId": "cdkrd-harvest3",
       "constructPath": "CdkrdIntegHarvest3/Mailer"
@@ -63,9 +63,9 @@
       "tier": "undeclared",
       "logicalId": "Mailer",
       "resourceType": "AWS::SES::ConfigurationSet",
-      "path": "SendingOptions",
+      "path": "ReputationOptions",
       "actual": {
-        "SendingEnabled": true
+        "ReputationMetricsEnabled": true
       },
       "physicalId": "cdkrd-harvest3",
       "constructPath": "CdkrdIntegHarvest3/Mailer"

@@ -208,15 +208,6 @@
       "tier": "atDefault",
       "logicalId": "ArchiveDA4CB258",
       "resourceType": "AWS::S3::Bucket",
-      "path": "AbacStatus",
-      "actual": "Disabled",
-      "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
-      "constructPath": "CdkrdIntegHarvest2/Archive"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "ArchiveDA4CB258",
-      "resourceType": "AWS::S3::Bucket",
       "path": "BucketEncryption",
       "actual": {
         "ServerSideEncryptionConfiguration": [
@@ -231,6 +222,15 @@
           }
         ]
       },
+      "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
+      "constructPath": "CdkrdIntegHarvest2/Archive"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ArchiveDA4CB258",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
       "physicalId": "cdkrdintegharvest2-archiveda4cb258-ghyrdvyo0xbi",
       "constructPath": "CdkrdIntegHarvest2/Archive"
     },

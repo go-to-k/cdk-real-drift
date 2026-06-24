@@ -359,6 +359,15 @@
       "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
+      "constructPath": "CdkdriftIntegHarvest13/Database"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DatabaseB269D8BB",
+      "resourceType": "AWS::RDS::DBInstance",
       "path": "AutoMinorVersionUpgrade",
       "actual": true,
       "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
@@ -379,6 +388,15 @@
       "resourceType": "AWS::RDS::DBInstance",
       "path": "NetworkType",
       "actual": "IPV4",
+      "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
+      "constructPath": "CdkdriftIntegHarvest13/Database"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DatabaseB269D8BB",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
       "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
@@ -424,6 +442,24 @@
       "resourceType": "AWS::RDS::DBInstance",
       "path": "CACertificateIdentifier",
       "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
+      "constructPath": "CdkdriftIntegHarvest13/Database"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DatabaseB269D8BB",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
+      "constructPath": "CdkdriftIntegHarvest13/Database"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DatabaseB269D8BB",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
       "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
       "constructPath": "CdkdriftIntegHarvest13/Database"
     }

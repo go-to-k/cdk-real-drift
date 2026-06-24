@@ -145,6 +145,15 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "SvcServiceE0738BDC",
+      "resourceType": "AWS::ECS::Service",
+      "path": "EnableExecuteCommand",
+      "actual": false,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkRealDriftIntegEcsServiceCapacity-ClusterEB0386A7-Jfa2GE1aHPmh/CdkRealDriftIntegEcsServiceCapacity-SvcServiceE0738BDC-0AaRfhu4QDDu",
+      "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",

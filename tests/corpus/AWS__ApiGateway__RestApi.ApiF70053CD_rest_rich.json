@@ -85,6 +85,15 @@
       "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "we41awg0n3",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::ApiGateway::RestApi",

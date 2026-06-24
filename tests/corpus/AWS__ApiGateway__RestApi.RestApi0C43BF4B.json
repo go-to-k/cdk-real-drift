@@ -77,6 +77,15 @@
       "tier": "atDefault",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
+      "physicalId": "84xvb60zri",
+      "constructPath": "CdkrdIntegHarvest/RestApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RestApi0C43BF4B",
+      "resourceType": "AWS::ApiGateway::RestApi",
       "path": "ApiKeySourceType",
       "actual": "HEADER",
       "physicalId": "84xvb60zri",
@@ -98,8 +107,8 @@
       "tier": "atDefault",
       "logicalId": "RestApi0C43BF4B",
       "resourceType": "AWS::ApiGateway::RestApi",
-      "path": "SecurityPolicy",
-      "actual": "TLS_1_0",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
       "physicalId": "84xvb60zri",
       "constructPath": "CdkrdIntegHarvest/RestApi"
     }

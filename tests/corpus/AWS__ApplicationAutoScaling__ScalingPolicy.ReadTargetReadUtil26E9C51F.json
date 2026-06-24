@@ -88,8 +88,8 @@
       "tier": "undeclared",
       "logicalId": "ReadTargetReadUtil26E9C51F",
       "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
-      "path": "ScalableDimension",
-      "actual": "dynamodb:table:ReadCapacityUnits",
+      "path": "ServiceNamespace",
+      "actual": "dynamodb",
       "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
       "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
     },
@@ -97,8 +97,8 @@
       "tier": "undeclared",
       "logicalId": "ReadTargetReadUtil26E9C51F",
       "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
-      "path": "ServiceNamespace",
-      "actual": "dynamodb",
+      "path": "ScalableDimension",
+      "actual": "dynamodb:table:ReadCapacityUnits",
       "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:006886ff-939e-44c7-a2b8-6802bb2e3e66:resource/dynamodb/table/CdkrdIntegHarvest4-Sessions8896A56D-1BLLK19UTRX3G:policyName/CdkrdIntegHarvest4ReadTargetReadUtil0E59EFB4",
       "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
     }

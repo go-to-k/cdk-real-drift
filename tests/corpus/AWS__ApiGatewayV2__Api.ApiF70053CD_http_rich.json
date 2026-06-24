@@ -95,6 +95,15 @@
       "actual": "$request.method $request.path",
       "physicalId": "z1mf4h761f",
       "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiF70053CD",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "z1mf4h761f",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api"
     }
   ]
 }

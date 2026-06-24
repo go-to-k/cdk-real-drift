@@ -64,8 +64,8 @@
       "tier": "atDefault",
       "logicalId": "MatrixFnServiceRoleF6E55B32",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest3-MatrixFnServiceRoleF6E55B32-ryqUvLrnxdXh",
       "constructPath": "CdkrdIntegHarvest3/MatrixFn/ServiceRole"
     },
@@ -82,8 +82,8 @@
       "tier": "atDefault",
       "logicalId": "MatrixFnServiceRoleF6E55B32",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest3-MatrixFnServiceRoleF6E55B32-ryqUvLrnxdXh",
       "constructPath": "CdkrdIntegHarvest3/MatrixFn/ServiceRole"
     }

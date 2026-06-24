@@ -98,6 +98,15 @@
       },
       "physicalId": "CdkrdIntegHarvest-Sessions8896A56D-R1FO6Y7043MX",
       "constructPath": "CdkrdIntegHarvest/Sessions"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Sessions8896A56D",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "CdkrdIntegHarvest-Sessions8896A56D-R1FO6Y7043MX",
+      "constructPath": "CdkrdIntegHarvest/Sessions"
     }
   ]
 }

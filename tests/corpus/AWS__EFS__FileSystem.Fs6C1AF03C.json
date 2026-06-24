@@ -61,28 +61,6 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
-      "logicalId": "Fs6C1AF03C",
-      "resourceType": "AWS::EFS::FileSystem",
-      "path": "BackupPolicy",
-      "actual": {
-        "Status": "DISABLED"
-      },
-      "physicalId": "fs-0d81f40b7a880b7ae",
-      "constructPath": "CdkdriftIntegHarvest9/Fs"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Fs6C1AF03C",
-      "resourceType": "AWS::EFS::FileSystem",
-      "path": "FileSystemProtection",
-      "actual": {
-        "ReplicationOverwriteProtection": "ENABLED"
-      },
-      "physicalId": "fs-0d81f40b7a880b7ae",
-      "constructPath": "CdkdriftIntegHarvest9/Fs"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
@@ -104,8 +82,30 @@
       "tier": "atDefault",
       "logicalId": "Fs6C1AF03C",
       "resourceType": "AWS::EFS::FileSystem",
+      "path": "FileSystemProtection",
+      "actual": {
+        "ReplicationOverwriteProtection": "ENABLED"
+      },
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
       "path": "ThroughputMode",
       "actual": "bursting",
+      "physicalId": "fs-0d81f40b7a880b7ae",
+      "constructPath": "CdkdriftIntegHarvest9/Fs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fs6C1AF03C",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
       "physicalId": "fs-0d81f40b7a880b7ae",
       "constructPath": "CdkdriftIntegHarvest9/Fs"
     }

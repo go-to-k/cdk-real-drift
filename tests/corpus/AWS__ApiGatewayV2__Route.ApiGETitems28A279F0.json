@@ -38,5 +38,15 @@
     "kmsAliasTargets": {},
     "oaiCanonicalIds": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiGETitems28A279F0",
+      "resourceType": "AWS::ApiGatewayV2::Route",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "s2sushb",
+      "constructPath": "CdkRealDriftIntegApigwv2HttpRich/Api/GET--items"
+    }
+  ]
 }

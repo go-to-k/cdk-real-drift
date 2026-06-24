@@ -194,6 +194,15 @@
       "constructPath": "CdkRealDriftIntegDdbNestedSets/Classic"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Classic397C6F85",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "cdkrd-integ-ddb-nested-sets-classic",
+      "constructPath": "CdkRealDriftIntegDdbNestedSets/Classic"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Classic397C6F85",
       "resourceType": "AWS::DynamoDB::Table",

@@ -138,6 +138,15 @@
       "tier": "atDefault",
       "logicalId": "Api",
       "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "XrayEnabled",
+      "actual": false,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/5pw7o66kxzhopgxpkmp2oh5sxi",
+      "constructPath": "CdkRealDriftIntegAppsyncAddAuthReorder/Api"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Api",
+      "resourceType": "AWS::AppSync::GraphQLApi",
       "path": "Visibility",
       "actual": "GLOBAL",
       "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/5pw7o66kxzhopgxpkmp2oh5sxi",

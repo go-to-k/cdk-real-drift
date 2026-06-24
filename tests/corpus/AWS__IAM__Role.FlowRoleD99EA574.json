@@ -77,8 +77,8 @@
       "tier": "atDefault",
       "logicalId": "FlowRoleD99EA574",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest-FlowRoleD99EA574-fkfT28B8EOai",
       "constructPath": "CdkrdIntegHarvest/Flow/Role"
     },
@@ -95,8 +95,8 @@
       "tier": "atDefault",
       "logicalId": "FlowRoleD99EA574",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest-FlowRoleD99EA574-fkfT28B8EOai",
       "constructPath": "CdkrdIntegHarvest/Flow/Role"
     }

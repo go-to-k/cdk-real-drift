@@ -62,8 +62,8 @@
       "tier": "atDefault",
       "logicalId": "CbRole566E4F1D",
       "resourceType": "AWS::IAM::Role",
-      "path": "Description",
-      "actual": "",
+      "path": "Path",
+      "actual": "/",
       "physicalId": "CdkrdIntegHarvest6-CbRole566E4F1D-KicGJKfs66x0",
       "constructPath": "CdkrdIntegHarvest6/CbRole"
     },
@@ -80,8 +80,8 @@
       "tier": "atDefault",
       "logicalId": "CbRole566E4F1D",
       "resourceType": "AWS::IAM::Role",
-      "path": "Path",
-      "actual": "/",
+      "path": "Description",
+      "actual": "",
       "physicalId": "CdkrdIntegHarvest6-CbRole566E4F1D-KicGJKfs66x0",
       "constructPath": "CdkrdIntegHarvest6/CbRole"
     }

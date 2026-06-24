@@ -76,6 +76,15 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsPOST55EC2F9D",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "we41awg0n3|to60x5|POST",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/Default/items/POST"
+    },
+    {
       "tier": "generated",
       "logicalId": "ApiitemsPOST55EC2F9D",
       "resourceType": "AWS::ApiGateway::Method",

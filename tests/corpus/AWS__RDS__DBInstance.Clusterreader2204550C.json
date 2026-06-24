@@ -256,6 +256,15 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Clusterreader2204550C",
       "resourceType": "AWS::RDS::DBInstance",
@@ -279,6 +288,15 @@
       "resourceType": "AWS::RDS::DBInstance",
       "path": "MonitoringInterval",
       "actual": 0,
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
       "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
     },
@@ -315,6 +333,15 @@
       "resourceType": "AWS::RDS::DBInstance",
       "path": "OptionGroupName",
       "actual": "default:aurora-mysql-8-0",
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
       "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
     },
@@ -376,6 +403,24 @@
       "tier": "atDefault",
       "logicalId": "Clusterreader2204550C",
       "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CopyTagsToSnapshot",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
       "path": "EngineLifecycleSupport",
       "actual": "open-source-rds-extended-support",
       "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
@@ -418,11 +463,29 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Clusterreader2204550C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "VPCSecurityGroups",
       "actual": ["sg-026f2d5597a41d0de"],
+      "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clusterreader2204550C",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
       "physicalId": "cdkrealdriftintegaurorarich-clusterreader2204550c-9tqhhigyq20l",
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/reader"
     },

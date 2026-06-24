@@ -72,13 +72,11 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "BackupPolicy",
-      "actual": {
-        "Status": "DISABLED"
-      },
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
       "physicalId": "fs-0679f705e7e468268",
       "constructPath": "CdkrdIntegHarvest4/Files"
     },
@@ -94,11 +92,11 @@
       "constructPath": "CdkrdIntegHarvest4/Files"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "KmsKeyId",
-      "actual": "arn:aws:kms:us-east-1:111111111111:key/ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "path": "ThroughputMode",
+      "actual": "bursting",
       "physicalId": "fs-0679f705e7e468268",
       "constructPath": "CdkrdIntegHarvest4/Files"
     },
@@ -106,8 +104,10 @@
       "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
-      "path": "ThroughputMode",
-      "actual": "bursting",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
       "physicalId": "fs-0679f705e7e468268",
       "constructPath": "CdkrdIntegHarvest4/Files"
     }
