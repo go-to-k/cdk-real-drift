@@ -862,6 +862,74 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['AutoRollbackConfiguration.Events']);
     });
 
+    // Live-observed FP (enumset-reorder fixture): ECS echoes a task definition's
+    // RequiresCompatibilities launch-type set SORTED alphabetically (declared
+    // [FARGATE, EC2] read back [EC2, FARGATE]).
+    it('UNORDERED_ARRAY_PROPS: ECS TaskDefinition RequiresCompatibilities reorder is NOT drift', () => {
+      const td = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'TaskDef',
+        resourceType: 'AWS::ECS::TaskDefinition',
+        physicalId: 'cdkrd-enumset:1',
+        declared,
+      });
+      expect(
+        classifyResource(
+          td({ RequiresCompatibilities: ['FARGATE', 'EC2'] }),
+          { RequiresCompatibilities: ['EC2', 'FARGATE'] },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine launch-type change still reports
+      expect(
+        tiers(
+          classifyResource(
+            td({ RequiresCompatibilities: ['FARGATE', 'EC2'] }),
+            { RequiresCompatibilities: ['EC2', 'EXTERNAL'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['RequiresCompatibilities']);
+    });
+
+    // Live-observed FP (same fixture): Route53 echoes a health check's
+    // HealthCheckConfig.Regions set SORTED alphabetically (declared
+    // [us-west-2, us-east-1, eu-west-1] read back [eu-west-1, us-east-1, us-west-2]).
+    // Region names lack the hex/AZ suffix so the generic id/AZ fold does not catch them.
+    it('UNORDERED_ARRAY_PROPS: Route53 HealthCheck nested HealthCheckConfig.Regions reorder is NOT drift', () => {
+      const hc = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'HealthCheck',
+        resourceType: 'AWS::Route53::HealthCheck',
+        physicalId: 'hc-1',
+        declared,
+      });
+      expect(
+        classifyResource(
+          hc({
+            HealthCheckConfig: { Type: 'HTTP', Regions: ['us-west-2', 'us-east-1', 'eu-west-1'] },
+          }),
+          { HealthCheckConfig: { Type: 'HTTP', Regions: ['eu-west-1', 'us-east-1', 'us-west-2'] } },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine region change still reports the nested path
+      expect(
+        tiers(
+          classifyResource(
+            hc({
+              HealthCheckConfig: { Type: 'HTTP', Regions: ['us-west-2', 'us-east-1', 'eu-west-1'] },
+            }),
+            {
+              HealthCheckConfig: {
+                Type: 'HTTP',
+                Regions: ['eu-west-1', 'us-east-1', 'ap-southeast-1'],
+              },
+            },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['HealthCheckConfig.Regions']);
+    });
+
     // Live-observed (same fixture): CodeDeploy always echoes OutdatedInstancesStrategy
     // = "UPDATE" on a group that never declared it (documented unspecified behavior).
     it('KNOWN_DEFAULTS: undeclared CodeDeploy OutdatedInstancesStrategy=UPDATE folds to atDefault; IGNORE surfaces', () => {

@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HealthCheck",
+    "resourceType": "AWS::Route53::HealthCheck",
+    "physicalId": "7e085731-5f57-4b64-84bd-bc211308dc23",
+    "constructPath": "CdkRealDriftIntegEnumsetReorder/HealthCheck",
+    "declared": {
+      "HealthCheckConfig": {
+        "FailureThreshold": 3,
+        "FullyQualifiedDomainName": "example.com",
+        "Port": 80,
+        "Regions": ["us-west-2", "us-east-1", "eu-west-1"],
+        "RequestInterval": 30,
+        "ResourcePath": "/",
+        "Type": "HTTP"
+      }
+    }
+  },
+  "liveRaw": {
+    "HealthCheckId": "7e085731-5f57-4b64-84bd-bc211308dc23",
+    "HealthCheckConfig": {
+      "EnableSNI": false,
+      "Type": "HTTP",
+      "ResourcePath": "/",
+      "FullyQualifiedDomainName": "example.com",
+      "MeasureLatency": false,
+      "Inverted": false,
+      "Port": 80,
+      "RequestInterval": 30,
+      "Regions": ["eu-west-1", "us-east-1", "us-west-2"],
+      "FailureThreshold": 3
+    }
+  },
+  "schema": {
+    "readOnly": ["HealthCheckId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["HealthCheckId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "HealthCheckConfig.MeasureLatency",
+      "HealthCheckConfig.RequestInterval",
+      "HealthCheckConfig.Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
