@@ -53,13 +53,12 @@ It prints what it found, then offers the actions that apply right in the prompt:
 **Record**, **Revert**, or **Ignore**
 ([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
 
-On a fresh project, `check` already detects drift on the properties your template
-declares (and any resource deleted out of band). The live-only values, the ones
-that exist on the real resource but aren't in your template, are shown as
-informational rather than drift. **Record** them when you want cdkrd to watch them:
-that saves a snapshot (the `.cdkrd` baseline file), and any later out-of-band change
-to them is then reported as drift. The baseline is all cdkrd needs to track
-undeclared properties, and you create it whenever you're ready, not up front.
+On a fresh project, `check` already flags drift on the properties your template
+declares (plus any resource deleted out of band). Live-only values, the ones on
+the real resource but not in your template, show as informational, not drift.
+**Record** them to start watching: that writes the `.cdkrd` baseline snapshot, and
+any later out-of-band change then surfaces as drift. You create the baseline
+whenever you're ready, not up front.
 
 So a typical first run is a clean stack with live-only values you can record:
 
