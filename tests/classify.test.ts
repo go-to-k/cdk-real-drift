@@ -930,6 +930,45 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['HealthCheckConfig.Regions']);
     });
 
+    // Live-observed FP (rds-logexports-reorder fixture): RDS echoes a DB instance's
+    // EnableCloudwatchLogsExports log-type set SORTED alphabetically (declared
+    // [slowquery, general, error] read back [error, general, slowquery]). The same
+    // property is a log-type SET on the whole RDS family, so it is folded for all four
+    // (DBInstance live-proven; the rest are class closure, equality-gated).
+    it('UNORDERED_ARRAY_PROPS: RDS-family EnableCloudwatchLogsExports reorder is NOT drift', () => {
+      for (const resourceType of [
+        'AWS::RDS::DBInstance',
+        'AWS::RDS::DBCluster',
+        'AWS::Neptune::DBCluster',
+        'AWS::DocDB::DBCluster',
+      ]) {
+        const db = (declared: Record<string, unknown>): DesiredResource => ({
+          logicalId: 'Db',
+          resourceType,
+          physicalId: 'db-1',
+          declared,
+        });
+        // same log-type set, reordered (AWS sorts) -> no drift
+        expect(
+          classifyResource(
+            db({ EnableCloudwatchLogsExports: ['slowquery', 'general', 'error'] }),
+            { EnableCloudwatchLogsExports: ['error', 'general', 'slowquery'] },
+            emptySchema
+          )
+        ).toEqual([]);
+        // a genuine log-type change still reports
+        expect(
+          tiers(
+            classifyResource(
+              db({ EnableCloudwatchLogsExports: ['slowquery', 'general', 'error'] }),
+              { EnableCloudwatchLogsExports: ['error', 'general', 'audit'] },
+              emptySchema
+            )
+          ).declared
+        ).toEqual(['EnableCloudwatchLogsExports']);
+      }
+    });
+
     // Live-observed (same fixture): CodeDeploy always echoes OutdatedInstancesStrategy
     // = "UPDATE" on a group that never declared it (documented unspecified behavior).
     it('KNOWN_DEFAULTS: undeclared CodeDeploy OutdatedInstancesStrategy=UPDATE folds to atDefault; IGNORE surfaces', () => {
