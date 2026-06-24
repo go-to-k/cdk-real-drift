@@ -24,7 +24,7 @@ import {
   DescribeLaunchTemplateVersionsCommand,
   EC2Client,
 } from '@aws-sdk/client-ec2';
-import { GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
+import { GetClassifierCommand, GetTableCommand, GlueClient } from '@aws-sdk/client-glue';
 import {
   ListResourceRecordSetsCommand,
   type ListResourceRecordSetsCommandOutput,
@@ -573,6 +573,41 @@ const readGlueTable: OverrideReader = async ({ physicalId, declared, region }) =
   return model;
 };
 
+// AWS::Glue::Classifier — CC API GetResource throws UnsupportedActionException, so the
+// classifier was silently `skipped` and any out-of-band change to it (a delimiter, a grok
+// pattern, a JSON path) was invisible. Read via Glue GetClassifier. The CFn physical id is
+// the classifier name; the live `Classifier` is a one-of union ({CsvClassifier |
+// GrokClassifier | JsonClassifier | XMLClassifier}) that mirrors the CFn shape — project
+// the present member, dropping the AWS-managed Version / CreationTime / LastUpdated fields
+// (not CFn-declarable, pure noise).
+// `Serde` is a CsvClassifier field GetClassifier returns as "None" by default but the CFn
+// schema does NOT model (verified live — it surfaced as a bogus [Not Recorded] value); a
+// user can never declare it, so projecting it would be a permanent undeclared false
+// inventory. Dropped alongside the AWS-managed Version / CreationTime / LastUpdated.
+const GLUE_CLASSIFIER_MANAGED = new Set(['Version', 'CreationTime', 'LastUpdated', 'Serde']);
+const readGlueClassifier: OverrideReader = async ({ physicalId, declared, region }) => {
+  const declMember = (declared.CsvClassifier ??
+    declared.GrokClassifier ??
+    declared.JsonClassifier ??
+    declared.XMLClassifier) as Record<string, unknown> | undefined;
+  const name = str(physicalId) ?? str(declMember?.Name);
+  if (!name) return undefined;
+  const c = new GlueClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetClassifierCommand({ Name: name }));
+  const cl = r.Classifier;
+  if (!cl) return undefined;
+  const project = (o: object): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(o as Record<string, unknown>).filter(([k]) => !GLUE_CLASSIFIER_MANAGED.has(k))
+    );
+  const out: Record<string, unknown> = {};
+  if (cl.CsvClassifier) out.CsvClassifier = project(cl.CsvClassifier);
+  if (cl.GrokClassifier) out.GrokClassifier = project(cl.GrokClassifier);
+  if (cl.JsonClassifier) out.JsonClassifier = project(cl.JsonClassifier);
+  if (cl.XMLClassifier) out.XMLClassifier = project(cl.XMLClassifier);
+  return out;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -1015,6 +1050,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
+  'AWS::Glue::Classifier': readGlueClassifier,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };

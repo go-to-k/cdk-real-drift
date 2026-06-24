@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GrokClassifier",
+    "resourceType": "AWS::Glue::Classifier",
+    "physicalId": "cdkrd-grok-classifier",
+    "constructPath": "CdkRealDriftIntegGlueClassifierReadgap/GrokClassifier",
+    "declared": {
+      "GrokClassifier": {
+        "Classification": "syslog",
+        "GrokPattern": "%{TIMESTAMP_ISO8601:timestamp} %{GREEDYDATA:message}",
+        "Name": "cdkrd-grok-classifier"
+      }
+    }
+  },
+  "liveRaw": {
+    "GrokClassifier": {
+      "Name": "cdkrd-grok-classifier",
+      "Classification": "syslog",
+      "GrokPattern": "%{TIMESTAMP_ISO8601:timestamp} %{GREEDYDATA:message}"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
