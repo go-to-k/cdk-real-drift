@@ -70,6 +70,7 @@ import {
   PutRolePolicyCommand,
   PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
+import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   ServiceDiscoveryClient,
@@ -609,6 +610,46 @@ const writeMetricFilter: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Route53::RecordSet — Cloud Control cannot read this type (read via the
+// ListResourceRecordSets override) and it had no writer, so a console edit to a record
+// (TTL / values / weight / failover / alias target / health check) was detected but not
+// revertable. Route53 ChangeResourceRecordSets with Action UPSERT replaces the record
+// with the supplied ResourceRecordSet, and the override reader returns the FULL CFn
+// projection (Name/Type/TTL/ResourceRecords + AliasTarget + all routing-policy fields),
+// so reconstruct the desired RRSet (current + revert ops) and UPSERT it. A simple record
+// carries Name/Type/TTL/ResourceRecords; alias/weighted/latency/failover/geo/cidr
+// variants carry their extra fields, all already in the desired model.
+const RR_ROUTING_FIELDS = [
+  'SetIdentifier',
+  'Weight',
+  'Region',
+  'Failover',
+  'MultiValueAnswer',
+  'HealthCheckId',
+  'GeoLocation',
+  'GeoProximityLocation',
+  'CidrRoutingConfig',
+] as const;
+const writeRoute53RecordSet: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Route53::RecordSet', ctx, ops);
+  const zone = str(m.HostedZoneId) ?? str(ctx.declared['HostedZoneId']);
+  const name = str(m.Name) ?? str(ctx.declared['Name']);
+  const type = str(m.Type) ?? str(ctx.declared['Type']);
+  if (!zone || !name || !type) throw new Error('cannot resolve Route53 record target for revert');
+  const rrset: Record<string, unknown> = { Name: name, Type: type };
+  if (m.TTL !== undefined) rrset.TTL = Number(m.TTL); // CFn TTL is a string; the API wants a number
+  if (Array.isArray(m.ResourceRecords))
+    rrset.ResourceRecords = (m.ResourceRecords as string[]).map((v) => ({ Value: v }));
+  if (m.AliasTarget !== undefined) rrset.AliasTarget = m.AliasTarget;
+  for (const k of RR_ROUTING_FIELDS) if (m[k] !== undefined) rrset[k] = m[k];
+  await new Route53Client({ region: ctx.region }).send(
+    new ChangeResourceRecordSetsCommand({
+      HostedZoneId: zone,
+      ChangeBatch: { Changes: [{ Action: 'UPSERT', ResourceRecordSet: rrset as never }] },
+    })
+  );
+};
+
 // AWS::OpenSearchService::Domain — Cloud Control CAN read this type, but its
 // UpdateResource REJECTS a property patch: it re-submits the full model and AWS's own
 // legacy `override_main_response_version` AdvancedOption (returned on read) is rejected
@@ -701,6 +742,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Job': writeGlueJob,
   'AWS::Glue::Table': writeGlueTable,
   'AWS::Logs::MetricFilter': writeMetricFilter,
+  'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,

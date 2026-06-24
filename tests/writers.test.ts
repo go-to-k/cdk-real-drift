@@ -62,6 +62,11 @@ import {
   UpdateHttpNamespaceCommand,
 } from '@aws-sdk/client-servicediscovery';
 import {
+  ChangeResourceRecordSetsCommand,
+  ListResourceRecordSetsCommand,
+  Route53Client,
+} from '@aws-sdk/client-route-53';
+import {
   GetQueueAttributesCommand,
   SetQueueAttributesCommand,
   SQSClient,
@@ -83,6 +88,7 @@ const wafv2 = mockClient(WAFV2Client);
 const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
+const route53 = mockClient(Route53Client);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -123,6 +129,7 @@ beforeEach(() => {
   opensearch.reset();
   glue.reset();
   logs.reset();
+  route53.reset();
 });
 
 describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {
@@ -351,6 +358,53 @@ describe('Logs MetricFilter writer (CC GetResource ValidationException on compos
         patternOp('"x"'),
       ])
     ).rejects.toThrow(/metric filter target/);
+  });
+});
+
+describe('Route53 RecordSet writer (CC cannot read/write; reverts via ChangeResourceRecordSets UPSERT)', () => {
+  const ttlOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/TTL',
+    value,
+    human: 'TTL -> deployed-template value',
+  });
+  const decl = { HostedZoneId: 'Z123', Name: 'a.example.test.', Type: 'A' };
+  it('reverts a simple A-record TTL via UPSERT, rebuilding ResourceRecords as {Value}', async () => {
+    // reader (ListResourceRecordSets) returns the live record with the CHANGED TTL
+    route53.on(ListResourceRecordSetsCommand).resolves({
+      ResourceRecordSets: [
+        { Name: 'a.example.test.', Type: 'A', TTL: 60, ResourceRecords: [{ Value: '1.2.3.4' }] },
+      ],
+      IsTruncated: false,
+    } as never);
+    route53.on(ChangeResourceRecordSetsCommand).resolves({});
+    await SDK_WRITERS['AWS::Route53::RecordSet'](
+      ctx({ physicalId: 'Z123_a.example.test._A', declared: decl }),
+      [ttlOp('300')]
+    );
+    const calls = route53.commandCalls(ChangeResourceRecordSetsCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as {
+      HostedZoneId: string;
+      ChangeBatch: { Changes: { Action: string; ResourceRecordSet: Record<string, unknown> }[] };
+    };
+    expect(input.HostedZoneId).toBe('Z123');
+    const ch = input.ChangeBatch.Changes[0]!;
+    expect(ch.Action).toBe('UPSERT');
+    expect(ch.ResourceRecordSet.Name).toBe('a.example.test.');
+    expect(ch.ResourceRecordSet.Type).toBe('A');
+    expect(ch.ResourceRecordSet.TTL).toBe(300); // reverted, coerced string->number
+    expect(ch.ResourceRecordSet.ResourceRecords).toEqual([{ Value: '1.2.3.4' }]); // rebuilt
+  });
+
+  it('throws when the record target is unresolvable', async () => {
+    route53.on(ListResourceRecordSetsCommand).resolves({
+      ResourceRecordSets: [{ Name: 'a.example.test.', Type: 'A', TTL: 60 }],
+      IsTruncated: false,
+    } as never);
+    await expect(
+      SDK_WRITERS['AWS::Route53::RecordSet'](ctx({ physicalId: '', declared: {} }), [ttlOp('300')])
+    ).rejects.toThrow(/Route53 record target/);
   });
 });
 

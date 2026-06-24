@@ -468,7 +468,7 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 `iam:PutRolePolicy` / `DeleteRolePolicy` / `PutUserPolicy` / `PutGroupPolicy`,
 `iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`,
 `elasticloadbalancing:ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes`,
-`glue:UpdateTable`, `logs:PutMetricFilter`.
+`glue:UpdateTable`, `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`.
 
 </details>
 
