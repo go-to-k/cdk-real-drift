@@ -16,6 +16,7 @@ import {
   isTrailingDotEqual,
   TRAILING_DOT_PATHS,
   ORDER_SIGNIFICANT_ARRAY_KEYS,
+  stripAsymmetricIdentityFields,
 } from '../src/normalize/noise.js';
 import { canonicalizeForCompare } from '../src/normalize/pipeline.js';
 import {
@@ -851,5 +852,60 @@ describe('isPhysicalIdSegment (R142 — value echoes a physical-id segment)', ()
   it('non-string value or missing physical id → false', () => {
     expect(isPhysicalIdSegment(123, 'api1|res9|GET')).toBe(false);
     expect(isPhysicalIdSegment('res9', undefined)).toBe(false);
+  });
+});
+
+describe('stripAsymmetricIdentityFields (AWS-generated identity field)', () => {
+  it('strips a live-only identity field so neither side sorts by it (S3 lifecycle no-id)', () => {
+    // declared rules have NO Id (CDK addLifecycleRule default); live rules carry an
+    // AWS-generated Id. Without the strip, the per-side identity sort reorders live by
+    // the generated Id and misaligns every rule.
+    const declared = {
+      LifecycleConfiguration: {
+        Rules: [{ Prefix: 'zeta/' }, { Prefix: 'alpha/' }, { Prefix: 'mike/' }],
+      },
+    };
+    const live = {
+      LifecycleConfiguration: {
+        Rules: [
+          { Id: 'gen-zeta', Prefix: 'zeta/' },
+          { Id: 'gen-alpha', Prefix: 'alpha/' },
+          { Id: 'gen-mike', Prefix: 'mike/' },
+        ],
+      },
+    };
+    stripAsymmetricIdentityFields(declared, live);
+    // Id deleted from every live rule -> identityField no longer keys the array.
+    for (const r of live.LifecycleConfiguration.Rules) expect('Id' in r).toBe(false);
+  });
+
+  it('leaves an identity field present on BOTH sides untouched (CloudFront Origins)', () => {
+    const declared = {
+      Origins: [
+        { Id: 'o1', DomainName: 'a' },
+        { Id: 'o2', DomainName: 'b' },
+      ],
+    };
+    const live = {
+      Origins: [
+        { Id: 'o1', DomainName: 'a' },
+        { Id: 'o2', DomainName: 'b' },
+      ],
+    };
+    stripAsymmetricIdentityFields(declared, live);
+    expect(live.Origins.every((o) => 'Id' in o)).toBe(true);
+    expect(declared.Origins.every((o) => 'Id' in o)).toBe(true);
+  });
+
+  it('strips a declared-only identity field too (reverse asymmetry)', () => {
+    const declared = {
+      Rules: [
+        { Id: 'a', V: 1 },
+        { Id: 'b', V: 2 },
+      ],
+    };
+    const live = { Rules: [{ V: 1 }, { V: 2 }] };
+    stripAsymmetricIdentityFields(declared, live);
+    expect(declared.Rules.every((r) => 'Id' in r)).toBe(false);
   });
 });

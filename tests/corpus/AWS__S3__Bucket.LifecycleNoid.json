@@ -1,0 +1,267 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Data666C94C7",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+    "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data",
+    "declared": {
+      "LifecycleConfiguration": {
+        "Rules": [
+          {
+            "ExpirationInDays": 365,
+            "Prefix": "zeta/",
+            "Status": "Enabled",
+            "Transitions": [
+              {
+                "StorageClass": "STANDARD_IA",
+                "TransitionInDays": 30
+              }
+            ]
+          },
+          {
+            "AbortIncompleteMultipartUpload": {
+              "DaysAfterInitiation": 7
+            },
+            "Prefix": "alpha/",
+            "Status": "Enabled"
+          },
+          {
+            "NoncurrentVersionExpiration": {
+              "NoncurrentDays": 180
+            },
+            "NoncurrentVersionTransitions": [
+              {
+                "StorageClass": "GLACIER",
+                "TransitionInDays": 90
+              }
+            ],
+            "Prefix": "mike/",
+            "Status": "Enabled"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "aws-cdk:auto-delete-objects",
+          "Value": "true"
+        }
+      ],
+      "VersioningConfiguration": {
+        "Status": "Enabled"
+      }
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb.s3-website-us-east-1.amazonaws.com",
+    "LifecycleConfiguration": {
+      "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+      "Rules": [
+        {
+          "Status": "Enabled",
+          "Transitions": [
+            {
+              "StorageClass": "STANDARD_IA",
+              "TransitionInDays": 30
+            }
+          ],
+          "ExpirationInDays": 365,
+          "Id": "OWI4YzMxM2UtYTAyOS00MTRjLTllMDAtYWJjMTI1NWI3ODMx",
+          "Prefix": "zeta/"
+        },
+        {
+          "Status": "Enabled",
+          "Id": "NGJmN2I4MjEtOTc3NC00OWM0LTk1OTctM2RmYWIxMjgzNDVl",
+          "Prefix": "alpha/",
+          "AbortIncompleteMultipartUpload": {
+            "DaysAfterInitiation": 7
+          }
+        },
+        {
+          "Status": "Enabled",
+          "NoncurrentVersionExpiration": {
+            "NoncurrentDays": 180
+          },
+          "NoncurrentVersionTransitions": [
+            {
+              "StorageClass": "GLACIER",
+              "TransitionInDays": 90
+            }
+          ],
+          "Id": "ODhjOWQxOTAtOGVkNi00NWE2LTlhY2ItZGVmYjlhNGI1MzEy",
+          "Prefix": "mike/"
+        }
+      ]
+    },
+    "DualStackDomainName": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb.s3.dualstack.us-east-1.amazonaws.com",
+    "VersioningConfiguration": {
+      "Status": "Enabled"
+    },
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+    "RegionalDomainName": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3LifecycleNoid",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Data666C94C7",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3LifecycleNoid/710130f0-6fa0-11f1-bd3c-0e9af082d36f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "true",
+        "Key": "aws-cdk:auto-delete-objects"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+      "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+      "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "LifecycleConfiguration.TransitionDefaultMinimumObjectSize",
+      "actual": "all_storage_classes_128K",
+      "nested": true,
+      "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+      "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+      "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Data666C94C7",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegs3lifecyclenoid-data666c94c7-q83g9nhsaasb",
+      "constructPath": "CdkRealDriftIntegS3LifecycleNoid/Data"
+    }
+  ]
+}

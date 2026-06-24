@@ -49,6 +49,7 @@ import {
   resolveGeneratedDefault,
   sortNestedObjectArrays,
   sortUnorderedObjectArray,
+  stripAsymmetricIdentityFields,
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
   UNORDERED_NESTED_OBJECT_ARRAY_PATHS,
@@ -179,6 +180,20 @@ const IAM_ATTACHMENT_SUBSET: Record<string, ReadonlySet<string>> = {
 // Pure: the caller decides suppression and finding shape.
 const isNestedObject = (x: unknown): x is Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x);
+
+// structuredClone rejects the UNRESOLVED Symbol a declared value may carry, so deep-clone
+// the declared model symbol-safe (symbols/primitives pass through by reference/value). Used
+// to clone the declared side before stripAsymmetricIdentityFields mutates it.
+function cloneDeepWithSymbols(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(cloneDeepWithSymbols);
+  if (v !== null && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>))
+      out[k] = cloneDeepWithSymbols(val);
+    return out;
+  }
+  return v;
+}
 
 // An IAM policy STATEMENT array (PolicyDocument.Statement, AssumeRolePolicyDocument
 // .Statement, inline Policies[].PolicyDocument.Statement, …). Recognized by the
@@ -357,9 +372,23 @@ export function classifyResource(
   // silently diverge; the pipeline is shared with baseline-file.ts so baseline values
   // normalize identically (see pipeline.ts).
   const oaiMap = opts.oaiCanonicalIds ?? {};
-  const live = normalizeLiveModel(liveRaw, schema, { oaiCanonicalIds: oaiMap, resourceType });
+  // AWS sometimes GENERATES an identity field the template omitted (S3
+  // LifecycleConfiguration.Rules[].Id when `addLifecycleRule` is called without an `id`).
+  // The live element then carries the field while the declared element does not, so the
+  // per-side identity sort would key the LIVE array by the generated id and leave the
+  // DECLARED array in template order — misaligning every element into false drift. Strip
+  // such asymmetric identity fields from a clone of each side BEFORE canonicalization so
+  // neither side is keyed by them (AWS preserves the array order). `declaredIn` can hold
+  // the UNRESOLVED Symbol, which structuredClone rejects — clone it symbol-safe.
+  const liveForCompare = structuredClone(liveRaw);
+  const declaredForCompare = cloneDeepWithSymbols(declaredIn) as Record<string, unknown>;
+  stripAsymmetricIdentityFields(declaredForCompare, liveForCompare);
+  const live = normalizeLiveModel(liveForCompare, schema, {
+    oaiCanonicalIds: oaiMap,
+    resourceType,
+  });
   const declared = canonicalizeForCompare(
-    rewriteOaiPrincipalsDeep(declaredIn, oaiMap),
+    rewriteOaiPrincipalsDeep(declaredForCompare, oaiMap),
     resourceType
   ) as Record<string, unknown>;
   // Drop a parent's reflected child-aggregate property (e.g. SNS Topic.Subscription)
