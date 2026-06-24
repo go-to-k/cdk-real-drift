@@ -64,6 +64,7 @@ export interface CorpusCase {
     createOnlyPaths: string[];
     defaults: Record<string, unknown>;
     defaultPaths: Record<string, unknown>;
+    unorderedScalarPaths?: string[]; // optional for backward compat with pre-insertionOrder cases
   };
   opts: {
     accountId: string;
@@ -125,6 +126,7 @@ export function buildCorpusCase(
       createOnlyPaths: [...schema.createOnlyPaths].sort(),
       defaults: schema.defaults,
       defaultPaths: schema.defaultPaths,
+      unorderedScalarPaths: [...(schema.unorderedScalarPaths ?? [])].sort(),
     },
     opts,
     expected: findings,
@@ -143,6 +145,7 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
     createOnlyPaths: [...s.createOnlyPaths],
     defaults: s.defaults,
     defaultPaths: s.defaultPaths ?? {},
+    unorderedScalarPaths: s.unorderedScalarPaths ?? [],
   };
 }
 

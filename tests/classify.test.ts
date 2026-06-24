@@ -862,10 +862,14 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['AutoRollbackConfiguration.Events']);
     });
 
-    // Live-observed FP (enumset-reorder fixture): ECS echoes a task definition's
-    // RequiresCompatibilities launch-type set SORTED alphabetically (declared
-    // [FARGATE, EC2] read back [EC2, FARGATE]).
-    it('UNORDERED_ARRAY_PROPS: ECS TaskDefinition RequiresCompatibilities reorder is NOT drift', () => {
+    // Schema-driven fold (insertionOrder:false): ECS marks RequiresCompatibilities
+    // insertionOrder:false, so the launch-type set AWS sorts alphabetically (declared
+    // [FARGATE, EC2] read back [EC2, FARGATE]) folds from the schema — no per-type entry.
+    it('unorderedScalarPaths: ECS TaskDefinition RequiresCompatibilities (schema insertionOrder:false) reorder is NOT drift', () => {
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedScalarPaths: ['RequiresCompatibilities'],
+      };
       const td = (declared: Record<string, unknown>): DesiredResource => ({
         logicalId: 'TaskDef',
         resourceType: 'AWS::ECS::TaskDefinition',
@@ -876,7 +880,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
         classifyResource(
           td({ RequiresCompatibilities: ['FARGATE', 'EC2'] }),
           { RequiresCompatibilities: ['EC2', 'FARGATE'] },
-          emptySchema
+          schema
         )
       ).toEqual([]);
       // a genuine launch-type change still reports
@@ -885,17 +889,31 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
           classifyResource(
             td({ RequiresCompatibilities: ['FARGATE', 'EC2'] }),
             { RequiresCompatibilities: ['EC2', 'EXTERNAL'] },
+            schema
+          )
+        ).declared
+      ).toEqual(['RequiresCompatibilities']);
+      // WITHOUT the schema path (empty schema), the same reorder DOES report — proving
+      // the suppression is driven by the schema flag, not a manual table.
+      expect(
+        tiers(
+          classifyResource(
+            td({ RequiresCompatibilities: ['FARGATE', 'EC2'] }),
+            { RequiresCompatibilities: ['EC2', 'FARGATE'] },
             emptySchema
           )
         ).declared
       ).toEqual(['RequiresCompatibilities']);
     });
 
-    // Live-observed FP (same fixture): Route53 echoes a health check's
-    // HealthCheckConfig.Regions set SORTED alphabetically (declared
+    // Schema-driven fold (nested): Route53 marks HealthCheckConfig.Regions
+    // insertionOrder:false; AWS sorts the region set alphabetically (declared
     // [us-west-2, us-east-1, eu-west-1] read back [eu-west-1, us-east-1, us-west-2]).
-    // Region names lack the hex/AZ suffix so the generic id/AZ fold does not catch them.
-    it('UNORDERED_ARRAY_PROPS: Route53 HealthCheck nested HealthCheckConfig.Regions reorder is NOT drift', () => {
+    it('unorderedScalarPaths: Route53 HealthCheck nested HealthCheckConfig.Regions (schema insertionOrder:false) reorder is NOT drift', () => {
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedScalarPaths: ['HealthCheckConfig.Regions'],
+      };
       const hc = (declared: Record<string, unknown>): DesiredResource => ({
         logicalId: 'HealthCheck',
         resourceType: 'AWS::Route53::HealthCheck',
@@ -908,7 +926,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
             HealthCheckConfig: { Type: 'HTTP', Regions: ['us-west-2', 'us-east-1', 'eu-west-1'] },
           }),
           { HealthCheckConfig: { Type: 'HTTP', Regions: ['eu-west-1', 'us-east-1', 'us-west-2'] } },
-          emptySchema
+          schema
         )
       ).toEqual([]);
       // a genuine region change still reports the nested path
@@ -924,7 +942,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
                 Regions: ['eu-west-1', 'us-east-1', 'ap-southeast-1'],
               },
             },
-            emptySchema
+            schema
           )
         ).declared
       ).toEqual(['HealthCheckConfig.Regions']);

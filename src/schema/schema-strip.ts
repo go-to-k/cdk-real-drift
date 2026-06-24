@@ -14,6 +14,7 @@ const EMPTY: SchemaInfo = {
   createOnlyPaths: [],
   defaults: {},
   defaultPaths: {},
+  unorderedScalarPaths: [],
 };
 
 export async function getSchemaInfo(
@@ -93,6 +94,9 @@ function pointerToDotted(p: string): string {
 type SchemaNode = {
   $ref?: string;
   default?: unknown;
+  type?: string;
+  insertionOrder?: boolean;
+  enum?: unknown[];
   properties?: Record<string, SchemaNode>;
   items?: SchemaNode;
 };
@@ -117,6 +121,67 @@ function collectDefaultPaths(
   };
   for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
   return out;
+}
+
+// Collect the dotted paths of arrays the schema marks `insertionOrder: false` (AWS
+// declaring the array UNORDERED) whose items resolve to a SCALAR type. A reorder of
+// such an array is never drift — AWS may echo it in its own canonical order — so
+// classify folds a same-multiset difference at one of these paths WITHOUT a per-type
+// table. Scoped to SCALAR-item arrays: an unordered OBJECT array (e.g. ECS
+// ContainerDefinitions, which is also insertionOrder:false) is keyed/sorted elsewhere
+// (canonicalizeTagListsDeep / the per-type object-array tables), and a blanket scalar
+// sort must not touch it. Paths reached THROUGH an array element (which would carry a
+// `*` segment) are skipped — classify matches an exact dotted drift path, and those
+// rarer nested-under-array sets stay on the per-type allowlist. Same $ref-resolving,
+// recursion-guarded walk as collectDefaultPaths; best-effort (a missed array just
+// stays on the manual table — never a false positive).
+const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean']);
+function collectUnorderedScalarPaths(
+  definitions: Record<string, SchemaNode>,
+  properties: Record<string, SchemaNode>
+): string[] {
+  const out: string[] = [];
+  const resolve = (
+    node: SchemaNode | undefined,
+    seen: ReadonlySet<string>
+  ): SchemaNode | undefined => {
+    let n = node;
+    const s = new Set(seen);
+    while (n?.$ref) {
+      const name = n.$ref.replace('#/definitions/', '');
+      if (s.has(name)) return undefined; // recursive — stop
+      s.add(name);
+      n = definitions[name];
+    }
+    return n;
+  };
+  const isScalarItems = (items: SchemaNode | undefined, seen: ReadonlySet<string>): boolean => {
+    const it = resolve(items, seen);
+    if (!it) return false;
+    if (it.properties) return false; // object items
+    if (Array.isArray(it.enum) && it.enum.every((v) => typeof v !== 'object')) return true;
+    return typeof it.type === 'string' && SCALAR_TYPES.has(it.type);
+  };
+  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
+    const n = resolve(node, seen);
+    if (!n) return;
+    const nextSeen = node?.$ref ? new Set(seen).add(node.$ref.replace('#/definitions/', '')) : seen;
+    if (n.type === 'array') {
+      if (
+        n.insertionOrder === false &&
+        path &&
+        !path.includes('*') &&
+        isScalarItems(n.items, nextSeen)
+      )
+        out.push(path);
+      if (n.items) walk(n.items, path ? `${path}.*` : '*', nextSeen); // descend (only finds '*' paths, skipped above)
+    }
+    if (n.properties)
+      for (const [k, child] of Object.entries(n.properties))
+        walk(child, path ? `${path}.${k}` : k, nextSeen);
+  };
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  return [...new Set(out)].sort();
 }
 
 /** Exported for unit testing without an AWS call. */
@@ -144,6 +209,10 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
   }
   const defaultPaths = collectDefaultPaths(schema.definitions ?? {}, schema.properties ?? {});
+  const unorderedScalarPaths = collectUnorderedScalarPaths(
+    schema.definitions ?? {},
+    schema.properties ?? {}
+  );
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
@@ -153,5 +222,6 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     createOnlyPaths,
     defaults,
     defaultPaths,
+    unorderedScalarPaths,
   };
 }

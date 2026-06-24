@@ -1347,21 +1347,13 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // the same deploy, so it is deliberately NOT folded.) The path is nested but the
   // declared-loop suppression keys on the full dotted `d.path`, so the dotted key works.
   'AWS::CodeDeploy::DeploymentGroup': new Set(['AutoRollbackConfiguration.Events']),
-  // Live-observed on a fresh enumset-reorder deploy: ECS echoes a task definition's
-  // RequiresCompatibilities (a SET of launch-type enums — FARGATE/EC2/EXTERNAL) SORTED
-  // alphabetically, not in template order (declared [FARGATE, EC2] read back
-  // [EC2, FARGATE]). A positional compare false-drifts the identical launch-type set on
-  // every check. A genuine compatibility add/remove still changes the multiset. Hits
-  // every multi-launch-type ECS user. (The verbs aren't ids/ARNs/HTTP/AZ, so the generic
-  // canonicalizeIdArraysDeep leaves them untouched — hence this per-type entry.)
-  'AWS::ECS::TaskDefinition': new Set(['RequiresCompatibilities']),
-  // Live-observed on the same deploy: Route53 echoes a health check's
-  // HealthCheckConfig.Regions (the SET of regions where the Route53 health checkers run)
-  // SORTED alphabetically, not in template order (declared [us-west-2, us-east-1,
-  // eu-west-1] read back [eu-west-1, us-east-1, us-west-2]). Region NAMES lack the hex/AZ
-  // suffix so the generic id/AZ fold does not match them; the set carries no order
-  // meaning. Nested dotted path — the declared-loop suppression keys on the full d.path.
-  'AWS::Route53::HealthCheck': new Set(['HealthCheckConfig.Regions']),
+  // NOTE: ECS TaskDefinition `RequiresCompatibilities` and Route53 HealthCheck
+  // `HealthCheckConfig.Regions` (both live-observed as AWS-sorted enum sets, #365) are
+  // NO LONGER listed here — their CFn schema marks them `insertionOrder: false`, so the
+  // schema-driven `SchemaInfo.unorderedScalarPaths` fold (classify) now covers them (and
+  // any other insertionOrder:false scalar set) without a per-type entry. Only sets the
+  // schema leaves `insertionOrder:true`/absent — which AWS STILL sorts — need a manual
+  // entry below (the schema flag is unreliable: most sorted sets are default-true).
   // Live-observed on a fresh rds-logexports-reorder deploy: RDS echoes a DB instance's
   // EnableCloudwatchLogsExports (the SET of log types to ship to CloudWatch — error/
   // general/slowquery/audit for MySQL) SORTED alphabetically, not in template order

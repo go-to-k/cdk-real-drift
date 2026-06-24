@@ -84,6 +84,13 @@ export interface SchemaInfo {
   createOnlyPaths: string[]; // full dotted paths incl '*' wildcard (revert is impossible — replacement)
   defaults: Record<string, unknown>; // top-level schema `default` values
   defaultPaths: Record<string, unknown>; // schema `default` values at ANY depth, dotted-path keyed ('*' for array items)
+  // Dotted paths of arrays the schema marks `insertionOrder: false` (AWS declares the
+  // array UNORDERED) whose items are SCALAR — a reorder of these is never drift, so
+  // classify folds a same-multiset difference at one of these paths. Schema-driven so
+  // it needs no per-type table and is FN-safe (AWS itself says order is meaningless).
+  // Optional: production (parseSchema / reviveSchema / EMPTY) always sets it; test
+  // fixtures and pre-insertionOrder corpus cases may omit it (classify reads it with `?.`).
+  unorderedScalarPaths?: string[];
 }
 
 export interface ResolverContext {

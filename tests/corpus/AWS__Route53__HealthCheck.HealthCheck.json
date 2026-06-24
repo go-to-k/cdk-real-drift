@@ -44,7 +44,8 @@
       "HealthCheckConfig.Type"
     ],
     "defaults": {},
-    "defaultPaths": {}
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["HealthCheckConfig.ChildHealthChecks", "HealthCheckConfig.Regions"]
   },
   "opts": {
     "accountId": "111111111111",
