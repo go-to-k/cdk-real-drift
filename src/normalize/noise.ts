@@ -1362,6 +1362,21 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // suffix so the generic id/AZ fold does not match them; the set carries no order
   // meaning. Nested dotted path — the declared-loop suppression keys on the full d.path.
   'AWS::Route53::HealthCheck': new Set(['HealthCheckConfig.Regions']),
+  // Live-observed on a fresh rds-logexports-reorder deploy: RDS echoes a DB instance's
+  // EnableCloudwatchLogsExports (the SET of log types to ship to CloudWatch — error/
+  // general/slowquery/audit for MySQL) SORTED alphabetically, not in template order
+  // (declared [slowquery, general, error] read back [error, general, slowquery]). A
+  // positional compare false-drifts the identical log-type set on every check — and a
+  // huge fraction of RDS users enable DB logs. A genuine log-type add/remove still
+  // changes the multiset. The tokens aren't ids/ARNs/HTTP/AZ, so the generic
+  // canonicalizeIdArraysDeep leaves them untouched. The SAME property exists on the
+  // whole RDS family (DBCluster/Aurora, Neptune DBCluster, DocDB DBCluster) and is a
+  // log-type SET on each — folded for all four (equality-gated, so harmless on any that
+  // happen to preserve order). DBInstance is the live-proven case.
+  'AWS::RDS::DBInstance': new Set(['EnableCloudwatchLogsExports']),
+  'AWS::RDS::DBCluster': new Set(['EnableCloudwatchLogsExports']),
+  'AWS::Neptune::DBCluster': new Set(['EnableCloudwatchLogsExports']),
+  'AWS::DocDB::DBCluster': new Set(['EnableCloudwatchLogsExports']),
 };
 
 // True when both values are scalar arrays containing the same multiset of
