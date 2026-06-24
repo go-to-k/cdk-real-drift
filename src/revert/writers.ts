@@ -31,7 +31,11 @@ import {
   PutBearerTokenAuthenticationCommand,
   PutMetricFilterCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
-import { DocDBClient, ModifyDBClusterCommand } from '@aws-sdk/client-docdb';
+import {
+  DocDBClient,
+  ModifyDBClusterCommand,
+  ModifyDBInstanceCommand,
+} from '@aws-sdk/client-docdb';
 import {
   DescribeDomainConfigCommand,
   OpenSearchClient,
@@ -380,8 +384,7 @@ const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
 // minimal. ApplyImmediately so the revert converges on the next read. EngineVersion is
 // intentionally NOT in the allowlist (a version write can trigger an upgrade); a
 // declared EngineVersion drift stays not-revertable rather than risk a major upgrade.
-// (Sibling AWS::DocDB::DBInstance is read-only/not-revertable for now — its common
-// mutable prop, DBInstanceClass, is a resize that can be added if a real gap surfaces.)
+// (The sibling AWS::DocDB::DBInstance has its own ModifyDBInstance writer below.)
 const DOCDB_CLUSTER_MODIFY_PARAMS = new Set([
   'BackupRetentionPeriod',
   'PreferredBackupWindow',
@@ -407,6 +410,42 @@ const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
   }
   if (!any) return;
   await new DocDBClient({ region: ctx.region }).send(new ModifyDBClusterCommand(input));
+};
+
+// AWS::DocDB::DBInstance — Cloud Control cannot read OR write the DocDB family, so it is
+// read via DescribeDBInstances and had no writer (the sibling cluster had one). Revert
+// goes through DocDB's own ModifyDBInstance (a PARTIAL update, like ModifyDBCluster), so
+// send ONLY the drifted top-level props in the safe-to-modify allowlist. ApplyImmediately
+// so the revert converges on the next read. The mirror of the cluster writer.
+// EXCLUDED: DBClusterIdentifier (create-only) and AutoMinorVersionUpgrade — the latter is
+// a CLUSTER-level setting on DocumentDB (ModifyDBInstance rejects it: "AutoMinorVersionUpgrade
+// is a cluster setting for DocumentDB clusters. Use ModifyDBCluster"), so even though the
+// reader echoes the cluster's value on the instance read, it is not instance-modifiable —
+// a change surfaces/reverts at the cluster, not here.
+const DOCDB_INSTANCE_MODIFY_PARAMS = new Set([
+  'DBInstanceClass',
+  'PreferredMaintenanceWindow',
+  'CACertificateIdentifier',
+  'EnablePerformanceInsights',
+]);
+const writeDocDbInstance: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['DBInstanceIdentifier']);
+  if (!id) throw new Error('cannot resolve DB instance identifier for revert');
+  const desired = await desiredModel('AWS::DocDB::DBInstance', ctx, ops);
+  const input: { DBInstanceIdentifier: string; ApplyImmediately: boolean; [k: string]: unknown } = {
+    DBInstanceIdentifier: id,
+    ApplyImmediately: true,
+  };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0];
+    if (top && DOCDB_INSTANCE_MODIFY_PARAMS.has(top) && desired[top] !== undefined) {
+      input[top] = desired[top];
+      any = true;
+    }
+  }
+  if (!any) return;
+  await new DocDBClient({ region: ctx.region }).send(new ModifyDBInstanceCommand(input));
 };
 
 // AWS::CloudFront::Distribution — Cloud Control CAN read this type, but its
@@ -744,6 +783,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
+  'AWS::DocDB::DBInstance': writeDocDbInstance,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,

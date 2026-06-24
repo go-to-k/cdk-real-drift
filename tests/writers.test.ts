@@ -35,8 +35,10 @@ import {
 } from '@aws-sdk/client-iam';
 import {
   DescribeDBClustersCommand,
+  DescribeDBInstancesCommand,
   DocDBClient,
   ModifyDBClusterCommand,
+  ModifyDBInstanceCommand,
 } from '@aws-sdk/client-docdb';
 import {
   GetJobCommand,
@@ -631,6 +633,56 @@ describe('DocDB DBCluster writer (CC read+write gap)', () => {
     await expect(
       SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: '', declared: {} }), [retentionOp(3)])
     ).rejects.toThrow(/cluster identifier/);
+  });
+});
+
+describe('DocDB DBInstance writer (CC read+write gap; mirror of the cluster writer)', () => {
+  const IID = 'cdkrd-docdb-instance';
+  const windowOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/PreferredMaintenanceWindow',
+    value,
+    human: 'PreferredMaintenanceWindow -> deployed-template value',
+  });
+  const stubInstanceRead = (over: Record<string, unknown> = {}): void => {
+    docdb.on(DescribeDBInstancesCommand).resolves({
+      DBInstances: [
+        { DBInstanceIdentifier: IID, PreferredMaintenanceWindow: 'mon:07:00-mon:08:00', ...over },
+      ],
+    });
+  };
+  it('reverts PreferredMaintenanceWindow via ModifyDBInstance (ApplyImmediately), only the drifted prop', async () => {
+    stubInstanceRead();
+    docdb.on(ModifyDBInstanceCommand).resolves({});
+    await SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
+      windowOp('sun:05:00-sun:06:00'),
+    ]);
+    const calls = docdb.commandCalls(ModifyDBInstanceCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      DBInstanceIdentifier: IID,
+      ApplyImmediately: true,
+      PreferredMaintenanceWindow: 'sun:05:00-sun:06:00',
+    });
+  });
+
+  it('ignores an op off the safe-modify allowlist (AutoMinorVersionUpgrade is cluster-managed)', async () => {
+    stubInstanceRead({ AutoMinorVersionUpgrade: true });
+    docdb.on(ModifyDBInstanceCommand).resolves({});
+    // AutoMinorVersionUpgrade is a DocDB CLUSTER setting — ModifyDBInstance rejects it, so
+    // it is OFF the instance allowlist and an op on it must be ignored (no Modify call).
+    await SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
+      { op: 'add', path: '/AutoMinorVersionUpgrade', value: false, human: 'x' },
+    ]);
+    expect(docdb.commandCalls(ModifyDBInstanceCommand)).toHaveLength(0);
+  });
+
+  it('throws when the instance identifier is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: '', declared: {} }), [
+        windowOp('sun:05:00-sun:06:00'),
+      ])
+    ).rejects.toThrow(/instance identifier/);
   });
 });
 
