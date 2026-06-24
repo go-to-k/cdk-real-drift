@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Group",
+    "resourceType": "AWS::ResourceGroups::Group",
+    "physicalId": "cdkrd-integ-group",
+    "constructPath": "CdkRealDriftIntegResourceGroupsRich/Group",
+    "declared": {
+      "Description": "cdkrd resource group probe",
+      "Name": "cdkrd-integ-group",
+      "ResourceQuery": {
+        "Query": {
+          "ResourceTypeFilters": ["AWS::AllSupported"],
+          "TagFilters": [
+            {
+              "Key": "env",
+              "Values": ["prod", "staging"]
+            },
+            {
+              "Key": "team",
+              "Values": ["platform"]
+            }
+          ]
+        },
+        "Type": "TAG_FILTERS_1_0"
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd resource group probe",
+    "ResourceQuery": {
+      "Type": "TAG_FILTERS_1_0",
+      "Query": {
+        "TagFilters": [
+          {
+            "Values": ["prod", "staging"],
+            "Key": "env"
+          },
+          {
+            "Values": ["platform"],
+            "Key": "team"
+          }
+        ],
+        "ResourceTypeFilters": ["AWS::AllSupported"]
+      }
+    },
+    "Arn": "arn:aws:resource-groups:us-east-1:111111111111:group/cdkrd-integ-group",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegResourceGroupsRich/956fb470-6f87-11f1-b1ed-0affc5fa2c75",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegResourceGroupsRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Group",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-group"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Profile",
+    "resourceType": "AWS::Signer::SigningProfile",
+    "physicalId": "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK",
+    "constructPath": "CdkRealDriftIntegCodeSigningRich/Profile",
+    "declared": {
+      "PlatformId": "AWSLambda-SHA384-ECDSA"
+    }
+  },
+  "liveRaw": {
+    "ProfileVersionArn": "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK/bHVsx7KGoB",
+    "SignatureValidityPeriod": {
+      "Type": "MONTHS",
+      "Value": 135
+    },
+    "PlatformId": "AWSLambda-SHA384-ECDSA",
+    "ProfileName": "Profile_jPH7bQdF9rEK",
+    "Arn": "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCodeSigningRich/967dc910-6f87-11f1-9e8c-12dbef2039ab",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegCodeSigningRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Profile",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ProfileVersion": "bHVsx7KGoB"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ProfileName", "ProfileVersion", "ProfileVersionArn"],
+    "writeOnly": [],
+    "createOnly": ["PlatformId", "ProfileName", "SignatureValidityPeriod"],
+    "readOnlyPaths": ["Arn", "ProfileName", "ProfileVersion", "ProfileVersionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PlatformId", "ProfileName", "SignatureValidityPeriod"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Profile",
+      "resourceType": "AWS::Signer::SigningProfile",
+      "path": "SignatureValidityPeriod",
+      "actual": {
+        "Type": "MONTHS",
+        "Value": 135
+      },
+      "physicalId": "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK",
+      "constructPath": "CdkRealDriftIntegCodeSigningRich/Profile"
+    }
+  ]
+}

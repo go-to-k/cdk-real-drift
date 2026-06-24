@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Csc",
+    "resourceType": "AWS::Lambda::CodeSigningConfig",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:code-signing-config:csc-0896f236f13827be3",
+    "constructPath": "CdkRealDriftIntegCodeSigningRich/Csc",
+    "declared": {
+      "AllowedPublishers": {
+        "SigningProfileVersionArns": [
+          "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK/bHVsx7KGoB"
+        ]
+      },
+      "Description": "cdkrd code signing probe"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd code signing probe",
+    "AllowedPublishers": {
+      "SigningProfileVersionArns": [
+        "arn:aws:signer:us-east-1:111111111111:/signing-profiles/Profile_jPH7bQdF9rEK/bHVsx7KGoB"
+      ]
+    },
+    "CodeSigningPolicies": {
+      "UntrustedArtifactOnDeployment": "Warn"
+    },
+    "CodeSigningConfigId": "csc-0896f236f13827be3",
+    "CodeSigningConfigArn": "arn:aws:lambda:us-east-1:111111111111:code-signing-config:csc-0896f236f13827be3",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCodeSigningRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Csc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCodeSigningRich/967dc910-6f87-11f1-9e8c-12dbef2039ab",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CodeSigningConfigArn", "CodeSigningConfigId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["CodeSigningConfigArn", "CodeSigningConfigId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {
+      "CodeSigningPolicies.UntrustedArtifactOnDeployment": "Warn"
+    }
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Csc",
+      "resourceType": "AWS::Lambda::CodeSigningConfig",
+      "path": "CodeSigningPolicies",
+      "actual": {
+        "UntrustedArtifactOnDeployment": "Warn"
+      },
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:code-signing-config:csc-0896f236f13827be3",
+      "constructPath": "CdkRealDriftIntegCodeSigningRich/Csc"
+    }
+  ]
+}

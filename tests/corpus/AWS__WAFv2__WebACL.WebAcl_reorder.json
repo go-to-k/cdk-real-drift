@@ -1,0 +1,211 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "cdkrd-integ-rule-reorder|33a5f090-df72-4b99-b2ee-653b2ca3a71f|REGIONAL",
+    "constructPath": "CdkRealDriftIntegWafv2RuleReorder/WebAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Name": "cdkrd-integ-rule-reorder",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "rate-rule",
+          "Priority": 3,
+          "Statement": {
+            "RateBasedStatement": {
+              "AggregateKeyType": "IP",
+              "Limit": 2000
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "rateRule",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "geo-rule",
+          "Priority": 1,
+          "Statement": {
+            "GeoMatchStatement": {
+              "CountryCodes": ["US", "CA", "GB"]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "geoRule",
+            "SampledRequestsEnabled": true
+          }
+        },
+        {
+          "Name": "managed-rule",
+          "OverrideAction": {
+            "None": {}
+          },
+          "Priority": 2,
+          "Statement": {
+            "ManagedRuleGroupStatement": {
+              "Name": "AWSManagedRulesCommonRuleSet",
+              "VendorName": "AWS"
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "managedRule",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdRuleReorder",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "REGIONAL",
+    "Capacity": 703,
+    "Id": "33a5f090-df72-4b99-b2ee-653b2ca3a71f",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-integ-rule-reorder/33a5f090-df72-4b99-b2ee-653b2ca3a71f",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 1,
+        "Statement": {
+          "GeoMatchStatement": {
+            "CountryCodes": ["US", "CA", "GB"]
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "geoRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "geo-rule"
+      },
+      {
+        "Priority": 2,
+        "Statement": {
+          "ManagedRuleGroupStatement": {
+            "VendorName": "AWS",
+            "RuleActionOverrides": [],
+            "ManagedRuleGroupConfigs": [],
+            "ExcludedRules": [],
+            "Name": "AWSManagedRulesCommonRuleSet"
+          }
+        },
+        "OverrideAction": {
+          "None": {}
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "managedRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "managed-rule"
+      },
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 3,
+        "Statement": {
+          "RateBasedStatement": {
+            "AggregateKeyType": "IP",
+            "Limit": 2000,
+            "EvaluationWindowSec": 300
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "rateRule",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "rate-rule"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdRuleReorder",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:cdkrd-integ-rule-reorder:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegWafv2RuleReorder/5fcd7570-6f85-11f1-b994-0ef93e3e6391",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegWafv2RuleReorder",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "WebAcl",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-rule-reorder"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "cdkrd-integ-rule-reorder|33a5f090-df72-4b99-b2ee-653b2ca3a71f|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2RuleReorder/WebAcl"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "Rules[rate-rule].Statement.RateBasedStatement.EvaluationWindowSec",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "cdkrd-integ-rule-reorder|33a5f090-df72-4b99-b2ee-653b2ca3a71f|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2RuleReorder/WebAcl"
+    }
+  ]
+}

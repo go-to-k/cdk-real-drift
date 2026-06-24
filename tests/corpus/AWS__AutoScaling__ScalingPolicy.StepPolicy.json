@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "StepPolicy",
+    "resourceType": "AWS::AutoScaling::ScalingPolicy",
+    "physicalId": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:8eddc60b-5ccd-4f3e-8bda-df27793339ad:autoScalingGroupName/CdkRealDriftIntegAsgStepScaling-AsgASGD1D7B4E2-4W3CZtGVhJj4:policyName/CdkRealDriftIntegAsgStepScaling-StepPolicy-4XENIrI4an4f",
+    "constructPath": "CdkRealDriftIntegAsgStepScaling/StepPolicy",
+    "declared": {
+      "AdjustmentType": "ChangeInCapacity",
+      "AutoScalingGroupName": "CdkRealDriftIntegAsgStepScaling-AsgASGD1D7B4E2-4W3CZtGVhJj4",
+      "MetricAggregationType": "Average",
+      "PolicyType": "StepScaling",
+      "StepAdjustments": [
+        {
+          "MetricIntervalLowerBound": 50,
+          "ScalingAdjustment": 3
+        },
+        {
+          "MetricIntervalLowerBound": 10,
+          "MetricIntervalUpperBound": 50,
+          "ScalingAdjustment": 1
+        },
+        {
+          "MetricIntervalUpperBound": 10,
+          "ScalingAdjustment": -1
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "MetricAggregationType": "Average",
+    "PolicyType": "StepScaling",
+    "StepAdjustments": [
+      {
+        "MetricIntervalLowerBound": 50,
+        "ScalingAdjustment": 3
+      },
+      {
+        "MetricIntervalUpperBound": 50,
+        "MetricIntervalLowerBound": 10,
+        "ScalingAdjustment": 1
+      },
+      {
+        "MetricIntervalUpperBound": 10,
+        "ScalingAdjustment": -1
+      }
+    ],
+    "PolicyName": "CdkRealDriftIntegAsgStepScaling-StepPolicy-4XENIrI4an4f",
+    "AutoScalingGroupName": "CdkRealDriftIntegAsgStepScaling-AsgASGD1D7B4E2-4W3CZtGVhJj4",
+    "Arn": "arn:aws:autoscaling:us-east-1:111111111111:scalingPolicy:8eddc60b-5ccd-4f3e-8bda-df27793339ad:autoScalingGroupName/CdkRealDriftIntegAsgStepScaling-AsgASGD1D7B4E2-4W3CZtGVhJj4:policyName/CdkRealDriftIntegAsgStepScaling-StepPolicy-4XENIrI4an4f",
+    "AdjustmentType": "ChangeInCapacity"
+  },
+  "schema": {
+    "readOnly": ["Arn", "PolicyName"],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName"],
+    "readOnlyPaths": ["Arn", "PolicyName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName"],
+    "defaults": {},
+    "defaultPaths": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
