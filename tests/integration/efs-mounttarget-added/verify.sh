@@ -3,7 +3,7 @@
 #   deploy fixture (VPC + 2 public subnets + EFS file system + SG + 1 declared mount
 #     target in subnet[0]) -> record -> CLEAN (the declared mount target is NOT flagged)
 #   -> create-mount-target an undeclared mount target in subnet[1] out of band -> check
-#      reports it under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it
+#      reports it under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it
 #      (proves CC GetResource + normalize for AWS::EFS::MountTarget) -> CLEAN
 #   -> for revert: delete the recorded one, recreate a fresh out-of-band mount target in
 #      subnet[1] -> `revert --remove-unrecorded` DELETES it via Cloud Control
@@ -143,7 +143,7 @@ echo "=== check reports it as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-efs.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-efs.out || fail "added mount target not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-efs.out || fail "added mount target not under [Potential Drift]"
 grep -q "AWS::EFS::MountTarget" /tmp/cdkrd-integ-efs.out || fail "the out-of-band mount target not reported"
 grep -q "added=" /tmp/cdkrd-integ-efs.out && fail "unrecorded added must not count as drift" || true
 
@@ -154,7 +154,7 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for EFS::Moun
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-efs-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added mount target, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-efs-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-efs-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== delete the recorded one + recreate a fresh out-of-band mount target for revert ==="
 # EFS allows one mount target per subnet/AZ, so free subnet[1] before recreating.
@@ -164,7 +164,7 @@ MT2="$(inject_mt)"
 [ -n "$MT2" ] || fail "no MountTargetId for the second injected mount target"
 wait_mt_available "$MT2"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-efs-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

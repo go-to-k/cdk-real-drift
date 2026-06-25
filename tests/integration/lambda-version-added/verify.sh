@@ -4,7 +4,7 @@
 #   deploy fixture (Function + published version 1) -> record ->
 #      CLEAN (the declared version 1 AND the $LATEST pseudo-version must NOT flag)
 #   -> publish-version an undeclared version out of band -> check reports it under
-#      [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
+#      [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
 #      GetResource + normalize for AWS::Lambda::Version on the versioned FunctionArn)
 #      -> CLEAN
 #   -> publish ANOTHER out-of-band version -> `revert --remove-unrecorded` DELETES it via
@@ -89,7 +89,7 @@ echo "=== check reports the version as Not-Recorded inventory, NOT drift (PR4) =
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-version.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-version.out || fail "added version not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-version.out || fail "added version not under [Potential Drift]"
 grep -q "AWS::Lambda::Version" /tmp/cdkrd-integ-version.out || fail "the out-of-band version not reported"
 grep -q "added=" /tmp/cdkrd-integ-version.out && fail "unrecorded added must not count as drift" || true
 
@@ -100,13 +100,13 @@ echo "=== check should be CLEAN (proves CC GetResource on the versioned Function
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-version-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added version, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-version-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-version-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== publish ANOTHER out-of-band version for the revert path ==="
 V_REVERT="$(inject_version cdkrd-integ-oob-revert)"
 echo "published revert-target version: $V_REVERT"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-version-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

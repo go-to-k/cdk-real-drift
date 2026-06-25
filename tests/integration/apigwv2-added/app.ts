@@ -2,7 +2,7 @@
 // SECOND CHILD_ENUMERATORS member). An HTTP API with ONE declared route (GET /items)
 // backed by an HTTP_PROXY integration. verify.sh then creates a Route + Integration
 // out of band (via the AWS CLI) — whole resources not in the template — and asserts
-// cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is
+// cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is
 // inventory, not drift), records + watches them, and can revert (delete) them.
 // L1 (Cfn*) constructs are used so the fixture needs no alpha integrations module.
 import { App, Stack } from "aws-cdk-lib";

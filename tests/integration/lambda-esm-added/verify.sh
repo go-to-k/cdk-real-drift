@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for Lambda (the FOURTH CHILD_ENUMERATORS member).
 #   deploy fixture (Function + declared SQS event source mapping) -> record -> CLEAN
 #   -> create-event-source-mapping to an undeclared queue out of band -> check reports
-#      the mapping under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots
+#      the mapping under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots
 #      it (proves CC GetResource + normalize for AWS::Lambda::EventSourceMapping) -> CLEAN
 #   -> add ANOTHER out-of-band mapping -> `revert --remove-unrecorded` DELETES it via
 #      Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -69,7 +69,7 @@ echo "=== check reports the mapping as Not-Recorded inventory, NOT drift (PR4) =
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-esm.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-esm.out || fail "added mapping not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-esm.out || fail "added mapping not under [Potential Drift]"
 grep -q "AWS::Lambda::EventSourceMapping" /tmp/cdkrd-integ-esm.out || fail "the out-of-band mapping not reported"
 grep -q "added=" /tmp/cdkrd-integ-esm.out && fail "unrecorded added must not count as drift" || true
 
@@ -80,12 +80,12 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for EventSour
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-esm-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added mapping, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-esm-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-esm-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band mapping (distinct source) for the revert path ==="
 UUID2="$(inject_mapping "$QUEUE_REVERT_ARN")"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-esm-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

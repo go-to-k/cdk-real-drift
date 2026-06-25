@@ -295,7 +295,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // edits — pressing Enter recorded them into the baseline BEFORE the user ever saw
       // them, and the report then suppressed them, so a real edit could vanish in one
       // keystroke. Now the report ALWAYS prints first; the post-report prompt below
-      // ("unrecorded values found — Record/Revert/Nothing") offers a SELECTIVE record
+      // ("potential drift found — Record/Revert/Nothing") offers a SELECTIVE record
       // after the user has seen the standout values. Folding (atDefault/generated/
       // nested) keeps that list short, so the old bulk-record-to-avoid-scrolling
       // rationale no longer applies. `cdkrd record` still writes a baseline directly.

@@ -2,7 +2,7 @@
 // (a SECOND child type under the same AWS::Cognito::UserPool parent — alongside clients).
 // A UserPool with ONE declared UserPoolGroup. verify.sh then `create-group`s additional
 // groups on the SAME pool out of band (via the AWS CLI) — whole UserPoolGroup resources
-// not in the template — and asserts cdkrd reports them under [Not Recorded] (PR4: an
+// not in the template — and asserts cdkrd reports them under [Potential Drift] (PR4: an
 // unrecorded added resource is inventory, not drift), records + watches them, and can
 // revert (delete) them.
 //

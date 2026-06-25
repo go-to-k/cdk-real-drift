@@ -3,7 +3,7 @@
 # type under the AWS::Cognito::UserPool parent — alongside clients and groups).
 #   deploy fixture (UserPool + one declared UserPoolResourceServer) -> record -> CLEAN
 #   -> create-resource-server an undeclared resource server on the SAME pool out of band ->
-#      check reports it under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots
+#      check reports it under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots
 #      it (proves CC GetResource + normalize for AWS::Cognito::UserPoolResourceServer on the
 #      composite UserPoolId|Identifier) -> CLEAN
 #   -> add ANOTHER out-of-band resource server -> `revert --remove-unrecorded` DELETES it via
@@ -72,7 +72,7 @@ echo "=== check reports the resource server as Not-Recorded inventory, NOT drift
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-uprs.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-uprs.out || fail "added resource server not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-uprs.out || fail "added resource server not under [Potential Drift]"
 grep -q "AWS::Cognito::UserPoolResourceServer" /tmp/cdkrd-integ-uprs.out || fail "the out-of-band resource server not reported"
 grep -q "added=" /tmp/cdkrd-integ-uprs.out && fail "unrecorded added must not count as drift" || true
 
@@ -83,12 +83,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite UserPool
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-uprs-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added resource server, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-uprs-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-uprs-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band resource server for the revert path ==="
 inject_rs https://oob-revert.cdkrd.example oob-revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-uprs-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

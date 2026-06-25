@@ -3,7 +3,7 @@
 // URLs, and aliases). A Function with ONE declared published Version (version 1).
 // verify.sh then `publish-version`s OTHER versions to the function out of band (via the
 // AWS CLI) — whole AWS::Lambda::Version resources not in the template — and asserts cdkrd
-// reports them under [Not Recorded] (PR4: an unrecorded added resource is inventory, not
+// reports them under [Potential Drift] (PR4: an unrecorded added resource is inventory, not
 // drift), records + watches them, and can revert (delete) them.
 //
 // `fn.currentVersion` publishes version 1 = the declared version (its physical id, the Ref,

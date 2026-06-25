@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). An AppConfig Application with ONE declared Environment.
 // verify.sh then `create-environment`s additional environments on the SAME application
 // out of band (via the AWS CLI) — whole Environment resources not in the template — and
-// asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is
+// asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is
 // inventory, not drift), records + watches them, and can revert (delete) them.
 //
 // The out-of-band environments verify.sh injects are removed by the cleanup trap BEFORE

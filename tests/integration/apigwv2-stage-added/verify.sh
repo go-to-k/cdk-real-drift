@@ -7,7 +7,7 @@
 #      `$default` stage only if configured — if one shows up it is recorded too, so
 #      CLEAN holds either way)
 #   -> create a Stage out of band (aws apigatewayv2) -> check reports it under
-#      [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
+#      [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
 #      GetResource on the composite ApiId|StageName + normalize work) -> check CLEAN
 #   -> create ANOTHER out-of-band Stage -> `revert --remove-unrecorded` DELETES it
 #      via Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -52,7 +52,7 @@ echo "=== check should be CLEAN (the DECLARED prod stage must NOT be flagged) ==
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2stage-init.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) right after record, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2stage-init.out && fail "declared stage must not be flagged" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2stage-init.out && fail "declared stage must not be flagged" || true
 
 API_ID="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --region "$REGION" \
   --query "StackResources[?ResourceType=='AWS::ApiGatewayV2::Api'].PhysicalResourceId" --output text)"
@@ -65,7 +65,7 @@ echo "=== check reports it as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2stage.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2stage.out || fail "added stage not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2stage.out || fail "added stage not under [Potential Drift]"
 grep -q "AWS::ApiGatewayV2::Stage" /tmp/cdkrd-integ-v2stage.out || fail "AWS::ApiGatewayV2::Stage not reported"
 grep -q "added=" /tmp/cdkrd-integ-v2stage.out && fail "unrecorded added must not count as drift" || true
 
@@ -76,12 +76,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite id) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2stage-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added stage, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2stage-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2stage-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== inject ANOTHER out-of-band Stage (cdkrdoobrevert) for the revert path ==="
 inject_stage 'cdkrdoobrevert'
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2stage-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

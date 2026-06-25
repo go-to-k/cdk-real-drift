@@ -2,7 +2,7 @@
 // EIGHTH CHILD_ENUMERATORS member). A LogGroup with ONE declared MetricFilter. verify.sh
 // then `put-metric-filter`s additional filters on the SAME log group out of band (via the
 // AWS CLI) — whole MetricFilter resources not in the template — and asserts cdkrd reports
-// them under [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift),
+// them under [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift),
 // records + watches them, and can revert (delete) them.
 //
 // IMPORTANT: CDK's LogGroup DEFAULTS its removalPolicy to RETAIN — leaving the group (and

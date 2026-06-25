@@ -264,7 +264,7 @@ export function resolveMenuMessage(stackName: string, code: number, establishOnl
     return `${stackName}: no .cdkrd baseline yet — record the current state as your baseline?`;
   return code === 1
     ? `${stackName}: drift found — what do you want to do?`
-    : `${stackName}: unrecorded values found — what do you want to do?`;
+    : `${stackName}: potential drift found (live-only, no baseline yet) — what do you want to do?`;
 }
 
 export async function resolveInteractively(p: ResolveParams): Promise<number> {

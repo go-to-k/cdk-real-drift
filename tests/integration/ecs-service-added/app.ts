@@ -3,7 +3,7 @@
 // Cluster + a Fargate task def + a Fargate Service with desiredCount 0 (so NO tasks are
 // scheduled — fast deploy/delete, no image pull). verify.sh then `create-service`s
 // additional services on the SAME cluster out of band (via the AWS CLI) — whole Service
-// resources not in the template — and asserts cdkrd reports them under [Not Recorded]
+// resources not in the template — and asserts cdkrd reports them under [Potential Drift]
 // (PR4: an unrecorded added resource is inventory, not drift), records + watches them,
 // and can revert (delete) them.
 //

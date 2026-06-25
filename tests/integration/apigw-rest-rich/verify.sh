@@ -8,7 +8,7 @@
 # REGRESSION GUARD (#293): AWS auto-creates two built-in default models (`Empty`,
 # `Error`) on EVERY RestApi. They are never template resources, so the Model
 # child-enumerator used to surface them as out-of-band `added` on a clean deploy
-# (a `[Not Recorded: 2]` finding on the FIRST check, before any record). The
+# (a `[Potential Drift: 2]` finding on the FIRST check, before any record). The
 # pre-record check below asserts they DO NOT appear. The post-record check alone
 # cannot catch this — `record` snapshots them, masking the regression.
 set -uo pipefail

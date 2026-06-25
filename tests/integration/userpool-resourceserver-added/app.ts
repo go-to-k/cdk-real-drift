@@ -3,7 +3,7 @@
 // clients and groups). A UserPool with ONE declared UserPoolResourceServer. verify.sh then
 // `create-resource-server`s additional resource servers on the SAME pool out of band (via
 // the AWS CLI) — whole UserPoolResourceServer resources not in the template — and asserts
-// cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is inventory,
+// cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is inventory,
 // not drift), records + watches them, and can revert (delete) them.
 //
 // IMPORTANT: a CDK UserPool DEFAULTS to RemovalPolicy.RETAIN, which would ORPHAN the pool

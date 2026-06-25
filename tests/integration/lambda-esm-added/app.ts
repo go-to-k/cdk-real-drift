@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). A Function with ONE declared event source mapping (an SQS
 // queue). verify.sh then `create-event-source-mapping`s the OTHER two queues to the
 // function out of band (via the AWS CLI) — whole EventSourceMapping resources not in
-// the template — and asserts cdkrd reports them under [Not Recorded] (PR4: an
+// the template — and asserts cdkrd reports them under [Potential Drift] (PR4: an
 // unrecorded added resource is inventory, not drift), records + watches them, and can
 // revert (delete) them.
 //

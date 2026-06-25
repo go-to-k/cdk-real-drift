@@ -4,7 +4,7 @@
 # it is reconciled against the baseline the same way (record it, watch it for changes).
 #   deploy fixture (REST API, GET / + POST /scoring) -> record -> check CLEAN
 #   -> inject an out-of-band ANY method on root `/` -> check reports it under
-#      [Not Recorded] and is NOT drift (exit 0 — never decided, so no contract to
+#      [Potential Drift] and is NOT drift (exit 0 — never decided, so no contract to
 #      violate) -> `record` snapshots the ANY method -> check CLEAN
 #   -> mutate the ANY method out of band (apiKeyRequired true) -> check flags it as
 #      `added` drift "changed since record" (exit 1) -> `ignore` it -> check CLEAN
@@ -59,7 +59,7 @@ echo "=== check reports the added method as Not-Recorded inventory, NOT drift (P
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdk-real-drift-integ-added.out || fail "added method not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdk-real-drift-integ-added.out || fail "added method not under [Potential Drift]"
 grep -q "ANY /" /tmp/cdk-real-drift-integ-added.out || fail "ANY / method not reported"
 grep -q "added=1" /tmp/cdk-real-drift-integ-added.out && fail "unrecorded added must not count as drift" || true
 
@@ -70,7 +70,7 @@ echo "=== check should be CLEAN (added method recorded + unchanged) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added method, got $rc"
-grep -q "Not Recorded" /tmp/cdk-real-drift-integ-added-clean.out && fail "added method still Not-Recorded after record" || true
+grep -q "Potential Drift" /tmp/cdk-real-drift-integ-added-clean.out && fail "added method still Not-Recorded after record" || true
 
 echo "=== mutate the added method out of band (apiKeyRequired true) ==="
 aws apigateway update-method --rest-api-id "$API_ID" --resource-id "$ROOT_ID" \

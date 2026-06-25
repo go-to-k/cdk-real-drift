@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for EC2 (the TENTH CHILD_ENUMERATORS member).
 #   deploy fixture (minimal VPC + CDK public subnet) -> record -> CLEAN
 #   -> create-subnet an undeclared subnet in the SAME VPC out of band -> check reports the
-#      subnet under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it
+#      subnet under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it
 #      (proves CC GetResource + normalize for AWS::EC2::Subnet) -> CLEAN
 #   -> add ANOTHER out-of-band subnet -> `revert --remove-unrecorded` DELETES it via Cloud
 #      Control DeleteResource -> check CLEAN -> destroy.
@@ -78,7 +78,7 @@ echo "=== check reports the subnet as Not-Recorded inventory, NOT drift (PR4) ==
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ec2.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-ec2.out || fail "added subnet not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-ec2.out || fail "added subnet not under [Potential Drift]"
 grep -q "AWS::EC2::Subnet" /tmp/cdkrd-integ-ec2.out || fail "the out-of-band subnet not reported"
 grep -q "added=" /tmp/cdkrd-integ-ec2.out && fail "unrecorded added must not count as drift" || true
 
@@ -89,13 +89,13 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for EC2::Subn
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ec2-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added subnet, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-ec2-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-ec2-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band subnet for the revert path ==="
 SN2="$(inject_subnet 10.0.201.0/24)"
 [ -n "$SN2" ] || fail "no SubnetId for the second injected subnet"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ec2-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

@@ -587,7 +587,7 @@ const readGlueTable: OverrideReader = async ({ physicalId, declared, region }) =
 // the present member, dropping the AWS-managed Version / CreationTime / LastUpdated fields
 // (not CFn-declarable, pure noise).
 // `Serde` is a CsvClassifier field GetClassifier returns as "None" by default but the CFn
-// schema does NOT model (verified live — it surfaced as a bogus [Not Recorded] value); a
+// schema does NOT model (verified live — it surfaced as a bogus [Potential Drift] value); a
 // user can never declare it, so projecting it would be a permanent undeclared false
 // inventory. Dropped alongside the AWS-managed Version / CreationTime / LastUpdated.
 const GLUE_CLASSIFIER_MANAGED = new Set(['Version', 'CreationTime', 'LastUpdated', 'Serde']);

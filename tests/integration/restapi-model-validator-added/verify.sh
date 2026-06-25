@@ -6,7 +6,7 @@
 #   -> record -> CLEAN (the DECLARED Model + Validator AND the built-in Empty/Error models
 #      are NOT flagged — `record` snapshots the built-ins so they never false-positive)
 #   -> create-model + create-request-validator (undeclared) on the SAME api out of band ->
-#      check reports BOTH under [Not Recorded] with AWS::ApiGateway::Model and
+#      check reports BOTH under [Potential Drift] with AWS::ApiGateway::Model and
 #      AWS::ApiGateway::RequestValidator, NOT drift (exit 0)
 #   -> `record` snapshots them (proves CC GetResource on the composites
 #      RestApiId|Name + RestApiId|RequestValidatorId) -> CLEAN
@@ -74,7 +74,7 @@ echo "=== check reports BOTH as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-mv.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-mv.out || fail "added model/validator not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-mv.out || fail "added model/validator not under [Potential Drift]"
 grep -q "AWS::ApiGateway::Model" /tmp/cdkrd-integ-mv.out || fail "the out-of-band model not reported"
 grep -q "AWS::ApiGateway::RequestValidator" /tmp/cdkrd-integ-mv.out || fail "the out-of-band validator not reported"
 grep -q "added=" /tmp/cdkrd-integ-mv.out && fail "unrecorded added must not count as drift" || true
@@ -86,13 +86,13 @@ echo "=== check should be CLEAN (proves CC GetResource on both composite ids + n
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-mv-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added model+validator, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-mv-clean.out && fail "still Not-Recorded after record (GetResource on a composite id likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-mv-clean.out && fail "still Not-Recorded after record (GetResource on a composite id likely failed)" || true
 
 echo "=== add ANOTHER out-of-band model + validator for the revert path ==="
 inject_model cdkrdOobModelRev
 inject_validator cdkrd-oob-validator-rev
 
-echo "=== check reports the new ones under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new ones under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-mv-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second batch of unrecorded added, got $rc"

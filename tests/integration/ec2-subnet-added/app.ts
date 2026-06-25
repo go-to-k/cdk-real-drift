@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). A minimal VPC (one AZ, one public subnet, no NAT) so
 // teardown is fast and cheap. verify.sh then `create-subnet`s additional subnets in the
 // SAME VPC out of band (via the AWS CLI) — whole Subnet resources not in the template —
-// and asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource
+// and asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource
 // is inventory, not drift), records + watches them, and can revert (delete) them.
 //
 // The VPC's default CIDR is 10.0.0.0/16. The out-of-band subnets verify.sh injects sit in

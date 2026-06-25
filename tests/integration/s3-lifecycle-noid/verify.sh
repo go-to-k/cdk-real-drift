@@ -7,7 +7,7 @@ trap cleanup EXIT
 fail(){ echo "INTEG FAIL ($STACK): $*"; exit 1; }
 echo "=== [$STACK] deploy ==="; npx cdk deploy -f "$STACK" --require-approval never || fail deploy
 echo "=== [$STACK] corpus harvest (fresh, pre-record) ==="; CDKRD_CORPUS_DIR="/tmp/corpus-$STACK" $CLI check "$STACK" --region "$REGION" --verbose > /tmp/fresh-$STACK.out 2>&1 || true
-echo "--- lifecycle-related fresh findings ---"; grep -iE "Lifecycle|Not Recorded|declared|At AWS Default" /tmp/fresh-$STACK.out | head -20
+echo "--- lifecycle-related fresh findings ---"; grep -iE "Lifecycle|Potential Drift|declared|At AWS Default" /tmp/fresh-$STACK.out | head -20
 echo "=== [$STACK] record ==="; $CLI record "$STACK" --region "$REGION" --yes || fail record
 echo "=== [$STACK] check MUST be CLEAN ==="; $CLI check "$STACK" --region "$REGION" --fail | tee "/tmp/cdkrd-$STACK.out"; rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || { echo "--- FALSE POSITIVE ---"; fail "expected CLEAN, got $rc"; }

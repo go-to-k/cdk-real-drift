@@ -4,7 +4,7 @@
 // resolver on Query.ping. verify.sh then `create-resolver`s additional resolvers on
 // OTHER fields (Query.pong, Query.pung) of the SAME api out of band (via the AWS CLI) —
 // whole Resolver resources not in the template — and asserts cdkrd reports them under
-// [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift), records +
+// [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift), records +
 // watches them, and can revert (delete) them.
 //
 // The declared resolver targets Query.ping, so the declared resolver must NOT be flagged.

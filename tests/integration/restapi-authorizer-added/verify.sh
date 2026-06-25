@@ -4,7 +4,7 @@
 #   deploy fixture (RestApi + one method + Lambda + one DECLARED TOKEN authorizer)
 #   -> record -> CLEAN (the DECLARED authorizer is NOT flagged)
 #   -> create-authorizer an undeclared authorizer on the SAME api out of band -> check
-#      reports it under [Not Recorded] with AWS::ApiGateway::Authorizer, NOT drift (exit 0)
+#      reports it under [Potential Drift] with AWS::ApiGateway::Authorizer, NOT drift (exit 0)
 #   -> `record` snapshots it (proves CC GetResource on the composite RestApiId|AuthorizerId
 #      + normalize for AWS::ApiGateway::Authorizer) -> CLEAN
 #   -> add ANOTHER out-of-band authorizer -> `revert --remove-unrecorded` DELETES it via
@@ -70,7 +70,7 @@ echo "=== check reports the authorizer as Not-Recorded inventory, NOT drift (PR4
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-auth.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-auth.out || fail "added authorizer not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-auth.out || fail "added authorizer not under [Potential Drift]"
 grep -q "AWS::ApiGateway::Authorizer" /tmp/cdkrd-integ-auth.out || fail "the out-of-band authorizer not reported"
 grep -q "added=" /tmp/cdkrd-integ-auth.out && fail "unrecorded added must not count as drift" || true
 
@@ -81,12 +81,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite id + nor
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-auth-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added authorizer, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-auth-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-auth-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band authorizer for the revert path ==="
 inject_authorizer cdkrd-integ-oob-revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-auth-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

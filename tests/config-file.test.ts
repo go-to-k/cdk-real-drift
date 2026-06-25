@@ -134,7 +134,7 @@ describe('applyIgnores', () => {
 
   it('clears the unrecorded flag when re-tagging to ignored (ignore STOPS watching, WAVE22)', () => {
     // applyBaseline marks a not-yet-recorded undeclared value `unrecorded`; once ignored
-    // it is a DECIDED value and must not still surface under [Not Recorded] / "run record".
+    // it is a DECIDED value and must not still surface under [Potential Drift] / "run record".
     const f = { ...undeclared('MyTable', 'ProvisionedThroughput'), unrecorded: true };
     const [out] = ign([f], 'S', cfg([p('*.ProvisionedThroughput')]));
     expect(out?.tier).toBe('ignored');

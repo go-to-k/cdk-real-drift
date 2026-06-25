@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). An SNS Topic with ONE declared subscription (to Queue,
 // which auto-confirms). verify.sh subscribes the OTHER two queues to the topic out of
 // band (via the AWS CLI) — whole Subscription resources not in the template — and
-// asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is
+// asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is
 // inventory, not drift), records + watches them, and can revert (delete) them.
 //
 // Two EXTRA queues exist because SNS Subscribe is idempotent per (topic, protocol,

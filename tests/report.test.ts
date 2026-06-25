@@ -19,44 +19,48 @@ function run(findings: Finding[], opts: Parameters<typeof report>[2] = {}) {
 const U = (path = 'P'): Finding => ({ ...F('undeclared', path), unrecorded: true });
 
 describe('report unrecorded findings (R60/R62 — per finding: never decided is inventory, not drift)', () => {
-  it('unrecorded findings render as [Not Recorded: N], labelled "not drift", and do NOT count as drift', () => {
+  it('unrecorded findings render as [Potential Drift: N], not confirmed drift, and do NOT count as drift', () => {
     const { code, text } = run([U(), U('Q')]);
     expect(code).toBe(0);
-    expect(text).toContain('[Not Recorded: 2]');
-    expect(text).toContain('not drift —'); // R112: the section says so up front
+    expect(text).toContain('[Potential Drift: 2]');
+    expect(text).toContain('Record to accept it'); // the section explains the way out
     expect(text).not.toContain('Undeclared Drift');
     expect(text).toContain(
-      'result: CLEAN — 2 unrecorded value(s) await a baseline (run cdkrd record)'
+      'result: no confirmed drift · 2 potential drift (Record to set a baseline)'
+    );
+    // R-Potential: the no-baseline header explains WHY these are potential, not clean,
+    // and that you can record straight from this check (or via `cdkrd record`).
+    expect(text).toContain("No baseline yet — these live-only values can't be confirmed as drift");
+    expect(text).toContain(
+      'Record them right from this `cdkrd check` prompt, or run `cdkrd record`'
     );
   });
 
   it('result note names the shown/folded split so the section count and total reconcile (R112)', () => {
-    // 2 standout (shown in [Not Recorded: 2]) + 3 nested (folded) = 5 total
+    // 2 standout (shown in [Potential Drift: 2]) + 3 nested (folded) = 5 total
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { text } = run([U(), U('Q'), nested('a'), nested('b'), nested('c')]);
-    expect(text).toContain('[Not Recorded: 2]'); // only the standout are listed
+    expect(text).toContain('[Potential Drift: 2]'); // only the standout are listed
     expect(text).toContain(
-      'result: CLEAN — 5 unrecorded value(s) await a baseline (2 shown, 3 folded; run cdkrd record)'
+      'result: no confirmed drift · 5 potential drift (2 shown, 3 folded — Record to set a baseline)'
     );
   });
 
-  it('declared drift still fails, with unrecorded values noted beside the verdict', () => {
+  it('declared drift still fails, with potential-drift values noted beside the verdict', () => {
     const { code, text } = run([F('declared'), U('Q')]);
     expect(code).toBe(1);
     // R114: drift + standout unrecorded both visible -> combined findings framing so
     // the verdict matches the printed blocks (was a lone "1 drift(s)" beside 2 sections).
-    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 not-recorded to review');
+    expect(text).toContain('result: 2 findings — 1 drift (declared=1) + 1 potential drift');
     expect(text).not.toContain('undeclared=1'); // unrecorded never appears as a drift count
   });
 
-  it('undeclared DRIFT and Not Recorded coexist as separate sections (partial baseline)', () => {
+  it('undeclared DRIFT and Potential Drift coexist as separate sections (partial baseline)', () => {
     const { code, text } = run([F('undeclared'), U('Q')]);
     expect(code).toBe(1);
     expect(text).toContain('[CFn-Undeclared Drift: 1]');
-    expect(text).toContain('[Not Recorded: 1]');
-    expect(text).toContain(
-      'result: 2 findings — 1 drift (undeclared=1) + 1 not-recorded to review'
-    );
+    expect(text).toContain('[Potential Drift: 1]');
+    expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 potential drift');
   });
 
   it('mixed findings line counts only SHOWN unrecorded; folded ones stay a parenthetical (R114)', () => {
@@ -65,7 +69,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
     expect(code).toBe(1);
     expect(text).toContain(
-      'result: 2 findings — 1 drift (declared=1) + 1 not-recorded to review (2 folded; run cdkrd record)'
+      'result: 2 findings — 1 drift (declared=1) + 1 potential drift (2 folded — Record to set a baseline)'
     );
   });
 
@@ -124,7 +128,7 @@ describe('report', () => {
     expect(text).toContain('Stack/Api ▸ ANY /');
   });
 
-  it('PR4: an UNRECORDED added resource renders in [Not Recorded], not as drift (exit 0)', () => {
+  it('PR4: an UNRECORDED added resource renders in [Potential Drift], not as drift (exit 0)', () => {
     const f: Finding = {
       tier: 'added',
       logicalId: 'Api/abc|root|ANY',
@@ -137,7 +141,7 @@ describe('report', () => {
     };
     const { code, text } = run([f]);
     expect(code).toBe(0);
-    expect(text).toContain('[Not Recorded: 1]');
+    expect(text).toContain('[Potential Drift: 1]');
     expect(text).not.toContain('[Added Resource');
   });
 
@@ -288,6 +292,8 @@ describe('report', () => {
       expect(text).not.toContain('Declared Drift');
       expect(text).not.toContain('UNDECLARED');
       expect(text).not.toContain('Deleted');
+      // no unrecorded values → no "No baseline yet" header (it would mislead a clean stack)
+      expect(text).not.toContain('No baseline yet');
     });
 
     it('result: line lists only non-zero DRIFT counts; CLEAN prints just CLEAN', () => {
@@ -417,9 +423,10 @@ describe('report', () => {
 
     it('a real undeclared value is listed in the body while at-default values stay folded', () => {
       const { code, text } = run([U('RealEdit'), AD('TracingConfig'), AD('PackageType')]);
-      // U() is unrecorded (not drift) → CLEAN, but the real value is shown; defaults fold
+      // U() is unrecorded (potential drift, not confirmed) → no confirmed drift, but the
+      // real value is still shown; defaults fold
       expect(code).toBe(0);
-      expect(text).toContain('[Not Recorded: 1]');
+      expect(text).toContain('[Potential Drift: 1]');
       expect(text).toContain('L.RealEdit');
       expect(text).toContain('atDefault=2');
       expect(text).not.toContain('[At AWS Default');
@@ -584,9 +591,9 @@ describe('R96 nested unrecorded folding', () => {
     unrecorded: true,
     ...(nested ? { nested: true } : {}),
   });
-  it('nested unrecorded folds into info:, top-level lists in [Not Recorded]', () => {
+  it('nested unrecorded folds into info:, top-level lists in [Potential Drift]', () => {
     const { text } = run([NU('TopLevel'), NU('Conf.A', true), NU('Conf.B', true)]);
-    expect(text).toContain('[Not Recorded: 1]');
+    expect(text).toContain('[Potential Drift: 1]');
     expect(text).toContain('L.TopLevel');
     expect(text).toContain('undeclared-subkey=2');
     expect(text).not.toContain('Conf.A');

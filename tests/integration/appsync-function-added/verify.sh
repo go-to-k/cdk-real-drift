@@ -4,7 +4,7 @@
 #   deploy fixture (GraphQL API + one NONE data source + one declared function) -> record
 #   -> CLEAN (the declared function must NOT be flagged)
 #   -> create-function an undeclared function on the SAME api out of band -> check reports
-#      the function under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it
+#      the function under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it
 #      (proves CC GetResource on the FunctionArn) -> CLEAN
 #   -> add ANOTHER out-of-band function -> `revert --remove-unrecorded` DELETES it via
 #      Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -84,7 +84,7 @@ echo "=== check reports the function as Not-Recorded inventory, NOT drift (PR4) 
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync-fn.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appsync-fn.out || fail "added function not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-appsync-fn.out || fail "added function not under [Potential Drift]"
 grep -q "AWS::AppSync::FunctionConfiguration" /tmp/cdkrd-integ-appsync-fn.out || fail "the out-of-band function not reported"
 grep -q "added=" /tmp/cdkrd-integ-appsync-fn.out && fail "unrecorded added must not count as drift" || true
 
@@ -95,12 +95,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the FunctionArn) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync-fn-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added function, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appsync-fn-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-appsync-fn-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band function for the revert path ==="
 inject_fn cdkrdIntegOobRevert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync-fn-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

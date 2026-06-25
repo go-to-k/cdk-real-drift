@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for AppConfig (the FOURTEENTH CHILD_ENUMERATORS member).
 #   deploy fixture (AppConfig Application + one declared Environment) -> record -> CLEAN
 #   -> create-environment an undeclared environment on the SAME application out of band
-#      -> check reports the environment under [Not Recorded] and is NOT drift (exit 0)
+#      -> check reports the environment under [Potential Drift] and is NOT drift (exit 0)
 #      -> `record` snapshots it (proves CC GetResource on the composite id) -> CLEAN
 #   -> add ANOTHER out-of-band environment -> `revert --remove-unrecorded` DELETES it via
 #      Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -77,7 +77,7 @@ echo "=== check reports the environment as Not-Recorded inventory, NOT drift (PR
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appconfig.out || fail "added environment not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-appconfig.out || fail "added environment not under [Potential Drift]"
 grep -q "AWS::AppConfig::Environment" /tmp/cdkrd-integ-appconfig.out || fail "the out-of-band environment not reported"
 grep -q "added=" /tmp/cdkrd-integ-appconfig.out && fail "unrecorded added must not count as drift" || true
 
@@ -88,12 +88,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite id) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added environment, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appconfig-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-appconfig-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band environment for the revert path ==="
 inject_env cdkrd-integ-oob-revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

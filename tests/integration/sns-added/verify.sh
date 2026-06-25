@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for SNS (the THIRD CHILD_ENUMERATORS member).
 #   deploy fixture (Topic + Queue + declared SQS subscription) -> record -> check CLEAN
 #   -> subscribe the queue AGAIN out of band (aws sns subscribe) -> check reports the
-#      subscription under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots
+#      subscription under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots
 #      it (proves CC GetResource + normalize work for AWS::SNS::Subscription) -> CLEAN
 #   -> add ANOTHER out-of-band subscription -> `revert --remove-unrecorded` DELETES it
 #      via Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -69,7 +69,7 @@ echo "=== check reports the subscription as Not-Recorded inventory, NOT drift (P
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-sns.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-sns.out || fail "added subscription not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-sns.out || fail "added subscription not under [Potential Drift]"
 grep -q "AWS::SNS::Subscription" /tmp/cdkrd-integ-sns.out || fail "the out-of-band subscription not reported"
 grep -q "added=" /tmp/cdkrd-integ-sns.out && fail "unrecorded added must not count as drift" || true
 
@@ -80,12 +80,12 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize work for SNS 
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-sns-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added subscription, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-sns-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-sns-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band subscription (distinct endpoint) for the revert path ==="
 SUB2="$(inject_sub "$QUEUE_REVERT_ARN")"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-sns-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

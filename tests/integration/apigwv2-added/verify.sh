@@ -3,7 +3,7 @@
 # CHILD_ENUMERATORS member. Proves the whole arc on the new enumerator:
 #   deploy fixture (HTTP API, declared GET /items) -> record -> check CLEAN
 #   -> create a Route + Integration out of band (aws apigatewayv2) -> check reports them
-#      under [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots them
+#      under [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots them
 #      (proves CC GetResource + normalize work for V2 Route/Integration) -> check CLEAN
 #   -> create ANOTHER out-of-band Route+Integration -> `revert --remove-unrecorded`
 #      DELETES it via Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -62,7 +62,7 @@ echo "=== check reports them as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2.out || fail "added route/integration not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2.out || fail "added route/integration not under [Potential Drift]"
 grep -q "GET /admin" /tmp/cdkrd-integ-v2.out || fail "the out-of-band route 'GET /admin' not reported"
 grep -q "added=" /tmp/cdkrd-integ-v2.out && fail "unrecorded added must not count as drift" || true
 
@@ -73,12 +73,12 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize work for V2) 
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added V2 children, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== inject ANOTHER out-of-band Route (GET /audit) for the revert path ==="
 inject_route 'GET /audit'
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

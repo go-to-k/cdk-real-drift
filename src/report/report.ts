@@ -24,8 +24,9 @@ import { style } from './style.js';
 // so `CFn-Declared Drift` vs `CFn-Undeclared Drift`, which share the `CFn-` prefix, the
 // ` Drift` suffix, and the same red colour, read as distinct WORDS at a glance instead
 // of two near-identical all-caps tokens (R130 dogfood). `CFn` / `AWS` stay as the
-// acronyms they are. The not-in-baseline section is `[Not Recorded]` (literal below),
-// which ties directly to the `cdkrd record` verb.
+// acronyms they are. The not-in-baseline section is `[Potential Drift]` (literal below):
+// live-only values with no baseline yet, so cdkrd can't confirm them as drift or not —
+// it ties directly to the `cdkrd record` verb (record resolves the ambiguity).
 const TIER_NAMES: Record<Tier, string> = {
   deleted: 'Deleted',
   added: 'Added Resource',
@@ -46,7 +47,7 @@ const TIER_NAMES: Record<Tier, string> = {
 const TIER_NOTES: Partial<Record<Tier, string>> = {
   deleted: 'resource deleted out of band — always drift',
   added:
-    'a WHOLE live resource not in your CloudFormation template (the resource-level counterpart of CFn-Undeclared) — created out of band under a declared parent, changed from your .cdkrd baseline (an unrecorded one is Not Recorded, not drift)',
+    'a WHOLE live resource not in your CloudFormation template (the resource-level counterpart of CFn-Undeclared) — created out of band under a declared parent, changed from your .cdkrd baseline (an unrecorded one is Potential Drift, not confirmed drift)',
   declared: 'declared in your CloudFormation template — the live value differs',
   undeclared:
     'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
@@ -230,6 +231,18 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     section(byTier(tier), TIER_NAMES[tier], TIER_NOTES[tier], tierStyle(tier), leadingBlank);
 
   log(style.header(`=== cdkrd check: ${header} ===`));
+  // When live-only values have no baseline yet, say so up front: with nothing to
+  // compare against, cdkrd genuinely CANNOT tell whether they are intentional or an
+  // out-of-band change — that ambiguity (not "all clear") is why they are POTENTIAL
+  // drift. No count here — the [Potential Drift: N] section and the result line carry it.
+  if (unrecordedItems.length > 0) {
+    log(
+      style.undeclaredTier(
+        "No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`."
+      )
+    );
+    log(''); // blank line so the no-baseline note reads as its own preamble, not a section header
+  }
   // DRIFT tiers: always full detail (the point of the tool)
   let driftSections = 0;
   for (const tier of DRIFT_TIERS) {
@@ -240,8 +253,8 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   if (
     section(
       unrecordedShown,
-      'Not Recorded',
-      'not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it',
+      'Potential Drift',
+      "live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it",
       style.undeclaredTier,
       driftSections > 0
     )
@@ -258,7 +271,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // R114: when DRIFT and standout UNRECORDED values are BOTH visible, a lone
   // "1 drift(s)" verdict reads as a mismatch against the 2+ printed blocks (the user
   // sees [DECLARED DRIFT: 1] + [UNRECORDED: 2] but a single "1 drift"). Combine them
-  // under one findings count — `N findings — X drift (...) + Y not-recorded to review` —
+  // under one findings count — `N findings — X drift (...) + Y potential drift` —
   // keeping the red drift verdict and its breakdown so exit-1 stays legible, and
   // counting only what is SHOWN (folded values are not findings, just a parenthetical).
   // The combined framing fires ONLY in this mixed case; single-category runs keep their
@@ -268,31 +281,38 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   if (mixed) {
     const foldedHint =
       unrecordedFoldedCount > 0
-        ? `${unrecordedFoldedCount} folded; run cdkrd record`
-        : 'run cdkrd record';
+        ? `${unrecordedFoldedCount} folded — Record to set a baseline`
+        : 'Record to set a baseline';
     resultBody =
       `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
-      // "not-recorded" (not "undeclared"): the [Not Recorded] set is undeclared
-      // PROPERTIES plus out-of-band `added` RESOURCES (PR4) — both await a record.
-      ` + ${style.undeclaredTier(`${unrecordedShown.length} not-recorded to review`)}` +
+      // "potential drift" (not "undeclared drift"): the [Potential Drift] set is
+      // undeclared PROPERTIES plus out-of-band `added` RESOURCES (PR4) that have no
+      // baseline yet — unconfirmed, never counted as confirmed drift; both await a record.
+      ` + ${style.undeclaredTier(`${unrecordedShown.length} potential drift`)}` +
       style.infoTier(` (${foldedHint})`);
   } else {
-    // the verdict is the one line that must stand out: green CLEAN / red drift count
+    // the verdict is the one line that must stand out: green CLEAN / red drift count.
+    // "CLEAN" is reserved for a truly clean stack (nothing unrecorded); when live-only
+    // values await a baseline there IS no confirmed drift but the stack is NOT clean —
+    // those values are POTENTIAL drift (we can't yet tell intent from out-of-band), so
+    // say "no confirmed drift" instead of the green all-clear.
     const verdict =
-      drifted === 0
-        ? style.clean('CLEAN')
-        : `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`;
-    // unrecorded values are stated NEXT TO the verdict (not as drift): the count
-    // and the way out, in one place (R60). The total counts ALL unrecorded values
-    // but the [UNRECORDED] section lists only the standout (non-folded) ones, so name
-    // the split (R112) — otherwise "25 await a baseline" reads as a mismatch against a
-    // visible "[UNRECORDED: 2]".
+      drifted > 0
+        ? `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`
+        : unrecordedItems.length > 0
+          ? 'no confirmed drift'
+          : style.clean('CLEAN');
+    // unrecorded values are stated NEXT TO the verdict as POTENTIAL drift (not confirmed
+    // drift): the count and the way out, in one place (R60). The total counts ALL
+    // unrecorded values but the [Potential Drift] section lists only the standout
+    // (non-folded) ones, so name the split (R112) — otherwise "25 potential" reads as a
+    // mismatch against a visible "[Potential Drift: 2]".
     const unrecordedNote =
       unrecordedItems.length > 0
-        ? style.infoTier(
+        ? style.undeclaredTier(
             unrecordedFoldedCount > 0
-              ? ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded; run cdkrd record)`
-              : ` — ${unrecordedItems.length} unrecorded value(s) await a baseline (run cdkrd record)`
+              ? ` · ${unrecordedItems.length} potential drift (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded — Record to set a baseline)`
+              : ` · ${unrecordedItems.length} potential drift (Record to set a baseline)`
           )
         : '';
     resultBody = `${verdict}${unrecordedNote}`;

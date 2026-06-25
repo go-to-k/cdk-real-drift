@@ -3,7 +3,7 @@
 //   - a Network Load Balancer (NLB) — its server-default attribute bag uses keys
 //     (and defaults) DIFFERENT from an ALB's, none of which the ALB-only
 //     ELB_ATTRIBUTE_DEFAULTS entries cover, so a fresh NLB lists them all under
-//     [Not Recorded]. Harvest the live values to curate the NLB defaults.
+//     [Potential Drift]. Harvest the live values to curate the NLB defaults.
 //   - an Application Load Balancer (ALB) with NO idleTimeout declared — so
 //     `idle_timeout.timeout_seconds` reads back the live default "60" UNDECLARED
 //     (every other ELB fixture declares idleTimeout, hiding it from the corpus).

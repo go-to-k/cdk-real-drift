@@ -3,7 +3,7 @@
 // function URLs). A Function with a published version and ONE declared alias (`live`).
 // verify.sh then `create-alias`es OTHER aliases to the function out of band (via the
 // AWS CLI) — whole AWS::Lambda::Alias resources not in the template — and asserts cdkrd
-// reports them under [Not Recorded] (PR4: an unrecorded added resource is inventory, not
+// reports them under [Potential Drift] (PR4: an unrecorded added resource is inventory, not
 // drift), records + watches them, and can revert (delete) them.
 //
 // `fn.currentVersion` publishes version 1, which the declared alias points at and which
