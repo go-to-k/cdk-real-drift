@@ -56,6 +56,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Timeout: 3,
   },
   'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
+  // A published version inherits the function's runtime-management config; a version
+  // that pins nothing reads back the Auto default (observed live across every
+  // `currentVersion` in a multi-function stack). The twin of the AWS::Lambda::Function
+  // RuntimeManagementConfig default above; pin a version to a specific runtime and the
+  // object no longer matches (equality-gated). The version's CodeSha256 is a per-deploy
+  // content hash (not a constant default) — folded as `generated` via
+  // GENERATED_TOPLEVEL_PATHS instead.
+  'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
   'AWS::Events::Rule': { EventBusName: 'default' },
   'AWS::Athena::WorkGroup': { State: 'ENABLED' },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
@@ -154,6 +162,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     EndpointConfiguration: { IpAddressType: 'ipv4', Types: ['EDGE'] },
     DisableExecuteApiEndpoint: false,
   },
+  // A custom domain created without an explicit TLS floor reads back TLS_1_2 (the
+  // documented default for REGIONAL/EDGE custom domains; observed live). A domain that
+  // pins TLS_1_0 reads a non-matching value and stays undeclared (equality-gated).
+  'AWS::ApiGateway::DomainName': {
+    SecurityPolicy: 'TLS_1_2',
+  },
   'AWS::EC2::Subnet': {
     PrivateDnsNameOptionsOnLaunch: {
       EnableResourceNameDnsARecord: false,
@@ -226,6 +240,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MfaConfiguration: 'OFF',
     DeletionProtection: 'INACTIVE',
     UserPoolTier: 'ESSENTIALS',
+    // A user pool that does not wire up its own SES identity reads back the
+    // Cognito-managed sender (observed live). EmailSendingAccount=COGNITO_DEFAULT is
+    // the documented default; a pool that switches to DEVELOPER (its own SES) reads a
+    // non-matching object and stays undeclared (equality-gated).
+    EmailConfiguration: { EmailSendingAccount: 'COGNITO_DEFAULT' },
   },
   'AWS::Cognito::UserPoolClient': {
     EnableTokenRevocation: true,
@@ -517,6 +536,10 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::Cognito::UserPool': {
     'AdminCreateUserConfig.UnusedAccountValidityDays': 7,
     'Policies.SignInPolicy': { AllowedFirstAuthFactors: ['PASSWORD'] },
+    // A pool that declares a PasswordPolicy but omits the temporary-password lifetime
+    // reads back the 7-day default (observed live); a pool that sets a different value
+    // no longer matches and surfaces (equality-gated).
+    'Policies.PasswordPolicy.TemporaryPasswordValidityDays': 7,
   },
   'AWS::DynamoDB::Table': {
     'PointInTimeRecoverySpecification.RecoveryPeriodInDays': 35,
@@ -595,6 +618,97 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// Default ELEMENTS of an identity-keyed SUBSET array (the per-element twin of
+// KNOWN_DEFAULT_PATHS): keyed by resourceType → array property → element identity →
+// the exact default element shape. When a live-only element of an
+// IDENTITY_KEYED_SUBSET_ARRAYS property (classify) deep-equals its entry here, it folds
+// to `atDefault` instead of nested `undeclared` — the same equality-gated treatment a
+// top-level default value gets, lifted to a keyed array element.
+//
+// The motivating case: a Cognito user pool ALWAYS returns the full set of ~20 OIDC
+// standard attributes in `Schema`, whether or not the template declares them, so a pool
+// that declares only custom (or a few standard) attributes floods every first run with
+// ~20 live-only standard-attribute entries. They are a FIXED, platform-provided default
+// set and are IMMUTABLE after pool creation (a standard attribute's Mutable / Required /
+// constraints cannot be changed later), so they can never be an out-of-band edit. A
+// standard attribute the template DECLARES (customizing it) is matched by identity and
+// compared instead (never reaching the live-only fold); any future shape AWS returns that
+// differs simply falls through to undeclared. Shapes captured live (ap-northeast-1).
+const cognitoStdAttr = (
+  Name: string,
+  over: Record<string, unknown> = {}
+): Record<string, unknown> => ({
+  AttributeDataType: 'String',
+  DeveloperOnlyAttribute: false,
+  Mutable: true,
+  Name,
+  Required: false,
+  StringAttributeConstraints: { MinLength: '0', MaxLength: '2048' },
+  ...over,
+});
+const COGNITO_STRING_STD = [
+  'address',
+  'email',
+  'family_name',
+  'gender',
+  'given_name',
+  'locale',
+  'middle_name',
+  'name',
+  'nickname',
+  'phone_number',
+  'picture',
+  'preferred_username',
+  'profile',
+  'website',
+  'zoneinfo',
+];
+export const IDENTITY_KEYED_DEFAULT_ELEMENTS: Record<
+  string,
+  Record<string, Record<string, Record<string, unknown>>>
+> = {
+  'AWS::Cognito::UserPool': {
+    Schema: {
+      ...Object.fromEntries(COGNITO_STRING_STD.map((n) => [n, cognitoStdAttr(n)])),
+      birthdate: cognitoStdAttr('birthdate', {
+        StringAttributeConstraints: { MinLength: '10', MaxLength: '10' },
+      }),
+      // `sub` is the immutable, required subject identifier
+      sub: cognitoStdAttr('sub', {
+        Mutable: false,
+        Required: true,
+        StringAttributeConstraints: { MinLength: '1', MaxLength: '2048' },
+      }),
+      // `identities` (federated-identity links) carries empty string constraints
+      identities: cognitoStdAttr('identities', { StringAttributeConstraints: {} }),
+      // `updated_at` is a Number with a min-value constraint and no string constraints
+      updated_at: {
+        AttributeDataType: 'Number',
+        DeveloperOnlyAttribute: false,
+        Mutable: true,
+        Name: 'updated_at',
+        NumberAttributeConstraints: { MinValue: '0' },
+        Required: false,
+      },
+      // the two *_verified flags are Booleans with no constraints
+      email_verified: {
+        AttributeDataType: 'Boolean',
+        DeveloperOnlyAttribute: false,
+        Mutable: true,
+        Name: 'email_verified',
+        Required: false,
+      },
+      phone_number_verified: {
+        AttributeDataType: 'Boolean',
+        DeveloperOnlyAttribute: false,
+        Mutable: true,
+        Name: 'phone_number_verified',
+        Required: false,
+      },
+    },
+  },
+};
+
 // AWS/CDK auto-GENERATED values keyed by the resource's CFn-assigned physical id.
 // Unlike KNOWN_DEFAULTS (static values), each entry may interpolate the live
 // physical id via two placeholders, substituted by resolveGeneratedDefault before
@@ -650,6 +764,15 @@ export const GENERATED_PATHS: Record<string, string[]> = {
 // a fresh apigwv2-http-rich deploy.
 export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::ApiGatewayV2::Stage': new Set(['DeploymentId']),
+  // A published version's CodeSha256 is the base64 hash of the deployed code package —
+  // a per-deploy, opaque, service-minted value (NOT a constant default, so KNOWN_DEFAULTS
+  // cannot fold it). It is live-only ONLY when the template does not pin it; a version
+  // that DECLARES CodeSha256 (to gate publication on specific code) carries it in the
+  // template and never reaches the undeclared loop. Folding the live-only case as
+  // `generated` (inventory: never drift, never recorded, never reverted) stops every
+  // `currentVersion` in a stack flooding the first run — observed across a 7-function
+  // stack. The version resource is immutable, so the hash can never be an out-of-band edit.
+  'AWS::Lambda::Version': new Set(['CodeSha256']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
@@ -1178,6 +1301,36 @@ export function isPemEqual(a: unknown, b: unknown): boolean {
   if (!PEM_RE.test(a) || !PEM_RE.test(b)) return false;
   const norm = (s: string): string => s.replace(/\r\n/g, '\n').trim();
   return norm(a) === norm(b);
+}
+
+// CloudFormation's GetTemplate API is LOSSY for non-ASCII: every non-ASCII codepoint in
+// a string literal stored in the deployed template is returned as a literal `?` (observed
+// live — an SSM Parameter `Value: áéíóúABC` comes back `?????ABC`, one `?` per
+// non-ASCII character). We fetch the DECLARED side via GetTemplate, so it is corrupted
+// while the LIVE side (read from the service) is intact — a GUARANTEED false `declared`
+// drift on every check, with no out-of-band change. When the live value, with each of its
+// non-ASCII codepoints masked to `?`, exactly equals the declared value (so the ASCII
+// characters and the length match, and the declared side carries ≥1 `?` standing in for a
+// non-ASCII char the API ate), the declared value is unknowable from GetTemplate and the
+// difference cannot be confirmed as drift. Length-exact and equality-gated: a genuine
+// change that alters an ASCII char or the string length still differs and is reported;
+// only a same-length non-ASCII-only edit (inherently invisible through GetTemplate) is
+// missed. Astral codepoints (emoji) mask as one `?` here — if CFn emitted two, the
+// comparison simply falls through and the value is reported (fail-toward-reporting).
+export function isCfnTemplateNonAsciiMask(declared: unknown, live: unknown): boolean {
+  if (typeof declared !== 'string' || typeof live !== 'string') return false;
+  if (!declared.includes('?')) return false; // no masked position → not this case
+  let masked = '';
+  let sawNonAscii = false;
+  for (const ch of live) {
+    if ((ch.codePointAt(0) ?? 0) > 0x7f) {
+      masked += '?';
+      sawNonAscii = true;
+    } else {
+      masked += ch;
+    }
+  }
+  return sawNonAscii && masked === declared;
 }
 
 // AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, VPCSecurityGroups, ...)

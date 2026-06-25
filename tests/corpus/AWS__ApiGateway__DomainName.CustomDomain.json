@@ -1,0 +1,94 @@
+{
+  "corpusVersion": 1,
+  "description": "API Gateway custom domain that declares no TLS floor reads back SecurityPolicy=TLS_1_2 (the documented default) plus the ipv4 endpoint default and the RoutingMode schema default -> all atDefault, no first-run noise.",
+  "resource": {
+    "logicalId": "CustomDomain",
+    "resourceType": "AWS::ApiGateway::DomainName",
+    "physicalId": "api.example.com",
+    "constructPath": "Stack/Api/CustomDomain",
+    "declared": {
+      "DomainName": "api.example.com",
+      "EndpointConfiguration": {
+        "Types": ["REGIONAL"]
+      },
+      "RegionalCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/abc"
+    }
+  },
+  "liveRaw": {
+    "RoutingMode": "BASE_PATH_MAPPING_ONLY",
+    "RegionalHostedZoneId": "Z1UJRXOUMOOFG7",
+    "RegionalDomainName": "d-abc123.execute-api.us-east-1.amazonaws.com",
+    "DomainName": "api.example.com",
+    "SecurityPolicy": "TLS_1_2",
+    "DomainNameArn": "arn:aws:apigateway:us-east-1::/domainnames/api.example.com",
+    "EndpointConfiguration": {
+      "Types": ["REGIONAL"],
+      "IpAddressType": "ipv4"
+    },
+    "RegionalCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/abc",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [
+      "DistributionDomainName",
+      "DistributionHostedZoneId",
+      "DomainNameArn",
+      "RegionalDomainName",
+      "RegionalHostedZoneId"
+    ],
+    "writeOnly": [],
+    "createOnly": ["DomainName"],
+    "readOnlyPaths": [
+      "DistributionDomainName",
+      "DistributionHostedZoneId",
+      "DomainNameArn",
+      "RegionalDomainName",
+      "RegionalHostedZoneId"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName"],
+    "defaults": {
+      "RoutingMode": "BASE_PATH_MAPPING_ONLY"
+    },
+    "defaultPaths": {
+      "RoutingMode": "BASE_PATH_MAPPING_ONLY"
+    },
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "RoutingMode",
+      "actual": "BASE_PATH_MAPPING_ONLY",
+      "physicalId": "api.example.com",
+      "constructPath": "Stack/Api/CustomDomain"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_2",
+      "physicalId": "api.example.com",
+      "constructPath": "Stack/Api/CustomDomain"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "EndpointConfiguration.IpAddressType",
+      "actual": "ipv4",
+      "nested": true,
+      "physicalId": "api.example.com",
+      "constructPath": "Stack/Api/CustomDomain"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import {
   identityField,
   isCaseInsensitiveEqualScalarSet,
   isCaseInsensitiveScalarEqual,
+  isCfnTemplateNonAsciiMask,
   isEqualUnorderedScalarSet,
   isEquivalentRateExpression,
   isJsonStringStructEqual,
@@ -39,6 +40,7 @@ import {
   GENERATED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
   EPOCH_HOUR_PATHS,
+  IDENTITY_KEYED_DEFAULT_ELEMENTS,
   isEpochHourEqual,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
@@ -638,18 +640,25 @@ export function classifyResource(
         liveAligned.push(isNestedObject(match) ? { ...match, [idField]: id } : match);
       }
       // live-only elements (the always-present standard attributes, OR an out-of-band
-      // custom attribute the template never declared) -> nested undeclared inventory
+      // custom attribute the template never declared) -> nested undeclared inventory.
+      // A live-only element that deep-equals its curated default shape (Cognito's fixed,
+      // immutable OIDC standard attributes) folds to `atDefault` instead — same equality-
+      // gated treatment a top-level default value gets, so a never-customized pool stops
+      // flooding the first run with ~20 standard-attribute entries.
+      const defaultEls = IDENTITY_KEYED_DEFAULT_ELEMENTS[resourceType]?.[k];
       for (const lEl of live[k] as unknown[]) {
         const id = idOf(lEl);
-        if (id !== undefined && !declaredIds.has(id))
+        if (id !== undefined && !declaredIds.has(id)) {
+          const atDefault = defaultEls && id in defaultEls && deepEqual(lEl, defaultEls[id]);
           findings.push({
-            tier: 'undeclared',
+            tier: atDefault ? 'atDefault' : 'undeclared',
             logicalId,
             resourceType,
             path: `${k}[${id}]`,
             actual: lEl,
             nested: true,
           });
+        }
       }
       declaredVal = declaredSorted;
       liveVal = liveAligned;
@@ -738,6 +747,24 @@ export function classifyResource(
       // round-trips with only surrounding-whitespace differences — AWS appends a
       // trailing newline after the END marker — is not drift.
       if (isPemEqual(d.stateValue, d.awsValue)) continue;
+      // CloudFormation's GetTemplate returns non-ASCII string literals with every
+      // non-ASCII character replaced by `?` (a documented API limitation). The DECLARED
+      // side (fetched via GetTemplate) is therefore corrupted while the LIVE side is
+      // intact — a guaranteed false `declared` drift on every clean deploy (observed: an
+      // SSM Parameter `Value: áéíóúABC` read back as desired `?????ABC`). When the
+      // live value masked the same way equals the declared value, the declared value is
+      // unknowable, so surface it as a readGap (declared-but-unverifiable) instead of a
+      // false drift — same informational tier used for write-only declared props.
+      if (isCfnTemplateNonAsciiMask(d.stateValue, d.awsValue)) {
+        findings.push({
+          tier: 'readGap',
+          logicalId,
+          resourceType,
+          path: d.path,
+          note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+        });
+        continue;
+      }
       // Per-type case-insensitive scalar paths (R75: Route53 AliasTarget.DNSName
       // — the ALB's generated DNS name is mixed-case declared, lowercase live).
       if (

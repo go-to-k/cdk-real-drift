@@ -48,7 +48,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
       "resourceType": "AWS::Lambda::Version",
       "path": "RuntimePolicy",
@@ -59,7 +59,7 @@
       "constructPath": "CdkrdIntegHarvest5/AliasedFn/CurrentVersion"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "AliasedFnCurrentVersionDA7A21869cb49ad9ac6df8374f18a1d3cb3836df",
       "resourceType": "AWS::Lambda::Version",
       "path": "CodeSha256",

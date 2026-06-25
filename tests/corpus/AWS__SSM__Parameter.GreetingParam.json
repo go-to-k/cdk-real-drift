@@ -1,0 +1,69 @@
+{
+  "corpusVersion": 1,
+  "description": "SSM Parameter whose declared Value is corrupted by CloudFormation GetTemplate (every non-ASCII char masked as `?`); the live value is intact. The masked-equal declared value is unverifiable -> readGap, never a false declared drift.",
+  "resource": {
+    "logicalId": "GreetingParam",
+    "resourceType": "AWS::SSM::Parameter",
+    "physicalId": "/app/greeting",
+    "constructPath": "Stack/GreetingParam",
+    "declared": {
+      "Description": "a greeting",
+      "Name": "/app/greeting",
+      "Type": "String",
+      "Value": "?????"
+    }
+  },
+  "liveRaw": {
+    "Type": "String",
+    "Value": "áéíóú",
+    "DataType": "text",
+    "Tags": [],
+    "Name": "/app/greeting"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["AllowedPattern", "Description", "Policies", "Tier"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["AllowedPattern", "Description", "Policies", "Tier"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "GreetingParam",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "Description",
+      "note": "write-only — cannot be read back",
+      "physicalId": "/app/greeting",
+      "constructPath": "Stack/GreetingParam"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "GreetingParam",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "Value",
+      "note": "declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as \"?\"",
+      "physicalId": "/app/greeting",
+      "constructPath": "Stack/GreetingParam"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GreetingParam",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "DataType",
+      "actual": "text",
+      "physicalId": "/app/greeting",
+      "constructPath": "Stack/GreetingParam"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import {
   canonicalizeIdArraysDeep,
   canonicalizeTagListsDeep,
   isAllAwsTags,
+  isCfnTemplateNonAsciiMask,
   isPemEqual,
   isPhysicalIdSegment,
   isTrivialEmpty,
@@ -636,6 +637,28 @@ describe('noise suppressors', () => {
     expect(isPemEqual(key, 'hello')).toBe(false);
     // non-strings never match
     expect(isPemEqual(1, 1)).toBe(false);
+  });
+
+  it('isCfnTemplateNonAsciiMask: GetTemplate `?`-masked non-ASCII declared value is not drift', () => {
+    // GetTemplate returns the deployed template with every non-ASCII char as `?`
+    // (one per codepoint). The declared side is corrupted; the live side is intact.
+    expect(isCfnTemplateNonAsciiMask('?????ABC', 'áéíóúABC')).toBe(true); // 5 non-ASCII chars
+    expect(isCfnTemplateNonAsciiMask('???', 'áéí')).toBe(true);
+    expect(isCfnTemplateNonAsciiMask('1????', '1áéíó')).toBe(true); // ASCII prefix kept
+    expect(isCfnTemplateNonAsciiMask('?????', 'áéíóú')).toBe(true);
+    // a genuine ASCII change still differs (declared masks `?` only where live is non-ASCII)
+    expect(isCfnTemplateNonAsciiMask('?????ABC', 'áéíóúBC')).toBe(false); // dropped a char
+    expect(isCfnTemplateNonAsciiMask('?????XBC', 'áéíóúABC')).toBe(false); // ASCII differs
+    // a length change still differs (declared longer/shorter than live mask)
+    expect(isCfnTemplateNonAsciiMask('????', 'áéí')).toBe(false); // 4 vs 3 codepoints
+    // the declared side must carry at least one `?` AND the live side at least one non-ASCII
+    expect(isCfnTemplateNonAsciiMask('plain', 'plain')).toBe(false);
+    expect(isCfnTemplateNonAsciiMask('abc', 'abc')).toBe(false);
+    // a declared LITERAL `?` against an all-ASCII live value is never folded (no non-ASCII)
+    expect(isCfnTemplateNonAsciiMask('a?c', 'abc')).toBe(false);
+    // non-strings never match
+    expect(isCfnTemplateNonAsciiMask(1, 1)).toBe(false);
+    expect(isCfnTemplateNonAsciiMask('?', undefined)).toBe(false);
   });
 });
 

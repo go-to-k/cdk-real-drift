@@ -53,3 +53,12 @@ the full design.
 - **Unsupported / unreadable types.** A type Cloud Control can't read (no CC
   support, or a CC handler error with no SDK override) is `skipped`, surfaced in the
   `skipped=N` line and never silently CLEAN; `--strict` makes such a gap CI-failing.
+- **Non-ASCII template literals.** CloudFormation's `GetTemplate` (cdkrd's declared
+  source) returns every non-ASCII character in a stored string literal as a literal
+  `?` — so a declared value like an `AWS::SSM::Parameter` `Value: áéíóúABC`
+  comes back `?????ABC` while the live value is intact. cdkrd detects the mask (the
+  live value with its non-ASCII chars replaced by `?` equals the declared value) and
+  reports the property as `readGap` (declared but unverifiable) rather than a false
+  declared drift. The trade-off: a same-length edit that changes ONLY non-ASCII
+  characters is invisible through `GetTemplate` and not detected (any ASCII or length
+  change still is).

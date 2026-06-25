@@ -192,7 +192,7 @@ const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
   };
 };
 
-const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
+const readLambdaPermission: OverrideReader = async ({ declared, physicalId, region }) => {
   const fn = str(declared.FunctionName);
   if (!fn) return undefined;
   const c = new LambdaClient({ region, ...READ_RETRY });
@@ -203,13 +203,25 @@ const readLambdaPermission: OverrideReader = async ({ declared, region }) => {
     (await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy
   );
   const stmts = (policy as { Statement?: Array<Record<string, unknown>> })?.Statement ?? [];
-  // best-effort match by Action + Principal against the declared permission
+  // The CFn physical id of an AWS::Lambda::Permission IS its statement `Sid` — match on
+  // it FIRST so the correct statement is read back unambiguously. This matters when one
+  // function carries SEVERAL permissions that share Action + Principal: the CDK API
+  // Gateway integration emits two (the deployment-stage permission and a parallel
+  // `test-invoke-stage` one), both `lambda:InvokeFunction` for `apigateway.amazonaws.com`,
+  // differing ONLY in SourceArn. The Action+Principal fallback below returns the FIRST
+  // match for BOTH, so the deployment-stage permission read back the `test-invoke-stage`
+  // SourceArn — a false `declared` drift on every clean deploy.
+  const byId = physicalId ? stmts.find((s) => s.Sid === physicalId) : undefined;
+  // best-effort fallback match by Action + Principal against the declared permission
+  // (a permission whose physical id is not the live Sid, or a renamed statement).
   const want = { action: str(declared.Action), principal: str(declared.Principal) };
-  const m = stmts.find(
-    (s) =>
-      (!want.action || s.Action === want.action) &&
-      (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal)))
-  );
+  const m =
+    byId ??
+    stmts.find(
+      (s) =>
+        (!want.action || s.Action === want.action) &&
+        (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal)))
+    );
   // No match while the policy itself exists = the specific statement was removed out
   // of band (but other statements remain). Return undefined → router maps it to
   // `skipped` (target not resolvable), NOT `deleted`: safely asserting THIS statement

@@ -378,7 +378,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[address]",
@@ -398,7 +398,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[birthdate]",
@@ -418,7 +418,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[email_verified]",
@@ -434,7 +434,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[family_name]",
@@ -454,7 +454,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[gender]",
@@ -474,7 +474,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[given_name]",
@@ -494,7 +494,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[identities]",
@@ -511,7 +511,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[locale]",
@@ -531,7 +531,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[middle_name]",
@@ -551,7 +551,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[nickname]",
@@ -571,7 +571,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[phone_number]",
@@ -591,7 +591,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[phone_number_verified]",
@@ -607,7 +607,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[picture]",
@@ -627,7 +627,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[preferred_username]",
@@ -647,7 +647,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[profile]",
@@ -667,7 +667,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[sub]",
@@ -687,7 +687,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[updated_at]",
@@ -706,7 +706,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[website]",
@@ -726,7 +726,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[zoneinfo]",
@@ -755,7 +755,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "EmailConfiguration",
