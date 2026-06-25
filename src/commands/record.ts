@@ -34,7 +34,7 @@ export async function runRecord(args: string[]): Promise<number> {
   }
 
   let worst = 0;
-  for (const { stackName, region } of stacks) {
+  for (const { stackName, region, template } of stacks) {
     if (!region) {
       console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
       worst = Math.max(worst, 2);
@@ -43,7 +43,8 @@ export async function runRecord(args: string[]): Promise<number> {
     try {
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
-      const { desired, findings } = await gatherFindings(stackName, region);
+      // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals.
+      const { desired, findings } = await gatherFindings(stackName, region, undefined, template);
       // ignore rules re-tag matching undeclared findings out of the record set, so an
       // externally-managed property is never recorded (and never re-detected).
       const result = await recordStack({

@@ -43,7 +43,7 @@ export async function runRevert(args: string[]): Promise<number> {
   }
 
   let worst = 0;
-  for (const { stackName, region } of stacks) {
+  for (const { stackName, region, template } of stacks) {
     if (!region) {
       console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
       worst = Math.max(worst, 2);
@@ -52,7 +52,9 @@ export async function runRevert(args: string[]): Promise<number> {
     try {
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
-      const gathered = await gatherFindings(stackName, region);
+      // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals so a
+      // revert writes the REAL declared value, never a `?????` mask.
+      const gathered = await gatherFindings(stackName, region, undefined, template);
       const baseline: BaselineFile | undefined = await loadBaseline(
         stackName,
         gathered.desired.accountId,

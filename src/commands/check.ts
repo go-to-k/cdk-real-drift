@@ -190,7 +190,7 @@ export async function runCheck(args: string[]): Promise<number> {
   // R37: one blank line between consecutive stack reports (text mode only) — done
   // here at the call site so a single-stack run never gets a stray leading blank.
   const separate = stackSeparator();
-  for (const { stackName, region } of stacks) {
+  for (const { stackName, region, template } of stacks) {
     if (!region) {
       console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
       worst = Math.max(worst, 2);
@@ -202,7 +202,10 @@ export async function runCheck(args: string[]): Promise<number> {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         continue;
       }
-      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(sKey));
+      // The stack's synth template (always carried by resolveStacks) is the non-ASCII
+      // RECOVERY source for the deployed-template path — loadDesired ignores it under
+      // --pre-deploy (where synthTemplates is already the declared override).
+      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(sKey), template);
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
 

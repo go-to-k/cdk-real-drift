@@ -241,6 +241,64 @@ describe('loadDesired ListStackResources pagination', () => {
   });
 });
 
+describe('loadDesired non-ASCII recovery (GetTemplate `?`-mask from local synth)', () => {
+  function ssmStack(cfn: ReturnType<typeof mockClient>, maskedValue: string) {
+    // GetTemplate returns the deployed body with the non-ASCII Value masked as `?`.
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: { P: { Type: 'AWS::SSM::Parameter', Properties: { Value: maskedValue } } },
+      }),
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'P',
+          PhysicalResourceId: '/p',
+          ResourceType: 'AWS::SSM::Parameter',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+  }
+  const valueOf = (d: Awaited<ReturnType<typeof loadDesired>>) =>
+    (d.resources.find((r) => r.logicalId === 'P')?.declared as { Value?: unknown }).Value;
+
+  it('recovers the masked declared value from the synth template when the mask matches', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    ssmStack(cfn, '?????ABC');
+    const synth = {
+      Resources: { P: { Type: 'AWS::SSM::Parameter', Properties: { Value: 'áéíóúABC' } } },
+    };
+    const desired = await loadDesired(
+      cfn as unknown as CloudFormationClient,
+      'S',
+      'us-east-1',
+      undefined,
+      synth
+    );
+    expect(valueOf(desired)).toBe('áéíóúABC'); // recovered, ready for a real compare
+  });
+
+  it('leaves the mask in place (→ readGap downstream) when no synth recovery is given', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    ssmStack(cfn, '?????ABC');
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1');
+    expect(valueOf(desired)).toBe('?????ABC'); // unchanged → classify emits readGap
+  });
+});
+
 describe('loadDesired Fn::ImportValue exports prefetch', () => {
   function stackMocks(cfn: ReturnType<typeof mockClient>, templateBody: string) {
     cfn.on(GetTemplateCommand).resolves({ TemplateBody: templateBody });

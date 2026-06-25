@@ -214,12 +214,16 @@ export async function gatherFindings(
   // --pre-deploy: use the LOCAL synth template as the declared source instead of
   // the deployed template, so check reports the declared drift the next deploy
   // would overwrite. physIds + live reads still come from the deployed stack.
-  templateOverride?: Record<string, unknown>
+  templateOverride?: Record<string, unknown>,
+  // the LOCAL synth template, passed through to loadDesired to recover GetTemplate's
+  // `?`-masked non-ASCII literals (mask-gated). Distinct from templateOverride: it does
+  // not replace the declared source, only patches corrupted leaves.
+  recoveryTemplate?: Record<string, unknown>
 ): Promise<GatherResult> {
   const cfn = new CloudFormationClient({ region, ...READ_RETRY });
   const cc = new CloudControlClient({ region, ...READ_RETRY });
 
-  const desired = await loadDesired(cfn, stackName, region, templateOverride);
+  const desired = await loadDesired(cfn, stackName, region, templateOverride, recoveryTemplate);
   const findings: Finding[] = [];
   const schemas = new Map<string, SchemaInfo>();
 

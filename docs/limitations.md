@@ -53,12 +53,20 @@ the full design.
 - **Unsupported / unreadable types.** A type Cloud Control can't read (no CC
   support, or a CC handler error with no SDK override) is `skipped`, surfaced in the
   `skipped=N` line and never silently CLEAN; `--strict` makes such a gap CI-failing.
-- **Non-ASCII template literals.** CloudFormation's `GetTemplate` (cdkrd's declared
-  source) returns every non-ASCII character in a stored string literal as a literal
-  `?` — so a declared value like an `AWS::SSM::Parameter` `Value: áéíóúABC`
-  comes back `?????ABC` while the live value is intact. cdkrd detects the mask (the
-  live value with its non-ASCII chars replaced by `?` equals the declared value) and
-  reports the property as `readGap` (declared but unverifiable) rather than a false
-  declared drift. The trade-off: a same-length edit that changes ONLY non-ASCII
-  characters is invisible through `GetTemplate` and not detected (any ASCII or length
-  change still is).
+- **Non-ASCII template literals.** CloudFormation's `GetTemplate` (cdkrd's
+  declared source) returns every non-ASCII character in a stored string literal
+  as a literal `?` — so a declared value like an `AWS::SSM::Parameter`
+  `Value: áéíóúABC` comes back `?????ABC` while the live value is intact
+  (CloudFormation compares the intact value server-side, so its own drift
+  detection reports such a property IN_SYNC). cdkrd **recovers** the real value
+  from the LOCAL synth template (the `cdk.out` assembly it already produces for
+  stack discovery): when the synth value at the same path masks to the deployed
+  `?`-value (same ASCII skeleton + length), it is the deployed declared value
+  with its non-ASCII restored, so the compare runs on real text. When recovery
+  is impossible (no synth template, or the synth value's skeleton diverged), the
+  property degrades to `readGap` (declared but unverifiable) rather than a false
+  declared drift. Two consequences: (1) for these specific values the "intent" is
+  the local synth rather than the deployed template, so a same-length
+  non-ASCII-only edit made in code but **not yet deployed** surfaces as drift
+  (code-vs-reality); (2) a pure-ASCII template is never affected (GetTemplate
+  does not mask ASCII).

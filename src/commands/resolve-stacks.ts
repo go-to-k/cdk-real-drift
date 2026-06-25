@@ -18,6 +18,9 @@ import { isGlob, matchesGlob } from './glob-match.js';
 export interface ResolvedStack {
   stackName: string;
   region: string | undefined; // region to query this stack in (may be undefined → caller errors)
+  // the synthesized template for this stack — used by check to recover GetTemplate's
+  // `?`-masked non-ASCII literals. Carried from the same synth that discovered the stack.
+  template: Record<string, unknown>;
 }
 
 export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
@@ -36,29 +39,37 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   // --all, or no names → every stack the app defines. --all is the explicit form of the
   // no-argument default; it also overrides any positional names (target everything).
   if (a.all || a.stackNames.length === 0) {
-    return discovered.map((s) => ({ stackName: s.stackName, region: s.region ?? a.region }));
+    return discovered.map((s) => ({
+      stackName: s.stackName,
+      region: s.region ?? a.region,
+      template: s.template,
+    }));
   }
 
   // names (exact and/or glob) matched against the app's stacks
   const seen = new Set<string>();
   const out: ResolvedStack[] = [];
-  const add = (stackName: string, region: string | undefined): void => {
+  const add = (
+    stackName: string,
+    region: string | undefined,
+    template: Record<string, unknown>
+  ): void => {
     const key = `${stackName}\0${region ?? ''}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ stackName, region });
+    out.push({ stackName, region, template });
   };
   const known = (): string => discovered.map((s) => s.stackName).join(', ') || 'none';
   for (const name of a.stackNames) {
     if (isGlob(name)) {
       for (const s of discovered) {
-        if (matchesGlob(name, s.stackName)) add(s.stackName, s.region ?? a.region);
+        if (matchesGlob(name, s.stackName)) add(s.stackName, s.region ?? a.region, s.template);
       }
     } else {
       const hit = discovered.find((s) => s.stackName === name);
       if (!hit)
         throw new Error(`stack "${name}" is not defined by the CDK app (found: ${known()})`);
-      add(hit.stackName, hit.region ?? a.region);
+      add(hit.stackName, hit.region ?? a.region, hit.template);
     }
   }
   if (out.length === 0) {
