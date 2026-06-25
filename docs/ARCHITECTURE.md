@@ -201,7 +201,9 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 1. resolve stacks        resolve-stacks.ts: synth-discover the app → all | exact names | globs
 2. desired (declared)    template-adapter.ts: GetTemplate + DescribeStackResources
                          (phys-id map) + DescribeStacks (params) → intrinsic resolution
-                         (--pre-deploy: LOCAL synth template replaces GetTemplate)
+                         (--pre-deploy: LOCAL synth template replaces GetTemplate;
+                         otherwise the synth template recovers GetTemplate's `?`-masked
+                         non-ASCII literals — recover-nonascii.ts, mask-gated per leaf)
 3. live full state       read/router.ts: Custom:: → skip (no API call); SDK override
                          (gap types) FIRST, else CC API GetResource; not-found →
                          deleted; unreadable → skipped

@@ -43,14 +43,14 @@ export async function runIgnore(args: string[]): Promise<number> {
 
   let worst = 0;
   let wroteAny = false;
-  for (const { stackName, region } of stacks) {
+  for (const { stackName, region, template } of stacks) {
     if (!region) {
       console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
       worst = Math.max(worst, 2);
       continue;
     }
     try {
-      const { desired, findings } = await gatherFindings(stackName, region);
+      const { desired, findings } = await gatherFindings(stackName, region, undefined, template);
       // Reconcile exactly as check does so the offered drift matches what the user saw:
       // suppress already-recorded baseline entries, then re-tag config-ignored findings
       // out (they are already `ignored`, so ignoreStack never re-offers them).

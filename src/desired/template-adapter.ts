@@ -12,6 +12,7 @@ import {
 import { classifyStackStatus, StackNotCheckableError } from '../aws-errors.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
+import { recoverNonAsciiMasks } from './recover-nonascii.js';
 import { parseCfnTemplate } from './yaml-cfn.js';
 
 export interface Desired {
@@ -131,7 +132,11 @@ export async function loadDesired(
   region: string,
   // when provided (--pre-deploy), this LOCAL synth template is the declared source
   // instead of the deployed GetTemplate; physIds + params still come from the live stack
-  templateOverride?: Record<string, unknown>
+  templateOverride?: Record<string, unknown>,
+  // the LOCAL synth template, used ONLY to recover non-ASCII string literals that
+  // GetTemplate masked as `?` (see recoverNonAsciiMasks). Unlike templateOverride it does
+  // NOT replace the declared source — it patches only the mask-matching corrupted leaves.
+  recoveryTemplate?: Record<string, unknown>
 ): Promise<Desired> {
   // GetTemplate + DescribeStacks are single calls (kept in Promise.all); ListStackResources
   // is paginated separately (DescribeStackResources caps at 100, CDK stacks reach ~500).
@@ -159,6 +164,10 @@ export async function loadDesired(
     string,
     any
   >;
+  // Recover GetTemplate's `?`-masked non-ASCII literals from the local synth template
+  // (mask-gated, per leaf). Skipped under --pre-deploy: there the declared source already
+  // IS the intact synth template, so there is nothing to recover.
+  if (!templateOverride && recoveryTemplate) recoverNonAsciiMasks(template, recoveryTemplate);
   const rawTemplate = templateOverride
     ? JSON.stringify(templateOverride)
     : (tmplRes.TemplateBody ?? '{}');

@@ -79,12 +79,19 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 export interface DiscoveredStack {
   stackName: string;
   region: string | undefined; // the stack's own env.region, when concrete
+  // the synthesized template — carried through so the check path can recover GetTemplate's
+  // `?`-masked non-ASCII literals from it without re-synthesizing (synthApp already built it).
+  template: Record<string, unknown>;
 }
 
-/** Synth and return each stack's name + its own (concrete) region, for auto-discovery. */
+/** Synth and return each stack's name + its own (concrete) region + template, for discovery. */
 export async function discoverStacks(
   app: string,
   opts: SynthOptions = {}
 ): Promise<DiscoveredStack[]> {
-  return (await synthApp(app, opts)).map((s) => ({ stackName: s.stackName, region: s.region }));
+  return (await synthApp(app, opts)).map((s) => ({
+    stackName: s.stackName,
+    region: s.region,
+    template: s.template,
+  }));
 }
