@@ -124,6 +124,105 @@ describe('classifyResource (the heart)', () => {
     expect(drifted.declared).toEqual(['Ports']);
   });
 
+  // Reported bug: CloudFormation's GetTemplate masks every non-ASCII char in a stored
+  // string literal as `?`. We fetch the declared side via GetTemplate, so an SSM
+  // Parameter `Value: áéíóúABC` comes back declared `?????ABC` while the live SSM
+  // value is intact — a false `declared` drift on every clean deploy. The masked-equal
+  // declared value is unverifiable → surface it as a readGap, never declared drift.
+  it('GetTemplate `?`-masked non-ASCII declared value is a readGap, not declared drift', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'GreetingParameter',
+      resourceType: 'AWS::SSM::Parameter',
+      physicalId: 'p-phys',
+      declared: { Value: '?????ABC' }, // masked by GetTemplate
+    };
+    const t = tiers(classifyResource(res, { Value: 'áéíóúABC' }, emptySchema));
+    expect(t.declared).toEqual([]); // not a false drift
+    expect(t.readGap).toEqual(['Value']); // surfaced honestly instead
+    // A genuine ASCII change (or length change) is NOT masked-equal → still declared drift.
+    const drifted = tiers(classifyResource(res, { Value: 'áéíóúABCX' }, emptySchema));
+    expect(drifted.declared).toEqual(['Value']);
+  });
+
+  // First-run noise folds for a clean deploy: a Cognito user pool
+  // ALWAYS returns the immutable OIDC standard attributes in Schema (fold to atDefault via
+  // IDENTITY_KEYED_DEFAULT_ELEMENTS) and a Lambda Version's CodeSha256 is a per-deploy
+  // content hash (fold to generated via GENERATED_TOPLEVEL_PATHS).
+  it('Cognito standard Schema attrs fold to atDefault; a customized one still surfaces', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const stdEmail = {
+      AttributeDataType: 'String',
+      DeveloperOnlyAttribute: false,
+      Mutable: true,
+      Name: 'email',
+      Required: false,
+      StringAttributeConstraints: { MinLength: '0', MaxLength: '2048' },
+    };
+    const res: DesiredResource = {
+      logicalId: 'Pool',
+      resourceType: 'AWS::Cognito::UserPool',
+      physicalId: 'us-east-1_x',
+      declared: { Schema: [{ Name: 'custom:tenant', AttributeDataType: 'String', Mutable: true }] },
+    };
+    // a live-only standard attr at its default shape → atDefault (folded, not undeclared)
+    const t = tiers(classifyResource(res, { Schema: [stdEmail] }, emptySchema));
+    expect(t.atDefault).toEqual(['Schema[email]']);
+    expect(t.undeclared).toEqual([]);
+    // a standard attr AWS returns at a NON-default shape (e.g. made Required) still surfaces
+    const customized = { ...stdEmail, Required: true };
+    const t2 = tiers(classifyResource(res, { Schema: [customized] }, emptySchema));
+    expect(t2.undeclared).toEqual(['Schema[email]']);
+    expect(t2.atDefault).toEqual([]);
+  });
+
+  it('Lambda Version CodeSha256 folds to generated; RuntimePolicy Auto folds to atDefault', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'Ver',
+      resourceType: 'AWS::Lambda::Version',
+      physicalId: '1',
+      declared: { FunctionName: 'fn' },
+    };
+    const t = tiers(
+      classifyResource(
+        res,
+        { FunctionName: 'fn', CodeSha256: 'abc123=', RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
+        emptySchema
+      )
+    );
+    expect(t.generated).toEqual(['CodeSha256']); // content hash, never drift
+    expect(t.atDefault).toEqual(['RuntimePolicy']);
+    expect(t.undeclared).toEqual([]);
+  });
+
   // Reported bug: a Glue Table's `TableInput.Parameters` is a free-form
   // Map<String,String> whose keys hold a `.` (`projection.enabled`), so the
   // drift-calculator emits the WHOLE map as one record. CDK declares some values
@@ -3600,15 +3699,15 @@ describe('Cognito UserPool Schema identity-keyed subset (WAVE23 — declared att
     const findings = classifyResource(pool(declared), live, bare);
     // no whole-array declared FALSE positive (the prefix mismatch is normalized away)
     expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-    // the always-present standard attributes each surface as a foldable nested undeclared
-    // inventory element (server-enriched sub-keys of the matched declared attrs may add
-    // more nested undeclared findings — all foldable, none a declared drift)
-    const undeclaredPaths = findings
-      .filter((f) => f.tier === 'undeclared' && f.nested)
-      .map((f) => f.path);
-    for (const n of ['sub', 'phone_number', 'address', 'birthdate', 'name']) {
-      expect(undeclaredPaths).toContain(`Schema[${n}]`);
-    }
+    // the always-present standard attributes are folded inventory, NEVER declared drift.
+    // A live-only standard attribute at its canonical default shape folds to atDefault
+    // (IDENTITY_KEYED_DEFAULT_ELEMENTS); the fixture's generic shape matches the default
+    // for the plain String attrs (address/name/phone_number) but NOT for `sub` (immutable,
+    // required) or `birthdate` (10-char constraint), which keep their generic test shape
+    // and so stay foldable undeclared inventory here.
+    const tierOf = (n: string) => findings.find((f) => f.nested && f.path === `Schema[${n}]`)?.tier;
+    for (const n of ['phone_number', 'address', 'name']) expect(tierOf(n)).toBe('atDefault');
+    for (const n of ['sub', 'birthdate']) expect(tierOf(n)).toBe('undeclared');
   });
 
   it('an out-of-band change to a DECLARED attribute is reported as declared drift', () => {

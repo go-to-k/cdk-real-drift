@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "description": "Lambda Permission for an API Gateway method, once the SDK override disambiguates the live policy statement by Sid (the deployment-stage permission, not the parallel test-invoke-stage one): declared SourceArn == live SourceArn -> no drift. Regression guard for the Action+Principal cross-match FP.",
+  "resource": {
+    "logicalId": "ApiMethodPermission",
+    "resourceType": "AWS::Lambda::Permission",
+    "physicalId": "stack-ApiMethodPermission-bbb",
+    "constructPath": "Stack/Api/GET/ApiPermission",
+    "declared": {
+      "Action": "lambda:InvokeFunction",
+      "FunctionName": "stack-fn",
+      "Principal": "apigateway.amazonaws.com",
+      "SourceArn": "arn:aws:execute-api:us-east-1:111111111111:abc123/prod/GET/items"
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "stack-fn",
+    "Action": "lambda:InvokeFunction",
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": "arn:aws:execute-api:us-east-1:111111111111:abc123/prod/GET/items"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "Action",
+      "EventSourceToken",
+      "FunctionName",
+      "FunctionUrlAuthType",
+      "InvokedViaFunctionUrl",
+      "Principal",
+      "PrincipalOrgID",
+      "SourceAccount",
+      "SourceArn"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Action",
+      "EventSourceToken",
+      "FunctionName",
+      "FunctionUrlAuthType",
+      "InvokedViaFunctionUrl",
+      "Principal",
+      "PrincipalOrgID",
+      "SourceAccount",
+      "SourceArn"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

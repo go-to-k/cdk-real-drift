@@ -184,6 +184,61 @@ describe('SDK overrides', () => {
     expect(out).toMatchObject({ FunctionName: 'f', Action: 'lambda:InvokeFunction' });
   });
 
+  it('Lambda Permission: disambiguates by Sid (physical id) when statements share Action+Principal', async () => {
+    // The CDK API Gateway integration emits TWO permissions on one function — the
+    // deployment-stage one and a parallel `test-invoke-stage` one — identical in
+    // Action + Principal, differing only in SourceArn. Without a Sid match the
+    // Action+Principal `.find()` returns the FIRST for BOTH, so the prod permission
+    // read back the test-invoke-stage SourceArn (a false `declared` drift every deploy).
+    const fnPolicy = JSON.stringify({
+      Statement: [
+        {
+          Sid: 'stack-ApiPermissionTest-aaa',
+          Action: 'lambda:InvokeFunction',
+          Principal: { Service: 'apigateway.amazonaws.com' },
+          Condition: {
+            ArnLike: { 'AWS:SourceArn': 'arn:aws:execute-api:r:1:api/test-invoke-stage/POST/X' },
+          },
+        },
+        {
+          Sid: 'stack-ApiPermission-bbb',
+          Action: 'lambda:InvokeFunction',
+          Principal: { Service: 'apigateway.amazonaws.com' },
+          Condition: { ArnLike: { 'AWS:SourceArn': 'arn:aws:execute-api:r:1:api/prod/POST/X' } },
+        },
+      ],
+    });
+    lambda.on(LambdaGetPolicyCommand).resolves({ Policy: fnPolicy });
+    // the prod permission's physical id IS its statement Sid -> match it exactly
+    const out = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx(
+        {
+          FunctionName: 'f',
+          Action: 'lambda:InvokeFunction',
+          Principal: 'apigateway.amazonaws.com',
+        },
+        'stack-ApiPermission-bbb'
+      )
+    );
+    expect(out).toMatchObject({
+      SourceArn: 'arn:aws:execute-api:r:1:api/prod/POST/X',
+    });
+    // and the test-invoke-stage permission reads back its OWN SourceArn (not the first)
+    const outTest = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      ctx(
+        {
+          FunctionName: 'f',
+          Action: 'lambda:InvokeFunction',
+          Principal: 'apigateway.amazonaws.com',
+        },
+        'stack-ApiPermissionTest-aaa'
+      )
+    );
+    expect(outTest).toMatchObject({
+      SourceArn: 'arn:aws:execute-api:r:1:api/test-invoke-stage/POST/X',
+    });
+  });
+
   // R12: return the matched statement's REAL fields, never echo the declared template.
   it('Lambda Permission: returns the REAL statement Principal, not the declared echo', async () => {
     // declared Principal is stale ("old.amazonaws.com"); AWS actually has events
