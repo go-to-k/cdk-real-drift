@@ -20,8 +20,6 @@ $ npx cdk drift
 `cdkrd` reads the **full** live resource model and subtracts everything
 explainable, so the same change shows up:
 
-![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
-
 ```console
 $ npx cdkrd check
 === cdkrd check: ApiStack (us-east-1) ===
@@ -30,6 +28,8 @@ $ npx cdkrd check
 
 result: 1 drift(s) (undeclared=1)
 ```
+
+![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
 
 | Capability                                                     | `cdkrd` | `cdk drift` / CFn drift detection |
 | -------------------------------------------------------------- | :-----: | :-------------------------------: |
