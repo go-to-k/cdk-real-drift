@@ -53,12 +53,15 @@ It prints what it found, then offers the actions that apply right in the prompt:
 **Record**, **Revert**, or **Ignore**
 ([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
 
-On a fresh project, `check` already flags drift on your declared properties (and
-any out-of-band deletes). Live-only values, on the real resource but not your
-template, stay informational until you **Record** them; after that, any
-out-of-band change to them is drift.
+On a fresh project — with no baseline yet — `check` still reports drift on the
+properties you **declared**, plus anything deleted out-of-band: those compare
+against your template, so they need no baseline. Values that live only on the
+real resource (never in your template) are **not** drift on this first run —
+`check` lists them as _Not Recorded_, for information. They start being watched
+the moment you **Record** them; from then on, any out-of-band change to a
+recorded value is drift.
 
-So a typical first run is a clean stack with live-only values you can record:
+So a typical first run reports no drift — just live-only values you can record:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
