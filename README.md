@@ -49,19 +49,17 @@ npx cdkrd check                 # checks every stack your app defines
 ```
 
 `check` is the only command you run by hand, and there's nothing to set up first.
-It prints what it found, then offers the actions that apply right in the prompt:
-**Record**, **Revert**, or **Ignore**
-([what each verb does](#the-model-one-verb-you-run-three-it-offers)).
+It prints what it found, then offers three actions right in the prompt:
 
-On a fresh project — with no baseline yet — `check` still reports drift on the
-properties you **declared**, plus anything deleted out-of-band: those compare
-against your template, so they need no baseline. Values that live only on the
-real resource (never in your template) are **not** drift on this first run —
-`check` lists them as _Not Recorded_, for information. They start being watched
-the moment you **Record** them; from then on, any out-of-band change to a
-recorded value is drift.
+- **Record**: accept the live-only values as the norm and watch them. Writes a
+  git-committed `.cdkrd` baseline file; later out-of-band changes are then drift.
+- **Revert**: write the desired value back to AWS (_removes_ an undeclared
+  live-only value, or restores a declared one).
+- **Ignore**: stop reporting it, for good.
 
-So a typical first run reports no drift — just live-only values you can record:
+On a fresh project, `check` already flags drift on your declared properties (and
+any out-of-band deletes); live-only values stay informational until you record
+them. A typical first run reports no drift, just live-only values to record:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -78,16 +76,6 @@ ApiStack: unrecorded values found — what do you want to do?
     Ignore — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — assign a different action to each
 ```
-
-What each choice does here:
-
-- **Record**: accept the live-only values as the norm. cdkrd watches them and
-  re-flags any later out-of-band change. This is the usual first-run choice, and the
-  switch that arms undeclared / added detection.
-- **Revert**: write the desired value back to AWS. This _removes_ an undeclared
-  live-only value (rarely what you want for a legitimate default), or restores a
-  declared one.
-- **Ignore**: stop reporting it, for good (watching off).
 
 In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
 drift; it never writes a baseline (you record locally and commit the file).
