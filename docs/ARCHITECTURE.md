@@ -859,17 +859,21 @@ user did not pick. They render as their own `[Potential Drift: N]` section (note
 `live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's
 intended or an out-of-band change — Record to accept it, or Revert to
 remove it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
-`--fail` exit, and the `result:` line carries the count + the way out
-(`· N potential drift (X shown, Y folded — Record to set a baseline)`
-when some fold; R112). A "No baseline yet — … Record them right from this `cdkrd
-check` prompt, or run `cdkrd record`." line prints under the header whenever any
-unrecorded value is present, naming the ambiguity (cannot confirm as drift) and
-BOTH record paths. When BOTH a drift section and a standout `[Potential Drift]`
-section print, a lone `N drift(s)` verdict reads as a mismatch against the 2+
-visible blocks, so the line switches to a combined findings count counting only
-what is SHOWN — `result: 3 findings — 1 drift (declared=1) + 2 potential drift
-(23 folded — Record to set a baseline)` — keeping the red drift verdict intact
-(R114); single-category runs keep their plain `CLEAN` / `no confirmed drift` / `N drift(s)` verdict.
+`--fail` exit. The `result:` "potential drift" count is the SHOWN standout
+(top-level) values ONLY — `· N potential drift (+ M nested live-only to record)`,
+the tail only when nested values fold. FOLDED nested values (undeclared-subkey,
+R96) are AWS-populated noise present on any fresh deploy, so when ONLY nested
+values exist (no standout — the untouched-deploy case) the verdict is the neutral
+`· N live-only value(s) to record as baseline (run cdkrd record)`, NOT potential
+drift, and the "No baseline yet — … Record them right from this `cdkrd check`
+prompt, or run `cdkrd record`." preamble is SUPPRESSED (it prints only when a
+standout value is present, since only those are values cdkrd cannot confirm).
+When BOTH a drift section and a standout `[Potential Drift]` section print, a lone
+`N drift(s)` verdict reads as a mismatch against the 2+ visible blocks, so the
+line switches to a combined findings count counting only what is SHOWN —
+`result: 3 findings — 1 drift (declared=1) + 2 potential drift (+ 23 nested
+live-only to record)` — keeping the red drift verdict intact (R114);
+single-category runs keep their plain `CLEAN` / `no confirmed drift` / `N drift(s)` verdict.
 Declared and deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`potential drift found (live-only, no
 baseline yet) — what do you want to do?`) so "show them first" keeps its promise of a selective record.
