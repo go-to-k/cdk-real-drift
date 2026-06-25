@@ -25,9 +25,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(text).toContain('[Potential Drift: 2]');
     expect(text).toContain('Record to accept it'); // the section explains the way out
     expect(text).not.toContain('Undeclared Drift');
-    expect(text).toContain(
-      'result: no confirmed drift · 2 potential drift (Record to set a baseline)'
-    );
+    expect(text).toContain('result: no confirmed drift · 2 potential drift');
     // R-Potential: the no-baseline header explains WHY these are potential, not clean,
     // and that you can record straight from this check (or via `cdkrd record`).
     expect(text).toContain("No baseline yet — these live-only values can't be confirmed as drift");
@@ -36,13 +34,28 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
-  it('result note names the shown/folded split so the section count and total reconcile (R112)', () => {
-    // 2 standout (shown in [Potential Drift: 2]) + 3 nested (folded) = 5 total
+  it('potential-drift count is the SHOWN standout only; folded nested are a "to record" tail (R112)', () => {
+    // 2 standout (shown in [Potential Drift: 2]) + 3 nested (folded). Only the 2 standout
+    // count as potential drift — the 3 nested AWS-populated values are inventory.
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { text } = run([U(), U('Q'), nested('a'), nested('b'), nested('c')]);
     expect(text).toContain('[Potential Drift: 2]'); // only the standout are listed
     expect(text).toContain(
-      'result: no confirmed drift · 5 potential drift (2 shown, 3 folded — Record to set a baseline)'
+      'result: no confirmed drift · 2 potential drift (+ 3 nested live-only to record)'
+    );
+  });
+
+  it('FOLDED-only (untouched fresh deploy): no potential drift, just "to record" inventory', () => {
+    // No standout values, only nested AWS-populated ones — must NOT read as potential
+    // drift, and must NOT print the "can't be confirmed as drift" preamble.
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const { code, text } = run([nested('a'), nested('b')]);
+    expect(code).toBe(0);
+    expect(text).not.toContain('[Potential Drift'); // section lists standout only -> none
+    expect(text).not.toContain('No baseline yet'); // no standout -> no alarming preamble
+    expect(text).not.toContain('potential drift'); // the count phrase must not appear
+    expect(text).toContain(
+      'result: no confirmed drift · 2 live-only value(s) to record as baseline (run cdkrd record)'
     );
   });
 
@@ -69,7 +82,7 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
     expect(code).toBe(1);
     expect(text).toContain(
-      'result: 2 findings — 1 drift (declared=1) + 1 potential drift (2 folded — Record to set a baseline)'
+      'result: 2 findings — 1 drift (declared=1) + 1 potential drift (+ 2 nested live-only to record)'
     );
   });
 

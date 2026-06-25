@@ -231,11 +231,14 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
     section(byTier(tier), TIER_NAMES[tier], TIER_NOTES[tier], tierStyle(tier), leadingBlank);
 
   log(style.header(`=== cdkrd check: ${header} ===`));
-  // When live-only values have no baseline yet, say so up front: with nothing to
-  // compare against, cdkrd genuinely CANNOT tell whether they are intentional or an
+  // When STANDOUT live-only values have no baseline yet, say so up front: with nothing
+  // to compare against, cdkrd genuinely CANNOT tell whether they are intentional or an
   // out-of-band change — that ambiguity (not "all clear") is why they are POTENTIAL
-  // drift. No count here — the [Potential Drift: N] section and the result line carry it.
-  if (unrecordedItems.length > 0) {
+  // drift. Gated on the SHOWN (standout) count, NOT the total: a fresh deploy carries
+  // many FOLDED nested AWS-populated values (undeclared-subkey, R96) that exist whether
+  // or not anyone touched the console — those are inventory to record, not potential
+  // drift, so they must not trigger this "can't be confirmed as drift" preamble.
+  if (unrecordedShown.length > 0) {
     log(
       style.undeclaredTier(
         "No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`."
@@ -276,45 +279,44 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // counting only what is SHOWN (folded values are not findings, just a parenthetical).
   // The combined framing fires ONLY in this mixed case; single-category runs keep their
   // natural verdict (CLEAN / N drift / inventory note) — the mismatch can't arise there.
-  const mixed = drifted > 0 && unrecordedShown.length > 0;
+  // "potential drift" counts ONLY the SHOWN standout (top-level) live-only values — the
+  // ones cdkrd surfaces as worth a look. FOLDED nested values (undeclared-subkey, R96)
+  // are AWS-populated noise present on ANY fresh deploy regardless of console action, so
+  // they are inventory to RECORD, not potential drift: an untouched stack must read
+  // "no confirmed drift", never "N potential drift". A `(+ N nested live-only to record)`
+  // tail keeps the folded count visible without inflating the headline.
+  const shown = unrecordedShown.length;
+  const folded = unrecordedFoldedCount;
+  const nestedTail = folded > 0 ? ` (+ ${folded} nested live-only to record)` : '';
+  const mixed = drifted > 0 && shown > 0;
   let resultBody: string;
   if (mixed) {
-    const foldedHint =
-      unrecordedFoldedCount > 0
-        ? `${unrecordedFoldedCount} folded — Record to set a baseline`
-        : 'Record to set a baseline';
+    // R114: DRIFT + standout potential both visible -> one combined findings count so the
+    // verdict matches the printed blocks (was a lone "1 drift(s)" beside 2 sections).
     resultBody =
-      `${drifted + unrecordedShown.length} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
-      // "potential drift" (not "undeclared drift"): the [Potential Drift] set is
-      // undeclared PROPERTIES plus out-of-band `added` RESOURCES (PR4) that have no
-      // baseline yet — unconfirmed, never counted as confirmed drift; both await a record.
-      ` + ${style.undeclaredTier(`${unrecordedShown.length} potential drift`)}` +
-      style.infoTier(` (${foldedHint})`);
+      `${drifted + shown} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
+      ` + ${style.undeclaredTier(`${shown} potential drift`)}` +
+      style.infoTier(nestedTail);
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count.
-    // "CLEAN" is reserved for a truly clean stack (nothing unrecorded); when live-only
-    // values await a baseline there IS no confirmed drift but the stack is NOT clean —
-    // those values are POTENTIAL drift (we can't yet tell intent from out-of-band), so
-    // say "no confirmed drift" instead of the green all-clear.
+    // "CLEAN" is reserved for a truly clean stack (nothing unrecorded). With only FOLDED
+    // nested live-only values it is "no confirmed drift" + a neutral "to record" count
+    // (NOT potential drift). With SHOWN standout values it is "no confirmed drift · N
+    // potential drift" — those are what cdkrd genuinely cannot yet judge.
     const verdict =
       drifted > 0
         ? `${style.drift(`${drifted} drift(s)`)} (${driftCounts})`
-        : unrecordedItems.length > 0
+        : shown > 0 || folded > 0
           ? 'no confirmed drift'
           : style.clean('CLEAN');
-    // unrecorded values are stated NEXT TO the verdict as POTENTIAL drift (not confirmed
-    // drift): the count and the way out, in one place (R60). The total counts ALL
-    // unrecorded values but the [Potential Drift] section lists only the standout
-    // (non-folded) ones, so name the split (R112) — otherwise "25 potential" reads as a
-    // mismatch against a visible "[Potential Drift: 2]".
     const unrecordedNote =
-      unrecordedItems.length > 0
-        ? style.undeclaredTier(
-            unrecordedFoldedCount > 0
-              ? ` · ${unrecordedItems.length} potential drift (${unrecordedShown.length} shown, ${unrecordedFoldedCount} folded — Record to set a baseline)`
-              : ` · ${unrecordedItems.length} potential drift (Record to set a baseline)`
-          )
-        : '';
+      shown > 0
+        ? style.undeclaredTier(` · ${shown} potential drift`) + style.infoTier(nestedTail)
+        : folded > 0
+          ? style.infoTier(
+              ` · ${folded} live-only value(s) to record as baseline (run cdkrd record)`
+            )
+          : '';
     resultBody = `${verdict}${unrecordedNote}`;
   }
   // A blank line before the verdict ONLY when drift sections were printed — it must

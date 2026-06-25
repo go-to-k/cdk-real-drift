@@ -77,7 +77,7 @@ No baseline yet — these live-only values can't be confirmed as drift. Record t
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: no confirmed drift · 42 potential drift (2 shown, 40 folded — Record to set a baseline)
+result: no confirmed drift · 2 potential drift (+ 40 nested live-only to record)
 
 ApiStack: potential drift found (live-only, no baseline yet) — what do you want to do?
   ❯ Nothing (decide later)
