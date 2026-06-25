@@ -2,7 +2,7 @@
 # cdk-real-drift `added` (out-of-band resource) REVERT integration test (real AWS).
 #   deploy fixture (REST API, GET / + POST /scoring) -> record -> check CLEAN
 #   -> inject an out-of-band ANY method on the ROOT `/` resource -> check reports it
-#      under [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift)
+#      under [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift)
 #   -> `cdkrd revert --yes --remove-unrecorded` DELETES it via Cloud Control
 #      DeleteResource (an unrecorded added resource needs --remove-unrecorded, exactly
 #      like removing an unrecorded undeclared value) -> check is CLEAN -> destroy.
@@ -51,11 +51,11 @@ ROOT_ID="$(aws apigateway get-resources --rest-api-id "$API_ID" --region "$REGIO
 aws apigateway put-method --rest-api-id "$API_ID" --resource-id "$ROOT_ID" \
   --http-method ANY --authorization-type NONE --region "$REGION" >/dev/null || fail "inject ANY /"
 
-echo "=== check reports the added method under [Not Recorded] (not drift, PR4) ==="
+echo "=== check reports the added method under [Potential Drift] (not drift, PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdk-real-drift-integ-added-rev.out || fail "added method not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdk-real-drift-integ-added-rev.out || fail "added method not under [Potential Drift]"
 
 echo "=== a plain revert refuses to delete an UNRECORDED added resource (needs the flag) ==="
 $CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdk-real-drift-integ-revert-guard.out

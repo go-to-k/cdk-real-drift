@@ -4,7 +4,7 @@
 #   deploy fixture (AppConfig Application + one declared ConfigurationProfile) -> record
 #   -> CLEAN
 #   -> create-configuration-profile an undeclared profile on the SAME application out of band
-#      -> check reports the profile under [Not Recorded] and is NOT drift (exit 0)
+#      -> check reports the profile under [Potential Drift] and is NOT drift (exit 0)
 #      -> `record` snapshots it (proves CC GetResource on the composite id) -> CLEAN
 #   -> add ANOTHER out-of-band profile -> `revert --remove-unrecorded` DELETES it via
 #      Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -79,7 +79,7 @@ echo "=== check reports the profile as Not-Recorded inventory, NOT drift (PR4) =
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig-prof.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appconfig-prof.out || fail "added profile not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-appconfig-prof.out || fail "added profile not under [Potential Drift]"
 grep -q "AWS::AppConfig::ConfigurationProfile" /tmp/cdkrd-integ-appconfig-prof.out || fail "the out-of-band profile not reported"
 grep -q "added=" /tmp/cdkrd-integ-appconfig-prof.out && fail "unrecorded added must not count as drift" || true
 
@@ -90,12 +90,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite id) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig-prof-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added profile, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appconfig-prof-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-appconfig-prof-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band profile for the revert path ==="
 inject_profile cdkrd-integ-oob-revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appconfig-prof-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

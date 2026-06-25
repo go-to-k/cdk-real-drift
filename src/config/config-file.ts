@@ -297,7 +297,7 @@ export function applyIgnores(
     if (!hit) return f;
     // Clear the `unrecorded` flag (set by applyBaseline for a not-yet-recorded
     // undeclared/added value): an `ignored` finding is a DECIDED value — the user told
-    // cdkrd to STOP reporting it — so it must not still surface under `[Not Recorded]`
+    // cdkrd to STOP reporting it — so it must not still surface under `[Potential Drift]`
     // nor nag "run cdkrd record" (report/stack-actions filter that section by the FLAG,
     // not the tier). This upholds the `record` vs `ignore` invariant (ignore stops
     // watching). The exit code was always safe (ignored is not a drift tier); this fixes

@@ -5,7 +5,7 @@
 // ALSO be a parent here — its declared ListenerRule must NOT flag. verify.sh then
 // `create-rule`s additional rules on the SAME listener out of band (via the AWS CLI) —
 // whole ListenerRule resources not in the template — and asserts cdkrd reports them under
-// [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift), records +
+// [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift), records +
 // watches them, and can revert (delete) them. The listener's auto-created DEFAULT rule
 // (`IsDefault`) must NOT flag.
 //

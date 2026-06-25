@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for AppSync (the SIXTH CHILD_ENUMERATORS member).
 #   deploy fixture (GraphQL API + one declared NONE data source) -> record -> CLEAN
 #   -> create-data-source an undeclared data source on the SAME api out of band -> check
-#      reports the data source under [Not Recorded] and is NOT drift (exit 0) -> `record`
+#      reports the data source under [Potential Drift] and is NOT drift (exit 0) -> `record`
 #      snapshots it (proves CC GetResource + normalize for AWS::AppSync::DataSource) -> CLEAN
 #   -> add ANOTHER out-of-band data source -> `revert --remove-unrecorded` DELETES it via
 #      Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -66,7 +66,7 @@ echo "=== check reports the data source as Not-Recorded inventory, NOT drift (PR
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appsync.out || fail "added data source not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-appsync.out || fail "added data source not under [Potential Drift]"
 grep -q "AWS::AppSync::DataSource" /tmp/cdkrd-integ-appsync.out || fail "the out-of-band data source not reported"
 grep -q "added=" /tmp/cdkrd-integ-appsync.out && fail "unrecorded added must not count as drift" || true
 
@@ -77,12 +77,12 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for AppSync::
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added data source, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-appsync-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-appsync-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band data source for the revert path ==="
 inject_ds cdkrd_integ_oob_revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-appsync-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

@@ -7,7 +7,7 @@
 #      Gateway-generated un-customized defaults are NOT flagged thanks to the
 #      `defaultResponse: false` filter)
 #   -> put-gateway-response DEFAULT_5XX (undeclared) on the SAME api out of band ->
-#      check reports it under [Not Recorded] with AWS::ApiGateway::GatewayResponse,
+#      check reports it under [Potential Drift] with AWS::ApiGateway::GatewayResponse,
 #      NOT drift (exit 0)
 #   -> `record` snapshots it (proves CC GetResource on the composite RestApiId|ResponseType)
 #      -> CLEAN
@@ -68,7 +68,7 @@ echo "=== check reports it as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-gr.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-gr.out || fail "added gateway response not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-gr.out || fail "added gateway response not under [Potential Drift]"
 grep -q "AWS::ApiGateway::GatewayResponse" /tmp/cdkrd-integ-gr.out || fail "the out-of-band gateway response not reported"
 grep -q "added=" /tmp/cdkrd-integ-gr.out && fail "unrecorded added must not count as drift" || true
 
@@ -79,12 +79,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite RestApiI
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-gr-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added gateway response, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-gr-clean.out && fail "still Not-Recorded after record (GetResource on the composite id likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-gr-clean.out && fail "still Not-Recorded after record (GetResource on the composite id likely failed)" || true
 
 echo "=== customize ANOTHER out-of-band response (UNAUTHORIZED) for the revert path ==="
 inject_response UNAUTHORIZED 401
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-gr-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

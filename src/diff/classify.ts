@@ -557,7 +557,7 @@ export function classifyResource(
       // `record`, and a later change vs the baseline then surfaces as real drift. A
       // live-only key whose value EQUALS its curated AWS default (ELB_ATTRIBUTE_DEFAULTS)
       // is instead surfaced in the `atDefault` tier: still inventory (never drift), but it
-      // shrinks the first-run `[Not Recorded]` noise the ~15-20 server-default attributes
+      // shrinks the first-run `[Potential Drift]` noise the ~15-20 server-default attributes
       // otherwise produce. This is a CURATED per-KEY equality-gated fold, NOT the wildcard
       // an earlier revision warned against — a key absent from the table, or present with a
       // non-default value, still classifies `undeclared` and is recorded, so a real

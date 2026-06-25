@@ -3,7 +3,7 @@
 // teardown is fast and cheap, an EFS FileSystem, a SecurityGroup, and ONE declared
 // MountTarget in the first subnet. verify.sh then `create-mount-target`s another mount
 // target in the SECOND subnet out of band (via the AWS CLI) — a whole MountTarget
-// resource not in the template — and asserts cdkrd reports it under [Not Recorded]
+// resource not in the template — and asserts cdkrd reports it under [Potential Drift]
 // (PR4: an unrecorded added resource is inventory, not drift), records + watches it,
 // and can revert (delete) it.
 //

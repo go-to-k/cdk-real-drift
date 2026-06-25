@@ -5,7 +5,7 @@
 #   deploy fixture (HTTP API, declared JWT authorizer) -> record -> check CLEAN
 #      (the DECLARED authorizer must NOT be flagged)
 #   -> create an Authorizer out of band (aws apigatewayv2) -> check reports it under
-#      [Not Recorded] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
+#      [Potential Drift] and is NOT drift (exit 0) -> `record` snapshots it (proves CC
 #      GetResource on the composite AuthorizerId|ApiId + normalize work) -> check CLEAN
 #   -> create ANOTHER out-of-band Authorizer -> `revert --remove-unrecorded` DELETES it
 #      via Cloud Control DeleteResource -> check CLEAN -> destroy.
@@ -55,7 +55,7 @@ echo "=== check should be CLEAN (the DECLARED authorizer must NOT be flagged) ==
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2auth-init.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) right after record, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2auth-init.out && fail "declared authorizer must not be flagged" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2auth-init.out && fail "declared authorizer must not be flagged" || true
 
 API_ID="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --region "$REGION" \
   --query "StackResources[?ResourceType=='AWS::ApiGatewayV2::Api'].PhysicalResourceId" --output text)"
@@ -68,7 +68,7 @@ echo "=== check reports it as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2auth.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2auth.out || fail "added authorizer not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2auth.out || fail "added authorizer not under [Potential Drift]"
 grep -q "AWS::ApiGatewayV2::Authorizer" /tmp/cdkrd-integ-v2auth.out || fail "AWS::ApiGatewayV2::Authorizer not reported"
 grep -q "added=" /tmp/cdkrd-integ-v2auth.out && fail "unrecorded added must not count as drift" || true
 
@@ -79,12 +79,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the composite id) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2auth-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added authorizer, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-v2auth-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-v2auth-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== inject ANOTHER out-of-band Authorizer (cdkrd-integ-oob-revert) for the revert path ==="
 inject_authorizer 'cdkrd-integ-oob-revert'
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-v2auth-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

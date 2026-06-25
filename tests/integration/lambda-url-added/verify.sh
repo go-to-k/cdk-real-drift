@@ -3,7 +3,7 @@
 # CHILD_ENUMERATORS member, AWS::Lambda::Function).
 #   deploy fixture (FnDeclared WITH a declared URL + FnTarget with NO URL) -> record ->
 #      CLEAN (FnDeclared's declared URL must NOT be flagged) -> create-function-url-config
-#      on FnTarget out of band -> check reports the URL under [Not Recorded] and is NOT
+#      on FnTarget out of band -> check reports the URL under [Potential Drift] and is NOT
 #      drift (exit 0) -> `revert --remove-unrecorded` DELETES it via Cloud Control
 #      DeleteResource (URL must be UNRECORDED — record is done before the inject) ->
 #      reinject the URL -> `record` snapshots it (proves CC GetResource + normalize for
@@ -69,7 +69,7 @@ echo "=== check should be CLEAN (FnDeclared's declared URL must NOT be flagged) 
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-url-clean0.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) right after record; declared URL wrongly flagged?"
-grep -q "Not Recorded" /tmp/cdkrd-integ-url-clean0.out && fail "declared URL wrongly flagged as added" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-url-clean0.out && fail "declared URL wrongly flagged as added" || true
 
 FNTARGET="$(fn_name_by_logical FnTarget)"
 [ -n "$FNTARGET" ] && [ "$FNTARGET" != "None" ] || fail "could not resolve FnTarget name"
@@ -81,7 +81,7 @@ echo "=== check reports the URL as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-url.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-url.out || fail "added URL not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-url.out || fail "added URL not under [Potential Drift]"
 grep -q "AWS::Lambda::Url" /tmp/cdkrd-integ-url.out || fail "the out-of-band function URL not reported"
 grep -q "added=" /tmp/cdkrd-integ-url.out && fail "unrecorded added must not count as drift" || true
 
@@ -103,6 +103,6 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for AWS::Lamb
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-url-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added URL, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-url-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-url-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "INTEG PASS"

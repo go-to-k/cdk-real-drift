@@ -3,7 +3,7 @@
 // A GraphQL API with ONE NONE data source and ONE DECLARED pipeline function on it.
 // verify.sh then `create-function`s additional functions on the SAME api out of band
 // (via the AWS CLI) — whole FunctionConfiguration resources not in the template — and
-// asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is
+// asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is
 // inventory, not drift), records + watches them, and can revert (delete) them.
 //
 // The declared function uses a NONE data source (no backing service needed), keeping the

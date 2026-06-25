@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for KMS (the TWELFTH CHILD_ENUMERATORS member).
 #   deploy fixture (KMS Key + one declared Alias) -> record -> CLEAN
 #   -> create-alias an undeclared alias pointing at the SAME key out of band -> check
-#      reports the alias under [Not Recorded] and is NOT drift (exit 0) -> `record`
+#      reports the alias under [Potential Drift] and is NOT drift (exit 0) -> `record`
 #      snapshots it (proves CC GetResource + normalize for AWS::KMS::Alias) -> CLEAN
 #   -> add ANOTHER out-of-band alias -> `revert --remove-unrecorded` DELETES it via Cloud
 #      Control DeleteResource -> check CLEAN -> destroy.
@@ -65,7 +65,7 @@ echo "=== check reports the alias as Not-Recorded inventory, NOT drift (PR4) ===
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-kms.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-kms.out || fail "added alias not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-kms.out || fail "added alias not under [Potential Drift]"
 grep -q "AWS::KMS::Alias" /tmp/cdkrd-integ-kms.out || fail "the out-of-band alias not reported"
 grep -q "added=" /tmp/cdkrd-integ-kms.out && fail "unrecorded added must not count as drift" || true
 
@@ -76,12 +76,12 @@ echo "=== check should be CLEAN (proves CC GetResource on the AliasName) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-kms-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added alias, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-kms-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-kms-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band alias for the revert path ==="
 inject_alias alias/cdkrd-integ-oob-revert
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-kms-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

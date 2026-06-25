@@ -7,7 +7,7 @@
 //
 // verify.sh then `create-route`s additional routes (10.99.0.0/16, 10.98.0.0/16) into the
 // SAME public route table out of band (via the AWS CLI) — whole Route resources not in
-// the template — and asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded
+// the template — and asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded
 // added resource is inventory, not drift) WITHOUT flagging the declared 0.0.0.0/0 route or
 // the VPC-local route, records + watches them, and can revert (delete) them. Deleting the
 // route table (with the VPC) removes its routes, so an out-of-band route does NOT block

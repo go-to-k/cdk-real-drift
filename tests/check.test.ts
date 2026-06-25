@@ -140,8 +140,8 @@ describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
   it('code 1 (drift remains) says drift found', () => {
     expect(resolveMenuMessage('S', 1)).toContain('drift found');
   });
-  it('code 0 (only unrecorded) says unrecorded values found', () => {
-    expect(resolveMenuMessage('S', 0)).toContain('unrecorded values found');
+  it('code 0 (only unrecorded) says potential drift found', () => {
+    expect(resolveMenuMessage('S', 0)).toContain('potential drift found');
   });
   it('R141: establishOnly says "no .cdkrd baseline yet"', () => {
     expect(resolveMenuMessage('S', 0, true)).toContain('no .cdkrd baseline yet');

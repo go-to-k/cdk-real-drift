@@ -4,7 +4,7 @@
 //   - FnTarget with NO declared URL — verify.sh then `create-function-url-config`s a
 //     public URL on it out of band (via the AWS CLI), a whole AWS::Lambda::Url resource
 //     not in the template (security-relevant: an out-of-band public HTTPS endpoint), and
-//     asserts cdkrd reports it under [Not Recorded] (PR4: an unrecorded added resource is
+//     asserts cdkrd reports it under [Potential Drift] (PR4: an unrecorded added resource is
 //     inventory, not drift), records + watches it, and can revert (delete) it.
 //
 // A function has at most one URL per qualifier, so the revert path reuses FnTarget by

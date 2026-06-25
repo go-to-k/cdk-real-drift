@@ -3,7 +3,7 @@
 #   deploy fixture (VPC + Aurora MySQL cluster + ONE declared writer instance)
 #   -> record (snapshots declared + the cluster/writer UNDECLARED properties)
 #   -> `create-db-instance` an undeclared reader into the SAME cluster out of band
-#   -> check reports ONLY that instance under [Not Recorded], NOT drift (exit 0)  [detection]
+#   -> check reports ONLY that instance under [Potential Drift], NOT drift (exit 0)  [detection]
 #   -> `revert --remove-unrecorded` DELETES it via Cloud Control DeleteResource    [revert]
 #      (RDS deletes take 5-10 min; cdkrd's CC poll ceiling is 15 min)
 #   -> check CLEAN
@@ -87,7 +87,7 @@ echo "=== check reports ONLY the instance as Not-Recorded inventory, NOT drift (
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-rds.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-rds.out || fail "added instance not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-rds.out || fail "added instance not under [Potential Drift]"
 grep -q "AWS::RDS::DBInstance" /tmp/cdkrd-integ-rds.out || fail "the out-of-band instance not reported"
 grep -q "added=" /tmp/cdkrd-integ-rds.out && fail "unrecorded added must not count as drift" || true
 
@@ -109,6 +109,6 @@ $CLI record "$STACK" --region "$REGION" --yes || fail "record (added)"
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-rds-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added instance, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-rds-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-rds-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "INTEG PASS"

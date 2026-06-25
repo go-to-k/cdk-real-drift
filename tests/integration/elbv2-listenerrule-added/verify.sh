@@ -4,7 +4,7 @@
 #   deploy fixture (internal ALB + one Listener + one declared ListenerRule) -> record ->
 #     CLEAN (the declared priority-10 rule and the auto-created DEFAULT rule must NOT flag)
 #   -> create-rule an undeclared rule on the SAME listener out of band ->
-#      check reports the rule under [Not Recorded] and is NOT drift (exit 0) ->
+#      check reports the rule under [Potential Drift] and is NOT drift (exit 0) ->
 #      `record` snapshots it (proves CC GetResource for AWS::ElasticLoadBalancingV2::ListenerRule)
 #      -> CLEAN
 #   -> add ANOTHER out-of-band rule -> `revert --remove-unrecorded` DELETES it via
@@ -64,7 +64,7 @@ echo "=== check should be CLEAN (declared priority-10 rule + default rule NOT fl
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-elbv2rule-base.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) right after record"
-grep -q "Not Recorded" /tmp/cdkrd-integ-elbv2rule-base.out && fail "declared/default rule wrongly flagged" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-elbv2rule-base.out && fail "declared/default rule wrongly flagged" || true
 
 LISTENER="$(aws cloudformation describe-stack-resources --stack-name "$STACK" --region "$REGION" \
   --query "StackResources[?ResourceType=='AWS::ElasticLoadBalancingV2::Listener'].PhysicalResourceId" --output text)"
@@ -78,7 +78,7 @@ echo "=== check reports the rule as Not-Recorded inventory, NOT drift (PR4) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-elbv2rule.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-elbv2rule.out || fail "added rule not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-elbv2rule.out || fail "added rule not under [Potential Drift]"
 grep -q "AWS::ElasticLoadBalancingV2::ListenerRule" /tmp/cdkrd-integ-elbv2rule.out || fail "the out-of-band rule not reported"
 grep -q "added=" /tmp/cdkrd-integ-elbv2rule.out && fail "unrecorded added must not count as drift" || true
 
@@ -89,13 +89,13 @@ echo "=== check should be CLEAN (proves CC GetResource on the RuleArn) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-elbv2rule-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added rule, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-elbv2rule-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-elbv2rule-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band rule for the revert path ==="
 ARN2="$(inject_rule 51 '/oob-revert')"
 [ -n "$ARN2" ] || fail "no ARN for the second out-of-band rule"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-elbv2rule-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

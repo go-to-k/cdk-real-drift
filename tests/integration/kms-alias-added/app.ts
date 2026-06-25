@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). A KMS Key with ONE declared Alias. verify.sh then
 // `create-alias`es additional aliases pointing at the SAME key out of band (via the AWS
 // CLI) — whole Alias resources not in the template — and asserts cdkrd reports them
-// under [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift),
+// under [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift),
 // records + watches them, and can revert (delete) them.
 //
 // The key uses RemovalPolicy.DESTROY with the minimum 7-day pendingWindow so teardown

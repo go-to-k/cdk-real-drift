@@ -3,7 +3,7 @@
 #   deploy fixture (minimal VPC + ECS cluster + Fargate task def + a CDK service) ->
 #      record -> CLEAN
 #   -> create-service an undeclared service on the SAME cluster out of band -> check
-#      reports the service under [Not Recorded] and is NOT drift (exit 0) -> `record`
+#      reports the service under [Potential Drift] and is NOT drift (exit 0) -> `record`
 #      snapshots it (proves CC GetResource + normalize for AWS::ECS::Service) -> CLEAN
 #   -> add ANOTHER out-of-band service -> `revert --remove-unrecorded` DELETES it via Cloud
 #      Control DeleteResource -> check CLEAN -> destroy.
@@ -102,7 +102,7 @@ echo "=== check reports the service as Not-Recorded inventory, NOT drift (PR4) =
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ecs.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-ecs.out || fail "added service not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-ecs.out || fail "added service not under [Potential Drift]"
 grep -q "AWS::ECS::Service" /tmp/cdkrd-integ-ecs.out || fail "the out-of-band service not reported"
 grep -q "added=" /tmp/cdkrd-integ-ecs.out && fail "unrecorded added must not count as drift" || true
 
@@ -113,12 +113,12 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for ECS::Serv
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ecs-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added service, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-ecs-clean.out && fail "still Not-Recorded after record (GetResource likely failed; switch the identifier cluster-half to the cluster ARN)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-ecs-clean.out && fail "still Not-Recorded after record (GetResource likely failed; switch the identifier cluster-half to the cluster ARN)" || true
 
 echo "=== add ANOTHER out-of-band service for the revert path ==="
 inject_service "$OOB2"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-ecs-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

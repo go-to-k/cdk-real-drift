@@ -1089,7 +1089,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       // The ~15-20 server-default attributes AWS always echoes are first-run noise: a
       // live-only key whose value equals its curated ELB_ATTRIBUTE_DEFAULTS entry is
       // surfaced in the atDefault tier (informational, never drift), shrinking the
-      // [Not Recorded] inventory. Equality-gated + per-key, so it can never hide a change.
+      // [Potential Drift] inventory. Equality-gated + per-key, so it can never hide a change.
       const atDefault = classifyResource(
         res(T, declared),
         { LoadBalancerAttributes: liveAll },

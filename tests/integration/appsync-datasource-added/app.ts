@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). A GraphQL API with ONE declared NONE data source.
 // verify.sh then `create-data-source`s additional data sources on the SAME api out of
 // band (via the AWS CLI) — whole DataSource resources not in the template — and asserts
-// cdkrd reports them under [Not Recorded] (PR4: an unrecorded added resource is
+// cdkrd reports them under [Potential Drift] (PR4: an unrecorded added resource is
 // inventory, not drift), records + watches them, and can revert (delete) them.
 //
 // The declared data source is a NONE source (no backing service needed), keeping the

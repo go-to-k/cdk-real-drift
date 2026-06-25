@@ -2,7 +2,7 @@
 // Stages (extending the SECOND CHILD_ENUMERATORS member, AWS::ApiGatewayV2::Api,
 // to also enumerate AWS::ApiGatewayV2::Stage). An HTTP API with ONE declared stage.
 // verify.sh then creates a Stage out of band (via the AWS CLI) — a whole resource not
-// in the template — and asserts cdkrd reports it under [Not Recorded] (PR4: an
+// in the template — and asserts cdkrd reports it under [Potential Drift] (PR4: an
 // unrecorded added resource is inventory, not drift), records + watches it, and can
 // revert (delete) it. The declared stage must NOT be flagged.
 // L1 (Cfn*) constructs are used so the fixture needs no alpha integrations module.

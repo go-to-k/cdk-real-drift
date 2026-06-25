@@ -2,7 +2,7 @@
 // (the EIGHTH CHILD_ENUMERATORS member). An internal Application Load Balancer with ONE
 // declared Listener. verify.sh then `create-listener`s additional listeners on the SAME
 // load balancer out of band (via the AWS CLI) — whole Listener resources not in the
-// template — and asserts cdkrd reports them under [Not Recorded] (PR4: an unrecorded
+// template — and asserts cdkrd reports them under [Potential Drift] (PR4: an unrecorded
 // added resource is inventory, not drift), records + watches them, and can revert
 // (delete) them.
 //

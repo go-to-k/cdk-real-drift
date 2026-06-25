@@ -4,7 +4,7 @@
 #   deploy fixture (LogGroup + Lambda dest + one declared SubscriptionFilter) -> record -> CLEAN
 #     (the declared subscription filter must NOT flag)
 #   -> put-subscription-filter an UNDECLARED filter on the SAME log group out of band -> check
-#      reports it under [Not Recorded] as AWS::Logs::SubscriptionFilter, NOT drift (exit 0)
+#      reports it under [Potential Drift] as AWS::Logs::SubscriptionFilter, NOT drift (exit 0)
 #   -> `revert --remove-unrecorded` DELETES it via Cloud Control DeleteResource (proves the
 #      composite LogGroupName|FilterName identifier) -> check CLEAN -> destroy.
 # `cdk drift` / CFn drift detection miss this (template-only). CloudWatch Logs limits a log
@@ -66,7 +66,7 @@ echo "=== check reports it as Not-Recorded inventory (AWS::Logs::SubscriptionFil
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-lsf.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-lsf.out || fail "added subscription filter not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-lsf.out || fail "added subscription filter not under [Potential Drift]"
 grep -q "AWS::Logs::SubscriptionFilter" /tmp/cdkrd-integ-lsf.out || fail "the out-of-band subscription filter not reported"
 
 echo "=== revert --remove-unrecorded DELETES it (Cloud Control DeleteResource on LogGroupName|FilterName) ==="

@@ -2,7 +2,7 @@
 # cdk-real-drift `added` integ test for Cognito (the SIXTH CHILD_ENUMERATORS member).
 #   deploy fixture (UserPool + one declared UserPoolClient) -> record -> CLEAN
 #   -> create-user-pool-client an undeclared client on the SAME pool out of band -> check
-#      reports the client under [Not Recorded] and is NOT drift (exit 0) -> `record`
+#      reports the client under [Potential Drift] and is NOT drift (exit 0) -> `record`
 #      snapshots it (proves CC GetResource + normalize for AWS::Cognito::UserPoolClient)
 #      -> CLEAN
 #   -> add ANOTHER out-of-band client -> `revert --remove-unrecorded` DELETES it via Cloud
@@ -61,7 +61,7 @@ echo "=== check reports the client as Not-Recorded inventory, NOT drift (PR4) ==
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-upc.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded added is NOT drift), got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-upc.out || fail "added client not under [Not Recorded]"
+grep -q "Potential Drift" /tmp/cdkrd-integ-upc.out || fail "added client not under [Potential Drift]"
 grep -q "AWS::Cognito::UserPoolClient" /tmp/cdkrd-integ-upc.out || fail "the out-of-band client not reported"
 grep -q "added=" /tmp/cdkrd-integ-upc.out && fail "unrecorded added must not count as drift" || true
 
@@ -72,13 +72,13 @@ echo "=== check should be CLEAN (proves CC GetResource + normalize for UserPoolC
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-upc-clean.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected CLEAN (exit 0) after recording the added client, got $rc"
-grep -q "Not Recorded" /tmp/cdkrd-integ-upc-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
+grep -q "Potential Drift" /tmp/cdkrd-integ-upc-clean.out && fail "still Not-Recorded after record (GetResource likely failed)" || true
 
 echo "=== add ANOTHER out-of-band client for the revert path ==="
 REVERT_CLIENT_ID="$(inject_client cdkrd-integ-oob-revert)"
 [ -n "$REVERT_CLIENT_ID" ] || fail "could not capture the revert client's ClientId"
 
-echo "=== check reports the new one under [Not Recorded] (exit 0) ==="
+echo "=== check reports the new one under [Potential Drift] (exit 0) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-integ-upc-rev.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 for the second unrecorded added, got $rc"

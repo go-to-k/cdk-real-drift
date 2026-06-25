@@ -3,7 +3,7 @@
 // to also enumerate AWS::ApiGatewayV2::Authorizer). An HTTP API with ONE declared JWT
 // authorizer. verify.sh then creates an Authorizer out of band (via the AWS CLI) — a
 // whole resource not in the template — and asserts cdkrd reports it under
-// [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift), records +
+// [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift), records +
 // watches it, and can revert (delete) it. The declared authorizer must NOT be flagged.
 // L1 (Cfn*) constructs are used so the fixture needs no alpha integrations module; a JWT
 // authorizer needs no backing Lambda, keeping the fixture self-contained. The issuer is

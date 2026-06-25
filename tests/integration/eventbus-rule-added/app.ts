@@ -2,7 +2,7 @@
 // CHILD_ENUMERATORS member). A custom EventBus with ONE declared Rule. verify.sh then
 // `put-rule`s additional rules on the SAME bus out of band (via the AWS CLI) — whole
 // Rule resources not in the template — and asserts cdkrd reports them under
-// [Not Recorded] (PR4: an unrecorded added resource is inventory, not drift), records +
+// [Potential Drift] (PR4: an unrecorded added resource is inventory, not drift), records +
 // watches them, and can revert (delete) them.
 //
 // The declared rule carries an event pattern (a rule on a custom bus needs a pattern,

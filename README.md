@@ -57,19 +57,29 @@ It prints what it found, then offers three actions right in the prompt:
   live-only value, or restores a declared one).
 - **Ignore**: stop reporting it, for good.
 
-On a fresh project, `check` already flags drift on your declared properties (and
-any out-of-band deletes); live-only values stay informational until you record
-them. A typical first run reports no drift, just live-only values to record:
+On a fresh project — with no baseline yet — `check` still reports drift on the
+properties you **declared**, plus anything deleted out-of-band: those compare
+against your template, so they need no baseline. Values that live only on the
+real resource (never in your template) can't be judged yet on this first run —
+with no baseline, `check` can't tell an intentional setting from an out-of-band
+change, so it lists them as _Potential Drift_. They become confirmed (and
+watched) the moment you **Record** them; from then on, any out-of-band change to
+a recorded value is real drift.
+
+So a typical first run reports no _confirmed_ drift — just live-only values
+(potential drift) you can record:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-[Not Recorded: 2] (not drift — a live-only value not yet in your .cdkrd baseline; run cdkrd record to track it)
+No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`.
+
+[Potential Drift: 2] (live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it)
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: CLEAN — 42 unrecorded value(s) await a baseline (2 shown, 40 folded; run cdkrd record)
+result: no confirmed drift · 42 potential drift (2 shown, 40 folded — Record to set a baseline)
 
-ApiStack: unrecorded values found — what do you want to do?
+ApiStack: potential drift found (live-only, no baseline yet) — what do you want to do?
   ❯ Nothing (decide later)
     Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert — write the desired values back to AWS
@@ -167,11 +177,11 @@ A whole child resource that exists live but isn't in your template (e.g. an API
 Gateway `ANY` method added on `/` via the console) is the resource-level sibling
 of an undeclared property, and is reconciled the same way against your baseline:
 
-| state                       | reported as                             |
-| --------------------------- | --------------------------------------- |
-| added, **not** recorded     | **Not Recorded** (inventory, not drift) |
-| recorded, unchanged         | suppressed                              |
-| recorded, **changed** since | failing drift                           |
+| state                       | reported as                                    |
+| --------------------------- | ---------------------------------------------- |
+| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed) |
+| recorded, unchanged         | suppressed                                     |
+| recorded, **changed** since | failing drift                                  |
 
 `cdk drift` / CFn drift detection compare only template-declared resources, so an
 out-of-band addition is invisible to them. Decide it like any finding: `record`
@@ -388,10 +398,12 @@ info:
 
 - **Drift tiers** (`deleted` / `declared` / `undeclared`) are always listed in
   full and drive the `--fail` exit. They are the point.
-- **`[Not Recorded: N]`**: undeclared values you haven't recorded yet. Listed in
-  full, but not drift; `result:` points you at `cdkrd record`. Once a resource is
-  fully snapshotted, a value that _appears_ later is real drift (`appeared since
-record`).
+- **`[Potential Drift: N]`**: undeclared values with no baseline yet — cdkrd
+  can't tell an intentional setting from an out-of-band change, so they're listed
+  in full as _potential_ (unconfirmed) drift and don't drive the `--fail` exit;
+  `result:` points you at `cdkrd record` to accept them (or `revert` to remove).
+  Once a resource is fully snapshotted, a value that _appears_ later is real drift
+  (`appeared since record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 

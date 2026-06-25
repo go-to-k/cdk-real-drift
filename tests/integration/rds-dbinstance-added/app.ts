@@ -4,7 +4,7 @@
 // OFF and removalPolicy DESTROY (no final snapshot) so teardown is fast and leaves no
 // orphan. verify.sh then `create-db-instance`s an undeclared reader instance into the
 // SAME cluster out of band (via the AWS CLI) — a whole DBInstance resource not in the
-// template — and asserts cdkrd reports it under [Not Recorded] (PR4: an unrecorded added
+// template — and asserts cdkrd reports it under [Potential Drift] (PR4: an unrecorded added
 // resource is inventory, not drift), records + watches it, and can revert (delete) it.
 //
 // An out-of-band DB instance that lingers in the cluster keeps billing AND can block the

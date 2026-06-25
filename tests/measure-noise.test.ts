@@ -2,7 +2,7 @@
 //
 // schema `default` annotations cover only ~1% of properties (see
 // scripts/measure-schema-defaults.mjs and docs/ARCHITECTURE.md § 6), so the
-// `undeclared` values that surface as [Not Recorded] on a first run are folded
+// `undeclared` values that surface as [Potential Drift] on a first run are folded
 // to `atDefault` almost entirely by the HAND-maintained KNOWN_DEFAULTS /
 // KNOWN_DEFAULT_PATHS tables. This replays the real classify pipeline over the
 // golden corpus (the same inputs corpus-replay.test.ts asserts on) and buckets
