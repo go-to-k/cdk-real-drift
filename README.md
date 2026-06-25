@@ -62,9 +62,9 @@ properties you **declared**, plus anything deleted out-of-band: those compare
 against your template, so they need no baseline. Values that live only on the
 real resource (never in your template) can't be judged yet on this first run:
 with no baseline, `check` can't tell an intentional setting from an out-of-band
-change, so it lists them as _Potential Drift_. They become confirmed (and
-watched) the moment you **Record** them; from then on, any out-of-band change to
-a recorded value is real drift.
+change. It folds away the ones it can explain (AWS defaults, generated names,
+nested sub-keys) and flags only the rest as _Potential Drift_; record those, and
+any later out-of-band change to them is real drift.
 
 So a typical first run reports no _confirmed_ drift, just live-only values
 (potential drift) you can record:
