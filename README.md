@@ -35,7 +35,7 @@ result: 1 drift(s) (undeclared=1)
 | -------------------------------------------------------------- | :-----: | :-------------------------------: |
 | Drift on **declared** properties (+ out-of-band deletes)       |   ✅    |                ✅                 |
 | Drift on **undeclared** properties                             |   ✅    |                ❌                 |
-| **Added** out-of-band resources (not in template)             |   ✅    |                ❌                 |
+| **Added** out-of-band resources (not in template)              |   ✅    |                ❌                 |
 | **Revert** declared drift                                      |   ✅    |  ✅ `cdk deploy --revert-drift`   |
 | **Revert** undeclared drift                                    |   ✅    |                ❌                 |
 | **Ignore / accept** a drift, incl. a **declared** one          |   ✅    |                ❌                 |
@@ -97,12 +97,12 @@ three as inline actions.
 All four are also standalone commands for non-TTY use (scripting / CI). Here's what
 each does, run on its own:
 
-| verb           | meaning                                                               | writes                               |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------ |
-| `cdkrd check`  | find drift (the one you run)                                          | nothing; the 3 below do the writing  |
-| `cdkrd record` | "this undeclared / added state is the norm; tell me if it _changes_"  | a git file (baseline)                |
-| `cdkrd ignore` | "stop reporting this property, ever"                                  | a git file (`config.json`)           |
-| `cdkrd revert` | "this state is wrong"; write the desired value back                   | AWS (plan + confirm)                 |
+| verb           | meaning                                                              | writes                              |
+| -------------- | -------------------------------------------------------------------- | ----------------------------------- |
+| `cdkrd check`  | find drift (the one you run)                                         | nothing; the 3 below do the writing |
+| `cdkrd record` | "this undeclared / added state is the norm; tell me if it _changes_" | a git file (baseline)               |
+| `cdkrd ignore` | "stop reporting this property, ever"                                 | a git file (`config.json`)          |
+| `cdkrd revert` | "this state is wrong"; write the desired value back                  | AWS (plan + confirm)                |
 
 The scopes differ: `record` is **undeclared / added only**, while `ignore` works on
 **any** tier. It's the only in-tool way to accept a **declared** drift without
@@ -145,12 +145,12 @@ that, checking live state against the freshly synthesized template (see
 Named so "declared" is never ambiguous (`CFn-declared` means **in the deployed
 template**, not your CDK code and not your `.cdkrd` baseline):
 
-| term                           | source                               | how it's judged                                                        |
-| ------------------------------ | ------------------------------------ | --------------------------------------------------------------------- |
-| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed |
-| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                      |
+| term                           | source                               | how it's judged                                                         |
+| ------------------------------ | ------------------------------------ | ----------------------------------------------------------------------- |
+| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed  |
+| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                       |
 | **Added resource**             | a whole resource not in the template | reconciled against the baseline like an undeclared property (see below) |
-| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                          |
+| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                           |
 
 (`CFn-undeclared` is a template axis; `recorded` / `unrecorded` is a separate
 baseline-file axis: whether you've snapshotted that value yet.)
@@ -292,7 +292,7 @@ safe side); `--yes` alone in a TTY auto-approves confirmations only (select prom
 still show).
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
-  Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
+Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
   option appears only when it applies (no Revert if nothing is revertable; "Decide per finding" only
   with >1 finding). Aborting the Revert confirmation writes nothing.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every op
@@ -400,16 +400,16 @@ info:
 - **`[Not Recorded: N]`**: undeclared values you haven't recorded yet. Listed in
   full, but not drift; `result:` points you at `cdkrd record`. Once a resource is
   fully snapshotted, a value that _appears_ later is real drift (`appeared since
-  record`).
+record`).
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 
-| tier                                             | what it folds                                                                                                          |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| tier                                             | what it folds                                                                                                                                                        |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `atDefault`                                      | an undeclared value sitting at a known AWS default (e.g. Lambda `TracingConfig: PassThrough`). Equality-gated, so a change away from it re-surfaces; never recorded. |
-| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                          |
-| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`). Recordable; `--show-all` lists it. |
-| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                     |
+| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                                                                        |
+| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`). Recordable; `--show-all` lists it.                 |
+| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                   |
 
 `^result:` is the greppable verdict. Colorized on a TTY (`NO_COLOR` respected);
 piped / CI / `--json` output is plain text.
