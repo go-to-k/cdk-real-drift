@@ -57,16 +57,16 @@ It prints what it found, then offers three actions right in the prompt:
   live-only value, or restores a declared one).
 - **Ignore**: stop reporting it, for good.
 
-On a fresh project — with no baseline yet — `check` still reports drift on the
+On a fresh project (with no baseline yet), `check` still reports drift on the
 properties you **declared**, plus anything deleted out-of-band: those compare
 against your template, so they need no baseline. Values that live only on the
-real resource (never in your template) can't be judged yet on this first run —
+real resource (never in your template) can't be judged yet on this first run:
 with no baseline, `check` can't tell an intentional setting from an out-of-band
 change, so it lists them as _Potential Drift_. They become confirmed (and
 watched) the moment you **Record** them; from then on, any out-of-band change to
 a recorded value is real drift.
 
-So a typical first run reports no _confirmed_ drift — just live-only values
+So a typical first run reports no _confirmed_ drift, just live-only values
 (potential drift) you can record:
 
 ```console
@@ -398,7 +398,7 @@ info:
 
 - **Drift tiers** (`deleted` / `declared` / `undeclared`) are always listed in
   full and drive the `--fail` exit. They are the point.
-- **`[Potential Drift: N]`**: undeclared values with no baseline yet — cdkrd
+- **`[Potential Drift: N]`**: undeclared values with no baseline yet; cdkrd
   can't tell an intentional setting from an out-of-band change, so they're listed
   in full as _potential_ (unconfirmed) drift and don't drive the `--fail` exit;
   `result:` points you at `cdkrd record` to accept them (or `revert` to remove).
