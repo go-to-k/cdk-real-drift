@@ -1,32 +1,41 @@
 # cdk-real-drift demo — VHS tape (https://github.com/charmbracelet/vhs).
-# Records the differentiator in one shot: `cdkrd check` reads the FULL live model and
-# finds the out-of-band undeclared inline policy that demo/setup.sh injected — the change
-# CloudFormation drift detection can't see. (The `cdk drift` reports-0 contrast is shown
-# in the top-level README prose directly above this GIF, so the GIF skips it and stays
-# short. Revert/record are likewise covered in the README.)
+# Records the differentiator side by side: `cdkrd check` (left) reads the FULL
+# live model and finds the out-of-band undeclared inline policy that
+# demo/setup.sh injected; `cdk drift` (right) only compares declared properties
+# and settles on "Number of resources with drift: 0". demo/run.sh drives the
+# two tmux panes.
 #
-# Prereqs: `bash demo/setup.sh` has run (stack deployed, baseline recorded, drift
-# injected), `cdkrd` is on PATH (e.g. `npm i -g cdk-real-drift` or `npm link`), and
-# you run from the demo/ directory so cdk.json is found.
-# Record with:  vhs demo/cdkrd.tape   ->   demo/demo.gif
-# The Sleep value covers the live AWS call; trim the recorded GIF if you want it snappier.
+# Prereqs: `bash demo/setup.sh` has run (stack deployed, baseline recorded,
+# drift injected). cdkrd is taken from the local build (dist/cli.js) by run.sh,
+# so just `vp run build` at the repo root first — no global install needed.
+# The demo stack pins no env, so export AWS_REGION before recording:
+#   AWS_REGION=us-east-1 vhs demo/cdkrd.tape   ->   demo/demo.gif
+# The trailing Sleep covers the live `cdk drift` CloudFormation drift-detection
+# call; bump it if the right pane hasn't printed its "drift: 0" line yet.
 
 Output "demo.gif"
 
 Set Shell "bash"
-Set FontSize 18
-Set Width 1180
-Set Height 560
-Set Padding 18
-Set Theme "Dracula"
-Set TypingSpeed 45ms
-Set PlaybackSpeed 2
+Set FontFamily "JetBrainsMono Nerd Font Mono"
+Set FontSize 16
+Set Width 1600
+Set Height 720
+Set Padding 16
+Set Theme "Catppuccin Mocha"
+Set TypingSpeed 50ms
+Set PlaybackSpeed 1.0
 
-# cdkrd reads the FULL live model and finds the undeclared inline policy.
-# No stack arg — cdkrd synthesizes the app and checks every stack it defines (CDK-style).
-# The demo stack pins no env, so the recorder exports AWS_REGION before launching vhs
-# (AWS_REGION=us-east-1 vhs cdkrd.tape) — the inner shell inherits it, keeping the
-# visible command a clean `cdkrd check`.
-Type "cdkrd check"
+# Hide the harness launch so the GIF opens straight on the two panes, each
+# echoing its own real command ($ cdkrd check / $ cdk drift).
+Hide
+Type "export PS1='$ ' && clear"
 Enter
-Sleep 12s
+Sleep 500ms
+Type "bash run.sh"
+Enter
+Sleep 2s
+Show
+
+# Covers the live AWS calls: cdkrd finishes in ~12s; the right pane keeps
+# running CloudFormation drift detection until it reports drift: 0.
+Sleep 40s
