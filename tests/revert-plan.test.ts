@@ -75,6 +75,30 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('JSON-string property (ConfigRule InputParameters) -> SDK writer (CC re-serializes with spaces; provider rejects)', () => {
+    // classify reports the whole property at the top-level path. Cloud Control cannot
+    // revert it (its read-modify-write re-serializes the JSON into Config's string field
+    // with spaces -> "Blank spaces are not acceptable"), so it must route to the
+    // type's SDK writer (PutConfigRule, compact JSON string). The op carries the whole
+    // declared value; the writer compacts it.
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::Config::ConfigRule',
+      physicalId: 'cdkrd-access-keys-rotated',
+      path: 'InputParameters',
+      desired: { maxAccessKeyAge: 90 },
+      actual: { maxAccessKeyAge: '365' },
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk'); // NOT cc — the CC patch always fails for this prop
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/InputParameters',
+      value: { maxAccessKeyAge: 90 },
+    });
+  });
+
   it('declared drift carries the live value as `prior` (per-entry SDK writers need it)', () => {
     // A declared /Policies drift on an IAM Role (a rogue inline policy added out of
     // band → whole-array drift) must carry the live array as `prior` so

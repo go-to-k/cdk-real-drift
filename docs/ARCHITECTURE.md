@@ -658,7 +658,14 @@ only when non-zero — unrecorded values are named as such, never folded into
     boolean — its LogGroup update handler's downstream call errors with "The
     security token included in the request is invalid" (proven live) — so the
     writer toggles it directly (a `remove` reverts to the schema default DISABLED;
-    an `add` carries the desired boolean). Scoped to the EXACT top-level path: deeper
+    an `add` carries the desired boolean). An `AWS::Config::ConfigRule`'s
+    `InputParameters` (a `JSON_STRING_PROPS` property — Config stores it as one JSON
+    string) reverts via `PutConfigRule`, writing a COMPACT JSON string with
+    string-coerced param values: a CC `UpdateResource` re-serializes the JSON into
+    Config's string field with spaces / a numeric value, which the provider rejects
+    ("Blank spaces are not acceptable for input parameter" — proven live). classify
+    reports such a property WHOLE at its top-level path (never a fragile sub-path
+    finding). Scoped to the EXACT top-level path: deeper
     `Policies.*` declared drift still patches via CC. A resource with both kinds
     of findings splits into one `cc` item and one `sdk` item.
 - **Not revertable (reported honestly, never silently skipped)**:

@@ -76,6 +76,11 @@ import {
   PutRolePolicyCommand,
   PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
+import {
+  ConfigServiceClient,
+  DescribeConfigRulesCommand,
+  PutConfigRuleCommand,
+} from '@aws-sdk/client-config-service';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
@@ -734,6 +739,75 @@ const writeRoute53RecordSet: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Config::ConfigRule `InputParameters` — Config stores it as a single JSON STRING.
+// Cloud Control CAN read it (returned parsed as an object) but CANNOT revert it: a CC
+// UpdateResource re-serializes the JSON into Config's string field WITH SPACES, which the
+// PutConfigRule provider rejects ("Blank spaces are not acceptable for input parameter")
+// — proven live, the same CC-revalidation class as OpenSearch/CloudFront. So revert this
+// property via PutConfigRule directly, writing the declared value as a COMPACT JSON string
+// (no spaces). PutConfigRule is a whole-rule UPSERT, so re-read the current rule and
+// overwrite only InputParameters, preserving Source/Scope/MaximumExecutionFrequency/etc.
+// Config stores InputParameters as a JSON string whose param VALUES are themselves
+// strings (a managed rule's `maxAccessKeyAge` is `"90"`, not `90`). CDK declares them
+// typed (`90`), and CloudFormation coerces them to strings on deploy — cdkrd treats
+// `90` and `"90"` as equal (stringly). The revert must write the SAME string-valued form
+// CloudFormation produced, or PutConfigRule rejects the numeric value with the misleading
+// "Blank spaces are not acceptable for input parameter" error (proven live). So serialize
+// the declared object with each scalar param value coerced to a string; objects/arrays
+// (a rare structured param) are left as-is for JSON to render.
+const configInputParametersString = (v: unknown): string => {
+  let model: unknown = v;
+  if (typeof v === 'string') {
+    try {
+      model = JSON.parse(v);
+    } catch {
+      return v; // already a string we can't parse — pass through verbatim
+    }
+  }
+  if (model !== null && typeof model === 'object' && !Array.isArray(model)) {
+    const coerced: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(model as Record<string, unknown>)) {
+      coerced[k] = typeof val === 'number' || typeof val === 'boolean' ? String(val) : val;
+    }
+    return JSON.stringify(coerced);
+  }
+  return JSON.stringify(model);
+};
+const writeConfigRuleInputParameters: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['ConfigRuleName']);
+  if (!name) throw new Error('cannot resolve Config rule name for revert');
+  const op = ops.find((o) => o.path === '/InputParameters');
+  if (op?.op !== 'add') throw new Error('Config rule InputParameters revert: unexpected op');
+  const client = new ConfigServiceClient({ region: ctx.region });
+  const got = await client.send(new DescribeConfigRulesCommand({ ConfigRuleNames: [name] }));
+  const rule = got.ConfigRules?.[0];
+  if (!rule) throw new Error(`Config rule not found for revert: ${name}`);
+  // Re-PUT the rule with only InputParameters overwritten. Drop the server-populated
+  // fields PutConfigRule rejects (ConfigRuleArn/Id/State, CreatedBy, and a newer
+  // RuleEvaluationVisibility — proven live: "AWS Config populates the
+  // RuleEvaluationVisibility field ... Try again without populating [it]"); keep the rest
+  // (Source/Scope/Description/MaximumExecutionFrequency/EvaluationModes). The rule is
+  // matched by the preserved ConfigRuleName.
+  const {
+    ConfigRuleArn,
+    ConfigRuleId,
+    ConfigRuleState,
+    CreatedBy,
+    RuleEvaluationVisibility,
+    ...rest
+  } = rule;
+  void ConfigRuleArn;
+  void ConfigRuleId;
+  void ConfigRuleState;
+  void CreatedBy;
+  void RuleEvaluationVisibility;
+  await client.send(
+    new PutConfigRuleCommand({
+      ConfigRule: { ...rest, InputParameters: configInputParametersString(op.value) },
+    })
+  );
+};
+
 // AWS::OpenSearchService::Domain — Cloud Control CAN read this type, but its
 // UpdateResource REJECTS a property patch: it re-submits the full model and AWS's own
 // legacy `override_main_response_version` AdvancedOption (returned on read) is rejected
@@ -844,6 +918,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 // resource type -> EXACT top-level finding path. Deeper paths (e.g. a declared
 // drift at Policies.0...) still go through Cloud Control as before.
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
+  'AWS::Config::ConfigRule': { InputParameters: writeConfigRuleInputParameters },
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
   'AWS::Logs::LogGroup': { BearerTokenAuthenticationEnabled: writeLogGroupBearerTokenAuth },
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {

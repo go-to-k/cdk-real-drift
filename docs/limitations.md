@@ -13,13 +13,13 @@ the full design.
   can't safely target a deep sub-field — fix in IaC or re-record); create-only
   properties (changing them needs replacement); toggle-style properties with no
   "absent" state (e.g. S3 transfer acceleration); `AWS::Lambda::Permission` and
-  `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state);
-  and a declared change INSIDE a JSON-string-typed property (e.g.
-  `AWS::Config::ConfigRule` `InputParameters` — cdkrd descends into the parsed
-  JSON for a precise finding, but an RFC6902 sub-path patch can't apply to a
-  string value, so revert reports non-convergence rather than silently failing;
-  whole-property revert for such props is a follow-up). Detection still works.
-  Not-revertable findings fold into a one-line-per-reason summary (`--verbose` for
+  `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state).
+  (A declared change inside a JSON-string-typed property such as
+  `AWS::Config::ConfigRule` `InputParameters` — stored by the provider as one JSON
+  string — IS revertable: it is compared and reverted as a whole property via the
+  type's SDK writer, since a Cloud Control patch re-serializes the JSON in a shape
+  the provider rejects.) Not-revertable findings fold into a one-line-per-reason
+  summary (`--verbose` for
   the full list). When findings exist but nothing is revertable, `revert` prints
   `nothing revertable` and exits 1.
 - **Revert writes the canonical form** of the desired value — semantically equal to
