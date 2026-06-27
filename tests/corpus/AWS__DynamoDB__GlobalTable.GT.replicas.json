@@ -1,0 +1,124 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GT",
+    "resourceType": "AWS::DynamoDB::GlobalTable",
+    "physicalId": "CdkRealDriftIntegDdbGlobalTableReplicas-GT-AISY8USF2SYC",
+    "constructPath": "CdkRealDriftIntegDdbGlobalTableReplicas/GT",
+    "declared": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "pk",
+          "AttributeType": "S"
+        }
+      ],
+      "BillingMode": "PAY_PER_REQUEST",
+      "KeySchema": [
+        {
+          "AttributeName": "pk",
+          "KeyType": "HASH"
+        }
+      ],
+      "Replicas": [
+        {
+          "Region": "us-west-2"
+        },
+        {
+          "Region": "us-east-1"
+        }
+      ],
+      "StreamSpecification": {
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      }
+    }
+  },
+  "liveRaw": {
+    "TableId": "655af2d2-c615-4bc5-9f1e-12a343ada757",
+    "TableName": "CdkRealDriftIntegDdbGlobalTableReplicas-GT-AISY8USF2SYC",
+    "AttributeDefinitions": [
+      {
+        "AttributeType": "S",
+        "AttributeName": "pk"
+      }
+    ],
+    "StreamSpecification": {
+      "StreamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+      {
+        "KeyType": "HASH",
+        "AttributeName": "pk"
+      }
+    ],
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 12000,
+      "WriteUnitsPerSecond": 4000
+    },
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftIntegDdbGlobalTableReplicas-GT-AISY8USF2SYC",
+    "StreamArn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftIntegDdbGlobalTableReplicas-GT-AISY8USF2SYC/stream/2026-06-27T19:10:02.367",
+    "Replicas": [
+      {
+        "ContributorInsightsSpecification": {
+          "Enabled": false
+        },
+        "GlobalSecondaryIndexes": [],
+        "Region": "us-west-2",
+        "GlobalTableSettingsReplicationMode": "ENABLED_WITH_OVERRIDES",
+        "TableClass": "STANDARD",
+        "DeletionProtectionEnabled": false
+      },
+      {
+        "ContributorInsightsSpecification": {
+          "Enabled": false
+        },
+        "GlobalSecondaryIndexes": [],
+        "Region": "us-east-1",
+        "GlobalTableSettingsReplicationMode": "ENABLED_WITH_OVERRIDES",
+        "TableClass": "STANDARD",
+        "DeletionProtectionEnabled": false
+      }
+    ],
+    "TimeToLiveSpecification": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "StreamArn", "TableId"],
+    "writeOnly": ["GlobalTableSourceArn"],
+    "createOnly": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "readOnlyPaths": ["Arn", "StreamArn", "TableId"],
+    "writeOnlyPaths": [
+      "GlobalSecondaryIndexes.*.WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity",
+      "GlobalTableSourceArn",
+      "Replicas.*.GlobalSecondaryIndexes.*.ReadProvisionedThroughputSettings.ReadCapacityAutoScalingSettings.SeedCapacity",
+      "Replicas.*.ReadProvisionedThroughputSettings.ReadCapacityAutoScalingSettings.SeedCapacity",
+      "WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity"
+    ],
+    "createOnlyPaths": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "GT",
+      "resourceType": "AWS::DynamoDB::GlobalTable",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "physicalId": "CdkRealDriftIntegDdbGlobalTableReplicas-GT-AISY8USF2SYC",
+      "constructPath": "CdkRealDriftIntegDdbGlobalTableReplicas/GT"
+    }
+  ],
+  "description": "Multi-region GlobalTable Replicas RULE-OUT: declared non-sorted by Region [us-west-2, us-east-1]; Cloud Control PRESERVES the declared order (not sorted), so Replicas is NOT a reorder FP and needs no fold. New multi-region coverage (existing GlobalTable corpus is single-region)."
+}
