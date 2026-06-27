@@ -58,7 +58,7 @@ echo "=== 1. baseline-free check: nested values FOLD into the info footer ==="
 $CLI check "$STACK" --region "$REGION" | tee /tmp/cdkrd-nested-1.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (inventory only), got $rc"
-grep -q "DECLARED DRIFT" /tmp/cdkrd-nested-1.out && fail "fresh deploy reported DECLARED drift"
+grep -q "CFn-Declared Drift" /tmp/cdkrd-nested-1.out && fail "fresh deploy reported DECLARED drift"
 grep -qE "undeclared-subkey=[1-9]" /tmp/cdkrd-nested-1.out || fail "expected an 'undeclared-subkey=N' fold in the info footer"
 
 echo "=== 2. --show-all expands BOTH the R98 array-element and R96 object-nested paths ==="

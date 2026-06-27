@@ -46,7 +46,7 @@ echo "=== 1. baseline-free check: fresh deploy must have ZERO declared drift ===
 $CLI check "$STACK" --region "$REGION" | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded inventory only), got $rc"
-grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
+grep -q "CFn-Declared Drift" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
 echo "=== 2. record + check --fail must be CLEAN across every type ==="

@@ -52,7 +52,7 @@ echo "=== A1. baseline-free check: fresh deploy must have ZERO declared drift ==
 $CLI check "$STACK" --region "$REGION" | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded inventory only), got $rc"
-grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
+grep -q "CFn-Declared Drift" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
 echo "=== A2. record + check --fail must be CLEAN across every type ==="
@@ -77,7 +77,7 @@ sleep 10
 echo "=== B2. check must name ONLY the mutated attribute by Key ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected drift exit 1"
-grep -q "DECLARED DRIFT: 1" "$OUT" || fail "expected exactly 1 declared drift (Key-scoped compare failed)"
+grep -q "CFn-Declared Drift: 1" "$OUT" || fail "expected exactly 1 declared drift (Key-scoped compare failed)"
 grep -q "idle_timeout" "$OUT" || fail "missing idle_timeout drift"
 
 if [ -n "${CDKRD_CORPUS_DIR:-}" ]; then
