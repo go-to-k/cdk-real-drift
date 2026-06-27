@@ -1,0 +1,102 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Topic",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:cdkrd-sns-deliverystatus",
+    "constructPath": "CdkRealDriftIntegSnsDeliveryStatus/Topic",
+    "declared": {
+      "DeliveryStatusLogging": [
+        {
+          "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "Protocol": "sqs",
+          "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "SuccessFeedbackSampleRate": "100"
+        },
+        {
+          "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "Protocol": "application",
+          "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "SuccessFeedbackSampleRate": "100"
+        },
+        {
+          "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "Protocol": "lambda",
+          "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "SuccessFeedbackSampleRate": "100"
+        },
+        {
+          "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "Protocol": "firehose",
+          "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+          "SuccessFeedbackSampleRate": "100"
+        }
+      ],
+      "TopicName": "cdkrd-sns-deliverystatus"
+    }
+  },
+  "liveRaw": {
+    "DeliveryStatusLogging": [
+      {
+        "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "SuccessFeedbackSampleRate": "100",
+        "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "Protocol": "sqs"
+      },
+      {
+        "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "SuccessFeedbackSampleRate": "100",
+        "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "Protocol": "application"
+      },
+      {
+        "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "SuccessFeedbackSampleRate": "100",
+        "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "Protocol": "lambda"
+      },
+      {
+        "FailureFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "SuccessFeedbackSampleRate": "100",
+        "SuccessFeedbackRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSnsDeliverySt-FeedbackRoleCAF84E5C-EftQMwfaEPCG",
+        "Protocol": "firehose"
+      }
+    ],
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-sns-deliverystatus",
+    "FifoTopic": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSnsDeliveryStatus/f6d4f390-724f-11f1-827a-0afffb7669f5",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSnsDeliveryStatus",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Topic",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ArchivePolicy": {},
+    "TopicName": "cdkrd-sns-deliverystatus"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
