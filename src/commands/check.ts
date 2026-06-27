@@ -9,6 +9,8 @@
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
+  type ApplyBaselineOptions,
+  type BaselineFile,
   checkBaselineAccount,
   constructPathsByLogical,
   declaredKeysByLogical,
@@ -37,6 +39,30 @@ import { resolveInteractively } from './interactive-resolve.js';
 // the same name can recur across regions in one app). Exported (pure) for unit testing.
 export function synthKey(stackName: string, region: string | undefined): string {
   return `${stackName}\0${region ?? ''}`;
+}
+
+// Reconcile classified findings against the baseline for the report. Exported (pure)
+// so the --show-all contract below is unit-tested.
+//
+// `--declared-only` is the ONLY mode that bypasses applyBaseline: it filters the
+// undeclared tier out entirely, so applyBaseline's removal pass would misread EVERY
+// recorded entry as "baseline value removed since record" (latent in R59).
+//
+// `--show-all` (inventory mode) does NOT bypass it. The caller already loaded
+// `baseline = undefined` for show-all (it lists ALL current undeclared state,
+// ignoring whatever is recorded), and applyBaseline(findings, undefined) is exactly
+// the path that tags every undeclared/added value `unrecorded` — i.e. POTENTIAL
+// drift, not confirmed drift. Bypassing it (the pre-#378 behavior) left those values
+// untagged, so the report mislabeled a fresh deploy's live-only inventory as
+// "CFn-Undeclared Drift" / "N drift(s)" and `--show-all --fail` exited 1 on a stack
+// nobody had touched — the first-run false-drift the Potential Drift model removed.
+export function reconcileBaseline(
+  findings: Finding[],
+  baseline: BaselineFile | undefined,
+  opts: { declaredOnly: boolean; applyOpts: ApplyBaselineOptions }
+): Finding[] {
+  if (opts.declaredOnly) return findings;
+  return applyBaseline(findings, baseline, opts.applyOpts);
 }
 
 // `--declared-only` still prints an `At AWS Default (N)` line for values it claims
@@ -308,22 +334,24 @@ export async function runCheck(args: string[]): Promise<number> {
       // otherwise — including the whole no-baseline first run (R60). The report
       // renders unrecorded values as [UNRECORDED: N], excludes them from the
       // verdict/exit, and points at `cdkrd record` on the result line.
-      // --show-all keeps its raw inventory semantics: the baseline is bypassed
-      // entirely (no suppression, no unrecorded tagging). --declared-only also
-      // bypasses it ("undeclared values are not compared"): with the undeclared
-      // tier filtered out, applyBaseline's removal pass would mis-read EVERY
-      // recorded entry as `baseline value removed since record` (latent in R59).
+      // --show-all loaded baseline=undefined above (it lists ALL undeclared state,
+      // ignoring what is recorded) but STILL reconciles: applyBaseline(_, undefined)
+      // tags every undeclared/added value `unrecorded` (potential drift, not confirmed
+      // drift), so a fresh deploy's inventory is not mislabeled as drift and
+      // --show-all --fail does not exit 1 on an untouched stack. Only --declared-only
+      // bypasses applyBaseline (see reconcileBaseline). R59/R86/#378.
       const reconciled = applyIgnores(
-        a.showAll || a.declaredOnly
-          ? findings
-          : applyBaseline(findings, baseline, {
-              declaredByLogical: declaredKeysByLogical(desired.resources),
-              constructPathByLogical: constructPathsByLogical(desired.resources),
-              physicalIdByLogical: physicalIdsByLogical(desired.resources),
-              warn: (s: string) => {
-                if (!a.json) console.error(s);
-              },
-            }),
+        reconcileBaseline(findings, baseline, {
+          declaredOnly: a.declaredOnly,
+          applyOpts: {
+            declaredByLogical: declaredKeysByLogical(desired.resources),
+            constructPathByLogical: constructPathsByLogical(desired.resources),
+            physicalIdByLogical: physicalIdsByLogical(desired.resources),
+            warn: (s: string) => {
+              if (!a.json) console.error(s);
+            },
+          },
+        }),
         stackName,
         region,
         config

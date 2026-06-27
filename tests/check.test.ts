@@ -5,6 +5,7 @@ import {
   hasCoverageGap,
   nestedStackWarning,
   preDeployFindings,
+  reconcileBaseline,
   strictCoverageExit,
   synthKey,
   undeclaredOnlyFindings,
@@ -46,6 +47,30 @@ describe('preDeployFindings (--pre-deploy scope)', () => {
   it('is a no-op when there are no undeclared findings (regression)', () => {
     const findings = [F('declared'), F('readGap')];
     expect(preDeployFindings(findings)).toEqual(findings);
+  });
+});
+
+describe('reconcileBaseline (--show-all inventory tags live-only as unrecorded, not drift)', () => {
+  // The pre-#378 bug: --show-all bypassed applyBaseline, so a fresh deploy's
+  // undeclared inventory stayed untagged and the report mislabeled it as
+  // "CFn-Undeclared Drift" / "N drift(s)" — and `--show-all --fail` exited 1 on a
+  // stack nobody had touched. --show-all loads baseline=undefined; reconcileBaseline
+  // must still route through applyBaseline so those values are tagged `unrecorded`.
+  it('--show-all (baseline undefined): undeclared + added are tagged unrecorded', () => {
+    const out = reconcileBaseline([F('undeclared'), F('added'), F('declared')], undefined, {
+      declaredOnly: false,
+      applyOpts: {},
+    });
+    const byTier = Object.fromEntries(out.map((f) => [f.tier, f.unrecorded]));
+    expect(byTier.undeclared).toBe(true); // potential drift, not confirmed drift
+    expect(byTier.added).toBe(true);
+    expect(byTier.declared).toBeUndefined(); // a real declared drift still counts
+  });
+
+  it('--declared-only is the ONLY mode that bypasses the baseline (raw passthrough)', () => {
+    const findings = [F('declared'), F('undeclared')];
+    const out = reconcileBaseline(findings, undefined, { declaredOnly: true, applyOpts: {} });
+    expect(out).toBe(findings); // untouched reference: applyBaseline never ran
   });
 });
 
