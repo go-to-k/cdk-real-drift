@@ -2306,6 +2306,38 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('ElastiCache CacheCluster LogDeliveryConfigurations reordered (object set keyed by LogType ∉ IDENTITY_FIELDS, found by elasticache-logdelivery)', () => {
+    const T = 'AWS::ElastiCache::CacheCluster';
+    const cfg = (logType: string, logGroup: string) => ({
+      LogType: logType,
+      LogFormat: 'json',
+      DestinationType: 'cloudwatch-logs',
+      DestinationDetails: { CloudWatchLogsDetails: { LogGroup: logGroup } },
+    });
+    const declared = {
+      LogDeliveryConfigurations: [cfg('slow-log', 'slow-grp'), cfg('engine-log', 'engine-grp')],
+    };
+
+    it('Cloud Control returning the set reordered by LogType is NOT drift', () => {
+      // Cloud Control echoes the configs alphabetically by LogType (engine-log first),
+      // and the order is non-deterministic between reads — sorting both sides aligns them.
+      const live = {
+        LogDeliveryConfigurations: [cfg('engine-log', 'engine-grp'), cfg('slow-log', 'slow-grp')],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine destination change still surfaces (no over-fold)', () => {
+      const live = {
+        LogDeliveryConfigurations: [
+          cfg('engine-log', 'engine-grp'),
+          cfg('slow-log', 'CHANGED-grp'),
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
     const T = 'AWS::AutoScaling::AutoScalingGroup';
 
@@ -4140,6 +4172,76 @@ describe('EC2 Instance BlockDeviceMappings identity-keyed subset (found by ec2-i
       bare
     ).filter((f) => f.tier === 'declared');
     expect(declaredDrift).toHaveLength(1);
+  });
+});
+
+describe('EC2 Instance Volumes identity-keyed subset (found by ec2-instance-sets)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const inst = (declared: Record<string, unknown>) => ({
+    logicalId: 'Inst',
+    resourceType: 'AWS::EC2::Instance',
+    physicalId: 'i-0abc',
+    declared,
+  });
+  // The template attaches two volumes, declared NON-sorted by Device (/dev/sdg first).
+  const declaredVols = [
+    { Device: '/dev/sdg', VolumeId: 'vol-aaaa' },
+    { Device: '/dev/sdf', VolumeId: 'vol-bbbb' },
+  ];
+  // The live model adds the AMI ROOT volume (/dev/xvda) the template never declared and
+  // interleaves it among the declared attachments (keys also reordered VolumeId-first).
+  const liveVols = [
+    { VolumeId: 'vol-aaaa', Device: '/dev/sdg' },
+    { VolumeId: 'vol-root', Device: '/dev/xvda' },
+    { VolumeId: 'vol-bbbb', Device: '/dev/sdf' },
+  ];
+
+  it('the extra live root volume does NOT false-drift the whole Volumes array', () => {
+    const findings = classifyResource(inst({ Volumes: declaredVols }), { Volumes: liveVols }, bare);
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    // the live-only root volume surfaces as nested undeclared inventory, keyed by Device
+    const undeclared = findings.filter(
+      (f) => f.tier === 'undeclared' && f.path === 'Volumes[/dev/xvda]'
+    );
+    expect(undeclared).toHaveLength(1);
+  });
+
+  it('a declared attachment detached out of band (Device removed from live) is declared drift', () => {
+    const declaredDrift = classifyResource(
+      inst({ Volumes: declaredVols }),
+      {
+        Volumes: [
+          { VolumeId: 'vol-aaaa', Device: '/dev/sdg' },
+          { VolumeId: 'vol-root', Device: '/dev/xvda' },
+        ],
+      }, // /dev/sdf gone
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+  });
+
+  it('a different volume attached at a declared Device is declared drift', () => {
+    const declaredDrift = classifyResource(
+      inst({ Volumes: declaredVols }),
+      {
+        Volumes: [
+          { VolumeId: 'vol-aaaa', Device: '/dev/sdg' },
+          { VolumeId: 'vol-CHANGED', Device: '/dev/sdf' },
+        ],
+      },
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+    expect(declaredDrift[0]).toMatchObject({ desired: 'vol-bbbb', actual: 'vol-CHANGED' });
   });
 });
 

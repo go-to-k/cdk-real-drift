@@ -109,7 +109,22 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   // each live-only mapping as nested undeclared inventory. A genuinely removed declared
   // mapping (no live DeviceName match) still surfaces as declared drift. Observed live on a
   // fresh ec2-instance-rich deploy (a gp3 root volume + an attached data volume).
-  'AWS::EC2::Instance': { BlockDeviceMappings: { idField: 'DeviceName' } },
+  // An EC2 Instance's `Volumes` (EBS volumes ATTACHED at launch, each {Device, VolumeId})
+  // is the same superset shape as BlockDeviceMappings: the live model adds the AMI's ROOT
+  // volume (e.g. `/dev/xvda`) — which the template never declares as an attachment — as an
+  // EXTRA element, and AWS may interleave it among the declared attachments. A positional/
+  // whole-array compare then false-flags the entire `Volumes` as declared drift on every
+  // fresh deploy of an instance that attaches volumes. Aligning declared volumes to live BY
+  // Device lets each declared attachment subset-compare against its live twin and emits the
+  // live-only root volume as nested undeclared inventory (recordable). A genuinely detached
+  // declared volume (no live Device match) still surfaces as declared drift. Observed live
+  // on a fresh ec2-instance-sets deploy (two attached gp3 volumes + the AMI root). (The
+  // sibling `NetworkInterfaces` set was tested in the SAME deploy declared non-sorted by
+  // DeviceIndex and AWS PRESERVED its order — subset-clean, so it is NOT folded.)
+  'AWS::EC2::Instance': {
+    BlockDeviceMappings: { idField: 'DeviceName' },
+    Volumes: { idField: 'Device' },
+  },
   // A Cognito UserPoolUser's UserAttributes is a SET keyed by Name where the live model
   // is a SUPERSET of the template's: AWS ALWAYS injects the server-generated immutable
   // `sub` (the user id), plus `email_verified`/`phone_number_verified` once those

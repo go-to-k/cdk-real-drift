@@ -1661,6 +1661,21 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // a genuine region add/remove still differs. Observed live on a fresh
   // secret-replica-regions deploy.
   'AWS::SecretsManager::Secret': new Set(['ReplicaRegions']),
+  // An ElastiCache CacheCluster's `LogDeliveryConfigurations` is a SET of {LogType,
+  // LogFormat, DestinationType, DestinationDetails} that AWS echoes SORTED by LogType,
+  // not in template order (declared [slow-log, engine-log] reads back [engine-log,
+  // slow-log] alphabetically), so a positional compare false-flags every field of every
+  // shifted config — LogType AND the resolved destination LogGroup — as declared drift on
+  // a freshly recorded cluster. The element key `LogType` is NOT one of
+  // canonicalizeTagListsDeep's IDENTITY_FIELDS (Key/Id/AttributeName/IndexName/Name), so
+  // that keyed canonicalizer can't align it — hence the per-type opt-in. Sorting both
+  // sides by canonical JSON aligns equal configs; a genuine destination/format change
+  // still differs. Observed live on a fresh elasticache-logdelivery deploy (slow-log +
+  // engine-log to CloudWatch Logs). The same shape exists on AWS::ElastiCache::
+  // ReplicationGroup (`LogDeliveryConfigurations` of identical {LogType, …} elements) —
+  // folded by the same set-semantics reasoning.
+  'AWS::ElastiCache::CacheCluster': new Set(['LogDeliveryConfigurations']),
+  'AWS::ElastiCache::ReplicationGroup': new Set(['LogDeliveryConfigurations']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
