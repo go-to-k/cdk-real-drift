@@ -1,0 +1,35 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Eoigw",
+    "resourceType": "AWS::EC2::EgressOnlyInternetGateway",
+    "physicalId": "eigw-0403c7bee7356b8d4",
+    "constructPath": "CdkRealDriftIntegEgressOnly/Eoigw",
+    "declared": {
+      "VpcId": "vpc-037e48f9acc9cbeb5"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-037e48f9acc9cbeb5",
+    "Id": "eigw-0403c7bee7356b8d4",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["VpcId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

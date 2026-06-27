@@ -13,7 +13,12 @@ the full design.
   can't safely target a deep sub-field — fix in IaC or re-record); create-only
   properties (changing them needs replacement); toggle-style properties with no
   "absent" state (e.g. S3 transfer acceleration); `AWS::Lambda::Permission` and
-  `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state).
+  `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state);
+  and a declared change INSIDE a JSON-string-typed property (e.g.
+  `AWS::Config::ConfigRule` `InputParameters` — cdkrd descends into the parsed
+  JSON for a precise finding, but an RFC6902 sub-path patch can't apply to a
+  string value, so revert reports non-convergence rather than silently failing;
+  whole-property revert for such props is a follow-up). Detection still works.
   Not-revertable findings fold into a one-line-per-reason summary (`--verbose` for
   the full list). When findings exist but nothing is revertable, `revert` prints
   `nothing revertable` and exits 1.
@@ -53,6 +58,14 @@ the full design.
 - **Unsupported / unreadable types.** A type Cloud Control can't read (no CC
   support, or a CC handler error with no SDK override) is `skipped`, surfaced in the
   `skipped=N` line and never silently CLEAN; `--strict` makes such a gap CI-failing.
+  Known CC-unreadable common types with no SDK override yet (all surface as
+  `skipped`, never false drift): ACM `Certificate` and ELBv2
+  `ListenerCertificate` (also impractical to live-test — ACM validation blocks
+  the create); CloudWatch `AnomalyDetector` and `InsightRule` (SDK-override
+  candidates); and `AWS::EC2::VPCCidrBlock` (composite `[Id, VpcId]` id whose
+  CFn physical id is only the child segment — an adapter candidate, though it is
+  an immutable association, so nothing can drift). Coverage gaps, not false
+  negatives.
 - **Non-ASCII template literals.** CloudFormation's `GetTemplate` (cdkrd's
   declared source) returns every non-ASCII character in a stored string literal
   as a literal `?` — so a declared value like an `AWS::SSM::Parameter`
