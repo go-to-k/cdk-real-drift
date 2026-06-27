@@ -1,0 +1,115 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Model",
+    "resourceType": "AWS::SageMaker::Model",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:model/cdkrd-sagemaker-model-rich",
+    "constructPath": "CdkRealDriftIntegSageMakerModel/Model",
+    "declared": {
+      "Containers": [
+        {
+          "ContainerHostname": "preprocess",
+          "Environment": {
+            "ZETA": "1",
+            "ALPHA": "2",
+            "MIKE": "3"
+          },
+          "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2-1",
+          "Mode": "SingleModel"
+        },
+        {
+          "ContainerHostname": "predict",
+          "Environment": {
+            "GAMMA": "x",
+            "DELTA": "y"
+          },
+          "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-xgboost:1.7-1",
+          "Mode": "SingleModel"
+        }
+      ],
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSageMakerModel-ModelRoleEE661428-QXaa3RQajJlZ",
+      "InferenceExecutionConfig": {
+        "Mode": "Serial"
+      },
+      "ModelName": "cdkrd-sagemaker-model-rich"
+    }
+  },
+  "liveRaw": {
+    "ModelArn": "arn:aws:sagemaker:us-east-1:111111111111:model/cdkrd-sagemaker-model-rich",
+    "EnableNetworkIsolation": false,
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSageMakerModel-ModelRoleEE661428-QXaa3RQajJlZ",
+    "ModelName": "cdkrd-sagemaker-model-rich",
+    "Containers": [
+      {
+        "ContainerHostname": "preprocess",
+        "Mode": "SingleModel",
+        "Environment": {
+          "ZETA": "1",
+          "MIKE": "3",
+          "ALPHA": "2"
+        },
+        "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+      },
+      {
+        "ContainerHostname": "predict",
+        "Mode": "SingleModel",
+        "Environment": {
+          "GAMMA": "x",
+          "DELTA": "y"
+        },
+        "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-xgboost:1.7-1"
+      }
+    ],
+    "InferenceExecutionConfig": {
+      "Mode": "Serial"
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSageMakerModel/a35ebdb0-723e-11f1-a1a9-1216bdf8392f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSageMakerModel",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Model",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ModelArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "Containers",
+      "EnableNetworkIsolation",
+      "ExecutionRoleArn",
+      "InferenceExecutionConfig",
+      "ModelName",
+      "PrimaryContainer",
+      "VpcConfig"
+    ],
+    "readOnlyPaths": ["ModelArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Containers",
+      "EnableNetworkIsolation",
+      "ExecutionRoleArn",
+      "InferenceExecutionConfig",
+      "ModelName",
+      "PrimaryContainer",
+      "VpcConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["VpcConfig.SecurityGroupIds", "VpcConfig.Subnets"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

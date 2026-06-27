@@ -887,8 +887,12 @@ record` step; once a baseline exists, a clean run prompts nothing. `availableAct
 offers `record` when there are undeclared/added findings OR (no baseline AND no drift).
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
-bypasses the baseline entirely — no suppression and no unrecorded tagging (a
-raw inventory view).
+ignores the recorded baseline — it lists EVERY current undeclared value with no
+suppression — but still runs `applyBaseline(_, undefined)`, so those live-only
+values are tagged `unrecorded` (Potential Drift), not mislabeled confirmed drift:
+`--show-all --fail` does not exit 1 on a fresh deploy nobody has touched. Only
+`--declared-only` truly bypasses `applyBaseline` (the undeclared tier is filtered
+out first, so its removal pass would misread every recorded entry).
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
 yellow undeclared tier, dim informational footers — ONLY when stdout is a real

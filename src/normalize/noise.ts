@@ -465,6 +465,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Glue::Crawler': {
     LakeFormationConfiguration: { AccountId: '', UseLakeFormationCredentials: false },
   },
+  // CloudWatch RUM AppMonitor service defaults (observed live on the
+  // rum-appmonitor-rich fixture): a monitor that does not declare Platform reads
+  // back "Web" (the default/only web platform), and one that does not configure
+  // source-map deobfuscation reads back the disabled-state object. Equality-gated:
+  // an Android/iOS platform or an enabled deobfuscation config no longer matches and
+  // surfaces as a real undeclared value.
+  'AWS::RUM::AppMonitor': {
+    Platform: 'Web',
+    DeobfuscationConfiguration: { JavaScriptSourceMaps: { Status: 'DISABLED' } },
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The

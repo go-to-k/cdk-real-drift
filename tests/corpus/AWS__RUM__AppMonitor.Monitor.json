@@ -1,0 +1,114 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Monitor",
+    "resourceType": "AWS::RUM::AppMonitor",
+    "physicalId": "cdkrd-rum-rich",
+    "constructPath": "CdkRealDriftIntegRumRich/Monitor",
+    "declared": {
+      "AppMonitorConfiguration": {
+        "AllowCookies": true,
+        "EnableXRay": false,
+        "ExcludedPages": [
+          "https://example.com/zeta",
+          "https://example.com/alpha",
+          "https://example.com/mike"
+        ],
+        "FavoritePages": ["/zeta", "/alpha", "/mike"],
+        "IncludedPages": ["https://example.com/include-b", "https://example.com/include-a"],
+        "MetricDestinations": [
+          {
+            "Destination": "CloudWatch"
+          }
+        ],
+        "SessionSampleRate": 1,
+        "Telemetries": ["performance", "errors", "http"]
+      },
+      "CustomEvents": {
+        "Status": "ENABLED"
+      },
+      "CwLogEnabled": false,
+      "Domain": "example.com",
+      "Name": "cdkrd-rum-rich"
+    }
+  },
+  "liveRaw": {
+    "CustomEvents": {
+      "Status": "ENABLED"
+    },
+    "Platform": "Web",
+    "CwLogEnabled": false,
+    "Id": "9a946752-649d-4af5-b9d1-f0cea1723826",
+    "DeobfuscationConfiguration": {
+      "JavaScriptSourceMaps": {
+        "Status": "DISABLED"
+      }
+    },
+    "Domain": "example.com",
+    "AppMonitorConfiguration": {
+      "MetricDestinations": [
+        {
+          "Destination": "CloudWatch"
+        }
+      ],
+      "IncludedPages": ["https://example.com/include-b", "https://example.com/include-a"],
+      "ExcludedPages": [
+        "https://example.com/zeta",
+        "https://example.com/alpha",
+        "https://example.com/mike"
+      ],
+      "FavoritePages": ["/zeta", "/alpha", "/mike"],
+      "SessionSampleRate": 1,
+      "AllowCookies": true,
+      "Telemetries": ["performance", "errors", "http"],
+      "EnableXRay": false
+    },
+    "Name": "cdkrd-rum-rich"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Platform"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Platform"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AppMonitorConfiguration.ExcludedPages",
+      "AppMonitorConfiguration.FavoritePages",
+      "AppMonitorConfiguration.IncludedPages",
+      "AppMonitorConfiguration.Telemetries"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Monitor",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "Platform",
+      "actual": "Web",
+      "physicalId": "cdkrd-rum-rich",
+      "constructPath": "CdkRealDriftIntegRumRich/Monitor"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Monitor",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "DeobfuscationConfiguration",
+      "actual": {
+        "JavaScriptSourceMaps": {
+          "Status": "DISABLED"
+        }
+      },
+      "physicalId": "cdkrd-rum-rich",
+      "constructPath": "CdkRealDriftIntegRumRich/Monitor"
+    }
+  ]
+}

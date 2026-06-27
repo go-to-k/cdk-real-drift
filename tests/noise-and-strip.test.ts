@@ -524,6 +524,13 @@ describe('noise suppressors', () => {
       AccountId: '',
       UseLakeFormationCredentials: false,
     });
+    // CloudWatch RUM AppMonitor (observed live on rum-appmonitor-rich): an undeclared
+    // Platform reads back "Web", and undeclared source-map deobfuscation reads back the
+    // disabled-state object. Equality-gated, so Android/iOS or an enabled config surfaces.
+    expect(KNOWN_DEFAULTS['AWS::RUM::AppMonitor']).toEqual({
+      Platform: 'Web',
+      DeobfuscationConfiguration: { JavaScriptSourceMaps: { Status: 'DISABLED' } },
+    });
   });
 
   it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {
