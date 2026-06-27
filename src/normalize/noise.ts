@@ -1154,6 +1154,23 @@ export function isJsonStringStructEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
+// Per-type TOP-LEVEL properties the CloudFormation schema types as a JSON STRING
+// but which CDK declares (and the live read often returns) as a parsed OBJECT —
+// e.g. AWS::Config::ConfigRule `InputParameters`. The provider stores the whole
+// property as a single JSON string; Cloud Control surfaces it parsed for reads but
+// re-serializes the model to that string on UpdateResource. A sub-path RFC6902
+// patch (`/InputParameters/maxAccessKeyAge`) therefore makes Cloud Control rebuild
+// the JSON string in a shape the provider rejects (Config: "Blank spaces are not
+// acceptable for input parameter") — the revert never converges. So such a property
+// must be compared and reverted as a WHOLE UNIT: classify emits one finding at the
+// top-level path (folded stringly so a clean `90` vs `"90"` is not drift), and the
+// revert writes the whole property as a COMPACT JSON STRING (`JSON.stringify` of the
+// declared object), which the provider accepts verbatim. Curated, like the sibling
+// per-type tables — add a property here once its sub-path revert is observed to fail.
+export const JSON_STRING_PROPS: Record<string, ReadonlySet<string>> = {
+  'AWS::Config::ConfigRule': new Set(['InputParameters']),
+};
+
 // Per-type property paths AWS compares CASE-INSENSITIVELY (R75: Route53
 // RecordSet AliasTarget.DNSName — an ALB's generated DNS name is mixed-case in
 // the template's GetAtt and all-lowercase in the live record; DNS hostnames are

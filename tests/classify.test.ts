@@ -154,6 +154,54 @@ describe('classifyResource (the heart)', () => {
     expect(drifted.declared).toEqual(['Value']);
   });
 
+  // A CloudFormation JSON-STRING property (AWS::Config::ConfigRule InputParameters):
+  // CDK declares it as an object, Cloud Control returns it parsed. It must be compared
+  // and reported as a WHOLE UNIT at the top-level path — never descended — so the revert
+  // can rewrite it as a compact JSON string instead of a sub-path patch the provider
+  // rejects. A stringly-equal value (declared `90` vs live `"90"`, the param-values-are-
+  // strings coercion) is folded; a real value change is one declared finding at the
+  // top-level path (NOT the nested `InputParameters.maxAccessKeyAge`).
+  it('JSON-string property (ConfigRule InputParameters): clean folds, change is one top-level finding', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'Rule',
+      resourceType: 'AWS::Config::ConfigRule',
+      physicalId: 'cdkrd-access-keys-rotated',
+      declared: { InputParameters: { maxAccessKeyAge: 90 } }, // CDK declares a number
+    };
+    // Clean: live param values are strings (`"90"`) — stringly-equal, not drift.
+    const clean = tiers(
+      classifyResource(res, { InputParameters: { maxAccessKeyAge: '90' } }, emptySchema)
+    );
+    expect(clean.declared).toEqual([]);
+    expect(clean.undeclared).toEqual([]); // never descended into a fragile nested finding
+    // Weakened out of band (90 -> 365): ONE declared finding at the WHOLE property path.
+    const drifted = classifyResource(
+      res,
+      { InputParameters: { maxAccessKeyAge: '365' } },
+      emptySchema
+    );
+    const declared = drifted.filter((f) => f.tier === 'declared');
+    expect(declared).toHaveLength(1);
+    expect(declared[0].path).toBe('InputParameters'); // top-level, NOT InputParameters.maxAccessKeyAge
+    expect(declared[0].desired).toEqual({ maxAccessKeyAge: 90 });
+    expect(declared[0].actual).toEqual({ maxAccessKeyAge: '365' });
+    // also returned as a raw JSON string by some providers — still folded/compared whole.
+    const asString = tiers(
+      classifyResource(res, { InputParameters: '{"maxAccessKeyAge":"90"}' }, emptySchema)
+    );
+    expect(asString.declared).toEqual([]);
+  });
+
   // First-run noise folds for a clean deploy: a Cognito user pool
   // ALWAYS returns the immutable OIDC standard attributes in Schema (fold to atDefault via
   // IDENTITY_KEYED_DEFAULT_ELEMENTS) and a Lambda Version's CodeSha256 is a per-deploy

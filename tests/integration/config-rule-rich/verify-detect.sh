@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# ConfigRule detect integration test (real AWS): the governance-weakening scenario.
-# Provision a recorder (SDK) -> deploy rule -> record -> weaken maxAccessKeyAge
-# 90 -> 365 out of band (someone loosens a rotation rule) -> check MUST DETECT
-# (exit 1, reporting InputParameters.maxAccessKeyAge) -> restore the rule manually.
+# ConfigRule detect+revert integration test (real AWS): the governance-weakening
+# scenario, end to end. Provision a recorder (SDK) -> deploy rule -> record -> weaken
+# maxAccessKeyAge 90 -> 365 out of band (someone loosens a rotation rule) -> check MUST
+# DETECT (exit 1) -> revert MUST restore it -> check MUST be CLEAN.
 #
-# This is DETECT-ONLY: revert is NOT exercised. AWS::Config::ConfigRule stores
-# InputParameters as a JSON STRING, so cdkrd descends into it for a precise nested
-# finding, but the revert's RFC6902 sub-path patch (/InputParameters/maxAccessKeyAge)
-# cannot apply to a string value — revert honestly reports non-convergence rather than
-# silently failing. Reverting into a JSON-string property is a known limitation (a
-# follow-up SDK_WRITERS / whole-property-revert task), like Route53 RecordSet's revert
-# gap. Detection — catching the unauthorized weakening — is the point and works.
+# AWS::Config::ConfigRule stores InputParameters as a JSON STRING; cdkrd compares and
+# reverts it as a WHOLE property (JSON_STRING_PROPS) via the PutConfigRule SDK writer —
+# Cloud Control cannot revert it (its read-modify-write re-serializes the JSON into
+# Config's string field with spaces / numeric values, which the provider rejects). The
+# writer writes a COMPACT JSON string with string-coerced param values. Live-proven.
 set -uo pipefail
 export AWS_CLI_AUTO_PROMPT=off
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -54,15 +52,12 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
 grep -q "maxAccessKeyAge" /tmp/cdkrd-config-detect.out || fail "weakened parameter not reported"
 
-echo "=== restore the rule to 90 (manual; revert-into-JSON-string is a known gap) ==="
-cat > /tmp/config-rule-90.json <<'JSON'
-{ "ConfigRuleName": "cdkrd-access-keys-rotated", "Source": { "Owner": "AWS", "SourceIdentifier": "ACCESS_KEYS_ROTATED" },
-  "InputParameters": "{\"maxAccessKeyAge\":\"90\"}", "MaximumExecutionFrequency": "TwentyFour_Hours" }
-JSON
-aws configservice put-config-rule --region "$REGION" --config-rule file:///tmp/config-rule-90.json || fail "restore"
+echo "=== revert MUST restore the rule to 90 (PutConfigRule SDK writer) ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdkrd-config-revert.out
+grep -q "reverted:" /tmp/cdkrd-config-revert.out || fail "revert did not report success"
 
-echo "=== check MUST be CLEAN after restore ==="
+echo "=== check MUST be CLEAN after revert ==="
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after restore"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after revert"
 
-echo "INTEG PASS ($STACK detect)"
+echo "INTEG PASS ($STACK detect+revert)"

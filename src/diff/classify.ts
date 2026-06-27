@@ -25,6 +25,7 @@ import {
   isEqualUnorderedScalarSet,
   isEquivalentRateExpression,
   isJsonStringStructEqual,
+  JSON_STRING_PROPS,
   isPemEqual,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
@@ -476,6 +477,41 @@ export function classifyResource(
         path: k,
         note: 'declared but not returned by live read',
       });
+      continue;
+    }
+    // A CloudFormation JSON-STRING property (AWS::Config::ConfigRule InputParameters):
+    // the schema types it as a string holding JSON, but CDK declares it as an object and
+    // the live read returns it parsed. Compare and emit it as a WHOLE UNIT at the
+    // top-level path — never descend — so the revert rewrites the whole property as a
+    // compact JSON string (a sub-path RFC6902 patch makes Cloud Control re-serialize the
+    // JSON in a shape the provider rejects; see JSON_STRING_PROPS). Fold a stringly-equal
+    // value (declared `90` vs live `"90"`, the param-values-are-strings coercion) so a
+    // clean deploy is not drift; a genuine value change is one declared finding at `k`.
+    if (JSON_STRING_PROPS[resourceType]?.has(k)) {
+      // Parse a side that arrives as a raw JSON string (some providers return the
+      // property unparsed) so both forms compare structurally; then fold a stringly-equal
+      // value (declared `90` vs live `"90"`). A genuine value change is one declared
+      // finding at the whole property path.
+      const parseJson = (x: unknown): unknown => {
+        if (typeof x !== 'string') return x;
+        try {
+          return JSON.parse(x) as unknown;
+        } catch {
+          return x;
+        }
+      };
+      const dv = parseJson(v);
+      const lv = parseJson(live[k]);
+      if (!deepEqual(dv, lv) && !isStringlyEqualDeep(dv, lv)) {
+        findings.push({
+          tier: 'declared',
+          logicalId,
+          resourceType,
+          path: k,
+          desired: v,
+          actual: live[k],
+        });
+      }
       continue;
     }
     // ManagedPolicy attachment lists (Roles/Users/Groups): tier each member by WHO
@@ -933,6 +969,10 @@ export function classifyResource(
     // `hasUnresolved(dv)` guard, which hid that whole class (FP-safe: unresolved subtrees
     // simply aren't descended).
     if (dv === UNRESOLVED || !(k in live)) continue;
+    // A JSON-string property (ConfigRule InputParameters) is compared and reported as a
+    // WHOLE UNIT in the declared loop above — never descend into it for nested undeclared
+    // sub-keys, which would emit a fragile dotted finding the revert can't target.
+    if (JSON_STRING_PROPS[resourceType]?.has(k)) continue;
     collectNestedUndeclared(dv, live[k], k, (path, value) => {
       if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
       const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');

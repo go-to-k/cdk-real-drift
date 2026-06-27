@@ -11,7 +11,7 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
-import { awsManagedTags, KNOWN_DEFAULTS } from '../normalize/noise.js';
+import { awsManagedTags, JSON_STRING_PROPS, KNOWN_DEFAULTS } from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
@@ -347,6 +347,25 @@ export function buildRevertPlan(
     // by kind (+ path when prop-scoped) so each item resolves to ONE writer.
     const propScoped =
       !SDK_WRITERS[f.resourceType] && SDK_PROP_WRITERS[f.resourceType]?.[f.path] !== undefined;
+    // A JSON-string property (JSON_STRING_PROPS) can NEVER be reverted via Cloud Control:
+    // CC re-serializes the JSON it stores into the provider's string field with spaces,
+    // which the provider rejects (Config: "Blank spaces are not acceptable") — proven live.
+    // So it MUST route to an SDK writer that writes the compact JSON string directly; if no
+    // writer covers it, refuse rather than emit a CC patch that always fails at apply.
+    if (
+      JSON_STRING_PROPS[f.resourceType]?.has(f.path) &&
+      !propScoped &&
+      !SDK_WRITERS[f.resourceType]
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'JSON-string property — revert needs a type-specific SDK writer (not available yet)',
+      });
+      continue;
+    }
     const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] || propScoped ? 'sdk' : 'cc';
 
     const op = revertOp(f, recorded);

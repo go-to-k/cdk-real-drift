@@ -77,6 +77,11 @@ import {
   SetQueueAttributesCommand,
   SQSClient,
 } from '@aws-sdk/client-sqs';
+import {
+  ConfigServiceClient,
+  DescribeConfigRulesCommand,
+  PutConfigRuleCommand,
+} from '@aws-sdk/client-config-service';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -95,6 +100,7 @@ const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
 const route53 = mockClient(Route53Client);
+const configService = mockClient(ConfigServiceClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -136,6 +142,7 @@ beforeEach(() => {
   glue.reset();
   logs.reset();
   route53.reset();
+  configService.reset();
 });
 
 describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {
@@ -1270,5 +1277,68 @@ describe('Logs LogGroup BearerTokenAuthenticationEnabled prop-scoped writer (CC 
     expect(
       logs.commandCalls(PutBearerTokenAuthenticationCommand)[0].args[0].input.logGroupIdentifier
     ).toBe(LG);
+  });
+});
+
+describe('writeConfigRuleInputParameters (AWS::Config::ConfigRule, JSON-string property)', () => {
+  const inputParamsOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/InputParameters',
+    value,
+    human: 'InputParameters -> deployed-template value',
+  });
+
+  it('re-PUTs the rule with a COMPACT InputParameters JSON string (no spaces), preserving other fields', async () => {
+    configService.on(DescribeConfigRulesCommand).resolves({
+      ConfigRules: [
+        {
+          ConfigRuleName: 'cdkrd-access-keys-rotated',
+          ConfigRuleArn: 'arn:aws:config:us-east-1:111122223333:config-rule/config-rule-x',
+          ConfigRuleId: 'config-rule-x',
+          ConfigRuleState: 'ACTIVE',
+          Source: { Owner: 'AWS', SourceIdentifier: 'ACCESS_KEYS_ROTATED' },
+          MaximumExecutionFrequency: 'TwentyFour_Hours',
+          InputParameters: '{"maxAccessKeyAge":"365"}',
+        },
+      ],
+    });
+    configService.on(PutConfigRuleCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::Config::ConfigRule', [
+      inputParamsOp({ maxAccessKeyAge: 90 }),
+    ])!;
+    await writer(ctx({ physicalId: 'cdkrd-access-keys-rotated' }), [
+      inputParamsOp({ maxAccessKeyAge: 90 }),
+    ]);
+    const put = configService.commandCalls(PutConfigRuleCommand)[0].args[0].input.ConfigRule!;
+    // compact JSON string with STRING-coerced param values — Config rejects both spaces
+    // and a numeric value ("Blank spaces are not acceptable for input parameter")
+    expect(put.InputParameters).toBe('{"maxAccessKeyAge":"90"}');
+    expect(put.InputParameters).not.toContain(' ');
+    // other rule fields preserved; read-only server fields dropped
+    expect(put.Source).toEqual({ Owner: 'AWS', SourceIdentifier: 'ACCESS_KEYS_ROTATED' });
+    expect(put.MaximumExecutionFrequency).toBe('TwentyFour_Hours');
+    expect(put.ConfigRuleArn).toBeUndefined();
+    expect(put.ConfigRuleId).toBeUndefined();
+    expect(put.ConfigRuleState).toBeUndefined();
+  });
+
+  it('compacts a value that arrives as a whitespace-laden JSON string', async () => {
+    configService.on(DescribeConfigRulesCommand).resolves({
+      ConfigRules: [{ ConfigRuleName: 'r', Source: { Owner: 'AWS', SourceIdentifier: 'X' } }],
+    });
+    configService.on(PutConfigRuleCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::Config::ConfigRule', [inputParamsOp('{ "a": "1" }')])!;
+    await writer(ctx({ physicalId: 'r' }), [inputParamsOp('{ "a": "1" }')]);
+    expect(
+      configService.commandCalls(PutConfigRuleCommand)[0].args[0].input.ConfigRule!.InputParameters
+    ).toBe('{"a":"1"}');
+  });
+
+  it('throws when the rule cannot be found (no silent no-op)', async () => {
+    configService.on(DescribeConfigRulesCommand).resolves({ ConfigRules: [] });
+    const writer = resolveSdkWriter('AWS::Config::ConfigRule', [inputParamsOp({ a: 1 })])!;
+    await expect(writer(ctx({ physicalId: 'missing' }), [inputParamsOp({ a: 1 })])).rejects.toThrow(
+      /Config rule not found/
+    );
   });
 });
