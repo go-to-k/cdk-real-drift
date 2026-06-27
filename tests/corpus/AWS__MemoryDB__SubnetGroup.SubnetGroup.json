@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SubnetGroup",
+    "resourceType": "AWS::MemoryDB::SubnetGroup",
+    "physicalId": "cdkrd-memorydb-sng",
+    "constructPath": "CdkRealDriftIntegMemoryDb/SubnetGroup",
+    "declared": {
+      "SubnetGroupName": "cdkrd-memorydb-sng",
+      "SubnetIds": ["subnet-021c456d21966a289", "subnet-0b5e0dd9d989e48f2"]
+    }
+  },
+  "liveRaw": {
+    "SupportedNetworkTypes": ["ipv4"],
+    "SubnetGroupName": "cdkrd-memorydb-sng",
+    "SubnetIds": ["subnet-0b5e0dd9d989e48f2", "subnet-021c456d21966a289"],
+    "ARN": "arn:aws:memorydb:us-east-1:111111111111:subnetgroup/cdkrd-memorydb-sng"
+  },
+  "schema": {
+    "readOnly": ["ARN", "SupportedNetworkTypes"],
+    "writeOnly": [],
+    "createOnly": ["SubnetGroupName"],
+    "readOnlyPaths": ["ARN", "SupportedNetworkTypes"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["SubnetGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SubnetIds", "SupportedNetworkTypes"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

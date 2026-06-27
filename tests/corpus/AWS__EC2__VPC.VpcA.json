@@ -1,0 +1,86 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcA",
+    "resourceType": "AWS::EC2::VPC",
+    "physicalId": "vpc-0373cc22511ff1925",
+    "constructPath": "CdkRealDriftIntegVpcPeering/VpcA",
+    "declared": {
+      "CidrBlock": "10.71.0.0/16"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-0373cc22511ff1925",
+    "InstanceTenancy": "default",
+    "CidrBlockAssociations": ["vpc-cidr-assoc-0287e333301bce071"],
+    "CidrBlock": "10.71.0.0/16",
+    "DefaultNetworkAcl": "acl-092f7925c5122d1bd",
+    "EnableDnsSupport": true,
+    "Ipv6CidrBlocks": [],
+    "DefaultSecurityGroup": "sg-0ee8db580b00e58f2",
+    "EnableDnsHostnames": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcPeering/a5ea9f10-7246-11f1-80f8-12a714253e55",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegVpcPeering",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "VpcA",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnly": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnly": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "readOnlyPaths": [
+      "CidrBlockAssociations",
+      "DefaultNetworkAcl",
+      "DefaultSecurityGroup",
+      "Ipv6CidrBlocks",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "createOnlyPaths": ["CidrBlock", "InstanceTenancy", "Ipv4IpamPoolId", "Ipv4NetmaskLength"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["CidrBlockAssociations", "Ipv6CidrBlocks"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcA",
+      "resourceType": "AWS::EC2::VPC",
+      "path": "InstanceTenancy",
+      "actual": "default",
+      "physicalId": "vpc-0373cc22511ff1925",
+      "constructPath": "CdkRealDriftIntegVpcPeering/VpcA"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcA",
+      "resourceType": "AWS::EC2::VPC",
+      "path": "EnableDnsSupport",
+      "actual": true,
+      "physicalId": "vpc-0373cc22511ff1925",
+      "constructPath": "CdkRealDriftIntegVpcPeering/VpcA"
+    }
+  ]
+}

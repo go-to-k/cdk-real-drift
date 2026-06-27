@@ -438,6 +438,16 @@ describe('noise suppressors', () => {
       AutoMinorVersionUpgrade: true,
       SnapshotRetentionLimit: 0,
     });
+    expect(KNOWN_DEFAULTS['AWS::MemoryDB::Cluster']).toEqual({
+      Port: 6379,
+      AutoMinorVersionUpgrade: true,
+      DataTiering: 'false',
+      NetworkType: 'ipv4',
+      IpDiscovery: 'ipv4',
+    });
+    expect(KNOWN_DEFAULTS['AWS::Config::ConfigRule']).toEqual({
+      EvaluationModes: [{ Mode: 'DETECTIVE' }],
+    });
     expect(KNOWN_DEFAULTS['AWS::RDS::DBProxy']).toEqual({
       TargetConnectionNetworkType: 'IPV4',
       DefaultAuthScheme: 'NONE',
@@ -505,6 +515,10 @@ describe('noise suppressors', () => {
       LogGroupClass: 'STANDARD',
       DeletionProtectionEnabled: false,
       BearerTokenAuthenticationEnabled: false,
+    });
+    expect(KNOWN_DEFAULTS['AWS::EC2::VPC']).toEqual({
+      InstanceTenancy: 'default',
+      EnableDnsSupport: true,
     });
     expect(KNOWN_DEFAULTS['AWS::EC2::Subnet'].AssignIpv6AddressOnCreation).toBe(false);
     expect(KNOWN_DEFAULTS['AWS::EC2::Subnet'].EnableDns64).toBe(false);

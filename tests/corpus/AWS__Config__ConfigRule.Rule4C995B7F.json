@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule4C995B7F",
+    "resourceType": "AWS::Config::ConfigRule",
+    "physicalId": "cdkrd-access-keys-rotated",
+    "constructPath": "CdkRealDriftIntegConfigRule/Rule",
+    "declared": {
+      "ConfigRuleName": "cdkrd-access-keys-rotated",
+      "InputParameters": {
+        "maxAccessKeyAge": 90
+      },
+      "MaximumExecutionFrequency": "TwentyFour_Hours",
+      "Source": {
+        "Owner": "AWS",
+        "SourceIdentifier": "ACCESS_KEYS_ROTATED"
+      }
+    }
+  },
+  "liveRaw": {
+    "ConfigRuleId": "config-rule-elg2df",
+    "EvaluationModes": [
+      {
+        "Mode": "DETECTIVE"
+      }
+    ],
+    "Compliance": {
+      "Type": "NON_COMPLIANT"
+    },
+    "ConfigRuleName": "cdkrd-access-keys-rotated",
+    "Arn": "arn:aws:config:us-east-1:111111111111:config-rule/config-rule-elg2df",
+    "MaximumExecutionFrequency": "TwentyFour_Hours",
+    "Source": {
+      "Owner": "AWS",
+      "SourceIdentifier": "ACCESS_KEYS_ROTATED"
+    },
+    "InputParameters": {
+      "maxAccessKeyAge": "90"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "ConfigRuleId"],
+    "writeOnly": [],
+    "createOnly": ["ConfigRuleName"],
+    "readOnlyPaths": ["Arn", "Compliance.Type", "ConfigRuleId"],
+    "writeOnlyPaths": ["Source.CustomPolicyDetails.PolicyText"],
+    "createOnlyPaths": ["ConfigRuleName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rule4C995B7F",
+      "resourceType": "AWS::Config::ConfigRule",
+      "path": "EvaluationModes",
+      "actual": [
+        {
+          "Mode": "DETECTIVE"
+        }
+      ],
+      "physicalId": "cdkrd-access-keys-rotated",
+      "constructPath": "CdkRealDriftIntegConfigRule/Rule"
+    }
+  ]
+}

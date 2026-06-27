@@ -168,6 +168,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGateway::DomainName': {
     SecurityPolicy: 'TLS_1_2',
   },
+  // A VPC is in nearly every CDK stack. AWS reports these two constant defaults on
+  // every first run when the template does not declare them (raw CfnVPC, or an L2 Vpc
+  // that sets only DNS hostnames): InstanceTenancy "default" (vs dedicated/host) and
+  // EnableDnsSupport on (the VPC default). Observed live on the vpcpeering-rich /
+  // egressonly-rich fixtures. Equality-gated: a dedicated-tenancy VPC or DNS-support
+  // disabled out of band no longer matches and surfaces as real undeclared drift.
+  'AWS::EC2::VPC': {
+    InstanceTenancy: 'default',
+    EnableDnsSupport: true,
+  },
   'AWS::EC2::Subnet': {
     PrivateDnsNameOptionsOnLaunch: {
       EnableResourceNameDnsARecord: false,
@@ -326,6 +336,19 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AutoMinorVersionUpgrade: true,
     SnapshotRetentionLimit: 0,
   },
+  // MemoryDB (managed Redis/Valkey) constant service defaults, observed live on the
+  // memorydb-rich fixture: the Redis default Port, auto minor-version upgrade on,
+  // data tiering off (returned as the string "false"), and the ipv4 network/discovery
+  // defaults. Equality-gated. Per-resource/random values the same read returns
+  // (ParameterGroupName is engine-version-derived, Snapshot/MaintenanceWindow are
+  // AWS-assigned) are deliberately NOT listed — they are genuine undeclared inventory.
+  'AWS::MemoryDB::Cluster': {
+    Port: 6379,
+    AutoMinorVersionUpgrade: true,
+    DataTiering: 'false',
+    NetworkType: 'ipv4',
+    IpDiscovery: 'ipv4',
+  },
   'AWS::RDS::DBProxy': {
     TargetConnectionNetworkType: 'IPV4',
     DefaultAuthScheme: 'NONE',
@@ -464,6 +487,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // Lake Formation still surfaces.
   'AWS::Glue::Crawler': {
     LakeFormationConfiguration: { AccountId: '', UseLakeFormationCredentials: false },
+  },
+  // A config-change-triggered ConfigRule reads back EvaluationModes [{Mode:"DETECTIVE"}]
+  // (the default) when the template does not declare it. Observed live on the
+  // config-rule-rich fixture. Equality-gated: a PROACTIVE mode no longer matches.
+  'AWS::Config::ConfigRule': {
+    EvaluationModes: [{ Mode: 'DETECTIVE' }],
   },
   // CloudWatch RUM AppMonitor service defaults (observed live on the
   // rum-appmonitor-rich fixture): a monitor that does not declare Platform reads

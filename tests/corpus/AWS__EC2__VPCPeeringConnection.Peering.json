@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Peering",
+    "resourceType": "AWS::EC2::VPCPeeringConnection",
+    "physicalId": "pcx-0cafcb2456cd624fd",
+    "constructPath": "CdkRealDriftIntegVpcPeering/Peering",
+    "declared": {
+      "PeerVpcId": "vpc-01d0100fcc5453481",
+      "VpcId": "vpc-0373cc22511ff1925"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-0373cc22511ff1925",
+    "PeerVpcId": "vpc-01d0100fcc5453481",
+    "Id": "pcx-0cafcb2456cd624fd",
+    "PeerRegion": "us-east-1",
+    "PeerOwnerId": "111111111111",
+    "Tags": [
+      {
+        "Value": "Peering",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcPeering/a5ea9f10-7246-11f1-80f8-12a714253e55",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegVpcPeering",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["AssumeRoleRegion", "PeerRoleArn"],
+    "createOnly": [
+      "AssumeRoleRegion",
+      "PeerOwnerId",
+      "PeerRegion",
+      "PeerRoleArn",
+      "PeerVpcId",
+      "VpcId"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["AssumeRoleRegion", "PeerRoleArn"],
+    "createOnlyPaths": [
+      "AssumeRoleRegion",
+      "PeerOwnerId",
+      "PeerRegion",
+      "PeerRoleArn",
+      "PeerVpcId",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Peering",
+      "resourceType": "AWS::EC2::VPCPeeringConnection",
+      "path": "PeerRegion",
+      "actual": "us-east-1",
+      "physicalId": "pcx-0cafcb2456cd624fd",
+      "constructPath": "CdkRealDriftIntegVpcPeering/Peering"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Peering",
+      "resourceType": "AWS::EC2::VPCPeeringConnection",
+      "path": "PeerOwnerId",
+      "actual": "111111111111",
+      "physicalId": "pcx-0cafcb2456cd624fd",
+      "constructPath": "CdkRealDriftIntegVpcPeering/Peering"
+    }
+  ]
+}

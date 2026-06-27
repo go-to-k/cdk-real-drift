@@ -1,0 +1,174 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::MemoryDB::Cluster",
+    "physicalId": "cdkrd-memorydb-rich",
+    "constructPath": "CdkRealDriftIntegMemoryDb/Cluster",
+    "declared": {
+      "ACLName": "open-access",
+      "ClusterName": "cdkrd-memorydb-rich",
+      "Engine": "redis",
+      "EngineVersion": "7.1",
+      "NodeType": "db.t4g.small",
+      "NumReplicasPerShard": 0,
+      "NumShards": 1,
+      "SecurityGroupIds": ["sg-05b7d3252962eba68", "sg-054642cb654614915"],
+      "SnapshotRetentionLimit": 1,
+      "SubnetGroupName": "cdkrd-memorydb-sng",
+      "TLSEnabled": true
+    }
+  },
+  "liveRaw": {
+    "Status": "available",
+    "NumReplicasPerShard": 0,
+    "EngineVersion": "7.1",
+    "ParameterGroupName": "default.memorydb-redis7",
+    "SubnetGroupName": "cdkrd-memorydb-sng",
+    "Port": 6379,
+    "ACLName": "open-access",
+    "AutoMinorVersionUpgrade": true,
+    "SecurityGroupIds": ["sg-054642cb654614915", "sg-05b7d3252962eba68"],
+    "ClusterEndpoint": {
+      "Address": "clustercfg.cdkrd-memorydb-rich.jzgy0l.memorydb.us-east-1.amazonaws.com",
+      "Port": 6379
+    },
+    "NumShards": 1,
+    "SnapshotWindow": "09:30-10:30",
+    "SnapshotRetentionLimit": 1,
+    "DataTiering": "false",
+    "TLSEnabled": true,
+    "NetworkType": "ipv4",
+    "NodeType": "db.t4g.small",
+    "IpDiscovery": "ipv4",
+    "ClusterName": "cdkrd-memorydb-rich",
+    "MaintenanceWindow": "fri:07:00-fri:08:00",
+    "ParameterGroupStatus": "in-sync",
+    "ARN": "arn:aws:memorydb:us-east-1:111111111111:cluster/cdkrd-memorydb-rich",
+    "Engine": "redis"
+  },
+  "schema": {
+    "readOnly": ["ARN", "ParameterGroupStatus", "Status"],
+    "writeOnly": ["FinalSnapshotName", "MultiRegionClusterName", "SnapshotArns", "SnapshotName"],
+    "createOnly": [
+      "ClusterName",
+      "DataTiering",
+      "KmsKeyId",
+      "MultiRegionClusterName",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName",
+      "SubnetGroupName",
+      "TLSEnabled"
+    ],
+    "readOnlyPaths": [
+      "ARN",
+      "ClusterEndpoint.Address",
+      "ClusterEndpoint.Port",
+      "ParameterGroupStatus",
+      "Status"
+    ],
+    "writeOnlyPaths": [
+      "FinalSnapshotName",
+      "MultiRegionClusterName",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "ClusterName",
+      "DataTiering",
+      "KmsKeyId",
+      "MultiRegionClusterName",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName",
+      "SubnetGroupName",
+      "TLSEnabled"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds", "SnapshotArns"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "ParameterGroupName",
+      "actual": "default.memorydb-redis7",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "Port",
+      "actual": 6379,
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "SnapshotWindow",
+      "actual": "09:30-10:30",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "DataTiering",
+      "actual": "false",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "MaintenanceWindow",
+      "actual": "fri:07:00-fri:08:00",
+      "physicalId": "cdkrd-memorydb-rich",
+      "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
+    }
+  ]
+}
