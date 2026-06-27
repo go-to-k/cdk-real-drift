@@ -2235,6 +2235,77 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('AutoScaling group inline LifecycleHookSpecificationList reordered (object set keyed by LifecycleHookName ∉ IDENTITY_FIELDS, found by asg-lifecyclehook-inline)', () => {
+    const T = 'AWS::AutoScaling::AutoScalingGroup';
+    const declared = {
+      LifecycleHookSpecificationList: [
+        {
+          LifecycleHookName: 'zeta-terminate',
+          LifecycleTransition: 'autoscaling:EC2_INSTANCE_TERMINATING',
+          DefaultResult: 'CONTINUE',
+        },
+        {
+          LifecycleHookName: 'alpha-launch',
+          LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING',
+          DefaultResult: 'CONTINUE',
+        },
+      ],
+    };
+
+    it('AWS returning the hook list sorted by LifecycleHookName is NOT drift', () => {
+      const live = {
+        LifecycleHookSpecificationList: [
+          {
+            LifecycleHookName: 'alpha-launch',
+            LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING',
+            DefaultResult: 'CONTINUE',
+          },
+          {
+            LifecycleHookName: 'zeta-terminate',
+            LifecycleTransition: 'autoscaling:EC2_INSTANCE_TERMINATING',
+            DefaultResult: 'CONTINUE',
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine hook transition change still surfaces (no over-fold)', () => {
+      const live = {
+        LifecycleHookSpecificationList: [
+          {
+            LifecycleHookName: 'alpha-launch',
+            LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING',
+            DefaultResult: 'ABANDON',
+          }, // CONTINUE -> ABANDON
+          {
+            LifecycleHookName: 'zeta-terminate',
+            LifecycleTransition: 'autoscaling:EC2_INSTANCE_TERMINATING',
+            DefaultResult: 'CONTINUE',
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('SecretsManager Secret ReplicaRegions reordered (object set keyed by Region ∉ IDENTITY_FIELDS, found by secret-replica-regions)', () => {
+    const T = 'AWS::SecretsManager::Secret';
+    const declared = {
+      ReplicaRegions: [{ Region: 'us-west-2' }, { Region: 'eu-west-1' }],
+    };
+
+    it('AWS returning ReplicaRegions sorted by Region is NOT drift', () => {
+      const live = { ReplicaRegions: [{ Region: 'eu-west-1' }, { Region: 'us-west-2' }] };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine replica region change still surfaces (no over-fold)', () => {
+      const live = { ReplicaRegions: [{ Region: 'eu-west-1' }, { Region: 'ap-south-1' }] }; // us-west-2 -> ap-south-1
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
     const T = 'AWS::AutoScaling::AutoScalingGroup';
 

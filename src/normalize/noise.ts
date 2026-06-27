@@ -1639,6 +1639,28 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // sibling RDS DB/DBClusterParameterGroup `Parameters` is a free-form Map<String,String>,
   // not this array shape, so it is key-canonicalized — not folded here.)
   'AWS::Redshift::ClusterParameterGroup': new Set(['Parameters']),
+  // An EC2 Auto Scaling group's inline `LifecycleHookSpecificationList` is a SET of
+  // hooks AWS echoes SORTED by LifecycleHookName, not in template order (declared
+  // [zeta-terminate, alpha-launch] reads back [alpha-launch, zeta-terminate]), so a
+  // positional compare false-flags every field of every shifted hook as declared drift
+  // on a freshly recorded ASG. The element key `LifecycleHookName` is NOT one of
+  // canonicalizeTagListsDeep's IDENTITY_FIELDS (Key/Id/AttributeName/IndexName/Name), so
+  // that keyed canonicalizer can't align it — hence the per-type opt-in. Sorting both
+  // sides by canonical JSON aligns equal hooks; a genuine hook add/remove/change still
+  // differs. Observed live on a fresh asg-lifecyclehook-inline deploy. (This is the
+  // ASG's OWN inline hook list — distinct from the standalone AWS::AutoScaling::
+  // LifecycleHook resource the autoscaling-lifecyclehook-rich fixture covers.)
+  'AWS::AutoScaling::AutoScalingGroup': new Set(['LifecycleHookSpecificationList']),
+  // A multi-region Secret's `ReplicaRegions` is a SET of {Region, KmsKeyId} that Secrets
+  // Manager echoes SORTED by Region, not in template order (declared [us-west-2,
+  // eu-west-1] reads back [eu-west-1, us-west-2]), so a positional compare false-flags
+  // every shifted replica's Region as declared drift on a freshly recorded secret. The
+  // element key `Region` is NOT one of canonicalizeTagListsDeep's IDENTITY_FIELDS
+  // (Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer can't align it —
+  // hence the per-type opt-in. Sorting both sides by canonical JSON aligns equal replicas;
+  // a genuine region add/remove still differs. Observed live on a fresh
+  // secret-replica-regions deploy.
+  'AWS::SecretsManager::Secret': new Set(['ReplicaRegions']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
