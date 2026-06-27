@@ -38,7 +38,7 @@ echo "=== check --fail (no baseline) must find ZERO declared drift ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdkrd-ec2-rich-pre.out
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "false declared drift on a noise-prone property (exit $rc) — a normalizer regressed"
-grep -q "DECLARED DRIFT" /tmp/cdkrd-ec2-rich-pre.out \
+grep -q "CFn-Declared Drift" /tmp/cdkrd-ec2-rich-pre.out \
   && fail "a declared property was wrongly reported as drift (false positive)"
 
 echo "=== record then check must stay CLEAN ==="

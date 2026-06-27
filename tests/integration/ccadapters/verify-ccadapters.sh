@@ -46,7 +46,7 @@ echo "=== 1. baseline-free check: ZERO declared drift AND no ValidationException
 $CLI check "$STACK" --region "$REGION" | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded inventory only), got $rc"
-grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
+grep -q "CFn-Declared Drift" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 # the whole point: the composite-id types must now READ, not skip as ValidationException
 grep -q "ValidationException" "$OUT" && fail "a CC ValidationException skip remains — an adapter is missing/wrong"

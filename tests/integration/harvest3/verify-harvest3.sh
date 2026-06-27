@@ -63,7 +63,7 @@ echo "=== A1. baseline-free check: fresh deploy must have ZERO declared drift ==
 $CLI check "$STACK" --region "$REGION" | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "expected exit 0 (unrecorded inventory only), got $rc"
-grep -q "DECLARED DRIFT" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
+grep -q "CFn-Declared Drift" "$OUT" && fail "fresh deploy reported DECLARED drift — false positive"
 grep -q "deleted" "$OUT" && fail "fresh deploy reported a deleted resource"
 
 echo "=== A2. record + check --fail must be CLEAN across every type ==="
@@ -92,7 +92,7 @@ sleep 10
 echo "=== B3. one check must report ALL FIVE as DECLARED drift ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
 [ "${PIPESTATUS[0]}" -eq 1 ] || fail "expected drift exit 1"
-grep -q "DECLARED DRIFT: 5" "$OUT" || fail "expected exactly 5 declared drifts"
+grep -q "CFn-Declared Drift: 5" "$OUT" || fail "expected exactly 5 declared drifts"
 for needle in MemorySize VisibilityTimeout RetentionInDays DisplayName MatrixRule; do
   grep -q "$needle" "$OUT" || fail "missing declared drift: $needle"
 done

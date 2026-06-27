@@ -68,11 +68,11 @@ echo "=== check must DETECT it as DECLARED drift on the AWS::IAM::Policy resourc
 $CLI check "$STACK" --region "$REGION" --fail | tee "$OUT"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "FALSE NEGATIVE — sibling document change not detected (exit $rc, expected 1)"
-grep -q "DECLARED DRIFT" "$OUT" || fail "not reported in the DECLARED tier — the sibling's own check did not fire"
+grep -q "CFn-Declared Drift" "$OUT" || fail "not reported in the DECLARED tier — the sibling's own check did not fire"
 grep -q "DefaultPolicy" "$OUT" || fail "the sibling AWS::IAM::Policy resource is not named in the finding"
 grep -q "s3:GetObject" "$OUT" || fail "the out-of-band action is not shown as the live value"
 # the role itself must NOT double-report this as undeclared (the by-name filter holds)
-grep -q "UNDECLARED DRIFT" "$OUT" && fail "the role leaked the sibling change as undeclared drift (filter broke)"
+grep -q "CFn-Undeclared Drift" "$OUT" && fail "the role leaked the sibling change as undeclared drift (filter broke)"
 echo "OK: sibling document change caught as DECLARED drift, not swallowed, not double-reported"
 
 echo "=== revert should restore the declared document ==="
