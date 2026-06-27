@@ -1,0 +1,110 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RuleQueryString641E1B2B",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/540f74d8bbd74bf2",
+    "constructPath": "CdkRealDriftIntegElbv2RuleConditions/RuleQueryString",
+    "declared": {
+      "Actions": [
+        {
+          "FixedResponseConfig": {
+            "ContentType": "text/plain",
+            "MessageBody": "ok",
+            "StatusCode": "200"
+          },
+          "Type": "fixed-response"
+        }
+      ],
+      "Conditions": [
+        {
+          "Field": "query-string",
+          "QueryStringConfig": {
+            "Values": [
+              {
+                "Key": "zeta",
+                "Value": "1"
+              },
+              {
+                "Key": "alpha",
+                "Value": "2"
+              },
+              {
+                "Key": "mike",
+                "Value": "3"
+              }
+            ]
+          }
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a",
+      "Priority": 30
+    }
+  },
+  "liveRaw": {
+    "IsDefault": false,
+    "Actions": [
+      {
+        "FixedResponseConfig": {
+          "ContentType": "text/plain",
+          "StatusCode": "200",
+          "MessageBody": "ok"
+        },
+        "Type": "fixed-response"
+      }
+    ],
+    "Priority": 30,
+    "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/540f74d8bbd74bf2",
+    "Transforms": [],
+    "Conditions": [
+      {
+        "Field": "query-string",
+        "Values": [],
+        "QueryStringConfig": {
+          "Values": [
+            {
+              "Value": "3",
+              "Key": "mike"
+            },
+            {
+              "Value": "2",
+              "Key": "alpha"
+            },
+            {
+              "Value": "1",
+              "Key": "zeta"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["IsDefault", "RuleArn"],
+    "writeOnly": ["ListenerArn"],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["IsDefault", "RuleArn"],
+    "writeOnlyPaths": ["Actions.*.AuthenticateOidcConfig.ClientSecret", "ListenerArn"],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "RuleQueryString641E1B2B",
+      "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "path": "ListenerArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/540f74d8bbd74bf2",
+      "constructPath": "CdkRealDriftIntegElbv2RuleConditions/RuleQueryString"
+    }
+  ]
+}

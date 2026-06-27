@@ -1,0 +1,275 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TaskDef",
+    "resourceType": "AWS::ECS::TaskDefinition",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-sets:1",
+    "constructPath": "CdkRealDriftIntegEcsTaskDefSets/TaskDef",
+    "declared": {
+      "ContainerDefinitions": [
+        {
+          "Essential": false,
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "MemoryReservation": 64,
+          "Name": "init"
+        },
+        {
+          "Essential": false,
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "MemoryReservation": 64,
+          "Name": "logger"
+        },
+        {
+          "DependsOn": [
+            {
+              "Condition": "START",
+              "ContainerName": "logger"
+            },
+            {
+              "Condition": "START",
+              "ContainerName": "init"
+            }
+          ],
+          "DnsServers": ["10.0.0.3", "10.0.0.2"],
+          "DockerSecurityOptions": ["label:user:nginx", "label:role:webapp"],
+          "Essential": true,
+          "ExtraHosts": [
+            {
+              "Hostname": "zeta.internal",
+              "IpAddress": "10.0.0.9"
+            },
+            {
+              "Hostname": "alpha.internal",
+              "IpAddress": "10.0.0.8"
+            }
+          ],
+          "Image": "public.ecr.aws/nginx/nginx:latest",
+          "Links": ["logger:log", "init:setup"],
+          "MemoryReservation": 256,
+          "Name": "app"
+        }
+      ],
+      "Cpu": "256",
+      "Family": "cdkrd-ecs-taskdef-sets",
+      "Memory": "512",
+      "NetworkMode": "bridge",
+      "PlacementConstraints": [
+        {
+          "Expression": "attribute:ecs.os-type == linux",
+          "Type": "memberOf"
+        },
+        {
+          "Expression": "attribute:ecs.instance-type =~ t3.*",
+          "Type": "memberOf"
+        }
+      ],
+      "RequiresCompatibilities": ["EC2"]
+    }
+  },
+  "liveRaw": {
+    "Volumes": [],
+    "InferenceAccelerators": [],
+    "Memory": "512",
+    "PlacementConstraints": [
+      {
+        "Type": "memberOf",
+        "Expression": "attribute:ecs.os-type == linux"
+      },
+      {
+        "Type": "memberOf",
+        "Expression": "attribute:ecs.instance-type =~ t3.*"
+      }
+    ],
+    "ContainerDefinitions": [
+      {
+        "MemoryReservation": 64,
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": false,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "logger",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      },
+      {
+        "MemoryReservation": 64,
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": false,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "init",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      },
+      {
+        "MemoryReservation": 256,
+        "ExtraHosts": [
+          {
+            "Hostname": "zeta.internal",
+            "IpAddress": "10.0.0.9"
+          },
+          {
+            "Hostname": "alpha.internal",
+            "IpAddress": "10.0.0.8"
+          }
+        ],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": ["10.0.0.3", "10.0.0.2"],
+        "Image": "public.ecr.aws/nginx/nginx:latest",
+        "Essential": true,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "app",
+        "MountPoints": [],
+        "DependsOn": [
+          {
+            "Condition": "START",
+            "ContainerName": "logger"
+          },
+          {
+            "Condition": "START",
+            "ContainerName": "init"
+          }
+        ],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": ["label:user:nginx", "label:role:webapp"],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": ["init:setup", "logger:log"],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      }
+    ],
+    "Family": "cdkrd-ecs-taskdef-sets",
+    "Cpu": "256",
+    "RequiresCompatibilities": ["EC2"],
+    "NetworkMode": "bridge",
+    "Tags": [],
+    "TaskDefinitionArn": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-sets:1"
+  },
+  "schema": {
+    "readOnly": ["TaskDefinitionArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "readOnlyPaths": ["TaskDefinitionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ContainerDefinitions.*.VersionConsistency": "enabled"
+    },
+    "unorderedScalarPaths": ["RequiresCompatibilities"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-sets:1",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefSets/TaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[init].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-sets:1",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefSets/TaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[logger].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-ecs-taskdef-sets:1",
+      "constructPath": "CdkRealDriftIntegEcsTaskDefSets/TaskDef"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SelByConditions",
+    "resourceType": "AWS::Backup::BackupSelection",
+    "physicalId": "4deca915-4829-4ec0-99d0-26e6785b9ca8_0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "constructPath": "CdkRealDriftIntegBackupSelection/SelByConditions",
+    "declared": {
+      "BackupPlanId": "0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+      "BackupSelection": {
+        "Conditions": {
+          "StringEquals": [
+            {
+              "ConditionKey": "aws:ResourceTag/zebra",
+              "ConditionValue": "x"
+            },
+            {
+              "ConditionKey": "aws:ResourceTag/apple",
+              "ConditionValue": "y"
+            },
+            {
+              "ConditionKey": "aws:ResourceTag/mango",
+              "ConditionValue": "z"
+            }
+          ]
+        },
+        "IamRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBackupSelection-BackupRoleF43CFD90-Na7hrdoHDO3j",
+        "Resources": ["arn:aws:ec2:*:*:instance/*"],
+        "SelectionName": "cdkrd-by-conditions"
+      }
+    }
+  },
+  "liveRaw": {
+    "BackupSelection": {
+      "ListOfTags": [],
+      "NotResources": [],
+      "SelectionName": "cdkrd-by-conditions",
+      "IamRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBackupSelection-BackupRoleF43CFD90-Na7hrdoHDO3j",
+      "Resources": ["arn:aws:ec2:*:*:instance/*"],
+      "Conditions": {
+        "StringEquals": [
+          {
+            "ConditionValue": "x",
+            "ConditionKey": "aws:ResourceTag/zebra"
+          },
+          {
+            "ConditionValue": "y",
+            "ConditionKey": "aws:ResourceTag/apple"
+          },
+          {
+            "ConditionValue": "z",
+            "ConditionKey": "aws:ResourceTag/mango"
+          }
+        ],
+        "StringNotLike": [],
+        "StringLike": [],
+        "StringNotEquals": []
+      }
+    },
+    "BackupPlanId": "0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "Id": "4deca915-4829-4ec0-99d0-26e6785b9ca8_0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "SelectionId": "4deca915-4829-4ec0-99d0-26e6785b9ca8"
+  },
+  "schema": {
+    "readOnly": ["Id", "SelectionId"],
+    "writeOnly": [],
+    "createOnly": ["BackupPlanId", "BackupSelection"],
+    "readOnlyPaths": ["Id", "SelectionId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BackupPlanId", "BackupSelection"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["BackupSelection.NotResources", "BackupSelection.Resources"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
