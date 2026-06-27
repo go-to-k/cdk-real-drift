@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SelByTags",
+    "resourceType": "AWS::Backup::BackupSelection",
+    "physicalId": "4c4b5fa7-c723-447e-8c00-875603b6340b_0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "constructPath": "CdkRealDriftIntegBackupSelection/SelByTags",
+    "declared": {
+      "BackupPlanId": "0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+      "BackupSelection": {
+        "IamRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBackupSelection-BackupRoleF43CFD90-Na7hrdoHDO3j",
+        "ListOfTags": [
+          {
+            "ConditionKey": "zeta",
+            "ConditionType": "STRINGEQUALS",
+            "ConditionValue": "1"
+          },
+          {
+            "ConditionKey": "alpha",
+            "ConditionType": "STRINGEQUALS",
+            "ConditionValue": "2"
+          },
+          {
+            "ConditionKey": "mike",
+            "ConditionType": "STRINGEQUALS",
+            "ConditionValue": "3"
+          }
+        ],
+        "SelectionName": "cdkrd-by-tags"
+      }
+    }
+  },
+  "liveRaw": {
+    "BackupSelection": {
+      "ListOfTags": [
+        {
+          "ConditionValue": "2",
+          "ConditionKey": "alpha",
+          "ConditionType": "STRINGEQUALS"
+        },
+        {
+          "ConditionValue": "3",
+          "ConditionKey": "mike",
+          "ConditionType": "STRINGEQUALS"
+        },
+        {
+          "ConditionValue": "1",
+          "ConditionKey": "zeta",
+          "ConditionType": "STRINGEQUALS"
+        }
+      ],
+      "NotResources": [],
+      "SelectionName": "cdkrd-by-tags",
+      "IamRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegBackupSelection-BackupRoleF43CFD90-Na7hrdoHDO3j",
+      "Resources": [],
+      "Conditions": {
+        "StringEquals": [],
+        "StringNotLike": [],
+        "StringLike": [],
+        "StringNotEquals": []
+      }
+    },
+    "BackupPlanId": "0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "Id": "4c4b5fa7-c723-447e-8c00-875603b6340b_0f4627f1-a94a-403e-80d2-ffc0be51e51d",
+    "SelectionId": "4c4b5fa7-c723-447e-8c00-875603b6340b"
+  },
+  "schema": {
+    "readOnly": ["Id", "SelectionId"],
+    "writeOnly": [],
+    "createOnly": ["BackupPlanId", "BackupSelection"],
+    "readOnlyPaths": ["Id", "SelectionId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BackupPlanId", "BackupSelection"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["BackupSelection.NotResources", "BackupSelection.Resources"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

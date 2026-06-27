@@ -1677,9 +1677,21 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // keyed by SourceContainer) is reordered the same way — declared [logger, app] reads
   // back [app, logger] — observed on a fresh ecs-taskdef-mounts deploy; MountPoints and
   // SystemControls on the same container were NOT reordered, so they are not listed.
+  // A container's legacy bridge-mode `Links` is a nested SCALAR set (`name:alias`
+  // strings) that ECS echoes SORTED alphabetically, not in template order (declared
+  // [logger:log, init:setup] reads back [init:setup, logger:log]), so a positional
+  // compare false-flags the identical link set on every check of a freshly recorded
+  // task def. The values aren't id/ARN/HTTP/AZ-shaped, so canonicalizeIdArraysDeep
+  // leaves them; sortNestedObjectArrays sorts a scalar array by canonical JSON, so the
+  // same machinery that aligns PortMappings aligns it. A genuine link add/remove still
+  // changes the multiset. Observed live on a fresh ecs-taskdef-sets deploy (DependsOn,
+  // ExtraHosts, DockerSecurityOptions, DnsServers, and task-level PlacementConstraints
+  // were declared non-sorted in the SAME deploy and ECS PRESERVED their order, so they
+  // are deliberately NOT listed — observed-only).
   'AWS::ECS::TaskDefinition': new Set([
     'ContainerDefinitions.PortMappings',
     'ContainerDefinitions.VolumesFrom',
+    'ContainerDefinitions.Links',
   ]),
   // DynamoDB sorts an INCLUDE-projection `NonKeyAttributes` set into its own canonical
   // order: declared ["zeta","alpha","mike","bravo"] reads back reordered, a positional
@@ -1711,7 +1723,56 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // non-sorted set and ALB PRESERVED its order, so it is NOT listed — observed-only.)
   // `Conditions` is ALSO an UNORDERED_OBJECT_ARRAY_PROPS set; classify composes the
   // two — inner Values sorted first, then the Conditions array sorted by canonical JSON.
-  'AWS::ElasticLoadBalancingV2::ListenerRule': new Set(['Conditions.PathPatternConfig.Values']),
+  // A source-ip condition's `SourceIpConfig.Values` (a CIDR set) and an http-header
+  // condition's `HttpHeaderConfig.Values` (a header-value-string set) are reordered the
+  // same way — observed live on a fresh elbv2-rule-conditions deploy (declared
+  // [10.3/16, 10.1/16, 10.2/16] read back [10.3/16, 10.2/16, 10.1/16]; declared
+  // [zeta, alpha, mike] read back [zeta, mike, alpha]). Both are OR'd value SETS (a
+  // request matches if ANY value matches), so order carries no meaning. CIDRs and
+  // header-value strings aren't id/ARN/HTTP/AZ-shaped, so canonicalizeIdArraysDeep leaves
+  // them. (`QueryStringConfig.Values` was reordered in the SAME deploy too, but its
+  // elements are {Key, Value} pairs — Key IS an IDENTITY_FIELD, so canonicalizeTagListsDeep
+  // already aligns them; `HttpRequestMethodConfig.Values` is a set of HTTP verbs the
+  // generic isHttpMethod sort folds — neither needs a table entry. HostHeaderConfig.Values
+  // was observed order-PRESERVING in the earlier elbv2-rule-values deploy.)
+  'AWS::ElasticLoadBalancingV2::ListenerRule': new Set([
+    'Conditions.PathPatternConfig.Values',
+    'Conditions.SourceIpConfig.Values',
+    'Conditions.HttpHeaderConfig.Values',
+  ]),
+  // A BackupSelection's tag-based membership `BackupSelection.ListOfTags` is a SET of
+  // {ConditionKey, ConditionType, ConditionValue} that AWS Backup echoes SORTED by
+  // ConditionKey, not in template order (declared [zeta, alpha, mike] reads back
+  // [alpha, mike, zeta]), so a positional compare false-flags every shifted condition's
+  // ConditionKey AND ConditionValue as declared drift on a freshly recorded selection.
+  // ConditionKey is NOT an IDENTITY_FIELD (Key/Id/AttributeName/IndexName/Name), so the
+  // keyed canonicalizer can't align it. The set is nested one OBJECT level under the
+  // top-level `BackupSelection` key (not under an array), like Bedrock Guardrail's
+  // ContentPolicyConfig.FiltersConfig — sortNestedObjectArrays sorts the object array by
+  // canonical JSON, aligning equal conditions; a genuine condition add/remove/change
+  // still differs. Observed live on a fresh backup-selection deploy. (The sibling
+  // `BackupSelection.Conditions.StringEquals` — the newer condition shape — was declared
+  // non-sorted in the SAME deploy and AWS PRESERVED its order, so it is deliberately NOT
+  // listed — observed-only.)
+  'AWS::Backup::BackupSelection': new Set(['BackupSelection.ListOfTags']),
+  // An EC2 Auto Scaling group's `MetricsCollection[].Metrics` (the group metrics to
+  // enable) and `NotificationConfigurations[].NotificationTypes` (the lifecycle events to
+  // publish to SNS) are scalar enum SETs nested under their respective arrays that AWS
+  // echoes SORTED alphabetically, not in template order (declared
+  // [GroupTotalInstances, GroupDesiredCapacity, GroupMaxSize, GroupMinSize] reads back
+  // [GroupDesiredCapacity, GroupMaxSize, GroupMinSize, GroupTotalInstances]; declared
+  // [TERMINATE, LAUNCH, LAUNCH_ERROR] reads back [LAUNCH, LAUNCH_ERROR, TERMINATE]), so a
+  // positional compare false-flags the identical set as declared drift on a freshly
+  // recorded ASG. The tokens aren't id/ARN/HTTP/AZ-shaped, so canonicalizeIdArraysDeep
+  // leaves them; the schema marks both insertionOrder:false but the scalar auto-fold skips
+  // array-crossing (`*`) paths, so they need this per-type entry. sortNestedObjectArrays
+  // crosses the MetricsCollection / NotificationConfigurations array and sorts the inner
+  // scalar set; a genuine metric/event add/remove still differs. Observed live on a fresh
+  // asg-notification-metrics deploy.
+  'AWS::AutoScaling::AutoScalingGroup': new Set([
+    'MetricsCollection.Metrics',
+    'NotificationConfigurations.NotificationTypes',
+  ]),
 };
 
 // Return a deep clone of `value` (a declared/live property subtree rooted at one

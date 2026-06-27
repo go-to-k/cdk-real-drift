@@ -1,0 +1,86 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RuleHttpHeader0B4061D9",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/c8831c8e7557787f",
+    "constructPath": "CdkRealDriftIntegElbv2RuleConditions/RuleHttpHeader",
+    "declared": {
+      "Actions": [
+        {
+          "FixedResponseConfig": {
+            "ContentType": "text/plain",
+            "MessageBody": "ok",
+            "StatusCode": "200"
+          },
+          "Type": "fixed-response"
+        }
+      ],
+      "Conditions": [
+        {
+          "Field": "http-header",
+          "HttpHeaderConfig": {
+            "HttpHeaderName": "X-Cdkrd",
+            "Values": ["zeta", "alpha", "mike"]
+          }
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a",
+      "Priority": 20
+    }
+  },
+  "liveRaw": {
+    "IsDefault": false,
+    "Actions": [
+      {
+        "FixedResponseConfig": {
+          "ContentType": "text/plain",
+          "StatusCode": "200",
+          "MessageBody": "ok"
+        },
+        "Type": "fixed-response"
+      }
+    ],
+    "Priority": 20,
+    "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/c8831c8e7557787f",
+    "Transforms": [],
+    "Conditions": [
+      {
+        "Field": "http-header",
+        "HttpHeaderConfig": {
+          "Values": ["zeta", "mike", "alpha"],
+          "HttpHeaderName": "X-Cdkrd"
+        },
+        "Values": []
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["IsDefault", "RuleArn"],
+    "writeOnly": ["ListenerArn"],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["IsDefault", "RuleArn"],
+    "writeOnlyPaths": ["Actions.*.AuthenticateOidcConfig.ClientSecret", "ListenerArn"],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "RuleHttpHeader0B4061D9",
+      "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "path": "ListenerArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-NpZ4tSt8qH3R/8078676baac96dbb/9bccb68925af7a9a/c8831c8e7557787f",
+      "constructPath": "CdkRealDriftIntegElbv2RuleConditions/RuleHttpHeader"
+    }
+  ]
+}

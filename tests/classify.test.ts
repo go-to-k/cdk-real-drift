@@ -2145,6 +2145,173 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('ELBv2 ListenerRule SourceIp/HttpHeader/QueryString condition Values (found by elbv2-rule-conditions)', () => {
+    const T = 'AWS::ElasticLoadBalancingV2::ListenerRule';
+
+    it('a source-ip CIDR Values set returned reordered is NOT drift', () => {
+      const declared = {
+        Conditions: [
+          {
+            Field: 'source-ip',
+            SourceIpConfig: { Values: ['10.3.0.0/16', '10.1.0.0/16', '10.2.0.0/16'] },
+          },
+        ],
+      };
+      const live = {
+        Conditions: [
+          {
+            Field: 'source-ip',
+            SourceIpConfig: { Values: ['10.3.0.0/16', '10.2.0.0/16', '10.1.0.0/16'] },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('an http-header Values set returned reordered is NOT drift', () => {
+      const declared = {
+        Conditions: [
+          {
+            Field: 'http-header',
+            HttpHeaderConfig: { HttpHeaderName: 'X-Cdkrd', Values: ['zeta', 'alpha', 'mike'] },
+          },
+        ],
+      };
+      const live = {
+        Conditions: [
+          {
+            Field: 'http-header',
+            HttpHeaderConfig: { HttpHeaderName: 'X-Cdkrd', Values: ['zeta', 'mike', 'alpha'] },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a query-string {Key,Value} set returned reordered is NOT drift (Key is an IDENTITY_FIELD, auto-aligned)', () => {
+      const declared = {
+        Conditions: [
+          {
+            Field: 'query-string',
+            QueryStringConfig: {
+              Values: [
+                { Key: 'zeta', Value: '1' },
+                { Key: 'alpha', Value: '2' },
+                { Key: 'mike', Value: '3' },
+              ],
+            },
+          },
+        ],
+      };
+      const live = {
+        Conditions: [
+          {
+            Field: 'query-string',
+            QueryStringConfig: {
+              Values: [
+                { Key: 'mike', Value: '3' },
+                { Key: 'alpha', Value: '2' },
+                { Key: 'zeta', Value: '1' },
+              ],
+            },
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine source-ip CIDR change still surfaces (no over-fold)', () => {
+      const declared = {
+        Conditions: [
+          { Field: 'source-ip', SourceIpConfig: { Values: ['10.3.0.0/16', '10.1.0.0/16'] } },
+        ],
+      };
+      const live = {
+        Conditions: [
+          { Field: 'source-ip', SourceIpConfig: { Values: ['10.9.0.0/16', '10.1.0.0/16'] } }, // 10.3 -> 10.9
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
+    const T = 'AWS::AutoScaling::AutoScalingGroup';
+
+    it('a MetricsCollection Metrics set returned alphabetically sorted is NOT drift', () => {
+      const declared = {
+        MetricsCollection: [
+          {
+            Granularity: '1Minute',
+            Metrics: [
+              'GroupTotalInstances',
+              'GroupDesiredCapacity',
+              'GroupMaxSize',
+              'GroupMinSize',
+            ],
+          },
+        ],
+      };
+      const live = {
+        MetricsCollection: [
+          {
+            Granularity: '1Minute',
+            Metrics: [
+              'GroupDesiredCapacity',
+              'GroupMaxSize',
+              'GroupMinSize',
+              'GroupTotalInstances',
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a NotificationConfigurations NotificationTypes set returned sorted is NOT drift', () => {
+      const declared = {
+        NotificationConfigurations: [
+          {
+            TopicARN: 'arn:aws:sns:us-east-1:111111111111:t',
+            NotificationTypes: [
+              'autoscaling:EC2_INSTANCE_TERMINATE',
+              'autoscaling:EC2_INSTANCE_LAUNCH',
+              'autoscaling:EC2_INSTANCE_LAUNCH_ERROR',
+            ],
+          },
+        ],
+      };
+      const live = {
+        NotificationConfigurations: [
+          {
+            TopicARN: 'arn:aws:sns:us-east-1:111111111111:t',
+            NotificationTypes: [
+              'autoscaling:EC2_INSTANCE_LAUNCH',
+              'autoscaling:EC2_INSTANCE_LAUNCH_ERROR',
+              'autoscaling:EC2_INSTANCE_TERMINATE',
+            ],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine metric add still surfaces (no over-fold)', () => {
+      const declared = {
+        MetricsCollection: [{ Granularity: '1Minute', Metrics: ['GroupMaxSize', 'GroupMinSize'] }],
+      };
+      const live = {
+        MetricsCollection: [
+          {
+            Granularity: '1Minute',
+            Metrics: ['GroupMinSize', 'GroupMaxSize', 'GroupInServiceInstances'],
+          },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Bedrock Guardrail nested policy-config arrays (reordered, found by bedrock-guardrail-rich)', () => {
     const T = 'AWS::Bedrock::Guardrail';
     const declared = {
@@ -2289,6 +2456,75 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
             ],
           },
         ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('ECS TaskDefinition Links reordered inside a container (nested scalar set, found by ecs-taskdef-sets)', () => {
+    const T = 'AWS::ECS::TaskDefinition';
+    // `Links` is a SCALAR set (`name:alias` strings) nested under the
+    // ContainerDefinitions ARRAY — like DynamoDB NonKeyAttributes but the values
+    // aren't id/ARN/HTTP/AZ-shaped, so canonicalizeIdArraysDeep leaves them; ECS
+    // echoes them sorted alphabetically.
+    const declared = {
+      ContainerDefinitions: [{ Name: 'app', Links: ['logger:log', 'init:setup'] }],
+    };
+
+    it('AWS returning a container Links set sorted alphabetically is NOT drift', () => {
+      const live = {
+        ContainerDefinitions: [{ Name: 'app', Links: ['init:setup', 'logger:log'] }],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine link add still surfaces (no over-fold)', () => {
+      const live = {
+        ContainerDefinitions: [{ Name: 'app', Links: ['init:setup', 'logger:log', 'cache:redis'] }],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Backup BackupSelection ListOfTags reordered (object set keyed by ConditionKey ∉ IDENTITY_FIELDS, found by backup-selection)', () => {
+    const T = 'AWS::Backup::BackupSelection';
+    // The set is nested one OBJECT level under the top-level `BackupSelection` key — AWS
+    // Backup echoes it sorted by ConditionKey, which is NOT an IDENTITY_FIELD.
+    const declared = {
+      BackupSelection: {
+        SelectionName: 'sel',
+        ListOfTags: [
+          { ConditionType: 'STRINGEQUALS', ConditionKey: 'zeta', ConditionValue: '1' },
+          { ConditionType: 'STRINGEQUALS', ConditionKey: 'alpha', ConditionValue: '2' },
+          { ConditionType: 'STRINGEQUALS', ConditionKey: 'mike', ConditionValue: '3' },
+        ],
+      },
+    };
+
+    it('AWS returning ListOfTags sorted by ConditionKey is NOT drift', () => {
+      const live = {
+        BackupSelection: {
+          SelectionName: 'sel',
+          ListOfTags: [
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'alpha', ConditionValue: '2' },
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'mike', ConditionValue: '3' },
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'zeta', ConditionValue: '1' },
+          ],
+        },
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine ConditionValue change still surfaces (no over-fold)', () => {
+      const live = {
+        BackupSelection: {
+          SelectionName: 'sel',
+          ListOfTags: [
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'alpha', ConditionValue: '9' }, // 2 -> 9
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'mike', ConditionValue: '3' },
+            { ConditionType: 'STRINGEQUALS', ConditionKey: 'zeta', ConditionValue: '1' },
+          ],
+        },
       };
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
