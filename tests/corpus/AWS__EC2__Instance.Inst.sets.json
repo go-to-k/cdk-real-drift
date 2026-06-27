@@ -1,0 +1,482 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Inst",
+    "resourceType": "AWS::EC2::Instance",
+    "physicalId": "i-06fd4581f0d168d8a",
+    "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst",
+    "declared": {
+      "AvailabilityZone": "__cdkrd_corpus_unresolved__",
+      "ImageId": "ami-00948338a4aeec604",
+      "InstanceType": "t3.micro",
+      "NetworkInterfaces": [
+        {
+          "DeviceIndex": "1",
+          "SubnetId": "subnet-0f3c7a3910f1a4f50"
+        },
+        {
+          "DeviceIndex": "0",
+          "SubnetId": "subnet-0f3c7a3910f1a4f50"
+        }
+      ],
+      "Volumes": [
+        {
+          "Device": "/dev/sdg",
+          "VolumeId": "vol-0fe744e96a13d5738"
+        },
+        {
+          "Device": "/dev/sdf",
+          "VolumeId": "vol-02faa902bddcdb9ee"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Tenancy": "default",
+    "SecurityGroups": ["default"],
+    "PrivateDnsName": "ip-10-0-0-226.ec2.internal",
+    "PrivateIpAddress": "10.0.0.226",
+    "BlockDeviceMappings": [
+      {
+        "Ebs": {
+          "SnapshotId": "",
+          "VolumeType": "gp3",
+          "Encrypted": false,
+          "Iops": 3000,
+          "VolumeSize": 1,
+          "DeleteOnTermination": false
+        },
+        "DeviceName": "/dev/sdg"
+      },
+      {
+        "Ebs": {
+          "SnapshotId": "snap-0ddddd66776eccb06",
+          "VolumeType": "gp3",
+          "Encrypted": false,
+          "Iops": 3000,
+          "VolumeSize": 8,
+          "DeleteOnTermination": true
+        },
+        "DeviceName": "/dev/xvda"
+      },
+      {
+        "Ebs": {
+          "SnapshotId": "",
+          "VolumeType": "gp3",
+          "Encrypted": false,
+          "Iops": 3000,
+          "VolumeSize": 1,
+          "DeleteOnTermination": false
+        },
+        "DeviceName": "/dev/sdf"
+      }
+    ],
+    "SubnetId": "subnet-0f3c7a3910f1a4f50",
+    "EbsOptimized": false,
+    "Volumes": [
+      {
+        "VolumeId": "vol-0fe744e96a13d5738",
+        "Device": "/dev/sdg"
+      },
+      {
+        "VolumeId": "vol-0aac921ab46964337",
+        "Device": "/dev/xvda"
+      },
+      {
+        "VolumeId": "vol-02faa902bddcdb9ee",
+        "Device": "/dev/sdf"
+      }
+    ],
+    "PrivateIp": "10.0.0.226",
+    "EnclaveOptions": {
+      "Enabled": false
+    },
+    "NetworkInterfaces": [
+      {
+        "AssociateCarrierIpAddress": false,
+        "PrivateIpAddress": "10.0.0.95",
+        "PrivateIpAddresses": [
+          {
+            "PrivateIpAddress": "10.0.0.95",
+            "Primary": true
+          }
+        ],
+        "SecondaryPrivateIpAddressCount": 0,
+        "DeviceIndex": "1",
+        "Ipv6AddressCount": 0,
+        "GroupSet": ["sg-0e3c1d897fce18437"],
+        "Ipv6Addresses": [],
+        "SubnetId": "subnet-0f3c7a3910f1a4f50",
+        "AssociatePublicIpAddress": false,
+        "NetworkInterfaceId": "eni-0374ce66ce479bc37",
+        "DeleteOnTermination": true
+      },
+      {
+        "AssociateCarrierIpAddress": false,
+        "PrivateIpAddress": "10.0.0.226",
+        "PrivateIpAddresses": [
+          {
+            "PrivateIpAddress": "10.0.0.226",
+            "Primary": true
+          }
+        ],
+        "SecondaryPrivateIpAddressCount": 0,
+        "DeviceIndex": "0",
+        "Ipv6AddressCount": 0,
+        "GroupSet": ["sg-0e3c1d897fce18437"],
+        "Ipv6Addresses": [],
+        "SubnetId": "subnet-0f3c7a3910f1a4f50",
+        "AssociatePublicIpAddress": false,
+        "NetworkInterfaceId": "eni-05633fa73067fdffc",
+        "DeleteOnTermination": true
+      }
+    ],
+    "ImageId": "ami-00948338a4aeec604",
+    "InstanceType": "t3.micro",
+    "Monitoring": false,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEc2InstanceSets/af9cc6f0-7255-11f1-be68-0affea89e2cd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEc2InstanceSets",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Inst",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "HibernationOptions": {
+      "Configured": false
+    },
+    "MetadataOptions": {
+      "HttpPutResponseHopLimit": 2,
+      "HttpProtocolIpv6": "disabled",
+      "HttpTokens": "required",
+      "InstanceMetadataTags": "disabled",
+      "HttpEndpoint": "enabled"
+    },
+    "InstanceId": "i-06fd4581f0d168d8a",
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "CpuOptions": {
+      "ThreadsPerCore": 2,
+      "CoreCount": 1
+    },
+    "AvailabilityZone": "us-east-1a",
+    "PrivateDnsNameOptions": {
+      "EnableResourceNameDnsARecord": false,
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "PublicDnsName": "",
+    "SecurityGroupIds": ["sg-0e3c1d897fce18437"],
+    "DisableApiTermination": false,
+    "SourceDestCheck": true,
+    "PlacementGroupName": "",
+    "VpcId": "vpc-03d7155e6f0cf2b47",
+    "State": {
+      "Code": "16",
+      "Name": "running"
+    },
+    "CreditSpecification": {
+      "CPUCredits": "unlimited"
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "InstanceId",
+      "PrivateDnsName",
+      "PrivateIp",
+      "PublicDnsName",
+      "PublicIp",
+      "State",
+      "VpcId"
+    ],
+    "writeOnly": [
+      "AdditionalInfo",
+      "Ipv6AddressCount",
+      "Ipv6Addresses",
+      "LaunchTemplate",
+      "LicenseSpecification",
+      "PropagateTagsToVolumeOnCreation"
+    ],
+    "createOnly": [
+      "AdditionalInfo",
+      "Affinity",
+      "AvailabilityZone",
+      "BlockDeviceMappings",
+      "CpuOptions",
+      "EbsOptimized",
+      "ElasticGpuSpecifications",
+      "ElasticInferenceAccelerators",
+      "EnclaveOptions",
+      "HibernationOptions",
+      "HostId",
+      "HostResourceGroupArn",
+      "ImageId",
+      "InstanceType",
+      "Ipv6AddressCount",
+      "Ipv6Addresses",
+      "KernelId",
+      "KeyName",
+      "LaunchTemplate",
+      "LicenseSpecifications",
+      "NetworkInterfaces",
+      "PlacementGroupName",
+      "PrivateDnsNameOptions",
+      "PrivateIpAddress",
+      "RamdiskId",
+      "SecurityGroupIds",
+      "SecurityGroups",
+      "SubnetId",
+      "Tenancy",
+      "UserData"
+    ],
+    "readOnlyPaths": [
+      "InstanceId",
+      "PrivateDnsName",
+      "PrivateIp",
+      "PublicDnsName",
+      "PublicIp",
+      "State",
+      "VpcId"
+    ],
+    "writeOnlyPaths": [
+      "AdditionalInfo",
+      "BlockDeviceMappings.*.NoDevice",
+      "BlockDeviceMappings.*.VirtualName",
+      "Ipv6AddressCount",
+      "Ipv6Addresses",
+      "LaunchTemplate",
+      "LicenseSpecification",
+      "PropagateTagsToVolumeOnCreation"
+    ],
+    "createOnlyPaths": [
+      "AdditionalInfo",
+      "Affinity",
+      "AvailabilityZone",
+      "BlockDeviceMappings",
+      "CpuOptions",
+      "EbsOptimized",
+      "ElasticGpuSpecifications",
+      "ElasticInferenceAccelerators",
+      "EnclaveOptions",
+      "HibernationOptions",
+      "HostId",
+      "HostResourceGroupArn",
+      "ImageId",
+      "InstanceType",
+      "Ipv6AddressCount",
+      "Ipv6Addresses",
+      "KernelId",
+      "KeyName",
+      "LaunchTemplate",
+      "LicenseSpecifications",
+      "NetworkInterfaces",
+      "PlacementGroupName",
+      "PrivateDnsNameOptions",
+      "PrivateIpAddress",
+      "RamdiskId",
+      "SecurityGroupIds",
+      "SecurityGroups",
+      "SubnetId",
+      "Tenancy",
+      "UserData"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "HibernationOptions.Configured": false,
+      "MetadataOptions.HttpPutResponseHopLimit": 1
+    },
+    "unorderedScalarPaths": ["SecurityGroupIds", "SecurityGroups"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "AvailabilityZone",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "Volumes[/dev/xvda]",
+      "actual": {
+        "VolumeId": "vol-0aac921ab46964337",
+        "Device": "/dev/xvda"
+      },
+      "nested": true,
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "Tenancy",
+      "actual": "default",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SecurityGroups",
+      "actual": ["default"],
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.226",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "BlockDeviceMappings",
+      "actual": [
+        {
+          "Ebs": {
+            "SnapshotId": "",
+            "VolumeType": "gp3",
+            "Encrypted": false,
+            "Iops": 3000,
+            "VolumeSize": 1,
+            "DeleteOnTermination": false
+          },
+          "DeviceName": "/dev/sdg"
+        },
+        {
+          "Ebs": {
+            "SnapshotId": "snap-0ddddd66776eccb06",
+            "VolumeType": "gp3",
+            "Encrypted": false,
+            "Iops": 3000,
+            "VolumeSize": 8,
+            "DeleteOnTermination": true
+          },
+          "DeviceName": "/dev/xvda"
+        },
+        {
+          "Ebs": {
+            "SnapshotId": "",
+            "VolumeType": "gp3",
+            "Encrypted": false,
+            "Iops": 3000,
+            "VolumeSize": 1,
+            "DeleteOnTermination": false
+          },
+          "DeviceName": "/dev/sdf"
+        }
+      ],
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SubnetId",
+      "actual": "subnet-0f3c7a3910f1a4f50",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "MetadataOptions",
+      "actual": {
+        "HttpPutResponseHopLimit": 2,
+        "HttpProtocolIpv6": "disabled",
+        "HttpTokens": "required",
+        "InstanceMetadataTags": "disabled",
+        "HttpEndpoint": "enabled"
+      },
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "InstanceInitiatedShutdownBehavior",
+      "actual": "stop",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "CpuOptions",
+      "actual": {
+        "ThreadsPerCore": 2,
+        "CoreCount": 1
+      },
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "PrivateDnsNameOptions",
+      "actual": {
+        "EnableResourceNameDnsARecord": false,
+        "HostnameType": "ip-name",
+        "EnableResourceNameDnsAAAARecord": false
+      },
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-0e3c1d897fce18437"],
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SourceDestCheck",
+      "actual": true,
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "CreditSpecification",
+      "actual": {
+        "CPUCredits": "unlimited"
+      },
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    }
+  ],
+  "description": "EC2 Instance Volumes subset fold: live includes the AMI root /dev/xvda volume the template never declared (declared subset by Device); NetworkInterfaces declared non-sorted by DeviceIndex were preserved by AWS (subset-clean)."
+}
