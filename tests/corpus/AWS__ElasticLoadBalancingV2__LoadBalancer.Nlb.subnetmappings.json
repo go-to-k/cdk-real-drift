@@ -1,0 +1,205 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Nlb",
+    "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+    "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb",
+    "declared": {
+      "Scheme": "internal",
+      "SubnetMappings": [
+        {
+          "SubnetId": "subnet-09675102dd2b4e7d1"
+        },
+        {
+          "SubnetId": "subnet-06375aa74c4098557"
+        }
+      ],
+      "Type": "network"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "SecurityGroups": [],
+    "LoadBalancerAttributes": [
+      {
+        "Value": "",
+        "Key": "access_logs.s3.prefix"
+      },
+      {
+        "Value": "false",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "access_logs.s3.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "zonal_shift.config.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "access_logs.s3.bucket"
+      },
+      {
+        "Value": "false",
+        "Key": "deletion_protection.enabled"
+      },
+      {
+        "Value": "0",
+        "Key": "secondary_ips.auto_assigned.per_subnet"
+      },
+      {
+        "Value": "any_availability_zone",
+        "Key": "dns_record.client_routing_policy"
+      }
+    ],
+    "Scheme": "internal",
+    "DNSName": "CdkRealD-Nlb-NB5U8c26yJm1-dba9c61ba1aa1fcb.elb.us-east-1.amazonaws.com",
+    "Name": "CdkRealD-Nlb-NB5U8c26yJm1",
+    "LoadBalancerName": "CdkRealD-Nlb-NB5U8c26yJm1",
+    "Subnets": ["subnet-09675102dd2b4e7d1", "subnet-06375aa74c4098557"],
+    "Type": "network",
+    "CanonicalHostedZoneID": "Z26RNL4JYFTOTI",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+    "EnablePrefixForIpv6SourceNat": "off",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegNlbSubnetMappings/c87e8040-725b-11f1-b19e-0e3526a02887",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegNlbSubnetMappings",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Nlb",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "LoadBalancerFullName": "net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+    "SubnetMappings": [
+      {
+        "SubnetId": "subnet-09675102dd2b4e7d1"
+      },
+      {
+        "SubnetId": "subnet-06375aa74c4098557"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnly": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnly": ["Name", "Scheme", "Type"],
+    "readOnlyPaths": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnlyPaths": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnlyPaths": ["Name", "Scheme", "Type"],
+    "defaults": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "defaultPaths": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "unorderedScalarPaths": ["SecurityGroups", "Subnets"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes",
+      "actual": [
+        {
+          "Value": "",
+          "Key": "access_logs.s3.bucket"
+        },
+        {
+          "Value": "false",
+          "Key": "access_logs.s3.enabled"
+        },
+        {
+          "Value": "",
+          "Key": "access_logs.s3.prefix"
+        },
+        {
+          "Value": "false",
+          "Key": "deletion_protection.enabled"
+        },
+        {
+          "Value": "any_availability_zone",
+          "Key": "dns_record.client_routing_policy"
+        },
+        {
+          "Value": "false",
+          "Key": "load_balancing.cross_zone.enabled"
+        },
+        {
+          "Value": "0",
+          "Key": "secondary_ips.auto_assigned.per_subnet"
+        },
+        {
+          "Value": "false",
+          "Key": "zonal_shift.config.enabled"
+        }
+      ],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "Name",
+      "actual": "CdkRealD-Nlb-NB5U8c26yJm1",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "Subnets",
+      "actual": ["subnet-06375aa74c4098557", "subnet-09675102dd2b4e7d1"],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "EnablePrefixForIpv6SourceNat",
+      "actual": "off",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    }
+  ],
+  "description": "NLB SubnetMappings RULE-OUT: declared non-sorted by SubnetId; Cloud Control PRESERVES the declared order, so SubnetMappings is NOT a reorder FP and needs no fold. (The live model also echoes a Subnets scalar mirror as undeclared inventory.)"
+}
