@@ -332,7 +332,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // changed values are drift, entry-less values are drift only on a
       // snapshot-complete resource (appeared since record) and UNRECORDED
       // otherwise — including the whole no-baseline first run (R60). The report
-      // renders unrecorded values as [UNRECORDED: N], excludes them from the
+      // renders unrecorded values as [Potential Drift: N], excludes them from the
       // verdict/exit, and points at `cdkrd record` on the result line.
       // --show-all loaded baseline=undefined above (it lists ALL undeclared state,
       // ignoring what is recorded) but STILL reconciles: applyBaseline(_, undefined)

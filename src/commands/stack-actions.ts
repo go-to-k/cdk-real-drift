@@ -692,7 +692,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     autoSelectAll,
   } = p;
   let worst = 0;
-  // R113: a standout undeclared value is surfaced to the user as [UNRECORDED] (it is
+  // R113: a standout undeclared value is surfaced to the user as [Potential Drift] (it is
   // NOT a folded default — we deliberately show it), so, like declared drift, it
   // belongs in the revert list. Reverting an undeclared value REMOVES it (cdk drift
   // reports the same values and `cdk deploy --revert-drift` removes them). The

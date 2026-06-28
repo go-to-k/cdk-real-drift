@@ -9,7 +9,7 @@
 // when at least one drift section was printed — so the verdict never reads as a
 // member of the section above it, while a CLEAN stack with one informational tier
 // stays exactly 3 lines. Section headers carry the count INSIDE the brackets
-// (`[DECLARED DRIFT: 3]`) — a bare digit to the right of `]` read as noise (R48);
+// (`[CFn-Declared Drift: 3]`) — a bare digit to the right of `]` read as noise (R48);
 // the explanatory note follows outside the brackets. DRIFT tiers
 // (deleted/declared/undeclared) are ALWAYS shown in full — they are the point.
 // INFORMATIONAL tiers (readGap/unresolved/skipped) are folded into the `info:`
@@ -89,7 +89,7 @@ export interface ReportOptions {
 // `unrecorded` by applyBaseline (no baseline entry, resource never
 // snapshot-complete) is an inventory awaiting a decision, not drift — the
 // baseline entry is the contract that defines undeclared drift, and with no
-// entry there is nothing to violate. They render as their own [UNRECORDED: N]
+// entry there is nothing to violate. They render as their own [Potential Drift: N]
 // section, are excluded from the drift verdict/exit, and the result line points
 // at `cdkrd record`.
 
@@ -150,7 +150,7 @@ function formatArrayDelta(d: ArrayDelta): string {
 // yellow (the differentiator), informational tiers = dim.
 function tierStyle(t: Tier): (s: string) => string {
   // All three DRIFT tiers are RED — they are drift (exit-affecting). undeclared was
-  // previously yellow (undeclaredTier), which collided with the [UNRECORDED] section
+  // previously yellow (undeclaredTier), which collided with the [Potential Drift] section
   // (also yellow) and made a real undeclared DRIFT look identical to a not-drift
   // unrecorded value. Yellow (undeclaredTier) is now reserved for UNRECORDED / "to
   // review" — so colour alone separates drift (red) from to-review (yellow). R125.
@@ -202,7 +202,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // R96: a NESTED unrecorded value (a live sub-key inside a DECLARED object the
   // template never set) folds by default — the live model carries many nested AWS
   // defaults, so listing them all would re-flood the first run R86 worked to quiet.
-  // Top-level unrecorded values still list in full in [UNRECORDED]; the nested ones
+  // Top-level unrecorded values still list in full in [Potential Drift]; the nested ones
   // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
   // record records them, so a later out-of-band change to one surfaces as drift.
   const expandNested = !!opts.verbose || !!opts.expandAtDefault;
@@ -273,7 +273,7 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   const unrecordedFoldedCount = unrecordedItems.length - unrecordedShown.length;
   // R114: when DRIFT and standout UNRECORDED values are BOTH visible, a lone
   // "1 drift(s)" verdict reads as a mismatch against the 2+ printed blocks (the user
-  // sees [DECLARED DRIFT: 1] + [UNRECORDED: 2] but a single "1 drift"). Combine them
+  // sees [CFn-Declared Drift: 1] + [Potential Drift: 2] but a single "1 drift"). Combine them
   // under one findings count — `N findings — X drift (...) + Y potential drift` —
   // keeping the red drift verdict and its breakdown so exit-1 stays legible, and
   // counting only what is SHOWN (folded values are not findings, just a parenthetical).
