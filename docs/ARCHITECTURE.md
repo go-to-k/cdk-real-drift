@@ -415,8 +415,10 @@ all live changes
          value and a live-only sub-field inside a declared element is caught too
          (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended —
          EXCEPT a per-type NESTED_ARRAY_IDENTITY override names a non-standard key
-         (API Gateway Method Integration.IntegrationResponses by StatusCode), so an
-         out-of-band SelectionPattern / ContentHandling on a declared response surfaces
+         (API Gateway Method Integration.IntegrationResponses AND MethodResponses, both by
+         StatusCode), so an out-of-band SelectionPattern / ContentHandling on a declared
+         integration response — or a `responseModels` model attached to a declared method
+         response — surfaces
 ```
 
 ### Why a given value does (or does not) appear
@@ -707,12 +709,14 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   managed tags untouched, proven live). EXCEPTION — even an ARRAY-ELEMENT nested path
   a type-specific `SDK_NESTED_WRITERS` entry can target PRECISELY is revertable
   (`isNestedSdkWritable`, the same lift `isManagedPolicyAttachmentMember` gets): an
-  API Gateway Method's `Integration.{PassthroughBehavior,ContentHandling,TimeoutInMillis}`
-  and `IntegrationResponses[<statusCode>].{SelectionPattern,ContentHandling}` revert via
-  the native granular patch API (UpdateIntegration / UpdateIntegrationResponse
-  PatchOperations) — API Gateway REJECTS `op: remove` for these, so the reset is a
-  `replace` (to the AWS default, or `""` which reads back absent/folded — proven live).
-  KMS keys need no SDK writer — they revert via the generic CC path.
+  API Gateway Method's `Integration.{PassthroughBehavior,ContentHandling,TimeoutInMillis}`,
+  `IntegrationResponses[<statusCode>].{SelectionPattern,ContentHandling}`, and
+  `MethodResponses[<statusCode>].ResponseModels` revert via the native granular patch API
+  (UpdateIntegration / UpdateIntegrationResponse / UpdateMethodResponse PatchOperations) —
+  API Gateway REJECTS `op: remove` for the integration knobs (so the reset is a `replace`
+  to the AWS default, or `""` which reads back absent/folded), but ACCEPTS `op: remove` for
+  a `responseModels` entry (removed per media key) — all proven live. KMS keys need no SDK
+  writer — they revert via the generic CC path.
 - **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
   _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
   arrays sorted), not the template verbatim. It is semantically equal to the template

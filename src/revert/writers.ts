@@ -26,6 +26,7 @@ import {
   type PatchOperation,
   UpdateIntegrationCommand,
   UpdateIntegrationResponseCommand,
+  UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
 import {
   CloudFrontClient,
@@ -989,29 +990,31 @@ const writeCognitoIdentityPoolEvents: SdkWriter = async (ctx, ops) => {
   await c.send(new SetCognitoEventsCommand({ IdentityPoolId: id, Events: events }));
 };
 
-// An ApiGateway Method's Integration knobs live under a NESTED path Cloud Control cannot
-// patch reliably: the array-element ones (Integration.IntegrationResponses[<sc>].*) are
-// unaddressable by a flat RFC6902 pointer (the `[sc]` bracket survives as a literal key,
-// the same reason R78 abandoned index array patches), and CC's whole-Method read-modify-
-// write is fiddly for the integration sub-object. API Gateway's native granular patch API
-// (UpdateIntegration / UpdateIntegrationResponse with PatchOperations) targets each knob
-// exactly, so route these specific paths here. Mirrors isManagedPolicyAttachmentMember: a
-// nested undeclared value WITH a precise flat SDK op is exempt from the record-only bar.
+// An ApiGateway Method's nested knobs live under a NESTED path Cloud Control cannot patch
+// reliably: the array-element ones (Integration.IntegrationResponses[<sc>].*,
+// MethodResponses[<sc>].*) are unaddressable by a flat RFC6902 pointer (the `[sc]` bracket
+// survives as a literal key, the same reason R78 abandoned index array patches), and CC's
+// whole-Method read-modify-write is fiddly for these sub-objects. API Gateway's native
+// granular patch API targets each knob exactly, so route these specific paths here. Mirrors
+// isManagedPolicyAttachmentMember: a nested undeclared value WITH a precise flat SDK op is
+// exempt from the record-only bar.
 //   - Integration-level:  Integration.{PassthroughBehavior,ContentHandling,TimeoutInMillis}
-//   - Response-level:      Integration.IntegrationResponses[<statusCode>].{SelectionPattern,ContentHandling}
-const APIGW_INTEGRATION_KNOB =
-  /^Integration\.(PassthroughBehavior|ContentHandling|TimeoutInMillis)$|^Integration\.IntegrationResponses\[[^\]]+\]\.(SelectionPattern|ContentHandling)$/;
-export const isApiGatewayIntegrationKnobPath = (path: string): boolean =>
-  APIGW_INTEGRATION_KNOB.test(path);
+//   - IntegrationResponse: Integration.IntegrationResponses[<sc>].{SelectionPattern,ContentHandling}
+//   - MethodResponse:     MethodResponses[<sc>].ResponseModels (the whole live-only map —
+//     classify emits a live-only sub-OBJECT whole, so the media keys ride the op's value)
+const APIGW_METHOD_KNOB =
+  /^Integration\.(PassthroughBehavior|ContentHandling|TimeoutInMillis)$|^Integration\.IntegrationResponses\[[^\]]+\]\.(SelectionPattern|ContentHandling)$|^MethodResponses\[[^\]]+\]\.ResponseModels$/;
+export const isApiGatewayMethodKnobPath = (path: string): boolean => APIGW_METHOD_KNOB.test(path);
 
 // Per-knob revert target: the API Gateway patch path + the value to RESET to when the knob
-// was undeclared. API Gateway REJECTS `op: remove` for every one of these (`Invalid patch
-// path /selectionPattern` — proven live), so the reset is always a `replace`:
+// was undeclared. API Gateway REJECTS `op: remove` for these INTEGRATION knobs (`Invalid
+// patch path /selectionPattern` — proven live), so the reset is always a `replace`:
 //   - PassthroughBehavior / TimeoutInMillis -> their AWS default (WHEN_NO_MATCH / 29000).
 //   - ContentHandling / SelectionPattern    -> the EMPTY STRING, which is the cleared state:
 //     `replace /contentHandling ""` makes CC read it ABSENT, and `replace /selectionPattern
-//     ""` leaves a "" the compare folds as trivially-empty (both proven live). So after a
-//     revert the knob no longer surfaces.
+//     ""` leaves a "" the compare folds as trivially-empty (both proven live).
+// (MethodResponses ResponseModels is the EXCEPTION — UpdateMethodResponse DOES accept
+// `op: remove /responseModels/<media>`, proven live — handled separately below.)
 // A declared-drift revert (`add` op) replaces with the desired template value instead.
 const APIGW_KNOB_RESET: Record<string, { patchPath: string; resetTo: string }> = {
   PassthroughBehavior: { patchPath: '/passthroughBehavior', resetTo: 'WHEN_NO_MATCH' },
@@ -1020,50 +1023,80 @@ const APIGW_KNOB_RESET: Record<string, { patchPath: string; resetTo: string }> =
   SelectionPattern: { patchPath: '/selectionPattern', resetTo: '' },
 };
 
-// dotted finding leaf field for a revert op whose RFC6902 pointer is `/Integration/<field>`
-// or `/Integration/IntegrationResponses[<sc>]/<field>`. Returns the patch op + which call
-// (integration-level, or response-level keyed by statusCode) applies it.
-function apigwKnobPatch(op: PatchOp): {
-  statusCode?: string;
-  patch: PatchOperation;
-} {
+const ptrEscape = (s: string): string => s.replace(/~/g, '~0').replace(/\//g, '~1');
+
+type ApiGwPatch =
+  | { kind: 'integration'; patch: PatchOperation }
+  | { kind: 'integrationResponse'; statusCode: string; patch: PatchOperation }
+  | { kind: 'methodResponse'; statusCode: string; patch: PatchOperation };
+
+const asRecord = (v: unknown): Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+// Translate a revert op (RFC6902 pointer into the Method model) into the matching API Gateway
+// PatchOperation(s) + which sub-resource call applies each. ResponseModels yields ONE patch
+// per media key (the finding is the whole map); the others yield a single patch.
+function apigwKnobPatches(op: PatchOp): ApiGwPatch[] {
   const segs = op.path
     .split('/')
     .slice(1)
     .map((s) => s.replace(/~1/g, '/').replace(/~0/g, '~'));
-  const responseSeg = segs[1]?.match(/^IntegrationResponses\[(.+)\]$/);
-  const field = (responseSeg ? segs[2] : segs[1]) ?? '';
+  // MethodResponses[<sc>].ResponseModels -> UpdateMethodResponse, one patch per media key.
+  // UpdateMethodResponse ACCEPTS op:remove for a responseModels entry (proven live), so an
+  // undeclared map is removed key-by-key (its keys ride op.prior); a declared one is restored
+  // with op:add from op.value.
+  const mr = segs[0]?.match(/^MethodResponses\[(.+)\]$/);
+  if (mr && segs[1] === 'ResponseModels') {
+    const statusCode = mr[1] ?? '';
+    const media = op.op === 'add' ? asRecord(op.value) : asRecord(op.prior);
+    return Object.keys(media).map((k) => ({
+      kind: 'methodResponse' as const,
+      statusCode,
+      patch:
+        op.op === 'add'
+          ? { op: 'add', path: `/responseModels/${ptrEscape(k)}`, value: String(media[k]) }
+          : { op: 'remove', path: `/responseModels/${ptrEscape(k)}` },
+    }));
+  }
+  const ir = segs[1]?.match(/^IntegrationResponses\[(.+)\]$/);
+  const field = (ir ? segs[2] : segs[1]) ?? '';
   const knob = APIGW_KNOB_RESET[field];
-  if (!knob) throw new Error(`unsupported ApiGateway integration knob: ${op.path}`);
-  // `add` = restore the declared value; `remove` = reset an undeclared one. API Gateway
-  // rejects `op: remove` for these knobs, so always `replace` (with the desired, or the
-  // reset value).
+  if (!knob) throw new Error(`unsupported ApiGateway method knob: ${op.path}`);
   const value = op.op === 'add' ? String(op.value) : knob.resetTo;
-  return {
-    ...(responseSeg && { statusCode: responseSeg[1] }),
-    patch: { op: 'replace', path: knob.patchPath, value },
-  };
+  const patch: PatchOperation = { op: 'replace', path: knob.patchPath, value };
+  return [
+    ir
+      ? { kind: 'integrationResponse', statusCode: ir[1] ?? '', patch }
+      : { kind: 'integration', patch },
+  ];
 }
 
-// Revert an ApiGateway Method's nested Integration knobs (see isApiGatewayIntegrationKnobPath)
-// via API Gateway's native granular patch API. Integration-level ops batch into one
-// UpdateIntegration; response-level ops batch per statusCode into UpdateIntegrationResponse.
-const writeApiGatewayMethodIntegration: SdkWriter = async (ctx, ops) => {
+const pushByKey = (m: Map<string, PatchOperation[]>, k: string, p: PatchOperation): void => {
+  const arr = m.get(k);
+  if (arr) arr.push(p);
+  else m.set(k, [p]);
+};
+
+// Revert an ApiGateway Method's nested knobs (see isApiGatewayMethodKnobPath) via API
+// Gateway's native granular patch API: integration-level ops batch into one UpdateIntegration;
+// per-statusCode integration-response ops into UpdateIntegrationResponse; per-statusCode
+// method-response ops into UpdateMethodResponse.
+const writeApiGatewayMethod: SdkWriter = async (ctx, ops) => {
   const [restApiId, resourceId, httpMethod] = ctx.physicalId.split('|');
   if (!restApiId || !resourceId || !httpMethod)
     throw new Error(
       `cannot parse ApiGateway Method id "${ctx.physicalId}" (RestApiId|ResourceId|HttpMethod)`
     );
   const integrationPatches: PatchOperation[] = [];
-  const responsePatches = new Map<string, PatchOperation[]>();
-  for (const op of ops) {
-    const { statusCode, patch } = apigwKnobPatch(op);
-    if (statusCode === undefined) integrationPatches.push(patch);
-    else
-      (
-        responsePatches.get(statusCode) ?? responsePatches.set(statusCode, []).get(statusCode)!
-      ).push(patch);
-  }
+  const integrationRespPatches = new Map<string, PatchOperation[]>();
+  const methodRespPatches = new Map<string, PatchOperation[]>();
+  for (const op of ops)
+    for (const p of apigwKnobPatches(op)) {
+      if (p.kind === 'integration') integrationPatches.push(p.patch);
+      else if (p.kind === 'integrationResponse')
+        pushByKey(integrationRespPatches, p.statusCode, p.patch);
+      else pushByKey(methodRespPatches, p.statusCode, p.patch);
+    }
   const c = new APIGatewayClient({ region: ctx.region });
   if (integrationPatches.length > 0)
     await c.send(
@@ -1074,9 +1107,19 @@ const writeApiGatewayMethodIntegration: SdkWriter = async (ctx, ops) => {
         patchOperations: integrationPatches,
       })
     );
-  for (const [statusCode, patchOperations] of responsePatches)
+  for (const [statusCode, patchOperations] of integrationRespPatches)
     await c.send(
       new UpdateIntegrationResponseCommand({
+        restApiId,
+        resourceId,
+        httpMethod,
+        statusCode,
+        patchOperations,
+      })
+    );
+  for (const [statusCode, patchOperations] of methodRespPatches)
+    await c.send(
+      new UpdateMethodResponseCommand({
         restApiId,
         resourceId,
         httpMethod,
@@ -1136,8 +1179,8 @@ export interface NestedWriterSpec {
 }
 export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   'AWS::ApiGateway::Method': {
-    match: isApiGatewayIntegrationKnobPath,
-    writer: writeApiGatewayMethodIntegration,
+    match: isApiGatewayMethodKnobPath,
+    writer: writeApiGatewayMethod,
   },
 };
 
