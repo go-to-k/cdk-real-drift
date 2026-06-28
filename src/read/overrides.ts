@@ -1323,9 +1323,14 @@ function pascalKeysDeep(v: unknown): unknown {
 // in the SAME form it was declared (declared ARN → reads ARN; declared name → reads
 // name — live-proven), so no normalization is needed. AWS defaults a service's
 // `DiscoveryName` to its `PortName` when undeclared, so drop a DiscoveryName that
-// equals PortName (the implicit default) to stay FP-safe. (VolumeConfigurations —
-// also writeOnly, also on the deployment — is NOT yet projected; it needs an
-// EBS-at-deploy task definition and is deferred to its own pass.)
+// equals PortName (the implicit default) to stay FP-safe.
+//
+// `VolumeConfigurations` (managed EBS volumes attached at deploy) is ALSO writeOnly and
+// ALSO on the PRIMARY deployment — projected the same way. AWS injects exactly ONE
+// default into `ManagedEBSVolume`: `FilesystemType` = "xfs" (live-proven — volumeType /
+// sizeInGiB / roleArn / encrypted / iops / throughput all read back verbatim or stay
+// absent when undeclared), so dropping a FilesystemType that equals "xfs" keeps it
+// FP-safe, mirroring the DiscoveryName fold.
 const supplementEcsService: SupplementReader = async ({ physicalId, declared, region }) => {
   const serviceArn = str(physicalId);
   const cluster = str(declared.Cluster);
@@ -1333,24 +1338,42 @@ const supplementEcsService: SupplementReader = async ({ physicalId, declared, re
   const c = new ECSClient({ region, ...READ_RETRY });
   const r = await c.send(new DescribeServicesCommand({ cluster, services: [serviceArn] }));
   const primary = r.services?.[0]?.deployments?.find((d) => d.status === 'PRIMARY');
-  const sc = primary?.serviceConnectConfiguration;
-  if (!sc) return undefined;
-  const config = pascalKeysDeep(sc) as Record<string, unknown>;
-  const services = config.Services;
-  if (Array.isArray(services)) {
-    for (const s of services) {
-      // AWS fills DiscoveryName with PortName when it is not declared — drop the
-      // implicit default so a service that declares only PortName stays FP-clean.
-      if (
-        s &&
-        typeof s === 'object' &&
-        (s as Record<string, unknown>).DiscoveryName === (s as Record<string, unknown>).PortName
-      ) {
-        delete (s as Record<string, unknown>).DiscoveryName;
+  if (!primary) return undefined;
+  const extra: Record<string, unknown> = {};
+
+  const sc = primary.serviceConnectConfiguration;
+  if (sc) {
+    const config = pascalKeysDeep(sc) as Record<string, unknown>;
+    const services = config.Services;
+    if (Array.isArray(services)) {
+      for (const s of services) {
+        // AWS fills DiscoveryName with PortName when it is not declared — drop the
+        // implicit default so a service that declares only PortName stays FP-clean.
+        if (
+          s &&
+          typeof s === 'object' &&
+          (s as Record<string, unknown>).DiscoveryName === (s as Record<string, unknown>).PortName
+        ) {
+          delete (s as Record<string, unknown>).DiscoveryName;
+        }
       }
     }
+    extra.ServiceConnectConfiguration = config;
   }
-  return { ServiceConnectConfiguration: config };
+
+  const vols = primary.volumeConfigurations;
+  if (Array.isArray(vols) && vols.length > 0) {
+    const volumeConfigurations = pascalKeysDeep(vols) as Record<string, unknown>[];
+    for (const v of volumeConfigurations) {
+      const ebs = v?.ManagedEBSVolume as Record<string, unknown> | undefined;
+      // FilesystemType defaults to "xfs" — drop the implicit default so a config that
+      // does not declare it stays FP-clean (the only field AWS injects, live-proven).
+      if (ebs && ebs.FilesystemType === 'xfs') delete ebs.FilesystemType;
+    }
+    extra.VolumeConfigurations = volumeConfigurations;
+  }
+
+  return Object.keys(extra).length > 0 ? extra : undefined;
 };
 
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {

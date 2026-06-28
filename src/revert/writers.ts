@@ -101,6 +101,7 @@ import {
 import {
   ECSClient,
   type ServiceConnectConfiguration,
+  type ServiceVolumeConfiguration,
   UpdateServiceCommand,
 } from '@aws-sdk/client-ecs';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
@@ -1149,25 +1150,38 @@ function camelKeysDeep(v: unknown): unknown {
   return v;
 }
 
-// AWS::ECS::Service ServiceConnectConfiguration — writeOnly, so Cloud Control cannot
-// sub-path patch it; revert re-supplies the WHOLE declared config via ecs:UpdateService
-// (the only API that sets it). The whole config comes from `ctx.declared` (the resolved
-// template intent), NOT the nested op value, so any drift under ServiceConnectConfiguration
-// (a client alias, the namespace, enabled) is reverted to the declared whole. CamelCased
-// back to the SDK shape; UpdateService re-defaults DiscoveryName to PortName, which the
-// reader folds, so the stack converges clean. A service with NO declared Service Connect
-// config sends `enabled: false` to turn it off.
-const writeEcsServiceConnect: SdkWriter = async (ctx) => {
+// AWS::ECS::Service ServiceConnectConfiguration / VolumeConfigurations — both writeOnly,
+// so Cloud Control cannot sub-path patch them; revert re-supplies the WHOLE declared
+// prop via ecs:UpdateService (the only API that sets them). The whole config comes from
+// `ctx.declared` (the resolved template intent), NOT the nested op value, so any drift
+// under either prop reverts to the declared whole. CamelCased back to the SDK shape;
+// UpdateService re-defaults DiscoveryName→PortName / FilesystemType→"xfs", which the
+// reader folds, so the stack converges clean. ONLY the prop(s) the ops touch are sent
+// (UpdateService leaves untouched fields alone), and a service whose declared Service
+// Connect config is gone sends `enabled: false` to turn it off.
+const writeEcsServiceWriteOnlyProps: SdkWriter = async (ctx, ops) => {
   const cluster = str(ctx.declared['Cluster']);
   const service = str(ctx.physicalId);
   if (!cluster || !service) return;
-  const declared = ctx.declared['ServiceConnectConfiguration'];
-  const serviceConnectConfiguration: ServiceConnectConfiguration =
-    declared && typeof declared === 'object'
-      ? (camelKeysDeep(declared) as ServiceConnectConfiguration)
-      : { enabled: false };
+  const input: { cluster: string; service: string } & Record<string, unknown> = {
+    cluster,
+    service,
+  };
+  if (ops.some((o) => o.path.startsWith('/ServiceConnectConfiguration'))) {
+    const declared = ctx.declared['ServiceConnectConfiguration'];
+    input.serviceConnectConfiguration =
+      declared && typeof declared === 'object'
+        ? (camelKeysDeep(declared) as ServiceConnectConfiguration)
+        : { enabled: false };
+  }
+  if (ops.some((o) => o.path.startsWith('/VolumeConfigurations'))) {
+    const declared = ctx.declared['VolumeConfigurations'];
+    input.volumeConfigurations = Array.isArray(declared)
+      ? (camelKeysDeep(declared) as ServiceVolumeConfiguration[])
+      : [];
+  }
   const c = new ECSClient({ region: ctx.region });
-  await c.send(new UpdateServiceCommand({ cluster, service, serviceConnectConfiguration }));
+  await c.send(new UpdateServiceCommand(input));
 };
 
 export const SDK_WRITERS: Record<string, SdkWriter> = {
@@ -1223,12 +1237,17 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
     match: isApiGatewayMethodKnobPath,
     writer: writeApiGatewayMethod,
   },
-  // Any drift UNDER the writeOnly ServiceConnectConfiguration re-supplies the whole
-  // declared config via ecs:UpdateService (CC cannot sub-path patch a writeOnly prop).
+  // Any drift UNDER the writeOnly ServiceConnectConfiguration / VolumeConfigurations
+  // re-supplies the whole declared prop via ecs:UpdateService (CC cannot sub-path patch
+  // a writeOnly prop).
   'AWS::ECS::Service': {
     match: (p) =>
-      p === 'ServiceConnectConfiguration' || p.startsWith('ServiceConnectConfiguration.'),
-    writer: writeEcsServiceConnect,
+      p === 'ServiceConnectConfiguration' ||
+      p.startsWith('ServiceConnectConfiguration.') ||
+      p === 'VolumeConfigurations' ||
+      p.startsWith('VolumeConfigurations.') ||
+      p.startsWith('VolumeConfigurations['),
+    writer: writeEcsServiceWriteOnlyProps,
   },
 };
 

@@ -212,6 +212,36 @@ describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via 
       enabled: false,
     });
   });
+
+  it('reverts a VolumeConfigurations drift: camelCases the declared volumes, sends ONLY that prop', async () => {
+    ecs.on(UpdateServiceCommand).resolves({});
+    const ecsCtx = ctx({
+      physicalId: 'arn:aws:ecs:us-east-1:1:service/c/s',
+      declared: {
+        Cluster: 'my-cluster',
+        ServiceConnectConfiguration: { Enabled: true },
+        VolumeConfigurations: [
+          { Name: 'vol', ManagedEBSVolume: { VolumeType: 'gp3', SizeInGiB: 20, RoleArn: 'r' } },
+        ],
+      },
+    });
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/VolumeConfigurations/0/ManagedEBSVolume/SizeInGiB',
+        value: 20,
+        human: '',
+      },
+    ];
+    await resolveSdkWriter('AWS::ECS::Service', ops)!(ecsCtx, ops);
+    const input = ecs.commandCalls(UpdateServiceCommand)[0]!.args[0].input;
+    expect(input.volumeConfigurations).toEqual([
+      { name: 'vol', managedEBSVolume: { volumeType: 'gp3', sizeInGiB: 20, roleArn: 'r' } },
+    ]);
+    // ServiceConnect is NOT re-sent — the ops only touched VolumeConfigurations, and
+    // UpdateService leaves untouched props alone.
+    expect(input.serviceConnectConfiguration).toBeUndefined();
+  });
 });
 
 describe('ApiGateway Method integration writer (nested knobs CC cannot patch)', () => {
