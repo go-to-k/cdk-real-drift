@@ -282,12 +282,17 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   const topLevel = (paths: string[]): Set<string> => new Set(paths.filter((p) => !p.includes('.')));
   const readOnlyPaths = dotted(schema.readOnlyProperties);
   const writeOnlyPaths = dotted(schema.writeOnlyProperties);
-  // createOnly + conditionalCreateOnly both mean "you cannot change this in place"
-  // (a full / conditional replacement is required) — treat both as not-revertable.
-  const createOnlyPaths = [
-    ...dotted(schema.createOnlyProperties),
-    ...dotted(schema.conditionalCreateOnlyProperties),
-  ];
+  // Only HARD `createOnlyProperties` bar a revert. `conditionalCreateOnlyProperties`
+  // are create-only ONLY in specific cases (e.g. an RDS read replica) — in the common
+  // case they are MUTABLE in place (RDS BackupRetentionPeriod / MultiAZ / StorageType /
+  // PreferredMaintenanceWindow / AutoMinorVersionUpgrade are all modifiable via
+  // ModifyDBInstance). Merging them in barred revert of these everyday props with a
+  // misleading "create-only — requires replacement" (a revert false-negative on a very
+  // common resource). They are NOT barred now: a revert attempts the in-place change
+  // and, if a specific change truly needs replacement, Cloud Control UpdateResource
+  // rejects it cleanly (it never silently replaces) — an honest failure beats a silent
+  // bar. (Live-confirmed on AWS::RDS::DBInstance BackupRetentionPeriod.)
+  const createOnlyPaths = dotted(schema.createOnlyProperties);
   const defaults: Record<string, unknown> = {};
   for (const [k, def] of Object.entries(schema.properties ?? {})) {
     if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;

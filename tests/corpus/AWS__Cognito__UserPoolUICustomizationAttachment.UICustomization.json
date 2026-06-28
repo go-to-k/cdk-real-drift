@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "UICustomization",
+    "resourceType": "AWS::Cognito::UserPoolUICustomizationAttachment",
+    "physicalId": "us-east-1_QQaweoixK|3fdc6es5i78e0ja0c2rhjqt7gu",
+    "constructPath": "CdkRealDriftIntegCognitoAttachmentReadgap/UICustomization",
+    "declared": {
+      "CSS": ".banner-customizable { background-color: #112233; }",
+      "ClientId": "3fdc6es5i78e0ja0c2rhjqt7gu",
+      "UserPoolId": "us-east-1_QQaweoixK"
+    }
+  },
+  "liveRaw": {
+    "CSS": ".banner-customizable { background-color: #112233; }",
+    "UserPoolId": "us-east-1_QQaweoixK",
+    "ClientId": "3fdc6es5i78e0ja0c2rhjqt7gu"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ClientId", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ClientId", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,132 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Role",
+    "resourceType": "AWS::IAM::Role",
+    "physicalId": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+    "constructPath": "CdkRealDriftIntegIamInlinePolicyOmit/Role",
+    "declared": {
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "Policies": [
+        {
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "*"
+              }
+            ]
+          },
+          "PolicyName": "cdkrd-inline-1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Path": "/",
+    "MaxSessionDuration": 3600,
+    "RoleName": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+    "Description": "",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "sts:AssumeRole",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "ec2.amazonaws.com"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+    "RoleId": "AROAXXXJN2LNXKFDBERNC"
+  },
+  "schema": {
+    "readOnly": ["Arn", "RoleId"],
+    "writeOnly": [],
+    "createOnly": ["Path", "RoleName"],
+    "readOnlyPaths": ["Arn", "RoleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Path", "RoleName"],
+    "defaults": {
+      "Path": "/"
+    },
+    "defaultPaths": {
+      "Path": "/"
+    },
+    "unorderedScalarPaths": ["ManagedPolicyArns"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "Role",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Policies",
+      "desired": [
+        {
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Action": ["s3:GetObject"],
+                "Effect": "Allow",
+                "Resource": ["*"]
+              }
+            ]
+          },
+          "PolicyName": "cdkrd-inline-1"
+        }
+      ],
+      "physicalId": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+      "constructPath": "CdkRealDriftIntegIamInlinePolicyOmit/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Role",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Path",
+      "actual": "/",
+      "physicalId": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+      "constructPath": "CdkRealDriftIntegIamInlinePolicyOmit/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Role",
+      "resourceType": "AWS::IAM::Role",
+      "path": "MaxSessionDuration",
+      "actual": 3600,
+      "physicalId": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+      "constructPath": "CdkRealDriftIntegIamInlinePolicyOmit/Role"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Role",
+      "resourceType": "AWS::IAM::Role",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "CdkRealDriftIntegIamInlinePolicyOmit-Role-47A0IvmQeElz",
+      "constructPath": "CdkRealDriftIntegIamInlinePolicyOmit/Role"
+    }
+  ]
+}

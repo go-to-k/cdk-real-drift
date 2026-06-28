@@ -43,10 +43,10 @@ describe('parseSchema nested paths', () => {
     expect(info.readOnlyPaths).toEqual(['Arn']);
   });
 
-  it('collapses interior + trailing /properties/ segments (OpenSearch conditionalCreateOnly)', () => {
+  it('collapses interior + trailing /properties/ segments in a pointer array', () => {
     const info = parseSchema(
       JSON.stringify({
-        conditionalCreateOnlyProperties: [
+        createOnlyProperties: [
           '/properties/EncryptionAtRestOptions/properties', // the block itself
           '/properties/AdvancedSecurityOptions/properties/Enabled', // interior /properties/
         ],
