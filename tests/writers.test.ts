@@ -1,4 +1,9 @@
 import {
+  APIGatewayClient,
+  UpdateIntegrationCommand,
+  UpdateIntegrationResponseCommand,
+} from '@aws-sdk/client-api-gateway';
+import {
   CloudFrontClient,
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -107,6 +112,7 @@ const logs = mockClient(CloudWatchLogsClient);
 const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
 const eventbridge = mockClient(EventBridgeClient);
+const apigw = mockClient(APIGatewayClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -150,6 +156,74 @@ beforeEach(() => {
   route53.reset();
   configService.reset();
   eventbridge.reset();
+  apigw.reset();
+});
+
+describe('ApiGateway Method integration writer (nested knobs CC cannot patch)', () => {
+  const apigwCtx = (): OverrideCtx => ctx({ physicalId: 'abc|9zav19|OPTIONS' });
+  const rmOp = (path: string): PatchOp => ({ op: 'remove', path, human: `${path} -> remove` });
+
+  it('reverts integration-level + per-response knobs via UpdateIntegration / UpdateIntegrationResponse', async () => {
+    apigw.on(UpdateIntegrationCommand).resolves({});
+    apigw.on(UpdateIntegrationResponseCommand).resolves({});
+    const ops: PatchOp[] = [
+      rmOp('/Integration/PassthroughBehavior'),
+      rmOp('/Integration/IntegrationResponses[204]/SelectionPattern'),
+      rmOp('/Integration/IntegrationResponses[204]/ContentHandling'),
+    ];
+    const writer = resolveSdkWriter('AWS::ApiGateway::Method', ops);
+    expect(writer).toBeDefined();
+    await writer!(apigwCtx(), ops);
+
+    // PassthroughBehavior cannot be removed (no absence-default) -> replace with the default.
+    const integ = apigw.commandCalls(UpdateIntegrationCommand);
+    expect(integ).toHaveLength(1);
+    expect(integ[0]!.args[0].input).toMatchObject({
+      restApiId: 'abc',
+      resourceId: '9zav19',
+      httpMethod: 'OPTIONS',
+      patchOperations: [{ op: 'replace', path: '/passthroughBehavior', value: 'WHEN_NO_MATCH' }],
+    });
+    // SelectionPattern + ContentHandling clear by replacing with "" (API Gateway rejects
+    // `remove` for them), batched into ONE per-statusCode call.
+    const resp = apigw.commandCalls(UpdateIntegrationResponseCommand);
+    expect(resp).toHaveLength(1);
+    expect(resp[0]!.args[0].input).toMatchObject({
+      restApiId: 'abc',
+      resourceId: '9zav19',
+      httpMethod: 'OPTIONS',
+      statusCode: '204',
+      patchOperations: [
+        { op: 'replace', path: '/selectionPattern', value: '' },
+        { op: 'replace', path: '/contentHandling', value: '' },
+      ],
+    });
+  });
+
+  it('a declared-drift (add) op replaces with the desired value', async () => {
+    apigw.on(UpdateIntegrationCommand).resolves({});
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/Integration/PassthroughBehavior',
+        value: 'WHEN_NO_TEMPLATES',
+        human: 'x',
+      },
+    ];
+    await resolveSdkWriter('AWS::ApiGateway::Method', ops)!(apigwCtx(), ops);
+    expect(apigw.commandCalls(UpdateIntegrationCommand)[0]!.args[0].input).toMatchObject({
+      patchOperations: [
+        { op: 'replace', path: '/passthroughBehavior', value: 'WHEN_NO_TEMPLATES' },
+      ],
+    });
+  });
+
+  it('throws on an unparseable Method physical id', async () => {
+    const ops: PatchOp[] = [rmOp('/Integration/PassthroughBehavior')];
+    await expect(
+      resolveSdkWriter('AWS::ApiGateway::Method', ops)!(ctx({ physicalId: 'bad' }), ops)
+    ).rejects.toThrow(/cannot parse ApiGateway Method id/);
+  });
 });
 
 describe('EventBusPolicy writer (CC RFC6902 patch fails on a singular-object Statement)', () => {

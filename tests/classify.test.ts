@@ -4528,3 +4528,68 @@ describe('unordered-set props are order-stable in the live model (WAVE24 — bas
     expect(a?.actual).not.toEqual(b?.actual);
   });
 });
+
+describe('NESTED_ARRAY_IDENTITY (ApiGateway Method IntegrationResponses keyed by StatusCode)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const method = (integration: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'ApiOPTIONS',
+    resourceType: 'AWS::ApiGateway::Method',
+    physicalId: 'abc|9zav19|OPTIONS',
+    declared: {
+      HttpMethod: 'OPTIONS',
+      AuthorizationType: 'NONE',
+      Integration: integration,
+    },
+  });
+
+  it('descends IntegrationResponses by StatusCode and emits a live-only SelectionPattern / ContentHandling', () => {
+    const declared = method({
+      Type: 'MOCK',
+      IntegrationResponses: [{ StatusCode: '204', ResponseTemplates: { 'application/json': 'x' } }],
+    });
+    const live = {
+      HttpMethod: 'OPTIONS',
+      AuthorizationType: 'NONE',
+      Integration: {
+        Type: 'MOCK',
+        IntegrationResponses: [
+          {
+            StatusCode: '204',
+            ResponseTemplates: { 'application/json': 'x' },
+            SelectionPattern: '5\\d{2}', // out-of-band "HTTP error regex"
+            ContentHandling: 'CONVERT_TO_TEXT', // out-of-band "content handling"
+          },
+        ],
+      },
+    };
+    const undeclared = classifyResource(declared, live, bare)
+      .filter((f) => f.tier === 'undeclared')
+      .map((f) => f.path)
+      .sort();
+    expect(undeclared).toContain('Integration.IntegrationResponses[204].SelectionPattern');
+    expect(undeclared).toContain('Integration.IntegrationResponses[204].ContentHandling');
+  });
+
+  it('a clean IntegrationResponses (no extra sub-keys) yields no undeclared drift', () => {
+    const el = { StatusCode: '204', ResponseTemplates: { 'application/json': 'x' } };
+    const findings = classifyResource(
+      method({ Type: 'MOCK', IntegrationResponses: [el] }),
+      {
+        HttpMethod: 'OPTIONS',
+        AuthorizationType: 'NONE',
+        Integration: { Type: 'MOCK', IntegrationResponses: [el] },
+      },
+      bare
+    );
+    expect(findings.filter((f) => f.tier === 'undeclared')).toHaveLength(0);
+  });
+});

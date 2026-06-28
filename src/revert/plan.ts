@@ -14,7 +14,7 @@ import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import { awsManagedTags, JSON_STRING_PROPS, KNOWN_DEFAULTS } from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
-import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
+import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
@@ -108,6 +108,15 @@ export function isManagedPolicyAttachmentMember(f: Finding): boolean {
     f.resourceType === 'AWS::IAM::ManagedPolicy' &&
     /^(Roles|Users|Groups)\[.+\]$/.test(f.path)
   );
+}
+
+// A nested finding path a type-specific SDK writer can revert PRECISELY (SDK_NESTED_WRITERS) —
+// e.g. an ApiGateway Method's Integration.IntegrationResponses[<sc>].SelectionPattern. Like
+// isManagedPolicyAttachmentMember, it lifts the path off the "nested undeclared is
+// record-only" bar (which exists only because a flat RFC6902 patch can't target a deep
+// sub-field) and routes it to the writer instead of Cloud Control.
+export function isNestedSdkWritable(f: Finding): boolean {
+  return SDK_NESTED_WRITERS[f.resourceType]?.match(f.path) ?? false;
 }
 
 export interface PatchOp {
@@ -294,7 +303,7 @@ export function buildRevertPlan(
     // record is reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested
     // path. A top-level undeclared path is a single key (never contains '.'/'['), and
     // declared drift is a different tier — so this never blocks a top-level revert.
-    if (isUnrevertableNested(f) && !isManagedPolicyAttachmentMember(f)) {
+    if (isUnrevertableNested(f) && !isManagedPolicyAttachmentMember(f) && !isNestedSdkWritable(f)) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
@@ -382,6 +391,11 @@ export function buildRevertPlan(
     // by kind (+ path when prop-scoped) so each item resolves to ONE writer.
     const propScoped =
       !SDK_WRITERS[f.resourceType] && SDK_PROP_WRITERS[f.resourceType]?.[f.path] !== undefined;
+    // A nested-path SDK writer (SDK_NESTED_WRITERS) reverts a DEEP sub-field its predicate
+    // matches (e.g. ApiGateway Method integration knobs). Unlike propScoped, every matching
+    // nested op of one resource batches into ONE sdk item (no path suffix in the key below) —
+    // the writer translates them to the type's native granular API in one or few calls.
+    const nestedScoped = !SDK_WRITERS[f.resourceType] && !propScoped && isNestedSdkWritable(f);
     // A JSON-string property (JSON_STRING_PROPS) can NEVER be reverted via Cloud Control:
     // CC re-serializes the JSON it stores into the provider's string field with spaces,
     // which the provider rejects (Config: "Blank spaces are not acceptable") — proven live.
@@ -401,7 +415,8 @@ export function buildRevertPlan(
       });
       continue;
     }
-    const kind: RevertItem['kind'] = SDK_WRITERS[f.resourceType] || propScoped ? 'sdk' : 'cc';
+    const kind: RevertItem['kind'] =
+      SDK_WRITERS[f.resourceType] || propScoped || nestedScoped ? 'sdk' : 'cc';
 
     const op = revertOp(f, recorded);
     const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
@@ -419,7 +434,20 @@ export function buildRevertPlan(
     itemsByLogical.set(key, item);
   }
 
-  return { items: [...itemsByLogical.values()], notRevertable };
+  // Order DELETE items LAST. A `delete` (out-of-band `added` resource) can be REFERENCED
+  // by an undeclared property on another resource in the SAME plan — e.g. an ApiGateway
+  // Method's undeclared `RequestValidatorId` points at the out-of-band RequestValidator the
+  // plan also deletes. The provider rejects deleting a still-referenced resource, so the
+  // dereference (property remove/revert via cc/sdk) MUST run before the delete. Apply order
+  // == plan order (stack-actions iterates plan.items), so fix it here once: a STABLE
+  // partition keeps every property write ahead of every delete while preserving the
+  // relative order within each group (so the picker / dry-run preview match apply order).
+  const ordered = [...itemsByLogical.values()];
+  const items = [
+    ...ordered.filter((i) => i.kind !== 'delete'),
+    ...ordered.filter((i) => i.kind === 'delete'),
+  ];
+  return { items, notRevertable };
 }
 
 function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {

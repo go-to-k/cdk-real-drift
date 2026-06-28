@@ -199,21 +199,20 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
 
   const byTier = (t: Tier) => findings.filter((f) => f.tier === t && !f.unrecorded);
   const unrecordedItems = findings.filter((f) => f.unrecorded === true);
-  // R96: a NESTED unrecorded value (a live sub-key inside a DECLARED object the
-  // template never set) folds by default — the live model carries many nested AWS
-  // defaults, so listing them all would re-flood the first run R86 worked to quiet.
-  // Top-level unrecorded values still list in full in [Potential Drift]; the nested ones
-  // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
-  // record records them, so a later out-of-band change to one surfaces as drift.
-  // EXCEPTION: a free-form map key (freeFormKey — a live-only sub-key under Lambda
-  // Environment.Variables, Glue Parameters, …) is user-authored, NOT an AWS-materialized
-  // nested default, so it is shown in full like a top-level value, never folded.
-  const expandNested = !!opts.verbose || !!opts.expandAtDefault;
-  const isFolded = (f: Finding): boolean => f.nested === true && !f.freeFormKey;
-  const unrecordedShown = expandNested
-    ? unrecordedItems
-    : unrecordedItems.filter((f) => !isFolded(f));
-  const nestedFolded = expandNested ? [] : unrecordedItems.filter(isFolded);
+  // SURFACE every nested undeclared value (a live sub-key inside a DECLARED object the
+  // template never set) in [Potential Drift], like a top-level one. R96 originally FOLDED
+  // them behind a count + --show-all because the live model materializes many nested AWS
+  // defaults. But those catalogued defaults are already removed UPSTREAM (atDefault /
+  // generated / KNOWN_DEFAULT_PATHS / schema defaults), so what still reaches the report as
+  // tier:undeclared nested is a NON-default value the user most likely set out of band —
+  // e.g. an ApiGateway Method Integration.PassthroughBehavior=NEVER or an
+  // IntegrationResponses[x].SelectionPattern. That undeclared-property dimension IS cdkrd's
+  // differentiator, so hiding it defeated the point. An uncatalogued AWS-populated nested
+  // value that slips through is quieted by EXTENDING KNOWN_DEFAULT_PATHS (the same catalogue
+  // model as top-level), never by hiding the whole class. `nestedFolded` stays (empty) so the
+  // folded-count machinery below is a no-op rather than a special case.
+  const unrecordedShown = unrecordedItems;
+  const nestedFolded: Finding[] = [];
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
@@ -240,10 +239,8 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // When STANDOUT live-only values have no baseline yet, say so up front: with nothing
   // to compare against, cdkrd genuinely CANNOT tell whether they are intentional or an
   // out-of-band change — that ambiguity (not "all clear") is why they are POTENTIAL
-  // drift. Gated on the SHOWN (standout) count, NOT the total: a fresh deploy carries
-  // many FOLDED nested AWS-populated values (undeclared-subkey, R96) that exist whether
-  // or not anyone touched the console — those are inventory to record, not potential
-  // drift, so they must not trigger this "can't be confirmed as drift" preamble.
+  // drift. Gated on the SHOWN count: nested undeclared values now surface too (R96 fold
+  // removed), and they are exactly the live-only sub-keys this preamble describes.
   if (unrecordedShown.length > 0) {
     log(
       style.undeclaredTier(
@@ -285,12 +282,11 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // counting only what is SHOWN (folded values are not findings, just a parenthetical).
   // The combined framing fires ONLY in this mixed case; single-category runs keep their
   // natural verdict (CLEAN / N drift / inventory note) — the mismatch can't arise there.
-  // "potential drift" counts ONLY the SHOWN standout (top-level) live-only values — the
-  // ones cdkrd surfaces as worth a look. FOLDED nested values (undeclared-subkey, R96)
-  // are AWS-populated noise present on ANY fresh deploy regardless of console action, so
-  // they are inventory to RECORD, not potential drift: an untouched stack must read
-  // "no confirmed drift", never "N potential drift". A `(+ N nested live-only to record)`
-  // tail keeps the folded count visible without inflating the headline.
+  // "potential drift" counts the SHOWN live-only values — which now include nested
+  // undeclared sub-keys (R96's fold was removed: catalogued AWS defaults are stripped
+  // upstream, so a surviving nested undeclared value is a real out-of-band setting worth
+  // surfacing). `folded` is therefore 0 in practice; the `(+ N nested live-only to record)`
+  // tail and the folded branches below stay only so a future re-fold needs no rewiring.
   const shown = unrecordedShown.length;
   const folded = unrecordedFoldedCount;
   const nestedTail = folded > 0 ? ` (+ ${folded} nested live-only to record)` : '';

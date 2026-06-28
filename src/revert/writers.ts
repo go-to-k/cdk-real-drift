@@ -22,6 +22,12 @@
 //     filters/types on write. Too divergent from the reader to revert safely ->
 //     left not-revertable.
 import {
+  APIGatewayClient,
+  type PatchOperation,
+  UpdateIntegrationCommand,
+  UpdateIntegrationResponseCommand,
+} from '@aws-sdk/client-api-gateway';
+import {
   CloudFrontClient,
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -983,6 +989,103 @@ const writeCognitoIdentityPoolEvents: SdkWriter = async (ctx, ops) => {
   await c.send(new SetCognitoEventsCommand({ IdentityPoolId: id, Events: events }));
 };
 
+// An ApiGateway Method's Integration knobs live under a NESTED path Cloud Control cannot
+// patch reliably: the array-element ones (Integration.IntegrationResponses[<sc>].*) are
+// unaddressable by a flat RFC6902 pointer (the `[sc]` bracket survives as a literal key,
+// the same reason R78 abandoned index array patches), and CC's whole-Method read-modify-
+// write is fiddly for the integration sub-object. API Gateway's native granular patch API
+// (UpdateIntegration / UpdateIntegrationResponse with PatchOperations) targets each knob
+// exactly, so route these specific paths here. Mirrors isManagedPolicyAttachmentMember: a
+// nested undeclared value WITH a precise flat SDK op is exempt from the record-only bar.
+//   - Integration-level:  Integration.{PassthroughBehavior,ContentHandling,TimeoutInMillis}
+//   - Response-level:      Integration.IntegrationResponses[<statusCode>].{SelectionPattern,ContentHandling}
+const APIGW_INTEGRATION_KNOB =
+  /^Integration\.(PassthroughBehavior|ContentHandling|TimeoutInMillis)$|^Integration\.IntegrationResponses\[[^\]]+\]\.(SelectionPattern|ContentHandling)$/;
+export const isApiGatewayIntegrationKnobPath = (path: string): boolean =>
+  APIGW_INTEGRATION_KNOB.test(path);
+
+// Per-knob revert target: the API Gateway patch path + the value to RESET to when the knob
+// was undeclared. API Gateway REJECTS `op: remove` for every one of these (`Invalid patch
+// path /selectionPattern` — proven live), so the reset is always a `replace`:
+//   - PassthroughBehavior / TimeoutInMillis -> their AWS default (WHEN_NO_MATCH / 29000).
+//   - ContentHandling / SelectionPattern    -> the EMPTY STRING, which is the cleared state:
+//     `replace /contentHandling ""` makes CC read it ABSENT, and `replace /selectionPattern
+//     ""` leaves a "" the compare folds as trivially-empty (both proven live). So after a
+//     revert the knob no longer surfaces.
+// A declared-drift revert (`add` op) replaces with the desired template value instead.
+const APIGW_KNOB_RESET: Record<string, { patchPath: string; resetTo: string }> = {
+  PassthroughBehavior: { patchPath: '/passthroughBehavior', resetTo: 'WHEN_NO_MATCH' },
+  TimeoutInMillis: { patchPath: '/timeoutInMillis', resetTo: '29000' },
+  ContentHandling: { patchPath: '/contentHandling', resetTo: '' },
+  SelectionPattern: { patchPath: '/selectionPattern', resetTo: '' },
+};
+
+// dotted finding leaf field for a revert op whose RFC6902 pointer is `/Integration/<field>`
+// or `/Integration/IntegrationResponses[<sc>]/<field>`. Returns the patch op + which call
+// (integration-level, or response-level keyed by statusCode) applies it.
+function apigwKnobPatch(op: PatchOp): {
+  statusCode?: string;
+  patch: PatchOperation;
+} {
+  const segs = op.path
+    .split('/')
+    .slice(1)
+    .map((s) => s.replace(/~1/g, '/').replace(/~0/g, '~'));
+  const responseSeg = segs[1]?.match(/^IntegrationResponses\[(.+)\]$/);
+  const field = (responseSeg ? segs[2] : segs[1]) ?? '';
+  const knob = APIGW_KNOB_RESET[field];
+  if (!knob) throw new Error(`unsupported ApiGateway integration knob: ${op.path}`);
+  // `add` = restore the declared value; `remove` = reset an undeclared one. API Gateway
+  // rejects `op: remove` for these knobs, so always `replace` (with the desired, or the
+  // reset value).
+  const value = op.op === 'add' ? String(op.value) : knob.resetTo;
+  return {
+    ...(responseSeg && { statusCode: responseSeg[1] }),
+    patch: { op: 'replace', path: knob.patchPath, value },
+  };
+}
+
+// Revert an ApiGateway Method's nested Integration knobs (see isApiGatewayIntegrationKnobPath)
+// via API Gateway's native granular patch API. Integration-level ops batch into one
+// UpdateIntegration; response-level ops batch per statusCode into UpdateIntegrationResponse.
+const writeApiGatewayMethodIntegration: SdkWriter = async (ctx, ops) => {
+  const [restApiId, resourceId, httpMethod] = ctx.physicalId.split('|');
+  if (!restApiId || !resourceId || !httpMethod)
+    throw new Error(
+      `cannot parse ApiGateway Method id "${ctx.physicalId}" (RestApiId|ResourceId|HttpMethod)`
+    );
+  const integrationPatches: PatchOperation[] = [];
+  const responsePatches = new Map<string, PatchOperation[]>();
+  for (const op of ops) {
+    const { statusCode, patch } = apigwKnobPatch(op);
+    if (statusCode === undefined) integrationPatches.push(patch);
+    else
+      (
+        responsePatches.get(statusCode) ?? responsePatches.set(statusCode, []).get(statusCode)!
+      ).push(patch);
+  }
+  const c = new APIGatewayClient({ region: ctx.region });
+  if (integrationPatches.length > 0)
+    await c.send(
+      new UpdateIntegrationCommand({
+        restApiId,
+        resourceId,
+        httpMethod,
+        patchOperations: integrationPatches,
+      })
+    );
+  for (const [statusCode, patchOperations] of responsePatches)
+    await c.send(
+      new UpdateIntegrationResponseCommand({
+        restApiId,
+        resourceId,
+        httpMethod,
+        statusCode,
+        patchOperations,
+      })
+    );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -1021,13 +1124,43 @@ export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   },
 };
 
-/** Resolve the SDK writer for a kind='sdk' revert item: the whole-type writer, or
- *  the property-scoped writer matching the item's ops (all ops in a prop-scoped
- *  item share one top-level pointer — plan.ts groups by exact finding path). */
+// SDK writers for NESTED finding paths (a sub-key inside a declared object — dotted or
+// array-element). Unlike SDK_PROP_WRITERS, which keys on an EXACT top-level finding path,
+// these match by PREDICATE because the targetable knob is deep (e.g. an ApiGateway Method's
+// Integration.IntegrationResponses[<statusCode>].SelectionPattern). A matching nested path is
+// (a) exempt from the "nested undeclared is record-only" revert bar (plan.ts) and (b) routed
+// to the writer, which translates each op to the type's native granular API.
+export interface NestedWriterSpec {
+  match: (path: string) => boolean;
+  writer: SdkWriter;
+}
+export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
+  'AWS::ApiGateway::Method': {
+    match: isApiGatewayIntegrationKnobPath,
+    writer: writeApiGatewayMethodIntegration,
+  },
+};
+
+// dotted finding path for a revert op's RFC6902 pointer (`/A/B[x]/c` -> `A.B[x].c`).
+function pointerToDotted(pointer: string): string {
+  return pointer
+    .split('/')
+    .slice(1)
+    .map((s) => s.replace(/~1/g, '/').replace(/~0/g, '~'))
+    .join('.');
+}
+
+/** Resolve the SDK writer for a kind='sdk' revert item: the whole-type writer, the
+ *  property-scoped writer matching the item's ops (all ops in a prop-scoped item share one
+ *  top-level pointer — plan.ts groups by exact finding path), or a nested-path writer whose
+ *  predicate matches the ops' (deep) finding path. */
 export function resolveSdkWriter(resourceType: string, ops: PatchOp[]): SdkWriter | undefined {
   const whole = SDK_WRITERS[resourceType];
   if (whole) return whole;
   const byProp = SDK_PROP_WRITERS[resourceType];
   const top = ops[0]?.path.split('/')[1]?.replace(/~1/g, '/').replace(/~0/g, '~');
-  return byProp && top ? byProp[top] : undefined;
+  if (byProp && top && byProp[top]) return byProp[top];
+  const nested = SDK_NESTED_WRITERS[resourceType];
+  if (nested && ops[0] && nested.match(pointerToDotted(ops[0].path))) return nested.writer;
+  return undefined;
 }
