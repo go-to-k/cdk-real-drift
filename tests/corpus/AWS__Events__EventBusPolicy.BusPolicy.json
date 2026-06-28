@@ -1,0 +1,54 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BusPolicy",
+    "resourceType": "AWS::Events::EventBusPolicy",
+    "physicalId": "CdkRealDriftIntegEventBusPolicyReadgap-bus|AllowSelfPutEvents",
+    "constructPath": "CdkRealDriftIntegEventBusPolicyReadgap/BusPolicy",
+    "declared": {
+      "EventBusName": "CdkRealDriftIntegEventBusPolicyReadgap-bus",
+      "Statement": {
+        "Sid": "AllowSelfPutEvents",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::111111111111:root"
+        },
+        "Action": "events:PutEvents",
+        "Resource": "arn:aws:events:us-east-1:111111111111:event-bus/CdkRealDriftIntegEventBusPolicyReadgap-bus"
+      },
+      "StatementId": "AllowSelfPutEvents"
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "CdkRealDriftIntegEventBusPolicyReadgap-bus",
+    "StatementId": "AllowSelfPutEvents",
+    "Statement": {
+      "Action": "events:PutEvents",
+      "Resource": "arn:aws:events:us-east-1:111111111111:event-bus/CdkRealDriftIntegEventBusPolicyReadgap-bus",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111111111111:root"
+      },
+      "Sid": "AllowSelfPutEvents"
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["Action", "Condition", "Principal"],
+    "createOnly": ["EventBusName", "StatementId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["Action", "Condition", "Principal"],
+    "createOnlyPaths": ["EventBusName", "StatementId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [],
+  "description": "AWS::Events::EventBusPolicy reads cleanly via Cloud Control (the CFn physical id IS the EventBusName|StatementId composite). Its live Statement is a SINGULAR object; classify canonicalizes it to a one-element array. Detection works; revert routes to the SDK PutPermission writer (a CC RFC6902 patch would build an indexed op the raw model lacks)."
+}
