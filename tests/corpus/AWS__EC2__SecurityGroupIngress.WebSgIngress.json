@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebServiceSecurityGroupfromCdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F408013CF9C8D",
+    "resourceType": "AWS::EC2::SecurityGroupIngress",
+    "physicalId": "sgr-0f22ac16d7a19bd95",
+    "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/Service/SecurityGroup/from CdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F40:80",
+    "declared": {
+      "Description": "Load balancer to target",
+      "FromPort": 80,
+      "GroupId": "sg-0e1d238d8265ebe4b",
+      "IpProtocol": "tcp",
+      "SourceSecurityGroupId": "sg-0b5e58abecfacf5a7",
+      "ToPort": 80
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegDogfoodWebapp-WebServiceSecurityGroupBAF50CC8-Uhwf3Gj3nM2K",
+    "Description": "Load balancer to target",
+    "FromPort": 80,
+    "SourceSecurityGroupName": "CdkRealDriftIntegDogfoodWebapp-WebLBSecurityGroupAD942A36-s0hAAOAkGDag",
+    "ToPort": 80,
+    "SourceSecurityGroupOwnerId": "111111111111",
+    "IpProtocol": "tcp",
+    "Id": "sgr-0f22ac16d7a19bd95",
+    "SourceSecurityGroupId": "sg-0b5e58abecfacf5a7",
+    "GroupId": "sg-0e1d238d8265ebe4b"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "WebServiceSecurityGroupfromCdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F408013CF9C8D",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "GroupName",
+      "actual": "CdkRealDriftIntegDogfoodWebapp-WebServiceSecurityGroupBAF50CC8-Uhwf3Gj3nM2K",
+      "physicalId": "sgr-0f22ac16d7a19bd95",
+      "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/Service/SecurityGroup/from CdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F40:80"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebServiceSecurityGroupfromCdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F408013CF9C8D",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "SourceSecurityGroupName",
+      "actual": "CdkRealDriftIntegDogfoodWebapp-WebLBSecurityGroupAD942A36-s0hAAOAkGDag",
+      "physicalId": "sgr-0f22ac16d7a19bd95",
+      "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/Service/SecurityGroup/from CdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F40:80"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WebServiceSecurityGroupfromCdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F408013CF9C8D",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "SourceSecurityGroupOwnerId",
+      "actual": "111111111111",
+      "physicalId": "sgr-0f22ac16d7a19bd95",
+      "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/Service/SecurityGroup/from CdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F40:80"
+    }
+  ],
+  "description": "Standalone EC2 SG rule resource emitted when two security groups cross-reference each other (ALB SG <-> ECS service SG), harvested from the dogfood-webapp realistic stack. Reads clean (no FP)."
+}
