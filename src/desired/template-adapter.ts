@@ -63,6 +63,18 @@ export function buildResolverContext(
     if (def && 'Default' in def) params[k] = toParam(k, String(def.Default));
   }
   for (const [k, v] of Object.entries(stackParams)) params[k] = toParam(k, v); // deployed values win
+  // logicalId -> type and -> raw declared Properties, for resolveGetAtt's
+  // declared-property-mirroring attributes (GETATT_DECLARED_PROPERTY).
+  const templateResources = (template.Resources ?? {}) as Record<
+    string,
+    { Type?: string; Properties?: Record<string, unknown> }
+  >;
+  const typeOf: Record<string, string> = {};
+  const declaredRawProps: Record<string, Record<string, unknown>> = {};
+  for (const [lid, res] of Object.entries(templateResources)) {
+    if (res?.Type) typeOf[lid] = res.Type;
+    if (res?.Properties) declaredRawProps[lid] = res.Properties;
+  }
   return {
     params,
     pseudo: {
@@ -76,6 +88,8 @@ export function buildResolverContext(
     conditions: template.Conditions ?? {},
     physIds,
     liveAttrs: {},
+    typeOf,
+    declaredRawProps,
     mappings: template.Mappings ?? {},
     exports: {}, // populated by loadDesired's prefetch only when the template references Fn::ImportValue
     condCache: new Map(),

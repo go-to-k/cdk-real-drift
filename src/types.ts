@@ -117,6 +117,15 @@ export interface ResolverContext {
   // resolve Fn::GetAtt against real attributes instead of guessing ARN formats.
   // Empty on the first (pre-live-read) resolve pass; populated for the re-resolve.
   liveAttrs: Record<string, Record<string, unknown>>;
+  // logicalId -> resource type, and logicalId -> RAW declared Properties. Used by
+  // resolveGetAtt to resolve an Fn::GetAtt whose attribute MIRRORS a declared property
+  // (GETATT_DECLARED_PROPERTY, e.g. an IdentityPool's readOnly `Name` == its declared
+  // `IdentityPoolName`) against the template-declared value instead of the live value —
+  // so an out-of-band change to that resource does not cascade into phantom drift on
+  // every consumer that interpolates the attribute into one of its own declared
+  // properties. Optional: pre-resolver-context call sites (tests) may omit them.
+  typeOf?: Record<string, string>;
+  declaredRawProps?: Record<string, Record<string, unknown>>;
   // template.Mappings (MapName -> TopKey -> SecondKey -> value), for Fn::FindInMap
   mappings: Record<string, Record<string, Record<string, unknown>>>;
   exports: Record<string, string>; // CFn export Name -> Value, for Fn::ImportValue (prefetched)

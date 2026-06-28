@@ -140,6 +140,42 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::GetAtt': ['Ghost', 'Arn'] }, c)).toBe(UNRESOLVED);
   });
 
+  // A GetAtt attribute that MIRRORS a declared property (an IdentityPool's readOnly
+  // `Name` == its declared `IdentityPoolName`) must resolve to the DECLARED value, not
+  // the live one — else renaming the pool in the console cascades into phantom drift on
+  // every consumer that bakes the name into one of its own declared properties (the
+  // authenticated/unauthenticated Role `Description`).
+  it('Fn::GetAtt of a declared-property-mirroring attr resolves to the DECLARED value, not live', () => {
+    const c = ctx({
+      typeOf: { IdPool: 'AWS::Cognito::IdentityPool' },
+      declaredRawProps: { IdPool: { IdentityPoolName: 'my-pool' } },
+      liveAttrs: { IdPool: { Id: 'us-east-1:abc', Name: 'my-pool-RENAMED' } },
+    });
+    expect(resolve({ 'Fn::GetAtt': ['IdPool', 'Name'] }, c)).toBe('my-pool');
+    expect(
+      resolve(
+        {
+          'Fn::Join': [
+            '',
+            ['Default Authenticated Role for Identity Pool ', { 'Fn::GetAtt': ['IdPool', 'Name'] }],
+          ],
+        },
+        c
+      )
+    ).toBe('Default Authenticated Role for Identity Pool my-pool');
+    // a NON-mirroring attribute (Id) still resolves against live
+    expect(resolve({ 'Fn::GetAtt': ['IdPool', 'Id'] }, c)).toBe('us-east-1:abc');
+  });
+
+  it('Fn::GetAtt of a mirroring attr falls back to LIVE when the declared property is absent', () => {
+    const c = ctx({
+      typeOf: { IdPool: 'AWS::Cognito::IdentityPool' },
+      declaredRawProps: { IdPool: {} }, // auto-named pool: no IdentityPoolName declared
+      liveAttrs: { IdPool: { Name: 'auto-generated' } },
+    });
+    expect(resolve({ 'Fn::GetAtt': ['IdPool', 'Name'] }, c)).toBe('auto-generated');
+  });
+
   it('resolveProperties prunes NoValue keys', () => {
     const out = resolveProperties({ A: 'x', B: { Ref: 'AWS::NoValue' } }, ctx());
     expect(out).toEqual({ A: 'x' });

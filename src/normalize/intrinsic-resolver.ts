@@ -225,6 +225,24 @@ export function evalCondition(name: string, ctx: ResolverContext): boolean | typ
   return val;
 }
 
+// A GetAtt attribute that MIRRORS a declared property of the referenced resource:
+// `<resourceType> -> { <getAttAttrName>: <declaredPropertyKey> }`. Such an attribute is
+// fully controlled by the template, so its INTENT is the declared property's value, not
+// the live value. Resolving it against the live model lets an out-of-band change to the
+// referenced resource cascade into PHANTOM drift on every consumer that interpolates the
+// attribute into one of its OWN declared properties — e.g. renaming a Cognito
+// IdentityPool in the console makes the readOnly `Name` GetAtt resolve to the new name,
+// which CDK bakes into each authenticated/unauthenticated Role `Description`
+// ("Default … Role for Identity Pool ${IdPool.Name}"), so the Roles falsely report
+// declared drift even though their live Description (frozen at create time) never
+// changed. Resolving from the declared `IdentityPoolName` instead keeps intent == the
+// real (unchanged) value. Curated, not derived: only listed (type, attr) pairs whose
+// attribute is genuinely a declared property — a runtime-only attribute (ARN, Id,
+// Endpoint) has no declared source and must stay live.
+const GETATT_DECLARED_PROPERTY: Record<string, Record<string, string>> = {
+  'AWS::Cognito::IdentityPool': { Name: 'IdentityPoolName' },
+};
+
 // Resolve Fn::GetAtt against the referenced resource's LIVE model (ctx.liveAttrs),
 // NOT a guessed ARN format. `[LogicalId, AttrName]`; AttrName may be dotted
 // (e.g. "Endpoint.Address"). Returns the live attribute value, or UNRESOLVED
@@ -236,6 +254,20 @@ export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
   if (!Array.isArray(v) || v.length < 2) return UNRESOLVED;
   const logicalId = String(v[0]);
   const attr = String(v[1]);
+  // When the attribute mirrors a declared property, prefer the template-declared value
+  // (intent) over the live value, so out-of-band drift on the referenced resource does
+  // not cascade into phantom drift on consumers. Fall through to live when the declared
+  // property is absent or itself does not statically resolve to a scalar.
+  const type = ctx.typeOf?.[logicalId];
+  const declaredKey = type ? GETATT_DECLARED_PROPERTY[type]?.[attr] : undefined;
+  if (declaredKey !== undefined) {
+    const rawProps = ctx.declaredRawProps?.[logicalId];
+    if (rawProps && declaredKey in rawProps) {
+      const declared = resolve(rawProps[declaredKey], ctx);
+      if (declared !== UNRESOLVED && declared !== NOVALUE && isScalarInterpolant(declared))
+        return declared;
+    }
+  }
   const model = ctx.liveAttrs[logicalId];
   if (!model) return UNRESOLVED;
   const got = getPath(model, attr.split('.'));

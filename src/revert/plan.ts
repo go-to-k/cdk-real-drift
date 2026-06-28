@@ -24,7 +24,14 @@ import { SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 // GetSchedule with the declared GroupName), but CC can update it fine. Verified live —
 // a schedule State revert via CC succeeds for the common default-group case. (A
 // non-default-group schedule would fail at apply with a clear AWS error, not silently.)
-const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>(['AWS::Scheduler::Schedule']);
+// AWS::Cognito::IdentityPool: the override exists only to ENRICH the CC read with the
+// writeOnly CognitoEvents (CC reads/updates every base property — AllowClassicFlow,
+// providers, … — fine). So base-property reverts route through CC UpdateResource as
+// normal; only the CognitoEvents path takes its dedicated SDK_PROP_WRITER.
+const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
+  'AWS::Scheduler::Schedule',
+  'AWS::Cognito::IdentityPool',
+]);
 
 // Properties whose undeclared "appeared since record" revert must EXPLICITLY write the
 // AWS default value (an `add` of KNOWN_DEFAULTS[type][path]) instead of an RFC6902
@@ -50,6 +57,10 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>(['AWS::Scheduler::Sc
 const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::IAM::Role\0MaxSessionDuration',
   'AWS::Lambda::Alias\0Description',
+  // Cognito UpdateIdentityPool ignores an omitted AllowClassicFlow (live-observed: a
+  // `remove` revert of an out-of-band `true` is a silent no-op), so write the `false`
+  // default explicitly.
+  'AWS::Cognito::IdentityPool\0AllowClassicFlow',
 ]);
 
 /**
