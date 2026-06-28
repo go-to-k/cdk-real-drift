@@ -455,8 +455,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   (supplement an `AWS::ElastiCache::ReplicationGroup` with its writeOnly
   `PreferredMaintenanceWindow` / `NotificationTopicArn` / `EngineVersion`, read
   from the member cache cluster), `ecs:DescribeServices` (supplements an
-  `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration`, read from
-  the PRIMARY deployment), `servicediscovery:GetNamespace` (reads a Cloud Map
+  `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration` /
+  `VolumeConfigurations`, read from the PRIMARY deployment),
+  `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)
 - Optional: `kms:ListAliases` enables strict verification that a declared
@@ -478,9 +479,9 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 `glue:UpdateTable`, `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
 `config:DescribeConfigRules` / `config:PutConfigRule`,
-`ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration`
-drift — the whole writeOnly config is re-supplied, since Cloud Control cannot
-sub-path patch it).
+`ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
+`VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
+Control cannot sub-path patch it).
 
 </details>
 

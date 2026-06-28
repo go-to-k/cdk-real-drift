@@ -963,4 +963,63 @@ describe('readLive (SDK supplement path — ECS Service ServiceConnectConfigurat
     expect(r.live).toEqual({ ServiceName: 's' });
     expect(r.skippedReason).toBeUndefined();
   });
+
+  it('also reconstructs VolumeConfigurations and drops the AWS-defaulted FilesystemType "xfs"', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"s"}' },
+    });
+    ecs.on(DescribeServicesCommand).resolves({
+      services: [
+        {
+          deployments: [
+            {
+              status: 'PRIMARY',
+              volumeConfigurations: [
+                {
+                  name: 'vol',
+                  managedEBSVolume: {
+                    volumeType: 'gp3',
+                    sizeInGiB: 10,
+                    roleArn: 'arn:aws:iam::1:role/r',
+                    filesystemType: 'xfs', // AWS default -> dropped
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    expect(r.live).toEqual({
+      ServiceName: 's',
+      VolumeConfigurations: [
+        {
+          Name: 'vol',
+          ManagedEBSVolume: { VolumeType: 'gp3', SizeInGiB: 10, RoleArn: 'arn:aws:iam::1:role/r' },
+        },
+      ],
+    });
+  });
+
+  it('keeps a non-default FilesystemType', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    ecs.on(DescribeServicesCommand).resolves({
+      services: [
+        {
+          deployments: [
+            {
+              status: 'PRIMARY',
+              volumeConfigurations: [
+                { name: 'vol', managedEBSVolume: { roleArn: 'r', filesystemType: 'ext4' } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    const vols = (r.live?.VolumeConfigurations as Record<string, unknown>[])[0];
+    expect((vols?.ManagedEBSVolume as Record<string, unknown>).FilesystemType).toBe('ext4');
+  });
 });

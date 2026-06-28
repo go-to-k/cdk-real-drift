@@ -58,10 +58,10 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
     'NotificationTopicArn',
     'EngineVersion',
   ],
-  // AWS::ECS::Service `ServiceConnectConfiguration` is writeOnly (CC never echoes it —
-  // it lives on the service's deployments); the SDK_SUPPLEMENTS reader reconstructs it
-  // from the PRIMARY deployment, so compare it, don't readGap it.
-  'AWS::ECS::Service': ['ServiceConnectConfiguration'],
+  // AWS::ECS::Service `ServiceConnectConfiguration` / `VolumeConfigurations` are writeOnly
+  // (CC never echoes them — they live on the service's deployments); the SDK_SUPPLEMENTS
+  // reader reconstructs both from the PRIMARY deployment, so compare them, don't readGap.
+  'AWS::ECS::Service': ['ServiceConnectConfiguration', 'VolumeConfigurations'],
 };
 
 // Remove the override-readable writeOnly props from a type's writeOnly sets so the
