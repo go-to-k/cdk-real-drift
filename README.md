@@ -454,7 +454,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
   (supplement an `AWS::ElastiCache::ReplicationGroup` with its writeOnly
   `PreferredMaintenanceWindow` / `NotificationTopicArn` / `EngineVersion`, read
-  from the member cache cluster)
+  from the member cache cluster), `ecs:DescribeServices` (supplements an
+  `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration`, read from
+  the PRIMARY deployment), `servicediscovery:GetNamespace` (reads a Cloud Map
+  `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
+  ECS Service Connect namespace `Fn::GetAtt` resolves against)
 - Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the

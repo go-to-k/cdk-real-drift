@@ -16,6 +16,14 @@ import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
 
+// Per type, the writeOnly props that an SDK_SUPPLEMENTS reader makes COMPARABLE
+// (detection works) but Cloud Control still cannot revert via a nested sub-path patch
+// (CC can't navigate into a writeOnly prop it can't read). Revert is deferred to a
+// type-specific SDK writer; until then findings under these paths are not-revertable.
+const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {
+  'AWS::ECS::Service': ['ServiceConnectConfiguration'],
+};
+
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
 // UpdateResource revert is valid and they are EXEMPT from the "read-override => not
@@ -412,6 +420,31 @@ export function buildRevertPlan(
         path: f.path,
         reason:
           'JSON-string property — revert needs a type-specific SDK writer (not available yet)',
+      });
+      continue;
+    }
+    // A writeOnly property an SDK_SUPPLEMENTS reader makes COMPARABLE (so drift on it is
+    // detected) but that Cloud Control still cannot sub-path patch: CC cannot navigate
+    // INTO a writeOnly prop it can't read, so an `add` at a nested path (e.g. ECS
+    // ServiceConnectConfiguration.Services.0.ClientAliases.0.DnsName) is rejected ("can
+    // only be updated using 'add' operation") — only re-supplying the WHOLE top-level
+    // prop works, which needs the full declared value threaded to a type-specific SDK
+    // writer. Until that writer exists, report it not-revertable rather than emit a CC
+    // patch that always fails at apply. Detection still works.
+    if (
+      WRITEONLY_NESTED_NO_CC_REVERT[f.resourceType]?.some(
+        (p) => f.path === p || f.path.startsWith(`${p}.`)
+      ) &&
+      !SDK_WRITERS[f.resourceType] &&
+      !propScoped &&
+      !nestedScoped
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'writeOnly nested property — Cloud Control cannot patch a sub-path; revert needs a type-specific SDK writer (not available yet)',
       });
       continue;
     }

@@ -1374,6 +1374,43 @@ describe('SDK overrides', () => {
       ).toBeUndefined();
     });
 
+    it('PrivateDnsNamespace: projects Name/Description AND the readOnly Arn (for GetAtt resolution)', async () => {
+      serviceDiscovery.on(GetNamespaceCommand).resolves({
+        Namespace: {
+          Id: 'ns-priv',
+          Arn: 'arn:aws:servicediscovery:us-east-1:123456789012:namespace/ns-priv',
+          Name: 'svc.internal',
+          Description: 'private',
+          Type: 'DNS_PRIVATE',
+        },
+      });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::PrivateDnsNamespace'](
+        ctx({ Name: 'svc.internal' }, 'ns-priv')
+      );
+      // Arn + Id are kept (readOnly: schema-stripped from compare, but used by an
+      // Fn::GetAtt [<ns>, Arn] that an ECS ServiceConnectConfiguration.Namespace declares).
+      expect(out).toEqual({
+        Name: 'svc.internal',
+        Description: 'private',
+        Arn: 'arn:aws:servicediscovery:us-east-1:123456789012:namespace/ns-priv',
+        Id: 'ns-priv',
+      });
+    });
+
+    it('PublicDnsNamespace: same reader (Arn projected for GetAtt)', async () => {
+      serviceDiscovery.on(GetNamespaceCommand).resolves({
+        Namespace: { Name: 'pub.example.com', Arn: 'arn:...:namespace/ns-pub', Id: 'ns-pub' },
+      });
+      const out = await SDK_OVERRIDES['AWS::ServiceDiscovery::PublicDnsNamespace'](
+        ctx({ Name: 'pub.example.com' }, 'ns-pub')
+      );
+      expect(out).toEqual({
+        Name: 'pub.example.com',
+        Arn: 'arn:...:namespace/ns-pub',
+        Id: 'ns-pub',
+      });
+    });
+
     it('Service: GetService by physical id, projects the CFn-modeled props', async () => {
       serviceDiscovery.on(GetServiceCommand).resolves({
         Service: {

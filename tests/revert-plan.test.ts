@@ -325,6 +325,20 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('a declared drift under ECS ServiceConnectConfiguration (writeOnly, nested) is notRevertable, not a failing CC patch', () => {
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::ECS::Service',
+      path: 'ServiceConnectConfiguration.Services.0.ClientAliases.0.DnsName',
+      desired: 'api',
+      actual: 'api-tampered',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('writeOnly nested property');
+  });
+
   it('a removed-since-record undeclared finding WITH a physical id is revertable (re-adds the value)', () => {
     // applyBaseline now stamps the synthesized "baseline value removed since record"
     // finding with the live physical id, so revert can restore the value it carries.
