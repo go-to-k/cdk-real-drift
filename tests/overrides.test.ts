@@ -1338,7 +1338,7 @@ describe('SDK overrides', () => {
   });
 
   describe('ServiceDiscovery (Cloud Map CC read gap)', () => {
-    it('HttpNamespace: GetNamespace by physical id, projects Name + Description only', async () => {
+    it('HttpNamespace: GetNamespace by physical id, projects Name/Description + readOnly Arn/Id', async () => {
       serviceDiscovery.on(GetNamespaceCommand).resolves({
         Namespace: {
           Id: 'ns-abc',
@@ -1356,8 +1356,15 @@ describe('SDK overrides', () => {
       expect(serviceDiscovery.commandCalls(GetNamespaceCommand)[0]?.args[0].input).toEqual({
         Id: 'ns-abc',
       });
-      // Arn / Id / Type / ServiceCount / Properties are AWS-managed noise — projected away.
-      expect(out).toEqual({ Name: 'shop', Description: 'the shop namespace' });
+      // Type / ServiceCount / Properties are AWS-managed noise — projected away. Arn / Id are
+      // readOnly (schema-stripped from compare) but kept so an ECS ServiceConnect namespace
+      // `Fn::GetAtt [<ns>, Arn]` over an HTTP namespace also resolves.
+      expect(out).toEqual({
+        Name: 'shop',
+        Description: 'the shop namespace',
+        Arn: 'arn:aws:servicediscovery:us-east-1:123456789012:namespace/ns-abc',
+        Id: 'ns-abc',
+      });
     });
 
     it('HttpNamespace: omits Description when AWS returns none', async () => {

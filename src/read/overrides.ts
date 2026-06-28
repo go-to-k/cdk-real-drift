@@ -980,36 +980,17 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   return model;
 };
 
-// AWS::ServiceDiscovery::HttpNamespace — Cloud Control GetResource throws
-// UnsupportedActionException (the whole ServiceDiscovery family is a CC read gap,
-// confirmed live). Read via Cloud Map GetNamespace — the CFn physical id IS the
-// namespace Id (ns-xxxx). Project ONLY CFn-modeled props (Name / Description); Id /
-// Arn / ServiceCount / CreateDate / Properties.HttpProperties.HttpName are
-// AWS-managed/read-only noise. An absent namespace returns undefined (-> skipped,
-// or the router maps a genuinely deleted one to `deleted` when not-found propagates).
-const readServiceDiscoveryHttpNamespace: OverrideReader = async ({ physicalId, region }) => {
-  const id = str(physicalId);
-  if (!id) return undefined;
-  const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
-  const r = await c.send(new GetNamespaceCommand({ Id: id }));
-  const ns = r.Namespace;
-  if (!ns) return undefined;
-  const model: Record<string, unknown> = {};
-  if (ns.Name !== undefined) model.Name = ns.Name;
-  if (ns.Description !== undefined) model.Description = ns.Description;
-  return model;
-};
-
-// AWS::ServiceDiscovery::PrivateDnsNamespace / ::PublicDnsNamespace — same CC read gap
-// (GetResource UnsupportedActionException). Read via Cloud Map GetNamespace (the CFn
-// physical id IS the namespace Id). Project the CFn-modeled Name / Description AND the
-// readOnly `Arn` — Arn is schema-stripped from the comparison (so it never false-flags)
-// but is kept in `liveAttrs`, which is what an `Fn::GetAtt [<ns>, Arn]` resolves
-// against. An ECS Service's `ServiceConnectConfiguration.Namespace` is declared as that
-// GetAtt, so without the namespace's Arn in liveAttrs the whole ServiceConnect config
-// resolves to UNRESOLVED and its drift is never detected. (Vpc / Properties stay
-// readGaps — not projected.)
-const readServiceDiscoveryDnsNamespace: OverrideReader = async ({ physicalId, region }) => {
+// AWS::ServiceDiscovery::HttpNamespace / ::PrivateDnsNamespace / ::PublicDnsNamespace —
+// the whole ServiceDiscovery family is a CC read gap (GetResource UnsupportedActionException,
+// confirmed live). Read via Cloud Map GetNamespace — the CFn physical id IS the namespace
+// Id (ns-xxxx). Project the CFn-modeled Name / Description AND the readOnly `Arn` / `Id`:
+// Arn and Id are schema-stripped from the COMPARISON (so they never false-flag) but kept in
+// `liveAttrs`, which is what an `Fn::GetAtt [<ns>, Arn]` resolves against. An ECS Service's
+// `ServiceConnectConfiguration.Namespace` is declared as that GetAtt (for ANY namespace
+// type), so without the namespace's Arn in liveAttrs the whole ServiceConnect config
+// resolves to UNRESOLVED and its drift is never detected. (ServiceCount / CreateDate /
+// Properties / a DNS namespace's Vpc stay readGaps — not projected.)
+const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
@@ -1195,9 +1176,9 @@ const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) =
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Cognito::IdentityPool': readCognitoIdentityPool,
   'AWS::AppSync::ApiKey': readAppSyncApiKey,
-  'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
-  'AWS::ServiceDiscovery::PrivateDnsNamespace': readServiceDiscoveryDnsNamespace,
-  'AWS::ServiceDiscovery::PublicDnsNamespace': readServiceDiscoveryDnsNamespace,
+  'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryNamespace,
+  'AWS::ServiceDiscovery::PrivateDnsNamespace': readServiceDiscoveryNamespace,
+  'AWS::ServiceDiscovery::PublicDnsNamespace': readServiceDiscoveryNamespace,
   'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,
   'AWS::DocDB::DBCluster': readDocDbCluster,
   'AWS::DocDB::DBInstance': readDocDbInstance,
