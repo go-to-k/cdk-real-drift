@@ -1326,6 +1326,11 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // reading back `"5.0.0"` — the same partial->concrete shape as RDS/Aurora/Neptune.
   // A genuine version change still differs (the leading-run check fails).
   'AWS::DocDB::DBCluster': new Set(['EngineVersion']),
+  // ElastiCache resolves a partial Redis EngineVersion the same way: a declared
+  // `"7.1"` provisions and reads back the concrete `"7.1.0"` (live-proven). The
+  // EngineVersion is writeOnly on the RG and supplied by the SDK_SUPPLEMENTS reader
+  // (from the member cache cluster), so it must fold the prefix like its DB siblings.
+  'AWS::ElastiCache::ReplicationGroup': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;

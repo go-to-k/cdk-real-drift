@@ -48,6 +48,14 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // any readable prop. (Tier/Policies stay writeOnly: the supplement does not project
   // them — Tier resolves Intelligent-Tiering to a real tier, Policies changes shape.)
   'AWS::SSM::Parameter': ['Description', 'AllowedPattern'],
+  // AWS::ElastiCache::ReplicationGroup PreferredMaintenanceWindow / NotificationTopicArn
+  // / EngineVersion are writeOnly on the RG (CC never echoes them); the SDK_SUPPLEMENTS
+  // reader fetches them VERBATIM from the member cache cluster, so compare, not readGap.
+  'AWS::ElastiCache::ReplicationGroup': [
+    'PreferredMaintenanceWindow',
+    'NotificationTopicArn',
+    'EngineVersion',
+  ],
 };
 
 // Remove the override-readable writeOnly props from a type's writeOnly sets so the
