@@ -264,6 +264,25 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('appeared-since-record undeclared Cognito IdentityPool AllowClassicFlow -> add op writing false', () => {
+    // AllowClassicFlow is in REVERT_SET_DEFAULT_PATHS: UpdateIdentityPool leaves an
+    // omitted value UNCHANGED, so a bare `remove` of an out-of-band `true` is a silent
+    // no-op. Revert must write the `false` default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::IdentityPool',
+      path: 'AllowClassicFlow',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AllowClassicFlow',
+      value: false,
+      prior: true,
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
@@ -357,6 +376,36 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
     expect(plan.items).toHaveLength(1);
     expect(plan.items[0]).toMatchObject({ kind: 'cc', resourceType: 'AWS::Scheduler::Schedule' });
+  });
+
+  it('Cognito IdentityPool: CognitoEvents -> prop-scoped sdk item, a base prop -> cc item', () => {
+    // The IdentityPool SDK override only ENRICHES the CC read with the writeOnly
+    // CognitoEvents, so it is CC_REVERTABLE_DESPITE_READ_OVERRIDE: base-property reverts
+    // (AllowClassicFlow) route through Cloud Control, while CognitoEvents takes its
+    // dedicated SetCognitoEvents SDK writer.
+    const events = F({
+      tier: 'declared',
+      resourceType: 'AWS::Cognito::IdentityPool',
+      path: 'CognitoEvents',
+      desired: { SyncTrigger: 'arn:aws:lambda:us-east-1:111122223333:function:f' },
+      actual: {},
+      physicalId: 'us-east-1:abc',
+      logicalId: 'IdPool',
+    });
+    const flag = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::IdentityPool',
+      path: 'AllowClassicFlow',
+      actual: true,
+      physicalId: 'us-east-1:abc',
+      logicalId: 'IdPool',
+    });
+    const plan = buildRevertPlan([events, flag], baseline([]));
+    expect(plan.notRevertable).toHaveLength(0);
+    const ev = plan.items.find((i) => i.ops.some((o) => o.path === '/CognitoEvents'))!;
+    const fl = plan.items.find((i) => i.ops.some((o) => o.path === '/AllowClassicFlow'))!;
+    expect(ev.kind).toBe('sdk');
+    expect(fl.kind).toBe('cc');
   });
 
   it('an `added` resource -> a `delete`-kind item keyed on its CC identifier', () => {

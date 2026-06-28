@@ -262,6 +262,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // non-matching object and stays undeclared (equality-gated).
     EmailConfiguration: { EmailSendingAccount: 'COGNITO_DEFAULT' },
   },
+  // An identity pool that declares no allowClassicFlow reads back AllowClassicFlow=false
+  // (the documented default). Equality-gated: switch it on out of band and the value no
+  // longer matches, so it re-surfaces as real undeclared drift (and reverts to false via
+  // REVERT_SET_DEFAULT_PATHS — a bare `remove` is a no-op because UpdateIdentityPool
+  // leaves an omitted AllowClassicFlow unchanged).
+  'AWS::Cognito::IdentityPool': {
+    AllowClassicFlow: false,
+  },
   'AWS::Cognito::UserPoolClient': {
     EnableTokenRevocation: true,
     AuthSessionValidity: 3,

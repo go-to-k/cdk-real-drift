@@ -8,6 +8,8 @@
 
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
+import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
+import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import {
   DescribeDBClustersCommand,
@@ -1128,7 +1130,39 @@ const readAppSyncApiKey: OverrideReader = async ({ physicalId, declared, region 
   return model;
 };
 
+// AWS::Cognito::IdentityPool — Cloud Control reads every property EXCEPT the three
+// writeOnly ones (CognitoEvents / PushSync / CognitoStreams), so an out-of-band
+// "Cognito Events" Sync trigger (a Lambda wired to the pool) is a silent read-gap that
+// `check` cannot see. CC has no GetResource gap for the base model, so read the base via
+// CC unchanged (low FP risk — identical to the default path) and ENRICH only with
+// CognitoEvents from the (deprecated but live) cognito-sync API. PushSync/CognitoStreams
+// stay writeOnly readGaps — they are not projected, so they can never false-positive.
+// (CognitoEvents is exempted from the writeOnly strip via OVERRIDE_READABLE_WRITEONLY so
+// the projected value is actually compared.)
+const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const cc = new CloudControlClient({ region, ...READ_RETRY });
+  // A deleted pool throws ResourceNotFound here, which the router maps to `deleted`.
+  const g = await cc.send(
+    new GetResourceCommand({ TypeName: 'AWS::Cognito::IdentityPool', Identifier: id })
+  );
+  const model = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+  try {
+    const ev = await new CognitoSyncClient({ region, ...READ_RETRY }).send(
+      new GetCognitoEventsCommand({ IdentityPoolId: id })
+    );
+    // Only project a NON-EMPTY event map: a pool with no Sync trigger reads back `{}`,
+    // which must stay absent (declared) so a clean pool never reports false drift.
+    if (ev.Events && Object.keys(ev.Events).length > 0) model.CognitoEvents = ev.Events;
+  } catch {
+    /* cognito-sync unavailable/disabled in the region -> leave CognitoEvents a readGap */
+  }
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::Cognito::IdentityPool': readCognitoIdentityPool,
   'AWS::AppSync::ApiKey': readAppSyncApiKey,
   'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
   'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,

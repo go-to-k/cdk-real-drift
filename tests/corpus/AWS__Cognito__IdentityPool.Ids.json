@@ -37,5 +37,15 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Ids",
+      "resourceType": "AWS::Cognito::IdentityPool",
+      "path": "AllowClassicFlow",
+      "actual": false,
+      "physicalId": "us-east-1:86c10d35-8cbb-45b9-ae04-7b0116642efb",
+      "constructPath": "CdkrdIntegHarvest4/Ids"
+    }
+  ]
 }

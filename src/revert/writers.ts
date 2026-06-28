@@ -86,6 +86,11 @@ import {
   EventBridgeClient,
   PutPermissionCommand,
 } from '@aws-sdk/client-eventbridge';
+import {
+  CognitoSyncClient,
+  GetCognitoEventsCommand,
+  SetCognitoEventsCommand,
+} from '@aws-sdk/client-cognito-sync';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
@@ -955,6 +960,29 @@ const writeLogGroupBearerTokenAuth: SdkWriter = async (ctx, ops) => {
   }
 };
 
+// AWS::Cognito::IdentityPool `CognitoEvents` (the writeOnly "Cognito Events" Sync
+// trigger) cannot be patched through Cloud Control — it is set via the cognito-sync
+// SetCognitoEvents API. Reconstruct the DESIRED event map (current live + revert ops)
+// then write it whole. Two cognito-sync quirks (both live-proven): SetCognitoEvents
+// REJECTS an empty map ("Missing required parameter EventsMap"), and a key simply OMITTED
+// from the map is NOT cleared — to remove an event you must set its value to an EMPTY
+// STRING. So re-add every current key the desired map drops, valued "" (clear); and when
+// there is nothing to set AND nothing to clear, skip the (rejected) empty call. The
+// IdentityPool physical id is the pool id SetCognitoEvents expects.
+const writeCognitoIdentityPoolEvents: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['Id']);
+  if (!id) throw new Error('cannot resolve identity pool id for CognitoEvents revert');
+  const c = new CognitoSyncClient({ region: ctx.region });
+  const cur = (await c.send(new GetCognitoEventsCommand({ IdentityPoolId: id }))).Events ?? {};
+  const desired =
+    (applyOps({ CognitoEvents: { ...cur } }, ops) as { CognitoEvents?: Record<string, string> })
+      .CognitoEvents ?? {};
+  const events: Record<string, string> = { ...desired };
+  for (const k of Object.keys(cur)) if (!(k in events)) events[k] = ''; // clear dropped keys
+  if (Object.keys(events).length === 0) return; // nothing to set or clear -> no-op
+  await c.send(new SetCognitoEventsCommand({ IdentityPoolId: id, Events: events }));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -981,6 +1009,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 // resource type -> EXACT top-level finding path. Deeper paths (e.g. a declared
 // drift at Policies.0...) still go through Cloud Control as before.
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
+  'AWS::Cognito::IdentityPool': { CognitoEvents: writeCognitoIdentityPoolEvents },
   'AWS::Config::ConfigRule': { InputParameters: writeConfigRuleInputParameters },
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
   'AWS::Logs::LogGroup': { BearerTokenAuthenticationEnabled: writeLogGroupBearerTokenAuth },

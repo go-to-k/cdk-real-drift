@@ -775,6 +775,25 @@ describe('parseSchema', () => {
     expect(OVERRIDE_READABLE_WRITEONLY['AWS::EC2::LaunchTemplate']).toEqual(['LaunchTemplateData']);
   });
 
+  it('exemptOverrideReadable un-marks Cognito IdentityPool CognitoEvents (PushSync/CognitoStreams stay readGaps)', () => {
+    // All three are writeOnly in the registry schema, but readCognitoIdentityPool projects
+    // only CognitoEvents (the Sync trigger) from cognito-sync; PushSync/CognitoStreams are
+    // not projected and must stay readGaps so they can never false-positive.
+    const raw = parseSchema(
+      JSON.stringify({
+        writeOnlyProperties: [
+          '/properties/CognitoEvents',
+          '/properties/PushSync',
+          '/properties/CognitoStreams',
+        ],
+      })
+    );
+    const exempt = exemptOverrideReadable(raw, 'AWS::Cognito::IdentityPool');
+    expect([...exempt.writeOnly].sort()).toEqual(['CognitoStreams', 'PushSync']);
+    expect(exempt.writeOnlyPaths).not.toContain('CognitoEvents');
+    expect(OVERRIDE_READABLE_WRITEONLY['AWS::Cognito::IdentityPool']).toEqual(['CognitoEvents']);
+  });
+
   it('exemptOverrideReadable is a no-op for an unlisted type', () => {
     const raw = parseSchema(JSON.stringify({ writeOnlyProperties: ['/properties/Secret'] }));
     const out = exemptOverrideReadable(raw, 'AWS::Other::Thing');
