@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebLBSecurityGrouptoCdkRealDriftIntegDogfoodWebappWebServiceSecurityGroup13E7969080C3E6727D",
+    "resourceType": "AWS::EC2::SecurityGroupEgress",
+    "physicalId": "sgr-0413be8e50008338f",
+    "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/LB/SecurityGroup/to CdkRealDriftIntegDogfoodWebappWebServiceSecurityGroup13E79690:80",
+    "declared": {
+      "Description": "Load balancer to target",
+      "DestinationSecurityGroupId": "sg-0e1d238d8265ebe4b",
+      "FromPort": 80,
+      "GroupId": "sg-0b5e58abecfacf5a7",
+      "IpProtocol": "tcp",
+      "ToPort": 80
+    }
+  },
+  "liveRaw": {
+    "Description": "Load balancer to target",
+    "FromPort": 80,
+    "ToPort": 80,
+    "IpProtocol": "tcp",
+    "DestinationSecurityGroupId": "sg-0e1d238d8265ebe4b",
+    "Id": "sgr-0413be8e50008338f",
+    "GroupId": "sg-0b5e58abecfacf5a7"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "CidrIp",
+      "CidrIpv6",
+      "DestinationPrefixListId",
+      "DestinationSecurityGroupId",
+      "FromPort",
+      "GroupId",
+      "IpProtocol",
+      "ToPort"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CidrIp",
+      "CidrIpv6",
+      "DestinationPrefixListId",
+      "DestinationSecurityGroupId",
+      "FromPort",
+      "GroupId",
+      "IpProtocol",
+      "ToPort"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [],
+  "description": "Standalone EC2 SG rule resource emitted when two security groups cross-reference each other (ALB SG <-> ECS service SG), harvested from the dogfood-webapp realistic stack. Reads clean (no FP)."
+}
