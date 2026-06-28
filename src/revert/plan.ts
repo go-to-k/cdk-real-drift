@@ -18,11 +18,12 @@ import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js'
 
 // Per type, the writeOnly props that an SDK_SUPPLEMENTS reader makes COMPARABLE
 // (detection works) but Cloud Control still cannot revert via a nested sub-path patch
-// (CC can't navigate into a writeOnly prop it can't read). Revert is deferred to a
-// type-specific SDK writer; until then findings under these paths are not-revertable.
-const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {
-  'AWS::ECS::Service': ['ServiceConnectConfiguration'],
-};
+// (CC can't navigate into a writeOnly prop it can't read) AND no type-specific SDK
+// writer covers yet. Findings under these paths are reported not-revertable instead of
+// emitting a CC patch that always fails. (ECS `ServiceConnectConfiguration` GRADUATED
+// out of this table — it now reverts via the `SDK_NESTED_WRITERS` UpdateService writer.
+// Empty for now; ECS `VolumeConfigurations` will populate it once that prop is projected.)
+const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {};
 
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC

@@ -9,8 +9,8 @@
 # namespace `Fn::GetAtt` resolves because the new ServiceDiscovery PrivateDnsNamespace
 # override now exposes its Arn in liveAttrs. This test proves: clean record -> check is
 # CLEAN (no FP), an out-of-band change to a Service Connect client-alias DnsName is
-# DETECTED, and revert reports it not-revertable (CC cannot sub-path patch a writeOnly
-# prop — a type-specific SDK writer is a follow-up; detection is the shipped value).
+# DETECTED, and revert restores it (CC cannot sub-path patch a writeOnly prop, so revert
+# re-supplies the whole declared config via the ecs:UpdateService SDK_NESTED_WRITER).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
@@ -63,8 +63,15 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -ne 0 ] || { echo "--- FALSE NEGATIVE: ServiceConnect change not detected ---"; fail "expected drift (exit 1), got $rc"; }
 grep -q "ServiceConnectConfiguration" "/tmp/cdkrd-$STACK.drift.out" || fail "drift output does not mention ServiceConnectConfiguration"
 
-echo "=== [$STACK] revert reports it not-revertable (no failing CC patch; writer is a follow-up) ==="
-$CLI revert "$STACK" --region "$REGION" --dry-run | tee "/tmp/cdkrd-$STACK.revert.out"
-grep -qi "NOT revertable" "/tmp/cdkrd-$STACK.revert.out" || fail "expected ServiceConnectConfiguration reported NOT revertable"
+echo "=== [$STACK] revert (re-supplies the declared Service Connect config via UpdateService) ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee "/tmp/cdkrd-$STACK.revert.out"
+grep -qi "reverted:" "/tmp/cdkrd-$STACK.revert.out" || fail "revert did not run the UpdateService writer"
+grep -qi "CLEAN after revert" "/tmp/cdkrd-$STACK.revert.out" || fail "revert did not converge (cdkrd re-read still drifts)"
+sleep 20
+
+echo "=== [$STACK] check MUST be CLEAN again after revert (authoritative end-to-end) ==="
+$CLI check "$STACK" --region "$REGION" --fail | tee "/tmp/cdkrd-$STACK.post.out"
+rc=${PIPESTATUS[0]}
+[ "$rc" -eq 0 ] || fail "expected CLEAN after revert (exit 0), got $rc"
 
 echo "INTEG PASS ($STACK)"

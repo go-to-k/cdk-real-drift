@@ -3,6 +3,7 @@ import {
   UpdateIntegrationCommand,
   UpdateIntegrationResponseCommand,
 } from '@aws-sdk/client-api-gateway';
+import { ECSClient, UpdateServiceCommand } from '@aws-sdk/client-ecs';
 import {
   CloudFrontClient,
   GetDistributionConfigCommand,
@@ -113,6 +114,7 @@ const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
 const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
+const ecs = mockClient(ECSClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -157,6 +159,58 @@ beforeEach(() => {
   configService.reset();
   eventbridge.reset();
   apigw.reset();
+  ecs.reset();
+});
+
+describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via UpdateService)', () => {
+  it('camelCases the declared config and calls UpdateService with cluster + service', async () => {
+    ecs.on(UpdateServiceCommand).resolves({});
+    const ecsCtx = ctx({
+      physicalId: 'arn:aws:ecs:us-east-1:1:service/c/s',
+      declared: {
+        Cluster: 'my-cluster',
+        ServiceConnectConfiguration: {
+          Enabled: true,
+          Namespace: 'arn:aws:servicediscovery:us-east-1:1:namespace/ns-x',
+          Services: [{ PortName: 'api', ClientAliases: [{ Port: 8080, DnsName: 'api' }] }],
+        },
+      },
+    });
+    // Any drift path under ServiceConnectConfiguration resolves to the nested writer.
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/ServiceConnectConfiguration/Services/0/ClientAliases/0/DnsName',
+        value: 'api',
+        human: '',
+      },
+    ];
+    const writer = resolveSdkWriter('AWS::ECS::Service', ops);
+    expect(writer).toBeDefined();
+    await writer!(ecsCtx, ops);
+    const input = ecs.commandCalls(UpdateServiceCommand)[0]!.args[0].input;
+    expect(input).toMatchObject({
+      cluster: 'my-cluster',
+      service: 'arn:aws:ecs:us-east-1:1:service/c/s',
+      serviceConnectConfiguration: {
+        enabled: true,
+        namespace: 'arn:aws:servicediscovery:us-east-1:1:namespace/ns-x',
+        services: [{ portName: 'api', clientAliases: [{ port: 8080, dnsName: 'api' }] }],
+      },
+    });
+  });
+
+  it('a service with NO declared config disables Service Connect (enabled: false)', async () => {
+    ecs.on(UpdateServiceCommand).resolves({});
+    const ecsCtx = ctx({ physicalId: 'svc-arn', declared: { Cluster: 'c' } });
+    const ops: PatchOp[] = [{ op: 'remove', path: '/ServiceConnectConfiguration', human: '' }];
+    await resolveSdkWriter('AWS::ECS::Service', ops)!(ecsCtx, ops);
+    expect(
+      ecs.commandCalls(UpdateServiceCommand)[0]!.args[0].input.serviceConnectConfiguration
+    ).toEqual({
+      enabled: false,
+    });
+  });
 });
 
 describe('ApiGateway Method integration writer (nested knobs CC cannot patch)', () => {

@@ -325,7 +325,10 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
-  it('a declared drift under ECS ServiceConnectConfiguration (writeOnly, nested) is notRevertable, not a failing CC patch', () => {
+  it('a declared drift under ECS ServiceConnectConfiguration routes to the nested SDK (UpdateService) writer', () => {
+    // The whole writeOnly prop cannot be sub-path patched by CC, so any drift under it is
+    // reverted via the SDK_NESTED_WRITERS UpdateService writer (re-supplies the declared
+    // whole config) — a single 'sdk' item, NOT a not-revertable finding nor a CC patch.
     const f = F({
       tier: 'declared',
       resourceType: 'AWS::ECS::Service',
@@ -334,9 +337,9 @@ describe('buildRevertPlan', () => {
       actual: 'api-tampered',
     });
     const plan = buildRevertPlan([f], undefined);
-    expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable).toHaveLength(1);
-    expect(plan.notRevertable[0]!.reason).toContain('writeOnly nested property');
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
   });
 
   it('SSM Parameter Tier downgrade (Advanced->Standard) is notRevertable; an upgrade stays revertable', () => {

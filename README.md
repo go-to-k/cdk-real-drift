@@ -477,7 +477,10 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 `elasticloadbalancing:ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes`,
 `glue:UpdateTable`, `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
-`config:DescribeConfigRules` / `config:PutConfigRule`.
+`config:DescribeConfigRules` / `config:PutConfigRule`,
+`ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration`
+drift — the whole writeOnly config is re-supplied, since Cloud Control cannot
+sub-path patch it).
 
 </details>
 

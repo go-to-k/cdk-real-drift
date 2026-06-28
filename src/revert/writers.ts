@@ -97,6 +97,11 @@ import {
   GetCognitoEventsCommand,
   SetCognitoEventsCommand,
 } from '@aws-sdk/client-cognito-sync';
+import {
+  ECSClient,
+  type ServiceConnectConfiguration,
+  UpdateServiceCommand,
+} from '@aws-sdk/client-ecs';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
@@ -1086,6 +1091,42 @@ const writeApiGatewayMethodIntegration: SdkWriter = async (ctx, ops) => {
     );
 };
 
+// Recursively lower-case the first letter of every object key (the inverse of the
+// reader's pascalKeysDeep): the declared CFn `ServiceConnectConfiguration` is PascalCase,
+// the ecs:UpdateService input is camelCase.
+function camelKeysDeep(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(camelKeysDeep);
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      out[k.charAt(0).toLowerCase() + k.slice(1)] = camelKeysDeep(val);
+    }
+    return out;
+  }
+  return v;
+}
+
+// AWS::ECS::Service ServiceConnectConfiguration — writeOnly, so Cloud Control cannot
+// sub-path patch it; revert re-supplies the WHOLE declared config via ecs:UpdateService
+// (the only API that sets it). The whole config comes from `ctx.declared` (the resolved
+// template intent), NOT the nested op value, so any drift under ServiceConnectConfiguration
+// (a client alias, the namespace, enabled) is reverted to the declared whole. CamelCased
+// back to the SDK shape; UpdateService re-defaults DiscoveryName to PortName, which the
+// reader folds, so the stack converges clean. A service with NO declared Service Connect
+// config sends `enabled: false` to turn it off.
+const writeEcsServiceConnect: SdkWriter = async (ctx) => {
+  const cluster = str(ctx.declared['Cluster']);
+  const service = str(ctx.physicalId);
+  if (!cluster || !service) return;
+  const declared = ctx.declared['ServiceConnectConfiguration'];
+  const serviceConnectConfiguration: ServiceConnectConfiguration =
+    declared && typeof declared === 'object'
+      ? (camelKeysDeep(declared) as ServiceConnectConfiguration)
+      : { enabled: false };
+  const c = new ECSClient({ region: ctx.region });
+  await c.send(new UpdateServiceCommand({ cluster, service, serviceConnectConfiguration }));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -1138,6 +1179,13 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   'AWS::ApiGateway::Method': {
     match: isApiGatewayIntegrationKnobPath,
     writer: writeApiGatewayMethodIntegration,
+  },
+  // Any drift UNDER the writeOnly ServiceConnectConfiguration re-supplies the whole
+  // declared config via ecs:UpdateService (CC cannot sub-path patch a writeOnly prop).
+  'AWS::ECS::Service': {
+    match: (p) =>
+      p === 'ServiceConnectConfiguration' || p.startsWith('ServiceConnectConfiguration.'),
+    writer: writeEcsServiceConnect,
   },
 };
 
