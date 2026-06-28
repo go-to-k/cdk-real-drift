@@ -402,7 +402,10 @@ all live changes
          .LogConfiguration.Options): every such key is user-authored data, NOT an
          AWS default, so it is flagged `freeFormKey` and SURFACED in full (never
          folded) — a console-added env var is real, reviewable drift, not
-         first-run noise.
+         first-run noise. A `Tags` bag is EXCLUDED even when map-shaped
+         (AWS::SSM::Parameter models Tags as a patternProperties map; most types
+         use a {Key,Value}[] LIST) so map-tag keys FOLD consistently with
+         list-tag keys — a map-tagged resource is not noisier on the first run.
          R98 extends the recursion into the MATCHED elements of identity-keyed object
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
          value and a live-only sub-field inside a declared element is caught too

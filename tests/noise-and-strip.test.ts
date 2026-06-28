@@ -930,6 +930,9 @@ describe('parseSchema', () => {
               },
             },
           },
+          // a MAP-shaped Tags bag (AWS::SSM::Parameter shape) -> EXCLUDED, so map-tag keys
+          // fold like the dominant LIST-shaped Tags rather than surfacing as freeFormKey.
+          Tags: { type: 'object', additionalProperties: { type: 'string' } },
         },
       })
     );
@@ -938,6 +941,21 @@ describe('parseSchema', () => {
       'Environment.Variables',
       'Parameters',
     ]);
+  });
+
+  it('parseSchema EXCLUDES a map-shaped Tags bag from freeFormMapPaths (tags fold consistently)', () => {
+    // AWS::SSM::Parameter models Tags as a patternProperties map; most types use a LIST.
+    // Either way an undeclared tag key folds (not freeFormKey), so map-tagged resources are
+    // not noisier on the first run than list-tagged ones.
+    const info = parseSchema(
+      JSON.stringify({
+        properties: {
+          Tags: { type: 'object', patternProperties: { '.*': { type: 'string' } } },
+          Env: { type: 'object', additionalProperties: { type: 'string' } },
+        },
+      })
+    );
+    expect(info.freeFormMapPaths).toEqual(['Env']);
   });
 
   // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
