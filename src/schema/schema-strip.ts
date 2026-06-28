@@ -42,12 +42,14 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // but readCognitoIdentityPool projects it from the cognito-sync API, so compare it.
   // PushSync / CognitoStreams stay writeOnly readGaps (the override does not project them).
   'AWS::Cognito::IdentityPool': ['CognitoEvents'],
-  // AWS::SSM::Parameter `Description`/`AllowedPattern` are writeOnly (CC never echoes
-  // them), but the SDK_SUPPLEMENTS reader fetches them via ssm:DescribeParameters —
-  // so they must NOT be writeOnly-stripped/readGap'd, they should be compared like
-  // any readable prop. (Tier/Policies stay writeOnly: the supplement does not project
-  // them — Tier resolves Intelligent-Tiering to a real tier, Policies changes shape.)
-  'AWS::SSM::Parameter': ['Description', 'AllowedPattern'],
+  // AWS::SSM::Parameter `Description`/`AllowedPattern`/`Tier` are writeOnly (CC never
+  // echoes them), but the SDK_SUPPLEMENTS reader fetches them via ssm:DescribeParameters
+  // — so they must NOT be writeOnly-stripped/readGap'd, they should be compared like any
+  // readable prop. Tier folds the undeclared "Standard" default (KNOWN_DEFAULTS) and the
+  // declared "Intelligent-Tiering"→Standard/Advanced resolution (INTELLIGENT_TIERING_PATHS).
+  // (Policies stays writeOnly: the supplement does not project it — its read shape with a
+  // runtime PolicyStatus differs from the CFn JSON-string input.)
+  'AWS::SSM::Parameter': ['Description', 'AllowedPattern', 'Tier'],
   // AWS::ElastiCache::ReplicationGroup PreferredMaintenanceWindow / NotificationTopicArn
   // / EngineVersion are writeOnly on the RG (CC never echoes them); the SDK_SUPPLEMENTS
   // reader fetches them VERBATIM from the member cache cluster, so compare, not readGap.

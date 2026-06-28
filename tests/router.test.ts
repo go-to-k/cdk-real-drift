@@ -747,6 +747,15 @@ describe('readLive (SDK supplement path — SSM::Parameter Description)', () => 
     });
   });
 
+  it('merges Tier from DescribeParameters (always present; AWS auto-assigns it)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"Type":"String","Value":"v"}' },
+    });
+    ssm.on(DescribeParametersCommand).resolves({ Parameters: [{ Tier: 'Advanced' }] });
+    const r = await readLive(cc as unknown as CloudControlClient, param(), 'us-east-1', '1');
+    expect(r.live).toEqual({ Type: 'String', Value: 'v', Tier: 'Advanced' });
+  });
+
   it('queries DescribeParameters by the declared Name (preferred over physicalId)', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     ssm.on(DescribeParametersCommand).resolves({ Parameters: [{ Description: 'd' }] });

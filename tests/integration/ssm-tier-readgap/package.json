@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-ssm-tier-readgap",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SSM::Parameter Tier writeOnly-read-gap integration test for cdk-real-drift: an out-of-band Tier change must be detected and revertable, and a declared Intelligent-Tiering must not false-flag against the resolved tier. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

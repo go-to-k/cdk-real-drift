@@ -36,6 +36,8 @@ import {
   isTrivialEmpty,
   isVersionPrefixMatch,
   isLatestSentinelMatch,
+  isIntelligentTieringMatch,
+  INTELLIGENT_TIERING_PATHS,
   LATEST_SENTINEL_PATHS,
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
@@ -900,6 +902,15 @@ export function classifyResource(
       if (
         LATEST_SENTINEL_PATHS[resourceType]?.has(d.path) &&
         isLatestSentinelMatch(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type Intelligent-Tiering paths (SSM Parameter Tier) — a declared
+      // `"Intelligent-Tiering"` request that AWS resolved to the concrete tier it
+      // provisioned (Standard/Advanced) is not drift; a real Standard↔Advanced change
+      // still differs.
+      if (
+        INTELLIGENT_TIERING_PATHS[resourceType]?.has(d.path) &&
+        isIntelligentTieringMatch(d.stateValue, d.awsValue)
       )
         continue;
       // Unordered scalar-array sets — same elements in the service's canonical order

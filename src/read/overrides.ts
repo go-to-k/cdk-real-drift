@@ -1219,16 +1219,19 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
 // an unset optional prop stays absent on both sides rather than false-flagging.
 export type SupplementReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
 
-// AWS::SSM::Parameter — `Description`/`AllowedPattern` (and `Tier`/`Policies`) are
+// AWS::SSM::Parameter — `Description`/`AllowedPattern`/`Tier` (and `Policies`) are
 // writeOnly in the registry schema, so Cloud Control returns only Type/Value/
-// DataType/Name and a console edit to the description was undetectable. Only SSM
+// DataType/Name and a console edit to them was undetectable. Only SSM
 // `DescribeParameters` returns these (GetParameter does NOT). Project `Description`
-// and `AllowedPattern` — both are returned ONLY when explicitly set, so an unset
-// value stays absent on both sides (FP-safe). `Tier` is deliberately NOT projected:
-// AWS resolves a requested "Intelligent-Tiering" to the actual Standard/Advanced
-// tier, so the live value would false-flag against the declared request. `Policies`
-// reads back as expanded policy objects (shape differs from the CFn JSON-string
-// input), so it stays a writeOnly readGap too.
+// and `AllowedPattern` (returned ONLY when explicitly set, so an unset value stays
+// absent on both sides — FP-safe) and `Tier` (always present; AWS auto-assigns
+// "Standard" when undeclared, folded via KNOWN_DEFAULTS, and resolves a requested
+// "Intelligent-Tiering" to the actual Standard/Advanced tier, folded by the
+// INTELLIGENT_TIERING equivalence in classify — declared "Intelligent-Tiering"
+// matches a live Standard/Advanced, while a real Standard↔Advanced change still
+// surfaces). `Policies` reads back as expanded policy objects with a runtime
+// PolicyStatus (shape differs from the CFn JSON-string input), so it stays a
+// writeOnly readGap.
 const supplementSsmParameter: SupplementReader = async ({ physicalId, declared, region }) => {
   const name = str(declared.Name) ?? str(physicalId);
   if (!name) return undefined;
@@ -1244,6 +1247,8 @@ const supplementSsmParameter: SupplementReader = async ({ physicalId, declared, 
   if (desc !== undefined) extra.Description = desc;
   const pattern = str(p?.AllowedPattern);
   if (pattern !== undefined) extra.AllowedPattern = pattern;
+  const tier = str(p?.Tier);
+  if (tier !== undefined) extra.Tier = tier;
   return Object.keys(extra).length > 0 ? extra : undefined;
 };
 

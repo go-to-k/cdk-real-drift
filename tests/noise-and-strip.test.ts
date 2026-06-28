@@ -10,6 +10,8 @@ import {
   isPhysicalIdSegment,
   isTrivialEmpty,
   isVersionPrefixMatch,
+  isIntelligentTieringMatch,
+  INTELLIGENT_TIERING_PATHS,
   KNOWN_DEFAULTS,
   KNOWN_DEFAULT_PATHS,
   stripAwsTagsDeep,
@@ -975,6 +977,18 @@ describe('parseSchema', () => {
     expect(isVersionPrefixMatch('', '8.0.45')).toBe(false);
     expect(isVersionPrefixMatch('8.0', '')).toBe(false);
     expect(isVersionPrefixMatch(8 as unknown, '8.0')).toBe(false); // non-string
+  });
+
+  it('isIntelligentTieringMatch: declared Intelligent-Tiering folds against the resolved tier only', () => {
+    expect(isIntelligentTieringMatch('Intelligent-Tiering', 'Standard')).toBe(true);
+    expect(isIntelligentTieringMatch('Intelligent-Tiering', 'Advanced')).toBe(true);
+    // NOT a fold: a concrete declared tier still compares (real Standard↔Advanced drift),
+    // and an unexpected live value never silently folds.
+    expect(isIntelligentTieringMatch('Standard', 'Advanced')).toBe(false);
+    expect(isIntelligentTieringMatch('Advanced', 'Standard')).toBe(false);
+    expect(isIntelligentTieringMatch('Intelligent-Tiering', 'Intelligent-Tiering')).toBe(false);
+    expect(isIntelligentTieringMatch('Intelligent-Tiering', '')).toBe(false);
+    expect(INTELLIGENT_TIERING_PATHS['AWS::SSM::Parameter']?.has('Tier')).toBe(true);
   });
 
   it('R130: VERSION_PREFIX_PATHS gates the rule to RDS EngineVersion only', () => {
