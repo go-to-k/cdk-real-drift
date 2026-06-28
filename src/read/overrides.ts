@@ -11,6 +11,7 @@ import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
+import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
@@ -979,14 +980,17 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   return model;
 };
 
-// AWS::ServiceDiscovery::HttpNamespace — Cloud Control GetResource throws
-// UnsupportedActionException (the whole ServiceDiscovery family is a CC read gap,
-// confirmed live). Read via Cloud Map GetNamespace — the CFn physical id IS the
-// namespace Id (ns-xxxx). Project ONLY CFn-modeled props (Name / Description); Id /
-// Arn / ServiceCount / CreateDate / Properties.HttpProperties.HttpName are
-// AWS-managed/read-only noise. An absent namespace returns undefined (-> skipped,
-// or the router maps a genuinely deleted one to `deleted` when not-found propagates).
-const readServiceDiscoveryHttpNamespace: OverrideReader = async ({ physicalId, region }) => {
+// AWS::ServiceDiscovery::HttpNamespace / ::PrivateDnsNamespace / ::PublicDnsNamespace —
+// the whole ServiceDiscovery family is a CC read gap (GetResource UnsupportedActionException,
+// confirmed live). Read via Cloud Map GetNamespace — the CFn physical id IS the namespace
+// Id (ns-xxxx). Project the CFn-modeled Name / Description AND the readOnly `Arn` / `Id`:
+// Arn and Id are schema-stripped from the COMPARISON (so they never false-flag) but kept in
+// `liveAttrs`, which is what an `Fn::GetAtt [<ns>, Arn]` resolves against. An ECS Service's
+// `ServiceConnectConfiguration.Namespace` is declared as that GetAtt (for ANY namespace
+// type), so without the namespace's Arn in liveAttrs the whole ServiceConnect config
+// resolves to UNRESOLVED and its drift is never detected. (ServiceCount / CreateDate /
+// Properties / a DNS namespace's Vpc stay readGaps — not projected.)
+const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
@@ -996,6 +1000,8 @@ const readServiceDiscoveryHttpNamespace: OverrideReader = async ({ physicalId, r
   const model: Record<string, unknown> = {};
   if (ns.Name !== undefined) model.Name = ns.Name;
   if (ns.Description !== undefined) model.Description = ns.Description;
+  if (ns.Arn !== undefined) model.Arn = ns.Arn; // readOnly: stripped from compare, kept for GetAtt
+  if (ns.Id !== undefined) model.Id = ns.Id; // readOnly: ditto (a GetAtt [ns, Id] consumer)
   return model;
 };
 
@@ -1170,7 +1176,9 @@ const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) =
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Cognito::IdentityPool': readCognitoIdentityPool,
   'AWS::AppSync::ApiKey': readAppSyncApiKey,
-  'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryHttpNamespace,
+  'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryNamespace,
+  'AWS::ServiceDiscovery::PrivateDnsNamespace': readServiceDiscoveryNamespace,
+  'AWS::ServiceDiscovery::PublicDnsNamespace': readServiceDiscoveryNamespace,
   'AWS::ServiceDiscovery::Service': readServiceDiscoveryService,
   'AWS::DocDB::DBCluster': readDocDbCluster,
   'AWS::DocDB::DBInstance': readDocDbInstance,
@@ -1284,7 +1292,64 @@ const supplementElastiCacheReplicationGroup: SupplementReader = async ({ physica
   return Object.keys(extra).length > 0 ? extra : undefined;
 };
 
+// Recursively upper-case the first letter of every object key (the SDK returns the
+// ECS ServiceConnect config in camelCase; the CFn `ServiceConnectConfiguration` shape
+// is PascalCase). Verified to map the whole shape 1:1 — Enabled/Namespace/Services/
+// PortName/DiscoveryName/ClientAliases/Port/DnsName/IngressPortOverride/Timeout/Tls/
+// LogConfiguration all differ only by the leading-letter case (no acronym surprises).
+function pascalKeysDeep(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(pascalKeysDeep);
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      out[k.charAt(0).toUpperCase() + k.slice(1)] = pascalKeysDeep(val);
+    }
+    return out;
+  }
+  return v;
+}
+
+// AWS::ECS::Service — `ServiceConnectConfiguration` is writeOnly in the registry
+// schema, so Cloud Control echoes the service's other props but NEVER the Service
+// Connect config (it lives on the service's deployments). An out-of-band change to
+// the Service Connect wiring (the namespace, a client alias / DNS name / port, or
+// disabling it) was therefore invisible. Read it from the PRIMARY deployment via
+// ecs:DescribeServices and PascalCase it to the CFn shape. The namespace reads back
+// in the SAME form it was declared (declared ARN → reads ARN; declared name → reads
+// name — live-proven), so no normalization is needed. AWS defaults a service's
+// `DiscoveryName` to its `PortName` when undeclared, so drop a DiscoveryName that
+// equals PortName (the implicit default) to stay FP-safe. (VolumeConfigurations —
+// also writeOnly, also on the deployment — is NOT yet projected; it needs an
+// EBS-at-deploy task definition and is deferred to its own pass.)
+const supplementEcsService: SupplementReader = async ({ physicalId, declared, region }) => {
+  const serviceArn = str(physicalId);
+  const cluster = str(declared.Cluster);
+  if (!serviceArn || !cluster) return undefined;
+  const c = new ECSClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeServicesCommand({ cluster, services: [serviceArn] }));
+  const primary = r.services?.[0]?.deployments?.find((d) => d.status === 'PRIMARY');
+  const sc = primary?.serviceConnectConfiguration;
+  if (!sc) return undefined;
+  const config = pascalKeysDeep(sc) as Record<string, unknown>;
+  const services = config.Services;
+  if (Array.isArray(services)) {
+    for (const s of services) {
+      // AWS fills DiscoveryName with PortName when it is not declared — drop the
+      // implicit default so a service that declares only PortName stays FP-clean.
+      if (
+        s &&
+        typeof s === 'object' &&
+        (s as Record<string, unknown>).DiscoveryName === (s as Record<string, unknown>).PortName
+      ) {
+        delete (s as Record<string, unknown>).DiscoveryName;
+      }
+    }
+  }
+  return { ServiceConnectConfiguration: config };
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
+  'AWS::ECS::Service': supplementEcsService,
 };

@@ -6,6 +6,7 @@ import {
   DescribeReplicationGroupsCommand,
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
+import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { readLive } from '../src/read/router.js';
@@ -15,6 +16,7 @@ const cc = mockClient(CloudControlClient);
 const s3 = mockClient(S3Client);
 const ssm = mockClient(SSMClient);
 const elasticache = mockClient(ElastiCacheClient);
+const ecs = mockClient(ECSClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -31,6 +33,7 @@ beforeEach(() => {
   s3.reset();
   ssm.reset();
   elasticache.reset();
+  ecs.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -852,6 +855,103 @@ describe('readLive (SDK supplement path — ElastiCache ReplicationGroup writeOn
     elasticache.on(DescribeReplicationGroupsCommand).rejects(named('AccessDeniedException'));
     const r = await readLive(cc as unknown as CloudControlClient, rg(), 'us-east-1', '1');
     expect(r.live).toEqual({ ReplicationGroupId: 'my-rg' });
+    expect(r.skippedReason).toBeUndefined();
+  });
+});
+
+describe('readLive (SDK supplement path — ECS Service ServiceConnectConfiguration)', () => {
+  const svc = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::ECS::Service',
+      physicalId: 'arn:aws:ecs:us-east-1:1:service/c/s',
+      declared: { Cluster: 'my-cluster' },
+    });
+
+  it('reconstructs the PascalCase config from the PRIMARY deployment and folds DiscoveryName==PortName', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"s","Cluster":"my-cluster"}' },
+    });
+    ecs.on(DescribeServicesCommand).resolves({
+      services: [
+        {
+          deployments: [
+            // An OLD deployment must be ignored — only PRIMARY is read.
+            { status: 'ACTIVE', serviceConnectConfiguration: { enabled: false } },
+            {
+              status: 'PRIMARY',
+              serviceConnectConfiguration: {
+                enabled: true,
+                namespace: 'arn:aws:servicediscovery:us-east-1:1:namespace/ns-x',
+                services: [
+                  {
+                    portName: 'api',
+                    discoveryName: 'api', // == portName -> dropped as the implicit default
+                    clientAliases: [{ port: 8080, dnsName: 'api' }],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    expect(r.live).toEqual({
+      ServiceName: 's',
+      Cluster: 'my-cluster',
+      ServiceConnectConfiguration: {
+        Enabled: true,
+        Namespace: 'arn:aws:servicediscovery:us-east-1:1:namespace/ns-x',
+        Services: [{ PortName: 'api', ClientAliases: [{ Port: 8080, DnsName: 'api' }] }],
+      },
+    });
+    // DescribeServices is scoped by the declared cluster + the service ARN.
+    const input = ecs.commandCalls(DescribeServicesCommand)[0]?.args[0].input;
+    expect(input?.cluster).toBe('my-cluster');
+    expect(input?.services).toEqual(['arn:aws:ecs:us-east-1:1:service/c/s']);
+  });
+
+  it('keeps an explicit non-default DiscoveryName', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    ecs.on(DescribeServicesCommand).resolves({
+      services: [
+        {
+          deployments: [
+            {
+              status: 'PRIMARY',
+              serviceConnectConfiguration: {
+                enabled: true,
+                namespace: 'ns',
+                services: [{ portName: 'api', discoveryName: 'svc-api', clientAliases: [] }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    const config = r.live?.ServiceConnectConfiguration as Record<string, unknown>;
+    expect((config.Services as Record<string, unknown>[])[0]?.DiscoveryName).toBe('svc-api');
+  });
+
+  it('adds nothing when the service has no Service Connect config (FP-safe)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"s"}' },
+    });
+    ecs.on(DescribeServicesCommand).resolves({
+      services: [{ deployments: [{ status: 'PRIMARY' }] }],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    expect(r.live).toEqual({ ServiceName: 's' });
+  });
+
+  it('keeps the CC model when DescribeServices throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"s"}' },
+    });
+    ecs.on(DescribeServicesCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
+    expect(r.live).toEqual({ ServiceName: 's' });
     expect(r.skippedReason).toBeUndefined();
   });
 });
