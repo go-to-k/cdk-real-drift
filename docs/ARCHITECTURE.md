@@ -414,11 +414,13 @@ all live changes
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
          value and a live-only sub-field inside a declared element is caught too
          (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended —
-         EXCEPT a per-type NESTED_ARRAY_IDENTITY override names a non-standard key
-         (API Gateway Method Integration.IntegrationResponses AND MethodResponses, both by
-         StatusCode), so an out-of-band SelectionPattern / ContentHandling on a declared
-         integration response — or a `responseModels` model attached to a declared method
-         response — surfaces
+         EXCEPT a per-type NESTED_ARRAY_IDENTITY override names a non-standard key, so an
+         out-of-band sub-key on a declared element surfaces (and an AWS-materialized DEFAULT
+         on those elements folds via KNOWN_DEFAULT_PATHS, so a clean stack stays clean):
+         API Gateway Method Integration.IntegrationResponses AND MethodResponses (StatusCode)
+         — SelectionPattern / ContentHandling / responseModels; Backup BackupPlan
+         BackupPlanRule (RuleName) — a changed CompletionWindowMinutes / window; Route53
+         Resolver FirewallRuleGroup FirewallRules (Priority) — a changed firewall-rule setting
 ```
 
 ### Why a given value does (or does not) appear
