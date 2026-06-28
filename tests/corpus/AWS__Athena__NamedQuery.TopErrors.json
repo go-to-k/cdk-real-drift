@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TopErrors",
+    "resourceType": "AWS::Athena::NamedQuery",
+    "physicalId": "8e13bc0b-0d42-49a2-a187-422e2d4bb432",
+    "constructPath": "CdkRealDriftIntegDogfoodAnalytics/TopErrors",
+    "declared": {
+      "Database": "cdkrd_analytics",
+      "Name": "top-errors",
+      "QueryString": "SELECT msg, count(*) c FROM logs WHERE level = 'ERROR' GROUP BY msg ORDER BY c DESC",
+      "WorkGroup": "cdkrd-analytics"
+    }
+  },
+  "liveRaw": {
+    "WorkGroup": "cdkrd-analytics",
+    "QueryString": "SELECT msg, count(*) c FROM logs WHERE level = 'ERROR' GROUP BY msg ORDER BY c DESC",
+    "Database": "cdkrd_analytics",
+    "NamedQueryId": "8e13bc0b-0d42-49a2-a187-422e2d4bb432",
+    "Name": "top-errors"
+  },
+  "schema": {
+    "readOnly": ["NamedQueryId"],
+    "writeOnly": [],
+    "createOnly": ["Database", "Description", "Name", "QueryString", "WorkGroup"],
+    "readOnlyPaths": ["NamedQueryId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Database", "Description", "Name", "QueryString", "WorkGroup"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [],
+  "description": "Athena NamedQuery read clean via Cloud Control, harvested from the dogfood-analytics stack (Athena WorkGroup + NamedQuery over a Glue catalog)."
+}
