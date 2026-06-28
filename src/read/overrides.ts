@@ -1234,6 +1234,16 @@ const supplementSsmParameter: SupplementReader = async ({ physicalId, declared, 
   return Object.keys(extra).length > 0 ? extra : undefined;
 };
 
+// NOTE — AWS::Cognito::UserPool `EnabledMfas` (writeOnly; CC echoes MfaConfiguration
+// but never the enabled-method list) was evaluated as a supplement and DEFERRED:
+// it cannot be reliably reconstructed from the read APIs. GetUserPoolMfaConfig keeps
+// returning the full `SmsMfaConfiguration` block (the SNS caller config persists at
+// the pool level) even after SMS is no longer an enabled MFA factor — live-proven
+// (states "SMS+TOTP" and "TOTP-only" returned an identical SmsMfaConfiguration). So
+// presence-based SMS detection would both miss an SMS removal (FN) and false-flag a
+// pool that configures SMS for verification only (FP). describe-user-pool omits
+// EnabledMfas too. Deferred until a reliable per-factor enabled signal exists.
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::SSM::Parameter': supplementSsmParameter,
 };
