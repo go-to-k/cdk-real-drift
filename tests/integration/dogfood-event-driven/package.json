@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-dogfood-event-driven",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Realistic event-driven orchestration dogfood stack for cdk-real-drift false-positive integration testing. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}
