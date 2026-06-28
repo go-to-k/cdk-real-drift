@@ -111,7 +111,8 @@ export function recordSelectMessage(stackName: string, foldedCount = 0): string 
  * (nested live-only sub-keys — the `undeclared-subkey` mass the report folds, R96). Folded
  * entries are auto-recorded as a summarized count instead of dozens of rows. `expandNested`
  * (--verbose) turns the fold off so every nested value is itemized. An entry is folded when
- * its matching gather finding is a `nested` undeclared value. Pure + exported.
+ * its matching gather finding is a `nested` undeclared value — EXCEPT a free-form map key
+ * (freeFormKey), which the report shows in full, so the picker itemizes it too. Pure + exported.
  */
 export function splitFoldedNested<T extends { logicalId: string; path: string }>(
   changed: T[],
@@ -121,7 +122,7 @@ export function splitFoldedNested<T extends { logicalId: string; path: string }>
   if (expandNested) return { standout: changed, folded: [] };
   const nestedKeys = new Set(
     findings
-      .filter((f) => f.nested === true && f.tier === 'undeclared')
+      .filter((f) => f.nested === true && f.tier === 'undeclared' && !f.freeFormKey)
       .map((f) => `${f.logicalId}::${f.path}`)
   );
   const isFolded = (e: T): boolean => nestedKeys.has(`${e.logicalId}::${e.path}`);

@@ -43,6 +43,13 @@ export interface Finding {
   // expanded by --show-all; recorded by record like any undeclared value, so a later
   // out-of-band change to it surfaces.
   nested?: boolean;
+  // undeclared tier only: a nested undeclared value (so `nested` is also set) that lives
+  // inside a FREE-FORM MAP property (SchemaInfo.freeFormMapPaths — Lambda
+  // Environment.Variables, Glue Parameters, …). Every key in such a map is user-authored,
+  // never an AWS-materialized default, so unlike a generic nested value it is NOT folded:
+  // the report surfaces it in full (a console-added env var is real, reviewable drift, not
+  // first-run noise). Revertability is independent (path-shape based, isUnrevertableNested).
+  freeFormKey?: boolean;
   // undeclared tier only (R128): a recorded undeclared identity-keyed object array
   // (e.g. an IAM Role's inline Policies keyed by PolicyName) whose value CHANGED vs
   // the baseline — set by applyBaseline for the REPORT only. The finding still names
@@ -91,6 +98,13 @@ export interface SchemaInfo {
   // Optional: production (parseSchema / reviveSchema / EMPTY) always sets it; test
   // fixtures and pre-insertionOrder corpus cases may omit it (classify reads it with `?.`).
   unorderedScalarPaths?: string[];
+  // Dotted paths of FREE-FORM MAP properties — `type: object` schema nodes with no fixed
+  // `properties`, just `patternProperties`/object `additionalProperties` (Lambda
+  // Environment.Variables, Glue Parameters, DockerLabels). Every KEY in such a map is
+  // user-authored, NOT an AWS-materialized nested default, so a live-only sub-key under one
+  // is surfaced in the report rather than folded into the `undeclared-subkey` count (R96).
+  // Optional like the above; classify reads it with `?.`.
+  freeFormMapPaths?: string[];
 }
 
 export interface ResolverContext {

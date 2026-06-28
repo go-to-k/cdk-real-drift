@@ -872,6 +872,40 @@ describe('parseSchema', () => {
     expect(info.unorderedScalarPaths).toEqual(['HealthCheckConfig.Regions', 'Launch']);
   });
 
+  // free-form map properties (patternProperties / object additionalProperties, no fixed
+  // `properties`) -> freeFormMapPaths, so a live-only key under one is surfaced not folded.
+  it('parseSchema collects free-form map properties into freeFormMapPaths', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        definitions: {
+          // mirrors the real Lambda Environment definition: Variables is a patternProperties map
+          Environment: {
+            type: 'object',
+            properties: {
+              Variables: {
+                type: 'object',
+                additionalProperties: false,
+                patternProperties: { '[a-zA-Z][a-zA-Z0-9_]+': { type: 'string' } },
+              },
+            },
+          },
+        },
+        properties: {
+          Environment: { $ref: '#/definitions/Environment' },
+          // object additionalProperties (Glue-style free-form map) -> collected
+          Parameters: { type: 'object', additionalProperties: { type: 'string' } },
+          // STRUCTURED object (fixed properties) -> NOT a free-form map
+          Conf: { type: 'object', properties: { Mode: { type: 'string' } } },
+          // additionalProperties:false with no patternProperties -> NOT a map
+          Closed: { type: 'object', additionalProperties: false },
+          // a plain scalar -> ignored
+          Name: { type: 'string' },
+        },
+      })
+    );
+    expect(info.freeFormMapPaths).toEqual(['Environment.Variables', 'Parameters']);
+  });
+
   // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
   // full patch `"8.0.45"`. A declared dotted-version that is a leading-segment PREFIX
   // of the live full version is not drift; a genuine track change still differs.

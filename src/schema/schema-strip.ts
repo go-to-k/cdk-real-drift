@@ -15,6 +15,7 @@ const EMPTY: SchemaInfo = {
   defaults: {},
   defaultPaths: {},
   unorderedScalarPaths: [],
+  freeFormMapPaths: [],
 };
 
 export async function getSchemaInfo(
@@ -99,6 +100,8 @@ type SchemaNode = {
   enum?: unknown[];
   properties?: Record<string, SchemaNode>;
   items?: SchemaNode;
+  patternProperties?: Record<string, SchemaNode>;
+  additionalProperties?: boolean | SchemaNode;
 };
 function collectDefaultPaths(
   definitions: Record<string, SchemaNode>,
@@ -184,6 +187,47 @@ function collectUnorderedScalarPaths(
   return [...new Set(out)].sort();
 }
 
+// Collect the dotted paths of FREE-FORM MAP properties: a `type: object` schema node with
+// NO fixed `properties` whose contents are open — declared via `patternProperties` (regex
+// keys, e.g. Lambda Environment.Variables `[a-zA-Z][a-zA-Z0-9_]+`) or an object-valued
+// `additionalProperties` (Glue Parameters, ECS DockerLabels). Every key under such a node
+// is user-authored data, never an AWS-materialized nested default, so classify surfaces a
+// live-only sub-key there instead of folding it (R96 `undeclared-subkey`). A node with
+// fixed `properties` (a structured object) is NOT a free-form map even if it also allows
+// additionalProperties. Same $ref-resolving, recursion-guarded walk as the collectors
+// above; best-effort (a missed map just keeps folding — never a false positive). Array
+// elements contribute a `*` segment, matching the live `[id]`->`*`-normalized finding path.
+function collectFreeFormMapPaths(
+  definitions: Record<string, SchemaNode>,
+  properties: Record<string, SchemaNode>
+): string[] {
+  const out: string[] = [];
+  const isObjectSchema = (v: boolean | SchemaNode | undefined): v is SchemaNode =>
+    typeof v === 'object' && v !== null;
+  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
+    if (!node || typeof node !== 'object') return;
+    if (node.$ref) {
+      const name = node.$ref.replace('#/definitions/', '');
+      if (seen.has(name)) return; // recursive — stop
+      walk(definitions[name], path, new Set(seen).add(name));
+      return;
+    }
+    const hasFixedProps = node.properties && Object.keys(node.properties).length > 0;
+    const isMap =
+      node.type === 'object' &&
+      !hasFixedProps &&
+      ((node.patternProperties && Object.keys(node.patternProperties).length > 0) ||
+        isObjectSchema(node.additionalProperties));
+    if (isMap && path && !path.includes('*')) out.push(path);
+    if (node.properties)
+      for (const [k, child] of Object.entries(node.properties))
+        walk(child, path ? `${path}.${k}` : k, seen);
+    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+  };
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  return [...new Set(out)].sort();
+}
+
 /** Exported for unit testing without an AWS call. */
 export function parseSchema(schemaJson: string): SchemaInfo {
   const schema = JSON.parse(schemaJson) as {
@@ -213,6 +257,10 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     schema.definitions ?? {},
     schema.properties ?? {}
   );
+  const freeFormMapPaths = collectFreeFormMapPaths(
+    schema.definitions ?? {},
+    schema.properties ?? {}
+  );
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
@@ -223,5 +271,6 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     defaults,
     defaultPaths,
     unorderedScalarPaths,
+    freeFormMapPaths,
   };
 }

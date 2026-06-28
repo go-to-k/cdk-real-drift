@@ -45,6 +45,23 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
+  it('a free-form map key (freeFormKey) is SHOWN as potential drift, never folded into the subkey count', () => {
+    // A console-added Lambda env var is nested but user-authored (freeFormKey), so it is
+    // surfaced in [Potential Drift] like a top-level value — unlike a plain nested default,
+    // which folds into undeclared-subkey.
+    const nested = (p: string): Finding => ({ ...U(p), nested: true });
+    const freeForm = (p: string): Finding => ({ ...U(p), nested: true, freeFormKey: true });
+    const { text } = run([
+      freeForm('Environment.Variables.testtesttess'),
+      nested('a'),
+      nested('b'),
+    ]);
+    expect(text).toContain('[Potential Drift: 1]'); // the free-form key is listed
+    expect(text).toContain('Environment.Variables.testtesttess');
+    expect(text).toContain('undeclared-subkey=2'); // the 2 plain nested values still fold
+    expect(text).toContain('result: no confirmed drift · 1 potential drift');
+  });
+
   it('FOLDED-only (untouched fresh deploy): no potential drift, just "to record" inventory', () => {
     // No standout values, only nested AWS-populated ones — must NOT read as potential
     // drift, and must NOT print the "can't be confirmed as drift" preamble.

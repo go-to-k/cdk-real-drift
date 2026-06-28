@@ -975,6 +975,13 @@ export function classifyResource(
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
+  // Schema-detected FREE-FORM MAP properties (Lambda Environment.Variables, Glue
+  // Parameters): a live-only sub-key directly under one is user-authored data, not an
+  // AWS-materialized nested default — so flag it `freeFormKey` to surface it in the report
+  // (the generic nested fold would hide a console-added env var as first-run noise).
+  const freeFormMapPaths = schema.freeFormMapPaths ?? [];
+  const underFreeFormMap = (schemaPath: string): boolean =>
+    freeFormMapPaths.some((ff) => schemaPath.startsWith(`${ff}.`));
   for (const [k, dv] of Object.entries(declared)) {
     // Only skip a WHOLLY-unresolved property: collectNestedUndeclared descends to emit
     // LIVE-only keys, and an UNRESOLVED declared leaf is inert there (isNestedObject/
@@ -1001,7 +1008,18 @@ export function classifyResource(
           generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)
           ? 'generated'
           : 'undeclared';
-      findings.push({ tier, logicalId, resourceType, path, actual: value, nested: true });
+      // A free-form map key surfaces (not folded), but only when it is a real undeclared
+      // value — an atDefault/generated one stays informational like any other.
+      const freeFormKey = tier === 'undeclared' && underFreeFormMap(schemaPath);
+      findings.push({
+        tier,
+        logicalId,
+        resourceType,
+        path,
+        actual: value,
+        nested: true,
+        ...(freeFormKey && { freeFormKey: true }),
+      });
     });
   }
 

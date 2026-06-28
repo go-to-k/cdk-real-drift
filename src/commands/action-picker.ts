@@ -21,7 +21,7 @@
 // and unit-tested; the prompt is a thin rendering/key shell.
 import { isCancel, Prompt } from '@clack/core';
 import { S_BAR, S_BAR_END, S_BAR_START } from '@clack/prompts';
-import { isManagedPolicyAttachmentMember, isNestedUndeclared } from '../revert/plan.js';
+import { isManagedPolicyAttachmentMember, isUnrevertableNested } from '../revert/plan.js';
 import type { Finding } from '../types.js';
 import { style } from '../report/style.js';
 
@@ -33,20 +33,22 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
  * `skip`). Mirrors the verbs' scope:
  *  - undeclared → record (snapshot the norm; gentlest, keeps watching), then ignore
  *    (stop watching), then revert (REMOVE the live value — destructive, so last) —
- *    BUT revert is dropped for a NESTED undeclared value, which is detect/record-only
- *    (R99): offering it would let the user pick an action revert can't run;
+ *    BUT revert is dropped for a nested undeclared value revert CANNOT target (an
+ *    array-element or Tags-rooted path, `isUnrevertableNested`): offering it would let
+ *    the user pick an action revert can't run. A pure-dotted nested value (a free-form
+ *    map key like an env var) stays revertable;
  *  - added → record (snapshot the out-of-band resource; keeps watching for changes),
  *    ignore (stop watching), revert (DELETE the resource — destructive, so last). PR4
  *    makes added the resource-level sibling of undeclared, so it takes the same verbs;
  *  - declared → revert (restore the template intent — the natural fix), then ignore;
  *  - everything else (deleted / readGap / unresolved / atDefault / generated / skipped)
  *    has no in-tool action → an empty list, so it is not a decidable row.
- * Pure + exported. `isNestedUndeclared` is the SAME predicate buildRevertPlan uses, so
+ * Pure + exported. `isUnrevertableNested` is the SAME predicate buildRevertPlan uses, so
  * the picker's revert offer and revert's actual capability never diverge.
  */
 export function applicableActions(finding: Finding): FindingAction[] {
   if (finding.tier === 'undeclared')
-    return isNestedUndeclared(finding) && !isManagedPolicyAttachmentMember(finding)
+    return isUnrevertableNested(finding) && !isManagedPolicyAttachmentMember(finding)
       ? ['record', 'ignore']
       : ['record', 'ignore', 'revert'];
   if (finding.tier === 'added')
