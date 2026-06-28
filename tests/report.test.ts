@@ -34,21 +34,22 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
-  it('potential-drift count is the SHOWN standout only; folded nested are a "to record" tail (R112)', () => {
-    // 2 standout (shown in [Potential Drift: 2]) + 3 nested (folded). Only the 2 standout
-    // count as potential drift — the 3 nested AWS-populated values are inventory.
+  it('nested undeclared values are SURFACED in [Potential Drift], like top-level ones', () => {
+    // 2 top-level + 3 nested = 5 shown potential drift. The R96 fold is gone: a nested
+    // undeclared value that survived the upstream atDefault/generated/KNOWN_DEFAULT_PATHS
+    // folds is a real out-of-band setting (e.g. Integration.PassthroughBehavior), so it is
+    // listed, not collapsed into an `undeclared-subkey` count.
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { text } = run([U(), U('Q'), nested('a'), nested('b'), nested('c')]);
-    expect(text).toContain('[Potential Drift: 2]'); // only the standout are listed
-    expect(text).toContain(
-      'result: no confirmed drift · 2 potential drift (+ 3 nested live-only to record)'
-    );
+    expect(text).toContain('[Potential Drift: 5]');
+    expect(text).not.toContain('undeclared-subkey');
+    expect(text).not.toContain('to record)'); // no folded tail — nothing is folded
+    expect(text).toContain('result: no confirmed drift · 5 potential drift');
   });
 
-  it('a free-form map key (freeFormKey) is SHOWN as potential drift, never folded into the subkey count', () => {
-    // A console-added Lambda env var is nested but user-authored (freeFormKey), so it is
-    // surfaced in [Potential Drift] like a top-level value — unlike a plain nested default,
-    // which folds into undeclared-subkey.
+  it('a free-form map key (freeFormKey) is SHOWN as potential drift, like any nested value', () => {
+    // freeFormKey no longer changes VISIBILITY (all nested surface now); the flag is kept
+    // for revertability semantics. A console-added Lambda env var lists in [Potential Drift].
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const freeForm = (p: string): Finding => ({ ...U(p), nested: true, freeFormKey: true });
     const { text } = run([
@@ -56,24 +57,21 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
       nested('a'),
       nested('b'),
     ]);
-    expect(text).toContain('[Potential Drift: 1]'); // the free-form key is listed
+    expect(text).toContain('[Potential Drift: 3]'); // free-form key + 2 nested all listed
     expect(text).toContain('Environment.Variables.testtesttess');
-    expect(text).toContain('undeclared-subkey=2'); // the 2 plain nested values still fold
-    expect(text).toContain('result: no confirmed drift · 1 potential drift');
+    expect(text).not.toContain('undeclared-subkey');
+    expect(text).toContain('result: no confirmed drift · 3 potential drift');
   });
 
-  it('FOLDED-only (untouched fresh deploy): no potential drift, just "to record" inventory', () => {
-    // No standout values, only nested AWS-populated ones — must NOT read as potential
-    // drift, and must NOT print the "can't be confirmed as drift" preamble.
+  it('nested-only (no top-level): nested values surface as potential drift, with the preamble', () => {
+    // A surviving nested undeclared value IS potential drift now — it reads as such and
+    // prints the "can't be confirmed as drift" preamble, no longer hidden as folded inventory.
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { code, text } = run([nested('a'), nested('b')]);
-    expect(code).toBe(0);
-    expect(text).not.toContain('[Potential Drift'); // section lists standout only -> none
-    expect(text).not.toContain('No baseline yet'); // no standout -> no alarming preamble
-    expect(text).not.toContain('potential drift'); // the count phrase must not appear
-    expect(text).toContain(
-      'result: no confirmed drift · 2 live-only value(s) to record as baseline (run cdkrd record)'
-    );
+    expect(code).toBe(0); // potential drift never sets exit 1
+    expect(text).toContain('[Potential Drift: 2]');
+    expect(text).toContain('No baseline yet');
+    expect(text).toContain('result: no confirmed drift · 2 potential drift');
   });
 
   it('declared drift still fails, with potential-drift values noted beside the verdict', () => {
@@ -93,14 +91,14 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(text).toContain('result: 2 findings — 1 drift (undeclared=1) + 1 potential drift');
   });
 
-  it('mixed findings line counts only SHOWN unrecorded; folded ones stay a parenthetical (R114)', () => {
-    // 1 declared drift + 1 standout unrecorded (shown) + 2 nested unrecorded (folded)
+  it('mixed findings line counts ALL shown unrecorded, including nested (R114)', () => {
+    // 1 declared drift + 1 top-level unrecorded + 2 nested unrecorded — all 3 unrecorded
+    // are shown now, so the combined findings count is 1 drift + 3 potential drift.
     const nested = (p: string): Finding => ({ ...U(p), nested: true });
     const { code, text } = run([F('declared'), U('Q'), nested('a'), nested('b')]);
     expect(code).toBe(1);
-    expect(text).toContain(
-      'result: 2 findings — 1 drift (declared=1) + 1 potential drift (+ 2 nested live-only to record)'
-    );
+    expect(text).toContain('result: 4 findings — 1 drift (declared=1) + 3 potential drift');
+    expect(text).not.toContain('to record)');
   });
 
   it('deleted still fails alongside unrecorded values (a gone resource is drift, baseline or not)', () => {
@@ -611,7 +609,7 @@ describe('report', () => {
   });
 });
 
-describe('R96 nested unrecorded folding', () => {
+describe('nested unrecorded surfacing (R96 fold removed)', () => {
   const NU = (path: string, nested?: boolean): Finding => ({
     tier: 'undeclared',
     logicalId: 'L',
@@ -621,17 +619,18 @@ describe('R96 nested unrecorded folding', () => {
     unrecorded: true,
     ...(nested ? { nested: true } : {}),
   });
-  it('nested unrecorded folds into info:, top-level lists in [Potential Drift]', () => {
+  it('nested unrecorded lists in [Potential Drift] alongside top-level, no fold line', () => {
     const { text } = run([NU('TopLevel'), NU('Conf.A', true), NU('Conf.B', true)]);
-    expect(text).toContain('[Potential Drift: 1]');
+    expect(text).toContain('[Potential Drift: 3]');
     expect(text).toContain('L.TopLevel');
-    expect(text).toContain('undeclared-subkey=2');
-    expect(text).not.toContain('Conf.A');
-  });
-  it('--show-all expands nested into the body (no fold line)', () => {
-    const { text } = run([NU('Conf.A', true)], { expandAtDefault: true });
     expect(text).toContain('L.Conf.A');
-    expect(text).not.toContain('undeclared-subkey=1');
+    expect(text).toContain('L.Conf.B');
+    expect(text).not.toContain('undeclared-subkey');
+  });
+  it('nested values are shown in the body by default (no --show-all needed)', () => {
+    const { text } = run([NU('Conf.A', true)]);
+    expect(text).toContain('L.Conf.A');
+    expect(text).not.toContain('undeclared-subkey');
   });
   it('--verbose also expands nested', () => {
     const { text } = run([NU('Conf.A', true)], { verbose: true });

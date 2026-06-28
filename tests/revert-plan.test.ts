@@ -429,6 +429,65 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.ops[0]!.human).toContain('DELETE');
   });
 
+  it('orders DELETE items LAST so a dereference (property revert) runs before the delete', () => {
+    // Mirrors the live API Gateway case: an out-of-band RequestValidator (added -> delete)
+    // is still referenced by a Method's undeclared RequestValidatorId (undeclared -> remove).
+    // The validator delete must run AFTER the reference is removed, else the provider rejects
+    // "still in use". Findings are given delete-first to prove the plan reorders them.
+    const del = F({
+      tier: 'added',
+      logicalId: 'Api/validator|abc',
+      physicalId: 'validator|abc',
+      resourceType: 'AWS::ApiGateway::RequestValidator',
+      path: '',
+    });
+    const deref = F({
+      tier: 'undeclared',
+      logicalId: 'Api/method',
+      physicalId: 'abc|res|OPTIONS',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'RequestValidatorId',
+      actual: 'abc',
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([del, deref], undefined, { removeUnrecorded: true });
+    expect(plan.items).toHaveLength(2);
+    // the property revert (cc) comes first; the delete is appended last
+    expect(plan.items[0]!.kind).not.toBe('delete');
+    expect(plan.items[1]!.kind).toBe('delete');
+    expect(plan.items[1]!.resourceType).toBe('AWS::ApiGateway::RequestValidator');
+  });
+
+  it('ApiGateway Method nested integration knobs route to kind=sdk (not record-only)', () => {
+    // Both a pure-dotted knob and an ARRAY-ELEMENT knob (which the generic nested bar would
+    // mark unrevertable) become revertable via the nested SDK writer, batched into one item.
+    const pass = F({
+      tier: 'undeclared',
+      logicalId: 'Api/OPTIONS',
+      physicalId: 'abc|res|OPTIONS',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'Integration.PassthroughBehavior',
+      actual: 'NEVER',
+      nested: true,
+      unrecorded: false,
+    });
+    const sel = F({
+      tier: 'undeclared',
+      logicalId: 'Api/OPTIONS',
+      physicalId: 'abc|res|OPTIONS',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'Integration.IntegrationResponses[204].SelectionPattern',
+      actual: '5\\d{2}',
+      nested: true,
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([pass, sel], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1); // both ops batched into ONE sdk item for the method
+    expect(plan.items[0]).toMatchObject({ kind: 'sdk', resourceType: 'AWS::ApiGateway::Method' });
+    expect(plan.items[0]!.ops).toHaveLength(2);
+  });
+
   it('an `added` finding with no physical id -> notRevertable (cannot address the delete)', () => {
     const f = F({ tier: 'added', logicalId: 'X/y', physicalId: undefined, path: '' });
     const plan = buildRevertPlan([f], undefined);

@@ -62,9 +62,10 @@ properties you **declared**, plus anything deleted out-of-band: those compare
 against your template, so they need no baseline. Values that live only on the
 real resource (never in your template) can't be judged yet on this first run:
 with no baseline, `check` can't tell an intentional setting from an out-of-band
-change. It folds away the ones it can explain (AWS defaults, generated names,
-nested sub-keys) and flags only the rest as _Potential Drift_; record those, and
-any later out-of-band change to them is real drift.
+change. It folds away the ones it can explain (AWS defaults, generated names) and
+flags the rest — including a non-default value nested inside an object you _did_
+declare — as _Potential Drift_; record those, and any later out-of-band change to
+them is real drift.
 
 So a typical first run reports no _confirmed_ drift, just live-only values
 (potential drift) you can record:
@@ -77,7 +78,7 @@ No baseline yet — these live-only values can't be confirmed as drift. Record t
   ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: no confirmed drift · 2 potential drift (+ 40 nested live-only to record)
+result: no confirmed drift · 2 potential drift
 
 ApiStack: potential drift found (live-only, no baseline yet) — what do you want to do?
   ❯ Nothing (decide later)
@@ -303,10 +304,11 @@ Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
   confirms. `--yes` applies the full plan.
 - **`record`** shows a multiselect of only the **delta** from the existing baseline
   (new + changed values, pre-selected); already-recorded unchanged values are
-  auto-kept. Deselect a suspicious one and it stays reported by `check`. Only the
-  **standout** values are listed; the folded nested sub-keys (`undeclared-subkey`)
-  are **always recorded** and the picker header discloses their count (`--verbose`
-  itemizes each). `record` writes only undeclared + added state; any declared /
+  auto-kept. Deselect a suspicious one and it stays reported by `check`. Nested
+  undeclared sub-keys (a value inside an object you _did_ declare) are listed in
+  full alongside the top-level ones — a non-default one is a real out-of-band
+  setting, so it is surfaced, not hidden. `record` writes only undeclared + added
+  state; any declared /
   deleted drift is not written and `record` prints a note that it still stands
   (resolve with `revert` or `cdk deploy`).
 - **`Decide per finding`** assigns a different action to each finding. On a busy
@@ -407,12 +409,12 @@ info:
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 
-| tier                                             | what it folds                                                                                                                                                                                                                                                                          |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `atDefault`                                      | an undeclared value sitting at a known AWS default (e.g. Lambda `TracingConfig: PassThrough`). Equality-gated, so a change away from it re-surfaces; never recorded.                                                                                                                   |
-| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                                                                                                                                                                                          |
-| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`). Recordable; `--show-all` lists it. A key under a free-form map (Lambda `Environment.Variables`, Glue `Parameters`) is user data, so it is shown in full, not folded. |
-| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                                                                                                                                     |
+| tier                                             | what it folds                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `atDefault`                                      | an undeclared value sitting at a known AWS default (e.g. Lambda `TracingConfig: PassThrough`). Equality-gated, so a change away from it re-surfaces; never recorded.                                                                                                                                                                                                                                                       |
+| `generated`                                      | an undeclared value AWS/CDK minted, like an auto `TopicName`. Equality-gated; never recorded.                                                                                                                                                                                                                                                                                                                              |
+| `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`, or an API Gateway method's `Integration.PassthroughBehavior`). Surfaced in full like a top-level undeclared value — a non-default nested value is a real out-of-band setting — and recordable. (Catalogued AWS defaults are folded upstream as `atDefault`/`generated`, so only genuine settings remain.) |
+| `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                                                                                                                                                                                                                                                                         |
 
 `^result:` is the greppable verdict. Colorized on a TTY (`NO_COLOR` respected);
 piped / CI / `--json` output is plain text.

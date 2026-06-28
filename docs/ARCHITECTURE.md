@@ -391,25 +391,32 @@ all live changes
       ├─ top-level: a live property the template never declared
       └─ nested (R96/R98): a live SUB-key inside a DECLARED object not set by it
          (recursed by classify's collectNestedUndeclared, dotted path, flagged
-         nested:true) — folded in the report by default (the live model carries many
-         nested AWS defaults), expanded by --show-all/--verbose, recorded by record
-         like any undeclared value so a later out-of-band change to it surfaces.
-         EXCEPTION — a key under a FREE-FORM MAP property
+         nested:true) — SURFACED in full in the report like a top-level undeclared
+         value (the R96 fold was removed): catalogued AWS defaults are stripped
+         UPSTREAM (atDefault/generated/KNOWN_DEFAULT_PATHS/schema defaults), so a
+         nested value that still reaches the report is a NON-default setting a user
+         most likely changed out of band (e.g. an API Gateway method's
+         Integration.PassthroughBehavior=NEVER) — exactly the differentiator. An
+         uncatalogued AWS-populated nested value is quieted by EXTENDING
+         KNOWN_DEFAULT_PATHS (the same catalogue model as top-level), never by hiding
+         the whole class. Recorded by record like any undeclared value. The
+         `freeFormKey` flag — a key under a FREE-FORM MAP property
          (SchemaInfo.freeFormMapPaths: a `type:object` schema node with no fixed
          `properties`, just `patternProperties`/object `additionalProperties` —
          Lambda Environment.Variables, Glue Parameters, and maps nested under an
          array element via a `*` path: ECS ContainerDefinitions.*.DockerLabels /
-         .LogConfiguration.Options): every such key is user-authored data, NOT an
-         AWS default, so it is flagged `freeFormKey` and SURFACED in full (never
-         folded) — a console-added env var is real, reviewable drift, not
-         first-run noise. A `Tags` bag is EXCLUDED even when map-shaped
-         (AWS::SSM::Parameter models Tags as a patternProperties map; most types
-         use a {Key,Value}[] LIST) so map-tag keys FOLD consistently with
-         list-tag keys — a map-tagged resource is not noisier on the first run.
+         .LogConfiguration.Options) — no longer affects VISIBILITY (all nested
+         surface now) but survives for revertability semantics. A `Tags` bag is
+         EXCLUDED from freeFormMapPaths even when map-shaped (AWS::SSM::Parameter
+         models Tags as a patternProperties map; most types use a {Key,Value}[] LIST)
+         so map-tag keys fold/normalize consistently with list-tag keys.
          R98 extends the recursion into the MATCHED elements of identity-keyed object
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
          value and a live-only sub-field inside a declared element is caught too
-         (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended
+         (path `Prop[<id>].sub`). Identity-LESS arrays (SG rules) are not descended —
+         EXCEPT a per-type NESTED_ARRAY_IDENTITY override names a non-standard key
+         (API Gateway Method Integration.IntegrationResponses by StatusCode), so an
+         out-of-band SelectionPattern / ContentHandling on a declared response surfaces
 ```
 
 ### Why a given value does (or does not) appear
@@ -697,8 +704,15 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   the dotted pointer read-modify-write (`isUnrevertableNested`): a free-form map key
   (a Lambda env var), an object sub-field, OR a **map-shaped tag key** (`Tags.<key>`,
   e.g. AWS::SSM::Parameter — a single-key `remove`/`add` leaves the live `aws:*`
-  managed tags untouched, proven live). KMS keys need no SDK writer — they revert via
-  the generic CC path.
+  managed tags untouched, proven live). EXCEPTION — even an ARRAY-ELEMENT nested path
+  a type-specific `SDK_NESTED_WRITERS` entry can target PRECISELY is revertable
+  (`isNestedSdkWritable`, the same lift `isManagedPolicyAttachmentMember` gets): an
+  API Gateway Method's `Integration.{PassthroughBehavior,ContentHandling,TimeoutInMillis}`
+  and `IntegrationResponses[<statusCode>].{SelectionPattern,ContentHandling}` revert via
+  the native granular patch API (UpdateIntegration / UpdateIntegrationResponse
+  PatchOperations) — API Gateway REJECTS `op: remove` for these, so the reset is a
+  `replace` (to the AWS default, or `""` which reads back absent/folded — proven live).
+  KMS keys need no SDK writer — they revert via the generic CC path.
 - **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
   _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
   arrays sorted), not the template verbatim. It is semantically equal to the template
@@ -890,20 +904,19 @@ user did not pick. They render as their own `[Potential Drift: N]` section (note
 `live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's
 intended or an out-of-band change — Record to accept it, or Revert to
 remove it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
-`--fail` exit. The `result:` "potential drift" count is the SHOWN standout
-(top-level) values ONLY — `· N potential drift (+ M nested live-only to record)`,
-the tail only when nested values fold. FOLDED nested values (undeclared-subkey,
-R96) are AWS-populated noise present on any fresh deploy, so when ONLY nested
-values exist (no standout — the untouched-deploy case) the verdict is the neutral
-`· N live-only value(s) to record as baseline (run cdkrd record)`, NOT potential
-drift, and the "No baseline yet — … Record them right from this `cdkrd check`
-prompt, or run `cdkrd record`." preamble is SUPPRESSED (it prints only when a
-standout value is present, since only those are values cdkrd cannot confirm).
-When BOTH a drift section and a standout `[Potential Drift]` section print, a lone
+`--fail` exit. The `result:` "potential drift" count is every SHOWN live-only
+value — top-level AND nested (the R96 fold was removed: a nested undeclared value
+that survives the upstream atDefault/generated/KNOWN*DEFAULT_PATHS folds is a real
+out-of-band setting, so it lists in `[Potential Drift]` like a top-level one). The
+`(+ M nested live-only to record)` tail and the neutral "to record" verdict survive
+in the code for a future re-fold but are inert in practice (M is 0). The "No
+baseline yet — … Record them right from this `cdkrd check` prompt, or run `cdkrd
+record`." preamble prints whenever any live-only value is shown.
+When BOTH a drift section and a `[Potential Drift]` section print, a lone
 `N drift(s)` verdict reads as a mismatch against the 2+ visible blocks, so the
-line switches to a combined findings count counting only what is SHOWN —
-`result: 3 findings — 1 drift (declared=1) + 2 potential drift (+ 23 nested
-live-only to record)` — keeping the red drift verdict intact (R114);
+line switches to a combined findings count —
+`result: 3 findings — 1 drift (declared=1) + 2 potential drift` — keeping the red
+drift verdict intact (R114);
 single-category runs keep their plain `CLEAN` / `no confirmed drift` / `N drift(s)` verdict.
 Declared and deleted drift still report and fail normally. The interactive after-report
 prompt still fires for unrecorded values (`potential drift found (live-only, no
@@ -917,17 +930,14 @@ offers `record` when there are undeclared/added findings OR (no baseline AND no 
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 ignores the recorded baseline — it lists EVERY current undeclared value with no
-suppression — but still runs `applyBaseline(_, undefined)`, so those live-only
-values are tagged `unrecorded` (Potential Drift), not mislabeled confirmed drift:
-`--show-all --fail` does not exit 1 on a fresh deploy nobody has touched. Only
-`--declared-only` truly bypasses `applyBaseline` (the undeclared tier is filtered
+suppression — but still runs `applyBaseline(*, undefined)`, so those live-only
+values are tagged `unrecorded`(Potential Drift), not mislabeled confirmed drift:`--show-all --fail`does not exit 1 on a fresh deploy nobody has touched. Only`--declared-only`truly bypasses`applyBaseline`(the undeclared tier is filtered
 out first, so its removal pass would misread every recorded entry).
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
 yellow undeclared tier, dim informational footers — ONLY when stdout is a real
-TTY and `NO_COLOR` is unset. Piped / CI / `--json` output is byte-identical
-plain text (the helpers are the identity), so the greppable invariant holds;
-`FORCE_COLOR` is deliberately ignored. The pure formatters (`formatFinding`'s
+TTY and`NO_COLOR`is unset. Piped / CI /`--json`output is byte-identical
+plain text (the helpers are the identity), so the greppable invariant holds;`FORCE_COLOR` is deliberately ignored. The pure formatters (`formatFinding`'s
 ids, `formatPlan`) stay plain; styling happens at the printing edge.
 
 A declared **top-level write-only** property (e.g. an IAM Role's

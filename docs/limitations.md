@@ -9,8 +9,12 @@ the full design.
   informational, never guessed. You trade a little coverage for zero false drift.
 - **Revert can't do everything.** Not revertable, and reported as such: unrecorded
   values (record them, or opt into removal with `--remove-unrecorded`); a `deleted`
-  resource (recreate with `cdk deploy`); nested undeclared values (a flat patch
-  can't safely target a deep sub-field — fix in IaC or re-record); create-only
+  resource (recreate with `cdk deploy`); an **array-element** nested undeclared
+  value (`Prop[<id>].sub`) — a flat patch can't safely target it — UNLESS a
+  type-specific SDK writer can (an API Gateway method's integration knobs like
+  `Integration.IntegrationResponses[<status>].SelectionPattern` revert via the native
+  patch API); a pure-dotted nested value (a free-form map key, an object sub-field,
+  or a map-shaped tag key) IS revertable via Cloud Control; create-only
   properties (changing them needs replacement); toggle-style properties with no
   "absent" state (e.g. S3 transfer acceleration); `AWS::Lambda::Permission` and
   `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state).

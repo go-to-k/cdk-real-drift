@@ -139,6 +139,18 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   // above); observed live on a fresh cognito-userpooluser-rich deploy (sub injected).
   'AWS::Cognito::UserPoolUser': { UserAttributes: { idField: 'Name' } },
 };
+// Nested object-arrays whose element identity is a NON-standard field (not Key/Id/
+// AttributeName/IndexName/Name). collectNestedUndeclared aligns identity-keyed arrays so a
+// live-only sub-key inside a declared element surfaces; without a known identity it skips
+// the array entirely (reorder-unsafe to descend by position) — silently HIDING such a
+// sub-key. Keyed by resourceType -> nested array path (brackets stripped) -> identity field.
+//   - AWS::ApiGateway::Method Integration.IntegrationResponses is keyed by StatusCode, so an
+//     out-of-band SelectionPattern / ContentHandling added to a declared response (the
+//     "HTTP error regex" / "content handling" console knobs) is otherwise invisible.
+const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
+  'AWS::ApiGateway::Method': { 'Integration.IntegrationResponses': 'StatusCode' },
+};
+
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&
   typeof t === 'object' &&
@@ -254,18 +266,34 @@ function collectNestedUndeclared(
   declaredVal: unknown,
   liveVal: unknown,
   path: string,
-  emit: (path: string, value: unknown) => void
+  emit: (path: string, value: unknown) => void,
+  // Per-type override: nested object-arrays whose element identity is a NON-standard field
+  // (not one of IDENTITY_FIELDS), keyed by the array's path with brackets stripped. Without
+  // it those arrays are identity-LESS to the generic check below and the descent is skipped —
+  // hiding a live-only sub-key added to a declared element (a silent FN). See
+  // NESTED_ARRAY_IDENTITY.
+  nestedArrayIdentity?: Record<string, string>
 ): void {
   if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
     if (declaredVal.length === 0 || liveVal.length === 0) return;
-    const idf = identityField(declaredVal);
-    if (idf && identityField(liveVal) === idf) {
+    // A registered identity field (e.g. ApiGateway Method Integration.IntegrationResponses
+    // keyed by StatusCode) wins over the generic IDENTITY_FIELDS sniff; both sides share it.
+    const regId = nestedArrayIdentity?.[path.replace(/\[[^\]]*\]/g, '')];
+    const idf = regId ?? identityField(declaredVal);
+    if (idf && (regId !== undefined || identityField(liveVal) === idf)) {
       const liveById = new Map<string, Record<string, unknown>>();
       for (const el of liveVal) if (isNestedObject(el)) liveById.set(String(el[idf]), el);
       for (const dEl of declaredVal) {
         if (!isNestedObject(dEl)) continue;
         const match = liveById.get(String(dEl[idf]));
-        if (match) collectNestedUndeclared(dEl, match, `${path}[${String(dEl[idf])}]`, emit);
+        if (match)
+          collectNestedUndeclared(
+            dEl,
+            match,
+            `${path}[${String(dEl[idf])}]`,
+            emit,
+            nestedArrayIdentity
+          );
       }
       return;
     }
@@ -287,7 +315,7 @@ function collectNestedUndeclared(
           const lEl = liveVal[i];
           if (isNestedObject(lEl) && isPolicySubsetOf(dEl, lEl)) {
             used.add(i);
-            collectNestedUndeclared(dEl, lEl, `${path}[${di}]`, emit);
+            collectNestedUndeclared(dEl, lEl, `${path}[${di}]`, emit, nestedArrayIdentity);
             break;
           }
         }
@@ -306,7 +334,14 @@ function collectNestedUndeclared(
       for (const dEl of declaredVal) {
         if (!isNestedObject(dEl) || typeof dEl.PolicyName !== 'string') continue;
         const match = liveByName.get(dEl.PolicyName);
-        if (match) collectNestedUndeclared(dEl, match, `${path}[${dEl.PolicyName}]`, emit);
+        if (match)
+          collectNestedUndeclared(
+            dEl,
+            match,
+            `${path}[${dEl.PolicyName}]`,
+            emit,
+            nestedArrayIdentity
+          );
       }
     }
     return;
@@ -314,7 +349,8 @@ function collectNestedUndeclared(
   if (!isNestedObject(declaredVal) || !isNestedObject(liveVal)) return;
   for (const [k, val] of Object.entries(liveVal)) {
     const childPath = `${path}.${k}`;
-    if (k in declaredVal) collectNestedUndeclared(declaredVal[k], val, childPath, emit);
+    if (k in declaredVal)
+      collectNestedUndeclared(declaredVal[k], val, childPath, emit, nestedArrayIdentity);
     else emit(childPath, val);
   }
 }
@@ -995,32 +1031,39 @@ export function classifyResource(
     // WHOLE UNIT in the declared loop above — never descend into it for nested undeclared
     // sub-keys, which would emit a fragile dotted finding the revert can't target.
     if (JSON_STRING_PROPS[resourceType]?.has(k)) continue;
-    collectNestedUndeclared(dv, live[k], k, (path, value) => {
-      if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
-      const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
-      const atDefault =
-        (schemaPath in schema.defaultPaths && deepEqual(value, schema.defaultPaths[schemaPath])) ||
-        (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
-      const tier = atDefault
-        ? 'atDefault'
-        : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
-          // physical-id segment (the AWS default) — a custom value the user set surfaces.
-          generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)
-          ? 'generated'
-          : 'undeclared';
-      // A free-form map key surfaces (not folded), but only when it is a real undeclared
-      // value — an atDefault/generated one stays informational like any other.
-      const freeFormKey = tier === 'undeclared' && underFreeFormMap(schemaPath);
-      findings.push({
-        tier,
-        logicalId,
-        resourceType,
-        path,
-        actual: value,
-        nested: true,
-        ...(freeFormKey && { freeFormKey: true }),
-      });
-    });
+    collectNestedUndeclared(
+      dv,
+      live[k],
+      k,
+      (path, value) => {
+        if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
+        const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
+        const atDefault =
+          (schemaPath in schema.defaultPaths &&
+            deepEqual(value, schema.defaultPaths[schemaPath])) ||
+          (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
+        const tier = atDefault
+          ? 'atDefault'
+          : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
+            // physical-id segment (the AWS default) — a custom value the user set surfaces.
+            generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)
+            ? 'generated'
+            : 'undeclared';
+        // A free-form map key surfaces (not folded), but only when it is a real undeclared
+        // value — an atDefault/generated one stays informational like any other.
+        const freeFormKey = tier === 'undeclared' && underFreeFormMap(schemaPath);
+        findings.push({
+          tier,
+          logicalId,
+          resourceType,
+          path,
+          actual: value,
+          nested: true,
+          ...(freeFormKey && { freeFormKey: true }),
+        });
+      },
+      NESTED_ARRAY_IDENTITY[resourceType]
+    );
   }
 
   // attach physicalId (for revert) + construct path (display) onto every finding
