@@ -150,7 +150,14 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
 //     out-of-band SelectionPattern / ContentHandling added to a declared response (the
 //     "HTTP error regex" / "content handling" console knobs) is otherwise invisible.
 const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
-  'AWS::ApiGateway::Method': { 'Integration.IntegrationResponses': 'StatusCode' },
+  'AWS::ApiGateway::Method': {
+    'Integration.IntegrationResponses': 'StatusCode',
+    // MethodResponses is keyed by StatusCode too. AWS does NOT auto-materialize its
+    // ResponseModels (a CFn-created method response declaring none reads back null —
+    // proven live), so an out-of-band `responseModels` (e.g. the built-in "Error" model
+    // attached in the console) surfaces as a genuine undeclared value, no FP.
+    MethodResponses: 'StatusCode',
+  },
 };
 
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>

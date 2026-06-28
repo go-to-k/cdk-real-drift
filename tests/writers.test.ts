@@ -2,6 +2,7 @@ import {
   APIGatewayClient,
   UpdateIntegrationCommand,
   UpdateIntegrationResponseCommand,
+  UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
 import {
   CloudFrontClient,
@@ -223,6 +224,29 @@ describe('ApiGateway Method integration writer (nested knobs CC cannot patch)', 
     await expect(
       resolveSdkWriter('AWS::ApiGateway::Method', ops)!(ctx({ physicalId: 'bad' }), ops)
     ).rejects.toThrow(/cannot parse ApiGateway Method id/);
+  });
+
+  it('reverts an out-of-band MethodResponses ResponseModels via UpdateMethodResponse (remove per media key)', async () => {
+    apigw.on(UpdateMethodResponseCommand).resolves({});
+    // classify emits the whole live-only ResponseModels map; revertOp carries it as `prior`.
+    const ops: PatchOp[] = [
+      {
+        op: 'remove',
+        path: '/MethodResponses[200]/ResponseModels',
+        prior: { 'application/json': 'Error' },
+        human: 'remove',
+      },
+    ];
+    await resolveSdkWriter('AWS::ApiGateway::Method', ops)!(apigwCtx(), ops);
+    const calls = apigw.commandCalls(UpdateMethodResponseCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toMatchObject({
+      restApiId: 'abc',
+      resourceId: '9zav19',
+      httpMethod: 'OPTIONS',
+      statusCode: '200',
+      patchOperations: [{ op: 'remove', path: '/responseModels/application~1json' }],
+    });
   });
 });
 

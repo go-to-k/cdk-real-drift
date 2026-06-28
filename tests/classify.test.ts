@@ -4593,3 +4593,49 @@ describe('NESTED_ARRAY_IDENTITY (ApiGateway Method IntegrationResponses keyed by
     expect(findings.filter((f) => f.tier === 'undeclared')).toHaveLength(0);
   });
 });
+
+describe('NESTED_ARRAY_IDENTITY: ApiGateway Method MethodResponses keyed by StatusCode', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const method = (methodResponses: unknown): DesiredResource => ({
+    logicalId: 'ApiGET',
+    resourceType: 'AWS::ApiGateway::Method',
+    physicalId: 'abc|res|GET',
+    declared: { HttpMethod: 'GET', AuthorizationType: 'NONE', MethodResponses: methodResponses },
+  });
+
+  it('an out-of-band responseModels added to a declared method response surfaces as undeclared', () => {
+    const declared = method([{ StatusCode: '200' }]); // template declares NO responseModels
+    const live = {
+      HttpMethod: 'GET',
+      AuthorizationType: 'NONE',
+      MethodResponses: [{ StatusCode: '200', ResponseModels: { 'application/json': 'Error' } }],
+    };
+    const undeclared = classifyResource(declared, live, bare)
+      .filter((f) => f.tier === 'undeclared')
+      .map((f) => f.path);
+    expect(undeclared).toContain('MethodResponses[200].ResponseModels');
+  });
+
+  it('a declared responseModels matching live is NOT drift (no FP)', () => {
+    const el = { StatusCode: '200', ResponseModels: { 'application/json': 'Empty' } };
+    const findings = classifyResource(
+      method([el]),
+      {
+        HttpMethod: 'GET',
+        AuthorizationType: 'NONE',
+        MethodResponses: [el],
+      },
+      bare
+    );
+    expect(findings.filter((f) => f.tier === 'undeclared')).toHaveLength(0);
+  });
+});
