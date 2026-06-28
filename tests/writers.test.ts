@@ -82,6 +82,11 @@ import {
   DescribeConfigRulesCommand,
   PutConfigRuleCommand,
 } from '@aws-sdk/client-config-service';
+import {
+  DescribeEventBusCommand,
+  EventBridgeClient,
+  PutPermissionCommand,
+} from '@aws-sdk/client-eventbridge';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -101,6 +106,7 @@ const glue = mockClient(GlueClient);
 const logs = mockClient(CloudWatchLogsClient);
 const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
+const eventbridge = mockClient(EventBridgeClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -143,6 +149,77 @@ beforeEach(() => {
   logs.reset();
   route53.reset();
   configService.reset();
+  eventbridge.reset();
+});
+
+describe('EventBusPolicy writer (CC RFC6902 patch fails on a singular-object Statement)', () => {
+  const desiredStmt = {
+    Sid: 'AllowSelfPutEvents',
+    Effect: 'Allow',
+    Principal: { AWS: 'arn:aws:iam::123456789012:root' },
+    Action: 'events:PutEvents',
+    Resource: 'arn:aws:events:us-east-1:123456789012:event-bus/mybus',
+  };
+  const ebpCtx = (over: Partial<OverrideCtx> = {}): OverrideCtx =>
+    ctx({
+      physicalId: 'mybus|AllowSelfPutEvents',
+      declared: {
+        EventBusName: 'mybus',
+        StatementId: 'AllowSelfPutEvents',
+        Statement: desiredStmt,
+      },
+      ...over,
+    });
+
+  it('reverts via PutPermission, restoring the declared statement by StatementId and PRESERVING a sibling', async () => {
+    // live bus policy has the drifted target (Action changed to PutRule) + an unrelated sibling.
+    eventbridge.on(DescribeEventBusCommand).resolves({
+      Policy: JSON.stringify({
+        Version: '2012-10-17',
+        Statement: [
+          { ...desiredStmt, Action: 'events:PutRule' },
+          {
+            Sid: 'SiblingFromAnotherResource',
+            Effect: 'Allow',
+            Principal: '*',
+            Action: 'events:PutEvents',
+          },
+        ],
+      }),
+    });
+    await SDK_WRITERS['AWS::Events::EventBusPolicy'](ebpCtx(), []);
+    const calls = eventbridge.commandCalls(PutPermissionCommand);
+    expect(calls).toHaveLength(1);
+    const policy = JSON.parse(calls[0].args[0].input.Policy as string);
+    const target = policy.Statement.find((s: { Sid: string }) => s.Sid === 'AllowSelfPutEvents');
+    expect(target.Action).toBe('events:PutEvents'); // restored
+    // the sibling statement is untouched (not wiped by the revert)
+    expect(
+      policy.Statement.some((s: { Sid: string }) => s.Sid === 'SiblingFromAnotherResource')
+    ).toBe(true);
+    expect(calls[0].args[0].input.EventBusName).toBe('mybus');
+  });
+
+  it('re-adds the declared statement when it was removed out of band (no Sid match in live)', async () => {
+    eventbridge.on(DescribeEventBusCommand).resolves({
+      Policy: JSON.stringify({ Version: '2012-10-17', Statement: [] }),
+    });
+    await SDK_WRITERS['AWS::Events::EventBusPolicy'](ebpCtx(), []);
+    const policy = JSON.parse(
+      eventbridge.commandCalls(PutPermissionCommand)[0].args[0].input.Policy as string
+    );
+    expect(policy.Statement).toHaveLength(1);
+    expect(policy.Statement[0].Sid).toBe('AllowSelfPutEvents');
+  });
+
+  it('throws when the StatementId is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::Events::EventBusPolicy'](
+        ebpCtx({ declared: { EventBusName: 'mybus' } }),
+        []
+      )
+    ).rejects.toThrow(/StatementId/);
+  });
 });
 
 describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {

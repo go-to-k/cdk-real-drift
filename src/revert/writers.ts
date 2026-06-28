@@ -81,6 +81,11 @@ import {
   DescribeConfigRulesCommand,
   PutConfigRuleCommand,
 } from '@aws-sdk/client-config-service';
+import {
+  DescribeEventBusCommand,
+  EventBridgeClient,
+  PutPermissionCommand,
+} from '@aws-sdk/client-eventbridge';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
@@ -168,6 +173,63 @@ const writeSqsQueuePolicy: SdkWriter = async (ctx, ops) => {
       new SetQueueAttributesCommand({ QueueUrl: queue, Attributes: { Policy: desired } })
     );
   }
+};
+
+// AWS::Events::EventBusPolicy is a resource-policy STATEMENT on an event bus — the
+// same class as SNS TopicPolicy / SQS QueuePolicy / S3 BucketPolicy, all of which
+// revert via their native SDK because a Cloud Control RFC6902 patch is wrong for a
+// policy here: the live `Statement` comes back as a SINGULAR object while classify
+// canonicalizes it to a one-element array, so an indexed op (`/Statement/0/Action`)
+// targets a path the raw model lacks (`noSuchPath`) and the CC revert FAILS. We write
+// the desired statement directly via PutPermission, MERGING by StatementId into the
+// bus's current aggregate policy so a sibling statement (another EventBusPolicy
+// resource, or one added out of band) is preserved rather than wiped.
+const writeEventBusPolicy: SdkWriter = async (ctx) => {
+  const eventBusName = str(ctx.declared['EventBusName']) ?? 'default';
+  const statementId = str(ctx.declared['StatementId']);
+  if (!statementId) throw new Error('cannot resolve StatementId for EventBusPolicy revert');
+  const c = new EventBridgeClient({ region: ctx.region });
+
+  // Desired statement = the declared (template) intent. Modern templates declare a full
+  // `Statement` object; the legacy CfnEventBusPolicy form declares Action+Principal.
+  const declaredStmt = ctx.declared['Statement'];
+  let desiredStatement: Record<string, unknown>;
+  if (declaredStmt && typeof declaredStmt === 'object' && !Array.isArray(declaredStmt)) {
+    desiredStatement = { Sid: statementId, ...(declaredStmt as Record<string, unknown>) };
+  } else {
+    const action = ctx.declared['Action'];
+    const principal = str(ctx.declared['Principal']);
+    if (action === undefined || principal === undefined)
+      throw new Error('EventBusPolicy revert needs a Statement (or Action + Principal)');
+    desiredStatement = {
+      Sid: statementId,
+      Effect: 'Allow',
+      Principal: principal === '*' ? '*' : { AWS: `arn:aws:iam::${principal}:root` },
+      Action: action,
+      Resource: `arn:aws:events:${ctx.region}:${ctx.accountId}:event-bus/${eventBusName}`,
+      ...(ctx.declared['Condition'] !== undefined ? { Condition: ctx.declared['Condition'] } : {}),
+    };
+  }
+
+  const bus = await c.send(new DescribeEventBusCommand({ Name: eventBusName }));
+  const policy =
+    bus.Policy && bus.Policy.length > 0
+      ? (JSON.parse(bus.Policy) as { Version?: string; Statement?: unknown })
+      : { Version: '2012-10-17', Statement: [] as unknown };
+  const statements: Record<string, unknown>[] = Array.isArray(policy.Statement)
+    ? (policy.Statement as Record<string, unknown>[])
+    : policy.Statement
+      ? [policy.Statement as Record<string, unknown>]
+      : [];
+  const idx = statements.findIndex((s) => s?.['Sid'] === statementId);
+  if (idx >= 0) statements[idx] = desiredStatement;
+  else statements.push(desiredStatement);
+  await c.send(
+    new PutPermissionCommand({
+      EventBusName: eventBusName,
+      Policy: JSON.stringify({ Version: policy.Version ?? '2012-10-17', Statement: statements }),
+    })
+  );
 };
 
 const writeIamPolicy: SdkWriter = async (ctx, ops) => {
@@ -909,6 +971,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
   'AWS::SQS::QueuePolicy': writeSqsQueuePolicy,
+  'AWS::Events::EventBusPolicy': writeEventBusPolicy,
   'AWS::IAM::Policy': writeIamPolicy,
   'AWS::IAM::ManagedPolicy': writeIamManagedPolicy,
 };
