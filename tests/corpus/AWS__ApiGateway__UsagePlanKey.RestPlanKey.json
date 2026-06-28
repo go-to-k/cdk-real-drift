@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RestPlanUsagePlanKeyResourceCdkRealDriftIntegDogfoodServerlessApiRestApiKey9A2D24F68AF75E87",
+    "resourceType": "AWS::ApiGateway::UsagePlanKey",
+    "physicalId": "h5k35ksid3:xltzog",
+    "constructPath": "CdkRealDriftIntegDogfoodServerlessApi/Rest/Plan/UsagePlanKeyResource:CdkRealDriftIntegDogfoodServerlessApiRestApiKey9A2D24F6",
+    "declared": {
+      "KeyId": "h5k35ksid3",
+      "KeyType": "API_KEY",
+      "UsagePlanId": "xltzog"
+    }
+  },
+  "liveRaw": {
+    "KeyType": "API_KEY",
+    "UsagePlanId": "xltzog",
+    "KeyId": "h5k35ksid3",
+    "Id": "h5k35ksid3:xltzog"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["KeyId", "KeyType", "UsagePlanId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KeyId", "KeyType", "UsagePlanId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [],
+  "description": "ApiGateway UsagePlanKey (the UsagePlan<->ApiKey link, single Id primaryIdentifier) read clean via Cloud Control, harvested from the dogfood-serverless-api realistic stack."
+}
