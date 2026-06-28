@@ -240,6 +240,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::SSM::Parameter': {
     DataType: 'text',
+    // AWS auto-assigns Standard when Tier is not declared (the SDK_SUPPLEMENTS reader
+    // projects it); folds an undeclared Standard so it is not noise. A real Advanced /
+    // Intelligent-Tiering value still surfaces (undeclared) or compares (declared).
+    Tier: 'Standard',
   },
   'AWS::StepFunctions::Activity': {
     EncryptionConfiguration: { Type: 'AWS_OWNED_KEY' },
@@ -1360,6 +1364,19 @@ export function isLatestSentinelMatch(declared: unknown, live: unknown): boolean
   // only the literal sentinel folds; the live side must be a non-empty concrete
   // string (a missing/empty live value is a different, real divergence).
   return declared === 'LATEST' && typeof live === 'string' && live.length > 0;
+}
+
+// Per-type paths where a declared `"Intelligent-Tiering"` is a REQUEST that AWS
+// resolves to the actual tier it provisioned (`"Standard"` or `"Advanced"`,
+// live-proven: a >4 KB value reads back "Advanced", a small one "Standard"). The
+// resolved tier is therefore not drift against the declared Intelligent-Tiering
+// request — but a real Standard↔Advanced change (or a declared concrete tier that
+// differs) still surfaces. Only AWS::SSM::Parameter `Tier` today.
+export const INTELLIGENT_TIERING_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::SSM::Parameter': new Set(['Tier']),
+};
+export function isIntelligentTieringMatch(declared: unknown, live: unknown): boolean {
+  return declared === 'Intelligent-Tiering' && (live === 'Standard' || live === 'Advanced');
 }
 
 // PEM-armored values (R125: CloudFront PublicKey EncodedKey; certificate/key

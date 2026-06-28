@@ -339,6 +339,30 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('writeOnly nested property');
   });
 
+  it('SSM Parameter Tier downgrade (Advanced->Standard) is notRevertable; an upgrade stays revertable', () => {
+    // AWS forbids an advanced->standard downgrade via update, so reverting an out-of-band
+    // upgrade (declared Standard, live Advanced) is not-revertable, not a failing patch.
+    const downgrade = F({
+      tier: 'declared',
+      resourceType: 'AWS::SSM::Parameter',
+      path: 'Tier',
+      desired: 'Standard',
+      actual: 'Advanced',
+    });
+    const plan = buildRevertPlan([downgrade], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable[0]!.reason).toContain('downgrade');
+    // The reverse (restore a declared Advanced that was reduced) is an allowed upgrade.
+    const upgrade = F({
+      tier: 'declared',
+      resourceType: 'AWS::SSM::Parameter',
+      path: 'Tier',
+      desired: 'Advanced',
+      actual: 'Standard',
+    });
+    expect(buildRevertPlan([upgrade], undefined).items).toHaveLength(1);
+  });
+
   it('a removed-since-record undeclared finding WITH a physical id is revertable (re-adds the value)', () => {
     // applyBaseline now stamps the synthesized "baseline value removed since record"
     // finding with the live physical id, so revert can restore the value it carries.

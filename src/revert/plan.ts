@@ -377,6 +377,27 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // AWS::SSM::Parameter Tier: AWS forbids an advanced->standard downgrade via
+    // PutParameter ("You can't downgrade a parameter from the advanced-parameter tier
+    // to the standard-parameter tier" — live-proven), so reverting an out-of-band Tier
+    // UPGRADE (the common case) would always fail at apply. Report it not-revertable
+    // instead. The reverse (declared Advanced, restore an upgrade) is allowed and stays
+    // revertable. Detection still works.
+    if (
+      f.resourceType === 'AWS::SSM::Parameter' &&
+      f.path === 'Tier' &&
+      f.actual === 'Advanced' &&
+      f.desired !== 'Advanced'
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'SSM advanced-tier parameter cannot be downgraded to standard via update — delete and recreate it',
+      });
+      continue;
+    }
     // R111: an IAM Role whose sibling AWS::IAM::Policy names could NOT be resolved
     // statically keeps the sibling-managed (DefaultPolicy) entries in its live
     // Policies array — classify could not separate them, and marked this finding
