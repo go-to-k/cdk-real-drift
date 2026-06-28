@@ -202,6 +202,14 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     const lg = declared.LogGroupName;
     return typeof lg === 'string' && lg.length > 0 ? `${pid}|${lg}` : undefined;
   },
+  // Logs LogStream primaryIdentifier is [LogGroupName, LogStreamName] — PARENT first
+  // (LogGroupName, then LogStreamName), unlike the child-first SubscriptionFilter. The
+  // CFn physical id (Ref) is the bare LogStreamName; the LogGroupName comes from the
+  // resolved declared Ref. Without this a declared log stream is a CC ValidationException
+  // skip on every check (read-gap, surfaced by the dogfood-data-pipeline Firehose error
+  // log stream). Verified live: `<LogGroupName>|<LogStreamName>` reads, the reverse
+  // ResourceNotFoundExceptions.
+  'AWS::Logs::LogStream': compositeWith('LogGroupName'),
   // TransitGatewayRouteTablePropagation primaryIdentifier is [TransitGatewayRouteTableId,
   // TransitGatewayAttachmentId], but its CFn physical id (Ref) is the AWS console id
   // format `${attachmentId}_${routeTableId}` (underscore, ATTACHMENT first) — NOT the CC
