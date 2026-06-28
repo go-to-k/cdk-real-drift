@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-elasticache-rg-readgap",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ElastiCache ReplicationGroup writeOnly-read-gap integration test for cdk-real-drift: an out-of-band change to the (writeOnly) PreferredMaintenanceWindow / NotificationTopicArn must be detected and revertable. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

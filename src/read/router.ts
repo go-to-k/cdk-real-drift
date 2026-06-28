@@ -4,7 +4,7 @@
 import { type CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { isResourceNotFoundError } from '../aws-errors.js';
 import type { DesiredResource } from '../types.js';
-import { SDK_OVERRIDES } from './overrides.js';
+import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
 
 export interface ReadResult {
   live?: Record<string, unknown>; // un-stripped property model
@@ -287,7 +287,25 @@ export async function readLive(
     const g = await cc.send(
       new GetResourceCommand({ TypeName: resourceType, Identifier: identifier })
     );
-    return { live: JSON.parse(g.ResourceDescription?.Properties ?? '{}') };
+    const live = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+    // Supplement the CC model with writeOnly-but-SDK-readable props (e.g. SSM
+    // Parameter Description) that Cloud Control never echoes. A supplement failure
+    // is non-fatal: keep the CC model rather than dropping the whole read.
+    const supplement = SDK_SUPPLEMENTS[resourceType];
+    if (supplement) {
+      try {
+        const extra = await supplement({
+          physicalId: physicalId ?? '',
+          declared,
+          region,
+          accountId,
+        });
+        if (extra) Object.assign(live, extra);
+      } catch {
+        /* keep the CC model; the supplement prop stays an (unavoidable) readGap */
+      }
+    }
+    return { live };
   } catch (e) {
     if (isResourceNotFoundError(e)) return { deleted: true };
     return { skippedReason: `CC API: ${(e as Error).name}` };

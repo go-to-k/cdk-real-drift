@@ -51,7 +51,13 @@ import {
 } from '@aws-sdk/client-iam';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DescribeCacheClustersCommand,
+  DescribeReplicationGroupsCommand,
+  ElastiCacheClient,
+} from '@aws-sdk/client-elasticache';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
+import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   GetNamespaceCommand,
   GetServiceCommand,
@@ -1185,4 +1191,100 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Connection': readGlueConnection,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
+};
+
+// ---------------------------------------------------------------------------
+// SDK supplements (SDK_SUPPLEMENTS)
+//
+// Unlike SDK_OVERRIDES (which REPLACE the Cloud Control read for a CC-gap type),
+// a supplement runs AFTER a successful CC GetResource and shallow-merges a few
+// EXTRA top-level fields onto the CC live model. The motivating case: a property
+// the CFn registry marks `writeOnlyProperties` is never returned by Cloud Control
+// (CC only echoes readable props), so the classify pipeline strips it from BOTH
+// sides and an out-of-band change to it is silently invisible — even though a
+// plain SDK Describe/Get API CAN read the value back. The supplement fetches just
+// those values; `schema-strip.ts` exempts the same props from the writeOnly strip
+// (OVERRIDE_READABLE_WRITEONLY) so they are actually compared.
+//
+// A supplement returns ONLY the extra keys (or undefined / {} when it has nothing
+// to add). It must be FP-safe: project a key only when AWS actually returns it, so
+// an unset optional prop stays absent on both sides rather than false-flagging.
+export type SupplementReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
+
+// AWS::SSM::Parameter — `Description`/`AllowedPattern` (and `Tier`/`Policies`) are
+// writeOnly in the registry schema, so Cloud Control returns only Type/Value/
+// DataType/Name and a console edit to the description was undetectable. Only SSM
+// `DescribeParameters` returns these (GetParameter does NOT). Project `Description`
+// and `AllowedPattern` — both are returned ONLY when explicitly set, so an unset
+// value stays absent on both sides (FP-safe). `Tier` is deliberately NOT projected:
+// AWS resolves a requested "Intelligent-Tiering" to the actual Standard/Advanced
+// tier, so the live value would false-flag against the declared request. `Policies`
+// reads back as expanded policy objects (shape differs from the CFn JSON-string
+// input), so it stays a writeOnly readGap too.
+const supplementSsmParameter: SupplementReader = async ({ physicalId, declared, region }) => {
+  const name = str(declared.Name) ?? str(physicalId);
+  if (!name) return undefined;
+  const c = new SSMClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeParametersCommand({
+      ParameterFilters: [{ Key: 'Name', Option: 'Equals', Values: [name] }],
+    })
+  );
+  const p = r.Parameters?.[0];
+  const extra: Record<string, unknown> = {};
+  const desc = str(p?.Description);
+  if (desc !== undefined) extra.Description = desc;
+  const pattern = str(p?.AllowedPattern);
+  if (pattern !== undefined) extra.AllowedPattern = pattern;
+  return Object.keys(extra).length > 0 ? extra : undefined;
+};
+
+// NOTE — AWS::Cognito::UserPool `EnabledMfas` (writeOnly; CC echoes MfaConfiguration
+// but never the enabled-method list) was evaluated as a supplement and DEFERRED:
+// it cannot be reliably reconstructed from the read APIs. GetUserPoolMfaConfig keeps
+// returning the full `SmsMfaConfiguration` block (the SNS caller config persists at
+// the pool level) even after SMS is no longer an enabled MFA factor — live-proven
+// (states "SMS+TOTP" and "TOTP-only" returned an identical SmsMfaConfiguration). So
+// presence-based SMS detection would both miss an SMS removal (FN) and false-flag a
+// pool that configures SMS for verification only (FP). describe-user-pool omits
+// EnabledMfas too. Deferred until a reliable per-factor enabled signal exists.
+
+// AWS::ElastiCache::ReplicationGroup — `PreferredMaintenanceWindow`,
+// `NotificationTopicArn` and `EngineVersion` are writeOnly on the RG in the registry
+// schema, so Cloud Control echoes the RG's other props but NEVER these three; an
+// out-of-band change to the maintenance window or the notification topic was
+// invisible. They are not stored on the RG object — they live on its MEMBER cache
+// clusters — so read MemberClusters[0] via DescribeCacheClusters and project them
+// VERBATIM (live-proven: "sun:05:00-sun:06:00" / the topic ARN / "7.1.0" read back
+// exactly as set). `NotificationConfiguration.TopicArn` maps to the CFn
+// `NotificationTopicArn`; only project it when a topic is configured (FP-safe).
+// EngineVersion carries the usual ElastiCache prefix quirk (declared "7.1" reads
+// "7.1.0"), folded by VERSION_PREFIX_PATHS. PreferredMaintenanceWindow is always
+// present (AWS auto-assigns one when undeclared) — when undeclared it surfaces as an
+// undeclared/recorded value, not drift; when declared it is compared verbatim.
+const supplementElastiCacheReplicationGroup: SupplementReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new ElastiCacheClient({ region, ...READ_RETRY });
+  const rg = await c.send(new DescribeReplicationGroupsCommand({ ReplicationGroupId: id }));
+  const member = firstStr(rg.ReplicationGroups?.[0]?.MemberClusters);
+  if (!member) return undefined;
+  const cc = await c.send(
+    new DescribeCacheClustersCommand({ CacheClusterId: member, ShowCacheNodeInfo: false })
+  );
+  const cluster = cc.CacheClusters?.[0];
+  if (!cluster) return undefined;
+  const extra: Record<string, unknown> = {};
+  const window = str(cluster.PreferredMaintenanceWindow);
+  if (window !== undefined) extra.PreferredMaintenanceWindow = window;
+  const topic = str(cluster.NotificationConfiguration?.TopicArn);
+  if (topic !== undefined) extra.NotificationTopicArn = topic;
+  const version = str(cluster.EngineVersion);
+  if (version !== undefined) extra.EngineVersion = version;
+  return Object.keys(extra).length > 0 ? extra : undefined;
+};
+
+export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
+  'AWS::SSM::Parameter': supplementSsmParameter,
+  'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
 };
