@@ -205,7 +205,9 @@ function collectUnorderedScalarPaths(
 // .DockerVolumeConfiguration.Labels): classify matches via `startsWith` on the live
 // `[id]`->`*`-normalized path, so the `*` aligns (unlike the EXACT-match collectors above,
 // which skip `*`). Such a key is still surfaced (visibility); revert stays barred for it
-// because its live path carries the array bracket (isUnrevertableNested).
+// because its live path carries the array bracket (isUnrevertableNested). A `Tags` bag is
+// EXCLUDED even when map-shaped — see the inline note (tags fold consistently with the
+// dominant LIST-shaped Tags, so map-tagged resources are not noisier on the first run).
 function collectFreeFormMapPaths(
   definitions: Record<string, SchemaNode>,
   properties: Record<string, SchemaNode>
@@ -227,7 +229,16 @@ function collectFreeFormMapPaths(
       !hasFixedProps &&
       ((node.patternProperties && Object.keys(node.patternProperties).length > 0) ||
         isObjectSchema(node.additionalProperties));
-    if (isMap && path) out.push(path);
+    // A `Tags` bag is EXCLUDED even when MAP-shaped (AWS::SSM::Parameter et al. model
+    // Tags as a patternProperties map, while most types use a {Key,Value}[] LIST). Tags
+    // are a special low-signal category the pipeline already handles separately
+    // (canonicalizeTagLists / stripAwsTagsDeep / tagPreservingOps); surfacing an undeclared
+    // map-tag key as freeFormKey would make map-tagged resources noisier on the first run
+    // than LIST-tagged ones (whose nested `Tags[<id>]` keys fold) — an inconsistency users
+    // can't see the cause of. So a map-tag key FOLDS like a list-tag key (still recorded by
+    // record; a change after record surfaces as drift; still revertable via path shape).
+    const lastSeg = path.split('.').at(-1);
+    if (isMap && path && lastSeg !== 'Tags') out.push(path);
     if (node.properties)
       for (const [k, child] of Object.entries(node.properties))
         walk(child, path ? `${path}.${k}` : k, seen);
