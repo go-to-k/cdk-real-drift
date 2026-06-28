@@ -1,5 +1,6 @@
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { readLive } from '../src/read/router.js';
@@ -7,6 +8,7 @@ import type { DesiredResource } from '../src/types.js';
 
 const cc = mockClient(CloudControlClient);
 const s3 = mockClient(S3Client);
+const ssm = mockClient(SSMClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -21,6 +23,7 @@ const res = (over: Partial<DesiredResource> = {}): DesiredResource => ({
 beforeEach(() => {
   cc.reset();
   s3.reset();
+  ssm.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -693,5 +696,87 @@ describe('readLive (SDK override path)', () => {
     );
     expect(r.deleted).toBeUndefined();
     expect(r.skippedReason).toContain('not resolvable');
+  });
+});
+
+describe('readLive (SDK supplement path — SSM::Parameter Description)', () => {
+  const param = (declared: Record<string, unknown> = {}): DesiredResource =>
+    res({ resourceType: 'AWS::SSM::Parameter', physicalId: '/app/db/host', declared });
+
+  it('merges the writeOnly Description from DescribeParameters onto the CC model', async () => {
+    // Cloud Control never echoes Description (writeOnly) — only Type/Value/DataType/Name.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"Type":"String","Value":"v","DataType":"text","Name":"/app/db/host"}',
+      },
+    });
+    ssm.on(DescribeParametersCommand).resolves({ Parameters: [{ Description: 'live desc' }] });
+    const r = await readLive(cc as unknown as CloudControlClient, param(), 'us-east-1', '1');
+    expect(r.live).toEqual({
+      Type: 'String',
+      Value: 'v',
+      DataType: 'text',
+      Name: '/app/db/host',
+      Description: 'live desc',
+    });
+  });
+
+  it('also merges AllowedPattern when set, and skips it when absent', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"Type":"String","Value":"v"}' },
+    });
+    ssm
+      .on(DescribeParametersCommand)
+      .resolves({ Parameters: [{ Description: 'd', AllowedPattern: '^\\d+$' }] });
+    const r = await readLive(cc as unknown as CloudControlClient, param(), 'us-east-1', '1');
+    expect(r.live).toEqual({
+      Type: 'String',
+      Value: 'v',
+      Description: 'd',
+      AllowedPattern: '^\\d+$',
+    });
+  });
+
+  it('queries DescribeParameters by the declared Name (preferred over physicalId)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    ssm.on(DescribeParametersCommand).resolves({ Parameters: [{ Description: 'd' }] });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      param({ Name: '/declared/name' }),
+      'us-east-1',
+      '1'
+    );
+    const input = ssm.commandCalls(DescribeParametersCommand)[0]?.args[0].input;
+    expect(input?.ParameterFilters).toEqual([
+      { Key: 'Name', Option: 'Equals', Values: ['/declared/name'] },
+    ]);
+  });
+
+  it('omits Description (no FP) when AWS returns no description for the parameter', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"Type":"String","Value":"v"}' },
+    });
+    ssm.on(DescribeParametersCommand).resolves({ Parameters: [{}] });
+    const r = await readLive(cc as unknown as CloudControlClient, param(), 'us-east-1', '1');
+    expect(r.live).toEqual({ Type: 'String', Value: 'v' });
+    expect('Description' in (r.live ?? {})).toBe(false);
+  });
+
+  it('keeps the CC model when the supplement read throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"Type":"String","Value":"v"}' },
+    });
+    ssm.on(DescribeParametersCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(cc as unknown as CloudControlClient, param(), 'us-east-1', '1');
+    expect(r.live).toEqual({ Type: 'String', Value: 'v' });
+    expect(r.skippedReason).toBeUndefined();
+  });
+
+  it('does not run a supplement for unrelated CC types', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"BillingMode":"PAY_PER_REQUEST"}' },
+    });
+    await readLive(cc as unknown as CloudControlClient, res(), 'us-east-1', '1');
+    expect(ssm.commandCalls(DescribeParametersCommand)).toHaveLength(0);
   });
 });

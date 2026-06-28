@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-ssm-parameter-desc",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SSM::Parameter writeOnly-read-gap integration test for cdk-real-drift: a console edit to the (writeOnly) Description / AllowedPattern must be detected and revertable. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}
