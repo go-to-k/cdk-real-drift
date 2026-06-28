@@ -2977,6 +2977,29 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
     expect(out[0]!.freeFormKey).toBeUndefined();
   });
 
+  it('a free-form map key NESTED UNDER AN ARRAY ELEMENT (ECS DockerLabels) is flagged freeFormKey', () => {
+    // The `*`-segment free-form map path aligns with the live `[id]`->`*`-normalized path
+    // via startsWith, so a container's out-of-band DockerLabels key is surfaced too.
+    const schema: SchemaInfo = {
+      ...emptySchema,
+      freeFormMapPaths: ['ContainerDefinitions.*.DockerLabels'],
+    };
+    const out = classifyResource(
+      res('AWS::ECS::TaskDefinition', {
+        ContainerDefinitions: [{ Name: 'app', DockerLabels: { team: 'a' } }],
+      }),
+      { ContainerDefinitions: [{ Name: 'app', DockerLabels: { team: 'a', rogue: 'x' } }] },
+      schema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      tier: 'undeclared',
+      path: 'ContainerDefinitions[app].DockerLabels.rogue',
+      nested: true,
+      freeFormKey: true,
+    });
+  });
+
   it('a CHANGE to a declared nested field is DECLARED drift, not nested-undeclared', () => {
     const out = f('AWS::X::Y', { Conf: { Level: 'INFO' } }, { Conf: { Level: 'CHANGED' } });
     expect(out).toHaveLength(1);

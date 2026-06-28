@@ -34,9 +34,9 @@ export type FindingAction = 'record' | 'ignore' | 'revert' | 'skip';
  *  - undeclared → record (snapshot the norm; gentlest, keeps watching), then ignore
  *    (stop watching), then revert (REMOVE the live value — destructive, so last) —
  *    BUT revert is dropped for a nested undeclared value revert CANNOT target (an
- *    array-element or Tags-rooted path, `isUnrevertableNested`): offering it would let
- *    the user pick an action revert can't run. A pure-dotted nested value (a free-form
- *    map key like an env var) stays revertable;
+ *    array-element bracketed path, `isUnrevertableNested`): offering it would let the user
+ *    pick an action revert can't run. A pure-dotted nested value (a free-form map key like
+ *    an env var, or a map-shaped tag key) stays revertable;
  *  - added → record (snapshot the out-of-band resource; keeps watching for changes),
  *    ignore (stop watching), revert (DELETE the resource — destructive, so last). PR4
  *    makes added the resource-level sibling of undeclared, so it takes the same verbs;

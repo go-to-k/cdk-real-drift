@@ -73,13 +73,15 @@ export function isNestedUndeclared(f: Finding): boolean {
  * (the same reason R78 abandoned index-based array patches). A PURE-DOTTED nested path
  * (`Environment.Variables.<key>` free-form map keys, or a sub-field of a declared object)
  * IS a valid pointer that Cloud Control applies read-modify-write — proven live removing an
- * out-of-band Lambda env var — so it stays revertable. A nested path ROOTED at `Tags` is
- * also kept record-only: the top-level `/Tags` rewrite (tagPreservingOps) re-attaches the
- * live `aws:*` managed tags, and a deep `/Tags/<key>` patch would bypass that preservation.
+ * out-of-band Lambda env var — so it stays revertable. That INCLUDES a MAP-shaped tag key
+ * (`Tags.<key>`, e.g. AWS::SSM::Parameter): a single-key `remove /Tags/<key>` is proven live
+ * to succeed AND leave the live `aws:*` managed tags untouched (Cloud Control's read-modify-
+ * write keeps every other key, so the provider never untags the managed ones — no rewrite
+ * needed). A LIST-shaped tag element (`Tags[<id>].sub`) stays barred by the bracket rule.
  * Pure + exported so the action picker offers `revert` exactly where revert can run.
  */
 export function isUnrevertableNested(f: Finding): boolean {
-  return isNestedUndeclared(f) && (f.path.includes('[') || f.path.split('.')[0] === 'Tags');
+  return isNestedUndeclared(f) && f.path.includes('[');
 }
 
 // An out-of-band ManagedPolicy attachment member (a live-only `Roles[x]`/`Users[x]`/
@@ -557,9 +559,12 @@ export function writeOnlyReincludeOps(
 // tags — so the provider leaves the managed tags untouched and only the user tag changes.
 // A `remove` becomes `add []`-of-managed-only; an `add` keeps its value plus the managed
 // tags. With no managed tags present (or no live model) the op is returned unchanged, so
-// this never alters a tag revert that wasn't at risk. Only `/Tags` LIST-shaped values are
-// handled (the {Key,Value}[] shape awsManagedTags understands); nested tag paths are
-// already not-revertable (isNestedUndeclared), so only the top-level pointer can appear.
+// this never alters a tag revert that wasn't at risk. Only the top-level `/Tags` pointer is
+// rewritten here (LIST-shaped, the {Key,Value}[] shape awsManagedTags understands). A NESTED
+// map-tag key op (`/Tags/<key>`, e.g. AWS::SSM::Parameter) does NOT need this rewrite and
+// passes through unchanged: a single-key `remove`/`add` leaves every OTHER key — including
+// the live `aws:*` managed ones — in Cloud Control's read-modify-write model, so the
+// provider never untags the managed keys (proven live on an SSM Parameter).
 const TAGS_POINTER = '/Tags';
 function asTagList(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];

@@ -26,22 +26,18 @@ describe('applicableActions (cycle order mirrors the verbs scope)', () => {
   it('undeclared (top-level) → record, ignore, revert (destructive revert last)', () => {
     expect(applicableActions(F('undeclared'))).toEqual(['record', 'ignore', 'revert']);
   });
-  it('ARRAY-ELEMENT / Tags-rooted nested undeclared drops revert — detect/record-only', () => {
-    // A bracketed array-element path (revert can't build an RFC6902 pointer) or a Tags-rooted
-    // nested path (would bypass the aws:* tag-preservation rewrite) → no revert, matching
+  it('ARRAY-ELEMENT (bracketed) nested undeclared drops revert — detect/record-only', () => {
+    // A bracketed array-element path can't form an RFC6902 pointer → no revert, matching
     // buildRevertPlan.
     expect(applicableActions({ ...F('undeclared'), path: 'Origins[o1].Timeout' })).toEqual([
       'record',
       'ignore',
     ]);
-    expect(applicableActions({ ...F('undeclared'), path: 'Tags.myKey', nested: true })).toEqual([
-      'record',
-      'ignore',
-    ]);
   });
-  it('PURE-DOTTED nested undeclared (free-form map key) KEEPS revert — CC applies the pointer', () => {
-    // A clean dotted path is a valid RFC6902 pointer Cloud Control applies read-modify-write
-    // (a Lambda env var under Environment.Variables), so revert IS offered.
+  it('PURE-DOTTED nested undeclared KEEPS revert — CC applies the pointer', () => {
+    // A clean dotted path is a valid RFC6902 pointer Cloud Control applies read-modify-write:
+    // a Lambda env var under Environment.Variables, an object sub-field, OR a map-shaped tag
+    // key (Tags.<key>, proven live to preserve aws:* tags) — so revert IS offered.
     expect(
       applicableActions({
         ...F('undeclared'),
@@ -53,6 +49,11 @@ describe('applicableActions (cycle order mirrors the verbs scope)', () => {
     expect(
       applicableActions({ ...F('undeclared'), path: 'Conf.Destination', nested: true })
     ).toEqual(['record', 'ignore', 'revert']);
+    expect(applicableActions({ ...F('undeclared'), path: 'Tags.myKey', nested: true })).toEqual([
+      'record',
+      'ignore',
+      'revert',
+    ]);
   });
   it('declared → revert (the natural fix), ignore — never record', () => {
     expect(applicableActions(F('declared'))).toEqual(['revert', 'ignore']);
