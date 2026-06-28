@@ -205,9 +205,15 @@ export function report(findings: Finding[], header: string, opts: ReportOptions 
   // Top-level unrecorded values still list in full in [Potential Drift]; the nested ones
   // collapse to one `info:` count, expanded by --verbose or --show-all. Either way
   // record records them, so a later out-of-band change to one surfaces as drift.
+  // EXCEPTION: a free-form map key (freeFormKey — a live-only sub-key under Lambda
+  // Environment.Variables, Glue Parameters, …) is user-authored, NOT an AWS-materialized
+  // nested default, so it is shown in full like a top-level value, never folded.
   const expandNested = !!opts.verbose || !!opts.expandAtDefault;
-  const unrecordedShown = expandNested ? unrecordedItems : unrecordedItems.filter((f) => !f.nested);
-  const nestedFolded = expandNested ? [] : unrecordedItems.filter((f) => f.nested === true);
+  const isFolded = (f: Finding): boolean => f.nested === true && !f.freeFormKey;
+  const unrecordedShown = expandNested
+    ? unrecordedItems
+    : unrecordedItems.filter((f) => !isFolded(f));
+  const nestedFolded = expandNested ? [] : unrecordedItems.filter(isFolded);
   // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.

@@ -43,20 +43,43 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>(['AWS::Scheduler::Sc
 // projected/normalized, not valid CC write inputs), and most entries already converge
 // via `remove` — broadening blindly would regress them and risk writing an unwritable
 // shape. Add a property here only once a `remove` no-op is observed for it.
-const REVERT_SET_DEFAULT_PATHS = new Set<string>(['AWS::IAM::Role\0MaxSessionDuration']);
+//   - AWS::Lambda::Alias Description: UpdateAlias ignores an OMITTED description (keeps
+//     the existing value), so a bare `remove` is a silent no-op — Cloud Control reports
+//     SUCCESS yet the live description persists. Writing the empty-string default (an
+//     `add /Description ""`) clears it. Both behaviours proven live.
+const REVERT_SET_DEFAULT_PATHS = new Set<string>([
+  'AWS::IAM::Role\0MaxSessionDuration',
+  'AWS::Lambda::Alias\0Description',
+]);
 
 /**
- * A nested undeclared value (a live sub-key inside a declared object, R96/R98) is
- * detect/record-only — never revertable (toPointer can't build a safe RFC6902 patch for
- * a dotted/bracketed path; R99). Detected by PATH SHAPE, not just `Finding.nested`: a
- * baseline value removed since record is reconstructed without the flag but keeps its
- * nested path. A top-level undeclared path is a single key (no '.'/'['). Pure + exported
- * so the interactive action picker offers `revert` ONLY where revert can actually run.
+ * A nested undeclared value (a live sub-key inside a declared object, R96/R98) — a dotted
+ * path (`Conf.Destination`) or an identity-keyed array element (`Prop[<id>].sub`). Pure +
+ * exported. Detected by PATH SHAPE, not just `Finding.nested`: a baseline value removed
+ * since record is reconstructed without the flag but keeps its nested path. A top-level
+ * undeclared path is a single key (no '.'/'[').
  */
 export function isNestedUndeclared(f: Finding): boolean {
   return (
     f.tier === 'undeclared' && (Boolean(f.nested) || f.path.includes('.') || f.path.includes('['))
   );
+}
+
+/**
+ * Of the nested undeclared values, the ones revert genuinely CANNOT target: an ARRAY
+ * ELEMENT path (it contains a `[<id>]`/`[<index>]` bracket). `toPointer` builds an RFC6902
+ * pointer by splitting on '.', so a bracket survives as a literal segment (`/Prop[<id>]/sub`)
+ * that addresses a key named `Prop[<id>]`, not the array element — the patch is malformed
+ * (the same reason R78 abandoned index-based array patches). A PURE-DOTTED nested path
+ * (`Environment.Variables.<key>` free-form map keys, or a sub-field of a declared object)
+ * IS a valid pointer that Cloud Control applies read-modify-write — proven live removing an
+ * out-of-band Lambda env var — so it stays revertable. A nested path ROOTED at `Tags` is
+ * also kept record-only: the top-level `/Tags` rewrite (tagPreservingOps) re-attaches the
+ * live `aws:*` managed tags, and a deep `/Tags/<key>` patch would bypass that preservation.
+ * Pure + exported so the action picker offers `revert` exactly where revert can run.
+ */
+export function isUnrevertableNested(f: Finding): boolean {
+  return isNestedUndeclared(f) && (f.path.includes('[') || f.path.split('.')[0] === 'Tags');
 }
 
 // An out-of-band ManagedPolicy attachment member (a live-only `Roles[x]`/`Users[x]`/
@@ -246,25 +269,24 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // Nested undeclared values (R96/R98) are detect/record-only, NOT revertable. Their
-    // path addresses a sub-key INSIDE a declared object or array element — dotted
-    // (`Conf.Destination`) or, for an identity-keyed array element, `Prop[<id>].sub`.
-    // `toPointer` builds a flat RFC6902 pointer by splitting on '.', so the bracket
-    // form yields the malformed `/Prop[<id>]/sub` (the bracket is not RFC6902 and the
-    // CC patch would target a literal key, not the array element). Even the dotted form
-    // is a fragile deep patch (the same reason R78 abandoned index-based array patches).
-    // These are overwhelmingly AWS-materialized defaults — report + baseline them, and
-    // fix any real divergence in your IaC or by re-recording the live value. Detect by
-    // PATH SHAPE, not Finding.nested: a baseline value REMOVED since record is
-    // reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested path. A
-    // top-level undeclared path is a single key (never contains '.'/'['), and declared
-    // drift is a different tier — so this never blocks a top-level revert.
-    if (isNestedUndeclared(f) && !isManagedPolicyAttachmentMember(f)) {
+    // A nested undeclared value whose path addresses an ARRAY ELEMENT (`Prop[<id>].sub`)
+    // is detect/record-only, NOT revertable: `toPointer` builds a flat RFC6902 pointer by
+    // splitting on '.', so the bracket survives as a literal segment (`/Prop[<id>]/sub`)
+    // that targets a key named `Prop[<id>]`, not the array element — a malformed patch (the
+    // same reason R78 abandoned index-based array patches). A PURE-DOTTED nested path
+    // (`Environment.Variables.<key>` free-form map keys, or a sub-field of a declared
+    // object) IS a valid pointer that Cloud Control applies read-modify-write (proven live
+    // removing an out-of-band Lambda env var), so it falls through to the normal revert
+    // below. Detect by PATH SHAPE, not Finding.nested: a baseline value REMOVED since
+    // record is reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested
+    // path. A top-level undeclared path is a single key (never contains '.'/'['), and
+    // declared drift is a different tier — so this never blocks a top-level revert.
+    if (isUnrevertableNested(f) && !isManagedPolicyAttachmentMember(f)) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
         path: f.path,
-        reason: 'nested undeclared value — detect/record only, not revertable',
+        reason: 'nested undeclared array-element value — detect/record only, not revertable',
       });
       continue;
     }

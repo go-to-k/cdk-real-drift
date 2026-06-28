@@ -56,6 +56,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Timeout: 3,
   },
   'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
+  // An alias created without a Description reads back the empty string. Folded as
+  // atDefault so a never-declared alias does not report `Description=""` as drift; it
+  // is also the value REVERT_SET_DEFAULT_PATHS writes to undo an out-of-band Description
+  // (UpdateAlias ignores an OMITTED description, so a bare `remove` is a silent no-op —
+  // the alias must be sent Description:"" explicitly; proven live).
+  'AWS::Lambda::Alias': { Description: '' },
   // A published version inherits the function's runtime-management config; a version
   // that pins nothing reads back the Auto default (observed live across every
   // `currentVersion` in a multi-function stack). The twin of the AWS::Lambda::Function

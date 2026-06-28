@@ -116,9 +116,10 @@ const pickerLabel = (f: Finding): string =>
 // behind an explicit "include folded" choice, so a picker never silently balloons from the
 // report's small drift count to a wall of nested values (the 3-vs-26 surprise) — and, for
 // ignore, never blind-ignores values the user never saw. `--verbose` means the report
-// already listed them in full, so nothing is folded. Pure + exported for unit tests.
+// already listed them in full, so nothing is folded. A free-form map key (freeFormKey) is
+// NEVER folded — the report shows it, so the picker itemizes it too. Pure + exported for tests.
 export const isFoldedFinding = (f: Finding, verbose: boolean): boolean =>
-  !verbose && f.unrecorded === true && f.nested === true;
+  !verbose && f.unrecorded === true && f.nested === true && !f.freeFormKey;
 
 // The two scope rows shown when check folded undeclared inventory out of the report:
 // decide on just what was shown, or pull the folded values in too. Pure + exported.

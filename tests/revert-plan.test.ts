@@ -244,6 +244,26 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Lambda Alias Description (SET-DEFAULT) -> add op writing the empty-string default, not a no-op remove', () => {
+    // AWS::Lambda::Alias Description is in REVERT_SET_DEFAULT_PATHS: UpdateAlias leaves the
+    // description UNCHANGED when it is OMITTED, so a bare `remove` is a silent no-op (Cloud
+    // Control reports SUCCESS yet the live "test" persists; proven live). Revert must write
+    // the empty-string default explicitly to clear it.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Lambda::Alias',
+      path: 'Description',
+      actual: 'test',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Description',
+      value: '',
+      prior: 'test',
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
@@ -825,14 +845,48 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
   });
 
-  it('R96 dotted object-nested value -> notRevertable (fragile deep patch)', () => {
+  it('a PURE-DOTTED object-nested value IS revertable (valid RFC6902 pointer, CC applies it)', () => {
+    // A clean dotted path (no array bracket) is a valid pointer Cloud Control applies
+    // read-modify-write — e.g. a free-form map key like a Lambda env var. A recorded value
+    // reverts by restoring the baseline; the op targets the nested pointer `/Conf/Destination`.
     const f = F({ tier: 'undeclared', path: 'Conf.Destination', actual: 's3', nested: true });
     const b = baseline([
       { logicalId: 'R', resourceType: 'AWS::S3::Bucket', path: 'Conf.Destination', value: 'old' },
     ]);
     const plan = buildRevertPlan([f], b);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]!.path).toBe('/Conf/Destination');
+  });
+
+  it('a free-form map key (env var) appeared since record IS revertable -> remove op', () => {
+    // The reported Lambda Environment.Variables case: an undeclared env var present in live
+    // but gone from the baseline reverts by REMOVING the nested key via Cloud Control.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'Environment.Variables.testtesttess',
+      actual: 'testtesttess',
+      nested: true,
+      freeFormKey: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'remove',
+      path: '/Environment/Variables/testtesttess',
+    });
+  });
+
+  it('a Tags-rooted nested value stays notRevertable (tag-preservation invariant)', () => {
+    const f = F({ tier: 'undeclared', path: 'Tags.myKey', actual: 'v', nested: true });
+    const b = baseline([
+      { logicalId: 'R', resourceType: 'AWS::S3::Bucket', path: 'Tags.myKey', value: 'old' },
+    ]);
+    const plan = buildRevertPlan([f], b);
     expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+    expect(plan.notRevertable[0]!.reason).toContain('not revertable');
   });
 
   it('nested guard fires by PATH SHAPE even without the flag (baseline value removed since record)', () => {
@@ -849,17 +903,18 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
   });
 
-  it('--remove-unrecorded does NOT override the nested guard', () => {
+  it('--remove-unrecorded does NOT override the array-element guard', () => {
     const f = F({
       tier: 'undeclared',
-      path: 'Conf.Destination',
-      actual: 's3',
+      resourceType: 'AWS::CloudFront::Distribution',
+      path: 'DistributionConfig.Origins[o1].ConnectionTimeout',
+      actual: 60,
       nested: true,
       unrecorded: true,
     });
     const plan = buildRevertPlan([f], baseline([]), { removeUnrecorded: true });
     expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared');
+    expect(plan.notRevertable[0]!.reason).toContain('nested undeclared array-element');
   });
 
   it('a TOP-LEVEL undeclared value (single-key path) is still revertable — guard does not over-fire', () => {

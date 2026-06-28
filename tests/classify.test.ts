@@ -2944,6 +2944,39 @@ describe('nested undeclared detection (R96 — the differentiator at depth)', ()
     expect(out.some((x) => x.tier === 'undeclared' && x.path === 'A.B.D' && x.nested)).toBe(true);
   });
 
+  it('a live-only key under a FREE-FORM MAP property is flagged freeFormKey (surfaced, not folded)', () => {
+    // The reported Lambda Environment.Variables case: a console-added env var is a real,
+    // reviewable value (every map key is user-authored), so it carries freeFormKey -> the
+    // report shows it in full rather than folding it into the undeclared-subkey count.
+    const schema: SchemaInfo = { ...emptySchema, freeFormMapPaths: ['Environment.Variables'] };
+    const out = classifyResource(
+      res('AWS::Lambda::Function', {
+        Environment: { Variables: { USER_POOL_ID: '/a/b' } },
+      }),
+      { Environment: { Variables: { USER_POOL_ID: '/a/b', testtesttess: 'testtesttess' } } },
+      schema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      tier: 'undeclared',
+      path: 'Environment.Variables.testtesttess',
+      nested: true,
+      freeFormKey: true,
+    });
+  });
+
+  it('a nested key NOT under a free-form map is plain nested (no freeFormKey)', () => {
+    const schema: SchemaInfo = { ...emptySchema, freeFormMapPaths: ['Environment.Variables'] };
+    const out = classifyResource(
+      res('AWS::X::Y', { Conf: { Level: 'INFO' } }),
+      { Conf: { Level: 'INFO', Destination: 's3' } },
+      schema
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ tier: 'undeclared', path: 'Conf.Destination', nested: true });
+    expect(out[0]!.freeFormKey).toBeUndefined();
+  });
+
   it('a CHANGE to a declared nested field is DECLARED drift, not nested-undeclared', () => {
     const out = f('AWS::X::Y', { Conf: { Level: 'INFO' } }, { Conf: { Level: 'CHANGED' } });
     expect(out).toHaveLength(1);

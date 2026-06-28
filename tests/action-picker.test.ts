@@ -26,21 +26,33 @@ describe('applicableActions (cycle order mirrors the verbs scope)', () => {
   it('undeclared (top-level) → record, ignore, revert (destructive revert last)', () => {
     expect(applicableActions(F('undeclared'))).toEqual(['record', 'ignore', 'revert']);
   });
-  it('NESTED undeclared drops revert — it is detect/record-only (R99)', () => {
-    // dotted, bracketed, or flagged-nested undeclared → no revert offered (revert can't
-    // build a safe RFC6902 patch for a nested path), matching buildRevertPlan.
-    expect(applicableActions({ ...F('undeclared'), path: 'Origins.0.Timeout' })).toEqual([
-      'record',
-      'ignore',
-    ]);
+  it('ARRAY-ELEMENT / Tags-rooted nested undeclared drops revert — detect/record-only', () => {
+    // A bracketed array-element path (revert can't build an RFC6902 pointer) or a Tags-rooted
+    // nested path (would bypass the aws:* tag-preservation rewrite) → no revert, matching
+    // buildRevertPlan.
     expect(applicableActions({ ...F('undeclared'), path: 'Origins[o1].Timeout' })).toEqual([
       'record',
       'ignore',
     ]);
-    expect(applicableActions({ ...F('undeclared'), path: 'P', nested: true })).toEqual([
+    expect(applicableActions({ ...F('undeclared'), path: 'Tags.myKey', nested: true })).toEqual([
       'record',
       'ignore',
     ]);
+  });
+  it('PURE-DOTTED nested undeclared (free-form map key) KEEPS revert — CC applies the pointer', () => {
+    // A clean dotted path is a valid RFC6902 pointer Cloud Control applies read-modify-write
+    // (a Lambda env var under Environment.Variables), so revert IS offered.
+    expect(
+      applicableActions({
+        ...F('undeclared'),
+        path: 'Environment.Variables.testtesttess',
+        nested: true,
+        freeFormKey: true,
+      })
+    ).toEqual(['record', 'ignore', 'revert']);
+    expect(
+      applicableActions({ ...F('undeclared'), path: 'Conf.Destination', nested: true })
+    ).toEqual(['record', 'ignore', 'revert']);
   });
   it('declared → revert (the natural fix), ignore — never record', () => {
     expect(applicableActions(F('declared'))).toEqual(['revert', 'ignore']);

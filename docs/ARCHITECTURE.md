@@ -301,7 +301,7 @@ checked.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
 - **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
-- **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged. Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
+- **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged; Lambda Alias `Description` is the same shape — `UpdateAlias` ignores an omitted description, so revert writes the empty-string default to clear it (both proven live). Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
   TTY-only semantic colors (R43). **aws-errors.ts** — `isStackNotDeployed` etc.
@@ -391,6 +391,13 @@ all live changes
          nested:true) — folded in the report by default (the live model carries many
          nested AWS defaults), expanded by --show-all/--verbose, recorded by record
          like any undeclared value so a later out-of-band change to it surfaces.
+         EXCEPTION — a key under a FREE-FORM MAP property
+         (SchemaInfo.freeFormMapPaths: a `type:object` schema node with no fixed
+         `properties`, just `patternProperties`/object `additionalProperties` —
+         Lambda Environment.Variables, Glue Parameters): every such key is
+         user-authored data, NOT an AWS default, so it is flagged `freeFormKey`
+         and SURFACED in full (never folded) — a console-added env var is real,
+         reviewable drift, not first-run noise.
          R98 extends the recursion into the MATCHED elements of identity-keyed object
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
          value and a live-only sub-field inside a declared element is caught too
@@ -675,8 +682,14 @@ only when non-zero — unrecorded values are named as such, never folded into
 deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
   `createOnlyProperties` / `conditionalCreateOnlyProperties` field needs a resource
   replacement, which an in-place `UpdateResource` can't do — caught from the schema
-  at plan time, not at apply time), plus any `readGap` / `unresolved` / `skipped`
-  finding. KMS keys need no SDK writer — they revert via the generic CC path.
+  at plan time, not at apply time), and a nested undeclared value whose path
+  addresses an **array element** (`Prop[<id>].sub` — the bracket can't be expressed
+  as an RFC6902 pointer) or is **rooted at `Tags`** (a deep `/Tags/<key>` patch would
+  bypass the `aws:*` managed-tag preservation), plus any `readGap` / `unresolved` /
+  `skipped` finding. A nested undeclared value on a PURE-DOTTED path (a free-form map
+  key like a Lambda env var, or an object sub-field) IS revertable — Cloud
+  Control applies the dotted pointer read-modify-write (`isUnrevertableNested`).
+  KMS keys need no SDK writer — they revert via the generic CC path.
 - **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
   _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
   arrays sorted), not the template verbatim. It is semantically equal to the template
