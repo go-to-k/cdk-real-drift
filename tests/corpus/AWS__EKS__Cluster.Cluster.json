@@ -1,0 +1,208 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::EKS::Cluster",
+    "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+    "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster",
+    "declared": {
+      "Name": "CdkRealDriftIntegDogfoodEks-cluster",
+      "ResourcesVpcConfig": {
+        "EndpointPrivateAccess": false,
+        "EndpointPublicAccess": true,
+        "SubnetIds": ["subnet-06744a7a2f1a5e2f5", "subnet-0ff27dcd243b93afb"]
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDogfoodEks-ClusterRoleD9CA7471-qi1VCYEIJU2H",
+      "Version": "1.31"
+    }
+  },
+  "liveRaw": {
+    "Logging": {
+      "ClusterLogging": {
+        "EnabledTypes": []
+      }
+    },
+    "DeletionProtection": false,
+    "AccessConfig": {
+      "AuthenticationMode": "CONFIG_MAP"
+    },
+    "CertificateAuthorityData": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJZlM2TWlmcS9pOWN3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBMk1qZ3dOalEzTURoYUZ3MHpOakEyTWpVd05qVXlNRGhhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURyQ2pQTGROWUo0S0oxdVR6cmYwRHhZSUs3WmRNR2FzVnNObGh6ZkJyMzFsQnhIMzNwR2ZUZEZ6OHYKVUdUd2E5Vk1INUFNSDM0Q1l2MVhKRlFENGZQRlk0K2hvaWxaZFlndnM2UU9EWkIxZkdSVE9NS01TbE84MTZRMQowai8ybGRHaWs1aVNMM3QzaytBVTN4cjZTRXBGVllvYmRJS253T0NObHJGWnNTV3FhbGZ0Mi90dHRHMWJqaWJUCkUwTlh4UHZLcFNrSEtHNk13emM0N2VNcEl5dUYzcE42dTVZbmMyeTRWL0xyL3RGYXF5N1h0NGk3bS8vNERRL1AKOU50UGVpMy9jUWRJd1EzQjEyd0svdG50WDZsVGJiL3pwdjNqdXNTUHhQOU5ldmNGVnZNOUdKTUhwMWF4UGkzMwpnNFdxMDBaNW11b3IwV1greDJueWdPRStQRDJyQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJSeisvZi9HbFdmWml1VGJ0UXNqbmdSUGZiQTV6QVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQUtaeHJwRWNITwpJTHRlZEwxRmRTNFJWcUo2RWFleUJ5QlVJREk4cXRSSFV3VmVWZnc5cWxIUW1DQ3dGQmN6ZFFmT0ZPYWNIeVVDCkxuUEtBYTE5RUMxRStlSUt6MGR2cWdseXpNQU9GUXYwSWxSZHRvT1dVUlhqdk9sZHhVSTFyV0k5NVlwbkx2ejUKMXl2Um81ZXA0OEg5a3hlMkh0aVVzcTllbzdYY3dtdjRkTGtTOUxIbkZ0c1RiZk9QT2VhcSszakpZZDJwZTlzZQphUHlMdTdZZ1F5bWl2S1pGWFZkUWdnSEdKWEo2YzdJTkZLRlhwZjRPUzBSWlIyL3lBWnRJZ0trZmlnS1NFK25nCllhVHBmU1pTelNjbGhxSXA1NThMWXc3dU5rdzJXK2JobUczdXpjZURtemNKMUhDamo1VjExd1hqOENUdFE4WjgKNDNqSHRWWW5hTzYrCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+    "EncryptionConfig": [],
+    "KubernetesNetworkConfig": {
+      "ServiceIpv4Cidr": "172.20.0.0/16",
+      "IpFamily": "ipv4",
+      "ElasticLoadBalancing": {
+        "Enabled": false
+      }
+    },
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDogfoodEks-ClusterRoleD9CA7471-qi1VCYEIJU2H",
+    "Name": "CdkRealDriftIntegDogfoodEks-cluster",
+    "UpgradePolicy": {
+      "SupportType": "EXTENDED"
+    },
+    "Endpoint": "https://A0FCCA78DC1BF23F87B884594F0E8906.gr7.us-east-1.eks.amazonaws.com",
+    "Version": "1.31",
+    "ControlPlaneScalingConfig": {
+      "Tier": "standard"
+    },
+    "ClusterSecurityGroupId": "sg-05b8869d1ba59c2ad",
+    "Arn": "arn:aws:eks:us-east-1:111111111111:cluster/CdkRealDriftIntegDogfoodEks-cluster",
+    "ResourcesVpcConfig": {
+      "EndpointPublicAccess": true,
+      "ControlPlaneEgressMode": "AWS_MANAGED",
+      "PublicAccessCidrs": ["0.0.0.0/0"],
+      "EndpointPrivateAccess": false,
+      "SecurityGroupIds": [],
+      "SubnetIds": ["subnet-06744a7a2f1a5e2f5", "subnet-0ff27dcd243b93afb"]
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegDogfoodEks/f4514160-72bc-11f1-9f2a-0affd5820f9f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Cluster",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegDogfoodEks",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "OpenIdConnectIssuerUrl": "https://oidc.eks.us-east-1.amazonaws.com/id/A0FCCA78DC1BF23F87B884594F0E8906"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CertificateAuthorityData",
+      "ClusterSecurityGroupId",
+      "EncryptionConfigKeyArn",
+      "Endpoint",
+      "Id",
+      "OpenIdConnectIssuerUrl"
+    ],
+    "writeOnly": ["BootstrapSelfManagedAddons", "Force"],
+    "createOnly": [
+      "BootstrapSelfManagedAddons",
+      "EncryptionConfig",
+      "Name",
+      "OutpostConfig",
+      "RoleArn"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "CertificateAuthorityData",
+      "ClusterSecurityGroupId",
+      "EncryptionConfigKeyArn",
+      "Endpoint",
+      "Id",
+      "KubernetesNetworkConfig.ServiceIpv6Cidr",
+      "OpenIdConnectIssuerUrl"
+    ],
+    "writeOnlyPaths": [
+      "AccessConfig.BootstrapClusterCreatorAdminPermissions",
+      "BootstrapSelfManagedAddons",
+      "Force"
+    ],
+    "createOnlyPaths": [
+      "AccessConfig.BootstrapClusterCreatorAdminPermissions",
+      "BootstrapSelfManagedAddons",
+      "EncryptionConfig",
+      "KubernetesNetworkConfig.IpFamily",
+      "KubernetesNetworkConfig.ServiceIpv4Cidr",
+      "Name",
+      "OutpostConfig",
+      "RoleArn"
+    ],
+    "defaults": {
+      "Force": false
+    },
+    "defaultPaths": {
+      "Force": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeConfig.NodePools",
+      "OutpostConfig.OutpostArns",
+      "ResourcesVpcConfig.PublicAccessCidrs",
+      "ResourcesVpcConfig.SecurityGroupIds",
+      "ResourcesVpcConfig.SubnetIds"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "AccessConfig",
+      "actual": {
+        "AuthenticationMode": "CONFIG_MAP"
+      },
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "KubernetesNetworkConfig",
+      "actual": {
+        "ServiceIpv4Cidr": "172.20.0.0/16",
+        "IpFamily": "ipv4",
+        "ElasticLoadBalancing": {
+          "Enabled": false
+        }
+      },
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "UpgradePolicy",
+      "actual": {
+        "SupportType": "EXTENDED"
+      },
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ControlPlaneScalingConfig",
+      "actual": {
+        "Tier": "standard"
+      },
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ResourcesVpcConfig.ControlPlaneEgressMode",
+      "actual": "AWS_MANAGED",
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ResourcesVpcConfig.PublicAccessCidrs",
+      "actual": ["0.0.0.0/0"],
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    }
+  ],
+  "description": "EKS Cluster read clean via Cloud Control (fully CC-readable, no read-gap), harvested from the dogfood-eks bare control-plane stack. AWS injects AccessConfig/KubernetesNetworkConfig/UpgradePolicy/ControlPlaneScalingConfig as undeclared live-only config."
+}
