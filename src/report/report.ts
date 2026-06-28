@@ -17,6 +17,7 @@
 // one-line-per-tier bullet list when 2+ (R37); `--verbose` expands them to full
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
+import { deepEqual } from '../diff/drift-calculator.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
@@ -106,21 +107,75 @@ export function formatFinding(f: Finding): string {
   let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${f.note}`;
   if (f.tier === 'declared') {
-    const { a: d, b: act } = jPair(f.desired, f.actual);
-    s += `\n      desired=${style.desired(d)}\n      actual =${style.actual(act)}`;
+    // A map-valued drift (both sides objects) is shown as a per-KEY delta, not a truncated
+    // whole-object dump (see formatMapDelta) — the user's case: one ResponseParameters
+    // header value changed but the raw pair-truncation windowed on the template-vs-live key
+    // ORDER and hid it. A scalar drift keeps the plain desired/actual lines.
+    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, false);
+    else {
+      const { a: d, b: act } = jPair(f.desired, f.actual);
+      s += `\n      desired=${style.desired(d)}\n      actual =${style.actual(act)}`;
+    }
   } else if (f.tier === 'added' && f.desired !== undefined) {
     // PR4: a recorded `added` resource whose live model CHANGED since record — show the
-    // recorded baseline model vs the live one (pair-truncated to the divergence) so the
-    // user sees WHAT changed, mirroring the declared tier's desired/actual layout. A
-    // first-seen / unrecorded added resource has no `desired`, so it stays a one-liner.
-    const { a: base, b: act } = jPair(f.desired, f.actual);
-    s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
+    // recorded baseline model vs the live one so the user sees WHAT changed. Both are full
+    // models (objects), so the same per-key delta applies (baseline-vs-actual labels).
+    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, true);
+    else {
+      const { a: base, b: act } = jPair(f.desired, f.actual);
+      s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
+    }
   } else if (f.tier === 'undeclared' && f.arrayDelta)
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).
     s += formatArrayDelta(f.arrayDelta);
   else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     s += ` = ${style.actual(j(f.actual))}`;
+  return s;
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+// Render a CHANGED MAP as a per-key delta — only the keys that actually differ — instead of
+// a truncated whole-object dump of both sides. A free-form map whose keys hold the path
+// grammar's separators (`method.response.header.X`, a Docker label `com.example.x`, a tag
+// key with a `.`) is emitted WHOLE by the drift calculator (the dotted key can't ride the
+// finding path safely — drift-calculator `hasPathUnsafeKey`). So `desired`/`actual` are the
+// full maps, and because the deployed template's key ORDER differs from the live read's, a
+// raw `jPair` pair-truncation windows on the key-order divergence and HIDES the one value
+// the user changed (e.g. an Access-Control-Allow-Origin header). Showing only the diverging
+// keys pinpoints the change. Walks the UNION so a key present on one side only is shown too;
+// a value change uses `jPair` so a long value still truncates around its divergence.
+// `baselineLabels` swaps desired/actual wording for the `added` (baseline-vs-live) tier.
+function formatMapDelta(
+  desired: Record<string, unknown>,
+  actual: Record<string, unknown>,
+  baselineLabels: boolean
+): string {
+  const lhs = baselineLabels ? 'baseline' : 'desired';
+  const rhs = baselineLabels ? 'actual  ' : 'actual ';
+  const keys = [...new Set([...Object.keys(desired), ...Object.keys(actual)])].sort();
+  let s = '';
+  for (const k of keys) {
+    const inD = Object.hasOwn(desired, k);
+    const inA = Object.hasOwn(actual, k);
+    if (inD && inA) {
+      if (deepEqual(desired[k], actual[k])) continue;
+      const { a, b } = jPair(desired[k], actual[k]);
+      s += `\n      ~ ${k}\n          ${lhs}=${style.desired(a)}\n          ${rhs}=${style.actual(b)}`;
+    } else if (inD) {
+      s += `\n      - ${k} (in ${baselineLabels ? 'baseline' : 'template'}, absent in live)\n          ${lhs}=${style.desired(j(desired[k]))}`;
+    } else {
+      s += `\n      + ${k} (in live, not in ${baselineLabels ? 'baseline' : 'template'})\n          ${rhs}=${style.actual(j(actual[k]))}`;
+    }
+  }
+  // A whole-object swap with NO per-key difference shouldn't happen (deepEqual gates the
+  // finding), but fall back to the plain pair so a finding never renders value-less.
+  if (s === '') {
+    const { a, b } = jPair(desired, actual);
+    s = `\n      ${lhs}=${style.desired(a)}\n      ${rhs}=${style.actual(b)}`;
+  }
   return s;
 }
 

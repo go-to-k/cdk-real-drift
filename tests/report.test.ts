@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { jPair, report, safeSlice, stackSeparator } from '../src/report/report.js';
+import { formatFinding, jPair, report, safeSlice, stackSeparator } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
 const F = (tier: Finding['tier'], path = 'P'): Finding => ({
@@ -705,5 +705,67 @@ describe('safeSlice (boundary-safe truncation — no split surrogate / escape)',
 
   it('leaves a clean boundary untouched', () => {
     expect(safeSlice('hello world', 0, 5)).toBe('hello');
+  });
+});
+
+describe('map-valued declared drift shows a per-KEY delta (not a key-order-confused dump)', () => {
+  // The user's case: an Integration.IntegrationResponses[].ResponseParameters map (dotted
+  // header keys → emitted WHOLE by the drift calculator) where ONE header value changed,
+  // and the deployed-template key order differs from the live read's. A raw pair-truncation
+  // would window on the key-order divergence; the per-key delta shows the one changed header.
+  const declaredMap = (desired: unknown, actual: unknown): Finding => ({
+    tier: 'declared',
+    logicalId: 'Api',
+    resourceType: 'AWS::ApiGateway::Method',
+    path: 'Integration.IntegrationResponses.0.ResponseParameters',
+    desired,
+    actual,
+  });
+
+  it('renders ONLY the changed key, with desired/actual values, despite differing key order', () => {
+    const f = declaredMap(
+      {
+        'method.response.header.Access-Control-Allow-Headers': "'Content-Type'",
+        'method.response.header.Access-Control-Allow-Origin': "'https://app.example.com'",
+        'method.response.header.Vary': "'Origin'",
+      },
+      {
+        // live read: different key ORDER + the one out-of-band value change
+        'method.response.header.Vary': "'Origin'",
+        'method.response.header.Access-Control-Allow-Headers': "'Content-Type'",
+        'method.response.header.Access-Control-Allow-Origin': "'https://evil.example.com'",
+      }
+    );
+    const out = formatFinding(f);
+    // the changed key is named, with both values visible
+    expect(out).toContain('~ method.response.header.Access-Control-Allow-Origin');
+    expect(out).toContain(`desired="'https://app.example.com'"`);
+    expect(out).toContain(`actual ="'https://evil.example.com'"`);
+    // unchanged keys are NOT dumped
+    expect(out).not.toContain('Access-Control-Allow-Headers');
+    expect(out).not.toContain('Vary');
+  });
+
+  it('a scalar declared drift keeps the plain desired/actual lines', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'Api',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'AuthorizationType',
+      desired: 'NONE',
+      actual: 'AWS_IAM',
+    };
+    const out = formatFinding(f);
+    expect(out).toContain('desired="NONE"');
+    expect(out).toContain('actual ="AWS_IAM"');
+    expect(out).not.toContain('~ ');
+  });
+
+  it('a template-only / live-only key is shown as removed / added', () => {
+    const f = declaredMap({ 'a.b': 1, 'c.d': 2 }, { 'a.b': 1, 'e.f': 9 });
+    const out = formatFinding(f);
+    expect(out).toContain('- c.d (in template, absent in live)');
+    expect(out).toContain('+ e.f (in live, not in template)');
+    expect(out).not.toContain('~ a.b'); // unchanged
   });
 });
