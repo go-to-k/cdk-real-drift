@@ -394,10 +394,12 @@ all live changes
          EXCEPTION — a key under a FREE-FORM MAP property
          (SchemaInfo.freeFormMapPaths: a `type:object` schema node with no fixed
          `properties`, just `patternProperties`/object `additionalProperties` —
-         Lambda Environment.Variables, Glue Parameters): every such key is
-         user-authored data, NOT an AWS default, so it is flagged `freeFormKey`
-         and SURFACED in full (never folded) — a console-added env var is real,
-         reviewable drift, not first-run noise.
+         Lambda Environment.Variables, Glue Parameters, and maps nested under an
+         array element via a `*` path: ECS ContainerDefinitions.*.DockerLabels /
+         .LogConfiguration.Options): every such key is user-authored data, NOT an
+         AWS default, so it is flagged `freeFormKey` and SURFACED in full (never
+         folded) — a console-added env var is real, reviewable drift, not
+         first-run noise.
          R98 extends the recursion into the MATCHED elements of identity-keyed object
          arrays (Tags/Origins/AttributeDefinitions/…): elements are aligned by identity
          value and a live-only sub-field inside a declared element is caught too
@@ -684,12 +686,13 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   replacement, which an in-place `UpdateResource` can't do — caught from the schema
   at plan time, not at apply time), and a nested undeclared value whose path
   addresses an **array element** (`Prop[<id>].sub` — the bracket can't be expressed
-  as an RFC6902 pointer) or is **rooted at `Tags`** (a deep `/Tags/<key>` patch would
-  bypass the `aws:*` managed-tag preservation), plus any `readGap` / `unresolved` /
-  `skipped` finding. A nested undeclared value on a PURE-DOTTED path (a free-form map
-  key like a Lambda env var, or an object sub-field) IS revertable — Cloud
-  Control applies the dotted pointer read-modify-write (`isUnrevertableNested`).
-  KMS keys need no SDK writer — they revert via the generic CC path.
+  as an RFC6902 pointer), plus any `readGap` / `unresolved` / `skipped` finding. A
+  nested undeclared value on a PURE-DOTTED path IS revertable — Cloud Control applies
+  the dotted pointer read-modify-write (`isUnrevertableNested`): a free-form map key
+  (a Lambda env var), an object sub-field, OR a **map-shaped tag key** (`Tags.<key>`,
+  e.g. AWS::SSM::Parameter — a single-key `remove`/`add` leaves the live `aws:*`
+  managed tags untouched, proven live). KMS keys need no SDK writer — they revert via
+  the generic CC path.
 - **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
   _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
   arrays sorted), not the template verbatim. It is semantically equal to the template

@@ -1,0 +1,213 @@
+{
+  "corpusVersion": 1,
+  "description": "Lambda Function with an out-of-band UNDECLARED env var under the free-form Environment.Variables map: the real CFn schema marks Variables as a patternProperties map, so freeFormMapPaths detects it and the live-only key is classified undeclared+nested+freeFormKey (surfaced in full, not folded). Harvested live from tests/integration/lambda-freeform.",
+  "resource": {
+    "logicalId": "Fn9270CBC0",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+    "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn",
+    "declared": {
+      "Code": {
+        "ZipFile": "exports.handler = async () => ({ statusCode: 200 });"
+      },
+      "Environment": {
+        "Variables": {
+          "USER_POOL_ID_PARAMETER_STORE_NAME": "/auth/goto/user-pool-id"
+        }
+      },
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaFreefo-FnServiceRoleB9001A96-2Nxr4KajVHDr",
+      "Runtime": "nodejs20.x"
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaFreefo-FnServiceRoleB9001A96-2Nxr4KajVHDr",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+    "Runtime": "nodejs20.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB"
+    },
+    "RecursiveLoop": "Terminate",
+    "Environment": {
+      "Variables": {
+        "USER_POOL_ID_PARAMETER_STORE_NAME": "/auth/goto/user-pool-id",
+        "testtesttess": "testtesttess"
+      }
+    },
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "Fn9270CBC0",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLambdaFreeform",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLambdaFreeform/ae968600-730f-11f1-8cfa-12ac51daf2b5",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {},
+    "defaultPaths": {
+      "DurableConfig.RetentionPeriodInDays": 14
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["Environment.Variables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Environment.Variables.testtesttess",
+      "actual": "testtesttess",
+      "nested": true,
+      "freeFormKey": true,
+      "physicalId": "CdkRealDriftIntegLambdaFreeform-Fn9270CBC0-uFHmWzyw0ZLB",
+      "constructPath": "CdkRealDriftIntegLambdaFreeform/Fn"
+    }
+  ]
+}

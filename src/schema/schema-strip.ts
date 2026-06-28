@@ -195,8 +195,13 @@ function collectUnorderedScalarPaths(
 // live-only sub-key there instead of folding it (R96 `undeclared-subkey`). A node with
 // fixed `properties` (a structured object) is NOT a free-form map even if it also allows
 // additionalProperties. Same $ref-resolving, recursion-guarded walk as the collectors
-// above; best-effort (a missed map just keeps folding — never a false positive). Array
-// elements contribute a `*` segment, matching the live `[id]`->`*`-normalized finding path.
+// above; best-effort (a missed map just keeps folding — never a false positive). A map
+// NESTED UNDER AN ARRAY ELEMENT is KEPT (its path carries a `*` segment — ECS
+// ContainerDefinitions.*.DockerLabels / .LogConfiguration.Options, Volumes.*
+// .DockerVolumeConfiguration.Labels): classify matches via `startsWith` on the live
+// `[id]`->`*`-normalized path, so the `*` aligns (unlike the EXACT-match collectors above,
+// which skip `*`). Such a key is still surfaced (visibility); revert stays barred for it
+// because its live path carries the array bracket (isUnrevertableNested).
 function collectFreeFormMapPaths(
   definitions: Record<string, SchemaNode>,
   properties: Record<string, SchemaNode>
@@ -218,7 +223,7 @@ function collectFreeFormMapPaths(
       !hasFixedProps &&
       ((node.patternProperties && Object.keys(node.patternProperties).length > 0) ||
         isObjectSchema(node.additionalProperties));
-    if (isMap && path && !path.includes('*')) out.push(path);
+    if (isMap && path) out.push(path);
     if (node.properties)
       for (const [k, child] of Object.entries(node.properties))
         walk(child, path ? `${path}.${k}` : k, seen);

@@ -879,14 +879,34 @@ describe('buildRevertPlan — nested undeclared is not revertable (R99)', () => 
     });
   });
 
-  it('a Tags-rooted nested value stays notRevertable (tag-preservation invariant)', () => {
-    const f = F({ tier: 'undeclared', path: 'Tags.myKey', actual: 'v', nested: true });
-    const b = baseline([
-      { logicalId: 'R', resourceType: 'AWS::S3::Bucket', path: 'Tags.myKey', value: 'old' },
-    ]);
-    const plan = buildRevertPlan([f], b);
+  it('a MAP-shaped tag key (Tags.<key>) IS revertable — single-key CC remove preserves aws:* tags', () => {
+    // Proven live on an AWS::SSM::Parameter: `remove /Tags/<key>` succeeds and leaves the
+    // aws:cloudformation:* managed tags untouched (Cloud Control read-modify-write keeps
+    // every other key). A LIST-shaped tag element (`Tags[<id>].sub`) stays barred (bracket).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::SSM::Parameter',
+      path: 'Tags.rogueKey',
+      actual: 'rogueVal',
+      nested: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/Tags/rogueKey' });
+  });
+
+  it('a LIST-shaped tag element (Tags[<id>].sub) stays notRevertable (bracket can not form a pointer)', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::S3::Bucket',
+      path: 'Tags[k1].Value',
+      actual: 'v',
+      nested: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
     expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable[0]!.reason).toContain('not revertable');
+    expect(plan.notRevertable[0]!.reason).toContain('array-element');
   });
 
   it('nested guard fires by PATH SHAPE even without the flag (baseline value removed since record)', () => {

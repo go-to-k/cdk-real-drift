@@ -900,10 +900,25 @@ describe('parseSchema', () => {
           Closed: { type: 'object', additionalProperties: false },
           // a plain scalar -> ignored
           Name: { type: 'string' },
+          // a free-form map NESTED UNDER AN ARRAY ELEMENT (ECS DockerLabels shape) -> KEPT
+          // with a `*` segment, so classify's startsWith match aligns the [id]->* live path.
+          Containers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                DockerLabels: { type: 'object', additionalProperties: { type: 'string' } },
+              },
+            },
+          },
         },
       })
     );
-    expect(info.freeFormMapPaths).toEqual(['Environment.Variables', 'Parameters']);
+    expect(info.freeFormMapPaths).toEqual([
+      'Containers.*.DockerLabels',
+      'Environment.Variables',
+      'Parameters',
+    ]);
   });
 
   // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
