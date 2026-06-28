@@ -377,6 +377,32 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('cdkrd-errors');
   });
 
+  it('Logs LogStream: builds the LogGroupName|LogStreamName composite — PARENT first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Logs::LogStream',
+        physicalId: 'my-stream',
+        declared: { LogGroupName: '/aws/my-log-group' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('/aws/my-log-group|my-stream');
+  });
+
+  it('Logs LogStream: an unresolved LogGroupName falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Logs::LogStream', physicalId: 'my-stream', declared: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-stream');
+  });
+
   for (const t of [
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',
