@@ -1,0 +1,8 @@
+{
+  "name": "cdk-real-drift-integ-s3-config-omit",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture for the cdk-real-drift s3-config-omit omit-when-empty FN integration test. Run via verify.sh.",
+  "devDependencies": { "aws-cdk": "^2.0.0", "aws-cdk-lib": "^2.0.0", "constructs": "^10.0.0" },
+  "type": "module"
+}

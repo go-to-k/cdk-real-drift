@@ -1,0 +1,215 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Fn9270CBC0",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+    "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn",
+    "declared": {
+      "Code": {
+        "ZipFile": "exports.handler = async () => ({ ok: true });"
+      },
+      "Environment": {
+        "Variables": {
+          "FOO": "bar",
+          "BAZ": "qux"
+        }
+      },
+      "Handler": "index.handler",
+      "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaEnvOmi-FnServiceRoleB9001A96-6DR2HE1CRl4t",
+      "Runtime": "nodejs18.x"
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "VpcConfig": {
+      "Ipv6AllowedForDualStack": false,
+      "SecurityGroupIds": [],
+      "SubnetIds": []
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "index.handler",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaEnvOmi-FnServiceRoleB9001A96-6DR2HE1CRl4t",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+    "Runtime": "nodejs18.x",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLambdaEnvOmit/9ee34170-731f-11f1-8ad1-0affd527d681",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Fn9270CBC0",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLambdaEnvOmit",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Architectures": ["x86_64"]
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["DurableConfig", "FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {},
+    "defaultPaths": {
+      "DurableConfig.RetentionPeriodInDays": 14
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["Environment.Variables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Environment",
+      "desired": {
+        "Variables": {
+          "FOO": "bar",
+          "BAZ": "qux"
+        }
+      },
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkRealDriftIntegLambdaEnvOmit-Fn9270CBC0-KLr7OInugBLe",
+      "constructPath": "CdkRealDriftIntegLambdaEnvOmit/Fn"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RiskConfig",
+    "resourceType": "AWS::Cognito::UserPoolRiskConfigurationAttachment",
+    "physicalId": "us-east-1_QQaweoixK|3fdc6es5i78e0ja0c2rhjqt7gu",
+    "constructPath": "CdkRealDriftIntegCognitoAttachmentReadgap/RiskConfig",
+    "declared": {
+      "AccountTakeoverRiskConfiguration": {
+        "Actions": {
+          "HighAction": {
+            "EventAction": "NO_ACTION",
+            "Notify": false
+          },
+          "LowAction": {
+            "EventAction": "NO_ACTION",
+            "Notify": false
+          },
+          "MediumAction": {
+            "EventAction": "NO_ACTION",
+            "Notify": false
+          }
+        }
+      },
+      "ClientId": "3fdc6es5i78e0ja0c2rhjqt7gu",
+      "CompromisedCredentialsRiskConfiguration": {
+        "Actions": {
+          "EventAction": "BLOCK"
+        }
+      },
+      "UserPoolId": "us-east-1_QQaweoixK"
+    }
+  },
+  "liveRaw": {
+    "CompromisedCredentialsRiskConfiguration": {
+      "Actions": {
+        "EventAction": "BLOCK"
+      },
+      "EventFilter": []
+    },
+    "UserPoolId": "us-east-1_QQaweoixK",
+    "ClientId": "3fdc6es5i78e0ja0c2rhjqt7gu",
+    "AccountTakeoverRiskConfiguration": {
+      "Actions": {
+        "HighAction": {
+          "Notify": false,
+          "EventAction": "NO_ACTION"
+        },
+        "LowAction": {
+          "Notify": false,
+          "EventAction": "NO_ACTION"
+        },
+        "MediumAction": {
+          "Notify": false,
+          "EventAction": "NO_ACTION"
+        }
+      }
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ClientId", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ClientId", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

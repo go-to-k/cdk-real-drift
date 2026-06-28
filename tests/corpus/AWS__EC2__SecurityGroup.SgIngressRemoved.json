@@ -1,0 +1,112 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Sg",
+    "resourceType": "AWS::EC2::SecurityGroup",
+    "physicalId": "CdkRealDriftIntegSgIngressRevert-Sg-e2O1KpNrq5cz",
+    "constructPath": "CdkRealDriftIntegSgIngressRevert/Sg",
+    "declared": {
+      "GroupDescription": "cdkrd sg ingress revert probe",
+      "SecurityGroupIngress": [
+        {
+          "CidrIp": "10.0.0.0/16",
+          "Description": "ssh from vpc",
+          "FromPort": 22,
+          "IpProtocol": "tcp",
+          "ToPort": 22
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "GroupDescription": "cdkrd sg ingress revert probe",
+    "GroupName": "CdkRealDriftIntegSgIngressRevert-Sg-e2O1KpNrq5cz",
+    "VpcId": "vpc-08cae0035717deb9d",
+    "Id": "sg-07fa40ce5b641ab56",
+    "SecurityGroupEgress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "FromPort": -1,
+        "ToPort": -1,
+        "IpProtocol": "-1"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "Sg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSgIngressRevert",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSgIngressRevert/18bbfb40-731b-11f1-8aa4-0e0ebf5eea53",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "GroupId": "sg-07fa40ce5b641ab56"
+  },
+  "schema": {
+    "readOnly": ["GroupId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["GroupDescription", "GroupName", "VpcId"],
+    "readOnlyPaths": ["GroupId", "Id"],
+    "writeOnlyPaths": ["SecurityGroupIngress.*.SourceSecurityGroupName"],
+    "createOnlyPaths": ["GroupDescription", "GroupName", "VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "Sg",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "SecurityGroupIngress",
+      "desired": [
+        {
+          "CidrIp": "10.0.0.0/16",
+          "Description": "ssh from vpc",
+          "FromPort": 22,
+          "IpProtocol": "tcp",
+          "ToPort": 22
+        }
+      ],
+      "physicalId": "CdkRealDriftIntegSgIngressRevert-Sg-e2O1KpNrq5cz",
+      "constructPath": "CdkRealDriftIntegSgIngressRevert/Sg"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Sg",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "VpcId",
+      "actual": "vpc-08cae0035717deb9d",
+      "physicalId": "CdkRealDriftIntegSgIngressRevert-Sg-e2O1KpNrq5cz",
+      "constructPath": "CdkRealDriftIntegSgIngressRevert/Sg"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Sg",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "SecurityGroupEgress",
+      "actual": [
+        {
+          "CidrIp": "0.0.0.0/0",
+          "FromPort": -1,
+          "ToPort": -1,
+          "IpProtocol": "-1"
+        }
+      ],
+      "physicalId": "CdkRealDriftIntegSgIngressRevert-Sg-e2O1KpNrq5cz",
+      "constructPath": "CdkRealDriftIntegSgIngressRevert/Sg"
+    }
+  ]
+}

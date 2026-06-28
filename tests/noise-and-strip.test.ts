@@ -802,16 +802,20 @@ describe('parseSchema', () => {
     expect([...out.writeOnly]).toEqual(['Secret']);
   });
 
-  it('parses createOnly + conditionalCreateOnly (both = needs replacement)', () => {
+  it('bars only HARD createOnly — conditionalCreateOnly stays revertable (mutable in the common case)', () => {
     const info = parseSchema(
       JSON.stringify({
         createOnlyProperties: ['/properties/BucketName', '/properties/Nested/Key'],
         conditionalCreateOnlyProperties: ['/properties/AvailabilityZone'],
       })
     );
-    expect([...info.createOnly].sort()).toEqual(['AvailabilityZone', 'BucketName']);
+    // hard create-only is barred from revert
+    expect([...info.createOnly].sort()).toEqual(['BucketName']);
     expect(info.createOnlyPaths).toContain('Nested.Key');
-    expect(info.createOnlyPaths).toContain('AvailabilityZone');
+    // a conditional-create-only prop (RDS BackupRetentionPeriod class — modifiable in
+    // place in the common case) must NOT be barred, else revert wrongly refuses it
+    expect([...info.createOnly]).not.toContain('AvailabilityZone');
+    expect(info.createOnlyPaths).not.toContain('AvailabilityZone');
   });
 
   it('R103: extracts nested defaults through $ref + arrays into defaultPaths', () => {

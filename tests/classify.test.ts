@@ -4726,3 +4726,158 @@ describe('NESTED_ARRAY_IDENTITY: materialized-default array elements (Backup / R
     );
   });
 });
+
+// A property AWS's Cloud Control read OMITS entirely when it has no value, yet
+// RETURNS when set (EC2 SecurityGroup SecurityGroupIngress/Egress). Its absence from
+// the live read must NOT be swallowed as a readGap — it means the declared rule was
+// removed out of band (the canonical "someone deleted the SSH rule in the console"),
+// which is a silent FALSE NEGATIVE. Live-observed: revoking the only ingress rule made
+// CC drop the key and classify reported CLEAN. See OMITTED_WHEN_EMPTY_PATHS.
+describe('OMITTED_WHEN_EMPTY_PATHS — readable prop AWS omits when empty', () => {
+  const sgSchema: SchemaInfo = {
+    readOnly: new Set(['Id', 'GroupId']),
+    writeOnly: new Set(),
+    createOnly: new Set(['GroupDescription', 'VpcId']),
+    readOnlyPaths: ['Id', 'GroupId'],
+    writeOnlyPaths: [],
+    createOnlyPaths: ['GroupDescription', 'VpcId'],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const rule = {
+    CidrIp: '10.0.0.0/16',
+    Description: 'ssh from vpc',
+    FromPort: 22,
+    IpProtocol: 'tcp',
+    ToPort: 22,
+  };
+  const sg = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'Sg',
+    resourceType: 'AWS::EC2::SecurityGroup',
+    physicalId: 'sg-123',
+    declared,
+  });
+
+  it('declared ingress rule removed out of band (CC omits the key) -> declared drift, NOT readGap', () => {
+    const findings = classifyResource(
+      sg({ GroupDescription: 'd', SecurityGroupIngress: [rule] }),
+      // live read omits SecurityGroupIngress entirely (no rules); egress present
+      {
+        GroupDescription: 'd',
+        SecurityGroupEgress: [{ CidrIp: '0.0.0.0/0', IpProtocol: '-1', FromPort: -1, ToPort: -1 }],
+      },
+      sgSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared').map((f) => f.path);
+    expect(decl).toContain('SecurityGroupIngress');
+    // the removal must NOT be misclassified as an (informational, non-failing) readGap
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SecurityGroupIngress')).toBe(
+      false
+    );
+  });
+
+  it('declared egress rule removed out of band -> declared drift, NOT readGap', () => {
+    const findings = classifyResource(
+      sg({ GroupDescription: 'd', SecurityGroupEgress: [rule] }),
+      { GroupDescription: 'd' }, // live omits both ingress & egress
+      sgSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared').map((f) => f.path);
+    expect(decl).toContain('SecurityGroupEgress');
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SecurityGroupEgress')).toBe(
+      false
+    );
+  });
+
+  it('a still-present ingress rule (CC returns it) compares normally (no false drift)', () => {
+    const findings = classifyResource(
+      sg({ GroupDescription: 'd', SecurityGroupIngress: [rule] }),
+      { GroupDescription: 'd', SecurityGroupIngress: [rule] },
+      sgSchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toHaveLength(0);
+    expect(findings.some((f) => f.path === 'SecurityGroupIngress')).toBe(false);
+  });
+
+  it('IAM Role inline Policies removed out of band (CC omits Policies) -> declared drift, NOT readGap', () => {
+    const roleSchema: SchemaInfo = {
+      readOnly: new Set(['Arn', 'RoleId']),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: ['Arn', 'RoleId'],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const policy = {
+      PolicyName: 'inline-1',
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [{ Effect: 'Allow', Action: 's3:GetObject', Resource: '*' }],
+      },
+    };
+    const findings = classifyResource(
+      {
+        logicalId: 'Role',
+        resourceType: 'AWS::IAM::Role',
+        physicalId: 'role-1',
+        declared: { RoleName: 'role-1', Policies: [policy] },
+      },
+      { RoleName: 'role-1' }, // live omits Policies (no inline policies)
+      roleSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared').map((f) => f.path);
+    expect(decl).toContain('Policies');
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'Policies')).toBe(false);
+  });
+
+  it('S3 object-valued config removed out of band (CC omits it) -> ONE whole-property declared drift', () => {
+    const s3Schema: SchemaInfo = {
+      readOnly: new Set(['Arn']),
+      writeOnly: new Set(),
+      createOnly: new Set(['BucketName']),
+      readOnlyPaths: ['Arn'],
+      writeOnlyPaths: [],
+      createOnlyPaths: ['BucketName'],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const cors = {
+      CorsRules: [{ AllowedMethods: ['GET'], AllowedOrigins: ['https://example.com'] }],
+    };
+    const findings = classifyResource(
+      {
+        logicalId: 'Bucket',
+        resourceType: 'AWS::S3::Bucket',
+        physicalId: 'b-1',
+        declared: { BucketName: 'b-1', CorsConfiguration: cors },
+      },
+      { BucketName: 'b-1' }, // live omits CorsConfiguration (removed)
+      s3Schema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared');
+    // exactly one WHOLE-PROPERTY finding (not a nested CorsConfiguration.CorsRules
+    // patch, which would fail to revert: the parent doesn't exist in the live model)
+    expect(decl.map((f) => f.path)).toEqual(['CorsConfiguration']);
+    expect(decl[0].desired).toEqual(cors);
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'CorsConfiguration')).toBe(
+      false
+    );
+  });
+
+  it('curated, not blanket: an absent declared array on a type NOT in the table stays a readGap', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { SomeArray: [rule] },
+      },
+      {},
+      sgSchema
+    );
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SomeArray')).toBe(true);
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'SomeArray')).toBe(false);
+  });
+});

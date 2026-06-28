@@ -1649,6 +1649,48 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
   return sa.every((v, i) => v === sb[i]);
 }
 
+// Per-type properties whose Cloud Control read OMITS the key entirely when it has no
+// value, yet RETURNS it when set. The default classify rule treats "declared key
+// absent from the live read" as a readGap (declared-but-unreadable) — correct for a
+// genuinely unreadable/write-only prop, but a SILENT FALSE NEGATIVE here: the key is
+// readable, so its absence means the declared value was emptied/removed out of band
+// (someone deleted the SecurityGroup ingress rule in the console) and MUST surface as
+// drift. classify synthesizes an empty live value (`[]`) for these so the removal
+// flows through the normal compare + revert path instead of being swallowed as a
+// readGap. FP-safe: on a clean stack the declared value is non-empty, so AWS returns
+// it (present in live) and this branch never fires. EC2 SecurityGroup ingress/egress
+// is the confirmed case (live-observed: revoking the only ingress rule made CC omit
+// `SecurityGroupIngress`, which classify reported CLEAN). Curated per-type opt-in —
+// a prop that is a genuine readGap on some type must NOT be added here.
+export const OMITTED_WHEN_EMPTY_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
+  // IAM inline `Policies`: Cloud Control returns the array when the principal has
+  // inline policies and OMITS it entirely when it has none. Deleting the only inline
+  // policy out of band (`aws iam delete-role-policy`) — a security-relevant change —
+  // therefore looked CLEAN (readGap) pre-fix. Live-confirmed on AWS::IAM::Role; User
+  // and Group share the identical inline-policy mechanism (PutUserPolicy /
+  // PutGroupPolicy, same `Policies` shape). FP-safe: a non-empty `Policies` is always
+  // returned, so this only fires on a genuine removal.
+  'AWS::IAM::Role': new Set(['Policies']),
+  'AWS::IAM::User': new Set(['Policies']),
+  'AWS::IAM::Group': new Set(['Policies']),
+  // S3 bucket sub-configs (the most-deployed resource): Cloud Control returns these
+  // object-valued configs when set and OMITS them once removed
+  // (`aws s3api delete-bucket-cors` / `delete-bucket-lifecycle`). A declared CORS or
+  // lifecycle policy deleted out of band therefore looked CLEAN (readGap) pre-fix.
+  // Live-confirmed on AWS::S3::Bucket. These are OBJECT-valued (Cors = {CorsRules},
+  // Lifecycle = {Rules}); classify synthesizes an empty object so the removal compares
+  // as declared drift. Only the two live-proven configs are listed — other S3 configs
+  // (Notification/Replication/Website/…) are candidates for a future probe.
+  'AWS::S3::Bucket': new Set(['CorsConfiguration', 'LifecycleConfiguration']),
+  // Lambda `Environment`: Cloud Control returns it when the function has env vars and
+  // OMITS it once they are all cleared (`update-function-configuration --environment
+  // '{"Variables":{}}'`). A declared env config wiped out of band therefore looked
+  // CLEAN (readGap) pre-fix. Live-confirmed on AWS::Lambda::Function. Object-valued
+  // ({Variables:{…}}); reverts via a top-level CC add → UpdateFunctionConfiguration.
+  'AWS::Lambda::Function': new Set(['Environment']),
+};
+
 // Per-type OBJECT-array props AWS treats as UNORDERED SETS whose element objects
 // carry NO single identity field (so canonicalizeTagListsDeep cannot key them) and
 // are NOT scalar (so isEqualUnorderedScalarSet does not apply): EC2 SecurityGroup

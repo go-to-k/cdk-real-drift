@@ -699,9 +699,13 @@ only when non-zero — unrecorded values are named as such, never folded into
   settable document), `AWS::Budgets::Budget` (`UpdateBudget` needs a full NewBudget
   the reader can't reconstruct), a `deleted` resource (`deleted — recreate via cdk
 deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
-  `createOnlyProperties` / `conditionalCreateOnlyProperties` field needs a resource
-  replacement, which an in-place `UpdateResource` can't do — caught from the schema
-  at plan time, not at apply time), and a nested undeclared value whose path
+  HARD `createOnlyProperties` field needs a resource replacement, which an in-place
+  `UpdateResource` can't do — caught from the schema at plan time, not at apply
+  time; `conditionalCreateOnlyProperties` are NOT barred — they are create-only only
+  in specific cases and mutable in the common one, e.g. RDS `BackupRetentionPeriod` /
+  `MultiAZ` / `StorageType`, so revert attempts them and Cloud Control rejects
+  cleanly if a change truly needs replacement), and a nested undeclared value whose
+  path
   addresses an **array element** (`Prop[<id>].sub` — the bracket can't be expressed
   as an RFC6902 pointer), plus any `readGap` / `unresolved` / `skipped` finding. A
   nested undeclared value on a PURE-DOTTED path IS revertable — Cloud Control applies
@@ -833,6 +837,16 @@ inherit the terminal's TTY, so prompts would otherwise fire mid-script). Errors
 always exit 2. All three of `deleted` / `declared` / `undeclared` count as
 failing drift. `ignored` / `readGap` / `unresolved` / `skipped` are
 informational — surfaced, never silently dropped, but never false drift.
+
+A declared property absent from the live read defaults to `readGap` — EXCEPT for the
+curated `OMITTED_WHEN_EMPTY_PATHS` (`normalize/noise.ts`): properties Cloud Control
+RETURNS when set but OMITS when empty (EC2 SecurityGroup ingress/egress rules, IAM
+inline `Policies`, S3 `Cors`/`LifecycleConfiguration`, Lambda `Environment`). For
+those, absence means the whole collection was removed out of band — a real
+`declared` drift (one whole-property finding so revert re-applies it with a single
+top-level `add`), not a `readGap`. It is curated, not a blanket rule: many genuine
+non-writeOnly readGaps (Batch `Timeout`, DynamoDB `SSESpecification`, …) AWS never
+returns even when set, so treating every absence as drift would false-positive them.
 
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —
 Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled
