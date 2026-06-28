@@ -554,6 +554,25 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // the parent Resource's id). Genuine resource-/account-/throughput inventory stays
 // EXCLUDED from both (Budgets `Budget.BudgetName`, DynamoDB GSI `*.WarmThroughput`).
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // AWS Backup materializes these defaults into each live BackupPlanRule (keyed by RuleName
+  // — descended via NESTED_ARRAY_IDENTITY). Folding them keeps a clean plan clean; an
+  // out-of-band change away from one still surfaces (equality-gated). Proven live: a
+  // CDK-default daily rule reads back StartWindowMinutes 480 / CompletionWindowMinutes 10080
+  // / ScheduleExpressionTimezone Etc/UTC (the empty CopyActions/ScanActions/IndexActions/
+  // RecoveryPointTags fold via isTrivialEmpty).
+  'AWS::Backup::BackupPlan': {
+    'BackupPlan.BackupPlanRule.*.CompletionWindowMinutes': 10080,
+    'BackupPlan.BackupPlanRule.*.StartWindowMinutes': 480,
+    'BackupPlan.BackupPlanRule.*.ScheduleExpressionTimezone': 'Etc/UTC',
+  },
+  // AWS Route53 Resolver materializes a FirewallDomainRedirectionAction default into each
+  // live FirewallRule (keyed by Priority — descended via NESTED_ARRAY_IDENTITY).
+  // Equality-gated, so a rule changed away from the default still surfaces. Proven live on a
+  // CDK-default BLOCK rule. (The sibling FirewallThreatProtectionId is readOnly — stripped
+  // before the nested loop — so it needs no entry here.)
+  'AWS::Route53Resolver::FirewallRuleGroup': {
+    'FirewallRules.*.FirewallDomainRedirectionAction': 'INSPECT_REDIRECTION_DOMAIN',
+  },
   'AWS::ApiGateway::DomainName': {
     // AWS sets a custom domain's IP address type to ipv4 when the template leaves
     // EndpointConfiguration.IpAddressType unset — a server default, not user intent.

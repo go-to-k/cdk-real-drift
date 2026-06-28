@@ -158,6 +158,19 @@ const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
     // attached in the console) surfaces as a genuine undeclared value, no FP.
     MethodResponses: 'StatusCode',
   },
+  // A Backup plan's rules are keyed by RuleName. AWS MATERIALIZES defaults into each live
+  // rule (CompletionWindowMinutes / StartWindowMinutes / ScheduleExpressionTimezone, plus
+  // empty CopyActions/ScanActions/IndexActions/RecoveryPointTags) — folded via
+  // KNOWN_DEFAULT_PATHS + isTrivialEmpty — so a clean plan stays clean, but an out-of-band
+  // change to a compliance-relevant rule setting (e.g. a shortened CompletionWindowMinutes)
+  // surfaces. Proven live.
+  'AWS::Backup::BackupPlan': { 'BackupPlan.BackupPlanRule': 'RuleName' },
+  // A Route53 Resolver DNS-firewall rule group's rules are keyed by Priority. AWS
+  // materializes defaults into each live rule (FirewallThreatProtectionId NOT_APPLICABLE,
+  // FirewallDomainRedirectionAction INSPECT_REDIRECTION_DOMAIN) — folded via
+  // KNOWN_DEFAULT_PATHS — so a security-relevant out-of-band change (a rule's Action /
+  // BlockResponse flipped in the console) surfaces. Proven live.
+  'AWS::Route53Resolver::FirewallRuleGroup': { FirewallRules: 'Priority' },
 };
 
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>

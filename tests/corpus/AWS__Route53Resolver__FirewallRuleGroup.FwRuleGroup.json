@@ -91,5 +91,16 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FwRuleGroup",
+      "resourceType": "AWS::Route53Resolver::FirewallRuleGroup",
+      "path": "FirewallRules[100].FirewallDomainRedirectionAction",
+      "actual": "INSPECT_REDIRECTION_DOMAIN",
+      "nested": true,
+      "physicalId": "rslvr-frg-4b70eb88fb1c45ef",
+      "constructPath": "CdkdriftIntegHarvest8/FwRuleGroup"
+    }
+  ]
 }

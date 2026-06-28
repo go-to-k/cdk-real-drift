@@ -3247,7 +3247,11 @@ describe('nested KNOWN_DEFAULT_PATHS folding (R108 — hand-coded nested service
     if (rest.length === 0) return [{}, { [head!]: value }];
     if (rest[0] === '*') {
       const [d, l] = buildNested(rest.slice(1), value);
-      return [{ [head!]: [{ Id: 'x', ...d }] }, { [head!]: [{ Id: 'x', ...l }] }];
+      // Carry every identity field the alignment might use — the generic IDENTITY_FIELDS
+      // `Id`, plus the NESTED_ARRAY_IDENTITY overrides (Backup RuleName, Route53 Priority) —
+      // all set to `x`, so the element aligns to `[x]` whichever key the type uses.
+      const id = { Id: 'x', RuleName: 'x', Priority: 'x' };
+      return [{ [head!]: [{ ...id, ...d }] }, { [head!]: [{ ...id, ...l }] }];
     }
     const [d, l] = buildNested(rest, value);
     return [{ [head!]: d }, { [head!]: l }];
@@ -4637,5 +4641,88 @@ describe('NESTED_ARRAY_IDENTITY: ApiGateway Method MethodResponses keyed by Stat
       bare
     );
     expect(findings.filter((f) => f.tier === 'undeclared')).toHaveLength(0);
+  });
+});
+
+describe('NESTED_ARRAY_IDENTITY: materialized-default array elements (Backup / Route53Resolver)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: 'p',
+    declared,
+  });
+  const undeclaredPaths = (r: DesiredResource, live: Record<string, unknown>): string[] =>
+    classifyResource(r, live, bare)
+      .filter((f) => f.tier === 'undeclared')
+      .map((f) => f.path)
+      .sort();
+
+  it('Backup BackupPlanRule (keyed by RuleName): AWS defaults fold, a changed window surfaces', () => {
+    const declared = res('AWS::Backup::BackupPlan', {
+      BackupPlan: {
+        BackupPlanRule: [{ RuleName: 'Daily', ScheduleExpression: 'cron(0 3 * * ? *)' }],
+      },
+    });
+    const clean = {
+      BackupPlan: {
+        BackupPlanRule: [
+          {
+            RuleName: 'Daily',
+            ScheduleExpression: 'cron(0 3 * * ? *)',
+            CompletionWindowMinutes: 10080,
+            StartWindowMinutes: 480,
+            ScheduleExpressionTimezone: 'Etc/UTC',
+            CopyActions: [],
+          },
+        ],
+      },
+    };
+    // all materialized defaults fold (atDefault) or are trivially empty -> no undeclared drift
+    expect(undeclaredPaths(declared, clean)).toEqual([]);
+    // an out-of-band CompletionWindowMinutes surfaces (no longer the default)
+    const drifted = structuredClone(clean);
+    (drifted.BackupPlan.BackupPlanRule[0] as Record<string, unknown>).CompletionWindowMinutes =
+      5000;
+    expect(undeclaredPaths(declared, drifted)).toContain(
+      'BackupPlan.BackupPlanRule[Daily].CompletionWindowMinutes'
+    );
+  });
+
+  it('Route53Resolver FirewallRules (keyed by Priority): redirection default folds, a change surfaces', () => {
+    const declared = res('AWS::Route53Resolver::FirewallRuleGroup', {
+      FirewallRules: [{ Priority: 100, Action: 'BLOCK' }],
+    });
+    const clean = {
+      FirewallRules: [
+        {
+          Priority: 100,
+          Action: 'BLOCK',
+          FirewallDomainRedirectionAction: 'INSPECT_REDIRECTION_DOMAIN',
+        },
+      ],
+    };
+    expect(undeclaredPaths(declared, clean)).toEqual([]);
+    const drifted = {
+      FirewallRules: [
+        {
+          Priority: 100,
+          Action: 'BLOCK',
+          FirewallDomainRedirectionAction: 'TRUST_REDIRECTION_DOMAIN',
+        },
+      ],
+    };
+    expect(undeclaredPaths(declared, drifted)).toContain(
+      'FirewallRules[100].FirewallDomainRedirectionAction'
+    );
   });
 });

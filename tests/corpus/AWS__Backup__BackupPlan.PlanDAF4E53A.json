@@ -68,5 +68,36 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "PlanDAF4E53A",
+      "resourceType": "AWS::Backup::BackupPlan",
+      "path": "BackupPlan.BackupPlanRule[Daily].CompletionWindowMinutes",
+      "actual": 10080,
+      "nested": true,
+      "physicalId": "4e662c50-8d81-4e43-b41d-703cacbe0e34",
+      "constructPath": "CdkrdIntegHarvest3/Plan"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlanDAF4E53A",
+      "resourceType": "AWS::Backup::BackupPlan",
+      "path": "BackupPlan.BackupPlanRule[Daily].StartWindowMinutes",
+      "actual": 480,
+      "nested": true,
+      "physicalId": "4e662c50-8d81-4e43-b41d-703cacbe0e34",
+      "constructPath": "CdkrdIntegHarvest3/Plan"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlanDAF4E53A",
+      "resourceType": "AWS::Backup::BackupPlan",
+      "path": "BackupPlan.BackupPlanRule[Daily].ScheduleExpressionTimezone",
+      "actual": "Etc/UTC",
+      "nested": true,
+      "physicalId": "4e662c50-8d81-4e43-b41d-703cacbe0e34",
+      "constructPath": "CdkrdIntegHarvest3/Plan"
+    }
+  ]
 }
