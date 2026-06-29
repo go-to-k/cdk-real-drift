@@ -1,0 +1,255 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Bucket",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+    "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket",
+    "declared": {
+      "AnalyticsConfigurations": [
+        {
+          "Id": "a1",
+          "StorageClassAnalysis": {}
+        }
+      ],
+      "IntelligentTieringConfigurations": [
+        {
+          "Id": "archive",
+          "Status": "Enabled",
+          "Tierings": [
+            {
+              "AccessTier": "ARCHIVE_ACCESS",
+              "Days": 90
+            }
+          ]
+        }
+      ],
+      "MetricsConfigurations": [
+        {
+          "Id": "EntireBucket"
+        }
+      ],
+      "OwnershipControls": {
+        "Rules": [
+          {
+            "ObjectOwnership": "ObjectWriter"
+          }
+        ]
+      },
+      "WebsiteConfiguration": {
+        "ErrorDocument": "error.html",
+        "IndexDocument": "index.html"
+      }
+    }
+  },
+  "liveRaw": {
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+    "RegionalDomainName": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk.s3.us-east-1.amazonaws.com",
+    "DomainName": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk.s3-website-us-east-1.amazonaws.com",
+    "DualStackDomainName": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk.s3.dualstack.us-east-1.amazonaws.com",
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3ConfigsOmit2/58568de0-7363-11f1-9bfa-1224aa199479",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegS3ConfigsOmit2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Bucket",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AnalyticsConfigurations",
+      "desired": [
+        {
+          "Id": "a1",
+          "StorageClassAnalysis": {}
+        }
+      ],
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "declared",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "IntelligentTieringConfigurations",
+      "desired": [
+        {
+          "Id": "archive",
+          "Status": "Enabled",
+          "Tierings": [
+            {
+              "AccessTier": "ARCHIVE_ACCESS",
+              "Days": 90
+            }
+          ]
+        }
+      ],
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "declared",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "MetricsConfigurations",
+      "desired": [
+        {
+          "Id": "EntireBucket"
+        }
+      ],
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "declared",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "desired": {
+        "Rules": [
+          {
+            "ObjectOwnership": "ObjectWriter"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "declared",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "WebsiteConfiguration",
+      "desired": {
+        "ErrorDocument": "error.html",
+        "IndexDocument": "index.html"
+      },
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3configsomit2-bucket-wspnmyk7nfkk",
+      "constructPath": "CdkRealDriftIntegS3ConfigsOmit2/Bucket"
+    }
+  ]
+}
