@@ -80,6 +80,10 @@ ApiStack: potential drift found (live-only, no baseline yet) — what do you wan
     Decide per finding — assign a different action to each
 ```
 
+Recording is the usual next step: it snapshots those values into the
+git-committed `.cdkrd` baseline, so from then on `cdkrd check` flags any later
+out-of-band change to them as confirmed drift.
+
 In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
 drift; it never writes a baseline (you record locally and commit the file).
 
