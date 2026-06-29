@@ -73,7 +73,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "FsEfsSecurityGroup7575D9A7",
       "resourceType": "AWS::EC2::SecurityGroup",
       "path": "GroupName",

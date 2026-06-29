@@ -4881,3 +4881,51 @@ describe('OMITTED_WHEN_EMPTY_PATHS — readable prop AWS omits when empty', () =
     expect(findings.some((f) => f.tier === 'declared' && f.path === 'SomeArray')).toBe(false);
   });
 });
+
+describe('CFn auto-generated name folding (generated tier)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const sg: DesiredResource = {
+    logicalId: 'SgD4954771',
+    resourceType: 'AWS::EC2::SecurityGroup',
+    physicalId: 'sg-0f4873d4b3aa50607',
+    constructPath: 'CdkRealDriftIntegSg/Sg',
+    declared: {},
+  };
+  const tierOf = (live: Record<string, unknown>, path: string) =>
+    classifyResource(sg, live, bare).find((f) => f.path === path)?.tier;
+
+  it('an undeclared CFn-generated name (<stack>-<logicalId>-<random>) folds as generated', () => {
+    expect(tierOf({ GroupName: 'CdkRealDriftIntegSg-SgD4954771-8qZ9xcu9LOZR' }, 'GroupName')).toBe(
+      'generated'
+    );
+  });
+
+  it('an undeclared value that is NOT the generated-name shape stays undeclared (no over-fold)', () => {
+    // wrong stack prefix
+    expect(tierOf({ GroupName: 'other-stack-name-8qZ9xcu9LOZR' }, 'GroupName')).toBe('undeclared');
+    // right prefix but no random suffix (a real human-meaningful name)
+    expect(tierOf({ GroupName: 'CdkRealDriftIntegSg-web-tier' }, 'GroupName')).toBe('undeclared');
+  });
+
+  it('no constructPath -> cannot derive the stack name -> never folds (safe)', () => {
+    const r: DesiredResource = {
+      logicalId: 'Sg',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-x',
+      declared: {},
+    };
+    const f = classifyResource(r, { GroupName: 'Any-Sg-8qZ9xcu9LOZR' }, bare).find(
+      (x) => x.path === 'GroupName'
+    );
+    expect(f?.tier).toBe('undeclared');
+  });
+});

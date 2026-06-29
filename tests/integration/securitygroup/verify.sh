@@ -38,6 +38,10 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "false declared drift on a noise-prone property (exit $rc) — a normalizer regressed"
 grep -q "CFn-Declared Drift" /tmp/cdkrd-securitygroup-pre.out \
   && fail "a declared property was wrongly reported as drift (false positive)"
+# The SG declares no GroupName, so CFn mints one (<stack>-<logicalId>-<random>). It must fold
+# as `generated`, NOT surface as undeclared potential-drift noise on the first run.
+grep -q "GroupName" /tmp/cdkrd-securitygroup-pre.out \
+  && fail "auto-generated GroupName surfaced as potential drift (should fold as generated)"
 
 echo "=== record then check must stay CLEAN ==="
 $CLI record "$STACK" --region "$REGION" --yes || fail "record"
