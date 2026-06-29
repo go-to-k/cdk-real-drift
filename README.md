@@ -89,8 +89,8 @@ Each block above is one kind of finding, and neither needed a baseline:
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
   your template. cdkrd detects these too: it strips the obvious noise (AWS
   defaults, auto-generated names) so what's left is the values most likely to be
-  real drift. They're only _potential_ because there's no baseline yet. Record
-  them as your baseline next, and any later change to them is caught as confirmed
+  real drift. They're only _potential_ because there's no baseline yet: if you
+  record them as your baseline, any later change to them is caught as confirmed
   drift.
 
 ### Recording is the recommended next step
