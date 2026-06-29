@@ -86,13 +86,11 @@ Each block above is one kind of finding, and neither needed a baseline:
 - **`[CFn-Declared Drift]`**: a property you declared changed out of band, so it's
   confirmed against your template right away (deletes of declared resources are
   confirmed the same way).
-- **`[Potential Drift]`**: settings that live only on the real resource, never in
-  your template. With no baseline, cdkrd has no record of what you intended, so it
-  can't yet tell a setting you chose on purpose from an out-of-band change. It
-  hides the obvious noise (values sitting at an AWS default, auto-generated names)
-  and lists the rest, including a meaningful value nested inside something you
-  _did_ declare. Those are probably real differences, which is why recording them
-  is the usual next move.
+- **`[Potential Drift]`**: settings that live only on the real resource, not in
+  your template. cdkrd shows them but can't call them confirmed drift yet: with no
+  baseline, it has no record of what you intended. It hides the obvious noise (AWS
+  defaults, auto-generated names) and shows the meaningful rest, including a value
+  nested inside something you _did_ declare.
 
 ### Recording is the recommended next step
 
