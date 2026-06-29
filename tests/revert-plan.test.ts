@@ -12,6 +12,7 @@ import {
   toPatchDocument,
   writeOnlyReincludeOps,
 } from '../src/revert/plan.js';
+import { parseSchema } from '../src/schema/schema-strip.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
 const schemaWithWriteOnly = (...names: string[]): SchemaInfo => ({
@@ -1495,5 +1496,115 @@ describe('writeOnlyReincludeOps create-only invariant over all real corpus schem
     // refactor drops the schema field), this surfaces it instead of passing vacuously.
     expect(typesExercised).toBeGreaterThan(5);
     expect(propsAsserted).toBeGreaterThan(0);
+  });
+});
+
+// Issue #421 TASK 3 — data-driven invariant for the conditional/hard create-only split.
+//
+// #413/#416 made `conditionalCreateOnlyProperties` NOT bar a revert (only the HARD
+// `createOnlyProperties` bar): a conditional-create-only prop (e.g. RDS DBInstance
+// BackupRetentionPeriod / MultiAZ / StorageType) is mutable in place in the common case,
+// so barring it would be a revert false negative on a very common resource. The split is
+// implemented in `parseSchema` (only `createOnlyProperties` flows into `createOnlyPaths`)
+// and consumed by `plan.ts::isUnderCreateOnly` (segment-wise prefix over `createOnlyPaths`).
+//
+// The corpus only stores the POST-parse SchemaInfo (`createOnlyPaths` already excludes
+// conditional), so a corpus replay can't tell hard from conditional and would pass
+// vacuously if the split regressed. So this invariant is driven by a fixture of REAL
+// CloudFormation schemas' create-only declarations (`tests/fixtures/cfn-create-only.json`,
+// the literal `createOnlyProperties` + `conditionalCreateOnlyProperties` arrays captured
+// from `describe-type` for 14 high-frequency types). Re-parsing them through `parseSchema`
+// makes the test FAIL if conditional props are ever re-merged into `createOnlyPaths`.
+// Self-extends: add a type to the fixture and it is covered. (RDS/EC2/OpenSearch/ECS/
+// Lambda/ElastiCache/DynamoDB carry conditional props; S3/EKS/MSK/EFS/Logs are hard-only.)
+interface CreateOnlyFixture {
+  resourceType: string;
+  createOnlyProperties: string[];
+  conditionalCreateOnlyProperties: string[];
+}
+const pointerToDotted = (p: string): string => p.replace(/^\/properties\//, '').replace(/\//g, '.');
+
+describe('conditional/hard create-only split invariant over real CFn schemas (issue #421 TASK 3)', () => {
+  const fixtures = JSON.parse(
+    readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'cfn-create-only.json'),
+      'utf8'
+    )
+  ) as CreateOnlyFixture[];
+
+  it('parseSchema: every HARD create-only prop IS in createOnlyPaths; every CONDITIONAL one is NOT', () => {
+    let hardAsserted = 0;
+    let condAsserted = 0;
+    let typesWithConditional = 0;
+    for (const fx of fixtures) {
+      const info = parseSchema(
+        JSON.stringify({
+          createOnlyProperties: fx.createOnlyProperties,
+          conditionalCreateOnlyProperties: fx.conditionalCreateOnlyProperties,
+        })
+      );
+      const createOnly = new Set(info.createOnlyPaths);
+      for (const p of fx.createOnlyProperties) {
+        // HARD create-only must bar revert → present in createOnlyPaths
+        expect(createOnly.has(pointerToDotted(p))).toBe(true);
+        hardAsserted++;
+      }
+      if (fx.conditionalCreateOnlyProperties.length > 0) typesWithConditional++;
+      for (const p of fx.conditionalCreateOnlyProperties) {
+        // CONDITIONAL create-only must NOT bar revert → absent from createOnlyPaths
+        // (this is the exact assertion that regresses if conditional is re-merged)
+        expect(createOnly.has(pointerToDotted(p))).toBe(false);
+        condAsserted++;
+      }
+    }
+    // guard the guard: the fixture must actually exercise both arms broadly
+    expect(hardAsserted).toBeGreaterThan(50);
+    expect(condAsserted).toBeGreaterThan(20);
+    expect(typesWithConditional).toBeGreaterThan(3);
+  });
+
+  it('consumer (buildRevertPlan/isUnderCreateOnly): a HARD create-only top-level prop bars revert, a CONDITIONAL one does not', () => {
+    // For every fixture type that has BOTH a hard and a conditional TOP-LEVEL prop, build a
+    // declared finding at each and prove the revert plan bars the hard one (notRevertable)
+    // and keeps the conditional one revertable — the behavioral consequence of the split.
+    const topLevel = (p: string): string | undefined => {
+      const d = pointerToDotted(p);
+      return d.includes('.') ? undefined : d;
+    };
+    let exercised = 0;
+    for (const fx of fixtures) {
+      const hardTop = fx.createOnlyProperties.map(topLevel).find(Boolean);
+      const condTop = fx.conditionalCreateOnlyProperties.map(topLevel).find(Boolean);
+      if (!hardTop || !condTop) continue;
+      exercised++;
+      const info = parseSchema(
+        JSON.stringify({
+          createOnlyProperties: fx.createOnlyProperties,
+          conditionalCreateOnlyProperties: fx.conditionalCreateOnlyProperties,
+        })
+      );
+      const schemas = new Map<string, SchemaInfo>([[fx.resourceType, info]]);
+      const find = (path: string): Finding => ({
+        tier: 'declared',
+        logicalId: 'R',
+        physicalId: 'phys-1',
+        resourceType: fx.resourceType,
+        path,
+        desired: 'x',
+        actual: 'y',
+      });
+
+      // HARD create-only → notRevertable with the create-only reason
+      const hardPlan = buildRevertPlan([find(hardTop)], undefined, { schemas });
+      expect(hardPlan.items).toHaveLength(0);
+      expect(hardPlan.notRevertable.map((n) => n.reason).join(' ')).toContain('create-only');
+
+      // CONDITIONAL create-only → revertable (a Cloud Control item, never barred)
+      const condPlan = buildRevertPlan([find(condTop)], undefined, { schemas });
+      expect(condPlan.notRevertable).toEqual([]);
+      expect(condPlan.items).toHaveLength(1);
+      expect(condPlan.items[0].kind).toBe('cc');
+    }
+    expect(exercised).toBeGreaterThan(2);
   });
 });
