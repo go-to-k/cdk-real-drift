@@ -25,6 +25,7 @@ import {
 import {
   DescribeAddressesCommand,
   DescribeLaunchTemplateVersionsCommand,
+  DescribeNetworkAclsCommand,
   EC2Client,
 } from '@aws-sdk/client-ec2';
 import {
@@ -385,6 +386,54 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   // `undeclared` drift on EVERY associated EIP on the first check.
   if (str(addr.PublicIpv4Pool)) model.PublicIpv4Pool = addr.PublicIpv4Pool; // declarable; absent for AWS-pool EIPs (FP-safe)
   if (tags && tags.length > 0) model.Tags = tags;
+  return model;
+};
+
+// AWS::EC2::NetworkAclEntry — Cloud Control has no read handler for this type
+// (GetResource throws UnsupportedActionException), so every NACL entry was silently
+// `skipped`: a NACL rule changed out of band (a CidrBlock widened, an action flipped
+// allow->deny) was invisible. Read the parent NACL via EC2 DescribeNetworkAcls and pick
+// the entry by its identity (RuleNumber + Egress — a NACL holds at most one entry per
+// (RuleNumber, Egress) pair). The EC2 entry shape mirrors the CFn property shape, except
+// Protocol comes back as a STRING ("6") while CFn declares it as an INTEGER (6) — coerce
+// it to a number so a tcp/udp/icmp rule does not false-drift on a typed-vs-string Protocol.
+const readEc2NetworkAclEntry: OverrideReader = async ({ declared, region }) => {
+  const naclId = str(declared.NetworkAclId);
+  const ruleNumber = declared.RuleNumber;
+  const egress = declared.Egress;
+  // RuleNumber + Egress are required identity; an unresolved NetworkAclId (Symbol) or a
+  // missing identity field -> skipped (fail-open, never a false read).
+  if (!naclId || typeof ruleNumber !== 'number' || typeof egress !== 'boolean') return undefined;
+
+  const c = new EC2Client({ region, ...READ_RETRY });
+  // InvalidNetworkAclID.NotFound surfaces if the NACL itself was deleted out of band —
+  // let it propagate so the router maps it to `deleted`.
+  const r = await c.send(new DescribeNetworkAclsCommand({ NetworkAclIds: [naclId] }));
+  const nacl = r.NetworkAcls?.[0];
+  if (!nacl) return undefined;
+  const entry = nacl.Entries?.find((e) => e.RuleNumber === ruleNumber && e.Egress === egress);
+  if (!entry)
+    throw new ResourceGoneError(
+      `NetworkAclEntry rule=${ruleNumber} egress=${egress} absent from NACL ${naclId}`
+    );
+
+  const model: Record<string, unknown> = {
+    NetworkAclId: naclId,
+    RuleNumber: entry.RuleNumber,
+    Egress: entry.Egress,
+    RuleAction: entry.RuleAction,
+  };
+  // Protocol: EC2 returns a numeric STRING; CFn declares an integer.
+  if (entry.Protocol !== undefined && entry.Protocol !== null)
+    model.Protocol = Number(entry.Protocol);
+  if (str(entry.CidrBlock)) model.CidrBlock = entry.CidrBlock;
+  if (str(entry.Ipv6CidrBlock)) model.Ipv6CidrBlock = entry.Ipv6CidrBlock;
+  // PortRange (TCP/UDP) and Icmp (ICMP/ICMPv6) are mutually exclusive and protocol-derived;
+  // project each only when AWS returns it so a non-port / non-icmp rule stays absent (FP-safe).
+  if (entry.PortRange) model.PortRange = { From: entry.PortRange.From, To: entry.PortRange.To };
+  // EC2 names the ICMP field IcmpTypeCode; the CFn property is Icmp (same {Code, Type}).
+  if (entry.IcmpTypeCode)
+    model.Icmp = { Code: entry.IcmpTypeCode.Code, Type: entry.IcmpTypeCode.Type };
   return model;
 };
 
@@ -1202,6 +1251,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Budgets::Budget': readBudget,
   'AWS::EC2::EIP': readEc2Eip,
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
+  'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,

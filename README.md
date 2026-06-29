@@ -477,7 +477,8 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `sns:GetTopicAttributes`, `sqs:GetQueueAttributes`, `iam:GetRolePolicy`,
   `iam:GetUserPolicy`, `iam:GetGroupPolicy`, `iam:GetPolicy`, `iam:GetPolicyVersion`,
   `lambda:GetPolicy`, `budgets:ViewBudget`, `ec2:DescribeAddresses`,
-  `ec2:DescribeLaunchTemplateVersions`, `route53:ListResourceRecordSets`,
+  `ec2:DescribeLaunchTemplateVersions`, `ec2:DescribeNetworkAcls`,
+  `route53:ListResourceRecordSets`,
   `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`,
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),

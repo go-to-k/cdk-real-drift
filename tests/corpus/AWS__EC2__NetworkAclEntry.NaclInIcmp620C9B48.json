@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NaclInIcmp620C9B48",
+    "resourceType": "AWS::EC2::NetworkAclEntry",
+    "physicalId": "CdkRea-NaclI-9PdI5qm5zhwG",
+    "constructPath": "CdkRealDriftIntegNaclEntry/Nacl/InIcmp",
+    "declared": {
+      "CidrBlock": "0.0.0.0/0",
+      "Egress": false,
+      "Icmp": {
+        "Code": -1,
+        "Type": 8
+      },
+      "NetworkAclId": "acl-0487d047096d72ead",
+      "Protocol": 1,
+      "RuleAction": "allow",
+      "RuleNumber": 120
+    }
+  },
+  "liveRaw": {
+    "NetworkAclId": "acl-0487d047096d72ead",
+    "RuleNumber": 120,
+    "Egress": false,
+    "RuleAction": "allow",
+    "Protocol": 1,
+    "CidrBlock": "0.0.0.0/0",
+    "Icmp": {
+      "Code": -1,
+      "Type": 8
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Egress", "NetworkAclId", "RuleNumber"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Egress", "NetworkAclId", "RuleNumber"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
