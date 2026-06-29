@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Memory",
+    "resourceType": "AWS::BedrockAgentCore::Memory",
+    "physicalId": "arn:aws:bedrock-agentcore:us-east-1:111111111111:memory/cdkrd_agentcore_memory-pasoHjAjfH",
+    "constructPath": "CdkRealDriftIntegAgentCore/Memory",
+    "declared": {
+      "Description": "cdkrd agentcore-rich fixture memory",
+      "EventExpiryDuration": 30,
+      "Name": "cdkrd_agentcore_memory"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "Description": "cdkrd agentcore-rich fixture memory",
+    "MemoryArn": "arn:aws:bedrock-agentcore:us-east-1:111111111111:memory/cdkrd_agentcore_memory-pasoHjAjfH",
+    "FailureReason": "",
+    "CreatedAt": "2026-06-29T11:27:53.934Z",
+    "EventExpiryDuration": 30,
+    "MemoryId": "cdkrd_agentcore_memory-pasoHjAjfH",
+    "UpdatedAt": "2026-06-29T11:27:59.575Z",
+    "Tags": {},
+    "Name": "cdkrd_agentcore_memory"
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "FailureReason", "MemoryArn", "MemoryId", "Status", "UpdatedAt"],
+    "writeOnly": [],
+    "createOnly": ["EncryptionKeyArn", "Name"],
+    "readOnlyPaths": [
+      "CreatedAt",
+      "FailureReason",
+      "MemoryArn",
+      "MemoryId",
+      "MemoryStrategies.*.CustomMemoryStrategy.CreatedAt",
+      "MemoryStrategies.*.CustomMemoryStrategy.Status",
+      "MemoryStrategies.*.CustomMemoryStrategy.StrategyId",
+      "MemoryStrategies.*.CustomMemoryStrategy.Type",
+      "MemoryStrategies.*.CustomMemoryStrategy.UpdatedAt",
+      "MemoryStrategies.*.EpisodicMemoryStrategy.CreatedAt",
+      "MemoryStrategies.*.EpisodicMemoryStrategy.Status",
+      "MemoryStrategies.*.EpisodicMemoryStrategy.StrategyId",
+      "MemoryStrategies.*.EpisodicMemoryStrategy.Type",
+      "MemoryStrategies.*.EpisodicMemoryStrategy.UpdatedAt",
+      "MemoryStrategies.*.SemanticMemoryStrategy.CreatedAt",
+      "MemoryStrategies.*.SemanticMemoryStrategy.Status",
+      "MemoryStrategies.*.SemanticMemoryStrategy.StrategyId",
+      "MemoryStrategies.*.SemanticMemoryStrategy.Type",
+      "MemoryStrategies.*.SemanticMemoryStrategy.UpdatedAt",
+      "MemoryStrategies.*.SummaryMemoryStrategy.CreatedAt",
+      "MemoryStrategies.*.SummaryMemoryStrategy.Status",
+      "MemoryStrategies.*.SummaryMemoryStrategy.StrategyId",
+      "MemoryStrategies.*.SummaryMemoryStrategy.Type",
+      "MemoryStrategies.*.SummaryMemoryStrategy.UpdatedAt",
+      "MemoryStrategies.*.UserPreferenceMemoryStrategy.CreatedAt",
+      "MemoryStrategies.*.UserPreferenceMemoryStrategy.Status",
+      "MemoryStrategies.*.UserPreferenceMemoryStrategy.StrategyId",
+      "MemoryStrategies.*.UserPreferenceMemoryStrategy.Type",
+      "MemoryStrategies.*.UserPreferenceMemoryStrategy.UpdatedAt",
+      "Status",
+      "UpdatedAt"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["EncryptionKeyArn", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

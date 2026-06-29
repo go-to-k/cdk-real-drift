@@ -38,7 +38,7 @@ import {
 import { resolveSdkWriter } from '../revert/writers.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
-import { type GatherResult, regatherTouched } from './gather.js';
+import { buildSiblingSgRules, type GatherResult, regatherTouched } from './gather.js';
 
 // unrecorded values (R62) are awaiting a decision, not drift — they never count
 // toward "drift(s) remain" messaging or the convergence check.
@@ -719,6 +719,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   let plan = buildRevertPlan(drifted, baseline, {
     removeUnrecorded: includeRemovals,
     schemas: gathered.schemas,
+    siblingSgRules: buildSiblingSgRules(gathered.desired),
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {

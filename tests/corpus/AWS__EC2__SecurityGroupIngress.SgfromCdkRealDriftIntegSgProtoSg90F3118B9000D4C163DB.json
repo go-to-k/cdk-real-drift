@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SgfromCdkRealDriftIntegSgProtoSg90F3118B9000D4C163DB",
+    "resourceType": "AWS::EC2::SecurityGroupIngress",
+    "physicalId": "sgr-0ed4eddeb0c690cd4",
+    "constructPath": "CdkRealDriftIntegSgProto/Sg/from CdkRealDriftIntegSgProtoSg90F3118B:9000",
+    "declared": {
+      "Description": "self ref",
+      "FromPort": 9000,
+      "GroupId": "sg-0ba527d158588a09f",
+      "IpProtocol": "tcp",
+      "SourceSecurityGroupId": "sg-0ba527d158588a09f",
+      "ToPort": 9000
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+    "Description": "self ref",
+    "FromPort": 9000,
+    "SourceSecurityGroupName": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+    "ToPort": 9000,
+    "SourceSecurityGroupOwnerId": "111111111111",
+    "IpProtocol": "tcp",
+    "Id": "sgr-0ed4eddeb0c690cd4",
+    "SourceSecurityGroupId": "sg-0ba527d158588a09f",
+    "GroupId": "sg-0ba527d158588a09f"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "SgfromCdkRealDriftIntegSgProtoSg90F3118B9000D4C163DB",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "GroupName",
+      "actual": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+      "physicalId": "sgr-0ed4eddeb0c690cd4",
+      "constructPath": "CdkRealDriftIntegSgProto/Sg/from CdkRealDriftIntegSgProtoSg90F3118B:9000"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "SgfromCdkRealDriftIntegSgProtoSg90F3118B9000D4C163DB",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "SourceSecurityGroupName",
+      "actual": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+      "physicalId": "sgr-0ed4eddeb0c690cd4",
+      "constructPath": "CdkRealDriftIntegSgProto/Sg/from CdkRealDriftIntegSgProtoSg90F3118B:9000"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "SgfromCdkRealDriftIntegSgProtoSg90F3118B9000D4C163DB",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "SourceSecurityGroupOwnerId",
+      "actual": "111111111111",
+      "physicalId": "sgr-0ed4eddeb0c690cd4",
+      "constructPath": "CdkRealDriftIntegSgProto/Sg/from CdkRealDriftIntegSgProtoSg90F3118B:9000"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WorkloadIdentity",
+    "resourceType": "AWS::BedrockAgentCore::WorkloadIdentity",
+    "physicalId": "cdkrd_agentcore_workload",
+    "constructPath": "CdkRealDriftIntegAgentCore/WorkloadIdentity",
+    "declared": {
+      "Name": "cdkrd_agentcore_workload"
+    }
+  },
+  "liveRaw": {
+    "CreatedTime": 1782732473567,
+    "WorkloadIdentityArn": "arn:aws:bedrock-agentcore:us-east-1:111111111111:workload-identity-directory/default/workload-identity/cdkrd_agentcore_workload",
+    "LastUpdatedTime": 1782732473567,
+    "AllowedResourceOauth2ReturnUrls": [],
+    "Tags": [],
+    "Name": "cdkrd_agentcore_workload"
+  },
+  "schema": {
+    "readOnly": ["CreatedTime", "LastUpdatedTime", "WorkloadIdentityArn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["CreatedTime", "LastUpdatedTime", "WorkloadIdentityArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["AllowedResourceOauth2ReturnUrls"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

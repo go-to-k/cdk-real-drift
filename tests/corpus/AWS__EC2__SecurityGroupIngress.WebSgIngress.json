@@ -87,7 +87,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodWebapp/Web/Service/SecurityGroup/from CdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F40:80"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "WebServiceSecurityGroupfromCdkRealDriftIntegDogfoodWebappWebLBSecurityGroup85857F408013CF9C8D",
       "resourceType": "AWS::EC2::SecurityGroupIngress",
       "path": "SourceSecurityGroupOwnerId",

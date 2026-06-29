@@ -184,6 +184,13 @@ function toPointer(dotted: string): string {
 
 const DRIFT_TIERS = new Set(['declared', 'undeclared']);
 
+// SecurityGroup rule property -> the buildSiblingSgRules side key, for the sibling-rule
+// merge below (see RevertOptions.siblingSgRules).
+const SG_REVERT_SIDE: Record<string, 'ingress' | 'egress'> = {
+  SecurityGroupIngress: 'ingress',
+  SecurityGroupEgress: 'egress',
+};
+
 export interface RevertOptions {
   // UNRECORDED undeclared values are removed only if this is set. Without it they
   // are reported as notRevertable (a bulk REMOVE of every undecided value that
@@ -192,6 +199,13 @@ export interface RevertOptions {
   // resourceType -> schema, so create-only property drift is reported as
   // notRevertable up front (an in-place patch would fail at apply time).
   schemas?: Map<string, SchemaInfo>;
+  // Rules declared by sibling standalone SecurityGroupIngress/Egress resources, keyed by the
+  // SG's physical id. Reverting an AWS::EC2::SecurityGroup's SecurityGroupIngress/Egress is a
+  // whole-array Cloud Control replacement; the live SG REFLECTS these sibling-declared rules,
+  // so a revert built from only the inline declared rules would DELETE them (silent data loss
+  // — a self-ref / peer / prefix-list rule wiped). Merge them back into the revert value so
+  // CC preserves them. Same shape classify uses to subtract them (buildSiblingSgRules).
+  siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
 }
 
 // True when a finding path is AT or UNDER any create-only schema path. The schema's
@@ -478,7 +492,19 @@ export function buildRevertPlan(
     const kind: RevertItem['kind'] =
       SDK_WRITERS[f.resourceType] || propScoped || nestedScoped ? 'sdk' : 'cc';
 
-    const op = revertOp(f, recorded);
+    // Reverting an SG's reflected SecurityGroupIngress/Egress is a whole-array CC replacement;
+    // merge back the rules declared by sibling standalone SG-rule resources (which the live SG
+    // reflects but the inline declared value omits) so the replacement does not DELETE them.
+    let toRevert = f;
+    const sgSide =
+      f.tier === 'declared' && f.resourceType === 'AWS::EC2::SecurityGroup'
+        ? SG_REVERT_SIDE[f.path]
+        : undefined;
+    if (sgSide && Array.isArray(f.desired) && f.physicalId) {
+      const sib = opts.siblingSgRules?.[f.physicalId]?.[sgSide] ?? [];
+      if (sib.length > 0) toRevert = { ...f, desired: [...(f.desired as unknown[]), ...sib] };
+    }
+    const op = revertOp(toRevert, recorded);
     const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
     const item =
       itemsByLogical.get(key) ??

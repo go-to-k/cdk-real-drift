@@ -957,6 +957,61 @@ describe('buildRevertPlan', () => {
       { op: 'add', path: '/B/0', value: 2 },
     ]);
   });
+
+  it('SecurityGroup ingress revert merges sibling-declared rules into the value (no clobber)', () => {
+    // Reverting an SG's reflected SecurityGroupIngress is a whole-array Cloud Control
+    // replacement. The live SG reflects rules declared by sibling standalone SG-rule resources
+    // (a self-ref / prefix-list rule CDK could not inline); without merging them back, the
+    // replacement DELETES them (silent data loss, observed live). The merged value preserves
+    // them — including the injected SourceSecurityGroupOwnerId so CC sees the rule unchanged.
+    const inlineDeclared = [
+      { CidrIp: '10.0.0.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 },
+    ];
+    const siblingRule = {
+      SourceSecurityGroupId: 'sg-1',
+      SourceSecurityGroupOwnerId: '111122223333',
+      IpProtocol: 'tcp',
+      FromPort: 9000,
+      ToPort: 9000,
+    };
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-1',
+      path: 'SecurityGroupIngress',
+      desired: inlineDeclared,
+      actual: inlineDeclared,
+    });
+    const plan = buildRevertPlan([f], undefined, {
+      siblingSgRules: { 'sg-1': { ingress: [siblingRule], egress: [] } },
+    });
+    expect(plan.items[0]!.kind).toBe('cc');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SecurityGroupIngress',
+      value: [...inlineDeclared, siblingRule],
+    });
+  });
+
+  it('SecurityGroup ingress revert without siblings leaves the declared value unchanged', () => {
+    const inlineDeclared = [
+      { CidrIp: '10.0.0.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 },
+    ];
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-1',
+      path: 'SecurityGroupIngress',
+      desired: inlineDeclared,
+      actual: [],
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SecurityGroupIngress',
+      value: inlineDeclared,
+    });
+  });
 });
 
 describe('property-scoped SDK writer routing (IAM Role inline Policies)', () => {

@@ -1,0 +1,306 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ClusterEB0386A7",
+    "resourceType": "AWS::RDS::DBCluster",
+    "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+    "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster",
+    "declared": {
+      "BackupRetentionPeriod": 7,
+      "CopyTagsToSnapshot": true,
+      "DBClusterParameterGroupName": "default.aurora-mysql8.0",
+      "DBSubnetGroupName": "cdkrealdriftintegaurorasv2-clustersubnetsdcfa5cb7-zupsaropnp1d",
+      "DeletionProtection": false,
+      "EnableCloudwatchLogsExports": ["audit", "error", "general", "slowquery"],
+      "EnableHttpEndpoint": true,
+      "Engine": "aurora-mysql",
+      "EngineVersion": "8.0.mysql_aurora.3.08.0",
+      "MasterUserPassword": "__cdkrd_corpus_unresolved__",
+      "MasterUsername": "__cdkrd_corpus_unresolved__",
+      "ServerlessV2ScalingConfiguration": {
+        "MaxCapacity": 2,
+        "MinCapacity": 0.5
+      },
+      "VpcSecurityGroupIds": ["sg-000cdddd33579002e"]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "AssociatedRoles": [],
+    "EnableHttpEndpoint": true,
+    "EngineMode": "provisioned",
+    "Port": 3306,
+    "DBClusterIdentifier": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+    "PreferredBackupWindow": "03:33-04:03",
+    "Endpoint": {
+      "Address": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw.cluster-caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "3306"
+    },
+    "NetworkType": "IPV4",
+    "VpcSecurityGroupIds": ["sg-000cdddd33579002e"],
+    "CopyTagsToSnapshot": true,
+    "Engine": "aurora-mysql",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAuroraSv2/7a227110-73ad-11f1-b4dd-0ebd39200b5f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "ClusterEB0386A7",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegAuroraSv2",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "EngineVersion": "8.0.mysql_aurora.3.08.0",
+    "StorageType": "aurora",
+    "AvailabilityZones": ["us-east-1c", "us-east-1a", "us-east-1b"],
+    "ServerlessV2ScalingConfiguration": {
+      "MinCapacity": 0.5,
+      "MaxCapacity": 2
+    },
+    "StorageEncryptionType": "sse-rds",
+    "DBClusterArn": "arn:aws:rds:us-east-1:111111111111:cluster:cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+    "EnableLocalWriteForwarding": false,
+    "PreferredMaintenanceWindow": "mon:07:39-mon:08:09",
+    "DBClusterResourceId": "cluster-24T7NGPWKB2DUEHGOHHTMTH3L4",
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "cdkrealdriftintegaurorasv2-clustersubnetsdcfa5cb7-zupsaropnp1d",
+    "DeletionProtection": false,
+    "AllocatedStorage": 1,
+    "ManageMasterUserPassword": false,
+    "MasterUserSecret": {},
+    "MasterUsername": "admin",
+    "ReadEndpoint": {
+      "Address": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw.cluster-ro-caxxotukouxo.us-east-1.rds.amazonaws.com"
+    },
+    "EnableIAMDatabaseAuthentication": false,
+    "DBClusterParameterGroupName": "default.aurora-mysql8.0",
+    "BackupRetentionPeriod": 7,
+    "EnableCloudwatchLogsExports": ["audit", "error", "general", "slowquery"]
+  },
+  "schema": {
+    "readOnly": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "ReadEndpoint",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnly": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "readOnlyPaths": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "ReadEndpoint",
+      "ReadEndpoint.Address",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnlyPaths": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "defaults": {
+      "BackupRetentionPeriod": 1
+    },
+    "defaultPaths": {
+      "BackupRetentionPeriod": 1
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "MasterUsername",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineMode",
+      "actual": "provisioned",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "Port",
+      "actual": 3306,
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredBackupWindow",
+      "actual": "03:33-04:03",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "StorageType",
+      "actual": "aurora",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a", "us-east-1b", "us-east-1c"],
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "mon:07:39-mon:08:09",
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AllocatedStorage",
+      "actual": 1,
+      "physicalId": "cdkrealdriftintegaurorasv2-clustereb0386a7-bkvmo1skckhw",
+      "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
+    }
+  ]
+}

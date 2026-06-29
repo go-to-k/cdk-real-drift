@@ -13,9 +13,14 @@ import {
 } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
-import { type GatherResult, gatherFindings, regatherTouched } from '../src/commands/gather.js';
+import {
+  buildSiblingSgRules,
+  type GatherResult,
+  gatherFindings,
+  regatherTouched,
+} from '../src/commands/gather.js';
 import type { Desired } from '../src/desired/template-adapter.js';
-import type { Finding, ResolverContext, SchemaInfo } from '../src/types.js';
+import type { DesiredResource, Finding, ResolverContext, SchemaInfo } from '../src/types.js';
 
 // Build N AWS::SQS::Queue resources whose declared props match the live read, so the
 // only differences are ordering-sensitive iteration (no real drift noise).
@@ -565,5 +570,117 @@ describe('gatherFindings pass-1.6 added-enumeration guards an unread parent (WAV
     expect(findings.some((f) => f.tier === 'added')).toBe(false);
     // ...and the unread parent surfaces its coverage gap as skipped
     expect(findings.some((f) => f.logicalId === 'Fn' && f.tier === 'skipped')).toBe(true);
+  });
+});
+
+describe('buildSiblingSgRules', () => {
+  const desiredWith = (resources: DesiredResource[], accountId = '111122223333'): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId,
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('keys rules by the SG GroupId, strips GroupId, and splits ingress/egress', () => {
+    const map = buildSiblingSgRules(
+      desiredWith([
+        {
+          logicalId: 'In',
+          resourceType: 'AWS::EC2::SecurityGroupIngress',
+          physicalId: 'sgr-in',
+          declared: {
+            GroupId: 'sg-1',
+            SourcePrefixListId: 'pl-1',
+            IpProtocol: 'tcp',
+            FromPort: 3306,
+            ToPort: 3306,
+          },
+        },
+        {
+          logicalId: 'Out',
+          resourceType: 'AWS::EC2::SecurityGroupEgress',
+          physicalId: 'sgr-out',
+          declared: {
+            GroupId: 'sg-1',
+            CidrIp: '0.0.0.0/0',
+            IpProtocol: 'tcp',
+            FromPort: 443,
+            ToPort: 443,
+          },
+        },
+      ])
+    );
+    expect(map['sg-1']!.ingress).toEqual([
+      { SourcePrefixListId: 'pl-1', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+    ]);
+    expect(map['sg-1']!.egress).toEqual([
+      { CidrIp: '0.0.0.0/0', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 },
+    ]);
+  });
+
+  it('fills SourceSecurityGroupOwnerId with the account id for an SG-ref rule that omits it', () => {
+    const map = buildSiblingSgRules(
+      desiredWith([
+        {
+          logicalId: 'Self',
+          resourceType: 'AWS::EC2::SecurityGroupIngress',
+          physicalId: 'sgr-self',
+          declared: {
+            GroupId: 'sg-1',
+            SourceSecurityGroupId: 'sg-1',
+            IpProtocol: 'tcp',
+            FromPort: 9000,
+            ToPort: 9000,
+          },
+        },
+      ])
+    );
+    expect(map['sg-1']!.ingress[0]).toMatchObject({
+      SourceSecurityGroupId: 'sg-1',
+      SourceSecurityGroupOwnerId: '111122223333',
+    });
+  });
+
+  it('does NOT overwrite a declared (cross-account) SourceSecurityGroupOwnerId', () => {
+    const map = buildSiblingSgRules(
+      desiredWith([
+        {
+          logicalId: 'Peer',
+          resourceType: 'AWS::EC2::SecurityGroupIngress',
+          physicalId: 'sgr-peer',
+          declared: {
+            GroupId: 'sg-1',
+            SourceSecurityGroupId: 'sg-other',
+            SourceSecurityGroupOwnerId: '999988887777',
+            IpProtocol: 'tcp',
+            FromPort: 80,
+            ToPort: 80,
+          },
+        },
+      ])
+    );
+    expect(map['sg-1']!.ingress[0]).toMatchObject({ SourceSecurityGroupOwnerId: '999988887777' });
+  });
+
+  it('skips a rule whose GroupId is an unresolved intrinsic (not a concrete string)', () => {
+    const map = buildSiblingSgRules(
+      desiredWith([
+        {
+          logicalId: 'In',
+          resourceType: 'AWS::EC2::SecurityGroupIngress',
+          physicalId: 'sgr-in',
+          declared: {
+            GroupId: { 'Fn::GetAtt': ['Sg', 'GroupId'] },
+            IpProtocol: 'tcp',
+            FromPort: 1,
+            ToPort: 1,
+          },
+        },
+      ])
+    );
+    expect(Object.keys(map)).toHaveLength(0);
   });
 });

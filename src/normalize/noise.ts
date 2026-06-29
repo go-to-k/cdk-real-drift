@@ -857,6 +857,15 @@ export const GENERATED_PATHS: Record<string, string[]> = {
 // a fresh apigwv2-http-rich deploy.
 export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::ApiGatewayV2::Stage': new Set(['DeploymentId']),
+  // A standalone SG rule that references another security group (self-ref or peer) reads back
+  // a SourceSecurityGroupOwnerId AWS injects — the account that owns the referenced SG. The
+  // template never declares it (CDK derives it from SourceSecurityGroupId), so on a fresh
+  // self-referencing SG rule — the canonical ALB↔ASG / intra-cluster pattern — it floods the
+  // first run as undeclared. It is tied to SourceSecurityGroupId (which IS compared), not an
+  // independently-editable property, so folding it `generated` (inventory: never drift) is
+  // safe; a meaningful change is a change to SourceSecurityGroupId itself. Observed live on
+  // the securitygroup-protocols-rich fixture's self-ref rule.
+  'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupOwnerId']),
   // A published version's CodeSha256 is the base64 hash of the deployed code package —
   // a per-deploy, opaque, service-minted value (NOT a constant default, so KNOWN_DEFAULTS
   // cannot fold it). It is live-only ONLY when the template does not pin it; a version

@@ -1,0 +1,99 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Io2VolB902C7A4",
+    "resourceType": "AWS::EC2::Volume",
+    "physicalId": "vol-0f12afde5901a01f1",
+    "constructPath": "CdkRealDriftIntegVpcEpRich/Io2Vol",
+    "declared": {
+      "AvailabilityZone": "__cdkrd_corpus_unresolved__",
+      "Encrypted": true,
+      "Iops": 1000,
+      "MultiAttachEnabled": false,
+      "Size": 10,
+      "Tags": [
+        {
+          "Key": "role",
+          "Value": "io2"
+        }
+      ],
+      "VolumeType": "io2"
+    }
+  },
+  "liveRaw": {
+    "MultiAttachEnabled": false,
+    "VolumeId": "vol-0f12afde5901a01f1",
+    "VolumeType": "io2",
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/76039e55-2469-4c94-95ab-e12d8615bb98",
+    "Encrypted": true,
+    "Size": 10,
+    "AutoEnableIO": false,
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "Iops": 1000,
+    "Tags": [
+      {
+        "Value": "io2",
+        "Key": "role"
+      },
+      {
+        "Value": "Io2VolB902C7A4",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegVpcEpRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcEpRich/906942f0-73ad-11f1-96d2-126eaffbf82f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VolumeId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["VolumeId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "Io2VolB902C7A4",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "AvailabilityZone",
+      "physicalId": "vol-0f12afde5901a01f1",
+      "constructPath": "CdkRealDriftIntegVpcEpRich/Io2Vol"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Io2VolB902C7A4",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/76039e55-2469-4c94-95ab-e12d8615bb98",
+      "physicalId": "vol-0f12afde5901a01f1",
+      "constructPath": "CdkRealDriftIntegVpcEpRich/Io2Vol"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Io2VolB902C7A4",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
+      "physicalId": "vol-0f12afde5901a01f1",
+      "constructPath": "CdkRealDriftIntegVpcEpRich/Io2Vol"
+    }
+  ]
+}

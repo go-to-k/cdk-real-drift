@@ -1,0 +1,78 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CodeInterpreter",
+    "resourceType": "AWS::BedrockAgentCore::CodeInterpreterCustom",
+    "physicalId": "cdkrd_agentcore_codeint-etgiGGrBLc",
+    "constructPath": "CdkRealDriftIntegAgentCore/CodeInterpreter",
+    "declared": {
+      "Description": "cdkrd agentcore-rich fixture code interpreter",
+      "Name": "cdkrd_agentcore_codeint",
+      "NetworkConfiguration": {
+        "NetworkMode": "PUBLIC"
+      }
+    }
+  },
+  "liveRaw": {
+    "Status": "READY",
+    "Description": "cdkrd agentcore-rich fixture code interpreter",
+    "LastUpdatedAt": "2026-06-29T11:27:53.496011315Z",
+    "FailureReason": "",
+    "CreatedAt": "2026-06-29T11:27:53.496011315Z",
+    "NetworkConfiguration": {
+      "NetworkMode": "PUBLIC"
+    },
+    "CodeInterpreterArn": "arn:aws:bedrock-agentcore:us-east-1:111111111111:code-interpreter-custom/cdkrd_agentcore_codeint-etgiGGrBLc",
+    "CodeInterpreterId": "cdkrd_agentcore_codeint-etgiGGrBLc",
+    "Tags": {},
+    "Name": "cdkrd_agentcore_codeint"
+  },
+  "schema": {
+    "readOnly": [
+      "CodeInterpreterArn",
+      "CodeInterpreterId",
+      "CreatedAt",
+      "FailureReason",
+      "LastUpdatedAt",
+      "Status"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "Certificates",
+      "Description",
+      "ExecutionRoleArn",
+      "Name",
+      "NetworkConfiguration"
+    ],
+    "readOnlyPaths": [
+      "CodeInterpreterArn",
+      "CodeInterpreterId",
+      "CreatedAt",
+      "FailureReason",
+      "LastUpdatedAt",
+      "Status"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Certificates",
+      "Description",
+      "ExecutionRoleArn",
+      "Name",
+      "NetworkConfiguration"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.VpcConfig.SecurityGroups",
+      "NetworkConfiguration.VpcConfig.Subnets"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
