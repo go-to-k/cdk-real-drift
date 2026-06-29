@@ -111,9 +111,9 @@ can't see:
 result: 1 drift(s) (undeclared=1)
 ```
 
-`record` covers undeclared and added state only. The standalone verbs (and how
-`ignore` can accept even a declared drift) are in
-[The model](#the-model-one-verb-you-run-three-it-offers).
+`record` handles undeclared and added state only.
+[The model](#the-model-one-verb-you-run-three-it-offers) covers all four verbs,
+including how `ignore` can accept even a declared drift.
 
 ### In CI
 
