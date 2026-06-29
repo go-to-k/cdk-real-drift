@@ -87,10 +87,10 @@ Each block above is one kind of finding, and neither needed a baseline:
   confirmed against your template right away (deletes of declared resources are
   confirmed the same way).
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
-  your template. cdkrd detects these too: it hides the obvious noise (AWS defaults,
-  auto-generated names) and shows the meaningful rest, including a value nested
-  inside something you _did_ declare. With no baseline it can't confirm them as
-  drift yet, though.
+  your template. cdkrd detects these too: it strips the obvious noise (AWS
+  defaults, auto-generated names) so what's left is the values most likely to be
+  real drift, including one nested inside something you _did_ declare. It just
+  can't confirm them yet without a baseline.
 
 ### Recording is the recommended next step
 
@@ -98,6 +98,17 @@ Recording snapshots those live-only values into a git-committed `.cdkrd` baselin
 so from then on any later out-of-band change to them is confirmed drift. That's the
 day-to-day loop: run `check`, record what's intended, commit the baseline, and the
 next out-of-band change stands out on its own.
+
+With `Role.Policies` recorded, an inline policy added later out of band is now
+confirmed drift, the undeclared kind `cdk drift` can't see:
+
+```console
+=== cdkrd check: ApiStack (us-east-1) ===
+[CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
+  ApiStack/Role.Policies (AWS::IAM::Role) — changed since record = [{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
+
+result: 1 drift(s) (undeclared=1)
+```
 
 `record` covers undeclared and added state only. The standalone verbs (and how
 `ignore` can accept even a declared drift) are in
