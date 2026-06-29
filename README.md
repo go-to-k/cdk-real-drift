@@ -56,11 +56,7 @@ It prints what it found, then offers three actions right in the prompt:
 - **Revert**: write the desired value back to AWS.
 - **Ignore**: stop reporting it, for good.
 
-Even on your first run, before any baseline exists, `check` already surfaces the
-likely drift. Declared changes and out-of-band deletes are confirmed against your
-template right away; values that live only on the real resource show up as
-_Potential Drift_ (most likely real divergence too, just not confirmable until
-you record a baseline):
+Here's a first run:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
@@ -79,6 +75,12 @@ ApiStack: potential drift found (live-only, no baseline yet) — what do you wan
     Ignore — stop reporting it (writes .cdkrd/config.json)
     Decide per finding — assign a different action to each
 ```
+
+Note that it already found something with no baseline at all. Declared changes and
+out-of-band deletes are confirmed against your template right away; values that
+live only on the real resource can't be confirmed yet, so they surface as
+_Potential Drift_ (most likely real divergence too, just not confirmable until you
+record a baseline).
 
 Recording is the usual next step: it snapshots those values into the
 git-committed `.cdkrd` baseline, so from then on `cdkrd check` flags any later
