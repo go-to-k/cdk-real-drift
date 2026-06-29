@@ -1648,3 +1648,62 @@ describe('conditional/hard create-only split invariant over real CFn schemas (is
     expect(exercised).toBeGreaterThan(2);
   });
 });
+
+// Issue #421 TASK 2 — a removed declared COLLECTION (whole property absent from the
+// live read, #416) reverts via a single top-level Cloud Control `add /Prop`, NO SDK
+// writer needed — even for collections managed by a dedicated sub-API.
+//
+// The hypothesis was that some common types' removed collection can't be re-applied via
+// Cloud Control UpdateResource (a separate SDK API is required, like the existing
+// SDK_WRITERS). Live-tested on the two strongest candidates — EventBridge Rule `Targets`
+// (PutTargets/RemoveTargets) and EC2 Auto Scaling `NotificationConfigurations`
+// (PutNotificationConfiguration/DeleteNotificationConfiguration): BOTH revert cleanly
+// via Cloud Control. The reason generalizes — CC UpdateResource invokes the resource
+// provider's UPDATE handler, the SAME path a CloudFormation stack update uses, which
+// already wires those sub-APIs. So a removed collection re-applies wherever CFn itself
+// can set the property; no new SDK writer is warranted for these common types. The
+// integ proof lives in tests/integration/{events-rule-target-revert,asg-notification-
+// revert}; this unit test locks the revert PLAN those fixtures exercise (a declared
+// removed-collection finding → one `cc` item with `add /Prop`).
+describe('removed declared collection reverts via Cloud Control add /Prop (issue #421 TASK 2)', () => {
+  const removedCollection = (over: Partial<Finding>): Finding => ({
+    tier: 'declared',
+    logicalId: 'R',
+    physicalId: 'phys-1',
+    resourceType: 'AWS::Events::Rule',
+    path: 'Targets',
+    desired: [{ Id: 'Target0', Arn: 'arn:aws:sns:us-east-1:111111111111:t' }],
+    actual: undefined,
+    ...over,
+  });
+
+  it('EventBridge Rule Targets removed -> one cc item: add /Targets (no SDK writer)', () => {
+    const f = removedCollection({});
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toEqual([]);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('cc');
+    expect(plan.items[0]!.ops).toEqual([
+      expect.objectContaining({ op: 'add', path: '/Targets', value: f.desired }),
+    ]);
+  });
+
+  it('ASG NotificationConfigurations removed (CC omits when empty) -> add /NotificationConfigurations', () => {
+    const f = removedCollection({
+      resourceType: 'AWS::AutoScaling::AutoScalingGroup',
+      path: 'NotificationConfigurations',
+      desired: [{ TopicARN: 'arn:aws:sns:us-east-1:111111111111:t', NotificationTypes: ['x'] }],
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toEqual([]);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('cc'); // Cloud Control, not a dedicated SDK writer
+    expect(plan.items[0]!.ops).toEqual([
+      expect.objectContaining({
+        op: 'add',
+        path: '/NotificationConfigurations',
+        value: f.desired,
+      }),
+    ]);
+  });
+});
