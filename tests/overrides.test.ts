@@ -1,6 +1,7 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
+import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
 import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
@@ -55,6 +56,7 @@ const codebuild = mockClient(CodeBuildClient);
 const appsync = mockClient(AppSyncClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
+const ec2 = mockClient(EC2Client);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -81,6 +83,7 @@ beforeEach(() => {
     serviceDiscovery,
     docdb,
     appsync,
+    ec2,
   ])
     m.reset();
 });
@@ -1614,5 +1617,130 @@ describe('SDK overrides', () => {
     it('undefined when no apiId can be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}))).toBeUndefined();
     });
+  });
+});
+
+describe('EC2 NetworkAclEntry (Cloud Control read-gap: UnsupportedActionException)', () => {
+  const ingress = {
+    NetworkAclId: 'acl-123',
+    RuleNumber: 100,
+    Egress: false,
+    Protocol: 6,
+    RuleAction: 'allow',
+    CidrBlock: '0.0.0.0/0',
+    PortRange: { From: 443, To: 443 },
+  };
+
+  it('reads an ingress TCP rule by RuleNumber+Egress; coerces Protocol to a number', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-123',
+          Entries: [
+            // a decoy entry with the SAME RuleNumber but the OTHER direction must not match
+            { RuleNumber: 100, Egress: true, Protocol: '-1', RuleAction: 'deny' },
+            {
+              RuleNumber: 100,
+              Egress: false,
+              Protocol: '6', // EC2 returns a numeric STRING
+              RuleAction: 'allow',
+              CidrBlock: '0.0.0.0/0',
+              PortRange: { From: 443, To: 443 },
+            },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](ctx(ingress));
+    expect(out).toEqual(ingress); // Protocol comes back as number 6, not "6"
+  });
+
+  it('reads an egress IPv6 ICMP rule (IcmpTypeCode -> Icmp; Ipv6CidrBlock; no PortRange)', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-ipv6',
+          Entries: [
+            {
+              RuleNumber: 200,
+              Egress: true,
+              Protocol: '58',
+              RuleAction: 'allow',
+              Ipv6CidrBlock: '::/0',
+              IcmpTypeCode: { Code: -1, Type: -1 },
+            },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+      ctx({ NetworkAclId: 'acl-ipv6', RuleNumber: 200, Egress: true })
+    );
+    expect(out).toEqual({
+      NetworkAclId: 'acl-ipv6',
+      RuleNumber: 200,
+      Egress: true,
+      Protocol: 58,
+      RuleAction: 'allow',
+      Ipv6CidrBlock: '::/0',
+      Icmp: { Code: -1, Type: -1 },
+    });
+    expect(out?.CidrBlock).toBeUndefined();
+    expect(out?.PortRange).toBeUndefined();
+  });
+
+  it('omits PortRange + Icmp for an all-protocols rule (FP-safe)', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-all',
+          Entries: [
+            {
+              RuleNumber: 50,
+              Egress: false,
+              Protocol: '-1',
+              RuleAction: 'allow',
+              CidrBlock: '10.0.0.0/8',
+            },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+      ctx({ NetworkAclId: 'acl-all', RuleNumber: 50, Egress: false })
+    );
+    expect(out).toEqual({
+      NetworkAclId: 'acl-all',
+      RuleNumber: 50,
+      Egress: false,
+      Protocol: -1,
+      RuleAction: 'allow',
+      CidrBlock: '10.0.0.0/8',
+    });
+  });
+
+  it('NACL present but the entry is gone -> ResourceGoneError (deleted, not skipped)', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [{ NetworkAclId: 'acl-123', Entries: [{ RuleNumber: 999, Egress: false }] }],
+    });
+    await expect(SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](ctx(ingress))).rejects.toBeInstanceOf(
+      ResourceGoneError
+    );
+  });
+
+  it('undefined (skipped) when NetworkAclId is unresolved or identity is missing', async () => {
+    expect(
+      await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](ctx({ RuleNumber: 100, Egress: false }))
+    ).toBeUndefined();
+    expect(
+      await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+        ctx({ NetworkAclId: 'acl-123', Egress: false })
+      )
+    ).toBeUndefined();
+    expect(
+      await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+        ctx({ NetworkAclId: 'acl-123', RuleNumber: 100 })
+      )
+    ).toBeUndefined();
   });
 });
