@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource, normalizeLiveModel } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULT_PATHS, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
+import { buildRevertPlan } from '../src/revert/plan.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
 function tiers(findings: Finding[]) {
@@ -4983,6 +4984,125 @@ describe('absent declared collection → declared drift by default (readGap only
     );
     // empty declared collection vs absent live is not a removal — stays readGap, never declared
     expect(findings.some((f) => f.tier === 'declared')).toBe(false);
+  });
+});
+
+// Issue #421 TASK 1 — the NESTED counterpart of the #416 omit-when-empty fix.
+//
+// #416 closed the TOP-LEVEL silent false negative: a declared non-empty collection
+// ABSENT from the live read (the whole `k` key missing) now surfaces as `declared`
+// drift instead of an informational readGap. The hypothesis here was that a collection
+// removed ONE LEVEL DOWN — declared `{A:{B:[rules]}}` where the live read returns
+// `{A:{}}` (A present, B omitted) — bypasses that top-level branch (A IS in live) and
+// reaches the deep compare (`calculateResourceDrift`), which might mirror the OLD
+// readGap behavior and treat the absent nested key as "no diff" — a SILENT FN one level
+// down, the same scary class.
+//
+// VERIFIED (offline): it is NOT a gap. `calculateResourceDrift`'s subset descent walks
+// every DECLARED key; when a declared nested key is absent on the live side it recurses
+// with `awsValue === undefined`, deepEqual fails, and the leaf is pushed as drift. So a
+// removed nested collection ALREADY surfaces as `declared` drift — this predates #416
+// (the deep compare never had the readGap shortcut the top level did). These tests are a
+// REGRESSION GUARD locking that in. Revert is also sound: the finding path is the nested
+// `A.B`, so the plan emits `add /A/B`, which Cloud Control applies because the PARENT
+// `/A` is present in the live model (unlike the top-level case, where the whole property
+// is re-added). No code change — the detection and revert paths already cover it.
+describe('nested removed collection → declared drift (issue #421 TASK 1 regression guard)', () => {
+  const synthSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const rules = [{ x: 1 }, { x: 2 }];
+
+  it('declared {A:{B:[rules]}} vs live {A:{}} (B omitted) -> declared drift at A.B, not readGap', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { A: { B: rules } },
+      },
+      { A: {} },
+      synthSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared');
+    expect(decl.map((f) => f.path)).toEqual(['A.B']);
+    expect(decl[0].desired).toEqual(rules);
+    expect(decl[0].actual).toBeUndefined();
+    // never silently swallowed as an informational readGap
+    expect(findings.some((f) => f.tier === 'readGap')).toBe(false);
+  });
+
+  it('the nested removal reverts via Cloud Control add /A/B (parent /A is present in live)', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { A: { B: rules } },
+      },
+      { A: {} },
+      synthSchema
+    );
+    const plan = buildRevertPlan(findings, undefined, {});
+    expect(plan.notRevertable).toEqual([]);
+    expect(plan.items).toHaveLength(1);
+    const item = plan.items[0];
+    expect(item.kind).toBe('cc'); // Cloud Control UpdateResource, no SDK writer needed
+    expect(item.ops).toEqual([expect.objectContaining({ op: 'add', path: '/A/B', value: rules })]);
+  });
+
+  it('nested array also emptied to [] (live {A:{B:[]}}) -> declared drift at A.B', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { A: { B: rules } },
+      },
+      { A: { B: [] } },
+      synthSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared');
+    expect(decl.map((f) => f.path)).toEqual(['A.B']);
+    expect(decl[0].actual).toEqual([]);
+  });
+
+  it('collection removed INSIDE an array element (live drops Rules from the element) -> declared drift', () => {
+    // declared element keeps its identity (Id) but its nested Rules collection is gone
+    // from the live read — the deep compare descends element-wise and flags the leaf.
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { Items: [{ Id: 1, Rules: rules }] },
+      },
+      { Items: [{ Id: 1 }] },
+      synthSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared').map((f) => f.path);
+    expect(decl).toEqual(['Items.0.Rules']);
+  });
+
+  it('nested collection still present (live returns it) -> no false drift', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { A: { B: rules } },
+      },
+      { A: { B: rules } },
+      synthSchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toHaveLength(0);
   });
 });
 
