@@ -96,9 +96,8 @@ so from then on any later out-of-band change to them is confirmed drift. That's 
 day-to-day loop: run `check`, record what's intended, commit the baseline, and the
 next out-of-band change stands out on its own.
 
-`record` covers undeclared and added state only. A declared drift you fix in code
-or `revert`; `ignore` accepts anything you want to stop hearing about. The
-standalone verbs are in
+`record` covers undeclared and added state only. The standalone verbs (and how
+`ignore` can accept even a declared drift) are in
 [The model](#the-model-one-verb-you-run-three-it-offers).
 
 ### In CI
@@ -174,12 +173,12 @@ baseline-file axis: whether you've snapshotted that value yet.)
 
 The mechanics:
 
-- **Recording arms undeclared / added detection.** Until a stack's first `record`,
-  a live-only value or added resource is `unrecorded` (informational, CLEAN, never
-  fails `--fail`); once recorded, a later out-of-band change is failing drift. The
-  baseline is a git-committed JSON file at
-  `.cdkrd/<stack>.<accountId>.<region>.json` (so a change to it is reviewable;
-  account id + region in the name prevent cross-account collisions).
+- **Until a stack's first `record`, undeclared / added state is `unrecorded`:**
+  informational, CLEAN, never fails `--fail`.
+  [Recording](#recording-is-the-recommended-next-step) is what arms detection,
+  turning a later out-of-band change into failing drift. The baseline is a
+  git-committed JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`
+  (reviewable; account id + region in the name prevent cross-account collisions).
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
   model (Cloud Control API + SDK readers for the gap types) and subtracts everything
   explainable: schema read-only/write-only/defaults, AWS-managed fields, `aws:*`
