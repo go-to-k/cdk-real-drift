@@ -47,7 +47,7 @@ import {
   isEpochHourEqual,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
-  OMITTED_WHEN_EMPTY_PATHS,
+  READGAP_COLLECTION_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   PARAMETER_NAME_SUBSET_PATHS,
   alignParameterNameSubset,
@@ -577,19 +577,27 @@ export function classifyResource(
       // The compare below skips any per-leaf record whose declared side is unresolved.
       if (v === UNRESOLVED || !(k in live)) continue;
     } else if (!(k in live)) {
-      // A property AWS's CC read OMITS when empty but RETURNS when set (SecurityGroup
-      // ingress/egress rules, IAM inline Policies, S3 Cors/LifecycleConfiguration):
-      // its absence is NOT a readGap — the whole declared collection was emptied/
-      // removed out of band. Emit ONE WHOLE-PROPERTY declared finding so the removal
-      // surfaces as drift AND revert re-applies the entire config via a single
-      // top-level `add` (a nested sub-path patch fails — the parent it targets, e.g.
-      // `/CorsConfiguration`, does not exist in the live model). FP-safe: a non-empty
-      // value is always returned by AWS, so this only fires on a genuine removal.
-      // Curated per-type — a general "absent → drift" rule would false-positive the
-      // legitimate non-writeOnly readGaps AWS never returns (Batch Timeout, DynamoDB
-      // SSESpecification, …). (See OMITTED_WHEN_EMPTY_PATHS.)
-      const isCollection = Array.isArray(v) || (v !== null && typeof v === 'object');
-      if (OMITTED_WHEN_EMPTY_PATHS[resourceType]?.has(k) && isCollection) {
+      // A declared key absent from the live read. A declared NON-EMPTY COLLECTION
+      // (object/array) absent from live means the whole config was emptied/removed out
+      // of band — many services OMIT a sub-config entirely when empty but RETURN it
+      // when set (SecurityGroup ingress/egress, IAM inline Policies, every S3 sub-config,
+      // Lambda Environment, …). Treating that as an informational readGap was a SILENT
+      // FALSE NEGATIVE (the removal reported CLEAN). So DETECT it by default — emit ONE
+      // WHOLE-PROPERTY declared finding (revert then re-applies the entire config via a
+      // single top-level `add`; a nested sub-path patch fails because the parent, e.g.
+      // `/CorsConfiguration`, is absent in the live model). FP-safe: a populated
+      // collection is always returned by AWS, so this only fires on a genuine removal.
+      //
+      // EXCEPTIONS stay readGap (informational, never false drift): a SCALAR (AWS may
+      // legitimately not echo a scalar), an EMPTY declared collection (declared `{}`/`[]`
+      // vs absent is not drift), and the curated READGAP_COLLECTION_PATHS denylist —
+      // collections AWS genuinely never returns even when set (Batch Timeout, DynamoDB
+      // SSESpecification, Budgets NotificationsWithSubscribers). A new genuine readGap
+      // surfaces as a VISIBLE, denylist-able false positive, never a silent FN.
+      const isNonEmptyCollection =
+        (Array.isArray(v) && v.length > 0) ||
+        (v !== null && typeof v === 'object' && Object.keys(v as object).length > 0);
+      if (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) {
         findings.push({
           tier: 'declared',
           logicalId,

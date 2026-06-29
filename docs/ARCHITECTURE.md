@@ -852,15 +852,21 @@ always exit 2. All three of `deleted` / `declared` / `undeclared` count as
 failing drift. `ignored` / `readGap` / `unresolved` / `skipped` are
 informational — surfaced, never silently dropped, but never false drift.
 
-A declared property absent from the live read defaults to `readGap` — EXCEPT for the
-curated `OMITTED_WHEN_EMPTY_PATHS` (`normalize/noise.ts`): properties Cloud Control
-RETURNS when set but OMITS when empty (EC2 SecurityGroup ingress/egress rules, IAM
-inline `Policies`, S3 `Cors`/`LifecycleConfiguration`, Lambda `Environment`). For
-those, absence means the whole collection was removed out of band — a real
-`declared` drift (one whole-property finding so revert re-applies it with a single
-top-level `add`), not a `readGap`. It is curated, not a blanket rule: many genuine
-non-writeOnly readGaps (Batch `Timeout`, DynamoDB `SSESpecification`, …) AWS never
-returns even when set, so treating every absence as drift would false-positive them.
+A declared property absent from the live read: a declared NON-EMPTY **collection**
+(object/array) is real `declared` drift BY DEFAULT — many services OMIT a sub-config
+when empty but RETURN it when set (EC2 SecurityGroup ingress/egress rules, IAM inline
+`Policies`, every S3 sub-config — `Cors`/`Lifecycle`/`Website`/`OwnershipControls`/…,
+Lambda `Environment`), so its absence means the whole config was removed out of band.
+Swallowing that as a `readGap` was a silent FALSE NEGATIVE (the removal reported
+CLEAN). classify emits one whole-property finding so revert re-applies it with a
+single top-level `add`. The EXCEPTIONS stay `readGap` (informational, never false
+drift): a **scalar** (AWS may legitimately not echo one), an **empty** declared
+collection (declared `{}`/`[]` vs absent is not drift), and the small curated
+`READGAP_COLLECTION_PATHS` (`normalize/noise.ts`) DENYLIST of collections AWS never
+returns even when set (Batch `Timeout`, Budgets `NotificationsWithSubscribers`,
+DynamoDB `SSESpecification`) — derived from a full golden-corpus audit. This closes
+the whole removed-collection FN class for every type at once; a new genuine readGap
+surfaces as a VISIBLE, denylist-able false positive, never a silent FN.
 
 `ignored` (R32) is for properties an external system legitimately keeps rewriting —
 Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled

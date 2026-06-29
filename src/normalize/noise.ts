@@ -1649,46 +1649,33 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
   return sa.every((v, i) => v === sb[i]);
 }
 
-// Per-type properties whose Cloud Control read OMITS the key entirely when it has no
-// value, yet RETURNS it when set. The default classify rule treats "declared key
-// absent from the live read" as a readGap (declared-but-unreadable) — correct for a
-// genuinely unreadable/write-only prop, but a SILENT FALSE NEGATIVE here: the key is
-// readable, so its absence means the declared value was emptied/removed out of band
-// (someone deleted the SecurityGroup ingress rule in the console) and MUST surface as
-// drift. classify synthesizes an empty live value (`[]`) for these so the removal
-// flows through the normal compare + revert path instead of being swallowed as a
-// readGap. FP-safe: on a clean stack the declared value is non-empty, so AWS returns
-// it (present in live) and this branch never fires. EC2 SecurityGroup ingress/egress
-// is the confirmed case (live-observed: revoking the only ingress rule made CC omit
-// `SecurityGroupIngress`, which classify reported CLEAN). Curated per-type opt-in —
-// a prop that is a genuine readGap on some type must NOT be added here.
-export const OMITTED_WHEN_EMPTY_PATHS: Record<string, ReadonlySet<string>> = {
-  'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
-  // IAM inline `Policies`: Cloud Control returns the array when the principal has
-  // inline policies and OMITS it entirely when it has none. Deleting the only inline
-  // policy out of band (`aws iam delete-role-policy`) — a security-relevant change —
-  // therefore looked CLEAN (readGap) pre-fix. Live-confirmed on AWS::IAM::Role; User
-  // and Group share the identical inline-policy mechanism (PutUserPolicy /
-  // PutGroupPolicy, same `Policies` shape). FP-safe: a non-empty `Policies` is always
-  // returned, so this only fires on a genuine removal.
-  'AWS::IAM::Role': new Set(['Policies']),
-  'AWS::IAM::User': new Set(['Policies']),
-  'AWS::IAM::Group': new Set(['Policies']),
-  // S3 bucket sub-configs (the most-deployed resource): Cloud Control returns these
-  // object-valued configs when set and OMITS them once removed
-  // (`aws s3api delete-bucket-cors` / `delete-bucket-lifecycle`). A declared CORS or
-  // lifecycle policy deleted out of band therefore looked CLEAN (readGap) pre-fix.
-  // Live-confirmed on AWS::S3::Bucket. These are OBJECT-valued (Cors = {CorsRules},
-  // Lifecycle = {Rules}); classify synthesizes an empty object so the removal compares
-  // as declared drift. Only the two live-proven configs are listed — other S3 configs
-  // (Notification/Replication/Website/…) are candidates for a future probe.
-  'AWS::S3::Bucket': new Set(['CorsConfiguration', 'LifecycleConfiguration']),
-  // Lambda `Environment`: Cloud Control returns it when the function has env vars and
-  // OMITS it once they are all cleared (`update-function-configuration --environment
-  // '{"Variables":{}}'`). A declared env config wiped out of band therefore looked
-  // CLEAN (readGap) pre-fix. Live-confirmed on AWS::Lambda::Function. Object-valued
-  // ({Variables:{…}}); reverts via a top-level CC add → UpdateFunctionConfiguration.
-  'AWS::Lambda::Function': new Set(['Environment']),
+// A declared COLLECTION (object/array) property absent from the live read is, BY
+// DEFAULT, a real `declared` drift — not a readGap. Many AWS services OMIT a
+// sub-config entirely once it is empty/removed but RETURN it when set (EC2
+// SecurityGroup ingress/egress rules, IAM inline Policies, S3 Cors/Lifecycle/Website/
+// OwnershipControls/Metrics/IntelligentTiering/Analytics/…, Lambda Environment). The
+// old rule "absent declared key → readGap (informational, never drift)" SILENTLY
+// swallowed every such removal (someone deletes the SSH rule / inline policy / S3
+// lifecycle / Lambda env in the console → cdkrd reported CLEAN). Live-confirmed that
+// S3 omits ALL its sub-configs when empty, so a per-type allowlist was hopelessly
+// incomplete; classify therefore DETECTS an absent declared collection by default and
+// re-applies the whole property on revert. FP-safe: a populated collection is always
+// returned by AWS, so this only fires on a genuine removal — and an empty declared
+// collection is exempted (declared `{}`/`[]` vs absent is not drift).
+//
+// READGAP_COLLECTION_PATHS is the small DENYLIST of the EXCEPTIONS: declared collection
+// properties AWS genuinely NEVER returns even when set (a true readGap), so their
+// absence must stay informational, not false drift. Derived from a full golden-corpus
+// audit (only these few in ~480 cases). A new genuine-readGap collection surfaces as a
+// VISIBLE, denylist-able false positive — never a silent false negative.
+export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
+  // `Timeout` ({AttemptDurationSeconds}) — not echoed by Cloud Control's JobDefinition read.
+  'AWS::Batch::JobDefinition': new Set(['Timeout']),
+  // `NotificationsWithSubscribers` — write-only-style budget notifications, not read back.
+  'AWS::Budgets::Budget': new Set(['NotificationsWithSubscribers']),
+  // `SSESpecification` — the SSE config is reflected via other readOnly props, not echoed verbatim.
+  'AWS::DynamoDB::GlobalTable': new Set(['SSESpecification']),
+  'AWS::DynamoDB::Table': new Set(['SSESpecification']),
 };
 
 // Per-type OBJECT-array props AWS treats as UNORDERED SETS whose element objects

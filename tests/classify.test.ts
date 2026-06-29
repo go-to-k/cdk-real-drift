@@ -4727,13 +4727,14 @@ describe('NESTED_ARRAY_IDENTITY: materialized-default array elements (Backup / R
   });
 });
 
-// A property AWS's Cloud Control read OMITS entirely when it has no value, yet
-// RETURNS when set (EC2 SecurityGroup SecurityGroupIngress/Egress). Its absence from
-// the live read must NOT be swallowed as a readGap — it means the declared rule was
-// removed out of band (the canonical "someone deleted the SSH rule in the console"),
-// which is a silent FALSE NEGATIVE. Live-observed: revoking the only ingress rule made
-// CC drop the key and classify reported CLEAN. See OMITTED_WHEN_EMPTY_PATHS.
-describe('OMITTED_WHEN_EMPTY_PATHS — readable prop AWS omits when empty', () => {
+// A declared NON-EMPTY COLLECTION absent from the live read is, by DEFAULT, real
+// `declared` drift (the whole config was removed out of band — AWS omits a sub-config
+// when empty but returns it when set). Treating it as a readGap was a silent FALSE
+// NEGATIVE ("someone deleted the SSH rule / S3 lifecycle / inline policy in the
+// console" reported CLEAN). The exceptions that stay readGap are scalars, EMPTY declared
+// collections, and the curated READGAP_COLLECTION_PATHS denylist (collections AWS never
+// returns even when set). See READGAP_COLLECTION_PATHS.
+describe('absent declared collection → declared drift by default (readGap only by exception)', () => {
   const sgSchema: SchemaInfo = {
     readOnly: new Set(['Id', 'GroupId']),
     writeOnly: new Set(),
@@ -4866,7 +4867,7 @@ describe('OMITTED_WHEN_EMPTY_PATHS — readable prop AWS omits when empty', () =
     );
   });
 
-  it('curated, not blanket: an absent declared array on a type NOT in the table stays a readGap', () => {
+  it('default: an absent declared collection on ANY type detects (no allowlist needed)', () => {
     const findings = classifyResource(
       {
         logicalId: 'T',
@@ -4877,8 +4878,59 @@ describe('OMITTED_WHEN_EMPTY_PATHS — readable prop AWS omits when empty', () =
       {},
       sgSchema
     );
-    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SomeArray')).toBe(true);
-    expect(findings.some((f) => f.tier === 'declared' && f.path === 'SomeArray')).toBe(false);
+    // the whole class is closed by default — a brand-new type's removed collection
+    // surfaces as drift, not a silent readGap
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'SomeArray')).toBe(true);
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SomeArray')).toBe(false);
+  });
+
+  it('exception (denylist): a genuine non-writeOnly readGap collection stays readGap', () => {
+    // Batch JobDefinition Timeout / DynamoDB SSESpecification etc. — AWS never returns
+    // them even when set, so their absence must NOT be false drift.
+    const findings = classifyResource(
+      {
+        logicalId: 'D',
+        resourceType: 'AWS::DynamoDB::Table',
+        physicalId: 'd',
+        declared: { TableName: 'd', SSESpecification: { SSEEnabled: true } },
+      },
+      { TableName: 'd' },
+      sgSchema
+    );
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'SSESpecification')).toBe(true);
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'SSESpecification')).toBe(
+      false
+    );
+  });
+
+  it('exception (scalar): an absent declared SCALAR stays readGap, not drift', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { Port: 5432 },
+      },
+      {},
+      sgSchema
+    );
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'Port')).toBe(true);
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'Port')).toBe(false);
+  });
+
+  it('exception (empty collection): an absent EMPTY declared collection is not drift', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { EmptyArr: [], EmptyObj: {} },
+      },
+      {},
+      sgSchema
+    );
+    // empty declared collection vs absent live is not a removal — stays readGap, never declared
+    expect(findings.some((f) => f.tier === 'declared')).toBe(false);
   });
 });
 
