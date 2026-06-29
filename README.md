@@ -111,9 +111,9 @@ can't see:
 result: 1 drift(s) (undeclared=1)
 ```
 
-`record` is for live-only state (not declared drift).
-[The model](#the-model-one-verb-you-run-three-it-offers) covers all four verbs,
-including how `ignore` can accept even a declared drift.
+`record` is for live-only state, not declared drift. To accept a declared drift
+instead of fixing it, use `ignore` (see
+[The model](#the-model-one-verb-you-run-three-it-offers)).
 
 ### In CI
 
