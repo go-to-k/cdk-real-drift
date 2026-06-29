@@ -89,11 +89,12 @@ Each block above is one kind of finding, and neither needed a baseline:
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
   your template. cdkrd detects these too: it strips the obvious noise (AWS
   defaults, auto-generated names) so what's left is the values most likely to be
-  real drift. They're only _potential_ because there's no baseline yet: if you
-  record them as your baseline, any later change to them is caught as confirmed
-  drift.
+  real drift. They're only _potential_ because there's no baseline yet.
 
-### Recording is the recommended next step
+At the prompt you act on each finding: **record** it (accept and watch),
+**revert** it (undo the change), or **ignore** it (stop reporting).
+
+### Recording
 
 Recording snapshots those live-only values into a git-committed `.cdkrd` baseline,
 so from then on any later out-of-band change to them is confirmed drift. That's the
@@ -112,9 +113,8 @@ your CloudFormation template, the kind `cdk drift` can't see:
 result: 1 drift(s) (undeclared=1)
 ```
 
-`record` is for live-only state, not a `[CFn-Declared Drift]` (a value you
-declared that changed out of band). To accept one of those rather than fix it, use
-`ignore` (see [The model](#the-model-one-verb-you-run-three-it-offers)).
+`record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
+verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
 
 ### In CI
 
@@ -191,7 +191,7 @@ The mechanics:
 
 - **Until a stack's first `record`, undeclared / added state is `unrecorded`:**
   informational, CLEAN, never fails `--fail`.
-  [Recording](#recording-is-the-recommended-next-step) is what arms detection,
+  [Recording](#recording) is what arms detection,
   turning a later out-of-band change into failing drift. The baseline is a
   git-committed JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`
   (reviewable; account id + region in the name prevent cross-account collisions).
