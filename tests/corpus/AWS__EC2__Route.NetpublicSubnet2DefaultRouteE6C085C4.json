@@ -43,15 +43,5 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": [
-    {
-      "tier": "undeclared",
-      "logicalId": "NetpublicSubnet2DefaultRouteE6C085C4",
-      "resourceType": "AWS::EC2::Route",
-      "path": "VpcEndpointId",
-      "actual": "igw-0c7816775f3353a51",
-      "physicalId": "rtb-09f760c55f4a567d2|0.0.0.0/0",
-      "constructPath": "CdkrdIntegHarvest4/Net/publicSubnet2/DefaultRoute"
-    }
-  ]
+  "expected": []
 }

@@ -4929,3 +4929,74 @@ describe('CFn auto-generated name folding (generated tier)', () => {
     expect(f?.tier).toBe('undeclared');
   });
 });
+
+describe('Cloud Control field mis-echo / alternative-representation folds (VPC noise)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  it('AWS::EC2::Route: a non-vpce VpcEndpointId (CC echoing the gateway target) is dropped', () => {
+    const r: DesiredResource = {
+      logicalId: 'Route',
+      resourceType: 'AWS::EC2::Route',
+      physicalId: 'rtb-x|0.0.0.0/0',
+      declared: { DestinationCidrBlock: '0.0.0.0/0', GatewayId: 'igw-0025d639c24016041' },
+    };
+    const live = {
+      DestinationCidrBlock: '0.0.0.0/0',
+      GatewayId: 'igw-0025d639c24016041',
+      VpcEndpointId: 'igw-0025d639c24016041',
+    };
+    expect(classifyResource(r, live, bare).find((f) => f.path === 'VpcEndpointId')).toBeUndefined();
+  });
+  it('AWS::EC2::Route: a REAL vpce VpcEndpointId still surfaces (not over-dropped)', () => {
+    const r: DesiredResource = {
+      logicalId: 'Route',
+      resourceType: 'AWS::EC2::Route',
+      physicalId: 'rtb-x|0.0.0.0/0',
+      declared: { DestinationCidrBlock: '0.0.0.0/0' },
+    };
+    const f = classifyResource(
+      r,
+      { DestinationCidrBlock: '0.0.0.0/0', VpcEndpointId: 'vpce-abc123' },
+      bare
+    ).find((x) => x.path === 'VpcEndpointId');
+    expect(f?.tier).toBe('undeclared');
+  });
+  it('AWS::EC2::Subnet: AvailabilityZoneId is dropped when AvailabilityZone is declared', () => {
+    const r: DesiredResource = {
+      logicalId: 'Subnet',
+      resourceType: 'AWS::EC2::Subnet',
+      physicalId: 'subnet-x',
+      declared: { AvailabilityZone: 'ap-northeast-1a', CidrBlock: '10.0.0.0/24' },
+    };
+    const live = {
+      AvailabilityZone: 'ap-northeast-1a',
+      AvailabilityZoneId: 'apne1-az4',
+      CidrBlock: '10.0.0.0/24',
+    };
+    expect(
+      classifyResource(r, live, bare).find((f) => f.path === 'AvailabilityZoneId')
+    ).toBeUndefined();
+  });
+  it('AWS::EC2::Subnet: AvailabilityZoneId still surfaces when AvailabilityZone is NOT declared', () => {
+    const r: DesiredResource = {
+      logicalId: 'Subnet',
+      resourceType: 'AWS::EC2::Subnet',
+      physicalId: 'subnet-x',
+      declared: { CidrBlock: '10.0.0.0/24' },
+    };
+    const f = classifyResource(
+      r,
+      { AvailabilityZoneId: 'apne1-az4', CidrBlock: '10.0.0.0/24' },
+      bare
+    ).find((x) => x.path === 'AvailabilityZoneId');
+    expect(f?.tier).toBe('undeclared');
+  });
+});

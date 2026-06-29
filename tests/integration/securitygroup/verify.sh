@@ -42,6 +42,13 @@ grep -q "CFn-Declared Drift" /tmp/cdkrd-securitygroup-pre.out \
 # as `generated`, NOT surface as undeclared potential-drift noise on the first run.
 grep -q "GroupName" /tmp/cdkrd-securitygroup-pre.out \
   && fail "auto-generated GroupName surfaced as potential drift (should fold as generated)"
+# CC mis-echoes the IGW gateway id into a public route's VpcEndpointId, and echoes the
+# resolved AvailabilityZoneId for each subnet's declared AvailabilityZone — both common VPC
+# first-run noise that must be dropped, not surfaced.
+grep -q "VpcEndpointId" /tmp/cdkrd-securitygroup-pre.out \
+  && fail "Route VpcEndpointId (CC echoing the gateway id) surfaced — should be dropped"
+grep -q "AvailabilityZoneId" /tmp/cdkrd-securitygroup-pre.out \
+  && fail "Subnet AvailabilityZoneId (alt form of declared AvailabilityZone) surfaced — should be dropped"
 
 echo "=== record then check must stay CLEAN ==="
 $CLI record "$STACK" --region "$REGION" --yes || fail "record"

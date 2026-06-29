@@ -374,6 +374,12 @@ all live changes
     like atDefault, equality-gated against the physical-id-substituted template; never
     drift, never recorded by record. (`GENERATED_DEFAULTS` / `resolveGeneratedDefault`.)
   − pure structural noise (aws:* tags, physical-id echo, trivially-empty {}/[]) → dropped
+  − Cloud Control MIS-ECHOES / ALT-REPRESENTS a value → dropped: AWS::EC2::Route's
+    `VpcEndpointId` reflects the route's gateway target (`igw-…`/`nat-…`) on a non-endpoint
+    route (a real VPC-endpoint route is `vpce-…`); AWS::EC2::Subnet's `AvailabilityZoneId`
+    (`apne1-az4`) is CC's resolved form of the declared `AvailabilityZone`
+    (`ap-northeast-1a`) — `CC_ALT_REPRESENTATION`, dropped when the declared sibling is
+    present. Both are first-run noise on every public-subnet VPC.
   − tag-list / id-array / method-set ORDER → canonicalized (see below)
   − name↔ARN (either side), alias/aws/*↔key-ARN → collapsed (see below)
   − stringly-typed scalar (true vs "true", 5432 vs "5432") → equal (isStringlyEqualScalar)

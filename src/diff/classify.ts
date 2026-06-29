@@ -194,6 +194,20 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
+// Cloud Control returns an ALTERNATIVE representation of a declared value as a separate
+// live-only field. Keyed resourceType -> { liveOnlyField: declaredSiblingField }: drop the
+// live-only field when its declared sibling is present (the template already pins the value
+// in the other form). AWS::EC2::Subnet is the case — declaring `AvailabilityZone`
+// ("ap-northeast-1a") makes CC also echo the resolved `AvailabilityZoneId` ("apne1-az4"), a
+// different form of the SAME AZ, on EVERY subnet. Symmetric, so declaring either form drops
+// the other.
+const CC_ALT_REPRESENTATION: Record<string, Record<string, string>> = {
+  'AWS::EC2::Subnet': {
+    AvailabilityZoneId: 'AvailabilityZone',
+    AvailabilityZone: 'AvailabilityZoneId',
+  },
+};
+
 // Per-type attachment-list properties handled by tier rather than a positional compare.
 // AWS::IAM::ManagedPolicy's `Roles`/`Users`/`Groups` name the principals a managed
 // policy is attached to — but the same policy is commonly attached from SEVERAL places
@@ -1058,6 +1072,23 @@ export function classifyResource(
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }
+    // Cloud Control MIS-POPULATES a field by echoing a sibling: AWS::EC2::Route's
+    // `VpcEndpointId` reflects the route's GATEWAY target (`igw-…`/`nat-…`/`tgw-…`) on a
+    // NON-endpoint route — a value the template never set, duplicated from GatewayId. A REAL
+    // VPC-endpoint route's VpcEndpointId is `vpce-…` (and declared). Drop the mis-echo so a
+    // public-subnet route table is not first-run noise. (Proven live: an IGW default route
+    // reads back VpcEndpointId === GatewayId === `igw-…`.)
+    if (
+      resourceType === 'AWS::EC2::Route' &&
+      k === 'VpcEndpointId' &&
+      typeof v === 'string' &&
+      !v.startsWith('vpce-')
+    )
+      continue;
+    // CC echoed an ALTERNATIVE representation of a declared value (e.g. a Subnet's
+    // AvailabilityZoneId for the declared AvailabilityZone) — drop it (see CC_ALT_REPRESENTATION).
+    const altSibling = CC_ALT_REPRESENTATION[resourceType]?.[k];
+    if (altSibling !== undefined && altSibling in declared) continue;
     // A top-level key that is ALWAYS a service-minted generated id (value-independent):
     // the ApiGatewayV2 AutoDeploy Stage's DeploymentId, re-minted on every auto-deploy
     // and un-settable. Folded as `generated` (never drift, recorded, or reverted) so it
