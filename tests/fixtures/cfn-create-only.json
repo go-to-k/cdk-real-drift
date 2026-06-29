@@ -1,0 +1,217 @@
+[
+  {
+    "resourceType": "AWS::RDS::DBInstance",
+    "createOnlyProperties": [
+      "/properties/BackupTarget",
+      "/properties/CharacterSetName",
+      "/properties/CustomIAMInstanceProfile",
+      "/properties/DBClusterIdentifier",
+      "/properties/DBInstanceIdentifier",
+      "/properties/DBName",
+      "/properties/DBSubnetGroupName",
+      "/properties/DBSystemId",
+      "/properties/KmsKeyId",
+      "/properties/MasterUsername",
+      "/properties/NcharCharacterSetName",
+      "/properties/SourceRegion",
+      "/properties/StorageEncrypted",
+      "/properties/Timezone"
+    ],
+    "conditionalCreateOnlyProperties": [
+      "/properties/AutoMinorVersionUpgrade",
+      "/properties/AvailabilityZone",
+      "/properties/BackupRetentionPeriod",
+      "/properties/DBClusterSnapshotIdentifier",
+      "/properties/DBParameterGroupName",
+      "/properties/DBSnapshotIdentifier",
+      "/properties/Engine",
+      "/properties/MultiAZ",
+      "/properties/PerformanceInsightsKMSKeyId",
+      "/properties/PreferredMaintenanceWindow",
+      "/properties/RestoreTime",
+      "/properties/SourceDBClusterIdentifier",
+      "/properties/SourceDBInstanceAutomatedBackupsArn",
+      "/properties/SourceDBInstanceIdentifier",
+      "/properties/SourceDbiResourceId",
+      "/properties/StorageType",
+      "/properties/UseLatestRestorableTime"
+    ]
+  },
+  {
+    "resourceType": "AWS::RDS::DBCluster",
+    "createOnlyProperties": [
+      "/properties/AvailabilityZones",
+      "/properties/ClusterScalabilityType",
+      "/properties/DBClusterIdentifier",
+      "/properties/DBSubnetGroupName",
+      "/properties/DBSystemId",
+      "/properties/DatabaseName",
+      "/properties/EngineMode",
+      "/properties/KmsKeyId",
+      "/properties/PubliclyAccessible",
+      "/properties/RestoreToTime",
+      "/properties/RestoreType",
+      "/properties/SnapshotIdentifier",
+      "/properties/SourceDBClusterIdentifier",
+      "/properties/SourceDbClusterResourceId",
+      "/properties/SourceRegion",
+      "/properties/StorageEncrypted",
+      "/properties/UseLatestRestorableTime"
+    ],
+    "conditionalCreateOnlyProperties": [
+      "/properties/Engine",
+      "/properties/GlobalClusterIdentifier",
+      "/properties/MasterUsername"
+    ]
+  },
+  {
+    "resourceType": "AWS::OpenSearchService::Domain",
+    "createOnlyProperties": ["/properties/DomainName"],
+    "conditionalCreateOnlyProperties": [
+      "/properties/EncryptionAtRestOptions/properties",
+      "/properties/AdvancedSecurityOptions/properties/Enabled"
+    ]
+  },
+  {
+    "resourceType": "AWS::ElastiCache::ReplicationGroup",
+    "createOnlyProperties": [
+      "/properties/AtRestEncryptionEnabled",
+      "/properties/CacheSubnetGroupName",
+      "/properties/DataTieringEnabled",
+      "/properties/GlobalReplicationGroupId",
+      "/properties/KmsKeyId",
+      "/properties/NetworkType",
+      "/properties/Port",
+      "/properties/PreferredCacheClusterAZs",
+      "/properties/ReplicationGroupId",
+      "/properties/SnapshotArns",
+      "/properties/SnapshotName"
+    ],
+    "conditionalCreateOnlyProperties": [
+      "/properties/AuthToken",
+      "/properties/NodeGroupConfiguration"
+    ]
+  },
+  {
+    "resourceType": "AWS::EC2::Instance",
+    "createOnlyProperties": [
+      "/properties/AvailabilityZone",
+      "/properties/CpuOptions",
+      "/properties/ElasticGpuSpecifications",
+      "/properties/ElasticInferenceAccelerators",
+      "/properties/EnclaveOptions",
+      "/properties/HibernationOptions",
+      "/properties/HostResourceGroupArn",
+      "/properties/ImageId",
+      "/properties/Ipv6AddressCount",
+      "/properties/Ipv6Addresses",
+      "/properties/KeyName",
+      "/properties/LaunchTemplate",
+      "/properties/LicenseSpecifications",
+      "/properties/NetworkInterfaces",
+      "/properties/PlacementGroupName",
+      "/properties/PrivateIpAddress",
+      "/properties/SecurityGroups",
+      "/properties/SubnetId"
+    ],
+    "conditionalCreateOnlyProperties": [
+      "/properties/AdditionalInfo",
+      "/properties/Affinity",
+      "/properties/EbsOptimized",
+      "/properties/HostId",
+      "/properties/InstanceType",
+      "/properties/KernelId",
+      "/properties/PrivateDnsNameOptions",
+      "/properties/RamdiskId",
+      "/properties/Tenancy",
+      "/properties/UserData",
+      "/properties/BlockDeviceMappings",
+      "/properties/SecurityGroupIds"
+    ]
+  },
+  {
+    "resourceType": "AWS::DynamoDB::Table",
+    "createOnlyProperties": ["/properties/TableName", "/properties/ImportSourceSpecification"],
+    "conditionalCreateOnlyProperties": ["/properties/KeySchema"]
+  },
+  {
+    "resourceType": "AWS::Lambda::Function",
+    "createOnlyProperties": [
+      "/properties/FunctionName",
+      "/properties/PackageType",
+      "/properties/TenancyConfig"
+    ],
+    "conditionalCreateOnlyProperties": ["/properties/DurableConfig"]
+  },
+  {
+    "resourceType": "AWS::ECS::Service",
+    "createOnlyProperties": [
+      "/properties/Cluster",
+      "/properties/Role",
+      "/properties/SchedulingStrategy",
+      "/properties/ServiceName"
+    ],
+    "conditionalCreateOnlyProperties": ["/properties/LaunchType"]
+  },
+  {
+    "resourceType": "AWS::S3::Bucket",
+    "createOnlyProperties": [
+      "/properties/BucketName",
+      "/properties/BucketNamePrefix",
+      "/properties/BucketNamespace"
+    ],
+    "conditionalCreateOnlyProperties": []
+  },
+  {
+    "resourceType": "AWS::EKS::Cluster",
+    "createOnlyProperties": [
+      "/properties/OutpostConfig",
+      "/properties/EncryptionConfig",
+      "/properties/KubernetesNetworkConfig/IpFamily",
+      "/properties/KubernetesNetworkConfig/ServiceIpv4Cidr",
+      "/properties/AccessConfig/BootstrapClusterCreatorAdminPermissions",
+      "/properties/Name",
+      "/properties/RoleArn",
+      "/properties/BootstrapSelfManagedAddons"
+    ],
+    "conditionalCreateOnlyProperties": []
+  },
+  {
+    "resourceType": "AWS::MSK::Cluster",
+    "createOnlyProperties": [
+      "/properties/BrokerNodeGroupInfo/BrokerAZDistribution",
+      "/properties/BrokerNodeGroupInfo/ClientSubnets",
+      "/properties/BrokerNodeGroupInfo/SecurityGroups",
+      "/properties/EncryptionInfo/EncryptionAtRest",
+      "/properties/EncryptionInfo/EncryptionInTransit/InCluster",
+      "/properties/ClusterName"
+    ],
+    "conditionalCreateOnlyProperties": []
+  },
+  {
+    "resourceType": "AWS::EFS::FileSystem",
+    "createOnlyProperties": [
+      "/properties/AvailabilityZoneName",
+      "/properties/Encrypted",
+      "/properties/KmsKeyId",
+      "/properties/PerformanceMode"
+    ],
+    "conditionalCreateOnlyProperties": []
+  },
+  {
+    "resourceType": "AWS::RDS::DBProxy",
+    "createOnlyProperties": [
+      "/properties/DBProxyName",
+      "/properties/EngineFamily",
+      "/properties/EndpointNetworkType",
+      "/properties/TargetConnectionNetworkType",
+      "/properties/VpcSubnetIds"
+    ],
+    "conditionalCreateOnlyProperties": []
+  },
+  {
+    "resourceType": "AWS::Logs::LogGroup",
+    "createOnlyProperties": ["/properties/LogGroupName"],
+    "conditionalCreateOnlyProperties": []
+  }
+]
