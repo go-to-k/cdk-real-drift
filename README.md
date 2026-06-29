@@ -89,8 +89,9 @@ Each block above is one kind of finding, and neither needed a baseline:
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
   your template. cdkrd detects these too: it strips the obvious noise (AWS
   defaults, auto-generated names) so what's left is the values most likely to be
-  real drift, including one nested inside something you _did_ declare. It just
-  can't confirm them yet without a baseline.
+  real drift, including one nested inside something you _did_ declare. They're
+  _potential_, not confirmed, because without a baseline cdkrd can't be sure you
+  didn't set them on purpose.
 
 ### Recording is the recommended next step
 
