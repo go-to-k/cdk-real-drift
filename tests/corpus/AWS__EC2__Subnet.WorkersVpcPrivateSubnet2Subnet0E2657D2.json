@@ -155,15 +155,6 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
     },
     {
-      "tier": "undeclared",
-      "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
-      "resourceType": "AWS::EC2::Subnet",
-      "path": "AvailabilityZoneId",
-      "actual": "use1-az2",
-      "physicalId": "subnet-0b456bc01025cb129",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PrivateSubnet2/Subnet"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "WorkersVpcPrivateSubnet2Subnet0E2657D2",
       "resourceType": "AWS::EC2::Subnet",

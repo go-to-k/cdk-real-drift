@@ -139,15 +139,6 @@
       "constructPath": "CdkRealDriftIntegSg/Vpc/publicSubnet1/Subnet"
     },
     {
-      "tier": "undeclared",
-      "logicalId": "VpcpublicSubnet1Subnet2BB74ED7",
-      "resourceType": "AWS::EC2::Subnet",
-      "path": "AvailabilityZoneId",
-      "actual": "use1-az1",
-      "physicalId": "subnet-0a9a838411f55ddb0",
-      "constructPath": "CdkRealDriftIntegSg/Vpc/publicSubnet1/Subnet"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "VpcpublicSubnet1Subnet2BB74ED7",
       "resourceType": "AWS::EC2::Subnet",

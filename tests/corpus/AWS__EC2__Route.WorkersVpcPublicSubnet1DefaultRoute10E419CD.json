@@ -58,15 +58,5 @@
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
     }
   },
-  "expected": [
-    {
-      "tier": "undeclared",
-      "logicalId": "WorkersVpcPublicSubnet1DefaultRoute10E419CD",
-      "resourceType": "AWS::EC2::Route",
-      "path": "VpcEndpointId",
-      "actual": "igw-06facc81e0936ee08",
-      "physicalId": "rtb-01daf7af05f3a8d19|0.0.0.0/0",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/DefaultRoute"
-    }
-  ]
+  "expected": []
 }
