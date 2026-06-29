@@ -76,11 +76,12 @@ ApiStack: potential drift found (live-only, no baseline yet) — what do you wan
     Decide per finding — assign a different action to each
 ```
 
-Note that it already found something with no baseline at all. Declared changes and
-out-of-band deletes are confirmed against your template right away; values that
-live only on the real resource can't be confirmed yet, so they surface as
-_Potential Drift_ (most likely real divergence too, just not confirmable until you
-record a baseline).
+Notice it surfaced drift before you've recorded any baseline. Declared changes and
+out-of-band deletes are confirmed against your template right away. For values that
+live only on the real resource, `check` folds away the ones it can explain (AWS
+defaults, generated names) and surfaces the rest as _Potential Drift_, including a
+non-default value nested inside an object you _did_ declare. These are most likely
+real divergence too, just not confirmable until you record a baseline.
 
 Recording is the usual next step: it snapshots those values into the
 git-committed `.cdkrd` baseline, so from then on `cdkrd check` flags any later
