@@ -100,8 +100,8 @@ day-to-day loop: run `check`, record what's intended, commit the baseline, and t
 next out-of-band change stands out on its own.
 
 With `Role.Policies` recorded, an inline policy added later out of band now
-surfaces as **`[CFn-Undeclared Drift]`**, the confirmed live-only kind `cdk drift`
-can't see:
+surfaces as **`[CFn-Undeclared Drift]`**: confirmed drift on a value that isn't in
+your CloudFormation template, the kind `cdk drift` can't see:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
