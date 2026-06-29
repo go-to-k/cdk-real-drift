@@ -56,11 +56,11 @@ It prints what it found, then offers three actions right in the prompt:
 - **Revert**: write the desired value back to AWS.
 - **Ignore**: stop reporting it, for good.
 
-Even on a fresh project, the first run already surfaces the likely drift.
-Declared changes and out-of-band deletes are confirmed against your template
-right away; values that live only on the real resource show up as _Potential
-Drift_ (most likely real divergence too, just not confirmable until you record a
-baseline):
+Even on your first run, before any baseline exists, `check` already surfaces the
+likely drift. Declared changes and out-of-band deletes are confirmed against your
+template right away; values that live only on the real resource show up as
+_Potential Drift_ (most likely real divergence too, just not confirmable until
+you record a baseline):
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
