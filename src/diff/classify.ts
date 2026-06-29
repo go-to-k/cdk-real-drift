@@ -205,6 +205,49 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
+// AWS::EC2::SecurityGroup reflects, in its live SecurityGroupIngress / SecurityGroupEgress
+// arrays, the rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress /
+// ::SecurityGroupEgress resources that target it. CDK emits such a standalone rule resource
+// whenever a rule references a token it cannot safely inline — a self/peer SG reference, a
+// prefix list, an imported SG (`addIngressRule(otherSg, …)`, `Peer.prefixList(…)`, self-ref).
+// Those sibling rules are tracked + compared as their OWN resources, so leaving them in the
+// SG's live arrays double-counts them: the SG's DECLARED arrays hold only the INLINE rules, so
+// every sibling-reflected live rule reads as a false declared drift (a very common shape — a
+// self-referencing SG rule is the canonical ALB↔ASG / intra-cluster pattern). The fix mirrors
+// REFLECTED_CHILD_PROPS, but a SUBSET not the whole property: subtract each sibling-declared
+// rule from the live array, leaving the inline-declared rules (and any out-of-band rule, which
+// matches no sibling) to compare normally.
+const SG_RULE_REFLECTION: Record<string, 'ingress' | 'egress'> = {
+  SecurityGroupIngress: 'ingress',
+  SecurityGroupEgress: 'egress',
+};
+
+// Remove from `arr` the first element each sibling rule is a SUBSET of (every sibling key
+// deep-equals the live element's — the live element carries AWS-injected extras the sibling
+// resource never declared, e.g. SourceSecurityGroupOwnerId on a self/peer-ref rule, so an
+// exact equality compare would miss the match). One removal per sibling rule preserves a
+// duplicate inline rule that legitimately repeats the shape.
+function subtractSiblingSgRules(
+  live: Record<string, unknown>,
+  prop: string,
+  siblingRules: unknown[]
+): void {
+  const arr = live[prop];
+  if (!Array.isArray(arr) || siblingRules.length === 0) return;
+  for (const rule of siblingRules) {
+    if (!rule || typeof rule !== 'object') continue;
+    const sub = rule as Record<string, unknown>;
+    const i = arr.findIndex(
+      (el) =>
+        el !== null &&
+        typeof el === 'object' &&
+        Object.entries(sub).every(([k, v]) => deepEqual((el as Record<string, unknown>)[k], v))
+    );
+    if (i >= 0) arr.splice(i, 1);
+  }
+  if (arr.length === 0) delete live[prop]; // empty array == absent; don't introduce a []-vs-absent FP
+}
+
 // Cloud Control returns an ALTERNATIVE representation of a declared value as a separate
 // live-only field. Keyed resourceType -> { liveOnlyField: declaredSiblingField }: drop the
 // live-only field when its declared sibling is present (the template already pins the value
@@ -479,6 +522,10 @@ export function classifyResource(
     region?: string;
     kmsAliasTargets?: Record<string, string>; // alias/aws/* -> target key id, for strict KMS match
     oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
+    // Rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress
+    // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
+    // from an AWS::EC2::SecurityGroup's reflected live rule arrays so they are not double-counted.
+    siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -518,6 +565,19 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
+  // Subtract rules declared by sibling standalone SecurityGroupIngress/Egress resources from
+  // an AWS::EC2::SecurityGroup's reflected live rule arrays (see SG_RULE_REFLECTION). Keyed by
+  // the SG's resolved GroupId (== its physical id). The sibling rules are themselves compared
+  // as their own resources, so this leaves only the inline-declared rules (plus any out-of-band
+  // rule, which matches no sibling) to compare.
+  if (resourceType === 'AWS::EC2::SecurityGroup') {
+    const sib = physicalId ? opts.siblingSgRules?.[physicalId] : undefined;
+    if (sib) {
+      for (const [prop, side] of Object.entries(SG_RULE_REFLECTION)) {
+        subtractSiblingSgRules(live, prop, sib[side]);
+      }
+    }
+  }
   // ManagedPolicy attachment lists (Roles/Users/Groups). A DECLARED list is handled
   // per-member in the declared loop below (declared-but-missing = detach; live-only =
   // undeclared inventory). A list the template does NOT declare at all is left in `live`

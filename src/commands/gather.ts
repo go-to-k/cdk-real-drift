@@ -136,6 +136,50 @@ interface ClassifyOpts {
   region: string;
   kmsAliasTargets: Record<string, string>;
   oaiCanonicalIds: Record<string, string>;
+  siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+}
+
+// Rules declared by standalone AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress
+// resources, keyed by the target SG's resolved GroupId (== the SG's physical id). CDK emits
+// such a resource whenever a rule references a token it cannot inline (self/peer SG ref,
+// prefix list, imported SG). The live SecurityGroup REFLECTS these rules in its own ingress/
+// egress arrays, so classify subtracts them to avoid double-counting (see SG_RULE_REFLECTION
+// in diff/classify.ts). Fail-open: a rule whose GroupId did not resolve to a concrete sg-id
+// is skipped (the SG keeps the reflected rule -> a one-time visible FP, never a hidden change).
+const SG_RULE_RESOURCE_SIDE: Record<string, 'ingress' | 'egress'> = {
+  'AWS::EC2::SecurityGroupIngress': 'ingress',
+  'AWS::EC2::SecurityGroupEgress': 'egress',
+};
+export function buildSiblingSgRules(
+  desired: Desired
+): Record<string, { ingress: unknown[]; egress: unknown[] }> {
+  const map: Record<string, { ingress: unknown[]; egress: unknown[] }> = {};
+  for (const r of desired.resources) {
+    const side = SG_RULE_RESOURCE_SIDE[r.resourceType];
+    if (!side) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const groupId = (decl as Record<string, unknown>).GroupId;
+    if (typeof groupId !== 'string' || !groupId) continue; // unresolved intrinsic -> skip
+    const rule = { ...(decl as Record<string, unknown>) };
+    delete rule.GroupId;
+    // A same-account SG-to-SG reference reads back a SourceSecurityGroupOwnerId AWS injects
+    // (the account that owns the referenced SG) that the template never declares. Fill it in
+    // with the stack's own account so (a) the classify subset-match still matches the live
+    // reflected rule and (b) a revert's whole-array CC replacement re-sends the rule in its
+    // EXACT live form — otherwise CC treats the owner-less rule as different and replaces it,
+    // orphaning the sibling resource (observed live). A cross-account peer DECLARES the owner
+    // id (CDK requires it), so it is already present and not overwritten.
+    if (
+      typeof rule.SourceSecurityGroupId === 'string' &&
+      rule.SourceSecurityGroupOwnerId === undefined &&
+      desired.accountId
+    ) {
+      rule.SourceSecurityGroupOwnerId = desired.accountId;
+    }
+    (map[groupId] ??= { ingress: [], egress: [] })[side].push(rule);
+  }
+  return map;
 }
 
 // CloudFront legacy OAI id -> S3CanonicalUserId, harvested from the stack's own
@@ -340,7 +384,13 @@ export async function gatherFindings(
       console.error(kmsListAliasesDeniedWarning(region));
     }
   }
-  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
+  const classifyOpts = {
+    accountId: desired.accountId,
+    region,
+    kmsAliasTargets,
+    oaiCanonicalIds,
+    siblingSgRules: buildSiblingSgRules(desired),
+  };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
   // CDKRD_CORPUS_DIR records every readable resource as a golden-corpus case
@@ -417,7 +467,13 @@ export async function regatherTouched(
   // Built from desired.ctx.liveAttrs (populated by the original gather), so the OAI
   // map is complete even though regather only re-reads the touched resources.
   const oaiCanonicalIds = buildOaiCanonicalIds(desired);
-  const classifyOpts = { accountId: desired.accountId, region, kmsAliasTargets, oaiCanonicalIds };
+  const classifyOpts = {
+    accountId: desired.accountId,
+    region,
+    kmsAliasTargets,
+    oaiCanonicalIds,
+    siblingSgRules: buildSiblingSgRules(desired),
+  };
 
   const fresh: Finding[] = [];
   for (const r of targets) {

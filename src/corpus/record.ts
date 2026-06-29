@@ -72,6 +72,10 @@ export interface CorpusCase {
     region: string;
     kmsAliasTargets: Record<string, string>;
     oaiCanonicalIds: Record<string, string>;
+    // Sibling SecurityGroupIngress/Egress rules reflected into an SG's live arrays, keyed by
+    // the SG's physical id. Only present (and only its own entry) on an AWS::EC2::SecurityGroup
+    // case, so replay reproduces the sibling-rule subtraction; optional for back-compat.
+    siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -102,9 +106,16 @@ export function buildCorpusCase(
     region: string;
     kmsAliasTargets: Record<string, string>;
     oaiCanonicalIds: Record<string, string>;
+    siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   },
   findings: Finding[]
 ): CorpusCase {
+  // Carry only THIS SG's sibling-rule entry (keyed by its own physical id) into the case, so
+  // replay reproduces the subtraction without bloating every case with the stack-wide map.
+  const sgSibling =
+    resource.resourceType === 'AWS::EC2::SecurityGroup' && resource.physicalId
+      ? opts.siblingSgRules?.[resource.physicalId]
+      : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
     resource: {
@@ -130,7 +141,15 @@ export function buildCorpusCase(
       unorderedScalarPaths: [...(schema.unorderedScalarPaths ?? [])].sort(),
       freeFormMapPaths: [...(schema.freeFormMapPaths ?? [])].sort(),
     },
-    opts,
+    opts: {
+      accountId: opts.accountId,
+      region: opts.region,
+      kmsAliasTargets: opts.kmsAliasTargets,
+      oaiCanonicalIds: opts.oaiCanonicalIds,
+      ...(sgSibling && resource.physicalId
+        ? { siblingSgRules: { [resource.physicalId]: sgSibling } }
+        : {}),
+    },
     expected: findings,
   };
   return sanitizeAccountId(c, opts.accountId);

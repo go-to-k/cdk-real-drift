@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Browser",
+    "resourceType": "AWS::BedrockAgentCore::BrowserCustom",
+    "physicalId": "cdkrd_agentcore_browser-x58FIIdykt",
+    "constructPath": "CdkRealDriftIntegAgentCore/Browser",
+    "declared": {
+      "Description": "cdkrd agentcore-rich fixture browser",
+      "Name": "cdkrd_agentcore_browser",
+      "NetworkConfiguration": {
+        "NetworkMode": "PUBLIC"
+      }
+    }
+  },
+  "liveRaw": {
+    "BrowserId": "cdkrd_agentcore_browser-x58FIIdykt",
+    "Status": "READY",
+    "Description": "cdkrd agentcore-rich fixture browser",
+    "LastUpdatedAt": "2026-06-29T11:27:53.566197944Z",
+    "BrowserArn": "arn:aws:bedrock-agentcore:us-east-1:111111111111:browser-custom/cdkrd_agentcore_browser-x58FIIdykt",
+    "FailureReason": "",
+    "CreatedAt": "2026-06-29T11:27:53.566197944Z",
+    "NetworkConfiguration": {
+      "NetworkMode": "PUBLIC"
+    },
+    "Tags": {},
+    "Name": "cdkrd_agentcore_browser"
+  },
+  "schema": {
+    "readOnly": [
+      "BrowserArn",
+      "BrowserId",
+      "CreatedAt",
+      "FailureReason",
+      "LastUpdatedAt",
+      "Status"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "BrowserSigning",
+      "Certificates",
+      "Description",
+      "EnterprisePolicies",
+      "ExecutionRoleArn",
+      "Name",
+      "NetworkConfiguration",
+      "RecordingConfig"
+    ],
+    "readOnlyPaths": [
+      "BrowserArn",
+      "BrowserId",
+      "CreatedAt",
+      "FailureReason",
+      "LastUpdatedAt",
+      "Status"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "BrowserSigning",
+      "Certificates",
+      "Description",
+      "EnterprisePolicies",
+      "ExecutionRoleArn",
+      "Name",
+      "NetworkConfiguration",
+      "RecordingConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "RecordingConfig.Enabled": false,
+      "BrowserSigning.Enabled": false
+    },
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.VpcConfig.SecurityGroups",
+      "NetworkConfiguration.VpcConfig.Subnets"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

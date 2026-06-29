@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SgfromIndirectPeer3306317FA3C9",
+    "resourceType": "AWS::EC2::SecurityGroupIngress",
+    "physicalId": "sgr-09d8cafad64d71a3d",
+    "constructPath": "CdkRealDriftIntegSgProto/Sg/from {IndirectPeer}:3306",
+    "declared": {
+      "Description": "mysql from prefix list",
+      "FromPort": 3306,
+      "GroupId": "sg-0ba527d158588a09f",
+      "IpProtocol": "tcp",
+      "SourcePrefixListId": "pl-0767c9e96a31aed5a",
+      "ToPort": 3306
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+    "Description": "mysql from prefix list",
+    "FromPort": 3306,
+    "ToPort": 3306,
+    "IpProtocol": "tcp",
+    "Id": "sgr-09d8cafad64d71a3d",
+    "SourcePrefixListId": "pl-0767c9e96a31aed5a",
+    "GroupId": "sg-0ba527d158588a09f"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CidrIp",
+      "CidrIpv6",
+      "FromPort",
+      "GroupId",
+      "GroupName",
+      "IpProtocol",
+      "SourcePrefixListId",
+      "SourceSecurityGroupId",
+      "SourceSecurityGroupName",
+      "SourceSecurityGroupOwnerId",
+      "ToPort"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "SgfromIndirectPeer3306317FA3C9",
+      "resourceType": "AWS::EC2::SecurityGroupIngress",
+      "path": "GroupName",
+      "actual": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+      "physicalId": "sgr-09d8cafad64d71a3d",
+      "constructPath": "CdkRealDriftIntegSgProto/Sg/from {IndirectPeer}:3306"
+    }
+  ]
+}

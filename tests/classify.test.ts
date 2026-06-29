@@ -5224,3 +5224,108 @@ describe('Cloud Control field mis-echo / alternative-representation folds (VPC n
     expect(f?.tier).toBe('undeclared');
   });
 });
+
+// SecurityGroup reflects, in its live SecurityGroupIngress/Egress, the rules declared by
+// SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress resources (self-ref,
+// peer, prefix-list — anything CDK cannot inline). Comparing the SG's INLINE declared rules to
+// the full reflected live set false-drifts on every sibling rule. classify subtracts the
+// sibling rules (passed in opts.siblingSgRules) before comparing.
+describe('SecurityGroup sibling-rule reflection (subtraction)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const sg: DesiredResource = {
+    logicalId: 'Sg',
+    resourceType: 'AWS::EC2::SecurityGroup',
+    physicalId: 'sg-1',
+    declared: {
+      SecurityGroupIngress: [
+        { CidrIp: '10.0.0.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 },
+      ],
+    },
+  };
+  // live = the one inline rule PLUS two sibling-declared rules AWS merged in (the prefix-list
+  // rule reads back verbatim; the self-ref rule reads back with an injected OwnerId).
+  const live = {
+    SecurityGroupIngress: [
+      { CidrIp: '10.0.0.0/24', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 },
+      { SourcePrefixListId: 'pl-1', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+      {
+        SourceSecurityGroupId: 'sg-1',
+        SourceSecurityGroupOwnerId: '111111111111',
+        IpProtocol: 'tcp',
+        FromPort: 9000,
+        ToPort: 9000,
+      },
+    ],
+  };
+  const siblingSgRules = {
+    'sg-1': {
+      ingress: [
+        { SourcePrefixListId: 'pl-1', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+        {
+          SourceSecurityGroupId: 'sg-1',
+          SourceSecurityGroupOwnerId: '111111111111',
+          IpProtocol: 'tcp',
+          FromPort: 9000,
+          ToPort: 9000,
+        },
+      ],
+      egress: [] as unknown[],
+    },
+  };
+
+  it('does NOT false-drift when live reflects sibling-declared rules', () => {
+    const t = tiers(classifyResource(sg, structuredClone(live), bare, { siblingSgRules }));
+    expect(t.declared).toEqual([]);
+  });
+
+  it('without sibling context the reflected rules DO drift (the guard is load-bearing)', () => {
+    const t = tiers(classifyResource(sg, structuredClone(live), bare));
+    expect(t.declared).toEqual(['SecurityGroupIngress']);
+  });
+
+  it('an out-of-band rule matching NO sibling still surfaces as drift', () => {
+    const rogue = {
+      SecurityGroupIngress: [
+        ...live.SecurityGroupIngress,
+        { CidrIp: '0.0.0.0/0', IpProtocol: 'tcp', FromPort: 22, ToPort: 22 },
+      ],
+    };
+    const t = tiers(classifyResource(sg, rogue, bare, { siblingSgRules }));
+    expect(t.declared).toEqual(['SecurityGroupIngress']);
+  });
+
+  it('SecurityGroupIngress SourceSecurityGroupOwnerId folds to generated, not undeclared', () => {
+    const ingress: DesiredResource = {
+      logicalId: 'SgIn',
+      resourceType: 'AWS::EC2::SecurityGroupIngress',
+      physicalId: 'sgr-1',
+      declared: {
+        GroupId: 'sg-1',
+        SourceSecurityGroupId: 'sg-1',
+        IpProtocol: 'tcp',
+        FromPort: 9000,
+        ToPort: 9000,
+      },
+    };
+    const liveIn = {
+      GroupId: 'sg-1',
+      SourceSecurityGroupId: 'sg-1',
+      IpProtocol: 'tcp',
+      FromPort: 9000,
+      ToPort: 9000,
+      SourceSecurityGroupOwnerId: '111111111111',
+    };
+    const t = tiers(classifyResource(ingress, liveIn, bare));
+    expect(t.generated).toContain('SourceSecurityGroupOwnerId');
+    expect(t.undeclared).not.toContain('SourceSecurityGroupOwnerId');
+  });
+});

@@ -1,0 +1,230 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SgD4954771",
+    "resourceType": "AWS::EC2::SecurityGroup",
+    "physicalId": "sg-0ba527d158588a09f",
+    "constructPath": "CdkRealDriftIntegSgProto/Sg",
+    "declared": {
+      "GroupDescription": "CdkRealDriftIntegSgProto/Sg",
+      "SecurityGroupEgress": [
+        {
+          "CidrIpv6": "::/0",
+          "Description": "https out ipv6",
+          "FromPort": 443,
+          "IpProtocol": "tcp",
+          "ToPort": 443
+        },
+        {
+          "CidrIp": "0.0.0.0/0",
+          "Description": "https out",
+          "FromPort": 443,
+          "IpProtocol": "tcp",
+          "ToPort": 443
+        }
+      ],
+      "SecurityGroupIngress": [
+        {
+          "CidrIp": "10.0.0.0/24",
+          "Description": "https",
+          "FromPort": 443,
+          "IpProtocol": "tcp",
+          "ToPort": 443
+        },
+        {
+          "CidrIp": "10.0.1.0/24",
+          "Description": "app range",
+          "FromPort": 8000,
+          "IpProtocol": "tcp",
+          "ToPort": 8100
+        },
+        {
+          "CidrIp": "10.0.2.0/24",
+          "Description": "udp range",
+          "FromPort": 5000,
+          "IpProtocol": "udp",
+          "ToPort": 5010
+        },
+        {
+          "CidrIp": "10.0.3.0/24",
+          "Description": "icmp ping",
+          "FromPort": 8,
+          "IpProtocol": "icmp",
+          "ToPort": -1
+        },
+        {
+          "CidrIp": "10.0.4.0/24",
+          "Description": "icmp all",
+          "FromPort": -1,
+          "IpProtocol": "icmp",
+          "ToPort": -1
+        },
+        {
+          "CidrIpv6": "2001:db8::/32",
+          "Description": "ssh ipv6",
+          "FromPort": 22,
+          "IpProtocol": "tcp",
+          "ToPort": 22
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "VpcId": "vpc-079229bdc16536c07"
+    }
+  },
+  "liveRaw": {
+    "GroupDescription": "CdkRealDriftIntegSgProto/Sg",
+    "GroupName": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+    "VpcId": "vpc-079229bdc16536c07",
+    "Id": "sg-0ba527d158588a09f",
+    "SecurityGroupIngress": [
+      {
+        "Description": "self ref",
+        "FromPort": 9000,
+        "ToPort": 9000,
+        "SourceSecurityGroupOwnerId": "111111111111",
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": "sg-0ba527d158588a09f"
+      },
+      {
+        "CidrIpv6": "2001:db8::/32",
+        "Description": "ssh ipv6",
+        "FromPort": 22,
+        "ToPort": 22,
+        "IpProtocol": "tcp"
+      },
+      {
+        "CidrIp": "10.0.1.0/24",
+        "Description": "app range",
+        "FromPort": 8000,
+        "ToPort": 8100,
+        "IpProtocol": "tcp"
+      },
+      {
+        "Description": "mysql from prefix list",
+        "FromPort": 3306,
+        "ToPort": 3306,
+        "IpProtocol": "tcp",
+        "SourcePrefixListId": "pl-0767c9e96a31aed5a"
+      },
+      {
+        "CidrIp": "10.0.2.0/24",
+        "Description": "udp range",
+        "FromPort": 5000,
+        "ToPort": 5010,
+        "IpProtocol": "udp"
+      },
+      {
+        "CidrIp": "10.0.4.0/24",
+        "Description": "icmp all",
+        "FromPort": -1,
+        "ToPort": -1,
+        "IpProtocol": "icmp"
+      },
+      {
+        "CidrIp": "10.0.0.0/24",
+        "Description": "https",
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp"
+      },
+      {
+        "CidrIp": "10.0.3.0/24",
+        "Description": "icmp ping",
+        "FromPort": 8,
+        "ToPort": -1,
+        "IpProtocol": "icmp"
+      }
+    ],
+    "SecurityGroupEgress": [
+      {
+        "CidrIp": "0.0.0.0/0",
+        "Description": "https out",
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp"
+      },
+      {
+        "CidrIpv6": "::/0",
+        "Description": "https out ipv6",
+        "FromPort": 443,
+        "ToPort": 443,
+        "IpProtocol": "tcp"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSgProto/317721e0-73b2-11f1-a85f-0e8ee8a3d53b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "SgD4954771",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSgProto",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      }
+    ],
+    "GroupId": "sg-0ba527d158588a09f"
+  },
+  "schema": {
+    "readOnly": ["GroupId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["GroupDescription", "GroupName", "VpcId"],
+    "readOnlyPaths": ["GroupId", "Id"],
+    "writeOnlyPaths": ["SecurityGroupIngress.*.SourceSecurityGroupName"],
+    "createOnlyPaths": ["GroupDescription", "GroupName", "VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "siblingSgRules": {
+      "sg-0ba527d158588a09f": {
+        "ingress": [
+          {
+            "Description": "mysql from prefix list",
+            "FromPort": 3306,
+            "IpProtocol": "tcp",
+            "SourcePrefixListId": "pl-0767c9e96a31aed5a",
+            "ToPort": 3306
+          },
+          {
+            "Description": "self ref",
+            "FromPort": 9000,
+            "IpProtocol": "tcp",
+            "SourceSecurityGroupId": "sg-0ba527d158588a09f",
+            "ToPort": 9000,
+            "SourceSecurityGroupOwnerId": "111111111111"
+          }
+        ],
+        "egress": []
+      }
+    }
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "SgD4954771",
+      "resourceType": "AWS::EC2::SecurityGroup",
+      "path": "GroupName",
+      "actual": "CdkRealDriftIntegSgProto-SgD4954771-OOLlldBndUMd",
+      "physicalId": "sg-0ba527d158588a09f",
+      "constructPath": "CdkRealDriftIntegSgProto/Sg"
+    }
+  ]
+}
