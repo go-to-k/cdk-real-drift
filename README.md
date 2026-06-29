@@ -87,10 +87,10 @@ Each block above is one kind of finding, and neither needed a baseline:
   confirmed against your template right away (deletes of declared resources are
   confirmed the same way).
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
-  your template. cdkrd shows them but can't call them confirmed drift yet: with no
-  baseline, it has no record of what you intended. It hides the obvious noise (AWS
-  defaults, auto-generated names) and shows the meaningful rest, including a value
-  nested inside something you _did_ declare.
+  your template. cdkrd detects these too: it hides the obvious noise (AWS defaults,
+  auto-generated names) and shows the meaningful rest, including a value nested
+  inside something you _did_ declare. With no baseline it can't confirm them as
+  drift yet, though.
 
 ### Recording is the recommended next step
 
