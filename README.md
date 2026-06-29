@@ -148,7 +148,7 @@ Ignore the prompt re-offers anything still drifting, so you finish in one run. F
 prompt mechanics (multiselect, Decide per finding, key bindings) are under
 [Interactive prompts](#interactive-prompts-tty-only-ci-is-never-prompted).
 
-## How it works
+## How drift is judged
 
 cdkrd compares the **live AWS resource** against your deployed **CloudFormation
 template** (or your local synth with `--pre-deploy`). It's reality vs intent,
