@@ -1339,16 +1339,20 @@ export function isTrailingDotEqual(a: unknown, b: unknown): boolean {
   return strip(a) === strip(b);
 }
 
-// Per-type property paths where AWS RESOLVES a partial (major/minor) version the
-// template declares to the full patch version it actually provisions (R130: RDS
-// DBInstance `EngineVersion` declared `"8.0"` reads back `"8.0.45"`; the engine
-// auto-selects the latest patch within the declared track). The declared value is a
-// dotted-segment PREFIX of the live value — a deliberately narrow rule, NOT a generic
-// string prefix: both sides must be dot-separated version strings and the declared
-// segments must each EQUAL the leading live segments, so `"8.0"` matches `"8.0.45"`
-// but `"8.0"` never matches `"8.05"` (segment boundary) and `"8.1"` never matches
-// `"8.0.45"` (a genuine track change still differs). Observed-only entries; the drift
-// path is the dotted path from calculateResourceDrift.
+// Per-type property paths where the declared `EngineVersion`/version track and the
+// live value differ only in PRECISION — one is a major/minor track, the other the
+// concrete patch version — so they name the same version and the difference is not
+// drift. This happens in BOTH directions:
+//   - partial -> concrete (R130: RDS DBInstance declared `"8.0"` reads back `"8.0.45"`;
+//     the engine auto-selects the latest patch within the declared track).
+//   - concrete -> partial (ElastiCache Memcached CacheCluster declared `"1.6.22"` reads
+//     back the major.minor track `"1.6"`; the service stores/echoes the track, not the
+//     patch). `isVersionPrefixMatch` is symmetric and folds this too.
+// A deliberately narrow rule, NOT a generic string prefix: both sides must be
+// dot-separated version strings and the SHORTER must be a leading run of segments of
+// the LONGER, so `"8.0"` matches `"8.0.45"` but `"8.0"` never matches `"8.05"` (segment
+// boundary) and `"8.1"` never matches `"8.0.45"` (a genuine track change still differs).
+// Observed-only entries; the drift path is the dotted path from calculateResourceDrift.
 export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::RDS::DBInstance': new Set(['EngineVersion']),
   // Aurora clusters resolve a partial track the same way (declared `"8.0"` /
@@ -1371,16 +1375,28 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // EngineVersion is writeOnly on the RG and supplied by the SDK_SUPPLEMENTS reader
   // (from the member cache cluster), so it must fold the prefix like its DB siblings.
   'AWS::ElastiCache::ReplicationGroup': new Set(['EngineVersion']),
+  // Live-observed on a fresh elasticache-memcached deploy: a Memcached CacheCluster
+  // declared with a FULL version (`"1.6.22"`) reads back the major.minor TRACK
+  // (`"1.6"`) — the CONCRETE->PARTIAL direction (the reverse of the DB-family
+  // partial->concrete). Redis CacheCluster echoes its `"7.1"` verbatim (no patch
+  // segment), so only the Memcached patch-truncation actually triggers the fold; the
+  // symmetric isVersionPrefixMatch covers both. A genuine track change (`"1.5"` vs
+  // `"1.6.22"`) still differs.
+  'AWS::ElastiCache::CacheCluster': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
   if (declared.length === 0 || live.length === 0) return false;
   const dSegs = declared.split('.');
   const lSegs = live.split('.');
-  // the declared track must be a leading run of segments of the live full version,
-  // and strictly shorter (an exact-equal value isn't drift and never reaches here).
-  if (dSegs.length >= lSegs.length) return false;
-  return dSegs.every((seg, i) => seg === lSegs[i]);
+  // The two sides differ only in precision: the SHORTER (the track) must be a leading
+  // run of segments of the LONGER (the concrete patch version). Symmetric — the track
+  // can be on either side (declared partial vs live concrete for the DB family; declared
+  // concrete vs live partial for Memcached). Equal length is not a prefix (an exact-equal
+  // value isn't drift and never reaches here; an equal-length mismatch is a real change).
+  const [shortSegs, longSegs] = dSegs.length <= lSegs.length ? [dSegs, lSegs] : [lSegs, dSegs];
+  if (shortSegs.length >= longSegs.length) return false;
+  return shortSegs.every((seg, i) => seg === longSegs[i]);
 }
 
 // Per-type property paths where the template declares the literal sentinel

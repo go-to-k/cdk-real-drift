@@ -1,0 +1,189 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TaskDef54694570",
+    "resourceType": "AWS::ECS::TaskDefinition",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsEnvOrderTaskDef1A652D89:1",
+    "constructPath": "CdkRealDriftIntegEcsEnvOrder/TaskDef",
+    "declared": {
+      "ContainerDefinitions": [
+        {
+          "Environment": [
+            {
+              "Name": "ZEBRA",
+              "Value": "z"
+            },
+            {
+              "Name": "ALPHA",
+              "Value": "a"
+            },
+            {
+              "Name": "MIKE",
+              "Value": "m"
+            },
+            {
+              "Name": "BRAVO",
+              "Value": "b"
+            },
+            {
+              "Name": "YANKEE",
+              "Value": "y"
+            },
+            {
+              "Name": "CHARLIE",
+              "Value": "c"
+            }
+          ],
+          "Essential": true,
+          "Image": "public.ecr.aws/docker/library/busybox:latest",
+          "Name": "Container"
+        }
+      ],
+      "Cpu": "256",
+      "Family": "CdkRealDriftIntegEcsEnvOrderTaskDef1A652D89",
+      "Memory": "512",
+      "NetworkMode": "awsvpc",
+      "RequiresCompatibilities": ["FARGATE"],
+      "TaskRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEcsEnvOrde-TaskDefTaskRole1EDB4A67-eqCDaXuQWgTx"
+    }
+  },
+  "liveRaw": {
+    "TaskRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEcsEnvOrde-TaskDefTaskRole1EDB4A67-eqCDaXuQWgTx",
+    "Volumes": [],
+    "InferenceAccelerators": [],
+    "Memory": "512",
+    "PlacementConstraints": [],
+    "ContainerDefinitions": [
+      {
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/docker/library/busybox:latest",
+        "Essential": true,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "Container",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [
+          {
+            "Value": "b",
+            "Name": "BRAVO"
+          },
+          {
+            "Value": "a",
+            "Name": "ALPHA"
+          },
+          {
+            "Value": "z",
+            "Name": "ZEBRA"
+          },
+          {
+            "Value": "y",
+            "Name": "YANKEE"
+          },
+          {
+            "Value": "m",
+            "Name": "MIKE"
+          },
+          {
+            "Value": "c",
+            "Name": "CHARLIE"
+          }
+        ],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      }
+    ],
+    "Family": "CdkRealDriftIntegEcsEnvOrderTaskDef1A652D89",
+    "Cpu": "256",
+    "RequiresCompatibilities": ["FARGATE"],
+    "NetworkMode": "awsvpc",
+    "Tags": [],
+    "TaskDefinitionArn": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsEnvOrderTaskDef1A652D89:1"
+  },
+  "schema": {
+    "readOnly": ["TaskDefinitionArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "readOnlyPaths": ["TaskDefinitionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ContainerDefinitions.*.VersionConsistency": "enabled"
+    },
+    "unorderedScalarPaths": ["RequiresCompatibilities"],
+    "freeFormMapPaths": [
+      "ContainerDefinitions.*.DockerLabels",
+      "ContainerDefinitions.*.FirelensConfiguration.Options",
+      "ContainerDefinitions.*.LogConfiguration.Options",
+      "Volumes.*.DockerVolumeConfiguration.DriverOpts",
+      "Volumes.*.DockerVolumeConfiguration.Labels"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TaskDef54694570",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[Container].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkRealDriftIntegEcsEnvOrderTaskDef1A652D89:1",
+      "constructPath": "CdkRealDriftIntegEcsEnvOrder/TaskDef"
+    }
+  ]
+}
