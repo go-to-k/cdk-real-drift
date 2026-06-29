@@ -81,8 +81,8 @@ ApiStack: drift found — what do you want to do?
     Decide per finding — assign a different action to each
 ```
 
-It caught drift two ways, neither needing a baseline. **Declared changes and
-out-of-band deletes** are confirmed against your template right away (the
+Two kinds of finding showed up, neither needing a baseline. **Declared changes and
+out-of-band deletes** are confirmed drift against your template right away (the
 `CFn-Declared Drift` block). **Values that live only on the real resource** can't
 be confirmed yet, so `check` folds away the ones it can explain (AWS defaults,
 generated names) and surfaces the rest as _Potential Drift_, including a
