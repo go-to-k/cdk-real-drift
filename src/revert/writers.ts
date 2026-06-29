@@ -29,6 +29,11 @@ import {
   UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
 import {
+  CloudControlClient,
+  GetResourceCommand,
+  UpdateResourceCommand,
+} from '@aws-sdk/client-cloudcontrol';
+import {
   CloudFrontClient,
   GetDistributionConfigCommand,
   UpdateDistributionCommand,
@@ -112,6 +117,8 @@ import {
 } from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
+import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import { type OverrideCtx, SDK_OVERRIDES } from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
@@ -1222,6 +1229,78 @@ export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   },
 };
 
+// Re-point an RFC6902 pointer's IDENTITY-bracket array segments (`/Prop[<id>]/sub`, which
+// Cloud Control would read as a literal key named `Prop[<id>]`) to the matching LIVE-array
+// INDEX (`/Prop/<index>/sub`, a valid pointer CC applies read-modify-write). The index is
+// located by the array's identity field (NESTED_ARRAY_IDENTITY override, else the generic
+// identityField) against the live model — the SAME model CC will read-modify-write, so the
+// index aligns. This is why an array-element nested value IS revertable via CC after all
+// (R78 abandoned index patches against the DECLARED subset, whose indices differ from live;
+// here we index the LIVE array). Throws if a segment can't be located → an honest revert
+// failure, never a wrong write.
+function reindexNestedPointer(
+  pointer: string,
+  live: Record<string, unknown>,
+  resourceType: string
+): string {
+  const out: string[] = [];
+  let node: unknown = live;
+  let dotted = '';
+  for (const raw of pointer.split('/').slice(1)) {
+    const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
+    const m = seg.match(/^(.+)\[(.+)\]$/);
+    if (m) {
+      const prop = m[1] as string;
+      const id = m[2] as string;
+      const arrPath = dotted ? `${dotted}.${prop}` : prop;
+      const arr =
+        node && typeof node === 'object' ? (node as Record<string, unknown>)[prop] : undefined;
+      if (!Array.isArray(arr)) throw new Error(`cannot resolve array "${arrPath}" for ${pointer}`);
+      const idField = NESTED_ARRAY_IDENTITY[resourceType]?.[arrPath] ?? identityField(arr);
+      const idx = idField
+        ? arr.findIndex(
+            (el) =>
+              el &&
+              typeof el === 'object' &&
+              String((el as Record<string, unknown>)[idField]) === id
+          )
+        : -1;
+      if (idx < 0) throw new Error(`cannot locate ${arrPath}[${id}] in live ${resourceType}`);
+      out.push(ptrEscape(prop), String(idx));
+      node = arr[idx];
+      dotted = arrPath;
+    } else {
+      out.push(ptrEscape(seg));
+      node = node && typeof node === 'object' ? (node as Record<string, unknown>)[seg] : undefined;
+      dotted = dotted ? `${dotted}.${seg}` : seg;
+    }
+  }
+  return `/${out.join('/')}`;
+}
+
+// Revert an array-element nested value (e.g. Backup BackupPlanRule[<RuleName>].window,
+// Route53Resolver FirewallRules[<Priority>].setting) via Cloud Control: GetResource for the
+// live model, re-point each op's identity-bracket to the live-array index (reindexNestedPointer),
+// then one UpdateResource. CC-mutable types only (Backup / Route53Resolver) — proven live.
+const writeCloudControlIndexNested: SdkWriter = async (ctx, ops) => {
+  const type = ctx.resourceType;
+  if (!type) throw new Error('writeCloudControlIndexNested: resourceType missing on ctx');
+  const cc = new CloudControlClient({ region: ctx.region });
+  const got = await cc.send(new GetResourceCommand({ TypeName: type, Identifier: ctx.physicalId }));
+  const live = JSON.parse(got.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+  const patch = ops.map((op) => {
+    const path = reindexNestedPointer(op.path, live, type);
+    return op.op === 'remove' ? { op: op.op, path } : { op: op.op, path, value: op.value };
+  });
+  await cc.send(
+    new UpdateResourceCommand({
+      TypeName: type,
+      Identifier: ctx.physicalId,
+      PatchDocument: JSON.stringify(patch),
+    })
+  );
+};
+
 // SDK writers for NESTED finding paths (a sub-key inside a declared object — dotted or
 // array-element). Unlike SDK_PROP_WRITERS, which keys on an EXACT top-level finding path,
 // these match by PREDICATE because the targetable knob is deep (e.g. an ApiGateway Method's
@@ -1248,6 +1327,17 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
       p.startsWith('VolumeConfigurations.') ||
       p.startsWith('VolumeConfigurations['),
     writer: writeEcsServiceWriteOnlyProps,
+  },
+  // Array-element nested rule settings (keyed by RuleName / Priority — descended via
+  // NESTED_ARRAY_IDENTITY). CC-mutable, so revert via the generic Cloud Control index-revert:
+  // the identity bracket is re-pointed to the live-array index, which CC applies. Proven live.
+  'AWS::Backup::BackupPlan': {
+    match: (p) => p.startsWith('BackupPlan.BackupPlanRule['),
+    writer: writeCloudControlIndexNested,
+  },
+  'AWS::Route53Resolver::FirewallRuleGroup': {
+    match: (p) => p.startsWith('FirewallRules['),
+    writer: writeCloudControlIndexNested,
   },
 };
 

@@ -10,11 +10,11 @@ the full design.
 - **Revert can't do everything.** Not revertable, and reported as such: unrecorded
   values (record them, or opt into removal with `--remove-unrecorded`); a `deleted`
   resource (recreate with `cdk deploy`); an **array-element** nested undeclared
-  value (`Prop[<id>].sub`) — a flat patch can't safely target it — UNLESS a
-  type-specific SDK writer can (an API Gateway method's integration knobs like
-  `Integration.IntegrationResponses[<status>].SelectionPattern` revert via the native
-  patch API); a pure-dotted nested value (a free-form map key, an object sub-field,
-  or a map-shaped tag key) IS revertable via Cloud Control; create-only
+  value (`Prop[<id>].sub`) on a type cdkrd neither has a type-specific SDK writer for
+  (e.g. API Gateway method integration knobs) nor can revert via the Cloud Control
+  index-revert (Backup / Route53Resolver rules — the identity bracket is re-pointed to
+  the live-array index); a pure-dotted nested value (a free-form map key, an object
+  sub-field, or a map-shaped tag key) IS revertable via Cloud Control; create-only
   properties (changing them needs replacement); toggle-style properties with no
   "absent" state (e.g. S3 transfer acceleration); `AWS::Lambda::Permission` and
   `AWS::Budgets::Budget` (their write APIs can't reconstruct the desired state).

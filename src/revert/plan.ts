@@ -11,7 +11,12 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
-import { awsManagedTags, JSON_STRING_PROPS, KNOWN_DEFAULTS } from '../normalize/noise.js';
+import {
+  awsManagedTags,
+  JSON_STRING_PROPS,
+  KNOWN_DEFAULT_PATHS,
+  KNOWN_DEFAULTS,
+} from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
@@ -558,6 +563,21 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
       op: 'add',
       path: pointer,
       value: knownDefault,
+      prior: f.actual,
+      human: `${f.path} -> AWS default (undeclared, not in baseline)`,
+    };
+  }
+  // A NESTED value AWS materializes as a default (KNOWN_DEFAULT_PATHS, descended via
+  // NESTED_ARRAY_IDENTITY): SET that default rather than `remove` it. Some providers keep
+  // the existing value when a field is merely absent from the patch, so a bare `remove` is a
+  // silent no-op (Route53Resolver FirewallDomainRedirectionAction — proven live). The
+  // schemaPath normalizes the identity bracket to the `.*` the table is keyed by.
+  const nestedDefault = KNOWN_DEFAULT_PATHS[f.resourceType]?.[f.path.replace(/\[[^\]]*\]/g, '.*')];
+  if (nestedDefault !== undefined) {
+    return {
+      op: 'add',
+      path: pointer,
+      value: nestedDefault,
       prior: f.actual,
       human: `${f.path} -> AWS default (undeclared, not in baseline)`,
     };

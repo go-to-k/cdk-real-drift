@@ -74,6 +74,10 @@ export interface OverrideCtx {
   declared: Record<string, unknown>;
   region: string;
   accountId: string;
+  // The resource's CloudFormation type — set on the REVERT (SdkWriter) path so a
+  // type-agnostic writer (the Cloud Control index-revert for nested array-element values)
+  // can GetResource/UpdateResource it. Unused by the read (OverrideReader) path.
+  resourceType?: string;
 }
 export type OverrideReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
 

@@ -529,6 +529,49 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.ops).toHaveLength(2);
   });
 
+  it('Backup BackupPlanRule array-element nested -> revertable sdk item, op SETS the AWS default', () => {
+    // A value that "appeared since record" inside a non-standard-keyed array element is now
+    // revertable (Cloud Control index-revert writer), and a KNOWN_DEFAULT_PATHS default makes
+    // the op SET the default (not a `remove` the provider may ignore).
+    const f = F({
+      tier: 'undeclared',
+      logicalId: 'Plan',
+      physicalId: 'plan|abc',
+      resourceType: 'AWS::Backup::BackupPlan',
+      path: 'BackupPlan.BackupPlanRule[Daily].CompletionWindowMinutes',
+      actual: 5000,
+      nested: true,
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({ kind: 'sdk', resourceType: 'AWS::Backup::BackupPlan' });
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'add', value: 10080 });
+  });
+
+  it('Route53Resolver FirewallRules array-element nested -> revertable sdk item, sets default', () => {
+    const f = F({
+      tier: 'undeclared',
+      logicalId: 'RG',
+      physicalId: 'rslvr-frg-x',
+      resourceType: 'AWS::Route53Resolver::FirewallRuleGroup',
+      path: 'FirewallRules[100].FirewallDomainRedirectionAction',
+      actual: 'TRUST_REDIRECTION_DOMAIN',
+      nested: true,
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({
+      kind: 'sdk',
+      resourceType: 'AWS::Route53Resolver::FirewallRuleGroup',
+    });
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      value: 'INSPECT_REDIRECTION_DOMAIN',
+    });
+  });
+
   it('an `added` finding with no physical id -> notRevertable (cannot address the delete)', () => {
     const f = F({ tier: 'added', logicalId: 'X/y', physicalId: undefined, path: '' });
     const plan = buildRevertPlan([f], undefined);

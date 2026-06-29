@@ -721,8 +721,16 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   (UpdateIntegration / UpdateIntegrationResponse / UpdateMethodResponse PatchOperations) —
   API Gateway REJECTS `op: remove` for the integration knobs (so the reset is a `replace`
   to the AWS default, or `""` which reads back absent/folded), but ACCEPTS `op: remove` for
-  a `responseModels` entry (removed per media key) — all proven live. KMS keys need no SDK
-  writer — they revert via the generic CC path.
+  a `responseModels` entry (removed per media key) — all proven live. For a CC-MUTABLE type
+  the array-element nested value reverts via the generic **Cloud Control index-revert**
+  writer (`writeCloudControlIndexNested`, registered for Backup BackupPlan + Route53Resolver
+  FirewallRuleGroup): it GetResources the live model, RE-POINTS each op's identity bracket to
+  the live-array INDEX (`/FirewallRules[100]/…` → `/FirewallRules/1/…` — valid because the
+  index is taken against the SAME model CC read-modify-writes; R78's index problem was
+  indexing the DECLARED subset), then one UpdateResource. A value AWS materialized as a
+  default (KNOWN_DEFAULT_PATHS) reverts by SETTING that default (`add`), not a bare `remove`
+  some providers silently ignore (Route53 FirewallDomainRedirectionAction — proven live).
+  KMS keys need no SDK writer — they revert via the generic CC path.
 - **Canonical-form write**: a declared-drift revert target (`finding.desired`) is the
   _normalized_ value (policy statements sorted, scalar-vs-array collapsed, tag / id
   arrays sorted), not the template verbatim. It is semantically equal to the template

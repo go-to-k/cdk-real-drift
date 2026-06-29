@@ -94,6 +94,11 @@ import {
   EventBridgeClient,
   PutPermissionCommand,
 } from '@aws-sdk/client-eventbridge';
+import {
+  CloudControlClient,
+  GetResourceCommand,
+  UpdateResourceCommand,
+} from '@aws-sdk/client-cloudcontrol';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -116,6 +121,7 @@ const configService = mockClient(ConfigServiceClient);
 const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
 const ecs = mockClient(ECSClient);
+const cloudcontrol = mockClient(CloudControlClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -161,6 +167,7 @@ beforeEach(() => {
   eventbridge.reset();
   apigw.reset();
   ecs.reset();
+  cloudcontrol.reset();
 });
 
 describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via UpdateService)', () => {
@@ -1599,5 +1606,102 @@ describe('writeConfigRuleInputParameters (AWS::Config::ConfigRule, JSON-string p
     await expect(writer(ctx({ physicalId: 'missing' }), [inputParamsOp({ a: 1 })])).rejects.toThrow(
       /Config rule not found/
     );
+  });
+});
+
+describe('Cloud Control index-revert writer (array-element nested values)', () => {
+  const ctx = (resourceType: string, physicalId: string): OverrideCtx => ({
+    physicalId,
+    declared: {},
+    region: 'us-east-1',
+    accountId: '123456789012',
+    resourceType,
+  });
+
+  it('re-points an identity bracket to the live-array INDEX and sends ONE UpdateResource', async () => {
+    // live model: the rule of interest is at index 1 (Priority 100), NOT index 0.
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: JSON.stringify({
+          FirewallRules: [
+            { Priority: 50, FirewallDomainRedirectionAction: 'INSPECT_REDIRECTION_DOMAIN' },
+            { Priority: 100, FirewallDomainRedirectionAction: 'TRUST_REDIRECTION_DOMAIN' },
+          ],
+        }),
+      },
+    });
+    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/FirewallRules[100]/FirewallDomainRedirectionAction',
+        value: 'INSPECT_REDIRECTION_DOMAIN',
+        human: 'x',
+      },
+    ];
+    await resolveSdkWriter('AWS::Route53Resolver::FirewallRuleGroup', ops)!(
+      ctx('AWS::Route53Resolver::FirewallRuleGroup', 'rslvr-frg-x'),
+      ops
+    );
+    const calls = cloudcontrol.commandCalls(UpdateResourceCommand);
+    expect(calls).toHaveLength(1);
+    const patch = JSON.parse(calls[0]!.args[0].input.PatchDocument as string);
+    // [100] (Priority) -> live index 1
+    expect(patch).toEqual([
+      {
+        op: 'add',
+        path: '/FirewallRules/1/FirewallDomainRedirectionAction',
+        value: 'INSPECT_REDIRECTION_DOMAIN',
+      },
+    ]);
+  });
+
+  it('resolves a non-standard-keyed nested array (Backup BackupPlanRule by RuleName)', async () => {
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: JSON.stringify({
+          BackupPlan: { BackupPlanRule: [{ RuleName: 'Daily', CompletionWindowMinutes: 5000 }] },
+        }),
+      },
+    });
+    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/BackupPlan/BackupPlanRule[Daily]/CompletionWindowMinutes',
+        value: 10080,
+        human: 'x',
+      },
+    ];
+    await resolveSdkWriter('AWS::Backup::BackupPlan', ops)!(
+      ctx('AWS::Backup::BackupPlan', 'plan|abc'),
+      ops
+    );
+    const patch = JSON.parse(
+      cloudcontrol.commandCalls(UpdateResourceCommand)[0]!.args[0].input.PatchDocument as string
+    );
+    expect(patch).toEqual([
+      { op: 'add', path: '/BackupPlan/BackupPlanRule/0/CompletionWindowMinutes', value: 10080 },
+    ]);
+  });
+
+  it('throws (honest failure) when the identity cannot be located in the live array', async () => {
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: JSON.stringify({ FirewallRules: [{ Priority: 50 }] }) },
+    });
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/FirewallRules[999]/FirewallDomainRedirectionAction',
+        value: 'X',
+        human: 'x',
+      },
+    ];
+    await expect(
+      resolveSdkWriter('AWS::Route53Resolver::FirewallRuleGroup', ops)!(
+        ctx('AWS::Route53Resolver::FirewallRuleGroup', 'rg'),
+        ops
+      )
+    ).rejects.toThrow(/cannot locate/);
   });
 });

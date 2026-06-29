@@ -150,7 +150,7 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
 //   - AWS::ApiGateway::Method Integration.IntegrationResponses is keyed by StatusCode, so an
 //     out-of-band SelectionPattern / ContentHandling added to a declared response (the
 //     "HTTP error regex" / "content handling" console knobs) is otherwise invisible.
-const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
+export const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
   'AWS::ApiGateway::Method': {
     'Integration.IntegrationResponses': 'StatusCode',
     // MethodResponses is keyed by StatusCode too. AWS does NOT auto-materialize its

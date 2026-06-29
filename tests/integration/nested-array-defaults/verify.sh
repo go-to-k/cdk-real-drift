@@ -59,4 +59,22 @@ grep -q "BackupPlanRule\[DailyRule\].CompletionWindowMinutes" /tmp/cdkrd-integ-n
 grep -q "FirewallRules\[100\].FirewallDomainRedirectionAction" /tmp/cdkrd-integ-nested.out \
   || fail "Route53 firewall rule change not detected (Priority descent missing?)"
 
+echo "=== revert: both array-element nested values revert via the Cloud Control index-revert writer ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdkrd-integ-nested-revert.out || fail "revert errored"
+grep -qi "FAILED" /tmp/cdkrd-integ-nested-revert.out && fail "revert reported a FAILED op"
+
+echo "=== verify convergence on the live resources ==="
+CW_AFTER="$(aws backup get-backup-plan --backup-plan-id "$PLAN_ID" --region "$REGION" \
+  --query 'BackupPlan.Rules[0].CompletionWindowMinutes' --output text)"
+echo "CompletionWindowMinutes after revert: $CW_AFTER"
+[ "$CW_AFTER" = "10080" ] || fail "Backup CompletionWindowMinutes not reverted (still $CW_AFTER)"
+RD_AFTER="$(aws route53resolver list-firewall-rules --firewall-rule-group-id "$RG_ID" --region "$REGION" \
+  --query 'FirewallRules[0].FirewallDomainRedirectionAction' --output text)"
+echo "FirewallDomainRedirectionAction after revert: $RD_AFTER"
+[ "$RD_AFTER" = "INSPECT_REDIRECTION_DOMAIN" ] || fail "Route53 rule not reverted (still $RD_AFTER)"
+
+echo "=== check must be CLEAN again after revert ==="
+$CLI check "$STACK" --region "$REGION" --fail
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after revert"
+
 echo "INTEG PASS"
