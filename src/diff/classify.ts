@@ -234,6 +234,25 @@ const IAM_ATTACHMENT_SUBSET: Record<string, ReadonlySet<string>> = {
 const isNestedObject = (x: unknown): x is Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x);
 
+// A CloudFormation AUTO-GENERATED physical name. When a resource declares no explicit name,
+// CFn mints `<stackName>-<logicalId>-<random>` (the stack name is the FIRST segment of the
+// CDK construct path). DELIBERATELY strict — it must start with this stack's name AND end
+// with CFn's ~12+ char alphanumeric random suffix — so a user-chosen name is not folded away
+// (that would hide a real undeclared value, defeating the differentiator). Pure.
+const CFN_RANDOM_SUFFIX = /-[0-9A-Za-z]{12,}$/;
+function isCfnGeneratedName(
+  value: unknown,
+  constructPath: string | undefined,
+  physicalId: string | undefined
+): boolean {
+  // The bare physical-id echo (value === physicalId) is a STRUCTURAL drop handled separately
+  // — never fold it into a `generated` finding here, or a resource whose physical id IS its
+  // CFn-generated name gains a phantom finding.
+  if (typeof value !== 'string' || !constructPath || value === physicalId) return false;
+  const stackName = constructPath.split('/')[0];
+  return !!stackName && value.startsWith(`${stackName}-`) && CFN_RANDOM_SUFFIX.test(value);
+}
+
 // structuredClone rejects the UNRESOLVED Symbol a declared value may carry, so deep-clone
 // the declared model symbol-safe (symbols/primitives pass through by reference/value). Used
 // to clone the declared side before stripAsymmetricIdentityFields mutates it.
@@ -1025,6 +1044,17 @@ export function classifyResource(
     // recorded — for ANY type, without a per-type GENERATED_DEFAULTS entry. The bare
     // physical-id echo (value === physicalId) is left to the structural drop below.
     if (isGeneratedName(v, physicalId)) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // A CloudFormation AUTO-GENERATED physical name: when a resource declares no explicit
+    // name, CFn mints `<stackName>-<logicalId>-<random>` (e.g. a Route53Resolver
+    // FirewallDomainList's `Name` reads "MyStack-DL-uaPlN2cdWoMb" while its physical id is the
+    // unrelated `rslvr-fdl-…`, so isGeneratedName above can't catch it). Fold it `generated`
+    // so an auto-named resource is not first-run noise. Tightly gated to avoid hiding a REAL
+    // undeclared value (the differentiator): the value must start with THIS stack's name AND
+    // end with CFn's random suffix — a user-chosen name realistically never matches both.
+    if (isCfnGeneratedName(v, resource.constructPath, physicalId)) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }

@@ -74,7 +74,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "FilesEfsSecurityGroup332450AB",
       "resourceType": "AWS::EC2::SecurityGroup",
       "path": "GroupName",

@@ -82,7 +82,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "AlbSg1155C1BE",
       "resourceType": "AWS::EC2::SecurityGroup",
       "path": "GroupName",
