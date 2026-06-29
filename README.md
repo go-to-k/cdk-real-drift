@@ -48,27 +48,32 @@ npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
 ```
 
-`check` is the only command you run by hand, and there's nothing to set up first.
-It prints what it found, then offers three actions right in the prompt:
+`check` is the only command you run by hand, with nothing to set up first: it
+finds drift and offers **Record**, **Revert**, and **Ignore** inline on what it
+turns up.
 
-- **Record**: accept the live-only values as the norm and watch them. Writes a
-  git-committed `.cdkrd` baseline file; later out-of-band changes are then drift.
-- **Revert**: write the desired value back to AWS.
-- **Ignore**: stop reporting it, for good.
+## How to use
 
-Here's a first run:
+### Your first run needs no baseline
+
+The first time you run `check` on a stack, before recording anything:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`.
+No baseline yet — live-only values can't be confirmed as drift, but declared drift and out-of-band deletes always can.
+
+[CFn-Declared Drift: 1] (declared in your CloudFormation template — the live value differs)
+  ApiStack/Topic.DisplayName (AWS::SNS::Topic)
+      desired="prod-alerts"
+      actual ="test"
 
 [Potential Drift: 2] (live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it)
-  ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
+  ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue) = {"maxReceiveCount":5}
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: no confirmed drift · 2 potential drift
+result: 3 findings — 1 drift (declared=1) + 2 potential drift
 
-ApiStack: potential drift found (live-only, no baseline yet) — what do you want to do?
+ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
     Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert — write the desired values back to AWS
@@ -76,19 +81,30 @@ ApiStack: potential drift found (live-only, no baseline yet) — what do you wan
     Decide per finding — assign a different action to each
 ```
 
-Notice it surfaced drift before you've recorded any baseline. Declared changes and
-out-of-band deletes are confirmed against your template right away. For values that
-live only on the real resource, `check` folds away the ones it can explain (AWS
-defaults, generated names) and surfaces the rest as _Potential Drift_, including a
+It caught drift two ways, neither needing a baseline. **Declared changes and
+out-of-band deletes** are confirmed against your template right away (the
+`CFn-Declared Drift` block). **Values that live only on the real resource** can't
+be confirmed yet, so `check` folds away the ones it can explain (AWS defaults,
+generated names) and surfaces the rest as _Potential Drift_, including a
 non-default value nested inside an object you _did_ declare. These are most likely
-real divergence too, just not confirmable until you record a baseline.
+real divergence too, just not confirmable until you record them.
 
-Recording is the usual next step: it snapshots those values into the
-git-committed `.cdkrd` baseline, so from then on `cdkrd check` flags any later
-out-of-band change to them as confirmed drift.
+### Recording is the recommended next step
 
-In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
-drift; it never writes a baseline (you record locally and commit the file).
+Recording snapshots those live-only values into a git-committed `.cdkrd` baseline,
+so from then on any later out-of-band change to them is confirmed drift. That's the
+day-to-day loop: run `check`, record what's intended, commit the baseline, and the
+next out-of-band change stands out on its own.
+
+`record` covers undeclared and added state only. A declared drift you fix in code
+or `revert`; `ignore` accepts anything you want to stop hearing about. The
+standalone verbs are in
+[The model](#the-model-one-verb-you-run-three-it-offers).
+
+### In CI
+
+Run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on drift;
+it never writes a baseline (you record locally and commit the file).
 
 ## The model: one verb you run, three it offers
 
