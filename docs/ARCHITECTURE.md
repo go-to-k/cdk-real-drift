@@ -426,7 +426,14 @@ all live changes
          API Gateway Method Integration.IntegrationResponses AND MethodResponses (StatusCode)
          — SelectionPattern / ContentHandling / responseModels; Backup BackupPlan
          BackupPlanRule (RuleName) — a changed CompletionWindowMinutes / window; Route53
-         Resolver FirewallRuleGroup FirewallRules (Priority) — a changed firewall-rule setting
+         Resolver FirewallRuleGroup FirewallRules (Priority) — a changed firewall-rule setting;
+         SecretsManager Secret ReplicaRegions (Region) — a replica re-keyed to a different
+         KmsKeyId (the alias/aws/secretsmanager default folds); ApiGateway Stage MethodSettings
+         (HttpMethod) — a per-method CacheTtlInSeconds change (the 300 / false caching defaults
+         fold). The CC-mutable ones (Backup, Route53 Resolver, Secret, ApiGateway Stage) revert
+         via the generic Cloud Control index-revert writer (SDK_NESTED_WRITERS); a
+         composite-identifier type addresses the resource by its CC_IDENTIFIER_ADAPTERS
+         identifier (ApiGateway Stage `RestApiId|StageName`), not the bare physical id
 ```
 
 ### Why a given value does (or does not) appear
@@ -730,10 +737,15 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
   a `responseModels` entry (removed per media key) — all proven live. For a CC-MUTABLE type
   the array-element nested value reverts via the generic **Cloud Control index-revert**
   writer (`writeCloudControlIndexNested`, registered for Backup BackupPlan + Route53Resolver
-  FirewallRuleGroup): it GetResources the live model, RE-POINTS each op's identity bracket to
+  FirewallRuleGroup + SecretsManager Secret ReplicaRegions + ApiGateway Stage MethodSettings):
+  it GetResources the live model, RE-POINTS each op's identity bracket to
   the live-array INDEX (`/FirewallRules[100]/…` → `/FirewallRules/1/…` — valid because the
   index is taken against the SAME model CC read-modify-writes; R78's index problem was
-  indexing the DECLARED subset), then one UpdateResource. A value AWS materialized as a
+  indexing the DECLARED subset), then one UpdateResource. It addresses the resource by the
+  CC identifier the READ path resolves (`CC_IDENTIFIER_ADAPTERS`, e.g. ApiGateway Stage
+  `RestApiId|StageName`) carried on `ctx.identifier`, NOT the bare physical id, or a
+  composite-identifier type ValidationExceptions (`Identifier prod is not valid …` — found
+  live for #419). A value AWS materialized as a
   default (KNOWN_DEFAULT_PATHS) reverts by SETTING that default (`add`), not a bare `remove`
   some providers silently ignore (Route53 FirewallDomainRedirectionAction — proven live).
   KMS keys need no SDK writer — they revert via the generic CC path.

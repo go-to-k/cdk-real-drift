@@ -3248,9 +3248,10 @@ describe('nested KNOWN_DEFAULT_PATHS folding (R108 — hand-coded nested service
     if (rest[0] === '*') {
       const [d, l] = buildNested(rest.slice(1), value);
       // Carry every identity field the alignment might use — the generic IDENTITY_FIELDS
-      // `Id`, plus the NESTED_ARRAY_IDENTITY overrides (Backup RuleName, Route53 Priority) —
-      // all set to `x`, so the element aligns to `[x]` whichever key the type uses.
-      const id = { Id: 'x', RuleName: 'x', Priority: 'x' };
+      // `Id`, plus the NESTED_ARRAY_IDENTITY overrides (Backup RuleName, Route53 Priority,
+      // Secret Region, ApiGateway Stage HttpMethod) — all set to `x`, so the element aligns
+      // to `[x]` whichever key the type uses.
+      const id = { Id: 'x', RuleName: 'x', Priority: 'x', Region: 'x', HttpMethod: 'x' };
       return [{ [head!]: [{ ...id, ...d }] }, { [head!]: [{ ...id, ...l }] }];
     }
     const [d, l] = buildNested(rest, value);
@@ -4724,6 +4725,57 @@ describe('NESTED_ARRAY_IDENTITY: materialized-default array elements (Backup / R
     expect(undeclaredPaths(declared, drifted)).toContain(
       'FirewallRules[100].FirewallDomainRedirectionAction'
     );
+  });
+
+  it('SecretsManager ReplicaRegions (keyed by Region): default KmsKeyId folds, a re-key surfaces', () => {
+    const declared = res('AWS::SecretsManager::Secret', {
+      ReplicaRegions: [{ Region: 'us-west-2' }, { Region: 'eu-west-1' }],
+    });
+    // AWS materializes the default AWS-managed key into each declared replica (and reorders).
+    const clean = {
+      ReplicaRegions: [
+        { Region: 'eu-west-1', KmsKeyId: 'alias/aws/secretsmanager' },
+        { Region: 'us-west-2', KmsKeyId: 'alias/aws/secretsmanager' },
+      ],
+    };
+    expect(undeclaredPaths(declared, clean)).toEqual([]);
+    // a replica re-keyed to a custom CMK out of band surfaces (no longer the default)
+    const drifted = structuredClone(clean);
+    (drifted.ReplicaRegions[1] as Record<string, unknown>).KmsKeyId =
+      'arn:aws:kms:us-west-2:111111111111:key/abcd';
+    expect(undeclaredPaths(declared, drifted)).toContain('ReplicaRegions[us-west-2].KmsKeyId');
+  });
+
+  it('ApiGateway Stage MethodSettings (keyed by HttpMethod): caching defaults fold, a TTL change surfaces', () => {
+    const declared = res('AWS::ApiGateway::Stage', {
+      MethodSettings: [
+        { HttpMethod: '*', ResourcePath: '/*', ThrottlingRateLimit: 100, ThrottlingBurstLimit: 50 },
+      ],
+    });
+    // AWS materializes the caching/metrics defaults into the declared method setting.
+    const clean = {
+      MethodSettings: [
+        {
+          HttpMethod: '*',
+          ResourcePath: '/*',
+          ThrottlingRateLimit: 100,
+          ThrottlingBurstLimit: 50,
+          CacheTtlInSeconds: 300,
+          CacheDataEncrypted: false,
+          CachingEnabled: false,
+          MetricsEnabled: false,
+        },
+      ],
+    };
+    expect(undeclaredPaths(declared, clean)).toEqual([]);
+    // an out-of-band cache TTL change surfaces (no longer the 300 default)
+    const ttl = structuredClone(clean);
+    (ttl.MethodSettings[0] as Record<string, unknown>).CacheTtlInSeconds = 600;
+    expect(undeclaredPaths(declared, ttl)).toContain('MethodSettings[*].CacheTtlInSeconds');
+    // enabling caching out of band (a non-`false` value) surfaces past the isTrivialEmpty fold
+    const caching = structuredClone(clean);
+    (caching.MethodSettings[0] as Record<string, unknown>).CachingEnabled = true;
+    expect(undeclaredPaths(declared, caching)).toContain('MethodSettings[*].CachingEnabled');
   });
 });
 
