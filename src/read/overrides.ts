@@ -78,6 +78,12 @@ export interface OverrideCtx {
   // type-agnostic writer (the Cloud Control index-revert for nested array-element values)
   // can GetResource/UpdateResource it. Unused by the read (OverrideReader) path.
   resourceType?: string;
+  // The Cloud Control identifier — the composite the READ path resolves via
+  // CC_IDENTIFIER_ADAPTERS (e.g. AWS::ApiGateway::Stage = `RestApiId|StageName`), set on the
+  // REVERT (SdkWriter) path. A Cloud-Control-routed writer (writeCloudControlIndexNested)
+  // MUST address the resource by this, not the bare CFn physical id, or GetResource /
+  // UpdateResource ValidationException. Falls back to `physicalId` when no adapter applies.
+  identifier?: string;
 }
 export type OverrideReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
 

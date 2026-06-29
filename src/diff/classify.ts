@@ -172,6 +172,17 @@ export const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
   // KNOWN_DEFAULT_PATHS — so a security-relevant out-of-band change (a rule's Action /
   // BlockResponse flipped in the console) surfaces. Proven live.
   'AWS::Route53Resolver::FirewallRuleGroup': { FirewallRules: 'Priority' },
+  // A multi-region secret's replicas are keyed by Region. AWS materializes the default
+  // AWS-managed KMS key (KmsKeyId `alias/aws/secretsmanager`) into each declared replica
+  // that did not pin one — folded via KNOWN_DEFAULT_PATHS — so a replica re-keyed to a
+  // different CMK out of band (a compliance-relevant change) surfaces. Proven live.
+  'AWS::SecretsManager::Secret': { ReplicaRegions: 'Region' },
+  // A REST API stage's per-method settings are keyed by HttpMethod (the dominant CDK shape
+  // is a single `*` deployment-wide default). AWS materializes the caching scalar default
+  // into each declared method setting (CacheTtlInSeconds 300 — folded via
+  // KNOWN_DEFAULT_PATHS; the sibling `false` defaults fold via isTrivialEmpty) — so an
+  // out-of-band caching change on a declared method surfaces. Proven live.
+  'AWS::ApiGateway::Stage': { MethodSettings: 'HttpMethod' },
 };
 
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>

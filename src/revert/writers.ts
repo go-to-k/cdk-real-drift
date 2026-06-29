@@ -1285,8 +1285,13 @@ function reindexNestedPointer(
 const writeCloudControlIndexNested: SdkWriter = async (ctx, ops) => {
   const type = ctx.resourceType;
   if (!type) throw new Error('writeCloudControlIndexNested: resourceType missing on ctx');
+  // Address the resource by the resolved Cloud Control identifier (the composite the READ
+  // path builds via CC_IDENTIFIER_ADAPTERS — e.g. AWS::ApiGateway::Stage `RestApiId|
+  // StageName`), not the bare CFn physical id, or CC ValidationExceptions. Falls back to the
+  // physical id when no adapter applies (single-segment types: Backup plan, Route53 group).
+  const identifier = ctx.identifier ?? ctx.physicalId;
   const cc = new CloudControlClient({ region: ctx.region });
-  const got = await cc.send(new GetResourceCommand({ TypeName: type, Identifier: ctx.physicalId }));
+  const got = await cc.send(new GetResourceCommand({ TypeName: type, Identifier: identifier }));
   const live = JSON.parse(got.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
   const patch = ops.map((op) => {
     const path = reindexNestedPointer(op.path, live, type);
@@ -1295,7 +1300,7 @@ const writeCloudControlIndexNested: SdkWriter = async (ctx, ops) => {
   await cc.send(
     new UpdateResourceCommand({
       TypeName: type,
-      Identifier: ctx.physicalId,
+      Identifier: identifier,
       PatchDocument: JSON.stringify(patch),
     })
   );
@@ -1337,6 +1342,20 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   },
   'AWS::Route53Resolver::FirewallRuleGroup': {
     match: (p) => p.startsWith('FirewallRules['),
+    writer: writeCloudControlIndexNested,
+  },
+  // A multi-region secret's replica KmsKeyId (keyed by Region — descended via
+  // NESTED_ARRAY_IDENTITY). CC-mutable, so revert re-points the identity bracket to the
+  // live-array index. Proven live.
+  'AWS::SecretsManager::Secret': {
+    match: (p) => p.startsWith('ReplicaRegions['),
+    writer: writeCloudControlIndexNested,
+  },
+  // A REST API stage's per-method caching/metrics knobs (keyed by HttpMethod — descended
+  // via NESTED_ARRAY_IDENTITY). CC-mutable, so revert re-points the identity bracket to the
+  // live-array index. Proven live.
+  'AWS::ApiGateway::Stage': {
+    match: (p) => p.startsWith('MethodSettings['),
     writer: writeCloudControlIndexNested,
   },
 };

@@ -73,5 +73,16 @@
     "kmsAliasTargets": {},
     "oaiCanonicalIds": {}
   },
-  "expected": []
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiDeploymentStageprod3EB9684E",
+      "resourceType": "AWS::ApiGateway::Stage",
+      "path": "MethodSettings[*].CacheTtlInSeconds",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "prod",
+      "constructPath": "CdkRealDriftIntegApigwRestRich/Api/DeploymentStage.prod"
+    }
+  ]
 }

@@ -572,6 +572,46 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('SecretsManager ReplicaRegions array-element nested -> revertable sdk item, sets default KmsKeyId', () => {
+    const f = F({
+      tier: 'undeclared',
+      logicalId: 'Secret',
+      physicalId: 'arn:aws:secretsmanager:us-east-1:111111111111:secret:s-AbCdEf',
+      resourceType: 'AWS::SecretsManager::Secret',
+      path: 'ReplicaRegions[us-west-2].KmsKeyId',
+      actual: 'arn:aws:kms:us-west-2:111111111111:key/abcd',
+      nested: true,
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({
+      kind: 'sdk',
+      resourceType: 'AWS::SecretsManager::Secret',
+    });
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      value: 'alias/aws/secretsmanager',
+    });
+  });
+
+  it('ApiGateway Stage MethodSettings array-element nested -> revertable sdk item, sets default TTL', () => {
+    const f = F({
+      tier: 'undeclared',
+      logicalId: 'Stage',
+      physicalId: 'prod',
+      resourceType: 'AWS::ApiGateway::Stage',
+      path: 'MethodSettings[*].CacheTtlInSeconds',
+      actual: 600,
+      nested: true,
+      unrecorded: false,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({ kind: 'sdk', resourceType: 'AWS::ApiGateway::Stage' });
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'add', value: 300 });
+  });
+
   it('an `added` finding with no physical id -> notRevertable (cannot address the delete)', () => {
     const f = F({ tier: 'added', logicalId: 'X/y', physicalId: undefined, path: '' });
     const plan = buildRevertPlan([f], undefined);

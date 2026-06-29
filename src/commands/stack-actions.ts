@@ -810,9 +810,17 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       try {
         const writer = resolveSdkWriter(item.resourceType, item.ops);
         if (!writer) throw new Error(`no SDK writer for ${item.resourceType}`);
+        // A Cloud-Control-routed nested writer addresses the resource by the composite CC
+        // identifier (e.g. AWS::ApiGateway::Stage `RestApiId|StageName`) the READ path
+        // resolves — pass it so its GetResource/UpdateResource doesn't ValidationException
+        // on the bare physical id. Falls back to the physical id when no adapter applies.
+        const identifier =
+          CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(item.physicalId, res?.declared ?? {}) ??
+          item.physicalId;
         await writer(
           {
             physicalId: item.physicalId,
+            identifier,
             declared: res?.declared ?? {},
             region,
             accountId: gathered.desired.accountId,

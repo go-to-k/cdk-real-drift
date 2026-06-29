@@ -573,6 +573,13 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::Route53Resolver::FirewallRuleGroup': {
     'FirewallRules.*.FirewallDomainRedirectionAction': 'INSPECT_REDIRECTION_DOMAIN',
   },
+  // AWS materializes the default AWS-managed KMS key into each live replica region (keyed
+  // by Region — descended via NESTED_ARRAY_IDENTITY) when the replica declares no KmsKeyId.
+  // Folding keeps a clean multi-region secret clean; a replica re-keyed to a different CMK
+  // out of band no longer matches and surfaces. Proven live.
+  'AWS::SecretsManager::Secret': {
+    'ReplicaRegions.*.KmsKeyId': 'alias/aws/secretsmanager',
+  },
   'AWS::ApiGateway::DomainName': {
     // AWS sets a custom domain's IP address type to ipv4 when the template leaves
     // EndpointConfiguration.IpAddressType unset — a server default, not user intent.
@@ -582,6 +589,16 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'Integration.PassthroughBehavior': 'WHEN_NO_MATCH',
     'Integration.ResponseTransferMode': 'BUFFERED',
     'Integration.TimeoutInMillis': 29000,
+  },
+  // AWS materializes the caching scalar default into every live MethodSettings element
+  // (keyed by HttpMethod — descended via NESTED_ARRAY_IDENTITY) when the stage declares
+  // only throttling/tracing. Folding keeps a clean stage clean; a method whose cache TTL
+  // was changed out of band no longer matches and surfaces. The sibling defaults
+  // CacheDataEncrypted / CachingEnabled / MetricsEnabled all read back `false` and fold via
+  // isTrivialEmpty (so enabling any of them out of band — a non-`false` value — surfaces).
+  // Proven live.
+  'AWS::ApiGateway::Stage': {
+    'MethodSettings.*.CacheTtlInSeconds': 300,
   },
   'AWS::ApiGateway::UsagePlan': {
     'Quota.Offset': 0,

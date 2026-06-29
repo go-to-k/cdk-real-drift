@@ -1610,8 +1610,9 @@ describe('writeConfigRuleInputParameters (AWS::Config::ConfigRule, JSON-string p
 });
 
 describe('Cloud Control index-revert writer (array-element nested values)', () => {
-  const ctx = (resourceType: string, physicalId: string): OverrideCtx => ({
+  const ctx = (resourceType: string, physicalId: string, identifier?: string): OverrideCtx => ({
     physicalId,
+    ...(identifier !== undefined && { identifier }),
     declared: {},
     region: 'us-east-1',
     accountId: '123456789012',
@@ -1683,6 +1684,71 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
     expect(patch).toEqual([
       { op: 'add', path: '/BackupPlan/BackupPlanRule/0/CompletionWindowMinutes', value: 10080 },
     ]);
+  });
+
+  it('resolves a Secret ReplicaRegions element (keyed by Region) to its live index', async () => {
+    // live reorders the replicas: us-west-2 is at index 1.
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: JSON.stringify({
+          ReplicaRegions: [
+            { Region: 'eu-west-1', KmsKeyId: 'alias/aws/secretsmanager' },
+            { Region: 'us-west-2', KmsKeyId: 'arn:aws:kms:us-west-2:111111111111:key/abcd' },
+          ],
+        }),
+      },
+    });
+    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    const ops: PatchOp[] = [
+      {
+        op: 'add',
+        path: '/ReplicaRegions[us-west-2]/KmsKeyId',
+        value: 'alias/aws/secretsmanager',
+        human: 'x',
+      },
+    ];
+    await resolveSdkWriter('AWS::SecretsManager::Secret', ops)!(
+      ctx('AWS::SecretsManager::Secret', 'arn:secret'),
+      ops
+    );
+    const patch = JSON.parse(
+      cloudcontrol.commandCalls(UpdateResourceCommand)[0]!.args[0].input.PatchDocument as string
+    );
+    expect(patch).toEqual([
+      { op: 'add', path: '/ReplicaRegions/1/KmsKeyId', value: 'alias/aws/secretsmanager' },
+    ]);
+  });
+
+  it('resolves an ApiGateway Stage MethodSettings element (keyed by HttpMethod) to its live index', async () => {
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: JSON.stringify({
+          MethodSettings: [
+            { HttpMethod: 'GET', ResourcePath: '/foo', CacheTtlInSeconds: 300 },
+            { HttpMethod: '*', ResourcePath: '/*', CacheTtlInSeconds: 600 },
+          ],
+        }),
+      },
+    });
+    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    const ops: PatchOp[] = [
+      { op: 'add', path: '/MethodSettings[*]/CacheTtlInSeconds', value: 300, human: 'x' },
+    ];
+    // AWS::ApiGateway::Stage is a COMPOSITE-identifier type (RestApiId|StageName): the writer
+    // MUST address it by the resolved identifier, not the bare physical id (`prod`), or CC
+    // rejects "Identifier prod is not valid". The stack-actions sdk path resolves this via
+    // CC_IDENTIFIER_ADAPTERS and sets ctx.identifier — observed live (PR for #419).
+    await resolveSdkWriter('AWS::ApiGateway::Stage', ops)!(
+      ctx('AWS::ApiGateway::Stage', 'prod', 'abc123|prod'),
+      ops
+    );
+    expect(cloudcontrol.commandCalls(GetResourceCommand)[0]!.args[0].input.Identifier).toBe(
+      'abc123|prod'
+    );
+    const update = cloudcontrol.commandCalls(UpdateResourceCommand)[0]!.args[0].input;
+    expect(update.Identifier).toBe('abc123|prod');
+    const patch = JSON.parse(update.PatchDocument as string);
+    expect(patch).toEqual([{ op: 'add', path: '/MethodSettings/1/CacheTtlInSeconds', value: 300 }]);
   });
 
   it('throws (honest failure) when the identity cannot be located in the live array', async () => {
