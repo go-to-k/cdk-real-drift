@@ -57,18 +57,18 @@ It prints what it found, then offers three actions right in the prompt:
   live-only value, or restores a declared one).
 - **Ignore**: stop reporting it, for good.
 
-On a fresh project (with no baseline yet), `check` still reports drift on the
-properties you **declared**, plus anything deleted out-of-band: those compare
-against your template, so they need no baseline. Values that live only on the
-real resource (never in your template) can't be judged yet on this first run:
-with no baseline, `check` can't tell an intentional setting from an out-of-band
-change. It folds away the ones it can explain (AWS defaults, generated names) and
-flags the rest — including a non-default value nested inside an object you _did_
-declare — as _Potential Drift_; record those, and any later out-of-band change to
-them is real drift.
+Even on the first run, with no baseline yet, `check` already surfaces the likely
+drift. Properties you **declared**, plus anything deleted out-of-band, are
+compared against your template, so they're reported as confirmed drift right
+away. For values that live only on the real resource (never in your template),
+`check` folds away the ones it can explain (AWS defaults, generated names) and
+surfaces the rest as _Potential Drift_, including a non-default value nested
+inside an object you _did_ declare. These are most likely real divergence too,
+just not yet confirmable without a baseline. Record them to confirm, and any
+later out-of-band change becomes real drift.
 
-So a typical first run reports no _confirmed_ drift, just live-only values
-(potential drift) you can record:
+So a typical first run reports no _confirmed_ drift yet, but it does flag the
+live-only values (potential drift) worth recording:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
