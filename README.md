@@ -81,13 +81,16 @@ ApiStack: drift found — what do you want to do?
     Decide per finding — assign a different action to each
 ```
 
-Two kinds of finding showed up, neither needing a baseline. **Declared changes and
-out-of-band deletes** are confirmed drift against your template right away (the
-`CFn-Declared Drift` block). **Values that live only on the real resource** can't
-be confirmed yet, so `check` folds away the ones it can explain (AWS defaults,
-generated names) and surfaces the rest as _Potential Drift_, including a
-non-default value nested inside an object you _did_ declare. These are most likely
-real divergence too, just not confirmable until you record them.
+Each block above is one kind of finding, and neither needed a baseline:
+
+- **`[CFn-Declared Drift]`**: a property you declared changed out of band, so it's
+  confirmed against your template right away (deletes of declared resources are
+  confirmed the same way).
+- **`[Potential Drift]`**: values that live only on the real resource. cdkrd can't
+  confirm these yet, so it folds away the ones it can explain (AWS defaults,
+  generated names) and surfaces the rest, including a non-default value nested
+  inside an object you _did_ declare. Most likely real divergence too, just not
+  confirmable until you record them.
 
 ### Recording is the recommended next step
 
