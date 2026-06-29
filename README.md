@@ -48,39 +48,32 @@ npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
 ```
 
-`check` is the only command you run by hand, and there's nothing to set up first.
-It prints what it found, then offers three actions right in the prompt:
+`check` is the only command you run by hand, with nothing to set up first: it
+finds drift and offers **Record**, **Revert**, and **Ignore** inline on what it
+turns up.
 
-- **Record**: accept the live-only values as the norm and watch them. Writes a
-  git-committed `.cdkrd` baseline file; later out-of-band changes are then drift.
-- **Revert**: write the desired value back to AWS (_removes_ an undeclared
-  live-only value, or restores a declared one).
-- **Ignore**: stop reporting it, for good.
+## How to use
 
-Even on the first run, with no baseline yet, `check` already surfaces the likely
-drift. Properties you **declared**, plus anything deleted out-of-band, are
-compared against your template, so they're reported as confirmed drift right
-away. For values that live only on the real resource (never in your template),
-`check` folds away the ones it can explain (AWS defaults, generated names) and
-surfaces the rest as _Potential Drift_, including a non-default value nested
-inside an object you _did_ declare. These are most likely real divergence too,
-just not yet confirmable without a baseline. Record them to confirm, and any
-later out-of-band change becomes real drift.
+### Your first run needs no baseline
 
-So a typical first run reports no _confirmed_ drift yet, but it does flag the
-live-only values (potential drift) worth recording:
+The first time you run `check` on a stack, before recording anything:
 
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
-No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`.
+No baseline yet — live-only values can't be confirmed as drift, but declared drift and out-of-band deletes always can.
+
+[CFn-Declared Drift: 1] (declared in your CloudFormation template — the live value differs)
+  ApiStack/Topic.DisplayName (AWS::SNS::Topic)
+      desired="prod-alerts"
+      actual ="test"
 
 [Potential Drift: 2] (live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it)
-  ApiStack/Topic.DisplayName (AWS::SNS::Topic) = "test"
+  ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue) = {"maxReceiveCount":5}
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
-result: no confirmed drift · 2 potential drift
+result: 3 findings — 1 drift (declared=1) + 2 potential drift
 
-ApiStack: potential drift found (live-only, no baseline yet) — what do you want to do?
+ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
     Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert — write the desired values back to AWS
@@ -88,8 +81,45 @@ ApiStack: potential drift found (live-only, no baseline yet) — what do you wan
     Decide per finding — assign a different action to each
 ```
 
-In CI, run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on
-drift; it never writes a baseline (you record locally and commit the file).
+Each block above is one kind of finding, and neither needed a baseline:
+
+- **`[CFn-Declared Drift]`**: a property you declared changed out of band, so it's
+  confirmed against your template right away (deletes of declared resources are
+  confirmed the same way).
+- **`[Potential Drift]`**: settings that live only on the real resource, not in
+  your template. cdkrd detects these too: it strips the obvious noise (AWS
+  defaults, auto-generated names) so what's left is the values most likely to be
+  real drift. They're only _potential_ because there's no baseline yet.
+
+At the prompt you act on each finding: **record** it (accept and watch),
+**revert** it (undo the change), or **ignore** it (stop reporting).
+
+### Recording
+
+Recording snapshots those live-only values into a git-committed `.cdkrd` baseline,
+so from then on any later out-of-band change to them is confirmed drift. That's the
+day-to-day loop: run `check`, record what's intended, commit the baseline, and the
+next out-of-band change stands out on its own.
+
+With `Role.Policies` recorded, an inline policy added later out of band now
+surfaces as **`[CFn-Undeclared Drift]`**: confirmed drift on a value that isn't in
+your CloudFormation template, the kind `cdk drift` can't see:
+
+```console
+=== cdkrd check: ApiStack (us-east-1) ===
+[CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
+  ApiStack/Role.Policies (AWS::IAM::Role) — changed since record = [{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
+
+result: 1 drift(s) (undeclared=1)
+```
+
+`record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
+verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
+
+### In CI
+
+Run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on drift;
+it never writes a baseline (you record locally and commit the file).
 
 ## The model: one verb you run, three it offers
 
@@ -133,7 +163,7 @@ Ignore the prompt re-offers anything still drifting, so you finish in one run. F
 prompt mechanics (multiselect, Decide per finding, key bindings) are under
 [Interactive prompts](#interactive-prompts-tty-only-ci-is-never-prompted).
 
-## How it works
+## How drift is judged
 
 cdkrd compares the **live AWS resource** against your deployed **CloudFormation
 template** (or your local synth with `--pre-deploy`). It's reality vs intent,
@@ -159,12 +189,12 @@ baseline-file axis: whether you've snapshotted that value yet.)
 
 The mechanics:
 
-- **Recording arms undeclared / added detection.** Until a stack's first `record`,
-  a live-only value or added resource is `unrecorded` (informational, CLEAN, never
-  fails `--fail`); once recorded, a later out-of-band change is failing drift. The
-  baseline is a git-committed JSON file at
-  `.cdkrd/<stack>.<accountId>.<region>.json` (so a change to it is reviewable;
-  account id + region in the name prevent cross-account collisions).
+- **Until a stack's first `record`, undeclared / added state is `unrecorded`:**
+  informational, CLEAN, never fails `--fail`.
+  [Recording](#recording) is what arms detection,
+  turning a later out-of-band change into failing drift. The baseline is a
+  git-committed JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`
+  (reviewable; account id + region in the name prevent cross-account collisions).
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
   model (Cloud Control API + SDK readers for the gap types) and subtracts everything
   explainable: schema read-only/write-only/defaults, AWS-managed fields, `aws:*`
