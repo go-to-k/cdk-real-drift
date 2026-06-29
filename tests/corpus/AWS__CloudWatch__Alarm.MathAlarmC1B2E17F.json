@@ -1,0 +1,174 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MathAlarmC1B2E17F",
+    "resourceType": "AWS::CloudWatch::Alarm",
+    "physicalId": "CdkRealDriftIntegMathAlarm-MathAlarmC1B2E17F-Lwr4zYDeOHuE",
+    "constructPath": "CdkRealDriftIntegMathAlarm/MathAlarm",
+    "declared": {
+      "AlarmDescription": "cdkrd metric-math error-rate alarm",
+      "ComparisonOperator": "GreaterThanThreshold",
+      "EvaluationPeriods": 3,
+      "Metrics": [
+        {
+          "Expression": "(errors / invocations) * 100",
+          "Id": "expr_1",
+          "Label": "Error Rate (%)",
+          "ReturnData": true
+        },
+        {
+          "Id": "errors",
+          "MetricStat": {
+            "Metric": {
+              "Dimensions": [
+                {
+                  "Name": "FunctionName",
+                  "Value": "cdkrd-mathalarm-fn"
+                }
+              ],
+              "MetricName": "Errors",
+              "Namespace": "AWS/Lambda"
+            },
+            "Period": 300,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "invocations",
+          "MetricStat": {
+            "Metric": {
+              "Dimensions": [
+                {
+                  "Name": "FunctionName",
+                  "Value": "cdkrd-mathalarm-fn"
+                }
+              ],
+              "MetricName": "Invocations",
+              "Namespace": "AWS/Lambda"
+            },
+            "Period": 300,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "team",
+          "Value": "platform"
+        }
+      ],
+      "Threshold": 5,
+      "TreatMissingData": "notBreaching"
+    }
+  },
+  "liveRaw": {
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching",
+    "EvaluationPeriods": 3,
+    "OKActions": [],
+    "AlarmActions": [],
+    "ActionsEnabled": true,
+    "Metrics": [
+      {
+        "ReturnData": true,
+        "Expression": "(errors / invocations) * 100",
+        "Label": "Error Rate (%)",
+        "Id": "expr_1"
+      },
+      {
+        "ReturnData": false,
+        "MetricStat": {
+          "Stat": "Sum",
+          "Period": 300,
+          "Metric": {
+            "MetricName": "Errors",
+            "Dimensions": [
+              {
+                "Value": "cdkrd-mathalarm-fn",
+                "Name": "FunctionName"
+              }
+            ],
+            "Namespace": "AWS/Lambda"
+          }
+        },
+        "Id": "errors"
+      },
+      {
+        "ReturnData": false,
+        "MetricStat": {
+          "Stat": "Sum",
+          "Period": 300,
+          "Metric": {
+            "MetricName": "Invocations",
+            "Dimensions": [
+              {
+                "Value": "cdkrd-mathalarm-fn",
+                "Name": "FunctionName"
+              }
+            ],
+            "Namespace": "AWS/Lambda"
+          }
+        },
+        "Id": "invocations"
+      }
+    ],
+    "AlarmDescription": "cdkrd metric-math error-rate alarm",
+    "AlarmName": "CdkRealDriftIntegMathAlarm-MathAlarmC1B2E17F-Lwr4zYDeOHuE",
+    "InsufficientDataActions": [],
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:alarm:CdkRealDriftIntegMathAlarm-MathAlarmC1B2E17F-Lwr4zYDeOHuE",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegMathAlarm",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MathAlarmC1B2E17F",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "platform",
+        "Key": "team"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMathAlarm/ed2b2840-7381-11f1-af39-0e2723484ce7",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Threshold": 5
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["AlarmName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AlarmName"],
+    "defaults": {
+      "ActionsEnabled": true
+    },
+    "defaultPaths": {
+      "ActionsEnabled": true
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MathAlarmC1B2E17F",
+      "resourceType": "AWS::CloudWatch::Alarm",
+      "path": "ActionsEnabled",
+      "actual": true,
+      "physicalId": "CdkRealDriftIntegMathAlarm-MathAlarmC1B2E17F-Lwr4zYDeOHuE",
+      "constructPath": "CdkRealDriftIntegMathAlarm/MathAlarm"
+    }
+  ]
+}
