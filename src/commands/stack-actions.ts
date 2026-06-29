@@ -816,6 +816,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
             declared: res?.declared ?? {},
             region,
             accountId: gathered.desired.accountId,
+            resourceType: item.resourceType,
           },
           item.ops
         );
