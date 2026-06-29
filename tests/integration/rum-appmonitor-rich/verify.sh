@@ -25,15 +25,22 @@ echo "=== [$STACK] deploy fixture ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
 
 # Regression for the --show-all first-run false-drift bug: with NO baseline,
-# inventory mode lists every live-only value but they are POTENTIAL drift, not
-# confirmed drift — `check --show-all --fail` MUST exit 0 (not flag the fresh
-# deploy's undeclared inventory as drift and fail CI).
+# inventory mode EXPANDS every live-only value (folded into the `info:` footer
+# without --show-all) but they are informational inventory — Potential Drift OR At
+# AWS Default — NOT confirmed drift, so `check --show-all --fail` MUST exit 0 (not
+# flag the fresh deploy's undeclared inventory as drift and fail CI). The monitor's
+# live-only values (Platform / DeobfuscationConfiguration) currently both fold to At
+# AWS Default, so assert the inventory tier is EXPANDED (either label), not the
+# Potential Drift label specifically (which other fixtures cover).
 echo "=== [$STACK] check --show-all --fail (no baseline) MUST be exit 0 ==="
 rm -rf .cdkrd
 $CLI check "$STACK" --region "$REGION" --show-all --fail | tee "/tmp/cdkrd-$STACK-showall.out"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || fail "--show-all --fail must not flag first-run inventory as drift (got exit $rc)"
-grep -q "Potential Drift" "/tmp/cdkrd-$STACK-showall.out" || fail "--show-all did not label live-only values as Potential Drift"
+grep -qE "\[(Potential Drift|At AWS Default):" "/tmp/cdkrd-$STACK-showall.out" || fail "--show-all did not expand the live-only inventory"
+# the plain check (no --show-all) folds the inventory into the info footer — confirm
+# --show-all is what expanded it (else the assertion above is not testing --show-all)
+$CLI check "$STACK" --region "$REGION" | grep -qE "\[At AWS Default:" && fail "inventory expanded WITHOUT --show-all (assertion no longer specific to --show-all)"
 grep -q "drift(s)" "/tmp/cdkrd-$STACK-showall.out" && fail "--show-all mislabeled first-run inventory as confirmed drift"
 
 echo "=== [$STACK] record (write baseline) ==="
