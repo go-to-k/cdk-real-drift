@@ -111,9 +111,9 @@ your CloudFormation template, the kind `cdk drift` can't see:
 result: 1 drift(s) (undeclared=1)
 ```
 
-`record` is for live-only state, not declared drift. To accept a declared drift
-instead of fixing it, use `ignore` (see
-[The model](#the-model-one-verb-you-run-three-it-offers)).
+`record` is for live-only state, not a `[CFn-Declared Drift]` (a value you
+declared that changed out of band). To accept one of those rather than fix it, use
+`ignore` (see [The model](#the-model-one-verb-you-run-three-it-offers)).
 
 ### In CI
 
