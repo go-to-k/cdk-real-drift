@@ -965,18 +965,23 @@ describe('parseSchema', () => {
   });
 
   // R130: RDS DBInstance EngineVersion declared `"8.0"` reads back the provisioned
-  // full patch `"8.0.45"`. A declared dotted-version that is a leading-segment PREFIX
-  // of the live full version is not drift; a genuine track change still differs.
-  it('R130: isVersionPrefixMatch matches a declared version track that is a segment prefix', () => {
+  // full patch `"8.0.45"`. The two sides differ only in PRECISION — the shorter (track)
+  // is a leading-segment prefix of the longer (concrete patch) — so it is not drift,
+  // in EITHER direction; a genuine track change still differs.
+  it('R130: isVersionPrefixMatch folds a version track that is a segment prefix (both directions)', () => {
+    // partial -> concrete (DB family: declared track, live full patch)
     expect(isVersionPrefixMatch('8.0', '8.0.45')).toBe(true);
     expect(isVersionPrefixMatch('8', '8.0.45')).toBe(true);
     expect(isVersionPrefixMatch('14.7', '14.7.2')).toBe(true);
-    // NOT a match: equal value (not drift, never reaches here), longer declared,
-    // segment-boundary lookalikes, a genuine track change, non-strings/empties.
+    // concrete -> partial (ElastiCache Memcached: declared full `"1.6.22"`, live track `"1.6"`)
+    expect(isVersionPrefixMatch('1.6.22', '1.6')).toBe(true);
+    expect(isVersionPrefixMatch('8.0.45', '8.0')).toBe(true); // symmetric with the first case
+    // NOT a match: equal value (not drift, never reaches here), segment-boundary
+    // lookalikes, a genuine track change, non-strings/empties.
     expect(isVersionPrefixMatch('8.0.45', '8.0.45')).toBe(false); // equal → not a prefix
-    expect(isVersionPrefixMatch('8.0.45', '8.0')).toBe(false); // declared longer
     expect(isVersionPrefixMatch('8.0', '8.05')).toBe(false); // segment boundary
     expect(isVersionPrefixMatch('8.1', '8.0.45')).toBe(false); // different track
+    expect(isVersionPrefixMatch('1.5', '1.6.22')).toBe(false); // genuine track change
     expect(isVersionPrefixMatch('8', '80.5')).toBe(false); // segment boundary
     expect(isVersionPrefixMatch('', '8.0.45')).toBe(false);
     expect(isVersionPrefixMatch('8.0', '')).toBe(false);
@@ -1001,6 +1006,8 @@ describe('parseSchema', () => {
     // Aurora clusters resolve a partial track the same way as instances.
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('EngineVersion')).toBe(true);
     expect(VERSION_PREFIX_PATHS['AWS::RDS::DBCluster']?.has('Engine')).toBe(false);
+    // ElastiCache CacheCluster (Memcached patch-truncation, concrete->partial direction).
+    expect(VERSION_PREFIX_PATHS['AWS::ElastiCache::CacheCluster']?.has('EngineVersion')).toBe(true);
     expect(VERSION_PREFIX_PATHS['AWS::S3::Bucket']).toBeUndefined(); // not a blanket rule
   });
 });
