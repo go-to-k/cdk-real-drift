@@ -945,6 +945,16 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // `currentVersion` in a stack flooding the first run — observed across a 7-function
   // stack. The version resource is immutable, so the hash can never be an out-of-band edit.
   'AWS::Lambda::Version': new Set(['CodeSha256']),
+  // An EFS AccessPoint's ClientToken is the idempotency token CloudFormation mints at
+  // create time as `<logicalId>-<random>` (e.g. "AccessPointE936DE82-b6xKi37R0Uio"). It
+  // is createOnly (immutable) and the CDK L2 never declares it, so it floods the first
+  // run as undeclared on every AccessPoint. The value is opaque and not derivable from
+  // the physical id (an fsap-… ARN), so neither isGeneratedName nor a physical-id echo
+  // folds it. A raw-CFn user who DOES set ClientToken carries it in the template and
+  // never reaches this undeclared loop, so folding the live-only case as `generated`
+  // (inventory: never drift, recorded, or reverted) is safe — and necessary, since an
+  // immutable token can never be an out-of-band edit. Observed live on lambda-efs-rich.
+  'AWS::EFS::AccessPoint': new Set(['ClientToken']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

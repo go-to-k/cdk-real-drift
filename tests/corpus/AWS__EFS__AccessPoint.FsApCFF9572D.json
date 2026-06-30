@@ -63,7 +63,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "FsApCFF9572D",
       "resourceType": "AWS::EFS::AccessPoint",
       "path": "ClientToken",

@@ -1780,6 +1780,47 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // Found live by the lambda-efs-rich bug-hunt fixture: an EFS AccessPoint's ClientToken
+  // is the idempotency token CloudFormation mints at create time (`<logicalId>-<random>`).
+  // It is createOnly (immutable) and the CDK L2 never declares it, so it is live-only on
+  // every AccessPoint; without folding it floods the first run as undeclared. The value is
+  // opaque (not derivable from the fsap-… ARN physical id), so it folds via the
+  // value-independent GENERATED_TOPLEVEL_PATHS, not isGeneratedName.
+  describe('value-independent generated top-level path (EFS AccessPoint ClientToken)', () => {
+    const T = 'AWS::EFS::AccessPoint';
+
+    it('a live-only AccessPoint ClientToken folds as generated (not undeclared/drift)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { FileSystemId: 'fs-123' }),
+          { FileSystemId: 'fs-123', ClientToken: 'AccessPointE936DE82-b6xKi37R0Uio' },
+          emptySchema
+        )
+      );
+      expect(t.generated).toEqual(['ClientToken']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('a DIFFERENT token still folds (value-independent — opaque, not id-derived)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { FileSystemId: 'fs-123' }),
+          { FileSystemId: 'fs-123', ClientToken: 'FsApCFF9572D-dRkYh637cpxN' },
+          emptySchema
+        )
+      );
+      expect(t.generated).toEqual(['ClientToken']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('the fold is scoped per-type (a ClientToken on another type stays undeclared)', () => {
+      expect(
+        tiers(classifyResource(res('AWS::S3::Bucket', {}), { ClientToken: 'abc-123' }, emptySchema))
+          .undeclared
+      ).toEqual(['ClientToken']);
+    });
+  });
+
   // Found live by the synthetics-rich bug-hunt fixture: AWS Synthetics rewrites a
   // canary's rate() schedule to whole units (CDK emits `rate(60 minutes)` from
   // Duration.hours(1); AWS returns `rate(1 hour)`), false-flagging declared drift.
