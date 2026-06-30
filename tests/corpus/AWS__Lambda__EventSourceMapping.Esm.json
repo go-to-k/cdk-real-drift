@@ -126,7 +126,7 @@
       "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Esm",
       "resourceType": "AWS::Lambda::EventSourceMapping",
       "path": "Enabled",
