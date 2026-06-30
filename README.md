@@ -524,7 +524,10 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 `iam:PutRolePolicy` / `DeleteRolePolicy` / `PutUserPolicy` / `PutGroupPolicy`,
 `iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`,
 `elasticloadbalancing:ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes`,
-`glue:UpdateTable`, `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
+`glue:UpdateTable`, `glue:UpdateConnection` (reverts an `AWS::Glue::Connection` —
+the whole `ConnectionInput` is re-supplied; a connection with an inline password
+is refused, never overwritten, so the un-read credential is never cleared),
+`logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
 `ses:UpdateReceiptRule` (reverts an `AWS::SES::ReceiptRule` — the whole rule is
 re-supplied in place, since Cloud Control has no handler for the type),
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,

@@ -57,6 +57,7 @@ import {
   GetJobCommand,
   GlueClient,
   UpdateClassifierCommand,
+  UpdateConnectionCommand,
   UpdateJobCommand,
   UpdateTableCommand,
   UpdateWorkflowCommand,
@@ -754,6 +755,45 @@ const writeGlueWorkflow: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Glue::Connection — read via the GetConnection override (the whole Glue family is a
+// CC read gap; UnsupportedActionException), so it was detect-only. Glue UpdateConnection is
+// a WHOLE-ConnectionInput overwrite, and the reader returns the full CFn `ConnectionInput`
+// (ConnectionType / Description / MatchCriteria / ConnectionProperties [SECRET_ID kept] /
+// PhysicalConnectionRequirements / AuthenticationConfiguration), so reconstruct the desired
+// model (current + revert ops) and write the whole ConnectionInput back — covering a
+// network / Description / JDBC-setting drift.
+//
+// CREDENTIAL SAFETY: the reader runs GetConnection with HidePassword and DROPS every
+// `*PASSWORD` ConnectionProperties key, so the desired ConnectionInput carries NO inline
+// password. Re-supplying it on a connection that DECLARES an inline password would CLEAR
+// that un-read credential (silent data loss). Refuse such a revert up front (a thrown error
+// the revert loop reports as a per-resource failure — never a clobber): only the modern
+// SECRET_ID / NETWORK / no-inline-credential pattern is safe to overwrite. The guard reads
+// the DECLARED ConnectionProperties (no extra API call); a SECRET_ID connection has no
+// password key and reverts fine.
+const GLUE_CONNECTION_PASSWORD_KEY = /PASSWORD/i;
+const writeGlueConnection: SdkWriter = async (ctx, ops) => {
+  const declInput = ctx.declared['ConnectionInput'] as Record<string, unknown> | undefined;
+  const declProps = declInput?.ConnectionProperties as Record<string, unknown> | undefined;
+  if (declProps && Object.keys(declProps).some((k) => GLUE_CONNECTION_PASSWORD_KEY.test(k)))
+    throw new Error(
+      'Glue Connection declares an inline PASSWORD — not revertable (a revert would clear the un-read credential); use a SECRET_ID connection or update it manually'
+    );
+  const m = await desiredModel('AWS::Glue::Connection', ctx, ops);
+  const ci = m.ConnectionInput as Record<string, unknown> | undefined;
+  const name = str(ci?.Name) ?? str(ctx.physicalId) ?? str(declInput?.Name);
+  if (!ci || !name) throw new Error('cannot resolve Glue connection target for revert');
+  const catalogId = str(m.CatalogId) ?? str(ctx.declared['CatalogId']);
+  await new GlueClient({ region: ctx.region }).send(
+    new UpdateConnectionCommand({
+      Name: name,
+      ...(catalogId && { CatalogId: catalogId }),
+      // ConnectionProperties is required by the API; a NETWORK connection has none -> {}.
+      ConnectionInput: { ...ci, Name: name, ConnectionProperties: ci.ConnectionProperties ?? {} },
+    } as never)
+  );
+};
+
 // AWS::SES::ReceiptRule — read via the DescribeReceiptRule override (the SES inbound
 // receipt-rule family has no Cloud Control handlers), so it was detect-only. SES
 // UpdateReceiptRule REPLACES the whole rule in place (without changing its position), and
@@ -1221,6 +1261,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Table': writeGlueTable,
   'AWS::Glue::Classifier': writeGlueClassifier,
   'AWS::Glue::Workflow': writeGlueWorkflow,
+  'AWS::Glue::Connection': writeGlueConnection,
   'AWS::SES::ReceiptRule': writeSesReceiptRule,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
