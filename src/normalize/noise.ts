@@ -744,6 +744,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // A rate-based rule with no explicit window reads back the 5-minute (300s) default.
     'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
   },
+  'AWS::WAFv2::RuleGroup': {
+    // A RuleGroup hosts the SAME rate-based statement shape as a WebACL, so an
+    // undeclared rate-based window reads back the identical 5-minute (300s) default.
+    // Observed live on a fresh wafv2-ratecustomkeys deploy (issue #440).
+    'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
+  },
   'AWS::SES::EmailIdentity': {
     // A custom MAIL FROM domain reads back the documented default fallback behavior.
     'MailFromAttributes.BehaviorOnMxFailure': 'USE_DEFAULT_VALUE',
@@ -1900,6 +1906,16 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
 // elements positionally; a genuine element add/remove/change still differs after the
 // sort. Observed live on a fresh bedrock-guardrail-rich deploy.
 export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<string>> = {
+  // RULE-OUT (observed-only, NOT folded): a WAFv2 RuleGroup/WebACL rate-based rule's
+  // `Rules[].Statement.RateBasedStatement.CustomKeys` is a SET of discriminated-union
+  // aggregate-key objects ({UriPath:{}}, {Header:{Name,…}}, {HTTPMethod:{}}, …) with
+  // no top-level IDENTITY_FIELD — the same shape that produced reorder FPs for
+  // LoggingConfiguration RedactedFields (#433) and Lambda ESM KafkaBootstrapServers
+  // (#437). A fresh wafv2-ratecustomkeys deploy declaring 5 keys in NON-sorted
+  // discriminator order ([UriPath, Header, HTTPMethod, Cookie, QueryArgument]) read
+  // them back in the EXACT declared order — WAF PRESERVES CustomKeys order (like
+  // AndStatement.Statements and LoggingFilter.Conditions), so there is no FP to fold.
+  // Pinned by the wafv2-ratecustomkeys fixture + corpus case (issue #440).
   'AWS::Bedrock::Guardrail': new Set([
     'ContentPolicyConfig.FiltersConfig',
     'TopicPolicyConfig.TopicsConfig',

@@ -614,6 +614,11 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULT_PATHS['AWS::WAFv2::WebACL']).toEqual({
       'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
     });
+    // A RuleGroup hosts the same rate-based statement, so it carries the identical
+    // 5-minute window default (issue #440 — wafv2-ratecustomkeys live read).
+    expect(KNOWN_DEFAULT_PATHS['AWS::WAFv2::RuleGroup']).toEqual({
+      'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,
+    });
     expect(KNOWN_DEFAULT_PATHS['AWS::SES::EmailIdentity']).toEqual({
       'MailFromAttributes.BehaviorOnMxFailure': 'USE_DEFAULT_VALUE',
     });

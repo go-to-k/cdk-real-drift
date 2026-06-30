@@ -1,0 +1,224 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (wafv2-ratecustomkeys fixture, issue #440): fresh-deploy AWS::WAFv2::RuleGroup with a rate-based rule whose RateBasedStatement.CustomKeys SET of discriminated-union aggregate keys is declared NON-sorted ([UriPath, Header, HTTPMethod, Cookie, QueryArgument]). WAF reads them back in the EXACT declared order, so CustomKeys is deliberately NOT folded as an unordered set — this case pins that rule-out (no declared drift). The only finding is the undeclared 5-minute EvaluationWindowSec default, folded to atDefault.",
+  "resource": {
+    "logicalId": "RuleGroup",
+    "resourceType": "AWS::WAFv2::RuleGroup",
+    "physicalId": "cdkrd-integ-rate-customkeys|95be4f4a-b243-4294-ab01-dc7a1affe955|REGIONAL",
+    "constructPath": "CdkRealDriftIntegWafv2RateCustomKeys/RuleGroup",
+    "declared": {
+      "Capacity": 500,
+      "Name": "cdkrd-integ-rate-customkeys",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "rate-custom-keys",
+          "Priority": 0,
+          "Statement": {
+            "RateBasedStatement": {
+              "AggregateKeyType": "CUSTOM_KEYS",
+              "CustomKeys": [
+                {
+                  "UriPath": {
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Header": {
+                    "Name": "x-region",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "HTTPMethod": {}
+                },
+                {
+                  "Cookie": {
+                    "Name": "session",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "QueryArgument": {
+                    "Name": "lang",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Limit": 2000
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "rateCustomKeys",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdRateCustomKeys",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "Scope": "REGIONAL",
+    "Capacity": 500,
+    "AvailableLabels": [],
+    "Id": "95be4f4a-b243-4294-ab01-dc7a1affe955",
+    "ConsumedLabels": [],
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/rulegroup/cdkrd-integ-rate-customkeys/95be4f4a-b243-4294-ab01-dc7a1affe955",
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 0,
+        "Statement": {
+          "RateBasedStatement": {
+            "AggregateKeyType": "CUSTOM_KEYS",
+            "CustomKeys": [
+              {
+                "UriPath": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "Header": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "x-region"
+                }
+              },
+              {
+                "HTTPMethod": {}
+              },
+              {
+                "Cookie": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "session"
+                }
+              },
+              {
+                "QueryArgument": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "lang"
+                }
+              }
+            ],
+            "Limit": 2000,
+            "EvaluationWindowSec": 300
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "rateCustomKeys",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "rate-custom-keys"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdRateCustomKeys",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:rulegroup:cdkrd-integ-rate-customkeys:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegWafv2RateCustomKeys/155a99c0-7479-11f1-a3d5-0affe23ffc23",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegWafv2RateCustomKeys",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RuleGroup",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-rate-customkeys"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": [
+      "Arn",
+      "AvailableLabels.*.Name",
+      "ConsumedLabels.*.Name",
+      "Id",
+      "LabelNamespace"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["CustomResponseBodies"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RuleGroup",
+      "resourceType": "AWS::WAFv2::RuleGroup",
+      "path": "Rules[rate-custom-keys].Statement.RateBasedStatement.EvaluationWindowSec",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "cdkrd-integ-rate-customkeys|95be4f4a-b243-4294-ab01-dc7a1affe955|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2RateCustomKeys/RuleGroup"
+    }
+  ]
+}
