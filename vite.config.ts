@@ -121,7 +121,12 @@ export default defineConfig({
       'lint:fix': { command: 'vp lint --fix', cache: false },
       format: { command: 'vp fmt', cache: false },
       'format:check': { command: 'vp fmt --check' },
-      typecheck: { command: 'tsgo --project tsconfig.json --noEmit' },
+      // cache:false — the run-task cache can REPLAY a stale pass even though the
+      // current tree has a real type error, masking it. This bit us live: PR #438
+      // introduced a duplicate object-literal key (tsgo TS1117) that `vp run
+      // typecheck` reported GREEN from cache, so the gate marker was set on a red
+      // tree and the break reached main. Typecheck is ~1s; correctness > the cache.
+      typecheck: { command: 'tsgo --project tsconfig.json --noEmit', cache: false },
       verify: { command: 'vp run check && vp run test && vp run build' },
       'runtime:smoke': {
         command: 'node dist/cli.js --version',
