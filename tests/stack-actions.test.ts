@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { baselinePath, buildRecorded, recordedKey } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
-import { loadConfig } from '../src/config/config-file.js';
+import { type CdkrdConfig, loadConfig } from '../src/config/config-file.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
   ignoreSelectMessage,
@@ -400,7 +400,7 @@ describe('revertSelectOptions / filterRevertPlan distinguish ELB attribute-bag o
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
   // findings-only params: every path under test returns BEFORE any AWS client is
   // used — either nothing is revertable, or --dry-run returns at the preview branch.
-  type Overrides = { removeUnrecorded?: boolean; dryRun?: boolean };
+  type Overrides = { removeUnrecorded?: boolean; dryRun?: boolean; config?: CdkrdConfig };
   const params = (findings: Finding[], over: Overrides = {}) => ({
     stackName: 's',
     region: 'r',
@@ -410,7 +410,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
       schemas: NO_SCHEMAS,
     } as unknown as GatherResult,
     baseline: undefined,
-    config: { ignore: [] },
+    config: over.config ?? { ignore: [] },
     dryRun: over.dryRun ?? false,
     yes: true,
     removeUnrecorded: over.removeUnrecorded ?? false,
@@ -475,6 +475,27 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).not.toContain('has unrecorded value(s) — never recorded');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
+  });
+
+  // Threading guard: revertStack must pass gathered.desired.accountId (here
+  // '111122223333') into applyIgnores' ACCOUNT slot — not the region ('r') or stack
+  // ('s'). An account-scoped ignore rule that matches the gathered account suppresses the
+  // finding (-> "no drift to revert"); the same rule with a non-matching account does NOT.
+  // A region/account transposition at the call site would flip the matching case to exit 1.
+  it('an account-scoped ignore rule matching the gathered account suppresses the finding', async () => {
+    const { outcome, logs } = await captured([undeclared()], {
+      config: { ignore: [{ path: 'B.AccelerateConfiguration', account: '111122223333' }] },
+    });
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(logs.join('\n')).toContain('no drift to revert.');
+  });
+
+  it('an account-scoped ignore rule with a NON-matching account does NOT suppress it', async () => {
+    const { outcome, logs } = await captured([undeclared()], {
+      config: { ignore: [{ path: 'B.AccelerateConfiguration', account: '999999999999' }] },
+    });
+    expect(outcome).toEqual({ exit: 1, aborted: false }); // still unrecorded drift, not ignored
+    expect(logs.join('\n')).toContain('unrecorded value(s) remain.');
   });
 });
 
