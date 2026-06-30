@@ -1,5 +1,5 @@
 // `cdkrd ignore [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
-// Append ignore rules to .cdkrd/config.json for the chosen declared/undeclared drift —
+// Append ignore rules to .cdkrd/ignore.yaml for the chosen declared/undeclared drift —
 // it stops being reported entirely (the "stop watching" counterpart to `record`, which
 // keeps watching). Writes ONLY the git-committed config file; no AWS writes. The
 // per-stack ignore flow lives in stack-actions.ts (shared with check's interactive
@@ -61,8 +61,7 @@ export async function runIgnore(args: string[]): Promise<number> {
           declaredByLogical: declaredKeysByLogical(desired.resources),
           warn: console.error,
         }),
-        stackName,
-        region,
+        { stackName, accountId: desired.accountId, region },
         config
       );
       const result = await ignoreStack({
@@ -91,6 +90,6 @@ export async function runIgnore(args: string[]): Promise<number> {
     }
   }
   if (worst === 0 && wroteAny)
-    console.log('commit .cdkrd/config.json so the ignore rules apply for everyone going forward.');
+    console.log('commit .cdkrd/ignore.yaml so the ignore rules apply for everyone going forward.');
   return worst;
 }

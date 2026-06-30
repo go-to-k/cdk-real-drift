@@ -25,14 +25,19 @@ forever" or "ignore the property forever". The baseline pins `true` and alarms o
 when it changes. Full rationale:
 [docs/why-a-baseline-file.md](why-a-baseline-file.md).
 
-**Why do `ignore` rules live in a separate `.cdkrd/config.json` instead of the
+**Why do `ignore` rules live in a separate `.cdkrd/ignore.yaml` instead of the
 baseline file?**
 (1) The baseline is machine-generated — `record` rewrites it _wholesale_ every
 time, so a hand-written ignore rule kept there would be erased. (2) An ignore rule
-expresses an _app-wide_ intent ("this property is managed externally"), not a
-per-stack/account/region fact like a recorded value, so it should live once.
-`config.json` is the `.driftignore` / Terraform `ignore_changes` equivalent; the
-baseline is closer to state.
+is _hand-edited policy_ ("this property is managed externally"), not a recorded
+_fact_ like a baseline value. The file format signals the role: the baseline is
+data → JSON; the ignore file is policy → YAML. YAML matters here because the single
+most valuable hand-edit is a `#` comment recording **why** a property is ignored,
+and JSON cannot hold a comment. (This is the `.gitignore` / `.dockerignore` /
+`.trivyignore` family — conventionally comment-bearing, never JSON.) `ignore.yaml`
+is the `.driftignore` / Terraform `ignore_changes` equivalent; the baseline is
+closer to state. The `ignore` verb's append is comment-preserving and append-only,
+so your comments and order survive — it only appends new rules and dedupes.
 
 **How can `cdkrd` catch a change to a property in neither my template nor the
 baseline?**
@@ -48,7 +53,7 @@ case that matters is still caught: a recorded value that later flips to
 
 **A property keeps drifting because an autoscaler manages it — do I re-record
 forever?**
-No — list it in `.cdkrd/config.json` (see
+No — list it in `.cdkrd/ignore.yaml` (see
 [Ignoring externally-managed properties](../README.md#ignoring-externally-managed-properties)).
 
 **Is it safe to run in CI / on production accounts?**

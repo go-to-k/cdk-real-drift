@@ -85,9 +85,9 @@ grep -q "Added Resource" /tmp/cdk-real-drift-integ-added-changed.out || fail "ad
 grep -q "changed since record" /tmp/cdk-real-drift-integ-added-changed.out || fail "changed-since-record note not shown"
 grep -q "added=1" /tmp/cdk-real-drift-integ-added-changed.out || fail "expected exactly added=1"
 
-echo "=== ignore the added method (writes .cdkrd/config.json) ==="
+echo "=== ignore the added method (writes .cdkrd/ignore.yaml) ==="
 $CLI ignore "$STACK" --region "$REGION" --yes || fail "ignore"
-grep -q "ANY" .cdkrd/config.json || fail "ignore rule for the added method not written to config.json"
+grep -q "ANY" .cdkrd/ignore.yaml || fail "ignore rule for the added method not written to ignore.yaml"
 
 echo "=== check should now be CLEAN (added method ignored) ==="
 $CLI check "$STACK" --region "$REGION" --fail | tee /tmp/cdk-real-drift-integ-added-ignored.out

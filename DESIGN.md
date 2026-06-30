@@ -20,7 +20,7 @@ un-deployed code edits would show as false "drift".
 ## check pipeline
 
 ```
-1. baseline file load            .cdkrd/<stack>.<accountId>.<region>.json
+1. baseline file load            .cdkrd/baselines/<stack>.<accountId>.<region>.json
 2. desired (declared):           GetTemplate + DescribeStackResources (phys-id map)
                                  → intrinsic resolution
 3. live full state per resource: CC API GetResource (default)
@@ -92,10 +92,12 @@ NEW (cdkd does NOT have these):
 - **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN + Condition value-set canonicalize (scalar/array unify + sort) (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
 - **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON (the `record` verb; KEEPS watching)
-- **config ignore rules** — git-committed `.cdkrd/config.json`; the `ignore` verb
-  appends path rules (declared, undeclared, OR an out-of-band `added` resource)
-  that re-tag findings to `ignored` and STOP watching (the `.driftignore` /
-  `ignore_changes` analogue)
+- **ignore rules** — git-committed `.cdkrd/ignore.yaml` (hand-edited POLICY, so
+  YAML to carry `#` comments saying WHY; baseline stays JSON because it is
+  machine-generated DATA); the `ignore` verb comment-preservingly appends path
+  rules scoped on `{ path, stack?, account?, region? }` (declared, undeclared, OR
+  an out-of-band `added` resource) that re-tag findings to `ignored` and STOP
+  watching (the `.driftignore` / `ignore_changes` analogue)
 - **report** — tiered text + JSON
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 

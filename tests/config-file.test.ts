@@ -8,6 +8,7 @@ import {
   applyIgnores,
   type CdkrdConfig,
   type IgnoreRuleObject,
+  type IgnoreScope,
   ignoreRuleFor,
   loadConfig,
   mergeIgnoreRules,
@@ -16,16 +17,23 @@ import {
 import { buildRevertPlan } from '../src/revert/plan.js';
 import type { Finding } from '../src/types.js';
 
+const ACCT = '111111111111';
 const cfg = (ignore: IgnoreRuleObject[]): CdkrdConfig => ({ ignore });
+// terse scope object for the explicitly-scoped applyIgnores tests
+const sc = (stackName: string, accountId: string, region: string): IgnoreScope => ({
+  stackName,
+  accountId,
+  region,
+});
 // terse unscoped rule: p('*.DesiredCount') === { path: '*.DesiredCount' }
 const p = (path: string, extra: Omit<IgnoreRuleObject, 'path'> = {}): IgnoreRuleObject => ({
   path,
   ...extra,
 });
-// region-agnostic wrapper for the many cases that don't exercise region scope (the
-// region-scoped tests call applyIgnores directly with an explicit region).
+// account/region-agnostic wrapper for the many cases that don't exercise account/region
+// scope (the scoped tests call applyIgnores directly with an explicit account + region).
 const ign = (findings: Finding[], stackName: string, config: CdkrdConfig): Finding[] =>
-  applyIgnores(findings, stackName, 'us-east-1', config);
+  applyIgnores(findings, sc(stackName, ACCT, 'us-east-1'), config);
 
 const declared = (logicalId: string, path: string): Finding => ({
   tier: 'declared',
@@ -45,11 +53,12 @@ const undeclared = (logicalId: string, path: string): Finding => ({
 });
 
 describe('parseIgnoreRule', () => {
-  it('path only → unscoped rule (any stack, any region)', () => {
+  it('path only → unscoped rule (any stack, account, region)', () => {
     expect(parseIgnoreRule({ path: '*.DesiredCount' })).toEqual({
       raw: '*.DesiredCount',
       pathPattern: '*.DesiredCount',
       stackGlob: undefined,
+      accountGlob: undefined,
       regionGlob: undefined,
     });
   });
@@ -58,6 +67,16 @@ describe('parseIgnoreRule', () => {
       raw: '*.ReservedConcurrentExecutions (stack:Prod*)',
       pathPattern: '*.ReservedConcurrentExecutions',
       stackGlob: 'Prod*',
+      accountGlob: undefined,
+      regionGlob: undefined,
+    });
+  });
+  it('object with account → account-scoped rule', () => {
+    expect(parseIgnoreRule({ path: '*.DesiredCount', account: '111111111111' })).toEqual({
+      raw: '*.DesiredCount (account:111111111111)',
+      pathPattern: '*.DesiredCount',
+      stackGlob: undefined,
+      accountGlob: '111111111111',
       regionGlob: undefined,
     });
   });
@@ -66,14 +85,23 @@ describe('parseIgnoreRule', () => {
       raw: '*.DesiredCount (region:us-*)',
       pathPattern: '*.DesiredCount',
       stackGlob: undefined,
+      accountGlob: undefined,
       regionGlob: 'us-*',
     });
   });
-  it('object with both stack and region → renders both scopes in the note', () => {
-    expect(parseIgnoreRule({ path: 'Fn*.x', stack: 'Prod*', region: 'ap-northeast-1' })).toEqual({
-      raw: 'Fn*.x (stack:Prod*, region:ap-northeast-1)',
+  it('all three scopes → renders them in stack, account, region order in the note', () => {
+    expect(
+      parseIgnoreRule({
+        path: 'Fn*.x',
+        stack: 'Prod*',
+        account: '111111111111',
+        region: 'ap-northeast-1',
+      })
+    ).toEqual({
+      raw: 'Fn*.x (stack:Prod*, account:111111111111, region:ap-northeast-1)',
       pathPattern: 'Fn*.x',
       stackGlob: 'Prod*',
+      accountGlob: '111111111111',
       regionGlob: 'ap-northeast-1',
     });
   });
@@ -225,27 +253,47 @@ describe('applyIgnores', () => {
     expect(ign([declared('Svc', 'DesiredCount')], 'DevApi', rule)[0]?.tier).toBe('declared');
   });
 
+  it('account-scoped object rule applies only in matching accounts', () => {
+    // stack-name uniqueness only holds within one account, so without the account axis a
+    // `stack: "Prod*"` rule would leak into a same-named stack in another account.
+    const rule = cfg([p('*.DesiredCount', { account: '111111111111' })]);
+    const f = () => [declared('Svc', 'DesiredCount')];
+    expect(applyIgnores(f(), sc('S', '111111111111', 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', '222222222222', 'us-east-1'), rule)[0]?.tier).toBe('declared');
+  });
+
+  it('account scope accepts a glob', () => {
+    const rule = cfg([p('*.DesiredCount', { account: '1111*' })]);
+    const f = () => [declared('Svc', 'DesiredCount')];
+    expect(applyIgnores(f(), sc('S', '111199998888', 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', '222200001111', 'us-east-1'), rule)[0]?.tier).toBe('declared');
+  });
+
   it('region-scoped object rule applies only in matching regions', () => {
     const rule = cfg([p('*.DesiredCount', { region: 'us-*' })]);
     const f = () => [declared('Svc', 'DesiredCount')];
-    expect(applyIgnores(f(), 'S', 'us-east-1', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'S', 'us-west-2', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'S', 'ap-northeast-1', rule)[0]?.tier).toBe('declared');
+    expect(applyIgnores(f(), sc('S', ACCT, 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', ACCT, 'us-west-2'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', ACCT, 'ap-northeast-1'), rule)[0]?.tier).toBe('declared');
   });
 
-  it('stack AND region scope must BOTH match (independent axes)', () => {
-    const rule = cfg([p('*.DesiredCount', { stack: 'Prod*', region: 'ap-northeast-1' })]);
+  it('stack, account AND region scope must ALL match (independent axes)', () => {
+    const rule = cfg([
+      p('*.DesiredCount', { stack: 'Prod*', account: '111111111111', region: 'ap-northeast-1' }),
+    ]);
     const f = () => [declared('Svc', 'DesiredCount')];
-    expect(applyIgnores(f(), 'ProdApi', 'ap-northeast-1', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'ProdApi', 'us-east-1', rule)[0]?.tier).toBe('declared'); // wrong region
-    expect(applyIgnores(f(), 'DevApi', 'ap-northeast-1', rule)[0]?.tier).toBe('declared'); // wrong stack
+    const tier = (stack: string, acct: string, region: string) =>
+      applyIgnores(f(), sc(stack, acct, region), rule)[0]?.tier;
+    expect(tier('ProdApi', '111111111111', 'ap-northeast-1')).toBe('ignored');
+    expect(tier('ProdApi', '111111111111', 'us-east-1')).toBe('declared'); // wrong region
+    expect(tier('ProdApi', '222222222222', 'ap-northeast-1')).toBe('declared'); // wrong account
+    expect(tier('DevApi', '111111111111', 'ap-northeast-1')).toBe('declared'); // wrong stack
   });
 
   it('the scoped rule note names its scope', () => {
     const [f] = applyIgnores(
       [declared('Svc', 'DesiredCount')],
-      'S',
-      'us-east-1',
+      sc('S', ACCT, 'us-east-1'),
       cfg([p('*.DesiredCount', { region: 'us-*' })])
     );
     expect(f?.note).toBe('ignored by config rule "*.DesiredCount (region:us-*)"');
@@ -303,79 +351,99 @@ describe('loadConfig', () => {
 
   const write = async (content: string) => {
     await mkdir('.cdkrd', { recursive: true });
-    await writeFile('.cdkrd/config.json', content, 'utf8');
+    await writeFile('.cdkrd/ignore.yaml', content, 'utf8');
   };
 
   it('absent file → empty config (no file, nothing to ignore)', async () => {
     expect(await loadConfig()).toEqual({ ignore: [] });
   });
 
-  it('valid config loads object rules (unscoped + scoped)', async () => {
-    await write(
-      '{ "ignore": [{ "path": "*.DesiredCount" }, { "path": "*.Cpu", "stack": "Prod*", "region": "us-*" }] }'
-    );
-    expect(await loadConfig()).toEqual({
-      ignore: [{ path: '*.DesiredCount' }, { path: '*.Cpu', stack: 'Prod*', region: 'us-*' }],
-    });
-  });
-
-  it('object without ignore → empty ignore', async () => {
-    await write('{}');
+  it('a comments-only / empty file → empty config (the verb writes a header before any rule)', async () => {
+    await write('# just a header, no rules yet\n');
     expect(await loadConfig()).toEqual({ ignore: [] });
   });
 
-  it('invalid JSON → throws (fail-fast, not silent)', async () => {
-    await write('{ not json');
-    await expect(loadConfig()).rejects.toThrow(/not valid JSON/);
+  it('valid YAML loads object rules (unscoped + fully scoped)', async () => {
+    await write(
+      [
+        'ignore:',
+        '  - path: "*.DesiredCount"',
+        '  - path: "*.Cpu"',
+        '    stack: Prod*',
+        '    account: "111111111111"',
+        '    region: us-*',
+      ].join('\n')
+    );
+    expect(await loadConfig()).toEqual({
+      ignore: [
+        { path: '*.DesiredCount' },
+        { path: '*.Cpu', stack: 'Prod*', account: '111111111111', region: 'us-*' },
+      ],
+    });
   });
 
-  it('ignore not an array → throws', async () => {
-    await write('{ "ignore": { "path": "x" } }');
+  it('still reads a legacy all-JSON file (YAML is a JSON superset)', async () => {
+    await write('{ "ignore": [{ "path": "*.DesiredCount" }] }');
+    expect(await loadConfig()).toEqual({ ignore: [{ path: '*.DesiredCount' }] });
+  });
+
+  it('mapping without ignore → empty ignore', async () => {
+    await write('other: 1\n');
+    await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "other"/);
+  });
+
+  it('invalid YAML → throws (fail-fast, not silent)', async () => {
+    await write('ignore: [unterminated');
+    await expect(loadConfig()).rejects.toThrow(/not valid YAML/);
+  });
+
+  it('ignore not a sequence → throws', async () => {
+    await write('ignore:\n  path: x\n');
     await expect(loadConfig()).rejects.toThrow(/"ignore" must be an array/);
   });
 
-  it('a bare string entry → throws (every rule is an object now)', async () => {
-    await write('{ "ignore": ["*.DesiredCount"] }');
-    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be an object/);
+  it('a bare string entry → throws (every rule is a mapping now)', async () => {
+    await write('ignore:\n  - "*.DesiredCount"\n');
+    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be a mapping/);
   });
 
-  it('a non-object entry → throws', async () => {
-    await write('{ "ignore": [1] }');
-    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be an object/);
+  it('a non-mapping entry → throws', async () => {
+    await write('ignore:\n  - 1\n');
+    await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\] must be a mapping/);
   });
 
-  it('an object entry without "path" → throws', async () => {
-    await write('{ "ignore": [{ "stack": "Prod*" }] }');
+  it('a mapping entry without "path" → throws', async () => {
+    await write('ignore:\n  - stack: Prod*\n');
     await expect(loadConfig()).rejects.toThrow(/"path" is required and must be a string/);
   });
 
   it('an empty "path" → throws (a silent no-op rule must not masquerade as active, WAVE23)', async () => {
-    await write('{ "ignore": [{ "path": "" }] }');
+    await write('ignore:\n  - path: ""\n');
     await expect(loadConfig()).rejects.toThrow(/"path" must not be empty/);
   });
 
-  it('an object entry with a non-string scope → throws', async () => {
-    await write('{ "ignore": [{ "path": "x", "region": 1 }] }');
+  it('a mapping entry with a non-string scope → throws', async () => {
+    await write('ignore:\n  - path: x\n    region: 1\n');
     await expect(loadConfig()).rejects.toThrow(/"region" must be a string/);
   });
 
-  it('an unknown key on an object entry → throws (typo guard, e.g. "reigon")', async () => {
-    await write('{ "ignore": [{ "path": "x", "reigon": "us-*" }] }');
+  it('an unknown key on a mapping entry → throws (typo guard, e.g. "reigon")', async () => {
+    await write('ignore:\n  - path: x\n    reigon: us-*\n');
     await expect(loadConfig()).rejects.toThrow(/"ignore"\[0\]: unknown key\(s\) "reigon"/);
   });
 
-  it('top-level array → throws (must be an object)', async () => {
-    await write('[{ "path": "*.DesiredCount" }]');
-    await expect(loadConfig()).rejects.toThrow(/must be a JSON object/);
+  it('top-level sequence → throws (must be a mapping)', async () => {
+    await write('- path: "*.DesiredCount"\n');
+    await expect(loadConfig()).rejects.toThrow(/must be a YAML mapping/);
   });
 
-  it('unknown key → throws (a typo like "ignroe" must not silently disable rules)', async () => {
-    await write('{ "ignroe": [{ "path": "*.DesiredCount" }] }');
+  it('unknown top-level key → throws (a typo like "ignroe" must not silently disable rules)', async () => {
+    await write('ignroe:\n  - path: "*.DesiredCount"\n');
     await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "ignroe" — known keys: "ignore"/);
   });
 
   it('unknown key alongside a valid one → still throws, listing only the unknown', async () => {
-    await write('{ "ignore": [], "concurency": 4 }');
+    await write('ignore: []\nconcurency: 4\n');
     await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "concurency"/);
   });
 });
@@ -409,9 +477,9 @@ describe('ignoreRuleFor', () => {
 });
 
 describe('mergeIgnoreRules', () => {
-  it('unions new rules, sorts stably, and reports what was added', () => {
+  it('appends new rules to the END (append-only — the user owns the order)', () => {
     const r = mergeIgnoreRules([p('B.x')], [p('A.y'), p('C.z')]);
-    expect(r.merged).toEqual([p('A.y'), p('B.x'), p('C.z')]);
+    expect(r.merged).toEqual([p('B.x'), p('A.y'), p('C.z')]); // existing first, new appended — NOT sorted
     expect(r.added).toEqual([p('A.y'), p('C.z')]);
     expect(r.alreadyPresent).toEqual([]);
   });
@@ -423,11 +491,11 @@ describe('mergeIgnoreRules', () => {
     expect(r.alreadyPresent).toEqual([p('A.y')]);
   });
 
-  it('all-already-present → no additions, merged equals existing (sorted)', () => {
+  it('all-already-present → no additions, merged equals existing (order untouched)', () => {
     const r = mergeIgnoreRules([p('B.x'), p('A.y')], [p('A.y')]);
     expect(r.added).toEqual([]);
     expect(r.alreadyPresent).toEqual([p('A.y')]);
-    expect(r.merged).toEqual([p('A.y'), p('B.x')]);
+    expect(r.merged).toEqual([p('B.x'), p('A.y')]); // original order preserved
   });
 
   it('a scoped rule does NOT collide with the unscoped one for the same path', () => {
@@ -435,24 +503,15 @@ describe('mergeIgnoreRules', () => {
     const r = mergeIgnoreRules([p('*.Cpu')], [scoped]);
     // same path, different scope → a distinct rule, purely additive
     expect(r.added).toEqual([scoped]);
-    expect(r.merged).toEqual([p('*.Cpu'), scoped]); // both kept, sorted (path tie → unscoped first)
+    expect(r.merged).toEqual([p('*.Cpu'), scoped]);
   });
 
-  it('sorts by path, then stack, then region (deterministic, reviewable diff)', () => {
-    const a = p('Z.x');
-    const b = p('A.x', { region: 'us-*' }); // no stack → empty stack sorts first
-    const c = p('A.x', { stack: 'Prod*' });
-    const r = mergeIgnoreRules([], [a, b, c]);
-    expect(r.merged).toEqual([b, c, a]); // A.x(no-stack) < A.x(stack:Prod*) < Z.x
-  });
-
-  it('sorts byte-stably (uppercase before lowercase), not locale-dependently', () => {
-    // config.json is git-committed, so its order must be byte-stable across machines/
-    // locales. Byte order puts 'B' (0x42) before 'a' (0x61); localeCompare would group
-    // case-insensitively and (in most locales) emit a.x before B.y — locale-dependent
-    // churn. Asserting the byte order pins the deterministic, non-locale comparator.
-    const r = mergeIgnoreRules([], [p('a.x'), p('B.y')]);
-    expect(r.merged).toEqual([p('B.y'), p('a.x')]);
+  it('account is part of a rule identity (a rule differing only by account is distinct)', () => {
+    const a = p('*.Cpu', { account: '111111111111' });
+    const b = p('*.Cpu', { account: '222222222222' });
+    const r = mergeIgnoreRules([a], [b]);
+    expect(r.added).toEqual([b]);
+    expect(r.merged).toEqual([a, b]);
   });
 });
 
@@ -469,35 +528,43 @@ describe('addIgnoreRules', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('creates .cdkrd/config.json (and the dir) when absent', async () => {
+  it('creates .cdkrd/ignore.yaml (and the dir) with a header comment when absent', async () => {
     const r = await addIgnoreRules([p('Svc.DesiredCount')]);
     expect(r.added).toEqual([p('Svc.DesiredCount')]);
-    expect(r.path).toBe('.cdkrd/config.json');
-    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8'))).toEqual({
-      ignore: [{ path: 'Svc.DesiredCount' }],
-    });
+    expect(r.path).toBe('.cdkrd/ignore.yaml');
+    const raw = await readFile('.cdkrd/ignore.yaml', 'utf8');
+    expect(raw).toContain('# cdkrd ignore rules');
+    expect(await loadConfig()).toEqual({ ignore: [{ path: 'Svc.DesiredCount' }] });
   });
 
-  it('appends to an existing config, preserving prior rules (sorted union)', async () => {
+  it('appends to an existing config at the END (append-only, prior rules + order preserved)', async () => {
     await mkdir('.cdkrd', { recursive: true });
-    await writeFile('.cdkrd/config.json', '{ "ignore": [{ "path": "Zeta.x" }] }', 'utf8');
+    await writeFile('.cdkrd/ignore.yaml', 'ignore:\n  - path: Zeta.x\n', 'utf8');
     const r = await addIgnoreRules([p('Alpha.y')]);
     expect(r.added).toEqual([p('Alpha.y')]);
-    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
-      { path: 'Alpha.y' },
-      { path: 'Zeta.x' },
-    ]);
+    expect((await loadConfig()).ignore).toEqual([{ path: 'Zeta.x' }, { path: 'Alpha.y' }]);
+  });
+
+  it('PRESERVES a hand-authored comment on append (the whole point of YAML)', async () => {
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile(
+      '.cdkrd/ignore.yaml',
+      '# DesiredCount is managed by Application Auto Scaling\nignore:\n  - path: "*.DesiredCount"\n',
+      'utf8'
+    );
+    await addIgnoreRules([p('Alpha.y')]);
+    const raw = await readFile('.cdkrd/ignore.yaml', 'utf8');
+    expect(raw).toContain('# DesiredCount is managed by Application Auto Scaling');
+    expect(raw).toContain('Alpha.y');
+    // both rules present, original first (append-only)
+    expect((await loadConfig()).ignore).toEqual([{ path: '*.DesiredCount' }, { path: 'Alpha.y' }]);
   });
 
   it('preserves a hand-authored scoped rule on append', async () => {
     await mkdir('.cdkrd', { recursive: true });
-    await writeFile(
-      '.cdkrd/config.json',
-      '{ "ignore": [{ "path": "*.Cpu", "region": "us-*" }] }',
-      'utf8'
-    );
+    await writeFile('.cdkrd/ignore.yaml', 'ignore:\n  - path: "*.Cpu"\n    region: us-*\n', 'utf8');
     await addIgnoreRules([p('Alpha.y')]);
-    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
+    expect((await loadConfig()).ignore).toEqual([
       { path: '*.Cpu', region: 'us-*' },
       { path: 'Alpha.y' },
     ]);
@@ -505,18 +572,21 @@ describe('addIgnoreRules', () => {
 
   it('all-already-present → leaves the file byte-for-byte untouched', async () => {
     await mkdir('.cdkrd', { recursive: true });
-    const original = '{"ignore":[{"path":"A.y"}]}';
-    await writeFile('.cdkrd/config.json', original, 'utf8');
+    const original = 'ignore:\n  - path: A.y\n';
+    await writeFile('.cdkrd/ignore.yaml', original, 'utf8');
     const r = await addIgnoreRules([p('A.y')]);
     expect(r.added).toEqual([]);
     expect(r.alreadyPresent).toEqual([p('A.y')]);
-    // not rewritten — the original (compact) bytes survive
-    expect(await readFile('.cdkrd/config.json', 'utf8')).toBe(original);
+    // not rewritten — the original bytes survive (comments + layout intact)
+    expect(await readFile('.cdkrd/ignore.yaml', 'utf8')).toBe(original);
   });
 
-  it('writes pretty JSON with a trailing newline (reviewable git diff)', async () => {
-    await addIgnoreRules([p('Svc.DesiredCount')]);
-    const raw = await readFile('.cdkrd/config.json', 'utf8');
-    expect(raw).toBe(`{\n  "ignore": [\n    {\n      "path": "Svc.DesiredCount"\n    }\n  ]\n}\n`);
+  it('writes the scope keys in canonical order (path, stack, account, region)', async () => {
+    await addIgnoreRules([
+      p('Svc.DesiredCount', { region: 'us-*', stack: 'Prod*', account: '111111111111' }),
+    ]);
+    const raw = await readFile('.cdkrd/ignore.yaml', 'utf8');
+    const order = ['path', 'stack', 'account', 'region'].map((k) => raw.indexOf(`${k}:`));
+    expect(order).toEqual([...order].sort((a, b) => a - b)); // ascending = canonical order
   });
 });

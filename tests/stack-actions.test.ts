@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { baselinePath, buildRecorded, recordedKey } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
+import { type CdkrdConfig, loadConfig } from '../src/config/config-file.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
   ignoreSelectMessage,
@@ -399,7 +400,7 @@ describe('revertSelectOptions / filterRevertPlan distinguish ELB attribute-bag o
 describe('revertStack exit semantics (R35 — drift with nothing revertable is exit 1)', () => {
   // findings-only params: every path under test returns BEFORE any AWS client is
   // used — either nothing is revertable, or --dry-run returns at the preview branch.
-  type Overrides = { removeUnrecorded?: boolean; dryRun?: boolean };
+  type Overrides = { removeUnrecorded?: boolean; dryRun?: boolean; config?: CdkrdConfig };
   const params = (findings: Finding[], over: Overrides = {}) => ({
     stackName: 's',
     region: 'r',
@@ -409,7 +410,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
       schemas: NO_SCHEMAS,
     } as unknown as GatherResult,
     baseline: undefined,
-    config: { ignore: [] },
+    config: over.config ?? { ignore: [] },
     dryRun: over.dryRun ?? false,
     yes: true,
     removeUnrecorded: over.removeUnrecorded ?? false,
@@ -474,6 +475,27 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     expect(out).not.toContain('has unrecorded value(s) — never recorded');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
     expect(out).toContain('(dry-run) would apply');
+  });
+
+  // Threading guard: revertStack must pass gathered.desired.accountId (here
+  // '111122223333') into applyIgnores' ACCOUNT slot — not the region ('r') or stack
+  // ('s'). An account-scoped ignore rule that matches the gathered account suppresses the
+  // finding (-> "no drift to revert"); the same rule with a non-matching account does NOT.
+  // A region/account transposition at the call site would flip the matching case to exit 1.
+  it('an account-scoped ignore rule matching the gathered account suppresses the finding', async () => {
+    const { outcome, logs } = await captured([undeclared()], {
+      config: { ignore: [{ path: 'B.AccelerateConfiguration', account: '111122223333' }] },
+    });
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(logs.join('\n')).toContain('no drift to revert.');
+  });
+
+  it('an account-scoped ignore rule with a NON-matching account does NOT suppress it', async () => {
+    const { outcome, logs } = await captured([undeclared()], {
+      config: { ignore: [{ path: 'B.AccelerateConfiguration', account: '999999999999' }] },
+    });
+    expect(outcome).toEqual({ exit: 1, aborted: false }); // still unrecorded drift, not ignored
+    expect(logs.join('\n')).toContain('unrecorded value(s) remain.');
   });
 });
 
@@ -967,14 +989,14 @@ describe('recordScopeNote (R117 — record snapshots undeclared + added; say wha
 
 describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")', () => {
   it('FIRST baseline on a clean stack (no prior file, 0 entries) reads as an initialization', () => {
-    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, false);
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/baselines/ApiStack.x.json', 0, false, false);
     expect(m).toContain('baseline initialized');
     expect(m).toContain('this stack is now tracked');
     expect(m).not.toContain('0 recorded entry(ies)'); // the cold phrasing is gone
   });
 
   it('with a PRIOR baseline, 0 entries is the normal "written" line (not an init)', () => {
-    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, true);
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/baselines/ApiStack.x.json', 0, false, true);
     expect(m).toContain('baseline written');
     expect(m).not.toContain('initialized');
   });
@@ -991,15 +1013,15 @@ describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")'
 });
 
 describe('ignoreSelectMessage', () => {
-  it('is a one-line header naming the stack + that it writes config.json', () => {
+  it('is a one-line header naming the stack + that it writes ignore.yaml', () => {
     const msg = ignoreSelectMessage('ApiStack');
     expect(msg).toContain('ApiStack');
-    expect(msg).toContain('config.json');
+    expect(msg).toContain('ignore.yaml');
     expect(msg).not.toContain('\n');
   });
 });
 
-describe('ignoreStack (PR-B — write config.json ignore rules; declared + undeclared)', () => {
+describe('ignoreStack (PR-B — write ignore.yaml ignore rules; declared + undeclared)', () => {
   let dir: string;
   let prevCwd: string;
   beforeEach(async () => {
@@ -1026,7 +1048,7 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
       interactive: false,
     });
     expect(r).toEqual({ wrote: false, refused: false, added: 0 });
-    expect(existsSync('.cdkrd/config.json')).toBe(false);
+    expect(existsSync('.cdkrd/ignore.yaml')).toBe(false);
   });
 
   it('yes:false + interactive:false → refuses (a required decision, like record)', async () => {
@@ -1045,7 +1067,7 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
     } finally {
       spy.mockRestore();
     }
-    expect(existsSync('.cdkrd/config.json')).toBe(false);
+    expect(existsSync('.cdkrd/ignore.yaml')).toBe(false);
     expect(errs.join('\n')).toContain('ignore needs a decision');
   });
 
@@ -1058,9 +1080,10 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
     });
     expect(r.wrote).toBe(true);
     expect(r.added).toBe(2);
-    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
-      { path: 'B.AccelerateConfiguration' },
+    // append-only writes in finding order (declared first, then undeclared) — not sorted
+    expect((await loadConfig()).ignore).toEqual([
       { path: 'B.VersioningConfiguration' },
+      { path: 'B.AccelerateConfiguration' },
     ]);
   });
 

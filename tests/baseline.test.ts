@@ -51,7 +51,7 @@ describe('baseline', () => {
   describe('baselinePath (per-account filename, R21)', () => {
     it('embeds stack, accountId, and region', () => {
       expect(baselinePath('MyStack', '123456789012', 'ap-northeast-1')).toBe(
-        '.cdkrd/MyStack.123456789012.ap-northeast-1.json'
+        '.cdkrd/baselines/MyStack.123456789012.ap-northeast-1.json'
       );
     });
 

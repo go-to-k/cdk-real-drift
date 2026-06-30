@@ -71,7 +71,7 @@ Run each check and report pass/fail:
      spec:
      - CLI surface change → `node dist/cli.js <check|accept|revert> <args>` (e.g.
        `node dist/cli.js --help`, or against a synthesized `cdk.out` /
-       `.cdkrd/<stack>.<region>.json` baseline fixture); verify each output mode
+       `.cdkrd/baselines/<stack>.<region>.json` baseline fixture); verify each output mode
        (`--json` / `--show-all` / `--fail-on` / `--dry-run`).
      - Library change → run a minimal repro importing the new code path.
    - "Tests passed" is not "feature works." If you cannot live-test (e.g. no AWS

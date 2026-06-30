@@ -28,7 +28,7 @@ pre-publication decisions).
 ```bash
 node dist/cli.js check  [<stack>...] [--all]   # detect drift (read-only)
 node dist/cli.js record [<stack>...] [--all]   # snapshot undeclared state into the baseline file (KEEPS watching)
-node dist/cli.js ignore [<stack>...] [--all]   # stop reporting chosen drift via .cdkrd/config.json (STOPS watching)
+node dist/cli.js ignore [<stack>...] [--all]   # stop reporting chosen drift via .cdkrd/ignore.yaml (STOPS watching)
 node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to AWS (confirms)
 ```
 
@@ -40,7 +40,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   them directly. Baselines stay a reviewed git artifact — CI only runs
   `check --fail` (it never writes a baseline); a human records locally + commits.
 - `check`, `record`, and `ignore` never write to AWS (`record` writes only the
-  baseline file; `ignore` writes only `.cdkrd/config.json`). `revert` is the one
+  baseline file; `ignore` writes only `.cdkrd/ignore.yaml`). `revert` is the one
   AWS-mutating verb and always confirms first (`--dry-run` to preview, `--yes`/`-y`
   to skip the prompt).
 - **`record` vs `ignore`** (the one invariant): `record` snapshots undeclared state
@@ -61,7 +61,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 
 - **Pre-release / experimental.** Private until Phase 4; not yet published. Remote:
   <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based).
-- Baseline files live at `.cdkrd/<stack>.<accountId>.<region>.json` — git-committed.
+- Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".
 
@@ -119,9 +119,14 @@ detail:
 - `schema/` — CloudFormation resource-schema strip (readOnly/writeOnly props).
 - `synth/` — CDK app synthesis (`@aws-cdk/toolkit-lib`) for stack discovery +
   construct-path display.
-- `baseline/` — the `.cdkrd/<stack>.<accountId>.<region>.json` baseline file I/O.
-- `config/` — the `.cdkrd/config.json` ignore-rule read (`applyIgnores`) + write
-  (`addIgnoreRules`, used by the `ignore` verb).
+- `baseline/` — the `.cdkrd/baselines/<stack>.<accountId>.<region>.json` baseline
+  file I/O (machine-generated, wholesale-rewritten DATA → JSON).
+- `config/` — the `.cdkrd/ignore.yaml` ignore-rule read (`applyIgnores`) + write
+  (`addIgnoreRules`, used by the `ignore` verb). It is a hand-edited POLICY file
+  (YAML so it can carry `#` comments explaining WHY a property is ignored); the
+  `ignore` verb append is comment-preserving and append-only. A rule scopes on
+  `{ path, stack?, account?, region? }` — the same three identity axes as a
+  baseline file, all glob-able.
 - `report/` — text + JSON output rendering.
 
 ## Workflow Rules

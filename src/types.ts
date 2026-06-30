@@ -7,7 +7,7 @@ export type Tier =
   | 'undeclared'
   | 'atDefault' // undeclared, but the live value EQUALS a known AWS default (schema `default` or KNOWN_DEFAULTS) — informational inventory, folded in the report (R86); never drift, never recorded by record. An out-of-band change AWAY from the default no longer matches, so it re-surfaces as a real `undeclared` finding.
   | 'generated' // undeclared, but the live value EQUALS the AWS/CDK auto-generated value for THIS resource (its minted physical name, or a default-named log group derived from the physical id) — informational inventory, folded like atDefault; never drift, never recorded by record (it carries no intent, only the identity AWS minted). Equality-gated against the physical-id-substituted template, so an out-of-band edit no longer matches and re-surfaces as `undeclared`.
-  | 'ignored' // re-tagged from declared/undeclared by a .cdkrd/config.json ignore rule (informational)
+  | 'ignored' // re-tagged from declared/undeclared by a .cdkrd/ignore.yaml ignore rule (informational)
   | 'readGap'
   | 'unresolved'
   | 'skipped';

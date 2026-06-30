@@ -118,7 +118,7 @@ TransitGatewayAttachmentId]` composite is built from TWO declared props (its
    _Right call, or do users actually expect code-vs-reality by default?_
 5. **Git-committed baseline as the undeclared contract.** Undeclared "drift" is only
    drift relative to a human-recorded snapshot — the full rationale (why the state
-   must exist, and why neither schema defaults nor `config.json` can replace it)
+   must exist, and why neither schema defaults nor `ignore.yaml` can replace it)
    is [why-a-baseline-file.md](why-a-baseline-file.md). _Is a committed file the
    right control surface, or does it become a rubber-stamp that hides real change?_
 6. **Revert via the same generic CC write path** (UpdateResource) + thin SDK writers,
@@ -152,9 +152,14 @@ watching: a later change to the snapshotted value/resource re-surfaces as drift)
 and `ignore` (declared, undeclared, OR added, stops watching: re-tags the finding
 `ignored` forever) are the two non-AWS resolutions; `ignore` is the only in-tool
 way to accept a **declared** drift. The `record` baseline
-lives per stack/account/region; the `ignore` rules live once, app-wide, in
-`.cdkrd/config.json` (`config/config-file.ts` — `addIgnoreRules` writes,
-`applyIgnores` reads).
+lives per stack/account/region; the `ignore` rules live in
+`.cdkrd/ignore.yaml` (`config/config-file.ts` — `addIgnoreRules` writes,
+`applyIgnores` reads). The split is data vs policy: the baseline is
+machine-generated, wholesale-rewritten data (JSON); `ignore.yaml` is hand-edited
+policy (YAML, so it can carry `#` comments explaining why a property is ignored).
+A rule scopes on `{ path, stack?, account?, region? }` — the same three identity
+axes as a baseline file — and `addIgnoreRules` is comment-preserving and
+append-only (it keeps existing comments + order, only appends new rules + dedupes).
 
 In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121/R125):
 after reporting it prompts `Nothing / Record / Revert / Ignore / Decide
@@ -302,8 +307,8 @@ checked.
 - **diff/**
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
-- **baseline/baseline-file.ts** — git-committed baseline I/O (`.cdkrd/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
-- **config/config-file.ts** — git-committed project config (`.cdkrd/config.json`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier).
+- **baseline/baseline-file.ts** — git-committed baseline I/O (machine-generated DATA → JSON, `.cdkrd/baselines/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
+- **config/config-file.ts** — git-committed ignore-rule file (hand-edited POLICY → YAML so it can carry `#` comments, `.cdkrd/ignore.yaml`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier; rule shape `{ path, stack?, account?, region? }`) + `addIgnoreRules` (comment-preserving, append-only).
 - **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged; Lambda Alias `Description` is the same shape — `UpdateAlias` ignores an omitted description, so revert writes the empty-string default to clear it; Cognito IdentityPool `AllowClassicFlow` likewise — `UpdateIdentityPool` ignores an omitted flag, so a bare `remove` of an out-of-band `true` is a no-op and the `false` default is written explicitly (all proven live). Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
@@ -761,13 +766,13 @@ deploy`: a patch can't recreate a resource), a **create-only** property (drift o
 ## 8. Baseline model
 
 This section is the mechanics. The design rationale — why the baseline must be
-state at all, and why neither schema defaults nor `.cdkrd/config.json` can
+state at all, and why neither schema defaults nor `.cdkrd/ignore.yaml` can
 replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 
 `record` snapshots the current undeclared state — and (PR4) any out-of-band
 `added` resource's full normalized model, as a `recorded` entry with an empty
 `path` — into a **git-committed** file
-`.cdkrd/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
+`.cdkrd/baselines/<stack>.<accountId>.<region>.json` ([baseline-file.ts](../src/baseline/baseline-file.ts)):
 
 ```jsonc
 { "schemaVersion": 2, "stackName": "...", "region": "...",
@@ -841,7 +846,7 @@ note suggesting a re-`record` (the recorded set may be stale). Skipped under
 | `deleted`    | a resource present in the template but gone from AWS (deleted OOB)      | yes (always)   |
 | `declared`   | a declared property whose live value differs from the template          | yes (always)   |
 | `undeclared` | a live property not in the template, after noise subtraction            | yes (default)  |
-| `ignored`    | a declared/undeclared/added finding matched a `.cdkrd/config.json` rule | no             |
+| `ignored`    | a declared/undeclared/added finding matched a `.cdkrd/ignore.yaml` rule | no             |
 | `readGap`    | a declared property the live read can't return (CC can't read back)     | no             |
 | `unresolved` | a declared property whose intrinsics couldn't be resolved (skipped)     | no             |
 | `skipped`    | resource unreadable (CC unsupported / no physical id / custom resource) | no             |
@@ -885,27 +890,39 @@ Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscal
 capacity, externally-managed Lambda reserved concurrency. Because `record` is a value
 snapshot, recording such a property would re-detect and force a re-record every time
 the value moves. Path-level ignore rules (the `.driftignore` / Terraform
-`ignore_changes` equivalent) live in a git-committed **`.cdkrd/config.json`** —
+`ignore_changes` equivalent) live in a git-committed **`.cdkrd/ignore.yaml`** —
 deliberately separate from the baseline, which `record` rewrites wholesale (a
-hand-written rule there would be erased), and because a rule is app-wide intent, not
-a per-stack/account fact:
+hand-written rule there would be erased), and because a rule is hand-edited policy,
+not a per-stack/account fact. The file format signals the role: the baseline is
+machine-generated DATA → JSON; this is hand-edited POLICY → YAML (the `.gitignore` /
+`.dockerignore` / `.trivyignore` family — conventionally comment-bearing, never
+JSON). YAML matters because the single most valuable hand-edit is a `#` comment
+recording WHY a property is ignored, and JSON cannot hold one:
 
-```jsonc
-{
-  "ignore": [
-    { "path": "*.DesiredCount" }, // unscoped — any stack, any region, any logical id
-    { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*" }, // stack-scoped
-    { "path": "*.DesiredCount", "region": "us-*" }, // region-scoped (independent axis)
-  ],
-}
+```yaml
+# cdkrd ignore rules — properties cdkrd should stop reporting as drift.
+ignore:
+  # DesiredCount is managed by Application Auto Scaling
+  - path: '*.DesiredCount' # unscoped — any stack/account/region/logical id
+  - path: Fn*.ReservedConcurrentExecutions # stack + account + region scoped
+    stack: Prod*
+    account: '111111111111'
+    region: ap-northeast-1
+  - path: '*.DesiredCount' # region-scoped (independent axis)
+    region: us-*
 ```
 
-Every rule is an object `{ path, stack?, region? }` (one uniform, self-labelling
-shape — no bare-string shorthand); `path` is the pattern, `stack` / `region` are
-optional scopes (absent = any). Region is an independent axis from the stack name
-(the same stack name may be deployed to several regions, or matched by a `*` stack
-glob, and a property may legitimately drift in only one), so the current region
-is threaded in.
+Every rule is a mapping `{ path, stack?, account?, region? }` (one uniform,
+self-labelling shape — no bare-string shorthand); `path` is the pattern, `stack` /
+`account` / `region` are optional scopes (absent = any). The three scope axes are
+exactly the baseline file's identity axes. `account` keeps a `stack: "Prod*"` rule
+from leaking into a same-named stack in ANOTHER account — stack-name uniqueness only
+holds within one account / App — and `region` is independent the same way (the same
+stack may be deployed to several accounts / regions, or matched by a `*` glob, and a
+property may legitimately drift in only one), so the current account + region are
+threaded in. `addIgnoreRules` (the `ignore` verb) is comment-preserving and
+append-only: it keeps the user's existing comments and order, only appending new
+rules at the end and deduping — the user owns the order.
 `applyIgnores(findings, stackName, region, config)`
 ([src/config/config-file.ts](../src/config/config-file.ts)) is a pure function
 applied right after `applyBaseline` everywhere (check / revert / record / the
@@ -921,8 +938,8 @@ targets by, offered as an additional match target (it comes from optional
 `aws:cdk:path` Metadata, so it can't be the only key). A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
 Ignored findings drop out of the revert plan and the record-set automatically
-(neither acts on the `ignored` tier). A malformed `config.json` — invalid JSON,
-a wrong-typed `ignore`, or an unknown top-level key (R62: a typo like `"ignroe"`
+(neither acts on the `ignored` tier). A malformed `ignore.yaml` — invalid YAML,
+a wrong-typed `ignore`, or an unknown top-level key (R62: a typo like `ignroe`
 would otherwise load as an empty config and silently disable every rule) — fails
 the run (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
 (inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
@@ -1109,10 +1126,11 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    branch/PR/merge gates and `.claude/rules` / `.claude/agents` — cdkd's heavy
    50-hook / 10-rule suite is disproportionate for a new repo. _Open question: which
    of those become worth adding once there are external contributors?_
-8. **Ignore-rule management (R32)**: ignore rules are hand-edited in
-   `.cdkrd/config.json` for v1. _Open question: add a `cdkrd ignore <pattern>` /
-   `cdkrd ignore --list` CLI to add/inspect rules without hand-editing JSON, once
-   real usage shows the editing friction is worth it?_
+8. **Ignore-rule management (R32)**: ignore rules live in `.cdkrd/ignore.yaml` and
+   can be hand-edited or appended by the `cdkrd ignore` verb (comment-preserving,
+   append-only). _Open question: add a `cdkrd ignore --list` view to inspect the
+   active rules without opening the file, once real usage shows the friction is
+   worth it?_
 
 ## 14. Phase 4 readiness
 
