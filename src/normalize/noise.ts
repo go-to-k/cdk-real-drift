@@ -70,6 +70,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // content hash (not a constant default) — folded as `generated` via
   // GENERATED_TOPLEVEL_PATHS instead.
   'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
+  // An event source mapping (e.g. CDK's SqsEventSource) is created enabled; the
+  // construct omits Enabled when it leaves the default true, so the live read reports
+  // an undeclared Enabled=true on every first run — observed live on a dev LineLink
+  // stack with no out-of-band edit. (The off state Enabled=false is dropped upstream as
+  // trivially-empty before this fold, mirroring the KMS Key Enabled case.)
+  'AWS::Lambda::EventSourceMapping': { Enabled: true },
   'AWS::Events::Rule': { EventBusName: 'default' },
   'AWS::Athena::WorkGroup': { State: 'ENABLED' },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
@@ -174,6 +180,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGateway::DomainName': {
     SecurityPolicy: 'TLS_1_2',
   },
+  // A Cognito authorizer declares only Type: COGNITO_USER_POOLS; AWS derives and
+  // returns AuthType "cognito_user_pools" (the lowercase form), which the template
+  // never carries, so the live read reports it as undeclared on every first run —
+  // observed live on a dev LineLink stack with no out-of-band edit. AuthType is purely
+  // derived from Type and cannot be set independently, so only this Cognito value is
+  // folded; a TOKEN/REQUEST authorizer's "custom" AuthType is unobserved and left to
+  // surface (observed-only discipline). Equality-gated like every other entry.
+  'AWS::ApiGateway::Authorizer': {
+    AuthType: 'cognito_user_pools',
+  },
   // A VPC is in nearly every CDK stack. AWS reports these two constant defaults on
   // every first run when the template does not declare them (raw CfnVPC, or an L2 Vpc
   // that sets only DNS hostnames): InstanceTenancy "default" (vs dedicated/host) and
@@ -230,6 +246,17 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::DynamoDB::Table': {
     BillingMode: 'PROVISIONED',
     DeletionProtectionEnabled: false,
+  },
+  // A PAY_PER_REQUEST (on-demand) TableV2 reads back a baseline WarmThroughput that
+  // AWS assigns to every fresh table (12000 read / 4000 write units) even though the
+  // template never declares it — observed live on a dev LineLink stack with no
+  // out-of-band edit. Equality-gated: a table that has WARMED UP to a higher value
+  // under traffic no longer matches and surfaces as a real undeclared value (the warm
+  // throughput auto-ratchets and never decreases), and an explicitly declared
+  // WarmThroughput compares as declared instead. Top-level WarmThroughput only — the
+  // GSI-nested `*.WarmThroughput` stays surfaced (see KNOWN_DEFAULT_PATHS note below).
+  'AWS::DynamoDB::GlobalTable': {
+    WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
   },
   'AWS::ECR::Repository': {
     EncryptionConfiguration: { EncryptionType: 'AES256' },
@@ -551,8 +578,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // generated ID (not a constant) are EXCLUDED here and folded as `generated`
 // instead — via GENERATED_DEFAULTS / isGeneratedName, or GENERATED_PATHS for a
 // nested id cdkrd cannot template (ApiGateway Method `Integration.CacheNamespace`,
-// the parent Resource's id). Genuine resource-/account-/throughput inventory stays
-// EXCLUDED from both (Budgets `Budget.BudgetName`, DynamoDB GSI `*.WarmThroughput`).
+// the parent Resource's id). Genuine resource-/account-specific inventory stays
+// EXCLUDED from both (Budgets `Budget.BudgetName`, the GSI-nested
+// `*.WarmThroughput`). The TOP-LEVEL TableV2 `WarmThroughput`, by contrast, IS a
+// constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
+// equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   // AWS Backup materializes these defaults into each live BackupPlanRule (keyed by RuleName
   // — descended via NESTED_ARRAY_IDENTITY). Folding them keeps a clean plan clean; an
