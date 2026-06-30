@@ -533,6 +533,38 @@ describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
       })
     ).toEqual([]);
   });
+
+  // AWS Chatbot (SlackChannelConfiguration / Teams / Amazon Q console) auto-subscribes its
+  // fixed global endpoint to every topic a channel config points at. That subscription is
+  // never in the template, so without a fold it surfaces as a false `added` out-of-band
+  // resource — found on a real dev ScoringApi alarm topic, ap-northeast-1.
+  it('folds the AWS Chatbot auto-created subscription (not a user out-of-band change)', () => {
+    const added = diffSnsTopicChildren({
+      declaredSubscriptionArns: [],
+      liveSubscriptions: [
+        {
+          arn: SUB('chatbot'),
+          label: 'https https://global.sns-api.chatbot.amazonaws.com',
+          endpoint: 'https://global.sns-api.chatbot.amazonaws.com',
+        },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('a genuine https subscription to another endpoint is still flagged', () => {
+    const added = diffSnsTopicChildren({
+      declaredSubscriptionArns: [],
+      liveSubscriptions: [
+        {
+          arn: SUB('webhook'),
+          label: 'https https://hooks.example.com/sns',
+          endpoint: 'https://hooks.example.com/sns',
+        },
+      ],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([SUB('webhook')]);
+  });
 });
 
 describe('diffKmsKeyChildren (KMS key aliases)', () => {

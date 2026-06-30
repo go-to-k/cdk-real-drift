@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "CC-API managed-field strip: generated/timestamp fields (CreationDate, RevisionId — top-level AND nested CreatedAt) are stripped from the live model and never report; the REMAINDER of a partially-stripped struct still surfaces honestly (LoggingConfiguration keeps {Level:OFF} — a string, deliberately NOT folded by isTrivialEmpty; if an SFN known-default is ever added, this expected changes visibly in that PR).",
+  "description": "CC-API managed-field strip: generated/timestamp fields (CreationDate, RevisionId — top-level AND nested CreatedAt) are stripped from the live model and never report; the REMAINDER of a partially-stripped struct still surfaces. LoggingConfiguration reduces to {Level:OFF} after the CreatedAt strip — a sub-object of the SFN KNOWN_DEFAULTS LoggingConfiguration ({IncludeExecutionData:false, Level:OFF}), so matchesKnownDefault folds it to atDefault (logging never configured = at default). A non-OFF Level no longer matches and surfaces.",
   "resource": {
     "logicalId": "Flow",
     "resourceType": "AWS::StepFunctions::StateMachine",
@@ -37,7 +37,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Flow",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "LoggingConfiguration",

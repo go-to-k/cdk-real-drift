@@ -844,15 +844,25 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
 // ── SNS ──────────────────────────────────────────────────────────────────────
 // An `AWS::SNS::Topic` owns Subscriptions, each a separate CloudFormation resource.
 // A console-added subscription (someone wires an email / SQS / Lambda endpoint to a
-// topic out of band) is invisible to `cdk drift` / CFn drift detection. A topic has no
-// AWS-auto-created subscriptions, so there is no implicit child to special-case (unlike
-// REST's root resource). The CC primaryIdentifier for AWS::SNS::Subscription is the bare
-// SubscriptionArn (not a composite), which CC GetResource / DeleteResource consume.
+// topic out of band) is invisible to `cdk drift` / CFn drift detection. The CC
+// primaryIdentifier for AWS::SNS::Subscription is the bare SubscriptionArn (not a
+// composite), which CC GetResource / DeleteResource consume.
+//
+// ONE implicit child must be special-cased: AWS Chatbot (the Slack / Teams / Chime
+// channel configs behind `AWS::Chatbot::SlackChannelConfiguration`, and the Amazon Q
+// Developer console) AUTO-subscribes its fixed global endpoint to every SNS topic a
+// channel config points at — so a stack that declares a SlackChannelConfiguration +
+// alarm topic always grows an `https` subscription to that endpoint that is NOT in the
+// template. It is an AWS-managed side effect of the declared config, not a user's
+// out-of-band change, so reporting it as an `added` resource is a false positive. The
+// endpoint is a constant AWS-owned host; any subscription to it is Chatbot-managed, so
+// folding it can never mask a genuine out-of-band subscription.
+const CHATBOT_SUBSCRIPTION_ENDPOINT = 'https://global.sns-api.chatbot.amazonaws.com';
 
 // Pure diff: declared subscription arns + live inventory -> the added subscriptions.
 export interface SnsTopicChildInput {
   declaredSubscriptionArns: string[]; // physical ids of AWS::SNS::Subscription in the template
-  liveSubscriptions: { arn: string; label?: string | undefined }[];
+  liveSubscriptions: { arn: string; label?: string | undefined; endpoint?: string | undefined }[];
 }
 
 export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
@@ -860,6 +870,7 @@ export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
   const added: AddedChild[] = [];
   for (const s of input.liveSubscriptions) {
     if (declared.has(s.arn)) continue;
+    if (s.endpoint === CHATBOT_SUBSCRIPTION_ENDPOINT) continue; // AWS Chatbot auto-managed
     added.push({
       resourceType: 'AWS::SNS::Subscription',
       identifier: s.arn, // SubscriptionArn IS the CC primaryIdentifier
@@ -914,6 +925,7 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
     .map((s) => ({
       arn: s.SubscriptionArn,
       label: s.Protocol ? `${s.Protocol} ${s.Endpoint ?? ''}`.trim() : s.SubscriptionArn,
+      endpoint: s.Endpoint,
     }));
 
   return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions });
