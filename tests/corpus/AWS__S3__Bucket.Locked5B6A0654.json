@@ -1,0 +1,176 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Locked5B6A0654",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5",
+    "constructPath": "CdkRealDriftIntegS3ObjectLock/Locked",
+    "declared": {
+      "BucketEncryption": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "ObjectLockConfiguration": {
+        "ObjectLockEnabled": "Enabled",
+        "Rule": {
+          "DefaultRetention": {
+            "Days": 30,
+            "Mode": "GOVERNANCE"
+          }
+        }
+      },
+      "ObjectLockEnabled": true,
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "BlockPublicPolicy": true,
+        "IgnorePublicAcls": true,
+        "RestrictPublicBuckets": true
+      },
+      "VersioningConfiguration": {
+        "Status": "Enabled"
+      }
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5.s3-website-us-east-1.amazonaws.com",
+    "DualStackDomainName": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5.s3.dualstack.us-east-1.amazonaws.com",
+    "VersioningConfiguration": {
+      "Status": "Enabled"
+    },
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5",
+    "RegionalDomainName": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "ObjectLockConfiguration": {
+      "ObjectLockEnabled": "Enabled",
+      "Rule": {
+        "DefaultRetention": {
+          "Days": 30,
+          "Mode": "GOVERNANCE"
+        }
+      }
+    },
+    "ObjectLockEnabled": true,
+    "Arn": "arn:aws:s3:::cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3ObjectLock/0b4fdee0-749c-11f1-ad3a-0e4bfd56af47",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegS3ObjectLock",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Locked5B6A0654",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Locked5B6A0654",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5",
+      "constructPath": "CdkRealDriftIntegS3ObjectLock/Locked"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Locked5B6A0654",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegs3objectlock-locked5b6a0654-pvhwtplquvp5",
+      "constructPath": "CdkRealDriftIntegS3ObjectLock/Locked"
+    }
+  ]
+}
