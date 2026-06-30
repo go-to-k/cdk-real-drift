@@ -55,6 +55,20 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         return resolveRef(String(v), ctx);
       case 'Fn::Sub':
         return resolveSub(v, ctx);
+      case 'Fn::Base64': {
+        // Fn::Base64 returns the base64 encoding of its (String) argument — a pure,
+        // deterministic, environment-INDEPENDENT transform (unlike Fn::GetAZs, which
+        // is deliberately left unresolved). CDK emits it for EC2 UserData
+        // (`{ "Fn::Base64": { "Fn::Sub": "#!/bin/bash …" } }`), which is a readable,
+        // mutable property on AWS::EC2::Instance / the LaunchTemplate's
+        // LaunchTemplateData — so without resolving it the declared UserData is a blind
+        // spot (UNRESOLVED) and out-of-band UserData drift is missed. Resolve the inner
+        // first; CFn only accepts a String argument, so a non-string (or unresolved)
+        // inner fails closed to UNRESOLVED rather than encoding `[object Object]`.
+        const inner = resolve(v, ctx);
+        if (typeof inner !== 'string') return UNRESOLVED;
+        return Buffer.from(inner, 'utf8').toString('base64');
+      }
       case 'Fn::If': {
         if (!Array.isArray(v)) return UNRESOLVED;
         const [cond, t, f] = v as [string, unknown, unknown];
