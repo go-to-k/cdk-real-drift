@@ -2387,6 +2387,38 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('WAFv2 LoggingConfiguration RedactedFields reordered (discriminated-union FieldToMatch set, no identity field, found by wafv2-logging-rich)', () => {
+    const T = 'AWS::WAFv2::LoggingConfiguration';
+    const declared = {
+      RedactedFields: [
+        { SingleHeader: { Name: 'authorization' } },
+        { Method: {} },
+        { QueryString: {} },
+      ],
+    };
+
+    it('WAF returning RedactedFields sorted by discriminator key is NOT drift', () => {
+      // WAF echoes the fields alphabetically by their single object key
+      // (Method, QueryString, SingleHeader) — sorting both sides aligns them.
+      const live = {
+        RedactedFields: [
+          { Method: {} },
+          { QueryString: {} },
+          { SingleHeader: { Name: 'authorization' } },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine redacted-field change still surfaces (no over-fold)', () => {
+      // authorization -> cookie header is a real change to a redacted field.
+      const live = {
+        RedactedFields: [{ Method: {} }, { QueryString: {} }, { SingleHeader: { Name: 'cookie' } }],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
     const T = 'AWS::AutoScaling::AutoScalingGroup';
 

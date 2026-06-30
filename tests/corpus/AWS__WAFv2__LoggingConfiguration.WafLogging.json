@@ -1,0 +1,109 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WafLogging",
+    "resourceType": "AWS::WAFv2::LoggingConfiguration",
+    "physicalId": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-wafv2-logging/76687f9a-e850-41d9-8125-40247134c290",
+    "constructPath": "CdkRealDriftIntegWafv2LoggingRich/WafLogging",
+    "declared": {
+      "LogDestinationConfigs": [
+        "arn:aws:logs:us-east-1:111111111111:log-group:aws-waf-logs-cdkrd-rich"
+      ],
+      "LoggingFilter": {
+        "DefaultBehavior": "KEEP",
+        "Filters": [
+          {
+            "Behavior": "DROP",
+            "Requirement": "MEETS_ANY",
+            "Conditions": [
+              {
+                "ActionCondition": {
+                  "Action": "COUNT"
+                }
+              },
+              {
+                "ActionCondition": {
+                  "Action": "BLOCK"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "RedactedFields": [
+        {
+          "SingleHeader": {
+            "Name": "authorization"
+          }
+        },
+        {
+          "Method": {}
+        },
+        {
+          "QueryString": {}
+        }
+      ],
+      "ResourceArn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-wafv2-logging/76687f9a-e850-41d9-8125-40247134c290"
+    }
+  },
+  "liveRaw": {
+    "ResourceArn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-wafv2-logging/76687f9a-e850-41d9-8125-40247134c290",
+    "LogDestinationConfigs": [
+      "arn:aws:logs:us-east-1:111111111111:log-group:aws-waf-logs-cdkrd-rich"
+    ],
+    "ManagedByFirewallManager": false,
+    "RedactedFields": [
+      {
+        "Method": {}
+      },
+      {
+        "QueryString": {}
+      },
+      {
+        "SingleHeader": {
+          "Name": "authorization"
+        }
+      }
+    ],
+    "LoggingFilter": {
+      "Filters": [
+        {
+          "Requirement": "MEETS_ANY",
+          "Behavior": "DROP",
+          "Conditions": [
+            {
+              "ActionCondition": {
+                "Action": "COUNT"
+              }
+            },
+            {
+              "ActionCondition": {
+                "Action": "BLOCK"
+              }
+            }
+          ]
+        }
+      ],
+      "DefaultBehavior": "KEEP"
+    }
+  },
+  "schema": {
+    "readOnly": ["ManagedByFirewallManager"],
+    "writeOnly": [],
+    "createOnly": ["ResourceArn"],
+    "readOnlyPaths": ["ManagedByFirewallManager"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
