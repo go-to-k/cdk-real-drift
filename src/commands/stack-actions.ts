@@ -985,17 +985,18 @@ export function availableActions(
   removeUnrecorded: boolean
 ): Actions {
   const recordable = findings.some((f) => f.tier === 'undeclared' || f.tier === 'added');
-  // R141: with NO baseline file yet, `record` is offered even on a CLEAN stack — it writes
-  // the initial baseline (snapshot-complete resources, zero undeclared entries), so a fresh
-  // deploy can be blessed as the day-1 baseline through `check`'s own prompt (no separate
-  // `cdkrd record` step). Gated to a clean stack (no actionable drift) so the establish
-  // option never wears the "Record all undeclared" label next to a declared/deleted drift it
-  // does not address. Once a baseline exists, a clean run offers nothing.
-  const anyDrift = findings.some(
-    (f) =>
-      f.tier === 'declared' || f.tier === 'deleted' || f.tier === 'undeclared' || f.tier === 'added'
-  );
-  const record = recordable || (baseline === undefined && !anyDrift);
+  // R141: with NO baseline file yet, `record` is ALWAYS offered — it writes the initial
+  // baseline (snapshot-complete resources, plus any undeclared entries) so a fresh deploy can
+  // be blessed as the day-1 baseline through `check`'s own prompt (no separate `cdkrd record`
+  // step). It is offered EVEN when the only drift is a declared/deleted one it cannot itself
+  // resolve: establishing the baseline STARTS undeclared watching, which is orthogonal to that
+  // drift — the drift keeps being reported until the user reverts/ignores it. Withholding
+  // `record` here used to force the user to clear (or permanently `ignore`) the declared drift
+  // before they could even begin watching undeclared state, defeating the tool's core value.
+  // `buildResolveOptions` worded the establish option honestly for that case ("the declared
+  // drift stays reported"), so it no longer reads as "all done". Once a baseline exists,
+  // `record` is offered only when there is undeclared/added state to snapshot.
+  const record = recordable || baseline === undefined;
   const ignore = findings.some(
     (f) => f.tier === 'declared' || f.tier === 'undeclared' || f.tier === 'added'
   );
