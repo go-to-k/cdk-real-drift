@@ -1,0 +1,158 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Esm",
+    "resourceType": "AWS::Lambda::EventSourceMapping",
+    "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+    "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm",
+    "declared": {
+      "BatchSize": 100,
+      "FunctionName": "cdkrd-esm-consumer",
+      "SelfManagedEventSource": {
+        "Endpoints": {
+          "KafkaBootstrapServers": ["b-1.cdkrd.example.com:9092", "b-2.cdkrd.example.com:9092"]
+        }
+      },
+      "SourceAccessConfigurations": [
+        {
+          "Type": "VPC_SECURITY_GROUP",
+          "URI": "security_group:sg-09b7a49d40764ee3b"
+        },
+        {
+          "Type": "SASL_SCRAM_512_AUTH",
+          "URI": "arn:aws:secretsmanager:us-east-1:111111111111:secret:cdkrd-esm-kafka-auth-jkRwP8"
+        },
+        {
+          "Type": "VPC_SUBNET",
+          "URI": "subnet:subnet-0e264d7f91aa8723e"
+        },
+        {
+          "Type": "VPC_SUBNET",
+          "URI": "subnet:subnet-069a10494aa974154"
+        }
+      ],
+      "StartingPosition": "TRIM_HORIZON",
+      "Topics": ["cdkrd-topic"]
+    }
+  },
+  "liveRaw": {
+    "StartingPosition": "TRIM_HORIZON",
+    "BatchSize": 100,
+    "MaximumRetryAttempts": -1,
+    "Topics": ["cdkrd-topic"],
+    "SelfManagedEventSource": {
+      "Endpoints": {
+        "KafkaBootstrapServers": ["b-2.cdkrd.example.com:9092", "b-1.cdkrd.example.com:9092"]
+      }
+    },
+    "Enabled": true,
+    "SelfManagedKafkaEventSourceConfig": {
+      "ConsumerGroupId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec"
+    },
+    "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:cdkrd-esm-consumer",
+    "BisectBatchOnFunctionError": false,
+    "EventSourceMappingArn": "arn:aws:lambda:us-east-1:111111111111:event-source-mapping:81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+    "MaximumRecordAgeInSeconds": -1,
+    "Id": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+    "SourceAccessConfigurations": [
+      {
+        "Type": "VPC_SECURITY_GROUP",
+        "URI": "security_group:sg-09b7a49d40764ee3b"
+      },
+      {
+        "Type": "SASL_SCRAM_512_AUTH",
+        "URI": "arn:aws:secretsmanager:us-east-1:111111111111:secret:cdkrd-esm-kafka-auth-jkRwP8"
+      },
+      {
+        "Type": "VPC_SUBNET",
+        "URI": "subnet:subnet-0e264d7f91aa8723e"
+      },
+      {
+        "Type": "VPC_SUBNET",
+        "URI": "subnet:subnet-069a10494aa974154"
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegEsmSourceaccessRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEsmSourceaccessRich/d4a37f80-7470-11f1-b812-0affe9c039e9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Esm",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["EventSourceMappingArn", "Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "EventSourceArn",
+      "SelfManagedEventSource",
+      "StartingPosition",
+      "StartingPositionTimestamp"
+    ],
+    "readOnlyPaths": ["EventSourceMappingArn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "EventSourceArn",
+      "SelfManagedEventSource",
+      "StartingPosition",
+      "StartingPositionTimestamp"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Esm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "MaximumRetryAttempts",
+      "actual": -1,
+      "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+      "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Esm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+      "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Esm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "SelfManagedKafkaEventSourceConfig",
+      "actual": {
+        "ConsumerGroupId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec"
+      },
+      "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+      "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Esm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "MaximumRecordAgeInSeconds",
+      "actual": -1,
+      "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
+      "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
+    }
+  ]
+}

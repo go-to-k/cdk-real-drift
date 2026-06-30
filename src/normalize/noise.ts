@@ -56,6 +56,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Timeout: 3,
   },
   'AWS::Lambda::Url': { InvokeMode: 'BUFFERED' },
+  // A stream / self-managed-Kafka event source mapping created without these reads
+  // them back as -1 (the documented "infinite" default: retry forever / no record-age
+  // cap). A never-declared ESM otherwise reports both on every first run. Equality-gated
+  // — set either to a finite value out of band and it no longer matches, so it
+  // re-surfaces as real undeclared drift. (SQS event sources don't carry these props at
+  // all, so the entry can't mis-fold there.) Observed live on a fresh esm-sourceaccess-rich
+  // deploy.
+  'AWS::Lambda::EventSourceMapping': { MaximumRetryAttempts: -1, MaximumRecordAgeInSeconds: -1 },
   // An alias created without a Description reads back the empty string. Folded as
   // atDefault so a never-declared alias does not report `Description=""` as drift; it
   // is also the value REVERT_SET_DEFAULT_PATHS writes to undo an out-of-band Description
@@ -1973,6 +1981,21 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   'AWS::AutoScaling::AutoScalingGroup': new Set([
     'MetricsCollection.Metrics',
     'NotificationConfigurations.NotificationTypes',
+  ]),
+  // A self-managed Apache Kafka event source's `SelfManagedEventSource.Endpoints.
+  // KafkaBootstrapServers` is a SET of `host:port` broker strings that Lambda echoes
+  // REORDERED, not in template order (declared [b-1…:9092, b-2…:9092] reads back
+  // [b-2…:9092, b-1…:9092]), so a positional compare false-flags the identical
+  // bootstrap-server set as declared drift on a freshly recorded ESM. The brokers are a
+  // SET (a Kafka client connects to ANY one to discover the rest — order carries no
+  // meaning), and the `host:port` strings aren't id/ARN/HTTP/AZ-shaped so
+  // canonicalizeIdArraysDeep leaves them; this nested scalar path folds them. A genuine
+  // broker add/remove still changes the multiset. Observed live on a fresh
+  // esm-sourceaccess-rich deploy. (The sibling `SourceAccessConfigurations` set — the
+  // {Type, URI} VPC/SASL entries — was tested in the SAME deploy with a deliberately
+  // non-sorted list and Lambda PRESERVED its order, so it is NOT folded — observed-only.)
+  'AWS::Lambda::EventSourceMapping': new Set([
+    'SelfManagedEventSource.Endpoints.KafkaBootstrapServers',
   ]),
 };
 

@@ -481,6 +481,15 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('Lambda EventSourceMapping stream retry/age infinite defaults (found by esm-sourceaccess-rich)', () => {
+    // -1 is the documented "infinite" default for stream / Kafka event sources (retry
+    // forever / no record-age cap); equality-gated, so a finite override still surfaces.
+    expect(KNOWN_DEFAULTS['AWS::Lambda::EventSourceMapping']).toEqual({
+      MaximumRetryAttempts: -1,
+      MaximumRecordAgeInSeconds: -1,
+    });
+  });
+
   it('PR #355-followup noise sweep: constant defaults on common daily-driver types', () => {
     // Each value was OBSERVED unanimous (>=2 cases) across the golden corpus and is a
     // documented constant service default — equality-gated, so a non-default value still
