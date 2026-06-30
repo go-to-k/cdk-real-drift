@@ -182,9 +182,7 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
   const nc = await loadConfig();
   const reEval = applyIgnores(
     applyBaseline(p.findings, nb, baselineOpts(p)),
-    p.stackName,
-    p.desired.accountId,
-    p.region,
+    { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
     nc
   );
   const remainingDeclared = reEval.filter(
@@ -321,9 +319,7 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     config = await loadConfig();
     reconciled = applyIgnores(
       applyBaseline(p.findings, baseline, opts),
-      p.stackName,
-      p.desired.accountId,
-      p.region,
+      { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
       config
     );
   }
@@ -337,7 +333,11 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
     stackName: p.stackName,
     region: p.region,
     desired: p.desired,
-    findings: applyIgnores(p.findings, p.stackName, p.desired.accountId, p.region, p.config),
+    findings: applyIgnores(
+      p.findings,
+      { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
+      p.config
+    ),
     yes: p.yes,
     interactive: true,
     expandNested: p.verbose, // --show-all skips the interactive flow, so only --verbose expands here
@@ -351,9 +351,7 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   const nb = await loadBaseline(p.stackName, p.desired.accountId, p.region);
   const reEval = applyIgnores(
     applyBaseline(p.findings, nb, baselineOpts(p)),
-    p.stackName,
-    p.desired.accountId,
-    p.region,
+    { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
     p.config
   );
   const remainingDeclared = reEval.filter(
@@ -445,7 +443,11 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       stackName: p.stackName,
       region: p.region,
       desired: p.desired,
-      findings: applyIgnores(p.findings, p.stackName, p.desired.accountId, p.region, p.config),
+      findings: applyIgnores(
+        p.findings,
+        { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
+        p.config
+      ),
       yes: p.yes,
       interactive: true,
       preselectedKeys,

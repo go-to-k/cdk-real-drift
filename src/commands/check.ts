@@ -292,7 +292,7 @@ export async function runCheck(args: string[]): Promise<number> {
           );
         if (!a.json) separate();
         const preDeployCode = report(
-          applyIgnores(declaredOnly, stackName, desired.accountId, region, config),
+          applyIgnores(declaredOnly, { stackName, accountId: desired.accountId, region }, config),
           `${stackName} (${region})`,
           {
             json: a.json,
@@ -352,9 +352,7 @@ export async function runCheck(args: string[]): Promise<number> {
             },
           },
         }),
-        stackName,
-        desired.accountId,
-        region,
+        { stackName, accountId: desired.accountId, region },
         config
       );
       if (!a.json) separate();

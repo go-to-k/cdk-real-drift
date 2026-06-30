@@ -712,9 +712,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const baselineOpts = { declaredByLogical, physicalIdByLogical, constructPathByLogical };
   const drifted = applyIgnores(
     applyBaseline(gathered.findings, baseline, { ...baselineOpts, warn: console.error }),
-    stackName,
-    gathered.desired.accountId,
-    region,
+    { stackName, accountId: gathered.desired.accountId, region },
     config
   );
   let plan = buildRevertPlan(drifted, baseline, {
@@ -883,9 +881,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const reconcile = (findings: Finding[]): Finding[] =>
     applyIgnores(
       applyBaseline(findings, baseline, baselineOpts),
-      stackName,
-      gathered.desired.accountId,
-      region,
+      { stackName, accountId: gathered.desired.accountId, region },
       config
     );
   // regatherTouched drops every `touched` finding (including the synthesized-id `added`

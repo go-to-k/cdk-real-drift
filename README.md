@@ -397,12 +397,15 @@ machine-generated, wholesale-rewritten data, not human policy.)
 ignore:
   # DesiredCount is managed by Application Auto Scaling
   - path: '*.DesiredCount'
+  # the common case: scope a rule to one stack
+  - path: '*.DesiredCount'
+    stack: Prod*
+  # narrow further to a single account and/or region when the same stack
+  # name is deployed to several (a property may legitimately drift in only one)
   - path: Fn*.ReservedConcurrentExecutions
     stack: Prod*
     account: '111111111111'
     region: ap-northeast-1
-  - path: '*.DesiredCount'
-    region: us-*
 ```
 
 - Every rule is a mapping `{ path, stack?, account?, region? }`. `cdkrd ignore`

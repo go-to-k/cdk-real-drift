@@ -334,17 +334,27 @@ function pathMatches(pattern: string, target: string): boolean {
  * = any) — the baseline file's three identity axes. `account` and `region` are independent
  * axes from the stack name: the same stack can be deployed to multiple accounts and/or
  * regions (or be matched by a `*` stack glob), and a property may legitimately drift in only
- * one — so the caller passes the current `accountId` and `region` here. Without `account`, a
+ * one — so the caller passes the current env via `scope`. Without `account`, a
  * `stack: "Prod*"` rule would leak into a same-named stack in another account.
+ *
+ * `scope` is an OBJECT, not positional args: `accountId` and `region` are both strings on
+ * adjacent axes, so a positional `(…, accountId, region, …)` signature invites a silent
+ * transposition at the 11 call sites (the compiler can't tell two strings apart). The named
+ * `{ stackName, accountId, region }` makes a swap a compile error and self-documents intent.
  */
+export interface IgnoreScope {
+  stackName: string;
+  accountId: string;
+  region: string;
+}
+
 export function applyIgnores(
   findings: Finding[],
-  stackName: string,
-  accountId: string,
-  region: string,
+  scope: IgnoreScope,
   config: CdkrdConfig
 ): Finding[] {
   if (config.ignore.length === 0) return findings;
+  const { stackName, accountId, region } = scope;
   const rules = config.ignore.map(parseIgnoreRule);
   return findings.map((f) => {
     if (f.tier !== 'declared' && f.tier !== 'undeclared' && f.tier !== 'added') return f;

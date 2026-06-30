@@ -61,9 +61,7 @@ export async function runIgnore(args: string[]): Promise<number> {
           declaredByLogical: declaredKeysByLogical(desired.resources),
           warn: console.error,
         }),
-        stackName,
-        desired.accountId,
-        region,
+        { stackName, accountId: desired.accountId, region },
         config
       );
       const result = await ignoreStack({

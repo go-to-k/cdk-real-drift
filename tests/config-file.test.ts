@@ -8,6 +8,7 @@ import {
   applyIgnores,
   type CdkrdConfig,
   type IgnoreRuleObject,
+  type IgnoreScope,
   ignoreRuleFor,
   loadConfig,
   mergeIgnoreRules,
@@ -18,6 +19,12 @@ import type { Finding } from '../src/types.js';
 
 const ACCT = '111111111111';
 const cfg = (ignore: IgnoreRuleObject[]): CdkrdConfig => ({ ignore });
+// terse scope object for the explicitly-scoped applyIgnores tests
+const sc = (stackName: string, accountId: string, region: string): IgnoreScope => ({
+  stackName,
+  accountId,
+  region,
+});
 // terse unscoped rule: p('*.DesiredCount') === { path: '*.DesiredCount' }
 const p = (path: string, extra: Omit<IgnoreRuleObject, 'path'> = {}): IgnoreRuleObject => ({
   path,
@@ -26,7 +33,7 @@ const p = (path: string, extra: Omit<IgnoreRuleObject, 'path'> = {}): IgnoreRule
 // account/region-agnostic wrapper for the many cases that don't exercise account/region
 // scope (the scoped tests call applyIgnores directly with an explicit account + region).
 const ign = (findings: Finding[], stackName: string, config: CdkrdConfig): Finding[] =>
-  applyIgnores(findings, stackName, ACCT, 'us-east-1', config);
+  applyIgnores(findings, sc(stackName, ACCT, 'us-east-1'), config);
 
 const declared = (logicalId: string, path: string): Finding => ({
   tier: 'declared',
@@ -251,28 +258,23 @@ describe('applyIgnores', () => {
     // `stack: "Prod*"` rule would leak into a same-named stack in another account.
     const rule = cfg([p('*.DesiredCount', { account: '111111111111' })]);
     const f = () => [declared('Svc', 'DesiredCount')];
-    expect(applyIgnores(f(), 'S', '111111111111', 'us-east-1', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'S', '222222222222', 'us-east-1', rule)[0]?.tier).toBe('declared');
+    expect(applyIgnores(f(), sc('S', '111111111111', 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', '222222222222', 'us-east-1'), rule)[0]?.tier).toBe('declared');
   });
 
   it('account scope accepts a glob', () => {
     const rule = cfg([p('*.DesiredCount', { account: '1111*' })]);
-    expect(
-      applyIgnores([declared('Svc', 'DesiredCount')], 'S', '111199998888', 'us-east-1', rule)[0]
-        ?.tier
-    ).toBe('ignored');
-    expect(
-      applyIgnores([declared('Svc', 'DesiredCount')], 'S', '222200001111', 'us-east-1', rule)[0]
-        ?.tier
-    ).toBe('declared');
+    const f = () => [declared('Svc', 'DesiredCount')];
+    expect(applyIgnores(f(), sc('S', '111199998888', 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', '222200001111', 'us-east-1'), rule)[0]?.tier).toBe('declared');
   });
 
   it('region-scoped object rule applies only in matching regions', () => {
     const rule = cfg([p('*.DesiredCount', { region: 'us-*' })]);
     const f = () => [declared('Svc', 'DesiredCount')];
-    expect(applyIgnores(f(), 'S', ACCT, 'us-east-1', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'S', ACCT, 'us-west-2', rule)[0]?.tier).toBe('ignored');
-    expect(applyIgnores(f(), 'S', ACCT, 'ap-northeast-1', rule)[0]?.tier).toBe('declared');
+    expect(applyIgnores(f(), sc('S', ACCT, 'us-east-1'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', ACCT, 'us-west-2'), rule)[0]?.tier).toBe('ignored');
+    expect(applyIgnores(f(), sc('S', ACCT, 'ap-northeast-1'), rule)[0]?.tier).toBe('declared');
   });
 
   it('stack, account AND region scope must ALL match (independent axes)', () => {
@@ -280,26 +282,18 @@ describe('applyIgnores', () => {
       p('*.DesiredCount', { stack: 'Prod*', account: '111111111111', region: 'ap-northeast-1' }),
     ]);
     const f = () => [declared('Svc', 'DesiredCount')];
-    expect(applyIgnores(f(), 'ProdApi', '111111111111', 'ap-northeast-1', rule)[0]?.tier).toBe(
-      'ignored'
-    );
-    expect(applyIgnores(f(), 'ProdApi', '111111111111', 'us-east-1', rule)[0]?.tier).toBe(
-      'declared'
-    ); // wrong region
-    expect(applyIgnores(f(), 'ProdApi', '222222222222', 'ap-northeast-1', rule)[0]?.tier).toBe(
-      'declared'
-    ); // wrong account
-    expect(applyIgnores(f(), 'DevApi', '111111111111', 'ap-northeast-1', rule)[0]?.tier).toBe(
-      'declared'
-    ); // wrong stack
+    const tier = (stack: string, acct: string, region: string) =>
+      applyIgnores(f(), sc(stack, acct, region), rule)[0]?.tier;
+    expect(tier('ProdApi', '111111111111', 'ap-northeast-1')).toBe('ignored');
+    expect(tier('ProdApi', '111111111111', 'us-east-1')).toBe('declared'); // wrong region
+    expect(tier('ProdApi', '222222222222', 'ap-northeast-1')).toBe('declared'); // wrong account
+    expect(tier('DevApi', '111111111111', 'ap-northeast-1')).toBe('declared'); // wrong stack
   });
 
   it('the scoped rule note names its scope', () => {
     const [f] = applyIgnores(
       [declared('Svc', 'DesiredCount')],
-      'S',
-      ACCT,
-      'us-east-1',
+      sc('S', ACCT, 'us-east-1'),
       cfg([p('*.DesiredCount', { region: 'us-*' })])
     );
     expect(f?.note).toBe('ignored by config rule "*.DesiredCount (region:us-*)"');
