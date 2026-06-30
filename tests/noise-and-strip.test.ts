@@ -517,6 +517,11 @@ describe('noise suppressors', () => {
       IncludeLinkedAccountsMetrics: false,
       State: 'running',
     });
+    // A WebACL reads back AWS's default on-source DDoS protection config when none is
+    // declared (issue #440 — wafv2-webacl-customkeys live read).
+    expect(KNOWN_DEFAULTS['AWS::WAFv2::WebACL']).toEqual({
+      OnSourceDDoSProtectionConfig: { ALBLowReputationMode: 'ACTIVE_UNDER_DDOS' },
+    });
     // KMS key defaults.
     expect(KNOWN_DEFAULTS['AWS::KMS::Key']).toEqual({
       Enabled: true,

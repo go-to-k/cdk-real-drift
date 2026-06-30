@@ -127,7 +127,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
       "path": "OnSourceDDoSProtectionConfig",

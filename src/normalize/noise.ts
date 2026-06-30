@@ -91,6 +91,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
   'AWS::Events::Rule': { EventBusName: 'default' },
   'AWS::Athena::WorkGroup': { State: 'ENABLED' },
+  // A WebACL that declares no on-source DDoS protection reads back AWS's default
+  // OnSourceDDoSProtectionConfig — ALBLowReputationMode=ACTIVE_UNDER_DDOS (the first
+  // enum value / documented default), so the live read reports it as undeclared
+  // first-run noise on every WebACL. Equality-gated; a user that sets ALWAYS_ON still
+  // surfaces. Observed live on a fresh wafv2-webacl-customkeys deploy (issue #440).
+  'AWS::WAFv2::WebACL': {
+    OnSourceDDoSProtectionConfig: { ALBLowReputationMode: 'ACTIVE_UNDER_DDOS' },
+  },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
   // fixture): a broker created without these knobs reports all three as undeclared
   // first-run noise. AuthenticationStrategy is SIMPLE unless LDAP is configured;
@@ -1917,11 +1925,12 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // aggregate-key objects ({UriPath:{}}, {Header:{Name,…}}, {HTTPMethod:{}}, …) with
   // no top-level IDENTITY_FIELD — the same shape that produced reorder FPs for
   // LoggingConfiguration RedactedFields (#433) and Lambda ESM KafkaBootstrapServers
-  // (#437). A fresh wafv2-ratecustomkeys deploy declaring 5 keys in NON-sorted
-  // discriminator order ([UriPath, Header, HTTPMethod, Cookie, QueryArgument]) read
-  // them back in the EXACT declared order — WAF PRESERVES CustomKeys order (like
-  // AndStatement.Statements and LoggingFilter.Conditions), so there is no FP to fold.
-  // Pinned by the wafv2-ratecustomkeys fixture + corpus case (issue #440).
+  // (#437). Fresh wafv2-ratecustomkeys (RuleGroup) AND wafv2-webacl-customkeys (WebACL)
+  // deploys each declaring 5 keys in NON-sorted discriminator order ([UriPath, Header,
+  // HTTPMethod, Cookie, QueryArgument]) read them back in the EXACT declared order on
+  // BOTH host types — WAF PRESERVES CustomKeys order (like AndStatement.Statements and
+  // LoggingFilter.Conditions), so there is no FP to fold. Pinned by both fixtures +
+  // corpus cases (issue #440).
   'AWS::Bedrock::Guardrail': new Set([
     'ContentPolicyConfig.FiltersConfig',
     'TopicPolicyConfig.TopicsConfig',
