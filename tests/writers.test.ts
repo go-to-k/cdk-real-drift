@@ -54,11 +54,13 @@ import {
 } from '@aws-sdk/client-docdb';
 import {
   GetClassifierCommand,
+  GetConnectionCommand,
   GetJobCommand,
   GetTableCommand,
   GetWorkflowCommand,
   GlueClient,
   UpdateClassifierCommand,
+  UpdateConnectionCommand,
   UpdateJobCommand,
   UpdateTableCommand,
   UpdateWorkflowCommand,
@@ -666,6 +668,70 @@ describe('Glue Workflow writer (CC UnsupportedActionException)', () => {
     await expect(
       SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: '', declared: {} }), [runsOp(3)])
     ).rejects.toThrow(/Glue workflow target/);
+  });
+});
+
+describe('Glue Connection writer (CC read gap; credential-safe UpdateConnection overwrite)', () => {
+  // A NETWORK connection carries no inline credential — the safe case.
+  const liveConn = {
+    Name: 'conn',
+    ConnectionType: 'NETWORK',
+    Description: 'drifted desc',
+    PhysicalConnectionRequirements: {
+      SubnetId: 'subnet-1',
+      SecurityGroupIdList: ['sg-1'],
+      AvailabilityZone: 'us-east-1a',
+    },
+  };
+  const descOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/ConnectionInput/Description',
+    value,
+    human: 'ConnectionInput.Description -> deployed-template value',
+  });
+  it('reverts a NETWORK connection via GetConnection -> UpdateConnection (whole ConnectionInput)', async () => {
+    glue.on(GetConnectionCommand).resolves({ Connection: liveConn } as never);
+    glue.on(UpdateConnectionCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Connection'](
+      ctx({ physicalId: 'conn', declared: { ConnectionInput: { Name: 'conn' } } }),
+      [descOp('intended desc')]
+    );
+    const calls = glue.commandCalls(UpdateConnectionCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.Name).toBe('conn');
+    const ci = input.ConnectionInput as Record<string, unknown>;
+    expect(ci.Description).toBe('intended desc'); // reverted
+    // whole-ConnectionInput overwrite re-sends the other live fields (no wipe)
+    expect(ci.ConnectionType).toBe('NETWORK');
+    expect(ci.PhysicalConnectionRequirements).toEqual(liveConn.PhysicalConnectionRequirements);
+    expect(ci.ConnectionProperties).toEqual({}); // required by the API; NETWORK has none
+  });
+
+  it('REFUSES (throws) a connection that declares an inline PASSWORD — never clobbers the credential', async () => {
+    await expect(
+      SDK_WRITERS['AWS::Glue::Connection'](
+        ctx({
+          physicalId: 'jdbc',
+          declared: {
+            ConnectionInput: {
+              Name: 'jdbc',
+              ConnectionProperties: { USERNAME: 'u', PASSWORD: 'p', JDBC_CONNECTION_URL: 'x' },
+            },
+          },
+        }),
+        [descOp('x')]
+      )
+    ).rejects.toThrow(/inline PASSWORD/);
+    // the guard fires BEFORE any read/write — no UpdateConnection attempted
+    expect(glue.commandCalls(UpdateConnectionCommand)).toHaveLength(0);
+  });
+
+  it('throws when the connection target is unresolvable', async () => {
+    glue.on(GetConnectionCommand).resolves({ Connection: undefined } as never);
+    await expect(
+      SDK_WRITERS['AWS::Glue::Connection'](ctx({ physicalId: '', declared: {} }), [])
+    ).rejects.toThrow(/Glue connection target/);
   });
 });
 
