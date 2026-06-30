@@ -1007,7 +1007,10 @@ drift before they could even begin watching undeclared state — defeating the
 tool's core value. So `record` stays offered, and `buildResolveOptions` words the
 establish option honestly when a declared drift coexists (`Record current state
 as the .cdkrd baseline (start watching undeclared now — the declared drift stays
-reported; revert/ignore it separately)`) so it never reads as "all done".
+reported; revert/ignore it separately)`) so it never reads as "all done". A
+coexisting DELETED declared resource gets its own variant of that hint
+(`re-deploy to restore it` — it is not revert/ignore-able from this menu); a
+declared drift takes priority when both are present.
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 ignores the recorded baseline — it lists EVERY current undeclared value with no

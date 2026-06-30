@@ -218,14 +218,17 @@ interface SubResult {
  * How to word the Record option (its action is always the same — snapshot undeclared into
  * the baseline, R141-establishing the file if absent — but the label must describe what it
  * actually does HERE so it never over-promises):
- *  - 'snapshot'        — there ARE undeclared/added values to record (baseline present or not).
- *  - 'establish'       — nothing undeclared to record and no baseline yet, on an otherwise
- *                        CLEAN stack: Record just establishes the day-1 baseline (marks reviewed).
- *  - 'establish-drift' — nothing undeclared to record and no baseline yet, but a declared/deleted
- *                        drift coexists: Record establishes the baseline + STARTS undeclared
- *                        watching, while that drift stays reported (revert/ignore it separately).
+ *  - 'snapshot'          — there ARE undeclared/added values to record (baseline present or not).
+ *  - 'establish'         — nothing undeclared to record and no baseline yet, on an otherwise
+ *                          CLEAN stack: Record just establishes the day-1 baseline (marks reviewed).
+ *  - 'establish-drift'   — nothing undeclared to record and no baseline yet, but a DECLARED drift
+ *                          coexists: Record establishes the baseline + STARTS undeclared watching,
+ *                          while that drift stays reported (revert/ignore it separately).
+ *  - 'establish-deleted' — same, but the coexisting drift is a DELETED declared resource: it stays
+ *                          reported and is restored by re-deploying (NOT revert/ignore), so the
+ *                          hint differs. Only used when there is no declared drift to take priority.
  */
-export type RecordLabelKind = 'snapshot' | 'establish' | 'establish-drift';
+export type RecordLabelKind = 'snapshot' | 'establish' | 'establish-drift' | 'establish-deleted';
 
 function recordOptionLabel(kind: RecordLabelKind): string {
   switch (kind) {
@@ -233,6 +236,8 @@ function recordOptionLabel(kind: RecordLabelKind): string {
       return 'Record current state as the .cdkrd baseline (marks this stack reviewed)';
     case 'establish-drift':
       return 'Record current state as the .cdkrd baseline (start watching undeclared now — the declared drift stays reported; revert/ignore it separately)';
+    case 'establish-deleted':
+      return 'Record current state as the .cdkrd baseline (start watching undeclared now — the deleted-resource drift stays reported; re-deploy to restore it)';
     default:
       return 'Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)';
   }
@@ -308,18 +313,21 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     // The only available action is `record` and there are no actionable findings to decide.
     const establishOnly = baseline === undefined && decidable.length === 0;
     // Word the Record option for what it does HERE. With undeclared/added to snapshot it is a
-    // plain snapshot; with none and no baseline it establishes the baseline — and when a
-    // declared drift coexists (R141 relaxed), say so honestly so "Record" never reads as "all
-    // done" next to a drift it does not itself resolve. Scoped to `declared` (not `deleted`)
-    // because the honest label points the user at revert/ignore, which apply to a declared
-    // drift; a deleted resource is fixed by re-deploying, not from this menu.
+    // plain snapshot; with none and no baseline it establishes the baseline — and when a hard
+    // drift coexists (R141 relaxed), say so honestly so "Record" never reads as "all done" next
+    // to a drift it does not itself resolve. A DECLARED drift takes priority (its hint points at
+    // revert/ignore); a DELETED declared resource gets its own hint (re-deploy to restore — it
+    // is not revert/ignore-able from this menu).
     const recordable = reconciled.some((f) => f.tier === 'undeclared' || f.tier === 'added');
     const declaredDrift = reconciled.some((f) => f.tier === 'declared');
+    const deletedDrift = reconciled.some((f) => f.tier === 'deleted');
     const recordLabel: RecordLabelKind = recordable
       ? 'snapshot'
       : declaredDrift
         ? 'establish-drift'
-        : 'establish';
+        : deletedDrift
+          ? 'establish-deleted'
+          : 'establish';
     const options = buildResolveOptions(actions, decidable.length, recordLabel);
 
     const choice = await select({
