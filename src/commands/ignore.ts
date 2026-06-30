@@ -45,7 +45,9 @@ export async function runIgnore(args: string[]): Promise<number> {
   let wroteAny = false;
   for (const { stackName, region, template } of stacks) {
     if (!region) {
-      console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
+      console.error(
+        `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
+      );
       worst = Math.max(worst, 2);
       continue;
     }

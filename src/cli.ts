@@ -34,7 +34,9 @@ USAGE
 
 OPTIONS
   --region <r>                AWS region (or $AWS_REGION / $AWS_DEFAULT_REGION);
-                              CDK stacks with explicit env.region are auto-detected
+                              CDK stacks with explicit env.region are auto-detected.
+                              An env-agnostic stack with none of these falls back to
+                              the active --profile's configured region (~/.aws/config)
   --profile <p>               AWS profile (or $AWS_PROFILE)
   -a, --app <cmd|cdk.out>     CDK app command or pre-synthesized assembly dir
                               (or $CDKRD_APP / cdk.json "app") — enables stack

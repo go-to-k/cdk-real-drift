@@ -295,7 +295,7 @@ CI (with `--yes`).
 
 | option                     | meaning                                                                                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); stacks with explicit `env.region` are auto-detected                                      |
+| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); else `env.region` per stack, else the `--profile`'s region                               |
 | `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                 |
 | `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                    |
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                      |
