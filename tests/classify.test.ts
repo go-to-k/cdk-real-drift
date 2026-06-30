@@ -5463,4 +5463,40 @@ describe('API Gateway default-config first-run folds', () => {
     expect(t2.undeclared).toContain('MethodSettings[*].ThrottlingBurstLimit');
     expect(t2.atDefault).toEqual(['MethodSettings[*].ThrottlingRateLimit']);
   });
+
+  // The nested atDefault compare uses the SAME subset-tolerant match as the top-level
+  // one, so an OBJECT-valued nested default (KNOWN_DEFAULT_PATHS) that AWS returns with a
+  // sub-key omitted folds too — the nested twin of the RestApi EndpointConfiguration fix.
+  it('nested object default folds to atDefault when AWS omits a sub-key (Scheduler RetryPolicy)', () => {
+    const sched: DesiredResource = {
+      logicalId: 'Sched',
+      resourceType: 'AWS::Scheduler::Schedule',
+      physicalId: 'my-sched',
+      declared: { Target: { Arn: 'arn:aws:lambda:us-east-1:1:function:fn', RoleArn: 'arn:role' } },
+    };
+    // AWS materializes RetryPolicy but returns only MaximumRetryAttempts (omits the
+    // MaximumEventAgeInSeconds default) — a strict deepEqual would leak this as undeclared.
+    const live = {
+      Target: {
+        Arn: 'arn:aws:lambda:us-east-1:1:function:fn',
+        RoleArn: 'arn:role',
+        RetryPolicy: { MaximumRetryAttempts: 185 },
+      },
+    };
+    const t = tiers(classifyResource(sched, live, bare));
+    expect(t.atDefault).toContain('Target.RetryPolicy');
+    expect(t.undeclared).not.toContain('Target.RetryPolicy');
+
+    // A retry attempt set away from the default still surfaces (equality-gated).
+    const liveChanged = {
+      Target: {
+        Arn: 'arn:aws:lambda:us-east-1:1:function:fn',
+        RoleArn: 'arn:role',
+        RetryPolicy: { MaximumRetryAttempts: 3 },
+      },
+    };
+    const t2 = tiers(classifyResource(sched, liveChanged, bare));
+    expect(t2.undeclared).toContain('Target.RetryPolicy');
+    expect(t2.atDefault).not.toContain('Target.RetryPolicy');
+  });
 });

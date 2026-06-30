@@ -1251,10 +1251,15 @@ export function classifyResource(
       (path, value) => {
         if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
         const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
+        // Same subset-tolerant default match as the top-level atDefault compare: an
+        // OBJECT-valued nested default (CloudFront GeoRestriction, Scheduler RetryPolicy,
+        // Cognito SignInPolicy, …) that AWS returns with a sub-key omitted still folds,
+        // while a sub-key changed away from the default — or an extra key — surfaces.
+        // Falls back to deepEqual for scalars/arrays, so nothing else changes.
         const atDefault =
           (schemaPath in schema.defaultPaths &&
-            deepEqual(value, schema.defaultPaths[schemaPath])) ||
-          (schemaPath in knownDefPaths && deepEqual(value, knownDefPaths[schemaPath]));
+            matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
+          (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath]));
         const tier = atDefault
           ? 'atDefault'
           : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
