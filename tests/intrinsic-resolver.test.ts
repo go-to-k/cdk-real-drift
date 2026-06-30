@@ -48,6 +48,25 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Sub': 'v=${Thing.Arn}' }, c)).toBe('v=arn:aws:x:::thing');
   });
 
+  // Fn::Base64 is the deterministic transform CDK wraps EC2 UserData in; resolving it
+  // lets the (readable, mutable) UserData property be compared instead of left a blind
+  // spot. base64('hello') === 'aGVsbG8='.
+  it('resolves Fn::Base64 of a literal string', () => {
+    expect(resolve({ 'Fn::Base64': 'hello' }, ctx())).toBe('aGVsbG8=');
+  });
+
+  it('resolves Fn::Base64 of a nested Fn::Sub (the EC2 UserData shape)', () => {
+    // base64('echo prod') === 'ZWNobyBwcm9k'
+    expect(resolve({ 'Fn::Base64': { 'Fn::Sub': 'echo ${Env}' } }, ctx())).toBe('ZWNobyBwcm9k');
+  });
+
+  it('Fn::Base64 fails closed (UNRESOLVED) when its inner is unresolved or not a string', () => {
+    // inner GetAtt with no live attrs -> UNRESOLVED propagates (never encode the symbol)
+    expect(resolve({ 'Fn::Base64': { 'Fn::GetAtt': ['X', 'Arn'] } }, ctx())).toBe(UNRESOLVED);
+    // CFn Fn::Base64 takes only a String; a non-string inner fails closed, not `[object Object]`
+    expect(resolve({ 'Fn::Base64': { foo: 'bar' } }, ctx())).toBe(UNRESOLVED);
+  });
+
   it('evaluates Fn::If via conditions', () => {
     const c = ctx({ conditions: { IsProd: { 'Fn::Equals': [{ Ref: 'Env' }, 'prod'] } } });
     expect(resolve({ 'Fn::If': ['IsProd', 'yes', 'no'] }, c)).toBe('yes');
