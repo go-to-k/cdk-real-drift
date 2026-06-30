@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { classifyResource, normalizeLiveModel } from '../src/diff/classify.js';
+import { classifyResource, matchesKnownDefault, normalizeLiveModel } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULT_PATHS, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import { buildRevertPlan } from '../src/revert/plan.js';
@@ -5359,5 +5359,108 @@ describe('SecurityGroup sibling-rule reflection (subtraction)', () => {
     const t = tiers(classifyResource(ingress, liveIn, bare));
     expect(t.generated).toContain('SourceSecurityGroupOwnerId');
     expect(t.undeclared).not.toContain('SourceSecurityGroupOwnerId');
+  });
+});
+
+// API Gateway first-run noise found on a real RestApi stack (dev ScoringApi, ap-northeast-1):
+// an undeclared EndpointConfiguration and an undeclared Stage MethodSettings throttle pair
+// both surfaced as Potential Drift though both are AWS defaults. The RestApi case is the
+// regional-variance fold (AWS omits IpAddressType in some regions); the Stage case is the
+// account-level throttle defaults (rate 10000 / burst 5000).
+describe('API Gateway default-config first-run folds', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('matchesKnownDefault: deep-equal, sub-object, and the negatives', () => {
+    const def = { IpAddressType: 'ipv4', Types: ['EDGE'] };
+    expect(matchesKnownDefault({ IpAddressType: 'ipv4', Types: ['EDGE'] }, def)).toBe(true); // full
+    expect(matchesKnownDefault({ Types: ['EDGE'] }, def)).toBe(true); // AWS omitted IpAddressType
+    expect(matchesKnownDefault({ IpAddressType: 'dualstack', Types: ['EDGE'] }, def)).toBe(false); // real change
+    expect(matchesKnownDefault({ Types: ['REGIONAL'] }, def)).toBe(false); // Types changed
+    expect(matchesKnownDefault({ Types: ['EDGE'], Extra: 1 }, def)).toBe(false); // extra key not in default
+    expect(matchesKnownDefault('HEADER', 'HEADER')).toBe(true); // scalar fallback
+    expect(matchesKnownDefault('X', 'HEADER')).toBe(false);
+  });
+
+  it('RestApi undeclared EndpointConfiguration folds to atDefault even when AWS omits IpAddressType', () => {
+    const rest: DesiredResource = {
+      logicalId: 'Api',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      physicalId: 'abc123',
+      declared: {},
+    };
+    // ap-northeast-1 live read: no IpAddressType (the FP this fixes)
+    const tA = tiers(classifyResource(rest, { EndpointConfiguration: { Types: ['EDGE'] } }, bare));
+    expect(tA.atDefault).toContain('EndpointConfiguration');
+    expect(tA.undeclared).not.toContain('EndpointConfiguration');
+    // other regions echo the full shape — still atDefault
+    const tB = tiers(
+      classifyResource(
+        rest,
+        { EndpointConfiguration: { IpAddressType: 'ipv4', Types: ['EDGE'] } },
+        bare
+      )
+    );
+    expect(tB.atDefault).toContain('EndpointConfiguration');
+    // a genuine out-of-band change (dual-stack IPv6) still surfaces
+    const tC = tiers(
+      classifyResource(
+        rest,
+        { EndpointConfiguration: { IpAddressType: 'dualstack', Types: ['EDGE'] } },
+        bare
+      )
+    );
+    expect(tC.undeclared).toContain('EndpointConfiguration');
+    expect(tC.atDefault).not.toContain('EndpointConfiguration');
+  });
+
+  it('Stage MethodSettings account-default throttle folds to atDefault; a pinned limit surfaces', () => {
+    const stage: DesiredResource = {
+      logicalId: 'Stage',
+      resourceType: 'AWS::ApiGateway::Stage',
+      physicalId: 'main',
+      // CDK declares the wildcard method setting but no throttle; AWS materializes the
+      // account-default throttle into the live element.
+      declared: { MethodSettings: [{ HttpMethod: '*', ResourcePath: '/*' }] },
+    };
+    const liveDefault = {
+      MethodSettings: [
+        {
+          HttpMethod: '*',
+          ResourcePath: '/*',
+          ThrottlingBurstLimit: 5000,
+          ThrottlingRateLimit: 10000,
+        },
+      ],
+    };
+    const t = tiers(classifyResource(stage, liveDefault, bare));
+    expect(t.atDefault).toEqual([
+      'MethodSettings[*].ThrottlingBurstLimit',
+      'MethodSettings[*].ThrottlingRateLimit',
+    ]);
+    expect(t.undeclared).toEqual([]);
+
+    // A throttle pinned out of band away from the account default surfaces (equality-gated).
+    const liveChanged = {
+      MethodSettings: [
+        {
+          HttpMethod: '*',
+          ResourcePath: '/*',
+          ThrottlingBurstLimit: 2000,
+          ThrottlingRateLimit: 10000,
+        },
+      ],
+    };
+    const t2 = tiers(classifyResource(stage, liveChanged, bare));
+    expect(t2.undeclared).toContain('MethodSettings[*].ThrottlingBurstLimit');
+    expect(t2.atDefault).toEqual(['MethodSettings[*].ThrottlingRateLimit']);
   });
 });

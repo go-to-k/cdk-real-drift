@@ -372,6 +372,24 @@ function isPolicySubsetOf(sub: Record<string, unknown>, sup: Record<string, unkn
   return true;
 }
 
+// True when an undeclared live value matches a known AWS default — for the `atDefault`
+// fold (R86). A plain deepEqual is too strict for an OBJECT default whose sub-keys AWS
+// reports inconsistently: an EDGE RestApi reads back EndpointConfiguration as
+// `{Types:['EDGE']}` in some regions but `{IpAddressType:'ipv4',Types:['EDGE']}` in
+// others, so a strict compare against the fuller KNOWN_DEFAULTS object fails on the
+// omitted key and the whole undeclared object falls through as a false positive. Accept
+// the live value when it deep-equals the default OR is a SUB-OBJECT of it: every key it
+// carries matches the default and it carries no key absent from the default. Still
+// equality-gated per overlapping key — a sub-key set to a non-default value
+// (IpAddressType:'dualstack'), or an extra key the default doesn't list, breaks the
+// match and surfaces as real drift. Scalars/arrays fall back to deepEqual. Exported for
+// unit tests.
+export function matchesKnownDefault(live: unknown, def: unknown): boolean {
+  if (deepEqual(live, def)) return true;
+  if (!isNestedObject(live) || !isNestedObject(def)) return false;
+  return Object.entries(live).every(([k, v]) => k in def && deepEqual(v, def[k]));
+}
+
 function collectNestedUndeclared(
   declaredVal: unknown,
   liveVal: unknown,
@@ -1116,8 +1134,8 @@ export function classifyResource(
     // not recorded by record. The equality gate means an out-of-band change away from
     // the default no longer matches here and falls through to the `undeclared` tier.
     if (
-      (k in schema.defaults && deepEqual(v, schema.defaults[k])) ||
-      (k in knownDef && deepEqual(v, knownDef[k]))
+      (k in schema.defaults && matchesKnownDefault(v, schema.defaults[k])) ||
+      (k in knownDef && matchesKnownDefault(v, knownDef[k]))
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;

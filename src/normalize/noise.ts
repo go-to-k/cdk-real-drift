@@ -596,9 +596,16 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   // was changed out of band no longer matches and surfaces. The sibling defaults
   // CacheDataEncrypted / CachingEnabled / MetricsEnabled all read back `false` and fold via
   // isTrivialEmpty (so enabling any of them out of band — a non-`false` value — surfaces).
-  // Proven live.
+  // The two Throttling* defaults are the account-level API Gateway throttle limits AWS
+  // applies to every method that declares no per-method throttle (rate 10000 req/s,
+  // burst 5000 — the documented account defaults). A stage that never set throttling
+  // otherwise reports both on every first run as undeclared drift. Equality-gated: a
+  // method pinned to a different limit (or an account whose quota was raised) no longer
+  // matches and surfaces. Proven live (RestApi DeploymentStage with no method throttle).
   'AWS::ApiGateway::Stage': {
     'MethodSettings.*.CacheTtlInSeconds': 300,
+    'MethodSettings.*.ThrottlingBurstLimit': 5000,
+    'MethodSettings.*.ThrottlingRateLimit': 10000,
   },
   'AWS::ApiGateway::UsagePlan': {
     'Quota.Offset': 0,
