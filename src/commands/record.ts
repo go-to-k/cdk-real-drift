@@ -36,7 +36,9 @@ export async function runRecord(args: string[]): Promise<number> {
   let worst = 0;
   for (const { stackName, region, template } of stacks) {
     if (!region) {
-      console.error(`error: ${stackName}: no region — set env on the stack or pass --region`);
+      console.error(
+        `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
+      );
       worst = Math.max(worst, 2);
       continue;
     }

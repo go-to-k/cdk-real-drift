@@ -186,7 +186,9 @@ signals this via `RevertOutcome.aborted` so the standalone `revert` command keep
 its own exit-0-on-abort behaviour (R30).
 
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
-default — resolves via SDK chain, errors if absent), `--profile`, `-a/--app <cmd|cdk.out>`
+default — per stack: explicit `env.region`, else `--region` / `$AWS_REGION`, else
+the `--profile`'s configured region from `~/.aws/config`; errors if all absent),
+`--profile`, `-a/--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
 `--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53),
 `--show-all` (inventory mode:
