@@ -2762,6 +2762,39 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('Lambda EventSourceMapping KafkaBootstrapServers reordered (nested scalar set under SelfManagedEventSource.Endpoints, found by esm-sourceaccess-rich)', () => {
+    const T = 'AWS::Lambda::EventSourceMapping';
+    const declared = {
+      SelfManagedEventSource: {
+        Endpoints: {
+          KafkaBootstrapServers: ['b-1.cdkrd.example.com:9092', 'b-2.cdkrd.example.com:9092'],
+        },
+      },
+    };
+
+    it('Lambda returning the bootstrap-server set reordered is NOT drift', () => {
+      const live = {
+        SelfManagedEventSource: {
+          Endpoints: {
+            KafkaBootstrapServers: ['b-2.cdkrd.example.com:9092', 'b-1.cdkrd.example.com:9092'],
+          },
+        },
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine broker change still surfaces (no over-fold)', () => {
+      const live = {
+        SelfManagedEventSource: {
+          Endpoints: {
+            KafkaBootstrapServers: ['b-2.cdkrd.example.com:9092', 'b-3.cdkrd.example.com:9092'],
+          },
+        },
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   // The siblings of the GSI fold above, found by ddb-nested-sets: the SAME nested
   // INCLUDE-projection NonKeyAttributes set lives on a Table's LocalSecondaryIndexes
   // and on the AWS::DynamoDB::GlobalTable (TableV2) type's GSI *and* LSI, all of which
