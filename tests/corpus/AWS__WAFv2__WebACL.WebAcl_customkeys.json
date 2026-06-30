@@ -1,0 +1,235 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "cdkrd-integ-webacl-customkeys|78968456-4d06-41b7-9cb7-2931e4fa415d|REGIONAL",
+    "constructPath": "CdkRealDriftIntegWafv2WebAclCustomKeys/WebAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Name": "cdkrd-integ-webacl-customkeys",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "rate-custom-keys",
+          "Priority": 0,
+          "Statement": {
+            "RateBasedStatement": {
+              "AggregateKeyType": "CUSTOM_KEYS",
+              "CustomKeys": [
+                {
+                  "UriPath": {
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Header": {
+                    "Name": "x-region",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "HTTPMethod": {}
+                },
+                {
+                  "Cookie": {
+                    "Name": "session",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "QueryArgument": {
+                    "Name": "lang",
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Limit": 2000
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": true,
+            "MetricName": "rateCustomKeys",
+            "SampledRequestsEnabled": true
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "cdkrdWebAclCustomKeys",
+        "SampledRequestsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "REGIONAL",
+    "Capacity": 152,
+    "Id": "78968456-4d06-41b7-9cb7-2931e4fa415d",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-integ-webacl-customkeys/78968456-4d06-41b7-9cb7-2931e4fa415d",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 0,
+        "Statement": {
+          "RateBasedStatement": {
+            "AggregateKeyType": "CUSTOM_KEYS",
+            "CustomKeys": [
+              {
+                "UriPath": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "Header": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "x-region"
+                }
+              },
+              {
+                "HTTPMethod": {}
+              },
+              {
+                "Cookie": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "session"
+                }
+              },
+              {
+                "QueryArgument": {
+                  "TextTransformations": [
+                    {
+                      "Type": "NONE",
+                      "Priority": 0
+                    }
+                  ],
+                  "Name": "lang"
+                }
+              }
+            ],
+            "Limit": 2000,
+            "EvaluationWindowSec": 300
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "rateCustomKeys",
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true
+        },
+        "Name": "rate-custom-keys"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdWebAclCustomKeys",
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:cdkrd-integ-webacl-customkeys:",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegWafv2WebAclCustomKeys/2868d810-7488-11f1-878b-0e43c5a25781",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegWafv2WebAclCustomKeys",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "WebAcl",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-integ-webacl-customkeys"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["AssociationConfig.RequestBody", "CustomResponseBodies"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "cdkrd-integ-webacl-customkeys|78968456-4d06-41b7-9cb7-2931e4fa415d|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2WebAclCustomKeys/WebAcl"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "Rules[rate-custom-keys].Statement.RateBasedStatement.EvaluationWindowSec",
+      "actual": 300,
+      "nested": true,
+      "physicalId": "cdkrd-integ-webacl-customkeys|78968456-4d06-41b7-9cb7-2931e4fa415d|REGIONAL",
+      "constructPath": "CdkRealDriftIntegWafv2WebAclCustomKeys/WebAcl"
+    }
+  ],
+  "description": "RECORDED LIVE (wafv2-webacl-customkeys fixture, issue #440): fresh-deploy AWS::WAFv2::WebACL with a rate-based rule whose RateBasedStatement.CustomKeys SET of discriminated-union aggregate keys is declared NON-sorted ([UriPath, Header, HTTPMethod, Cookie, QueryArgument]). WAF reads them back in the EXACT declared order (same rule-out as the RuleGroup sibling), so CustomKeys is deliberately NOT folded. Findings: the EvaluationWindowSec 5-minute default and the OnSourceDDoSProtectionConfig (ALBLowReputationMode=ACTIVE_UNDER_DDOS) default, both folded to atDefault."
+}
