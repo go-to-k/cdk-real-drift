@@ -15,6 +15,7 @@ vi.mock('../src/commands/stack-actions.js', async (importOriginal) => {
     ...actual,
     revertStack: vi.fn().mockResolvedValue({ exit: 0, aborted: false }),
     ignoreStack: vi.fn().mockResolvedValue({ wrote: false, refused: false, added: 0 }),
+    recordStack: vi.fn().mockResolvedValue({ wrote: true, refused: false }),
   };
 });
 
@@ -24,7 +25,7 @@ import {
   isFoldedFinding,
   resolveInteractively,
 } from '../src/commands/interactive-resolve.js';
-import { ignoreStack, revertStack } from '../src/commands/stack-actions.js';
+import { ignoreStack, recordStack, revertStack } from '../src/commands/stack-actions.js';
 import type { Finding } from '../src/types.js';
 
 const declaredDrift: Finding = {
@@ -72,6 +73,37 @@ describe('resolveInteractively — read-only check never auto-confirms an AWS wr
     vi.mocked(select).mockResolvedValueOnce('revert-all');
     await resolveInteractively(params(false));
     expect(vi.mocked(revertStack).mock.calls[0]![0]).toMatchObject({ yes: false });
+  });
+});
+
+// PR #452: a declared-only stack with NO baseline yet must still OFFER Record (establish the
+// day-1 baseline + start undeclared watching), worded honestly that the declared drift stays
+// reported. This drives the whole menu end-to-end: the option appears, and choosing it routes
+// to recordStack (the establish write) rather than being silently absent.
+describe('resolveInteractively — declared-only + no baseline still offers + routes Record (establish)', () => {
+  beforeEach(() => {
+    vi.mocked(recordStack).mockClear();
+    vi.mocked(recordStack).mockResolvedValue({ wrote: true, refused: false });
+    vi.mocked(select).mockReset();
+  });
+
+  it('offers record-all (establish-drift label) and routes the choice to recordStack', async () => {
+    vi.mocked(select)
+      .mockResolvedValueOnce('record-all') // top menu: choose Record (establish)
+      .mockResolvedValueOnce('nothing'); // re-shown menu (declared drift remains) → exit
+    await resolveInteractively(params(false));
+
+    // the Record option WAS in the first menu, worded for the coexisting declared drift
+    const firstMenu = vi.mocked(select).mock.calls[0]![0] as {
+      options: { value: string; label: string }[];
+    };
+    const recordOpt = firstMenu.options.find((o) => o.value === 'record-all');
+    expect(recordOpt).toBeDefined();
+    expect(recordOpt!.label).toContain('Record current state as the .cdkrd baseline');
+    expect(recordOpt!.label).toContain('the declared drift stays reported');
+
+    // choosing it routed to the establish write (recordStack), not a no-op
+    expect(recordStack).toHaveBeenCalledTimes(1);
   });
 });
 

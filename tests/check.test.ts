@@ -151,8 +151,10 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
     expect(values(A({ revert: true }), 2)).toContain('per-finding');
   });
 
-  it('R141: the Record label is worded per recordLabel kind (snapshot / establish / establish-drift)', () => {
-    const label = (kind: 'snapshot' | 'establish' | 'establish-drift'): string =>
+  it('R141: the Record label is worded per recordLabel kind (snapshot / establish / establish-drift / establish-deleted)', () => {
+    const label = (
+      kind: 'snapshot' | 'establish' | 'establish-drift' | 'establish-deleted'
+    ): string =>
       buildResolveOptions(A({ record: true }), 0, kind).find((o) => o.value === 'record-all')!
         .label;
     // clean establish: "baseline", never "undeclared"
@@ -164,6 +166,9 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
     // declared drift stays reported (so it never reads as "all done").
     expect(label('establish-drift')).toContain('Record current state as the .cdkrd baseline');
     expect(label('establish-drift')).toContain('declared drift stays reported');
+    // establish next to a DELETED declared resource: hint is re-deploy, not revert/ignore.
+    expect(label('establish-deleted')).toContain('deleted-resource drift stays reported');
+    expect(label('establish-deleted')).toContain('re-deploy to restore it');
   });
 });
 
