@@ -525,6 +525,8 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 `iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`,
 `elasticloadbalancing:ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes`,
 `glue:UpdateTable`, `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
+`ses:UpdateReceiptRule` (reverts an `AWS::SES::ReceiptRule` — the whole rule is
+re-supplied in place, since Cloud Control has no handler for the type),
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
 `config:DescribeConfigRules` / `config:PutConfigRule`,
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /

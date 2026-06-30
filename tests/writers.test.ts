@@ -17,6 +17,11 @@ import {
 } from '@aws-sdk/client-opensearch';
 import { GetWebACLCommand, UpdateWebACLCommand, WAFV2Client } from '@aws-sdk/client-wafv2';
 import {
+  DescribeReceiptRuleCommand,
+  SESClient,
+  UpdateReceiptRuleCommand,
+} from '@aws-sdk/client-ses';
+import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
   ModifyTargetGroupAttributesCommand,
@@ -115,6 +120,7 @@ const cloudfront = mockClient(CloudFrontClient);
 const wafv2 = mockClient(WAFV2Client);
 const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
+const ses = mockClient(SESClient);
 const logs = mockClient(CloudWatchLogsClient);
 const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
@@ -161,6 +167,7 @@ beforeEach(() => {
   wafv2.reset();
   opensearch.reset();
   glue.reset();
+  ses.reset();
   logs.reset();
   route53.reset();
   configService.reset();
@@ -659,6 +666,52 @@ describe('Glue Workflow writer (CC UnsupportedActionException)', () => {
     await expect(
       SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: '', declared: {} }), [runsOp(3)])
     ).rejects.toThrow(/Glue workflow target/);
+  });
+});
+
+describe('SES ReceiptRule writer (CC has no handlers; UpdateReceiptRule whole-rule overwrite)', () => {
+  const liveRule = {
+    Name: 'my-rule',
+    Enabled: true,
+    TlsPolicy: 'Optional',
+    ScanEnabled: false,
+    Recipients: ['drifted.example.com'],
+    Actions: [{ AddHeaderAction: { HeaderName: 'X-Cdkrd', HeaderValue: 'v' } }],
+  };
+  const recipientsOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/Rule/Recipients',
+    value,
+    human: 'Rule.Recipients -> deployed-template value',
+  });
+  it('reverts via DescribeReceiptRule -> UpdateReceiptRule, re-sending the WHOLE Rule (no wipe)', async () => {
+    ses.on(DescribeReceiptRuleCommand).resolves({ Rule: liveRule } as never);
+    ses.on(UpdateReceiptRuleCommand).resolves({});
+    await SDK_WRITERS['AWS::SES::ReceiptRule'](
+      ctx({ physicalId: 'my-rule', declared: { RuleSetName: 'rs' } }),
+      [recipientsOp(['example.com'])]
+    );
+    const calls = ses.commandCalls(UpdateReceiptRuleCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.RuleSetName).toBe('rs'); // parent targets the rule (createOnly)
+    const rule = input.Rule as Record<string, unknown>;
+    expect(rule.Recipients).toEqual(['example.com']); // reverted
+    // the other live fields are re-sent so the whole-rule overwrite never wipes them
+    // (a never-declared Enabled is NOT reset to the SES create-default false)
+    expect(rule.Name).toBe('my-rule');
+    expect(rule.Enabled).toBe(true);
+    expect(rule.TlsPolicy).toBe('Optional');
+    expect(rule.Actions).toEqual([
+      { AddHeaderAction: { HeaderName: 'X-Cdkrd', HeaderValue: 'v' } },
+    ]);
+  });
+
+  it('throws when the rule target is unresolvable', async () => {
+    ses.on(DescribeReceiptRuleCommand).resolves({ Rule: undefined } as never);
+    await expect(
+      SDK_WRITERS['AWS::SES::ReceiptRule'](ctx({ physicalId: '', declared: {} }), [])
+    ).rejects.toThrow(/SES receipt rule target/);
   });
 });
 

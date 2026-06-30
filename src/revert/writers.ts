@@ -67,6 +67,7 @@ import {
   UpdateWebACLCommand,
   WAFV2Client,
 } from '@aws-sdk/client-wafv2';
+import { type ReceiptRule, SESClient, UpdateReceiptRuleCommand } from '@aws-sdk/client-ses';
 import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
@@ -753,6 +754,27 @@ const writeGlueWorkflow: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::SES::ReceiptRule — read via the DescribeReceiptRule override (the SES inbound
+// receipt-rule family has no Cloud Control handlers), so it was detect-only. SES
+// UpdateReceiptRule REPLACES the whole rule in place (without changing its position), and
+// the override reader returns the full CFn `Rule` (whose shape mirrors the SDK ReceiptRule
+// 1:1), so reconstruct the desired model (current live + revert ops) and write the whole
+// Rule back — covering any drift on Enabled / TlsPolicy / Recipients / Actions / ScanEnabled.
+// The parent RuleSetName (createOnly) targets the rule; sending the WHOLE live Rule (not just
+// the drifted field) means a never-declared Enabled/ScanEnabled is preserved rather than
+// reset to the SES create-default. (RuleSetName / ReceiptFilter have only createOnly props,
+// so they have no SDK writer — detect-only.)
+const writeSesReceiptRule: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::SES::ReceiptRule', ctx, ops);
+  const ruleSetName = str(m.RuleSetName) ?? str(ctx.declared['RuleSetName']);
+  const rule = m.Rule as ReceiptRule | undefined;
+  if (!ruleSetName || !rule || !str(rule.Name))
+    throw new Error('cannot resolve SES receipt rule target for revert');
+  await new SESClient({ region: ctx.region }).send(
+    new UpdateReceiptRuleCommand({ RuleSetName: ruleSetName, Rule: rule })
+  );
+};
+
 // AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
 // composite id), so it is read via DescribeMetricFilters and was not revertable.
 // CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
@@ -1199,6 +1221,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Table': writeGlueTable,
   'AWS::Glue::Classifier': writeGlueClassifier,
   'AWS::Glue::Workflow': writeGlueWorkflow,
+  'AWS::SES::ReceiptRule': writeSesReceiptRule,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,

@@ -27,4 +27,23 @@ echo "=== [$STACK] check MUST be CLEAN ==="
 $CLI check "$STACK" --region "$REGION" --fail 2>&1 | tee "/tmp/cdkrd-$STACK.out"
 rc=${PIPESTATUS[0]}
 [ "$rc" -eq 0 ] || { echo "--- FALSE POSITIVE: $STACK ---"; fail "expected CLEAN (exit 0), got $rc"; }
+
+# --- revert path (ses:UpdateReceiptRule SDK writer) ---
+# Mutate a DECLARED mutable prop (Rule.Recipients) out of band, confirm `check`
+# DETECTS it, `revert` writes the declared value back, and a re-check is CLEAN.
+RULE_SET=cdkrd-integ-receipt-rule-set
+RULE=cdkrd-integ-receipt-rule
+echo "=== [$STACK] mutate Rule.Recipients out of band ==="
+aws ses update-receipt-rule --rule-set-name "$RULE_SET" --region "$REGION" --rule \
+  '{"Name":"'"$RULE"'","Enabled":true,"TlsPolicy":"Optional","Recipients":["drifted.example.com"],"ScanEnabled":false,"Actions":[{"AddHeaderAction":{"HeaderName":"X-Cdkrd","HeaderValue":"integ"}},{"StopAction":{"Scope":"RuleSet"}}]}' \
+  || fail "inject Recipients drift"
+echo "=== [$STACK] check MUST DETECT the declared drift (exit 1) ==="
+$CLI check "$STACK" --region "$REGION" --fail 2>&1 | tee "/tmp/cdkrd-drift-$STACK.out"
+[ "${PIPESTATUS[0]}" -ne 0 ] || fail "expected drift detected (exit !=0) after Recipients mutation"
+grep -q "Rule.Recipients" "/tmp/cdkrd-drift-$STACK.out" || fail "expected Rule.Recipients in the drift report"
+echo "=== [$STACK] revert ==="
+$CLI revert "$STACK" --region "$REGION" --yes 2>&1 | tee "/tmp/cdkrd-revert-$STACK.out" || fail "revert"
+echo "=== [$STACK] post-revert check MUST be CLEAN ==="
+$CLI check "$STACK" --region "$REGION" --fail 2>&1 | tee "/tmp/cdkrd-postrevert-$STACK.out"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "expected CLEAN after revert (ses:UpdateReceiptRule writer)"
 echo "INTEG PASS ($STACK)"
