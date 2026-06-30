@@ -1,37 +1,26 @@
-// CDK app for the cdk-real-drift Lambda EventSourceMapping SourceAccessConfigurations
-// false-positive test. A self-managed Apache Kafka event source (a common streaming
-// integration) carries SourceAccessConfigurations: a SET of {Type, URI} entries
-// (VPC_SUBNET x2, VPC_SECURITY_GROUP, SASL_SCRAM_512_AUTH) whose `Type` is NOT one of
-// canonicalizeTagListsDeep's IDENTITY_FIELDS — so if Lambda echoes the set SORTED (not
-// in template order) a positional compare would false-flag every shifted entry as
-// declared drift. We declare the set NON-sorted on purpose to expose any reorder.
-// A freshly deployed + recorded ESM with NO out-of-band change MUST report CLEAN.
+// CDK app for the cdk-real-drift Lambda EventSourceMapping reorder false-positive test.
+// A self-managed Apache Kafka event source (a common streaming integration) carries
+// SelfManagedEventSource.Endpoints.KafkaBootstrapServers — a SET of broker host:port
+// strings whose order AWS may echo differently than the template. This reorder was the
+// real FP folded in #437, and it is the PRIMARY target here: we declare the two brokers
+// NON-sorted on purpose so an alphabetical reorder by Lambda surfaces as a positional diff
+// if cdkrd doesn't fold it. A freshly deployed + recorded ESM with NO out-of-band change
+// MUST report CLEAN.
+//
+// NOTE: this fixture deliberately does NOT attach the ESM to a VPC, and carries only a
+// single SASL SourceAccessConfiguration. A VPC-attached self-managed-Kafka ESM leaves
+// Lambda Hyperplane ENIs `in-use` for ~20-40 min after teardown, blocking subnet/SG/VPC
+// deletion (CFn DELETE_FAILED) — see issue #441. The KafkaBootstrapServers reorder needs
+// no VPC; the VPC_SUBNET/VPC_SECURITY_GROUP multi-element SourceAccessConfigurations
+// order-PRESERVED rule-out is documented observed-only in the noise.ts comment and is not
+// worth the teardown cost.
 import { App, Stack } from "aws-cdk-lib";
-import { CfnVPC, CfnSubnet, CfnSecurityGroup } from "aws-cdk-lib/aws-ec2";
 import { CfnFunction, CfnEventSourceMapping } from "aws-cdk-lib/aws-lambda";
 import { CfnRole } from "aws-cdk-lib/aws-iam";
 import { CfnSecret } from "aws-cdk-lib/aws-secretsmanager";
 
 const app = new App();
 const stack = new Stack(app, "CdkRealDriftIntegEsmSourceaccessRich");
-
-// Minimal VPC + two subnets + a security group — only their IDs are referenced by the
-// ESM's VPC SourceAccessConfigurations; no IGW/NAT is needed for the mapping to create.
-const vpc = new CfnVPC(stack, "Vpc", { cidrBlock: "10.0.0.0/16" });
-const subnet1 = new CfnSubnet(stack, "Subnet1", {
-  vpcId: vpc.ref,
-  cidrBlock: "10.0.0.0/24",
-  availabilityZone: "us-east-1a",
-});
-const subnet2 = new CfnSubnet(stack, "Subnet2", {
-  vpcId: vpc.ref,
-  cidrBlock: "10.0.1.0/24",
-  availabilityZone: "us-east-1b",
-});
-const sg = new CfnSecurityGroup(stack, "Sg", {
-  groupDescription: "cdkrd esm kafka",
-  vpcId: vpc.ref,
-});
 
 const secret = new CfnSecret(stack, "KafkaAuth", {
   name: "cdkrd-esm-kafka-auth",
@@ -52,18 +41,6 @@ const role = new CfnRole(stack, "FnRole", {
       policyDocument: {
         Version: "2012-10-17",
         Statement: [
-          {
-            Effect: "Allow",
-            Action: [
-              "ec2:CreateNetworkInterface",
-              "ec2:DescribeNetworkInterfaces",
-              "ec2:DeleteNetworkInterface",
-              "ec2:DescribeVpcs",
-              "ec2:DescribeSubnets",
-              "ec2:DescribeSecurityGroups",
-            ],
-            Resource: "*",
-          },
           { Effect: "Allow", Action: ["secretsmanager:GetSecretValue"], Resource: secret.ref },
         ],
       },
@@ -82,18 +59,12 @@ const fn = new CfnFunction(stack, "Fn", {
 new CfnEventSourceMapping(stack, "Esm", {
   functionName: fn.ref,
   selfManagedEventSource: {
-    endpoints: { kafkaBootstrapServers: ["b-1.cdkrd.example.com:9092", "b-2.cdkrd.example.com:9092"] },
+    // Declared NON-sorted (b-2 before b-1) so an alphabetical-by-host reorder by Lambda
+    // would surface as a positional diff if cdkrd doesn't fold it (the #437 FP).
+    endpoints: { kafkaBootstrapServers: ["b-2.cdkrd.example.com:9092", "b-1.cdkrd.example.com:9092"] },
   },
   topics: ["cdkrd-topic"],
   startingPosition: "TRIM_HORIZON",
   batchSize: 100,
-  // Declared NON-sorted (VPC_SECURITY_GROUP first, SASL second, subnets last) so that
-  // an alphabetical-by-Type reorder by Lambda (SASL_SCRAM_512_AUTH, VPC_SECURITY_GROUP,
-  // VPC_SUBNET, VPC_SUBNET) would surface as a positional diff if cdkrd doesn't fold it.
-  sourceAccessConfigurations: [
-    { type: "VPC_SECURITY_GROUP", uri: `security_group:${sg.attrGroupId}` },
-    { type: "SASL_SCRAM_512_AUTH", uri: secret.ref },
-    { type: "VPC_SUBNET", uri: `subnet:${subnet1.ref}` },
-    { type: "VPC_SUBNET", uri: `subnet:${subnet2.ref}` },
-  ],
+  sourceAccessConfigurations: [{ type: "SASL_SCRAM_512_AUTH", uri: secret.ref }],
 });
