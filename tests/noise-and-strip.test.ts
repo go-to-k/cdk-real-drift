@@ -481,12 +481,16 @@ describe('noise suppressors', () => {
     });
   });
 
-  it('Lambda EventSourceMapping stream retry/age infinite defaults (found by esm-sourceaccess-rich)', () => {
+  it('Lambda EventSourceMapping stream retry/age + Enabled defaults (found by esm-sourceaccess-rich)', () => {
     // -1 is the documented "infinite" default for stream / Kafka event sources (retry
-    // forever / no record-age cap); equality-gated, so a finite override still surfaces.
+    // forever / no record-age cap); Enabled=true is the first-run default an omitting
+    // construct reads back. All three live on the SINGLE EventSourceMapping entry —
+    // #438 added Enabled as a SECOND object-literal key, which (JS last-key-wins) silently
+    // dropped the retry/age fold; this asserts they coexist so that regression can't recur.
     expect(KNOWN_DEFAULTS['AWS::Lambda::EventSourceMapping']).toEqual({
       MaximumRetryAttempts: -1,
       MaximumRecordAgeInSeconds: -1,
+      Enabled: true,
     });
   });
 

@@ -63,7 +63,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // re-surfaces as real undeclared drift. (SQS event sources don't carry these props at
   // all, so the entry can't mis-fold there.) Observed live on a fresh esm-sourceaccess-rich
   // deploy.
-  'AWS::Lambda::EventSourceMapping': { MaximumRetryAttempts: -1, MaximumRecordAgeInSeconds: -1 },
+  // Enabled: an ESM (e.g. CDK's SqsEventSource) is created enabled; the construct omits
+  // Enabled when it leaves the default true, so the live read reports an undeclared
+  // Enabled=true on every first run — observed live on a dev LineLink stack with no
+  // out-of-band edit. (The off state Enabled=false is dropped upstream as trivially-empty
+  // before this fold, mirroring the KMS Key Enabled case.) Merged into the single
+  // EventSourceMapping entry — a duplicate object-literal key silently drops the earlier
+  // retry/age fold (JS last-key-wins; #438 regressed it).
+  'AWS::Lambda::EventSourceMapping': {
+    MaximumRetryAttempts: -1,
+    MaximumRecordAgeInSeconds: -1,
+    Enabled: true,
+  },
   // An alias created without a Description reads back the empty string. Folded as
   // atDefault so a never-declared alias does not report `Description=""` as drift; it
   // is also the value REVERT_SET_DEFAULT_PATHS writes to undo an out-of-band Description
@@ -78,12 +89,6 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // content hash (not a constant default) — folded as `generated` via
   // GENERATED_TOPLEVEL_PATHS instead.
   'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
-  // An event source mapping (e.g. CDK's SqsEventSource) is created enabled; the
-  // construct omits Enabled when it leaves the default true, so the live read reports
-  // an undeclared Enabled=true on every first run — observed live on a dev LineLink
-  // stack with no out-of-band edit. (The off state Enabled=false is dropped upstream as
-  // trivially-empty before this fold, mirroring the KMS Key Enabled case.)
-  'AWS::Lambda::EventSourceMapping': { Enabled: true },
   'AWS::Events::Rule': { EventBusName: 'default' },
   'AWS::Athena::WorkGroup': { State: 'ENABLED' },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
