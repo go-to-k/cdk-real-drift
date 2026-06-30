@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # False-positive integration test (real AWS): deploy -> record baseline -> check
 # MUST be CLEAN. Any drift here is a normalization / default-folding FP — in
-# particular a SourceAccessConfigurations reorder.
+# particular a KafkaBootstrapServers reorder (the #437 FP). No VPC is attached, so
+# teardown is fast with no Hyperplane-ENI reaping (issue #441).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
