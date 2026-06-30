@@ -54,7 +54,7 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
     'live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator',
   atDefault: 'undeclared, but the live value matches a known AWS default — not drift',
   generated: 'auto-generated identifier not in your template (AWS-assigned at deploy) — not drift',
-  ignored: 'matched a .cdkrd/config.json ignore rule — not drift',
+  ignored: 'matched a .cdkrd/ignore.yaml ignore rule — not drift',
   readGap: "declared, but AWS doesn't return it on read so cdkrd can't verify it — not drift",
   unresolved:
     "declared, but its value references a CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value, so it can't be compared — skipped, not drift",

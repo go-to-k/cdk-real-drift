@@ -183,6 +183,7 @@ async function recomputeExit(p: ResolveParams, resolvedKeys: Set<string>): Promi
   const reEval = applyIgnores(
     applyBaseline(p.findings, nb, baselineOpts(p)),
     p.stackName,
+    p.desired.accountId,
     p.region,
     nc
   );
@@ -243,7 +244,7 @@ export function buildResolveOptions(
   if (actions.ignore)
     options.push({
       value: 'ignore-all',
-      label: 'Ignore — stop reporting it (writes .cdkrd/config.json)',
+      label: 'Ignore — stop reporting it (writes .cdkrd/ignore.yaml)',
     });
   // The bulk options above each apply ONE action (the picker then narrows WHICH findings,
   // and which ops within a finding); "Decide per finding" is the only path that assigns a
@@ -321,6 +322,7 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     reconciled = applyIgnores(
       applyBaseline(p.findings, baseline, opts),
       p.stackName,
+      p.desired.accountId,
       p.region,
       config
     );
@@ -335,7 +337,7 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
     stackName: p.stackName,
     region: p.region,
     desired: p.desired,
-    findings: applyIgnores(p.findings, p.stackName, p.region, p.config),
+    findings: applyIgnores(p.findings, p.stackName, p.desired.accountId, p.region, p.config),
     yes: p.yes,
     interactive: true,
     expandNested: p.verbose, // --show-all skips the interactive flow, so only --verbose expands here
@@ -350,6 +352,7 @@ async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   const reEval = applyIgnores(
     applyBaseline(p.findings, nb, baselineOpts(p)),
     p.stackName,
+    p.desired.accountId,
     p.region,
     p.config
   );
@@ -442,7 +445,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       stackName: p.stackName,
       region: p.region,
       desired: p.desired,
-      findings: applyIgnores(p.findings, p.stackName, p.region, p.config),
+      findings: applyIgnores(p.findings, p.stackName, p.desired.accountId, p.region, p.config),
       yes: p.yes,
       interactive: true,
       preselectedKeys,

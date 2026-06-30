@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // cdk-real-drift CLI entry. Dispatches: check | record | ignore | revert (+ help/version).
 // check/record/ignore never write to AWS (record writes only the baseline FILE; ignore
-// writes only .cdkrd/config.json); revert is the one AWS-mutating command.
+// writes only .cdkrd/ignore.yaml); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
 import { runRecord } from './commands/record.js';
 import { runIgnore } from './commands/ignore.js';
@@ -16,7 +16,7 @@ USAGE
   cdkrd record [<stack>...]   snapshot current undeclared state + out-of-band added
                               resources into the baseline — KEEPS watching
                               (re-surfaces if the value/resource changes)
-  cdkrd ignore [<stack>...]   stop reporting the chosen drift (writes config.json)
+  cdkrd ignore [<stack>...]   stop reporting the chosen drift (writes ignore.yaml)
                               — STOPS watching (declared, undeclared, or added)
   cdkrd revert [<stack>...]   write the desired value back to AWS (confirms)
 
@@ -77,8 +77,8 @@ EXIT CODES
   ignore: 0 = rule(s) written / nothing to ignore   2 = error/refused
   revert: 0 = converged/aborted   1 = drift remains   2 = error/apply failure
 
-The baseline lives at .cdkrd/<stack>.<accountId>.<region>.json — commit it; review its
-diff in PRs. Ignore rules live in .cdkrd/config.json — also git-committed.`;
+The baseline lives at .cdkrd/baselines/<stack>.<accountId>.<region>.json — commit it; review
+its diff in PRs. Ignore rules live in .cdkrd/ignore.yaml — also git-committed.`;
 
 function version(): string {
   try {

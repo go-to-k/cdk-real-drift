@@ -51,7 +51,7 @@ export async function runRecord(args: string[]): Promise<number> {
         stackName,
         region,
         desired,
-        findings: applyIgnores(findings, stackName, region, config),
+        findings: applyIgnores(findings, stackName, desired.accountId, region, config),
         yes: a.yes,
         interactive: isInteractive(),
         expandNested: a.verbose, // --verbose itemizes the nested sub-keys (--show-all is the separate inventory mode, not a picker-detail flag)

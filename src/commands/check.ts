@@ -163,7 +163,7 @@ export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
 
-  // .cdkrd/config.json ignore rules, loaded once (cwd-relative). A malformed config
+  // .cdkrd/ignore.yaml ignore rules, loaded once (cwd-relative). A malformed config
   // fails the whole run fast — a silently-ineffective ignore rule is the dangerous case.
   let config;
   try {
@@ -292,7 +292,7 @@ export async function runCheck(args: string[]): Promise<number> {
           );
         if (!a.json) separate();
         const preDeployCode = report(
-          applyIgnores(declaredOnly, stackName, region, config),
+          applyIgnores(declaredOnly, stackName, desired.accountId, region, config),
           `${stackName} (${region})`,
           {
             json: a.json,
@@ -353,6 +353,7 @@ export async function runCheck(args: string[]): Promise<number> {
           },
         }),
         stackName,
+        desired.accountId,
         region,
         config
       );

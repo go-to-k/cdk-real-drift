@@ -405,7 +405,7 @@ export interface IgnoreStackParams {
 
 /**
  * Outcome of a per-stack ignore.
- *  - `wrote`: at least one NEW rule was appended to `.cdkrd/config.json`.
+ *  - `wrote`: at least one NEW rule was appended to `.cdkrd/ignore.yaml`.
  *  - `refused`: true ONLY when a decision was required (ignorable findings present)
  *    but the run is non-interactive and `--yes` was not passed — like record, ignore
  *    refuses rather than ignoring everything by default.
@@ -421,7 +421,7 @@ export interface IgnoreResult {
 /** Header for ignore's multiselect. The key hints are rendered by `bulkMultiselect`
  *  itself, so this is just the one-line prompt. Pure + exported for unit tests. */
 export function ignoreSelectMessage(stackName: string): string {
-  return `${stackName}: select drift to ignore — stops reporting it (writes .cdkrd/config.json)`;
+  return `${stackName}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
 }
 
 // Unique per-finding key for the multiselect (logicalId+path is unique within a stack;
@@ -446,7 +446,7 @@ export function ignoreSelectOptions(
 }
 
 /**
- * Write `ignore` rules into `.cdkrd/config.json` for the chosen declared/undeclared
+ * Write `ignore` rules into `.cdkrd/ignore.yaml` for the chosen declared/undeclared
  * findings — they stop being reported entirely (re-tagged `ignored` on the next check),
  * the "stop watching" counterpart to record's "keep watching". Interactive runs pick
  * WHICH findings to ignore (default NONE selected — → selects all, R137); `--yes`
@@ -623,7 +623,7 @@ export interface RevertStackParams {
   region: string;
   gathered: GatherResult; // the check/revert gather (findings + desired + schemas)
   baseline: BaselineFile | undefined;
-  config: CdkrdConfig; // .cdkrd/config.json ignore rules (ignored findings drop out of the plan)
+  config: CdkrdConfig; // .cdkrd/ignore.yaml ignore rules (ignored findings drop out of the plan)
   dryRun: boolean;
   yes: boolean;
   removeUnrecorded: boolean;
@@ -713,6 +713,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const drifted = applyIgnores(
     applyBaseline(gathered.findings, baseline, { ...baselineOpts, warn: console.error }),
     stackName,
+    gathered.desired.accountId,
     region,
     config
   );
@@ -880,7 +881,13 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     '\n' + style.infoTier(`verifying convergence (re-reading ${touched.size} resource(s))...`)
   );
   const reconcile = (findings: Finding[]): Finding[] =>
-    applyIgnores(applyBaseline(findings, baseline, baselineOpts), stackName, region, config);
+    applyIgnores(
+      applyBaseline(findings, baseline, baselineOpts),
+      stackName,
+      gathered.desired.accountId,
+      region,
+      config
+    );
   // regatherTouched drops every `touched` finding (including the synthesized-id `added`
   // deletes) and re-reads only template resources — so a FAILED delete's finding is gone
   // from `post` though the resource still lives. Re-add the failed ones so convergence
@@ -960,7 +967,7 @@ export function resolveInteractiveRevertExit(currentCode: number, outcome: Rever
 
 export interface Actions {
   record: boolean; // an undeclared drift exists to record
-  ignore: boolean; // a declared or undeclared finding exists to ignore (config.json)
+  ignore: boolean; // a declared or undeclared finding exists to ignore (ignore.yaml)
   revert: boolean; // at least one finding is revertable
 }
 

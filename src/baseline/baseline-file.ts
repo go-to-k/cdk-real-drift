@@ -1,6 +1,12 @@
-// Git-committed baseline file: .cdkrd/<stack>.<accountId>.<region>.json
+// Git-committed baseline file: .cdkrd/baselines/<stack>.<accountId>.<region>.json
 // Stores the RECORDED undeclared property values (the only thing with no other
 // source of truth — declared desired comes live from GetTemplate).
+//
+// Lives under the `baselines/` subdirectory (not flat in `.cdkrd/`) so the machine-
+// generated baselines stay visually separated from the hand-edited `.cdkrd/ignore.yaml`
+// policy file — the directory name labels the role, and a multi-env tree of baselines
+// stays tidy. JSON, not YAML (unlike ignore.yaml): a baseline is wholesale-rewritten
+// machine data with no comment expectation, so deterministic JSON is the right fit.
 //
 // Undeclared classification is PER ENTRY, not per file (R62): an undeclared
 // finding with a matching entry is suppressed; with an entry whose value differs
@@ -49,7 +55,7 @@ export interface BaselineFile {
 }
 
 export function baselinePath(stackName: string, accountId: string, region: string): string {
-  return `.cdkrd/${stackName}.${accountId}.${region}.json`;
+  return `.cdkrd/baselines/${stackName}.${accountId}.${region}.json`;
 }
 
 export function hashTemplate(rawTemplate: string): string {

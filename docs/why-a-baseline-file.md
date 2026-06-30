@@ -1,9 +1,9 @@
 # Why a baseline file?
 
 This document is the long answer to one design question: **could `cdkrd` be
-stateless** — template + schema + a hand-written `.cdkrd/config.json`, with no
+stateless** — template + schema + a hand-written `.cdkrd/ignore.yaml`, with no
 machine-written baseline file? Users ask it in several forms ("isn't the
-CloudFormation schema enough?", "couldn't config.json cover this?", "do I really
+CloudFormation schema enough?", "couldn't ignore.yaml cover this?", "do I really
 need a committed file?"), and the short FAQ answers in [README.md](../README.md)
 link here. [ARCHITECTURE.md §8](ARCHITECTURE.md#8-baseline-model) describes how
 the baseline works; this document explains why it exists at all.
@@ -118,22 +118,29 @@ findings `notRevertable` and why `--remove-unrecorded` is an explicit opt-in:
 the guard is the temporary form of a blindness that would become permanent
 without the file.
 
-## 5. Why not `.cdkrd/config.json`
+## 5. Why not `.cdkrd/ignore.yaml`
 
-`.cdkrd/config.json` already exists (path-level ignore rules), so "couldn't the
+`.cdkrd/ignore.yaml` already exists (path-level ignore rules), so "couldn't the
 baseline live there?" is natural. Two answers, depending on what would be
 stored:
 
-**Store values there → it's the baseline, relocated badly.** config.json is
-hand-written JSONC (comments included) and stable; the baseline is rewritten
-wholesale by every `record`. Merging them means either machine writes erase
-human edits and comments, or `record` churns a hand-edited file on every run.
-And the scopes differ: an ignore rule is app-wide intent ("autoscaling owns
-`DesiredCount` everywhere"), while a baseline entry is a per-stack × account ×
-region **fact** — the filename `<stack>.<accountId>.<region>.json` is the
-isolation mechanism that keeps a personal-account run from colliding with a
-committed shared-account baseline. Value-pinned rules would leak per-account
-facts into the single app-wide file.
+**Store values there → it's the baseline, relocated badly.** `ignore.yaml` is
+hand-written policy and stable; the baseline is rewritten wholesale by every
+`record`. The file formats already encode this split: the ignore file is YAML
+precisely _because_ it is hand-edited policy whose most valuable edit is a `#`
+comment saying why a property is ignored, while the baseline is JSON because it is
+machine-generated data — data = JSON, policy = YAML. Merging them means either
+machine writes erase human edits and comments, or `record` churns a hand-edited
+file on every run. And the scopes differ: an ignore rule is broad intent
+("autoscaling owns `DesiredCount` everywhere"), while a baseline entry is a
+per-stack × account × region **fact** — the filename
+`baselines/<stack>.<accountId>.<region>.json` is the isolation mechanism that
+keeps a personal-account run from colliding with a committed shared-account
+baseline. Value-pinned rules would leak per-account facts into the single shared
+file. (An ignore rule _can_ narrow itself with the same `stack` / `account` /
+`region` scopes — those exist exactly so a `stack: "Prod*"` rule does not leak
+into a same-named stack in another account — but those are optional hand-edits,
+not the per-account, per-value facts a baseline must isolate.)
 
 **Store only paths there → the third mode is gone.** An ignore rule has no
 value, so it can only express "never look at X again" (mode two of §1). Ignoring
@@ -165,7 +172,7 @@ The file does not cost the first-run experience:
   of one human decision (the interactive record after the first check, or
   `cdkrd record`).
 
-So zero-CONFIG holds for the product's whole life (config.json stays optional),
+So zero-CONFIG holds for the product's whole life (ignore.yaml stays optional),
 while zero-STATE is impossible only for the undeclared tier — because without an
 recorded reference, "undeclared drift" has no definition (§1). Designs that
 claim otherwise just relocate the state somewhere worse: Terraform relocates it
@@ -209,7 +216,7 @@ the need for the file entirely — and produces a coherent, smaller product:
 declared/deleted drift detection plus an undeclared _inventory_ with ignore
 rules. The honest degradation table:
 
-| capability                               | with baseline                           | stateless (config.json only)                          |
+| capability                               | with baseline                           | stateless (ignore.yaml only)                          |
 | ---------------------------------------- | --------------------------------------- | ----------------------------------------------------- |
 | declared / deleted drift                 | works, fails the run                    | unchanged — works, fails the run                      |
 | undeclared change detection              | alarm on change from the recorded value | gone — existence inventory only                       |

@@ -77,7 +77,7 @@ ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
     Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)
     Revert — write the desired values back to AWS
-    Ignore — stop reporting it (writes .cdkrd/config.json)
+    Ignore — stop reporting it (writes .cdkrd/ignore.yaml)
     Decide per finding — assign a different action to each
 ```
 
@@ -133,7 +133,7 @@ each does, run on its own:
 | -------------- | -------------------------------------------------------------------- | ----------------------------------- |
 | `cdkrd check`  | find drift (the one you run)                                         | nothing; the 3 below do the writing |
 | `cdkrd record` | "this undeclared / added state is the norm; tell me if it _changes_" | a git file (baseline)               |
-| `cdkrd ignore` | "stop reporting this property, ever"                                 | a git file (`config.json`)          |
+| `cdkrd ignore` | "stop reporting this property, ever"                                 | a git file (`ignore.yaml`)          |
 | `cdkrd revert` | "this state is wrong"; write the desired value back                  | AWS (plan + confirm)                |
 
 The scopes differ: `record` is **undeclared / added only**, while `ignore` works on
@@ -193,7 +193,7 @@ The mechanics:
   informational, CLEAN, never fails `--fail`.
   [Recording](#recording) is what arms detection,
   turning a later out-of-band change into failing drift. The baseline is a
-  git-committed JSON file at `.cdkrd/<stack>.<accountId>.<region>.json`
+  git-committed JSON file at `.cdkrd/baselines/<stack>.<accountId>.<region>.json`
   (reviewable; account id + region in the name prevent cross-account collisions).
 - **There is no watch-list to maintain.** Every `check` snapshots the full live
   model (Cloud Control API + SDK readers for the gap types) and subtracts everything
@@ -265,7 +265,7 @@ synth only tells cdkrd which stacks to look at.
 | --------------------------- | ---------------------------------------------------------------------- |
 | `cdkrd check [<stack>...]`  | compare live state vs template (declared) + baseline (undeclared)      |
 | `cdkrd record [<stack>...]` | snapshot undeclared + added state into the baseline (CI: `--yes`)      |
-| `cdkrd ignore [<stack>...]` | stop reporting chosen drift via `.cdkrd/config.json` (CI: `--yes`)     |
+| `cdkrd ignore [<stack>...]` | stop reporting chosen drift via `.cdkrd/ignore.yaml` (CI: `--yes`)     |
 | `cdkrd revert [<stack>...]` | write the desired value back to AWS (confirms; `--dry-run` to preview) |
 
 Day to day you run only `cdkrd check` and act from its prompt; the standalone
@@ -385,26 +385,37 @@ against the _deployed_ template) and never touches the baseline.
 Some properties are _legitimately_ rewritten by another system, such as Application
 Auto Scaling moving an ECS Service `DesiredCount`, or autoscaled DynamoDB capacity.
 A recorded snapshot would re-flag every move. Run **`cdkrd ignore`** to pick the
-drift to suppress, or hand-edit the git-committed `.cdkrd/config.json` (strict
-JSON: no comments / trailing commas, unknown keys rejected):
+drift to suppress, or hand-edit the git-committed `.cdkrd/ignore.yaml`. It is a
+hand-edited policy file (the `.gitignore` / `.dockerignore` / `.trivyignore`
+family), so it is YAML rather than JSON: the single most valuable hand-edit is a
+`#` comment recording **why** a property is ignored, and YAML can carry it where
+JSON cannot. (The companion baseline stays JSON because it is the opposite —
+machine-generated, wholesale-rewritten data, not human policy.)
 
-```json
-{
-  "ignore": [
-    { "path": "*.DesiredCount" },
-    { "path": "Fn*.ReservedConcurrentExecutions", "stack": "Prod*" },
-    { "path": "*.DesiredCount", "region": "us-*" }
-  ]
-}
+```yaml
+# cdkrd ignore rules — properties cdkrd should stop reporting as drift.
+ignore:
+  # DesiredCount is managed by Application Auto Scaling
+  - path: '*.DesiredCount'
+  - path: Fn*.ReservedConcurrentExecutions
+    stack: Prod*
+    account: '111111111111'
+    region: ap-northeast-1
+  - path: '*.DesiredCount'
+    region: us-*
 ```
 
-- Every rule is an object `{ "path", "stack"?, "region"? }`. `cdkrd ignore` writes
-  the unscoped form: `path` is an exact `<constructPath>.<path>` (or
-  `<logicalId>.<path>` on a non-CDK stack); the optional `stack` / `region` scopes
-  are a hand-edit.
-- All three fields accept the same `*` / `?` glob, and a parent `path` covers child
-  paths. **Region is an independent axis** from stack name; the same stack in
-  several regions may drift in only one.
+- Every rule is a mapping `{ path, stack?, account?, region? }`. `cdkrd ignore`
+  writes the unscoped form (and is **comment-preserving and append-only**: it keeps
+  your existing comments and layout, and appends new rules at the end — you own the
+  order). `path` is an exact `<constructPath>.<path>` (or `<logicalId>.<path>` on a
+  non-CDK stack); the optional `stack` / `account` / `region` scopes are a hand-edit.
+- All four fields accept the same `*` / `?` glob, and a parent `path` covers child
+  paths. The three scope axes — **stack, account, region** — are exactly the
+  baseline file's identity axes. **Account** keeps a `stack: "Prod*"` rule from
+  leaking into a same-named stack in another account (stack-name uniqueness only
+  holds within one account / App); **region** is independent the same way — the same
+  stack in several accounts or regions may drift in only one.
 - Matching findings move to the informational `ignored` tier: visible under
   `--verbose`, never exit-affecting, excluded from `revert` and `record`. A
   **deleted resource is never ignorable**.
@@ -526,7 +537,7 @@ handling), see [docs/limitations.md](docs/limitations.md).
 ## FAQ
 
 How `cdkrd` differs from `cdk deploy --revert-drift`, why the baseline is a
-committed file, why `ignore` rules live in `.cdkrd/config.json`, and more:
+committed file, why `ignore` rules live in `.cdkrd/ignore.yaml`, and more:
 [docs/faq.md](docs/faq.md).
 
 ## Contributing

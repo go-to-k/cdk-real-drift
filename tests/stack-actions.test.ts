@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { baselinePath, buildRecorded, recordedKey } from '../src/baseline/baseline-file.js';
 import type { GatherResult } from '../src/commands/gather.js';
+import { loadConfig } from '../src/config/config-file.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import {
   ignoreSelectMessage,
@@ -967,14 +968,14 @@ describe('recordScopeNote (R117 — record snapshots undeclared + added; say wha
 
 describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")', () => {
   it('FIRST baseline on a clean stack (no prior file, 0 entries) reads as an initialization', () => {
-    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, false);
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/baselines/ApiStack.x.json', 0, false, false);
     expect(m).toContain('baseline initialized');
     expect(m).toContain('this stack is now tracked');
     expect(m).not.toContain('0 recorded entry(ies)'); // the cold phrasing is gone
   });
 
   it('with a PRIOR baseline, 0 entries is the normal "written" line (not an init)', () => {
-    const m = recordOutcomeMessage('ApiStack', '.cdkrd/ApiStack.x.json', 0, false, true);
+    const m = recordOutcomeMessage('ApiStack', '.cdkrd/baselines/ApiStack.x.json', 0, false, true);
     expect(m).toContain('baseline written');
     expect(m).not.toContain('initialized');
   });
@@ -991,15 +992,15 @@ describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")'
 });
 
 describe('ignoreSelectMessage', () => {
-  it('is a one-line header naming the stack + that it writes config.json', () => {
+  it('is a one-line header naming the stack + that it writes ignore.yaml', () => {
     const msg = ignoreSelectMessage('ApiStack');
     expect(msg).toContain('ApiStack');
-    expect(msg).toContain('config.json');
+    expect(msg).toContain('ignore.yaml');
     expect(msg).not.toContain('\n');
   });
 });
 
-describe('ignoreStack (PR-B — write config.json ignore rules; declared + undeclared)', () => {
+describe('ignoreStack (PR-B — write ignore.yaml ignore rules; declared + undeclared)', () => {
   let dir: string;
   let prevCwd: string;
   beforeEach(async () => {
@@ -1026,7 +1027,7 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
       interactive: false,
     });
     expect(r).toEqual({ wrote: false, refused: false, added: 0 });
-    expect(existsSync('.cdkrd/config.json')).toBe(false);
+    expect(existsSync('.cdkrd/ignore.yaml')).toBe(false);
   });
 
   it('yes:false + interactive:false → refuses (a required decision, like record)', async () => {
@@ -1045,7 +1046,7 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
     } finally {
       spy.mockRestore();
     }
-    expect(existsSync('.cdkrd/config.json')).toBe(false);
+    expect(existsSync('.cdkrd/ignore.yaml')).toBe(false);
     expect(errs.join('\n')).toContain('ignore needs a decision');
   });
 
@@ -1058,9 +1059,10 @@ describe('ignoreStack (PR-B — write config.json ignore rules; declared + undec
     });
     expect(r.wrote).toBe(true);
     expect(r.added).toBe(2);
-    expect(JSON.parse(await readFile('.cdkrd/config.json', 'utf8')).ignore).toEqual([
-      { path: 'B.AccelerateConfiguration' },
+    // append-only writes in finding order (declared first, then undeclared) — not sorted
+    expect((await loadConfig()).ignore).toEqual([
       { path: 'B.VersioningConfiguration' },
+      { path: 'B.AccelerateConfiguration' },
     ]);
   });
 
