@@ -754,6 +754,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // A custom MAIL FROM domain reads back the documented default fallback behavior.
     'MailFromAttributes.BehaviorOnMxFailure': 'USE_DEFAULT_VALUE',
   },
+  'AWS::SES::ReceiptRule': {
+    // A rule that does not declare a TLS policy reads back the documented "Optional"
+    // default. Equality-gated, so a rule switched to "Require" out of band still surfaces.
+    // (The sibling Enabled / ScanEnabled booleans default false and fold via isTrivialEmpty.)
+    'Rule.TlsPolicy': 'Optional',
+  },
   'AWS::MSK::Cluster': {
     // Brokers spread across AZs read back the DEFAULT distribution when unspecified.
     'BrokerNodeGroupInfo.BrokerAZDistribution': 'DEFAULT',
