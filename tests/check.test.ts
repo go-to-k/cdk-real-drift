@@ -151,13 +151,19 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
     expect(values(A({ revert: true }), 2)).toContain('per-finding');
   });
 
-  it('R141: establishOnly relabels Record to "establish the baseline", not "all undeclared"', () => {
-    const label = (establish: boolean): string =>
-      buildResolveOptions(A({ record: true }), 0, establish).find((o) => o.value === 'record-all')!
+  it('R141: the Record label is worded per recordLabel kind (snapshot / establish / establish-drift)', () => {
+    const label = (kind: 'snapshot' | 'establish' | 'establish-drift'): string =>
+      buildResolveOptions(A({ record: true }), 0, kind).find((o) => o.value === 'record-all')!
         .label;
-    expect(label(true)).toContain('Record current state as the .cdkrd baseline');
-    expect(label(true)).not.toContain('undeclared');
-    expect(label(false)).toContain('Record undeclared');
+    // clean establish: "baseline", never "undeclared"
+    expect(label('establish')).toContain('Record current state as the .cdkrd baseline');
+    expect(label('establish')).not.toContain('undeclared');
+    // plain snapshot: "undeclared"
+    expect(label('snapshot')).toContain('Record undeclared');
+    // establish next to a declared drift: still a baseline establish, but honest that the
+    // declared drift stays reported (so it never reads as "all done").
+    expect(label('establish-drift')).toContain('Record current state as the .cdkrd baseline');
+    expect(label('establish-drift')).toContain('declared drift stays reported');
   });
 });
 

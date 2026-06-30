@@ -90,8 +90,18 @@ const baselineWith = (entries: BaselineFile['recorded']): BaselineFile => ({
 });
 
 describe('availableActions (R28 interactive choice logic)', () => {
-  it('declared-only → Record hidden (cannot record declared), Ignore + Revert shown', () => {
+  it('declared-only + NO baseline → Record SHOWN (establish + start watching; declared stays reported), Ignore + Revert too', () => {
+    // A declared drift no longer blocks establishing the day-1 baseline: Record begins
+    // undeclared watching (orthogonal to the declared drift, which keeps being reported).
     expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
+      record: true,
+      ignore: true,
+      revert: true,
+    });
+  });
+
+  it('declared-only WITH a baseline → Record hidden (baseline exists, nothing new undeclared to snapshot)', () => {
+    expect(availableActions([declared()], baselineWith([]), NO_SCHEMAS, false)).toEqual({
       record: false,
       ignore: true,
       revert: true,
@@ -119,8 +129,18 @@ describe('availableActions (R28 interactive choice logic)', () => {
     });
   });
 
-  it('deleted-only → none (deleted is not revertable, not ignorable, nothing to record)', () => {
+  it('deleted-only + NO baseline → only Record (establish day-1 baseline); deleted is not revertable/ignorable, and snapshots nothing', () => {
+    // Record here establishes the baseline (starts undeclared watching). The deleted finding
+    // itself stays unaddressable: not revertable, not ignorable, and never recorded.
     expect(availableActions([deleted()], undefined, NO_SCHEMAS, false)).toEqual({
+      record: true,
+      ignore: false,
+      revert: false,
+    });
+  });
+
+  it('deleted-only WITH a baseline → none (baseline exists, deleted is unaddressable)', () => {
+    expect(availableActions([deleted()], baselineWith([]), NO_SCHEMAS, false)).toEqual({
       record: false,
       ignore: false,
       revert: false,
@@ -195,16 +215,6 @@ describe('availableActions (R28 interactive choice logic)', () => {
       record: false,
       ignore: false,
       revert: false,
-    });
-  });
-
-  it('R141: drift + NO baseline → establish NOT mixed in (Record gated off, only its real actions)', () => {
-    // declared drift on a never-recorded stack: Record must NOT appear wearing the
-    // "all undeclared" label for a declared drift it cannot address.
-    expect(availableActions([declared()], undefined, NO_SCHEMAS, false)).toEqual({
-      record: false,
-      ignore: true,
-      revert: true,
     });
   });
 });

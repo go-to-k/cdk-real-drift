@@ -215,6 +215,30 @@ interface SubResult {
 }
 
 /**
+ * How to word the Record option (its action is always the same — snapshot undeclared into
+ * the baseline, R141-establishing the file if absent — but the label must describe what it
+ * actually does HERE so it never over-promises):
+ *  - 'snapshot'        — there ARE undeclared/added values to record (baseline present or not).
+ *  - 'establish'       — nothing undeclared to record and no baseline yet, on an otherwise
+ *                        CLEAN stack: Record just establishes the day-1 baseline (marks reviewed).
+ *  - 'establish-drift' — nothing undeclared to record and no baseline yet, but a declared/deleted
+ *                        drift coexists: Record establishes the baseline + STARTS undeclared
+ *                        watching, while that drift stays reported (revert/ignore it separately).
+ */
+export type RecordLabelKind = 'snapshot' | 'establish' | 'establish-drift';
+
+function recordOptionLabel(kind: RecordLabelKind): string {
+  switch (kind) {
+    case 'establish':
+      return 'Record current state as the .cdkrd baseline (marks this stack reviewed)';
+    case 'establish-drift':
+      return 'Record current state as the .cdkrd baseline (start watching undeclared now — the declared drift stays reported; revert/ignore it separately)';
+    default:
+      return 'Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)';
+  }
+}
+
+/**
  * Build the top-menu options for the current action surface (R133). Nothing is FIRST so
  * the safe no-op is the top row AND the default cursor — Enter is a harmless exit, never
  * an accidental write. "Decide per finding" appears only when >1 finding is decidable
@@ -223,20 +247,12 @@ interface SubResult {
 export function buildResolveOptions(
   actions: Actions,
   decidableCount: number,
-  establishOnly = false
+  recordLabel: RecordLabelKind = 'snapshot'
 ): { value: string; label: string }[] {
   const options: { value: string; label: string }[] = [
     { value: 'nothing', label: 'Nothing (decide later)' },
   ];
-  if (actions.record)
-    options.push({
-      value: 'record-all',
-      // R141: when there is nothing to record but no baseline yet, Record establishes the
-      // initial baseline (marks the stack reviewed) — name that, not "all undeclared".
-      label: establishOnly
-        ? 'Record current state as the .cdkrd baseline (marks this stack reviewed)'
-        : 'Record undeclared (live-only) — snapshot into the .cdkrd baseline (keeps watching)',
-    });
+  if (actions.record) options.push({ value: 'record-all', label: recordOptionLabel(recordLabel) });
   if (actions.revert)
     options.push({ value: 'revert-all', label: 'Revert — write the desired values back to AWS' });
   if (actions.ignore)
@@ -291,7 +307,20 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     // R141: nothing to act on, but no baseline yet → Record establishes the day-1 baseline.
     // The only available action is `record` and there are no actionable findings to decide.
     const establishOnly = baseline === undefined && decidable.length === 0;
-    const options = buildResolveOptions(actions, decidable.length, establishOnly);
+    // Word the Record option for what it does HERE. With undeclared/added to snapshot it is a
+    // plain snapshot; with none and no baseline it establishes the baseline — and when a
+    // declared drift coexists (R141 relaxed), say so honestly so "Record" never reads as "all
+    // done" next to a drift it does not itself resolve. Scoped to `declared` (not `deleted`)
+    // because the honest label points the user at revert/ignore, which apply to a declared
+    // drift; a deleted resource is fixed by re-deploying, not from this menu.
+    const recordable = reconciled.some((f) => f.tier === 'undeclared' || f.tier === 'added');
+    const declaredDrift = reconciled.some((f) => f.tier === 'declared');
+    const recordLabel: RecordLabelKind = recordable
+      ? 'snapshot'
+      : declaredDrift
+        ? 'establish-drift'
+        : 'establish';
+    const options = buildResolveOptions(actions, decidable.length, recordLabel);
 
     const choice = await select({
       message: resolveMenuMessage(p.stackName, code, establishOnly),

@@ -997,7 +997,17 @@ R141: it ALSO fires when there is simply NO baseline file yet — even on a CLEA
 baseline is established through `check`'s own flow (the chosen Record writes the initial
 snapshot-complete baseline with zero undeclared entries) rather than a separate `cdkrd
 record` step; once a baseline exists, a clean run prompts nothing. `availableActions`
-offers `record` when there are undeclared/added findings OR (no baseline AND no drift).
+offers `record` whenever there are undeclared/added findings OR there is no
+baseline yet — including when the only drift is a declared/deleted one Record
+cannot itself resolve. Establishing the baseline STARTS undeclared watching,
+which is orthogonal to that drift: the drift keeps being reported until the user
+reverts/ignores it (Record never resolves a declared drift). Withholding `record`
+there would have forced the user to clear (or permanently `ignore`) the declared
+drift before they could even begin watching undeclared state — defeating the
+tool's core value. So `record` stays offered, and `buildResolveOptions` words the
+establish option honestly when a declared drift coexists (`Record current state
+as the .cdkrd baseline (start watching undeclared now — the declared drift stays
+reported; revert/ignore it separately)`) so it never reads as "all done".
 In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 ignores the recorded baseline — it lists EVERY current undeclared value with no
