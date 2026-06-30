@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Subscription",
+    "resourceType": "AWS::SNS::Subscription",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:cdkrd-sub-topic:e8767dde-8b81-4fd8-8dec-5937bcc4fa85",
+    "constructPath": "CdkRealDriftIntegSnsSubscriptionRich/Subscription",
+    "declared": {
+      "Endpoint": "arn:aws:sqs:us-east-1:111111111111:cdkrd-sub-queue",
+      "FilterPolicy": {
+        "eventType": ["order_placed", "order_cancelled"],
+        "priority": [
+          {
+            "numeric": [">=", 5]
+          }
+        ]
+      },
+      "FilterPolicyScope": "MessageAttributes",
+      "Protocol": "sqs",
+      "RawMessageDelivery": true,
+      "RedrivePolicy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:111111111111:cdkrd-sub-dlq\"}",
+      "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-sub-topic"
+    }
+  },
+  "liveRaw": {
+    "RawMessageDelivery": true,
+    "Endpoint": "arn:aws:sqs:us-east-1:111111111111:cdkrd-sub-queue",
+    "FilterPolicy": {
+      "eventType": ["order_placed", "order_cancelled"],
+      "priority": [
+        {
+          "numeric": [">=", 5]
+        }
+      ]
+    },
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-sub-topic",
+    "RedrivePolicy": {
+      "deadLetterTargetArn": "arn:aws:sqs:us-east-1:111111111111:cdkrd-sub-dlq"
+    },
+    "FilterPolicyScope": "MessageAttributes",
+    "Arn": "arn:aws:sns:us-east-1:111111111111:cdkrd-sub-topic:e8767dde-8b81-4fd8-8dec-5937bcc4fa85",
+    "Protocol": "sqs"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["Region"],
+    "createOnly": ["Endpoint", "Protocol", "TopicArn"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["Region"],
+    "createOnlyPaths": ["Endpoint", "Protocol", "TopicArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

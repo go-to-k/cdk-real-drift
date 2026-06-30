@@ -1819,6 +1819,20 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // folded by the same set-semantics reasoning.
   'AWS::ElastiCache::CacheCluster': new Set(['LogDeliveryConfigurations']),
   'AWS::ElastiCache::ReplicationGroup': new Set(['LogDeliveryConfigurations']),
+  // A WAFv2 LoggingConfiguration's `RedactedFields` is a SET of discriminated-union
+  // FieldToMatch objects ({SingleHeader: {Name}}, {Method: {}}, {QueryString: {}}, …)
+  // that WAF echoes SORTED by the discriminator key, not in template order (declared
+  // [SingleHeader, Method, QueryString] reads back [Method, QueryString, SingleHeader]),
+  // so a positional compare false-flags every shifted field as declared drift on a
+  // freshly recorded LoggingConfiguration. The elements carry NO top-level identity
+  // field (the discriminator IS the single object key, not one of canonicalizeTagListsDeep's
+  // IDENTITY_FIELDS Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer can't
+  // align them — hence the per-type opt-in. Sorting both sides by canonical JSON aligns
+  // equal fields; a genuine redacted-field add/remove still differs. Observed live on a
+  // fresh wafv2-logging-rich deploy. (The sibling `LoggingFilter.Filters[].Conditions`
+  // set was tested in the SAME deploy with two conditions and WAF PRESERVED their order,
+  // so it is NOT folded — observed-only.)
+  'AWS::WAFv2::LoggingConfiguration': new Set(['RedactedFields']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
