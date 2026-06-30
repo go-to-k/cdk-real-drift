@@ -493,6 +493,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `lambda:GetPolicy`, `budgets:ViewBudget`, `ec2:DescribeAddresses`,
   `ec2:DescribeLaunchTemplateVersions`, `ec2:DescribeNetworkAcls`,
   `route53:ListResourceRecordSets`,
+  `ses:DescribeReceiptRuleSet`, `ses:DescribeReceiptRule`, `ses:ListReceiptFilters`
+  (the SES inbound receipt-rule family — `ReceiptRuleSet` / `ReceiptRule` /
+  `ReceiptFilter` — has no Cloud Control handlers),
   `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`,
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),

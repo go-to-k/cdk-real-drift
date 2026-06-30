@@ -90,6 +90,9 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   // Cloud Map (ServiceDiscovery) GetNamespace / GetService on a deleted target.
   'NamespaceNotFound',
   'ServiceNotFound',
+  // SES DescribeReceiptRuleSet / DescribeReceiptRule on a deleted inbound rule set / rule.
+  'RuleSetDoesNotExistException',
+  'RuleDoesNotExistException',
   'ResourceGoneError',
 ]);
 

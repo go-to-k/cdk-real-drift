@@ -1,0 +1,34 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RuleSet",
+    "resourceType": "AWS::SES::ReceiptRuleSet",
+    "physicalId": "cdkrd-integ-receipt-rule-set",
+    "constructPath": "CdkRealDriftIntegSesReceiptReadGap/RuleSet",
+    "declared": {
+      "RuleSetName": "cdkrd-integ-receipt-rule-set"
+    }
+  },
+  "liveRaw": {
+    "RuleSetName": "cdkrd-integ-receipt-rule-set"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["RuleSetName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleSetName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

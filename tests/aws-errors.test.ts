@@ -22,6 +22,8 @@ describe('isResourceNotFoundError', () => {
       'InvalidAllocationID.NotFound',
       'InvalidAddress.NotFound', // EC2 EIP
       'EntityNotFoundException', // Glue GetTable on a deleted table/db
+      'RuleSetDoesNotExistException', // SES DescribeReceiptRuleSet
+      'RuleDoesNotExistException', // SES DescribeReceiptRule
     ]) {
       expect(isResourceNotFoundError(named(n))).toBe(true);
     }

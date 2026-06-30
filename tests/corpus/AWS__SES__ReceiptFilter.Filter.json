@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Filter",
+    "resourceType": "AWS::SES::ReceiptFilter",
+    "physicalId": "cdkrd-integ-receipt-filter",
+    "constructPath": "CdkRealDriftIntegSesReceiptReadGap/Filter",
+    "declared": {
+      "Filter": {
+        "IpFilter": {
+          "Cidr": "10.0.0.0/24",
+          "Policy": "Block"
+        },
+        "Name": "cdkrd-integ-receipt-filter"
+      }
+    }
+  },
+  "liveRaw": {
+    "Filter": {
+      "Name": "cdkrd-integ-receipt-filter",
+      "IpFilter": {
+        "Policy": "Block",
+        "Cidr": "10.0.0.0/24"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Filter"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Filter"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -59,6 +59,13 @@ import {
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
+import {
+  DescribeReceiptRuleCommand,
+  DescribeReceiptRuleSetCommand,
+  ListReceiptFiltersCommand,
+  type ReceiptRule,
+  SESClient,
+} from '@aws-sdk/client-ses';
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   GetNamespaceCommand,
@@ -1232,7 +1239,94 @@ const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) =
   return model;
 };
 
+// The SES inbound receipt-rule family (ReceiptRuleSet / ReceiptRule / ReceiptFilter)
+// has NO Cloud Control handlers (GetResource throws UnsupportedActionException), so each
+// was silently `skipped` — zero drift coverage. Read them via the SES v1 API. NOTE: SES
+// inbound receipt rules exist only in us-east-1 / us-west-2 / eu-west-1; in any other
+// region these resources cannot exist, so the override naturally reads not-found there.
+
+// AWS::SES::ReceiptRuleSet — the only declarable property is RuleSetName, and the CFn
+// physical id IS the rule-set name. Read via SES DescribeReceiptRuleSet; project just
+// RuleSetName (Metadata.Name). A deleted set throws RuleSetDoesNotExistException →
+// mapped to `deleted` by the router.
+const readSesReceiptRuleSet: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.RuleSetName);
+  if (!name) return undefined;
+  const c = new SESClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeReceiptRuleSetCommand({ RuleSetName: name }));
+  const liveName = str(r.Metadata?.Name);
+  if (!liveName) return undefined;
+  return { RuleSetName: liveName };
+};
+
+// AWS::SES::ReceiptRule — its CFn physical id is the bare rule name; the parent
+// RuleSetName (createOnly) comes from the resolved declared property. Read via SES
+// DescribeReceiptRule({ RuleSetName, RuleName }). The SDK `ReceiptRule` shape mirrors the
+// CFn `Rule` shape 1:1 (same PascalCase keys, same Action union members
+// S3Action/BounceAction/LambdaAction/SNSAction/StopAction/WorkmailAction/AddHeaderAction/
+// ConnectAction — verified against the registry schema), and Actions is an ordered list
+// AWS preserves (actions execute sequentially), so it is projected verbatim. Project only
+// present fields: the boolean defaults (Enabled / ScanEnabled = false) fold via
+// isTrivialEmpty when undeclared, and TlsPolicy's "Optional" default is folded via
+// KNOWN_DEFAULT_PATHS. The CFn `After` placement hint is not readable (DescribeReceiptRule
+// never returns it) — a declared `After` stays an informational readGap (scalar). A
+// deleted rule throws RuleDoesNotExistException → mapped to `deleted` by the router.
+const readSesReceiptRule: OverrideReader = async ({ physicalId, declared, region }) => {
+  const ruleSetName = str(declared.RuleSetName);
+  const declRule = declared.Rule as Record<string, unknown> | undefined;
+  const ruleName = str(physicalId) ?? str(declRule?.Name);
+  if (!ruleSetName || !ruleName) return undefined;
+  const c = new SESClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeReceiptRuleCommand({ RuleSetName: ruleSetName, RuleName: ruleName })
+  );
+  const live = r.Rule;
+  if (!live) return undefined;
+  const rule: Record<string, unknown> = { Name: live.Name };
+  const copy = <K extends keyof ReceiptRule>(k: K): void => {
+    if (live[k] !== undefined) rule[k] = live[k];
+  };
+  copy('Enabled');
+  copy('TlsPolicy');
+  copy('ScanEnabled');
+  if (live.Recipients && live.Recipients.length > 0) rule.Recipients = live.Recipients;
+  if (live.Actions && live.Actions.length > 0) rule.Actions = live.Actions;
+  return { RuleSetName: ruleSetName, Rule: rule };
+};
+
+// AWS::SES::ReceiptFilter — there is no single-get API, so read the whole list via SES
+// ListReceiptFilters and pick the entry by name (the CFn physical id is the filter name;
+// declared Filter.Name is the fallback). Project the CFn `Filter` shape ({ Name, IpFilter:
+// { Policy, Cidr } }) verbatim — the SDK ReceiptFilter mirrors it 1:1. The container list
+// is always readable, so an absent named filter means it was deleted out of band →
+// ResourceGoneError (mapped to `deleted`).
+const readSesReceiptFilter: OverrideReader = async ({ physicalId, declared, region }) => {
+  const declFilter = declared.Filter as Record<string, unknown> | undefined;
+  const name = str(physicalId) ?? str(declFilter?.Name);
+  if (!name) return undefined;
+  const c = new SESClient({ region, ...READ_RETRY });
+  const r = await c.send(new ListReceiptFiltersCommand({}));
+  const f = (r.Filters ?? []).find((x) => x.Name === name);
+  if (!f)
+    throw new ResourceGoneError(`SES ReceiptFilter ${name} absent from the account's filter list`);
+  const ipFilter = f.IpFilter;
+  return {
+    Filter: {
+      Name: f.Name,
+      ...(ipFilter && {
+        IpFilter: {
+          ...(ipFilter.Policy !== undefined && { Policy: ipFilter.Policy }),
+          ...(ipFilter.Cidr !== undefined && { Cidr: ipFilter.Cidr }),
+        },
+      }),
+    },
+  };
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
+  'AWS::SES::ReceiptRule': readSesReceiptRule,
+  'AWS::SES::ReceiptFilter': readSesReceiptFilter,
   'AWS::Cognito::IdentityPool': readCognitoIdentityPool,
   'AWS::AppSync::ApiKey': readAppSyncApiKey,
   'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryNamespace,

@@ -1,0 +1,83 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule",
+    "resourceType": "AWS::SES::ReceiptRule",
+    "physicalId": "cdkrd-integ-receipt-rule",
+    "constructPath": "CdkRealDriftIntegSesReceiptReadGap/Rule",
+    "declared": {
+      "Rule": {
+        "Actions": [
+          {
+            "AddHeaderAction": {
+              "HeaderName": "X-Cdkrd",
+              "HeaderValue": "integ"
+            }
+          },
+          {
+            "StopAction": {
+              "Scope": "RuleSet"
+            }
+          }
+        ],
+        "Enabled": true,
+        "Name": "cdkrd-integ-receipt-rule",
+        "Recipients": ["example.com"]
+      },
+      "RuleSetName": "cdkrd-integ-receipt-rule-set"
+    }
+  },
+  "liveRaw": {
+    "RuleSetName": "cdkrd-integ-receipt-rule-set",
+    "Rule": {
+      "Name": "cdkrd-integ-receipt-rule",
+      "Enabled": true,
+      "TlsPolicy": "Optional",
+      "ScanEnabled": false,
+      "Recipients": ["example.com"],
+      "Actions": [
+        {
+          "AddHeaderAction": {
+            "HeaderName": "X-Cdkrd",
+            "HeaderValue": "integ"
+          }
+        },
+        {
+          "StopAction": {
+            "Scope": "RuleSet"
+          }
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["RuleSetName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleSetName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rule",
+      "resourceType": "AWS::SES::ReceiptRule",
+      "path": "Rule.TlsPolicy",
+      "actual": "Optional",
+      "nested": true,
+      "physicalId": "cdkrd-integ-receipt-rule",
+      "constructPath": "CdkRealDriftIntegSesReceiptReadGap/Rule"
+    }
+  ]
+}

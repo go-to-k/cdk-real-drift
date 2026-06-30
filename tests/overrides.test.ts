@@ -30,6 +30,12 @@ import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-s
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
+  DescribeReceiptRuleCommand,
+  DescribeReceiptRuleSetCommand,
+  ListReceiptFiltersCommand,
+  SESClient,
+} from '@aws-sdk/client-ses';
+import {
   GetNamespaceCommand,
   GetServiceCommand,
   ServiceDiscoveryClient,
@@ -57,6 +63,7 @@ const appsync = mockClient(AppSyncClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const ec2 = mockClient(EC2Client);
+const ses = mockClient(SESClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -84,6 +91,7 @@ beforeEach(() => {
     docdb,
     appsync,
     ec2,
+    ses,
   ])
     m.reset();
 });
@@ -1742,5 +1750,105 @@ describe('EC2 NetworkAclEntry (Cloud Control read-gap: UnsupportedActionExceptio
         ctx({ NetworkAclId: 'acl-123', RuleNumber: 100 })
       )
     ).toBeUndefined();
+  });
+});
+
+describe('SES inbound receipt-rule family (Cloud Control read-gap: no handlers)', () => {
+  it('ReceiptRuleSet: projects RuleSetName from the live metadata', async () => {
+    ses.on(DescribeReceiptRuleSetCommand).resolves({ Metadata: { Name: 'my-rule-set' } });
+    const out = await SDK_OVERRIDES['AWS::SES::ReceiptRuleSet'](ctx({}, 'my-rule-set'));
+    expect(out).toEqual({ RuleSetName: 'my-rule-set' });
+  });
+
+  it('ReceiptRuleSet: falls back to declared RuleSetName when physical id is absent', async () => {
+    ses.on(DescribeReceiptRuleSetCommand).resolves({ Metadata: { Name: 'declared-set' } });
+    const out = await SDK_OVERRIDES['AWS::SES::ReceiptRuleSet'](
+      ctx({ RuleSetName: 'declared-set' })
+    );
+    expect(out).toEqual({ RuleSetName: 'declared-set' });
+  });
+
+  it('ReceiptRuleSet: undefined (skipped) when neither physical id nor declared name resolves', async () => {
+    expect(await SDK_OVERRIDES['AWS::SES::ReceiptRuleSet'](ctx({}))).toBeUndefined();
+  });
+
+  it('ReceiptRule: reads the rule via its parent rule set, projecting the CFn Rule shape', async () => {
+    ses.on(DescribeReceiptRuleCommand).resolves({
+      Rule: {
+        Name: 'my-rule',
+        Enabled: true,
+        TlsPolicy: 'Require',
+        Recipients: ['example.com'],
+        ScanEnabled: true,
+        Actions: [
+          { S3Action: { BucketName: 'inbox', ObjectKeyPrefix: 'mail/' } },
+          { StopAction: { Scope: 'RuleSet' } },
+        ],
+      },
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ReceiptRule'](
+      ctx({ RuleSetName: 'my-rule-set' }, 'my-rule')
+    );
+    expect(out).toEqual({
+      RuleSetName: 'my-rule-set',
+      Rule: {
+        Name: 'my-rule',
+        Enabled: true,
+        TlsPolicy: 'Require',
+        ScanEnabled: true,
+        Recipients: ['example.com'],
+        // ordered list is preserved verbatim (actions execute sequentially)
+        Actions: [
+          { S3Action: { BucketName: 'inbox', ObjectKeyPrefix: 'mail/' } },
+          { StopAction: { Scope: 'RuleSet' } },
+        ],
+      },
+    });
+    // assert the parent rule set was passed to the describe call
+    const calls = ses.commandCalls(DescribeReceiptRuleCommand);
+    expect(calls[0].args[0].input).toEqual({ RuleSetName: 'my-rule-set', RuleName: 'my-rule' });
+  });
+
+  it('ReceiptRule: omits absent optional fields (empty Recipients/Actions dropped)', async () => {
+    ses.on(DescribeReceiptRuleCommand).resolves({
+      Rule: { Name: 'minimal', Enabled: false, ScanEnabled: false, Recipients: [], Actions: [] },
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ReceiptRule'](
+      ctx({ RuleSetName: 'set' }, 'minimal')
+    );
+    expect(out).toEqual({
+      RuleSetName: 'set',
+      Rule: { Name: 'minimal', Enabled: false, ScanEnabled: false },
+    });
+  });
+
+  it('ReceiptRule: undefined (skipped) when the parent RuleSetName is unresolved', async () => {
+    expect(await SDK_OVERRIDES['AWS::SES::ReceiptRule'](ctx({}, 'orphan-rule'))).toBeUndefined();
+  });
+
+  it('ReceiptFilter: finds the named filter in the account list and projects the Filter shape', async () => {
+    ses.on(ListReceiptFiltersCommand).resolves({
+      Filters: [
+        { Name: 'other', IpFilter: { Policy: 'Block', Cidr: '10.0.0.0/8' } },
+        { Name: 'allow-office', IpFilter: { Policy: 'Allow', Cidr: '192.0.2.0/24' } },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ReceiptFilter'](ctx({}, 'allow-office'));
+    expect(out).toEqual({
+      Filter: { Name: 'allow-office', IpFilter: { Policy: 'Allow', Cidr: '192.0.2.0/24' } },
+    });
+  });
+
+  it('ReceiptFilter: list returned but the named filter absent -> ResourceGoneError (deleted)', async () => {
+    ses.on(ListReceiptFiltersCommand).resolves({
+      Filters: [{ Name: 'other', IpFilter: { Policy: 'Block', Cidr: '10.0.0.0/8' } }],
+    });
+    await expect(
+      SDK_OVERRIDES['AWS::SES::ReceiptFilter'](ctx({}, 'allow-office'))
+    ).rejects.toBeInstanceOf(ResourceGoneError);
+  });
+
+  it('ReceiptFilter: undefined (skipped) when neither physical id nor declared name resolves', async () => {
+    expect(await SDK_OVERRIDES['AWS::SES::ReceiptFilter'](ctx({}))).toBeUndefined();
   });
 });
