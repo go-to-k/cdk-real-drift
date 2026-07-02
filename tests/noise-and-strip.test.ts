@@ -618,6 +618,16 @@ describe('noise suppressors', () => {
       'disable'
     );
     expect(KNOWN_DEFAULTS['AWS::EC2::FlowLog'].MaxAggregationInterval).toBe(600);
+    expect(KNOWN_DEFAULTS['AWS::EC2::PlacementGroup']).toEqual({ SpreadLevel: 'rack' });
+    expect(KNOWN_DEFAULTS['AWS::EC2::IPAM']).toEqual({ MeteredAccount: 'ipam-owner' });
+    expect(KNOWN_DEFAULTS['AWS::APS::Workspace']).toEqual({
+      WorkspaceConfiguration: {
+        RuleQueryOffsetInSeconds: 60,
+        RetentionPeriodInDays: 150,
+        OutOfOrderTimeWindowInSeconds: 60,
+        LimitsPerLabelSets: [],
+      },
+    });
     expect(KNOWN_DEFAULTS['AWS::Pipes::Pipe'].DesiredState).toBe('RUNNING');
     expect(KNOWN_DEFAULTS['AWS::Synthetics::Canary']).toEqual({
       FailureRetentionPeriod: 31,
@@ -1140,9 +1150,14 @@ describe('isTrailingDotEqual (Route53 HostedZone Name FQDN trailing dot)', () =>
     expect(isTrailingDotEqual('example.com', 'example.org.')).toBe(false);
     expect(isTrailingDotEqual(5 as unknown, 'example.com.')).toBe(false);
   });
-  it('TRAILING_DOT_PATHS gates the rule to HostedZone Name', () => {
+  it('TRAILING_DOT_PATHS gates the rule to the FQDN-normalized name paths', () => {
     expect(TRAILING_DOT_PATHS['AWS::Route53::HostedZone']?.has('Name')).toBe(true);
-    expect(TRAILING_DOT_PATHS['AWS::Route53::RecordSet']).toBeUndefined();
+    expect(TRAILING_DOT_PATHS['AWS::Route53::RecordSet']?.has('Name')).toBe(true);
+    // Live-proven: a FORWARD rule's declared "cdkrd-hunt.internal" reads back
+    // "cdkrd-hunt.internal." — Resolver appends the FQDN dot on read.
+    expect(TRAILING_DOT_PATHS['AWS::Route53Resolver::ResolverRule']?.has('DomainName')).toBe(true);
+    // Unrelated paths on those types stay ungated.
+    expect(TRAILING_DOT_PATHS['AWS::Route53Resolver::ResolverRule']?.has('Name')).toBe(false);
   });
 });
 

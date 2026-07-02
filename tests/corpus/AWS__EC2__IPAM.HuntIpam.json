@@ -1,0 +1,108 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntIpam",
+    "resourceType": "AWS::EC2::IPAM",
+    "physicalId": "ipam-016e39780e99c03d3",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntIpam",
+    "declared": {
+      "Description": "cdkrd hunt free-tier IPAM",
+      "OperatingRegions": [
+        {
+          "RegionName": "us-east-1"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-ipam"
+        }
+      ],
+      "Tier": "free"
+    }
+  },
+  "liveRaw": {
+    "DefaultResourceDiscoveryAssociationId": "ipam-res-disco-assoc-0e429ecb3bac59944",
+    "Description": "cdkrd hunt free-tier IPAM",
+    "Tier": "free",
+    "EnablePrivateGua": false,
+    "IpamId": "ipam-016e39780e99c03d3",
+    "DefaultResourceDiscoveryId": "ipam-res-disco-0f6fa331174c920d1",
+    "MeteredAccount": "ipam-owner",
+    "ResourceDiscoveryAssociationCount": 1,
+    "ScopeCount": 2,
+    "Arn": "arn:aws:ec2::111111111111:ipam/ipam-016e39780e99c03d3",
+    "PrivateDefaultScopeId": "ipam-scope-039611e25432b7990",
+    "PublicDefaultScopeId": "ipam-scope-0accc337125e9d3d5",
+    "Tags": [
+      {
+        "Value": "HuntIpam",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "cdkrd-hunt-ipam",
+        "Key": "Name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov2Rich/efcd2650-75d1-11f1-a92e-0affda798e9d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegMisc0Cov2Rich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "OperatingRegions": [
+      {
+        "RegionName": "us-east-1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "DefaultResourceDiscoveryAssociationId",
+      "DefaultResourceDiscoveryId",
+      "IpamId",
+      "PrivateDefaultScopeId",
+      "PublicDefaultScopeId",
+      "ResourceDiscoveryAssociationCount",
+      "ScopeCount"
+    ],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "Arn",
+      "DefaultResourceDiscoveryAssociationId",
+      "DefaultResourceDiscoveryId",
+      "IpamId",
+      "PrivateDefaultScopeId",
+      "PublicDefaultScopeId",
+      "ResourceDiscoveryAssociationCount",
+      "ScopeCount"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntIpam",
+      "resourceType": "AWS::EC2::IPAM",
+      "path": "MeteredAccount",
+      "actual": "ipam-owner",
+      "physicalId": "ipam-016e39780e99c03d3",
+      "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntIpam"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTmFilter",
+    "resourceType": "AWS::EC2::TrafficMirrorFilter",
+    "physicalId": "tmf-05e8886c6eb86c35c",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntTmFilter",
+    "declared": {
+      "Description": "cdkrd hunt traffic mirror filter",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-tmf"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt traffic mirror filter",
+    "NetworkServices": [],
+    "Id": "tmf-05e8886c6eb86c35c",
+    "Tags": [
+      {
+        "Value": "cdkrd-hunt-tmf",
+        "Key": "Name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov2Rich/efcd2650-75d1-11f1-a92e-0affda798e9d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "HuntTmFilter",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegMisc0Cov2Rich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Description"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["NetworkServices"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTmRuleIn",
+    "resourceType": "AWS::EC2::TrafficMirrorFilterRule",
+    "physicalId": "tmfr-04dfd2688809b98c3",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntTmRuleIn",
+    "declared": {
+      "Description": "cdkrd hunt ingress rule",
+      "DestinationCidrBlock": "0.0.0.0/0",
+      "DestinationPortRange": {
+        "FromPort": 443,
+        "ToPort": 443
+      },
+      "Protocol": 6,
+      "RuleAction": "accept",
+      "RuleNumber": 100,
+      "SourceCidrBlock": "10.0.0.0/8",
+      "SourcePortRange": {
+        "FromPort": 1024,
+        "ToPort": 65535
+      },
+      "TrafficDirection": "ingress",
+      "TrafficMirrorFilterId": "tmf-05e8886c6eb86c35c"
+    }
+  },
+  "liveRaw": {
+    "DestinationPortRange": {
+      "FromPort": 443,
+      "ToPort": 443
+    },
+    "TrafficMirrorFilterRuleId": "tmfr-04dfd2688809b98c3",
+    "Description": "cdkrd hunt ingress rule",
+    "SourcePortRange": {
+      "FromPort": 1024,
+      "ToPort": 65535
+    },
+    "RuleAction": "accept",
+    "SourceCidrBlock": "10.0.0.0/8",
+    "RuleNumber": 100,
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "TrafficMirrorFilterId": "tmf-05e8886c6eb86c35c",
+    "TrafficDirection": "ingress",
+    "Protocol": 6,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov2Rich/efcd2650-75d1-11f1-a92e-0affda798e9d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegMisc0Cov2Rich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntTmRuleIn",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["TrafficMirrorFilterRuleId"],
+    "writeOnly": [],
+    "createOnly": ["TrafficMirrorFilterId"],
+    "readOnlyPaths": ["TrafficMirrorFilterRuleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TrafficMirrorFilterId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

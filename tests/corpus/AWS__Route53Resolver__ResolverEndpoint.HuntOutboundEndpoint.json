@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOutboundEndpoint",
+    "resourceType": "AWS::Route53Resolver::ResolverEndpoint",
+    "physicalId": "rslvr-out-7345f2fdbd754018b",
+    "constructPath": "CdkRealDriftIntegResolverRich/HuntOutboundEndpoint",
+    "declared": {
+      "Direction": "OUTBOUND",
+      "IpAddresses": [
+        {
+          "SubnetId": "subnet-0d2ab6b3829cfbbff"
+        },
+        {
+          "SubnetId": "subnet-0cab1eec8a90aea6f"
+        }
+      ],
+      "Name": "cdkrd-hunt-outbound",
+      "Protocols": ["Do53"],
+      "ResolverEndpointType": "IPV4",
+      "SecurityGroupIds": ["sg-028b0de64ad2c5f68"],
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-outbound"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Protocols": ["Do53"],
+    "ResolverEndpointId": "rslvr-out-7345f2fdbd754018b",
+    "ResolverEndpointType": "IPV4",
+    "Direction": "OUTBOUND",
+    "SecurityGroupIds": ["sg-028b0de64ad2c5f68"],
+    "Name": "cdkrd-hunt-outbound",
+    "IpAddresses": [
+      {
+        "Ip": "10.0.0.237",
+        "SubnetId": "subnet-0d2ab6b3829cfbbff"
+      },
+      {
+        "Ip": "10.0.1.137",
+        "SubnetId": "subnet-0cab1eec8a90aea6f"
+      }
+    ],
+    "IpAddressCount": "2",
+    "TargetNameServerMetricsEnabled": false,
+    "RniEnhancedMetricsEnabled": false,
+    "Ipv6InternetAccessEnabled": false,
+    "Arn": "arn:aws:route53resolver:us-east-1:111111111111:resolver-endpoint/rslvr-out-7345f2fdbd754018b",
+    "HostVPCId": "vpc-0402a4de33684ab27",
+    "Tags": [
+      {
+        "Value": "cdkrd-hunt-outbound",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "HostVPCId", "IpAddressCount", "ResolverEndpointId"],
+    "writeOnly": [],
+    "createOnly": ["Direction", "OutpostArn", "PreferredInstanceType", "SecurityGroupIds"],
+    "readOnlyPaths": ["Arn", "HostVPCId", "IpAddressCount", "ResolverEndpointId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Direction", "OutpostArn", "PreferredInstanceType", "SecurityGroupIds"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["Protocols", "SecurityGroupIds"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
