@@ -10,16 +10,11 @@ vi.mock('@clack/prompts', async (importOriginal) => {
   return { ...actual, spinner: () => ({ start, stop, error, message: vi.fn() }) };
 });
 
-import { gatherWithProgress } from '../src/commands/check.js';
-import type { GatherResult } from '../src/commands/gather.js';
+import { gatherWithProgress, progressLabel } from '../src/commands/progress.js';
 
-// A minimal GatherResult — gatherWithProgress only forwards it, never inspects it.
-const RESULT = {
-  desired: {},
-  findings: [],
-  schemas: new Map(),
-  liveByLogical: new Map(),
-} as unknown as GatherResult;
+// gatherWithProgress is generic and only forwards its run() result — a sentinel object
+// is enough to assert pass-through.
+const RESULT = { sentinel: true };
 
 describe('gatherWithProgress', () => {
   beforeEach(() => {
@@ -57,5 +52,16 @@ describe('gatherWithProgress', () => {
     expect(error).toHaveBeenCalledOnce();
     expect(error.mock.calls[0]![0]).toContain('S (r)');
     expect(stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('progressLabel', () => {
+  it('omits the counter for a lone stack (a bare [1/1] is noise)', () => {
+    expect(progressLabel(0, 1, 'MyStack', 'us-east-1')).toBe('MyStack (us-east-1)');
+  });
+
+  it('prefixes a 1-based [idx/total] counter in a multi-stack run', () => {
+    expect(progressLabel(0, 3, 'A', 'ap-northeast-1')).toBe('[1/3] A (ap-northeast-1)');
+    expect(progressLabel(2, 3, 'C', 'ap-northeast-1')).toBe('[3/3] C (ap-northeast-1)');
   });
 });

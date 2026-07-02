@@ -14,6 +14,7 @@ import {
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { loadConfig } from '../config/config-file.js';
 import { gatherFindings } from './gather.js';
+import { gatherWithProgress, progressLabel } from './progress.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { revertStack } from './stack-actions.js';
 
@@ -43,7 +44,10 @@ export async function runRevert(args: string[]): Promise<number> {
   }
 
   let worst = 0;
-  for (const { stackName, region, template } of stacks) {
+  // gather-phase spinner (see gatherWithProgress) — text mode + TTY only. The revert
+  // confirm prompt fires AFTER the gather, so the spinner never overlaps it.
+  const showProgress = !a.json && isInteractive();
+  for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
       console.error(
         `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
@@ -56,7 +60,11 @@ export async function runRevert(args: string[]): Promise<number> {
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals so a
       // revert writes the REAL declared value, never a `?????` mask.
-      const gathered = await gatherFindings(stackName, region, undefined, template);
+      const gathered = await gatherWithProgress(
+        showProgress,
+        progressLabel(idx, stacks.length, stackName, region),
+        () => gatherFindings(stackName, region, undefined, template)
+      );
       const baseline: BaselineFile | undefined = await loadBaseline(
         stackName,
         gathered.desired.accountId,
