@@ -9,6 +9,11 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
+import {
+  type AnomalyDetector,
+  CloudWatchClient,
+  DescribeAnomalyDetectorsCommand,
+} from '@aws-sdk/client-cloudwatch';
 import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
@@ -842,6 +847,187 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
 // "group/name", "group|name", and the full ARN were all tried against CC).
 // Read via Scheduler GetSchedule with the declared GroupName instead. The CFn
 // physical id IS the schedule name.
+// AWS::CloudWatch::AnomalyDetector — NON_PROVISIONABLE in the registry with no Cloud
+// Control read handler, so every declared anomaly detector came back `skipped` (found
+// offline in the 2026-07-02 hunts, #461). Read via CloudWatch DescribeAnomalyDetectors.
+// The CFn physical id is a generated guid no API can look up, so the detector is
+// located from the resolved DECLARED identity:
+//   - single-metric: Namespace/MetricName/Stat/Dimensions — accepted in BOTH template
+//     shapes (legacy top-level props, or the SingleMetricAnomalyDetector wrapper).
+//     Namespace/MetricName/Dimensions filter server-side; Stat + the exact dimension
+//     set disambiguate (one metric can carry one detector per Stat).
+//   - metric-math: listed with AnomalyDetectorTypes=METRIC_MATH and matched by the
+//     MetricDataQueries identity (sorted by Id, comparing Id/Expression/MetricStat —
+//     Label/ReturnData are display knobs, not identity).
+// The live model is projected into the SAME shape the template declared (top-level vs
+// wrapper) so the subset compare aligns, mapping the SDK's `MetricTimezone` back to
+// CFn's `MetricTimeZone` and Date ranges back to the CFn Range pattern — the schema
+// enforces `YYYY-MM-DDTHH:MM:SS` (UTC, NO zone suffix, no millis; a trailing `Z` is
+// rejected at deploy), so the projection uses the same shape a template must declare.
+// StateValue is AWS-managed noise. A detector
+// absent from the listing was deleted out of band → ResourceGoneError → `deleted`.
+type CwDims = { Name?: unknown; Value?: unknown }[];
+const dimKey = (dims: unknown): string =>
+  (Array.isArray(dims) ? (dims as CwDims) : [])
+    .map((d) => `${str(d?.Name) ?? ''}=${str(d?.Value) ?? ''}`)
+    .sort()
+    .join(',');
+// CFn Range pattern: `YYYY-MM-DDTHH:MM:SS` in UTC — the schema REJECTS a zone suffix.
+const cfnRangeTime = (d: Date | undefined): string | undefined =>
+  d === undefined ? undefined : d.toISOString().slice(0, 19);
+const cfnAnomalyConfiguration = (
+  c: AnomalyDetector['Configuration']
+): Record<string, unknown> | undefined => {
+  if (!c) return undefined;
+  const out: Record<string, unknown> = {};
+  if (c.ExcludedTimeRanges !== undefined)
+    out.ExcludedTimeRanges = c.ExcludedTimeRanges.map((r) => ({
+      ...(cfnRangeTime(r.StartTime) !== undefined && { StartTime: cfnRangeTime(r.StartTime) }),
+      ...(cfnRangeTime(r.EndTime) !== undefined && { EndTime: cfnRangeTime(r.EndTime) }),
+    }));
+  if (c.MetricTimezone !== undefined) out.MetricTimeZone = c.MetricTimezone;
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+// identity of one metric-math query set: Id/Expression/MetricStat (dimension-order
+// insensitive), sorted by Id — Label/ReturnData/Period-at-query-level are not identity.
+const mathQueriesKey = (queries: unknown): string => {
+  const qs = Array.isArray(queries) ? queries : [];
+  const canon = qs
+    .map((q) => {
+      const query = (q ?? {}) as Record<string, unknown>;
+      const ms = (query.MetricStat ?? undefined) as Record<string, unknown> | undefined;
+      const metric = (ms?.Metric ?? undefined) as Record<string, unknown> | undefined;
+      return {
+        Id: str(query.Id) ?? '',
+        Expression: str(query.Expression) ?? '',
+        MetricStat: ms
+          ? {
+              Namespace: str(metric?.Namespace) ?? '',
+              MetricName: str(metric?.MetricName) ?? '',
+              Dimensions: dimKey(metric?.Dimensions),
+              Stat: str(ms.Stat) ?? '',
+            }
+          : undefined,
+      };
+    })
+    .sort((a, b) => (a.Id < b.Id ? -1 : 1));
+  return JSON.stringify(canon);
+};
+const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region }) => {
+  const single = (declared.SingleMetricAnomalyDetector ?? undefined) as
+    | Record<string, unknown>
+    | undefined;
+  const math = (declared.MetricMathAnomalyDetector ?? undefined) as
+    | Record<string, unknown>
+    | undefined;
+  const namespace = str(single?.Namespace) ?? str(declared.Namespace);
+  const metricName = str(single?.MetricName) ?? str(declared.MetricName);
+  const stat = str(single?.Stat) ?? str(declared.Stat);
+  const declaredDims = single?.Dimensions ?? declared.Dimensions;
+  if (!math && (!namespace || !metricName || !stat)) return undefined; // unresolvable -> skipped
+  const c = new CloudWatchClient({ region, ...READ_RETRY });
+
+  let found: AnomalyDetector | undefined;
+  let nextToken: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeAnomalyDetectorsCommand(
+        math
+          ? { AnomalyDetectorTypes: ['METRIC_MATH'], ...(nextToken && { NextToken: nextToken }) }
+          : {
+              Namespace: namespace,
+              MetricName: metricName,
+              AnomalyDetectorTypes: ['SINGLE_METRIC'],
+              ...(nextToken && { NextToken: nextToken }),
+            }
+      )
+    );
+    found = (r.AnomalyDetectors ?? []).find((d) => {
+      if (math)
+        return (
+          mathQueriesKey(d.MetricMathAnomalyDetector?.MetricDataQueries) ===
+          mathQueriesKey(math.MetricDataQueries)
+        );
+      const liveSingle = d.SingleMetricAnomalyDetector;
+      return (
+        (str(liveSingle?.Stat) ?? str(d.Stat)) === stat &&
+        dimKey(liveSingle?.Dimensions ?? d.Dimensions) === dimKey(declaredDims)
+      );
+    });
+    nextToken = r.NextToken;
+  } while (!found && nextToken);
+  if (!found)
+    throw new ResourceGoneError(
+      `AnomalyDetector ${math ? 'METRIC_MATH' : `${namespace}/${metricName}/${stat}`} not found`
+    );
+
+  const model: Record<string, unknown> = {};
+  const cfg = cfnAnomalyConfiguration(found.Configuration);
+  if (cfg !== undefined) model.Configuration = cfg;
+  if (found.MetricCharacteristics?.PeriodicSpikes !== undefined)
+    model.MetricCharacteristics = { PeriodicSpikes: found.MetricCharacteristics.PeriodicSpikes };
+  if (math) {
+    const queries = found.MetricMathAnomalyDetector?.MetricDataQueries ?? [];
+    model.MetricMathAnomalyDetector = {
+      MetricDataQueries: queries.map((q) => ({
+        Id: q.Id,
+        ...(q.Expression !== undefined && { Expression: q.Expression }),
+        ...(q.Label !== undefined && { Label: q.Label }),
+        ...(q.ReturnData !== undefined && { ReturnData: q.ReturnData }),
+        ...(q.Period !== undefined && { Period: q.Period }),
+        ...(q.AccountId !== undefined && { AccountId: q.AccountId }),
+        ...(q.MetricStat !== undefined && {
+          MetricStat: {
+            ...(q.MetricStat.Metric !== undefined && {
+              Metric: {
+                ...(q.MetricStat.Metric.Namespace !== undefined && {
+                  Namespace: q.MetricStat.Metric.Namespace,
+                }),
+                ...(q.MetricStat.Metric.MetricName !== undefined && {
+                  MetricName: q.MetricStat.Metric.MetricName,
+                }),
+                ...(q.MetricStat.Metric.Dimensions !== undefined && {
+                  Dimensions: q.MetricStat.Metric.Dimensions,
+                }),
+              },
+            }),
+            ...(q.MetricStat.Period !== undefined && { Period: q.MetricStat.Period }),
+            ...(q.MetricStat.Stat !== undefined && { Stat: q.MetricStat.Stat }),
+            ...(q.MetricStat.Unit !== undefined && { Unit: q.MetricStat.Unit }),
+          },
+        }),
+      })),
+    };
+    return model;
+  }
+  const liveSingle = found.SingleMetricAnomalyDetector;
+  const liveNamespace = str(liveSingle?.Namespace) ?? str(found.Namespace);
+  const liveMetric = str(liveSingle?.MetricName) ?? str(found.MetricName);
+  const liveStat = str(liveSingle?.Stat) ?? str(found.Stat);
+  const liveDims = liveSingle?.Dimensions ?? found.Dimensions;
+  if (single) {
+    // project into the wrapper shape the template declared. AccountId is projected
+    // ONLY when the template declares it (cross-account monitoring): the API echoes
+    // the OWN account id on every detector, which would otherwise surface as
+    // undeclared first-run noise — and an out-of-band "account change" is not a
+    // real mutation (the account is the detector's identity).
+    model.SingleMetricAnomalyDetector = {
+      ...(str(single.AccountId) !== undefined &&
+        str(liveSingle?.AccountId) !== undefined && { AccountId: liveSingle?.AccountId }),
+      ...(liveNamespace !== undefined && { Namespace: liveNamespace }),
+      ...(liveMetric !== undefined && { MetricName: liveMetric }),
+      ...(liveDims !== undefined && { Dimensions: liveDims }),
+      ...(liveStat !== undefined && { Stat: liveStat }),
+    };
+    return model;
+  }
+  if (liveNamespace !== undefined) model.Namespace = liveNamespace;
+  if (liveMetric !== undefined) model.MetricName = liveMetric;
+  if (liveStat !== undefined) model.Stat = liveStat;
+  if (liveDims !== undefined) model.Dimensions = liveDims;
+  return model;
+};
+
 const readSchedulerSchedule: OverrideReader = async ({ physicalId, declared, region }) => {
   const name = str(physicalId) ?? str(declared.Name);
   if (!name) return undefined;
@@ -1353,6 +1539,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Connection': readGlueConnection,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
+  'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
 };
 
 // ---------------------------------------------------------------------------

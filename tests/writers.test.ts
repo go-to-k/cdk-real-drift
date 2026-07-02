@@ -4,6 +4,11 @@ import {
   UpdateIntegrationResponseCommand,
   UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
+import {
+  CloudWatchClient,
+  DescribeAnomalyDetectorsCommand,
+  PutAnomalyDetectorCommand,
+} from '@aws-sdk/client-cloudwatch';
 import { ECSClient, UpdateServiceCommand } from '@aws-sdk/client-ecs';
 import {
   CloudFrontClient,
@@ -130,6 +135,7 @@ const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
 const ecs = mockClient(ECSClient);
 const cloudcontrol = mockClient(CloudControlClient);
+const cloudwatch = mockClient(CloudWatchClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -177,6 +183,7 @@ beforeEach(() => {
   apigw.reset();
   ecs.reset();
   cloudcontrol.reset();
+  cloudwatch.reset();
 });
 
 describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via UpdateService)', () => {
@@ -829,6 +836,71 @@ describe('Logs MetricFilter writer (CC GetResource ValidationException on compos
         patternOp('"x"'),
       ])
     ).rejects.toThrow(/metric filter target/);
+  });
+});
+
+describe('CloudWatch AnomalyDetector writer (#461, NON_PROVISIONABLE: PutAnomalyDetector overwrite)', () => {
+  it('reverts a Configuration edit: reader shape mapped back to the SDK shape (MetricTimeZone -> MetricTimezone, ISO -> Date)', async () => {
+    // the override READER lists detectors; the current (drifted) config has TZ moved
+    cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({
+      AnomalyDetectors: [
+        {
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+            Stat: 'Sum',
+          },
+          Configuration: {
+            MetricTimezone: 'America/New_York', // drifted out of band
+            ExcludedTimeRanges: [
+              {
+                StartTime: new Date('2026-01-01T00:00:00Z'),
+                EndTime: new Date('2026-01-02T00:00:00Z'),
+              },
+            ],
+          },
+        },
+      ],
+    });
+    cloudwatch.on(PutAnomalyDetectorCommand).resolves({});
+    await SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](
+      {
+        physicalId: 'guid-1234',
+        declared: {
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+            Stat: 'Sum',
+          },
+        },
+        region: 'us-east-1',
+        accountId: '123456789012',
+      },
+      [
+        {
+          op: 'add',
+          path: '/Configuration/MetricTimeZone',
+          value: 'UTC',
+          human: 'Configuration.MetricTimeZone -> deployed-template value',
+        },
+      ]
+    );
+    const calls = cloudwatch.commandCalls(PutAnomalyDetectorCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    expect(input.SingleMetricAnomalyDetector).toEqual({
+      Namespace: 'AWS/Lambda',
+      MetricName: 'Errors',
+      Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+      Stat: 'Sum',
+    });
+    // reverted TZ, mapped back to the SDK field name; range strings back to Dates
+    expect(input.Configuration?.MetricTimezone).toBe('UTC');
+    expect(input.Configuration?.ExcludedTimeRanges?.[0]?.StartTime).toEqual(
+      new Date('2026-01-01T00:00:00Z')
+    );
   });
 });
 

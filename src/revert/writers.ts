@@ -39,6 +39,11 @@ import {
   UpdateDistributionCommand,
 } from '@aws-sdk/client-cloudfront';
 import {
+  CloudWatchClient,
+  PutAnomalyDetectorCommand,
+  type PutAnomalyDetectorCommandInput,
+} from '@aws-sdk/client-cloudwatch';
+import {
   CloudWatchLogsClient,
   PutBearerTokenAuthenticationCommand,
   PutMetricFilterCommand,
@@ -1253,6 +1258,61 @@ const writeEcsServiceWriteOnlyProps: SdkWriter = async (ctx, ops) => {
   await c.send(new UpdateServiceCommand(input));
 };
 
+// AWS::CloudWatch::AnomalyDetector (#461) — NON_PROVISIONABLE, so Cloud Control can
+// neither read nor write it. Revert = read the current model back via the override
+// READER (already projected into the declared template shape), apply the revert ops,
+// and PutAnomalyDetector the reconstructed desired detector — Put is a whole-config
+// create-or-update on the detector identified by its metric/math identity, so
+// re-supplying the full desired model converges Configuration/MetricCharacteristics
+// edits. Maps CFn's `MetricTimeZone` back to the SDK's `MetricTimezone` and ISO range
+// strings back to Dates.
+const rangeUtc = (s: string): Date => new Date(/Z$|[+-]\d\d:\d\d$/.test(s) ? s : `${s}Z`);
+const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::CloudWatch::AnomalyDetector', ctx, ops);
+  const cfg = (m.Configuration ?? undefined) as Record<string, unknown> | undefined;
+  const ranges = Array.isArray(cfg?.ExcludedTimeRanges)
+    ? (cfg.ExcludedTimeRanges as Record<string, unknown>[])
+    : undefined;
+  const input: PutAnomalyDetectorCommandInput = {
+    ...(m.Namespace !== undefined && { Namespace: m.Namespace as string }),
+    ...(m.MetricName !== undefined && { MetricName: m.MetricName as string }),
+    ...(m.Stat !== undefined && { Stat: m.Stat as string }),
+    ...(m.Dimensions !== undefined && {
+      Dimensions: m.Dimensions as PutAnomalyDetectorCommandInput['Dimensions'],
+    }),
+    ...(m.SingleMetricAnomalyDetector !== undefined && {
+      SingleMetricAnomalyDetector:
+        m.SingleMetricAnomalyDetector as PutAnomalyDetectorCommandInput['SingleMetricAnomalyDetector'],
+    }),
+    ...(m.MetricMathAnomalyDetector !== undefined && {
+      MetricMathAnomalyDetector:
+        m.MetricMathAnomalyDetector as PutAnomalyDetectorCommandInput['MetricMathAnomalyDetector'],
+    }),
+    ...(m.MetricCharacteristics !== undefined && {
+      MetricCharacteristics:
+        m.MetricCharacteristics as PutAnomalyDetectorCommandInput['MetricCharacteristics'],
+    }),
+    ...(cfg !== undefined && {
+      Configuration: {
+        ...(str(cfg.MetricTimeZone) !== undefined && {
+          MetricTimezone: cfg.MetricTimeZone as string,
+        }),
+        ...(ranges !== undefined && {
+          // a range always carries both bounds (CFn Range requires them). The CFn
+          // pattern is zone-less UTC (`YYYY-MM-DDTHH:MM:SS`) — bare `new Date` would
+          // parse that as LOCAL time, so pin it to UTC explicitly.
+          ExcludedTimeRanges: ranges.map((r) => ({
+            StartTime: rangeUtc(String(r.StartTime)),
+            EndTime: rangeUtc(String(r.EndTime)),
+          })),
+        }),
+      },
+    }),
+  };
+  const c = new CloudWatchClient({ region: ctx.region });
+  await c.send(new PutAnomalyDetectorCommand(input));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -1274,6 +1334,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Events::EventBusPolicy': writeEventBusPolicy,
   'AWS::IAM::Policy': writeIamPolicy,
   'AWS::IAM::ManagedPolicy': writeIamManagedPolicy,
+  'AWS::CloudWatch::AnomalyDetector': writeCloudWatchAnomalyDetector,
 };
 
 // Property-scoped SDK writers: CC-writable types where ONE property must be

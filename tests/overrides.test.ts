@@ -27,6 +27,7 @@ import {
 } from '@aws-sdk/client-iam';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
+import { CloudWatchClient, DescribeAnomalyDetectorsCommand } from '@aws-sdk/client-cloudwatch';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
@@ -64,6 +65,7 @@ const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const ec2 = mockClient(EC2Client);
 const ses = mockClient(SESClient);
+const cloudwatch = mockClient(CloudWatchClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -92,6 +94,7 @@ beforeEach(() => {
     appsync,
     ec2,
     ses,
+    cloudwatch,
   ])
     m.reset();
 });
@@ -475,6 +478,130 @@ describe('SDK overrides', () => {
     });
     const input = budgets.commandCalls(DescribeBudgetCommand).at(-1)!.args[0].input;
     expect(input.BudgetName).toBe('CfnBudget-us-east-1-123-abc');
+  });
+
+  describe('CloudWatch AnomalyDetector (#461, NON_PROVISIONABLE)', () => {
+    const read = SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'];
+    const liveSingle = {
+      SingleMetricAnomalyDetector: {
+        Namespace: 'AWS/Lambda',
+        MetricName: 'Errors',
+        Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+        Stat: 'Sum',
+      },
+      Configuration: {
+        MetricTimezone: 'UTC',
+        ExcludedTimeRanges: [
+          {
+            StartTime: new Date('2026-01-01T00:00:00Z'),
+            EndTime: new Date('2026-01-02T00:00:00Z'),
+          },
+        ],
+      },
+      StateValue: 'TRAINED' as const,
+    };
+
+    it('single-metric via the wrapper shape: matched by Stat + dimension set, projected into the declared shape', async () => {
+      cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({
+        AnomalyDetectors: [
+          {
+            SingleMetricAnomalyDetector: {
+              ...liveSingle.SingleMetricAnomalyDetector,
+              Stat: 'Average',
+            },
+          },
+          liveSingle,
+        ],
+      });
+      const model = await read(
+        ctx({
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+            Stat: 'Sum',
+          },
+        })
+      );
+      expect(model).toEqual({
+        SingleMetricAnomalyDetector: {
+          Namespace: 'AWS/Lambda',
+          MetricName: 'Errors',
+          Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+          Stat: 'Sum',
+        },
+        Configuration: {
+          MetricTimeZone: 'UTC', // SDK MetricTimezone -> CFn MetricTimeZone
+          ExcludedTimeRanges: [
+            // projected in the CFn Range pattern: zone-less UTC (the schema rejects `Z`)
+            { StartTime: '2026-01-01T00:00:00', EndTime: '2026-01-02T00:00:00' },
+          ],
+        },
+      });
+      // StateValue (AWS-managed) is never projected
+      expect(model).not.toHaveProperty('StateValue');
+    });
+
+    it('single-metric via LEGACY top-level props projects top-level (declared-shape mirror)', async () => {
+      cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [liveSingle] });
+      const model = await read(
+        ctx({
+          Namespace: 'AWS/Lambda',
+          MetricName: 'Errors',
+          Stat: 'Sum',
+          Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+        })
+      );
+      expect(model?.Namespace).toBe('AWS/Lambda');
+      expect(model?.Stat).toBe('Sum');
+      expect(model).not.toHaveProperty('SingleMetricAnomalyDetector');
+    });
+
+    it('metric-math: matched by the MetricDataQueries identity across pagination', async () => {
+      const queries = [
+        {
+          Id: 'm1',
+          MetricStat: {
+            Metric: {
+              Namespace: 'AWS/SQS',
+              MetricName: 'NumberOfMessagesSent',
+              Dimensions: [{ Name: 'QueueName', Value: 'q' }],
+            },
+            Period: 300,
+            Stat: 'Sum',
+          },
+          ReturnData: true,
+        },
+        { Id: 'e1', Expression: 'm1/300', Label: 'rate' },
+      ];
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolvesOnce({
+          AnomalyDetectors: [
+            {
+              MetricMathAnomalyDetector: { MetricDataQueries: [{ Id: 'other', Expression: 'x' }] },
+            },
+          ],
+          NextToken: 't1',
+        })
+        .resolvesOnce({
+          AnomalyDetectors: [{ MetricMathAnomalyDetector: { MetricDataQueries: queries } }],
+        });
+      const model = await read(ctx({ MetricMathAnomalyDetector: { MetricDataQueries: queries } }));
+      const math = (model ?? {}).MetricMathAnomalyDetector as { MetricDataQueries: unknown[] };
+      expect(math.MetricDataQueries).toHaveLength(2);
+    });
+
+    it('an out-of-band-deleted detector throws ResourceGoneError (-> deleted tier)', async () => {
+      cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [] });
+      await expect(
+        read(ctx({ Namespace: 'AWS/Lambda', MetricName: 'Errors', Stat: 'Sum' }))
+      ).rejects.toThrow(ResourceGoneError);
+    });
+
+    it('an unresolvable identity (no Namespace/MetricName/Stat) returns undefined -> skipped', async () => {
+      expect(await read(ctx({ Namespace: 'AWS/Lambda' }))).toBeUndefined();
+    });
   });
 
   describe('Route53 RecordSet', () => {

@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SingleMetric",
+    "resourceType": "AWS::CloudWatch::AnomalyDetector",
+    "physicalId": "SingleMetric-dJ1GPQgXdK4y",
+    "constructPath": "CdkRealDriftIntegAnomalyDetector/SingleMetric",
+    "declared": {
+      "Configuration": {
+        "ExcludedTimeRanges": [
+          {
+            "EndTime": "2026-12-26T00:00:00",
+            "StartTime": "2026-12-24T00:00:00"
+          }
+        ],
+        "MetricTimeZone": "UTC"
+      },
+      "SingleMetricAnomalyDetector": {
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": "cdkrd-hunt-anomaly-fn"
+          }
+        ],
+        "MetricName": "Errors",
+        "Namespace": "AWS/Lambda",
+        "Stat": "Sum"
+      }
+    }
+  },
+  "liveRaw": {
+    "Configuration": {
+      "ExcludedTimeRanges": [
+        {
+          "StartTime": "2026-12-24T00:00:00",
+          "EndTime": "2026-12-26T00:00:00"
+        }
+      ],
+      "MetricTimeZone": "UTC"
+    },
+    "SingleMetricAnomalyDetector": {
+      "Namespace": "AWS/Lambda",
+      "MetricName": "Errors",
+      "Dimensions": [
+        {
+          "Name": "FunctionName",
+          "Value": "cdkrd-hunt-anomaly-fn"
+        }
+      ],
+      "Stat": "Sum"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "Dimensions",
+      "MetricCharacteristics",
+      "MetricMathAnomalyDetector",
+      "MetricName",
+      "Namespace",
+      "SingleMetricAnomalyDetector",
+      "Stat"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["MetricMathAnomalyDetector.MetricDataQueries.*.Label"],
+    "createOnlyPaths": [
+      "Dimensions",
+      "MetricCharacteristics",
+      "MetricMathAnomalyDetector",
+      "MetricName",
+      "Namespace",
+      "SingleMetricAnomalyDetector",
+      "Stat"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

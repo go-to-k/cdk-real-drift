@@ -497,6 +497,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   (the SES inbound receipt-rule family — `ReceiptRuleSet` / `ReceiptRule` /
   `ReceiptFilter` — has no Cloud Control handlers),
   `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`,
+  `cloudwatch:DescribeAnomalyDetectors` (reads an `AWS::CloudWatch::AnomalyDetector` —
+  the type is NON_PROVISIONABLE in the registry, so Cloud Control cannot read it;
+  the detector is located from its declared metric/math identity, not the guid
+  physical id),
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
@@ -530,6 +534,8 @@ is refused, never overwritten, so the un-read credential is never cleared),
 `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
 `ses:UpdateReceiptRule` (reverts an `AWS::SES::ReceiptRule` — the whole rule is
 re-supplied in place, since Cloud Control has no handler for the type),
+`cloudwatch:PutAnomalyDetector` (reverts an `AWS::CloudWatch::AnomalyDetector` —
+a whole-config create-or-update on the detector's metric/math identity),
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
 `config:DescribeConfigRules` / `config:PutConfigRule`,
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
