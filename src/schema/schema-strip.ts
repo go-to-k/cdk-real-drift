@@ -15,6 +15,7 @@ const EMPTY: SchemaInfo = {
   defaults: {},
   defaultPaths: {},
   unorderedScalarPaths: [],
+  unorderedObjectArrayPaths: [],
   freeFormMapPaths: [],
 };
 
@@ -151,23 +152,32 @@ function collectDefaultPaths(
 }
 
 // Collect the dotted paths of arrays the schema marks `insertionOrder: false` (AWS
-// declaring the array UNORDERED) whose items resolve to a SCALAR type. A reorder of
-// such an array is never drift — AWS may echo it in its own canonical order — so
-// classify folds a same-multiset difference at one of these paths WITHOUT a per-type
-// table. Scoped to SCALAR-item arrays: an unordered OBJECT array (e.g. ECS
-// ContainerDefinitions, which is also insertionOrder:false) is keyed/sorted elsewhere
-// (canonicalizeTagListsDeep / the per-type object-array tables), and a blanket scalar
-// sort must not touch it. Paths reached THROUGH an array element (which would carry a
-// `*` segment) are skipped — classify matches an exact dotted drift path, and those
-// rarer nested-under-array sets stay on the per-type allowlist. Same $ref-resolving,
+// declaring the array UNORDERED), split by item shape — a reorder of either is never
+// drift (AWS may echo the set in its own canonical order), so classify folds them
+// WITHOUT a per-type table:
+//   - `scalar`: items resolve to a SCALAR type — classify folds a same-multiset
+//     difference at one of these paths (isEqualUnorderedScalarSet).
+//   - `object`: items are OBJECTS with NO identity field (Key/Id/AttributeName/
+//     IndexName/Name) — classify sorts BOTH sides by canonical JSON before the
+//     positional diff, the schema-driven twin of UNORDERED_OBJECT_ARRAY_PROPS (#459;
+//     found live on AccessAnalyzer ArchiveRules, whose RuleName is not an identity
+//     field). Identity-keyed object arrays (Tags et al.) are EXCLUDED: they are
+//     already deterministically aligned by canonicalizeTagListsDeep, and a second
+//     canonical-JSON sort would churn that established order for zero gain.
+// Paths reached THROUGH an array element (which would carry a `*` segment) are
+// skipped — classify matches an exact dotted drift path, and those rarer
+// nested-under-array sets stay on the per-type allowlists. Same $ref-resolving,
 // recursion-guarded walk as collectDefaultPaths; best-effort (a missed array just
 // stays on the manual table — never a false positive).
 const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean']);
-function collectUnorderedScalarPaths(
+// Mirrors noise.ts IDENTITY_FIELDS (the keys canonicalizeTagListsDeep aligns on).
+const ITEM_IDENTITY_FIELDS = ['Key', 'Id', 'AttributeName', 'IndexName', 'Name'];
+function collectUnorderedArrayPaths(
   definitions: Record<string, SchemaNode>,
   properties: Record<string, SchemaNode>
-): string[] {
-  const out: string[] = [];
+): { scalar: string[]; object: string[] } {
+  const scalar: string[] = [];
+  const object: string[] = [];
   const resolve = (
     node: SchemaNode | undefined,
     seen: ReadonlySet<string>
@@ -182,25 +192,28 @@ function collectUnorderedScalarPaths(
     }
     return n;
   };
-  const isScalarItems = (items: SchemaNode | undefined, seen: ReadonlySet<string>): boolean => {
-    const it = resolve(items, seen);
+  const isScalarItems = (it: SchemaNode | undefined): boolean => {
     if (!it) return false;
     if (it.properties) return false; // object items
     if (Array.isArray(it.enum) && it.enum.every((v) => typeof v !== 'object')) return true;
     return typeof it.type === 'string' && SCALAR_TYPES.has(it.type);
+  };
+  const isNonIdentityObjectItems = (it: SchemaNode | undefined): boolean => {
+    if (!it) return false;
+    const propKeys = Object.keys(it.properties ?? {});
+    if (propKeys.length === 0) return false; // scalar or free-form — not a structured object set
+    return !propKeys.some((k) => ITEM_IDENTITY_FIELDS.includes(k));
   };
   const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
     const n = resolve(node, seen);
     if (!n) return;
     const nextSeen = node?.$ref ? new Set(seen).add(node.$ref.replace('#/definitions/', '')) : seen;
     if (n.type === 'array') {
-      if (
-        n.insertionOrder === false &&
-        path &&
-        !path.includes('*') &&
-        isScalarItems(n.items, nextSeen)
-      )
-        out.push(path);
+      if (n.insertionOrder === false && path && !path.includes('*')) {
+        const it = resolve(n.items, nextSeen);
+        if (isScalarItems(it)) scalar.push(path);
+        else if (isNonIdentityObjectItems(it)) object.push(path);
+      }
       if (n.items) walk(n.items, path ? `${path}.*` : '*', nextSeen); // descend (only finds '*' paths, skipped above)
     }
     if (n.properties)
@@ -208,7 +221,7 @@ function collectUnorderedScalarPaths(
         walk(child, path ? `${path}.${k}` : k, nextSeen);
   };
   for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
-  return [...new Set(out)].sort();
+  return { scalar: [...new Set(scalar)].sort(), object: [...new Set(object)].sort() };
 }
 
 // Collect the dotted paths of FREE-FORM MAP properties: a `type: object` schema node with
@@ -298,7 +311,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
   }
   const defaultPaths = collectDefaultPaths(schema.definitions ?? {}, schema.properties ?? {});
-  const unorderedScalarPaths = collectUnorderedScalarPaths(
+  const unorderedArrayPaths = collectUnorderedArrayPaths(
     schema.definitions ?? {},
     schema.properties ?? {}
   );
@@ -315,7 +328,8 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     createOnlyPaths,
     defaults,
     defaultPaths,
-    unorderedScalarPaths,
+    unorderedScalarPaths: unorderedArrayPaths.scalar,
+    unorderedObjectArrayPaths: unorderedArrayPaths.object,
     freeFormMapPaths,
   };
 }

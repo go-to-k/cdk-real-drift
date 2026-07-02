@@ -993,7 +993,8 @@ describe('parseSchema', () => {
           Launch: { type: 'array', insertionOrder: false, items: { type: 'string' } },
           // ordered (default true) -> NOT collected
           Layers: { type: 'array', items: { type: 'string' } },
-          // object array, even unordered -> NOT collected (handled elsewhere)
+          // object array, even unordered -> NOT collected HERE (identity-keyed items go to
+          // canonicalizeTagListsDeep; non-identity items go to unorderedObjectArrayPaths)
           Rules: { type: 'array', insertionOrder: false, items: { $ref: '#/definitions/Rule' } },
           // nested under an object -> collected with dotted path
           HealthCheckConfig: { $ref: '#/definitions/Cfg' },
@@ -1011,6 +1012,74 @@ describe('parseSchema', () => {
       })
     );
     expect(info.unorderedScalarPaths).toEqual(['HealthCheckConfig.Regions', 'Launch']);
+    // the identity-keyed (`Name`) object array is NOT in the object list either
+    expect(info.unorderedObjectArrayPaths).toEqual([]);
+  });
+
+  // insertionOrder:false + OBJECT items with NO identity field -> unorderedObjectArrayPaths
+  // (#459, the schema-driven twin of UNORDERED_OBJECT_ARRAY_PROPS — found live on
+  // AccessAnalyzer ArchiveRules). Identity-keyed items (Key/Id/AttributeName/IndexName/
+  // Name — already aligned by canonicalizeTagListsDeep), scalar items (the scalar list),
+  // ordered arrays, and `*` through-array paths are all excluded.
+  it('parseSchema collects insertionOrder:false non-identity OBJECT arrays into unorderedObjectArrayPaths', () => {
+    const info = parseSchema(
+      JSON.stringify({
+        definitions: {
+          ArchiveRule: {
+            type: 'object',
+            properties: {
+              RuleName: { type: 'string' },
+              Filter: { type: 'array', insertionOrder: false, items: { type: 'object' } },
+            },
+          },
+          Tag: {
+            type: 'object',
+            properties: { Key: { type: 'string' }, Value: { type: 'string' } },
+          },
+        },
+        properties: {
+          // the ArchiveRules shape: unordered, RuleName is NOT an identity field -> collected
+          ArchiveRules: {
+            type: 'array',
+            insertionOrder: false,
+            items: { $ref: '#/definitions/ArchiveRule' },
+          },
+          // identity-keyed ({Key,Value} Tags) -> EXCLUDED (canonicalizeTagListsDeep owns it)
+          Tags: { type: 'array', insertionOrder: false, items: { $ref: '#/definitions/Tag' } },
+          // ordered (insertionOrder absent) object array -> NOT collected
+          Behaviors: { type: 'array', items: { $ref: '#/definitions/ArchiveRule' } },
+          // scalar unordered array -> the SCALAR list, not this one
+          Subnets: { type: 'array', insertionOrder: false, items: { type: 'string' } },
+          // nested under a structured object -> collected with dotted path
+          Config: {
+            type: 'object',
+            properties: {
+              Rules: {
+                type: 'array',
+                insertionOrder: false,
+                items: { $ref: '#/definitions/ArchiveRule' },
+              },
+            },
+          },
+          // nested THROUGH an array element -> '*' path, skipped
+          Groups: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                Rules: {
+                  type: 'array',
+                  insertionOrder: false,
+                  items: { $ref: '#/definitions/ArchiveRule' },
+                },
+              },
+            },
+          },
+        },
+      })
+    );
+    expect(info.unorderedObjectArrayPaths).toEqual(['ArchiveRules', 'Config.Rules']);
+    expect(info.unorderedScalarPaths).toEqual(['Subnets']);
   });
 
   // free-form map properties (patternProperties / object additionalProperties, no fixed

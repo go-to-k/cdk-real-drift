@@ -87,7 +87,8 @@
     "defaults": {},
     "defaultPaths": {},
     "unorderedScalarPaths": [],
-    "freeFormMapPaths": []
+    "freeFormMapPaths": [],
+    "unorderedObjectArrayPaths": ["ArchiveRules"]
   },
   "opts": {
     "accountId": "111111111111",

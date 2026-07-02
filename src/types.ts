@@ -98,6 +98,16 @@ export interface SchemaInfo {
   // Optional: production (parseSchema / reviveSchema / EMPTY) always sets it; test
   // fixtures and pre-insertionOrder corpus cases may omit it (classify reads it with `?.`).
   unorderedScalarPaths?: string[];
+  // Dotted paths of arrays the schema marks `insertionOrder: false` whose items are
+  // OBJECTS with NO identity field (Key/Id/AttributeName/IndexName/Name — those are
+  // already aligned by canonicalizeTagListsDeep, and re-sorting them would churn the
+  // established canonical order). The schema explicitly asserts the array is UNORDERED,
+  // so classify sorts BOTH sides by canonical JSON before the positional diff — the same
+  // mechanics as the per-type UNORDERED_OBJECT_ARRAY_PROPS opt-in, but schema-driven and
+  // type-agnostic (closes the ArchiveRules-shaped FP class, #459). FN-safe by the same
+  // argument as unorderedScalarPaths; a genuine element change still differs after the
+  // sort. Optional like the above; classify reads it with `?.`.
+  unorderedObjectArrayPaths?: string[];
   // Dotted paths of FREE-FORM MAP properties — `type: object` schema nodes with no fixed
   // `properties`, just `patternProperties`/object `additionalProperties` (Lambda
   // Environment.Variables, Glue Parameters, DockerLabels). Every KEY in such a map is

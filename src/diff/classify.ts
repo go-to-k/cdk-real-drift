@@ -528,8 +528,16 @@ function collectNestedUndeclared(
 // Cognito OAuth list, re-read by AWS in a different order, false-flagged as "changed since
 // record" (baselineValueMatches re-canonicalizes without this step). Sorting them here, in
 // the shared live-model normalizer, makes every downstream consumer see one stable order.
-function sortUnorderedSetProps(model: Record<string, unknown>, resourceType: string): void {
-  for (const k of UNORDERED_OBJECT_ARRAY_PROPS[resourceType] ?? [])
+function sortUnorderedSetProps(
+  model: Record<string, unknown>,
+  resourceType: string,
+  schemaObjectArrayKeys: readonly string[] = []
+): void {
+  const objKeys = new Set([
+    ...(UNORDERED_OBJECT_ARRAY_PROPS[resourceType] ?? []),
+    ...schemaObjectArrayKeys,
+  ]);
+  for (const k of objKeys)
     if (Array.isArray(model[k])) model[k] = sortUnorderedObjectArray(model[k]);
   for (const k of UNORDERED_ARRAY_PROPS[resourceType] ?? []) {
     const v = model[k];
@@ -555,7 +563,14 @@ export function normalizeLiveModel(
   ) as Record<string, unknown>;
   deepStripPaths(live, schema.readOnlyPaths);
   deepStripPaths(live, schema.writeOnlyPaths);
-  if (opts.resourceType) sortUnorderedSetProps(live, opts.resourceType);
+  if (opts.resourceType)
+    sortUnorderedSetProps(
+      live,
+      opts.resourceType,
+      // top-level keys only — nested (dotted) schema paths are handled per-key in the
+      // declared loop, and the undeclared loop's nested inventory is emitted per-path.
+      (schema.unorderedObjectArrayPaths ?? []).filter((p) => !p.includes('.'))
+    );
   return live;
 }
 
@@ -900,14 +915,22 @@ export function classifyResource(
     // rule objects with no single identity field that AWS returns reordered. Sort BOTH
     // sides by canonical JSON before the positional diff so a reorder is not false
     // drift; a genuine rule change still differs after the sort.
-    const unorderedObjArray = UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k);
+    const unorderedObjArray =
+      UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k) ||
+      // schema-driven twin (#459): the schema marks this OBJECT array insertionOrder:false
+      // (and its items carry no identity field), so a reorder is never drift.
+      (schema.unorderedObjectArrayPaths?.includes(k) ?? false);
     // Per-type NESTED unordered object-array paths under this key (Bedrock Guardrail
     // ContentPolicyConfig.FiltersConfig etc.): sort the reordered set on both sides so
     // a positional diff doesn't false-flag it.
     const nestedUnordered = UNORDERED_NESTED_OBJECT_ARRAY_PATHS[resourceType];
-    const nestedSubPaths = nestedUnordered
-      ? [...nestedUnordered].filter((p) => p.startsWith(`${k}.`)).map((p) => p.slice(k.length + 1))
-      : [];
+    const nestedSubPaths = [
+      ...new Set(
+        [...(nestedUnordered ?? []), ...(schema.unorderedObjectArrayPaths ?? [])]
+          .filter((p) => p.startsWith(`${k}.`))
+          .map((p) => p.slice(k.length + 1))
+      ),
+    ];
     let declaredVal: unknown = v;
     let liveVal: unknown = live[k];
     if (subsetSpec && Array.isArray(v) && Array.isArray(live[k])) {
