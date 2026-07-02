@@ -58,6 +58,11 @@ import {
   DescribeReplicationGroupsCommand,
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
+import {
+  type AnomalyDetector,
+  CloudWatchClient,
+  DescribeAnomalyDetectorsCommand,
+} from '@aws-sdk/client-cloudwatch';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
   DescribeReceiptRuleCommand,
@@ -404,6 +409,104 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
 // (RuleNumber, Egress) pair). The EC2 entry shape mirrors the CFn property shape, except
 // Protocol comes back as a STRING ("6") while CFn declares it as an INTEGER (6) — coerce
 // it to a number so a tcp/udp/icmp rule does not false-drift on a typed-vs-string Protocol.
+// AWS::CloudWatch::AnomalyDetector — NON_PROVISIONABLE in the registry (no Cloud
+// Control read handler), so every declared anomaly detector was a silent `skipped`
+// read-gap (issue #461) despite being a standard CloudWatch pattern. The CFn physical
+// id is an opaque generated id no CloudWatch API accepts, so identity comes from the
+// DECLARED model. Two declaration styles exist (a nested SingleMetricAnomalyDetector /
+// MetricMathAnomalyDetector, or the legacy top-level Namespace/MetricName/Stat/
+// Dimensions); the live model is emitted in the SAME style the template used so the
+// compare is shape-stable. Field mapping: the CW API spells the timezone
+// `MetricTimezone` while CFn spells it `MetricTimeZone`; ExcludedTimeRanges come back
+// as Date objects and are projected as ISO strings only when present (FP-safe: an
+// unset Configuration stays absent on both sides).
+const dimSetEqual = (a: unknown, b: unknown): boolean => {
+  const norm = (v: unknown): string =>
+    JSON.stringify(
+      (Array.isArray(v) ? (v as { Name?: unknown; Value?: unknown }[]) : [])
+        .map((d) => [str(d.Name) ?? '', str(d.Value) ?? ''])
+        .sort()
+    );
+  return norm(a) === norm(b);
+};
+const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region }) => {
+  const singleDecl = declared.SingleMetricAnomalyDetector as Record<string, unknown> | undefined;
+  const mathDecl = declared.MetricMathAnomalyDetector as Record<string, unknown> | undefined;
+  const ns = str(singleDecl?.Namespace) ?? str(declared.Namespace);
+  const metric = str(singleDecl?.MetricName) ?? str(declared.MetricName);
+  const stat = str(singleDecl?.Stat) ?? str(declared.Stat);
+  const dims = singleDecl?.Dimensions ?? declared.Dimensions;
+  if (!mathDecl && (!ns || !metric || !stat)) return undefined; // unresolved identity -> skipped
+
+  const c = new CloudWatchClient({ region, ...READ_RETRY });
+  // Namespace/MetricName filters match only single-metric detectors, so a math
+  // detector needs the unfiltered listing.
+  const filters = mathDecl ? {} : { Namespace: ns, MetricName: metric };
+  const detectors: AnomalyDetector[] = [];
+  let nextToken: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeAnomalyDetectorsCommand({ ...filters, NextToken: nextToken })
+    );
+    detectors.push(...(r.AnomalyDetectors ?? []));
+    nextToken = r.NextToken;
+  } while (nextToken);
+
+  const found = detectors.find((d) => {
+    if (mathDecl) {
+      const q = d.MetricMathAnomalyDetector?.MetricDataQueries;
+      const declQ = mathDecl.MetricDataQueries;
+      const ids = (v: unknown): string =>
+        JSON.stringify(
+          (Array.isArray(v) ? (v as { Id?: unknown }[]) : []).map((x) => str(x.Id) ?? '').sort()
+        );
+      return q !== undefined && ids(q) === ids(declQ);
+    }
+    const s = d.SingleMetricAnomalyDetector;
+    const dNs = s?.Namespace ?? d.Namespace;
+    const dMetric = s?.MetricName ?? d.MetricName;
+    const dStat = s?.Stat ?? d.Stat;
+    const dDims = s?.Dimensions ?? d.Dimensions;
+    return dNs === ns && dMetric === metric && dStat === stat && dimSetEqual(dDims, dims ?? []);
+  });
+  if (!found) throw new ResourceGoneError(`AnomalyDetector ${ns ?? 'math'}/${metric ?? ''} absent`);
+
+  const model: Record<string, unknown> = {};
+  if (mathDecl) {
+    model.MetricMathAnomalyDetector = found.MetricMathAnomalyDetector;
+  } else if (singleDecl) {
+    const s = found.SingleMetricAnomalyDetector;
+    model.SingleMetricAnomalyDetector = {
+      Namespace: s?.Namespace ?? found.Namespace,
+      MetricName: s?.MetricName ?? found.MetricName,
+      Stat: s?.Stat ?? found.Stat,
+      ...((s?.Dimensions ?? found.Dimensions ?? []).length > 0 && {
+        Dimensions: s?.Dimensions ?? found.Dimensions,
+      }),
+    };
+  } else {
+    model.Namespace = found.SingleMetricAnomalyDetector?.Namespace ?? found.Namespace;
+    model.MetricName = found.SingleMetricAnomalyDetector?.MetricName ?? found.MetricName;
+    model.Stat = found.SingleMetricAnomalyDetector?.Stat ?? found.Stat;
+    const legacyDims = found.SingleMetricAnomalyDetector?.Dimensions ?? found.Dimensions;
+    if ((legacyDims ?? []).length > 0) model.Dimensions = legacyDims;
+  }
+  const cfg = found.Configuration;
+  if (cfg !== undefined) {
+    const out: Record<string, unknown> = {};
+    if (str(cfg.MetricTimezone)) out.MetricTimeZone = cfg.MetricTimezone;
+    if ((cfg.ExcludedTimeRanges ?? []).length > 0)
+      out.ExcludedTimeRanges = (cfg.ExcludedTimeRanges ?? []).map((rng) => ({
+        StartTime: rng.StartTime instanceof Date ? rng.StartTime.toISOString() : rng.StartTime,
+        EndTime: rng.EndTime instanceof Date ? rng.EndTime.toISOString() : rng.EndTime,
+      }));
+    if (Object.keys(out).length > 0) model.Configuration = out;
+  }
+  if (found.MetricCharacteristics !== undefined)
+    model.MetricCharacteristics = found.MetricCharacteristics;
+  return model;
+};
+
 const readEc2NetworkAclEntry: OverrideReader = async ({ declared, region }) => {
   const naclId = str(declared.NetworkAclId);
   const ruleNumber = declared.RuleNumber;
@@ -1360,6 +1463,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::EIP': readEc2Eip,
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
+  'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,
