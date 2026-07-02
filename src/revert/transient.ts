@@ -92,41 +92,86 @@ export interface RetryableResult {
 }
 
 export interface RetryOptions {
-  // Total attempts including the first (default 3 → up to 2 retries).
+  // Total attempts including the first (default 3 → up to 2 retries). Ignored when
+  // `deadlineMs` is set (the `revert --wait` path retries until the deadline instead).
   maxAttempts?: number;
   // Linear backoff base: waits baseDelayMs * attempt between tries (3s, 6s, …).
   baseDelayMs?: number;
+  // Cap on a single backoff wait, so the deadline mode's linear growth stays bounded.
+  maxDelayMs?: number;
+  // `revert --wait` mode: keep retrying a transient failure until this wall-clock time
+  // (ms epoch), NOT a fixed attempt count — so a resource that stays UPDATING for
+  // minutes (RSLVR-00705) can converge in ONE command. `maxAttempts` is ignored.
+  deadlineMs?: number;
+  // Injectable clock (default Date.now) so deadline-mode tests don't wait for real time.
+  now?: () => number;
+  // Called before each backoff wait (a transient failure about to be retried) — the
+  // report layer uses it to print a per-retry progress line so a multi-minute `--wait`
+  // never looks frozen. `attempt` is the 1-based number of the attempt that just failed.
+  onRetry?: (info: { attempt: number; delayMs: number; hint?: string }) => void;
   // Injectable for tests (default real setTimeout).
   sleep?: (ms: number) => Promise<void>;
 }
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 export const DEFAULT_BASE_DELAY_MS = 3000;
+export const DEFAULT_MAX_DELAY_MS = 30_000;
+// `revert --wait` with no explicit duration: block for up to 10 minutes (a
+// Route53Resolver rule's UPDATING window is typically a few minutes).
+export const DEFAULT_WAIT_MS = 10 * 60 * 1000;
+
+// Parse a `--wait` duration: a bare number is SECONDS; a `s`/`m`/`h` suffix scales
+// (e.g. "300", "300s", "5m", "1h"). Returns ms. Throws on a malformed value so a
+// typo'd `--wait=5min` fails fast rather than silently defaulting.
+export function parseDurationMs(raw: string): number {
+  const m = /^(\d+)(s|m|h)?$/.exec(raw.trim());
+  if (!m) {
+    throw new Error(`invalid --wait duration "${raw}" — use e.g. 90, 30s, 5m, 1h`);
+  }
+  const n = Number(m[1]);
+  const unit = m[2] ?? 's';
+  const scale = unit === 'h' ? 3_600_000 : unit === 'm' ? 60_000 : 1000;
+  return n * scale;
+}
 
 const realSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 // Run `op` with bounded backoff, retrying ONLY while its failure classifies as
-// transient. A terminal failure returns immediately (no wasted waiting). When all
-// attempts are exhausted on a still-transient failure, the returned result carries
-// `transient: true` + the classifier's `hint` so the caller can show the targeted
-// message instead of a bare FAILED. `op` must be self-contained (catch its own throws
-// into `{ ok:false, error }`) — it is re-invoked verbatim each attempt.
+// transient. A terminal failure returns immediately (no wasted waiting). Two stop
+// conditions: the default fixed `maxAttempts`, or — when `deadlineMs` is set
+// (`revert --wait`) — a wall-clock deadline so a minutes-long UPDATING window can
+// converge in one command. When the retries are exhausted on a still-transient failure,
+// the returned result carries `transient: true` + the classifier's `hint` so the caller
+// can show the targeted message instead of a bare FAILED. `op` must be self-contained
+// (catch its own throws into `{ ok:false, error }`) — it is re-invoked verbatim each try.
 export async function retryTransient<T extends RetryableResult>(
   op: () => Promise<T>,
   opts: RetryOptions = {}
 ): Promise<T> {
   const max = opts.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const base = opts.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const cap = opts.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
   const doSleep = opts.sleep ?? realSleep;
+  const clock = opts.now ?? Date.now;
+  const deadline = opts.deadlineMs;
   let result = await op();
-  for (let attempt = 1; !result.ok && attempt < max; attempt++) {
-    if (!classifyTransient(result.error).transient) return result; // terminal — stop
-    await doSleep(base * attempt);
-    result = await op();
-  }
-  if (!result.ok) {
+  let attempt = 1;
+  while (!result.ok) {
     const verdict = classifyTransient(result.error);
-    if (verdict.transient) return { ...result, transient: true, hint: verdict.hint };
+    if (!verdict.transient) return result; // terminal — stop, no annotation
+    // More tries allowed? deadline mode: only if there is time left to at least retry
+    // AFTER a (possibly shortened) wait; attempt mode: until maxAttempts.
+    const more = deadline !== undefined ? clock() < deadline : attempt < max;
+    if (!more) return { ...result, transient: true, hint: verdict.hint };
+    // In deadline mode, never sleep past the deadline (so the last wait doesn't overrun).
+    const wait =
+      deadline !== undefined
+        ? Math.max(0, Math.min(base * attempt, cap, deadline - clock()))
+        : Math.min(base * attempt, cap);
+    opts.onRetry?.({ attempt, delayMs: wait, ...(verdict.hint && { hint: verdict.hint }) });
+    await doSleep(wait);
+    attempt++;
+    result = await op();
   }
   return result;
 }

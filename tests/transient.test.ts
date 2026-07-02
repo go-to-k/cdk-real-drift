@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   classifyTransient,
   errorText,
+  parseDurationMs,
   type RetryableResult,
   retryTransient,
 } from '../src/revert/transient.js';
@@ -151,5 +152,109 @@ describe('retryTransient — bounded backoff, then hint', () => {
       sleep: async (ms) => void waits.push(ms),
     });
     expect(waits).toEqual([1000, 2000]);
+  });
+
+  it('caps a single backoff wait at maxDelayMs', async () => {
+    const waits: number[] = [];
+    await retryTransient(async () => ({ ok: false, error: 'RSLVR-00705 currently updating' }), {
+      maxAttempts: 5,
+      baseDelayMs: 10_000,
+      maxDelayMs: 15_000,
+      sleep: async (ms) => void waits.push(ms),
+    });
+    // 10s, 20s→cap 15s, 30s→cap 15s, 40s→cap 15s
+    expect(waits).toEqual([10_000, 15_000, 15_000, 15_000]);
+  });
+});
+
+describe('retryTransient — deadline (--wait) mode', () => {
+  // A fake clock: each read advances by `step` ms so the loop terminates deterministically
+  // without real time. `sleep` is a no-op (the clock, not the sleep, drives the deadline).
+  const fakeClock = (step: number) => {
+    let t = 0;
+    return () => {
+      const now = t;
+      t += step;
+      return now;
+    };
+  };
+
+  it('retries past maxAttempts until the resource settles (one-command convergence)', async () => {
+    let calls = 0;
+    const r = await retryTransient(
+      async (): Promise<RetryableResult> => {
+        calls++;
+        return calls < 6 ? { ok: false, error: '[RSLVR-00705] currently updating' } : { ok: true };
+      },
+      {
+        maxAttempts: 3, // ignored in deadline mode
+        deadlineMs: 100_000,
+        now: fakeClock(1000), // advances slowly, deadline never hit before success
+        sleep: () => Promise.resolve(),
+      }
+    );
+    expect(r.ok).toBe(true);
+    expect(calls).toBe(6); // well past the 3-attempt default
+  });
+
+  it('gives up at the deadline and annotates the hint', async () => {
+    let calls = 0;
+    const r = await retryTransient(
+      async (): Promise<RetryableResult> => {
+        calls++;
+        return { ok: false, error: '[RSLVR-00705] currently updating' };
+      },
+      {
+        deadlineMs: 5000,
+        now: fakeClock(2000), // 0, 2000, 4000, 6000 → exceeds 5000 after a few tries
+        sleep: () => Promise.resolve(),
+      }
+    );
+    expect(r.ok).toBe(false);
+    expect(r.transient).toBe(true);
+    expect(r.hint).toContain('async propagation');
+    expect(calls).toBeGreaterThan(1);
+  });
+
+  it('invokes onRetry before each wait with the attempt number and delay', async () => {
+    const seen: { attempt: number; delayMs: number; hint?: string }[] = [];
+    await retryTransient(async () => ({ ok: false, error: 'RSLVR-00705 currently updating' }), {
+      maxAttempts: 3,
+      baseDelayMs: 1000,
+      sleep: () => Promise.resolve(),
+      onRetry: (info) => seen.push(info),
+    });
+    expect(seen.map((s) => s.attempt)).toEqual([1, 2]);
+    expect(seen[0]?.delayMs).toBe(1000);
+    expect(seen[0]?.hint).toContain('async propagation');
+  });
+
+  it('does NOT call onRetry for a terminal (non-transient) failure', async () => {
+    let called = 0;
+    await retryTransient(async () => ({ ok: false, error: 'ValidationException: bad' }), {
+      sleep: () => Promise.resolve(),
+      onRetry: () => called++,
+    });
+    expect(called).toBe(0);
+  });
+});
+
+describe('parseDurationMs', () => {
+  it('parses bare number as seconds', () => {
+    expect(parseDurationMs('90')).toBe(90_000);
+    expect(parseDurationMs('300')).toBe(300_000);
+  });
+  it('parses s/m/h suffixes', () => {
+    expect(parseDurationMs('30s')).toBe(30_000);
+    expect(parseDurationMs('5m')).toBe(300_000);
+    expect(parseDurationMs('1h')).toBe(3_600_000);
+  });
+  it('tolerates surrounding whitespace', () => {
+    expect(parseDurationMs('  5m ')).toBe(300_000);
+  });
+  it('throws on a malformed value', () => {
+    for (const bad of ['5min', 'abc', '', '5.5m', '-3s', 'm']) {
+      expect(() => parseDurationMs(bad)).toThrow(/invalid --wait duration/);
+    }
   });
 });

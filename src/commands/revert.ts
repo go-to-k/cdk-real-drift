@@ -84,6 +84,7 @@ export async function runRevert(args: string[]): Promise<number> {
         removeUnrecorded: a.removeUnrecorded,
         verbose: a.verbose,
         interactive: isInteractive(),
+        ...(a.waitMs !== undefined && { waitMs: a.waitMs }),
       });
       worst = Math.max(worst, exit);
     } catch (e) {
