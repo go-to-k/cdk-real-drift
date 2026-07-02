@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TableBucketPolicy",
+    "resourceType": "AWS::S3Tables::TableBucketPolicy",
+    "physicalId": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/TableBucketPolicy",
+    "declared": {
+      "ResourcePolicy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowOwnerRead",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Action": ["s3tables:GetTableBucket"],
+            "Resource": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables"
+          }
+        ]
+      },
+      "TableBucketARN": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables"
+    }
+  },
+  "liveRaw": {
+    "TableBucketARN": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+    "ResourcePolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "s3tables:GetTableBucket",
+          "Resource": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "AllowOwnerRead"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["TableBucketARN"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TableBucketARN"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

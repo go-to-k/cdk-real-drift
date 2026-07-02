@@ -174,7 +174,7 @@
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Nlb",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "Name",

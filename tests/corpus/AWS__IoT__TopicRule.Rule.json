@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule",
+    "resourceType": "AWS::IoT::TopicRule",
+    "physicalId": "cdkrd_hunt_rule",
+    "constructPath": "CdkRealDriftIntegIotVpces/Rule",
+    "declared": {
+      "RuleName": "cdkrd_hunt_rule",
+      "TopicRulePayload": {
+        "Actions": [
+          {
+            "CloudwatchLogs": {
+              "LogGroupName": "CdkRealDriftIntegIotVpces-RuleLogs58570289-D2ZfvFblIoBv",
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegIotVpces-RuleRole85A02A56-0XGvSudoAhcL"
+            }
+          }
+        ],
+        "AwsIotSqlVersion": "2016-03-23",
+        "Description": "cdkrd hunt fixture rule (FN target: RuleDisabled)",
+        "RuleDisabled": false,
+        "Sql": "SELECT temperature, deviceId FROM 'cdkrd/hunt/telemetry' WHERE temperature > 20"
+      }
+    }
+  },
+  "liveRaw": {
+    "TopicRulePayload": {
+      "RuleDisabled": false,
+      "Description": "cdkrd hunt fixture rule (FN target: RuleDisabled)",
+      "AwsIotSqlVersion": "2016-03-23",
+      "Actions": [
+        {
+          "CloudwatchLogs": {
+            "LogGroupName": "CdkRealDriftIntegIotVpces-RuleLogs58570289-D2ZfvFblIoBv",
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegIotVpces-RuleRole85A02A56-0XGvSudoAhcL"
+          }
+        }
+      ],
+      "Sql": "SELECT temperature, deviceId FROM 'cdkrd/hunt/telemetry' WHERE temperature > 20"
+    },
+    "Arn": "arn:aws:iot:us-east-1:111111111111:rule/cdkrd_hunt_rule",
+    "RuleName": "cdkrd_hunt_rule",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["RuleName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": [
+      "TopicRulePayload.Actions.*.Kafka.ClientProperties",
+      "TopicRulePayload.ErrorAction.Kafka.ClientProperties"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

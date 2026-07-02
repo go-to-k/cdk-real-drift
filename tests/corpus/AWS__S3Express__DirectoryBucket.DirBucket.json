@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DirBucket",
+    "resourceType": "AWS::S3Express::DirectoryBucket",
+    "physicalId": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/DirBucket",
+    "declared": {
+      "BucketName": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+      "DataRedundancy": "SingleAvailabilityZone",
+      "LocationName": "use1-az4"
+    }
+  },
+  "liveRaw": {
+    "InventoryConfigurations": [],
+    "BucketName": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": true,
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "AvailabilityZoneName": "us-east-1c",
+    "DataRedundancy": "SingleAvailabilityZone",
+    "Arn": "arn:aws:s3express:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov--use1-az4--x-s3",
+    "MetricsConfigurations": [],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegS3ExpressTables",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "DirBucket",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegS3ExpressTables/477f9660-75cf-11f1-8815-0e2eacb1cb8f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "LocationName": "use1-az4"
+  },
+  "schema": {
+    "readOnly": ["Arn", "AvailabilityZoneName"],
+    "writeOnly": [],
+    "createOnly": ["BucketName", "DataRedundancy", "LocationName"],
+    "readOnlyPaths": ["Arn", "AvailabilityZoneName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BucketName", "DataRedundancy", "LocationName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DirBucket",
+      "resourceType": "AWS::S3Express::DirectoryBucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": true,
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+      "constructPath": "CdkRealDriftIntegS3ExpressTables/DirBucket"
+    }
+  ]
+}

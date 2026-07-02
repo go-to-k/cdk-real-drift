@@ -805,6 +805,62 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ]);
   });
 
+  it('hunt-lowcov first-run folds: S3Express DirectoryBucket / S3Tables TableBucket / Logs Delivery family', () => {
+    // Constant service defaults observed live on fresh s3express-s3tables-rich and
+    // cloudfront-kvs-logs-delivery deploys with NO out-of-band edit — first-run noise
+    // that must fold to atDefault, while a real change to each surfaces (equality-gated).
+    const t = (rt: string, live: Record<string, unknown>) =>
+      tiers(classifyResource(bare(rt), live, emptySchema));
+
+    // Directory buckets are always encrypted: SSE-S3 with the bucket key ON.
+    const dirEnc = (algo: string) => ({
+      BucketEncryption: {
+        ServerSideEncryptionConfiguration: [
+          { BucketKeyEnabled: true, ServerSideEncryptionByDefault: { SSEAlgorithm: algo } },
+        ],
+      },
+    });
+    expect(t('AWS::S3Express::DirectoryBucket', dirEnc('AES256')).atDefault).toEqual([
+      'BucketEncryption',
+    ]);
+    expect(t('AWS::S3Express::DirectoryBucket', dirEnc('aws:kms')).undeclared).toEqual([
+      'BucketEncryption',
+    ]);
+
+    // Table buckets materialize three constant defaults; a KMS switch surfaces.
+    expect(
+      t('AWS::S3Tables::TableBucket', {
+        StorageClassConfiguration: { StorageClass: 'STANDARD' },
+        MetricsConfiguration: { Status: 'Disabled' },
+        EncryptionConfiguration: { SSEAlgorithm: 'AES256' },
+      }).atDefault.sort()
+    ).toEqual(['EncryptionConfiguration', 'MetricsConfiguration', 'StorageClassConfiguration']);
+    expect(
+      t('AWS::S3Tables::TableBucket', { EncryptionConfiguration: { SSEAlgorithm: 'aws:kms' } })
+        .undeclared
+    ).toEqual(['EncryptionConfiguration']);
+
+    // Vended logs v2: a log-group destination derives DeliveryDestinationType "CWL";
+    // an S3 destination's value doesn't match the fold and surfaces (recordable).
+    expect(
+      t('AWS::Logs::DeliveryDestination', { DeliveryDestinationType: 'CWL' }).atDefault
+    ).toEqual(['DeliveryDestinationType']);
+    expect(
+      t('AWS::Logs::DeliveryDestination', { DeliveryDestinationType: 'S3' }).undeclared
+    ).toEqual(['DeliveryDestinationType']);
+
+    // A Delivery with no declared RecordFields reads back the source's FULL default
+    // field list (CloudFront ACCESS_LOGS here); a trimmed selection surfaces.
+    const cfFields = KNOWN_DEFAULTS['AWS::Logs::Delivery'].RecordFields as string[];
+    expect(cfFields.length).toBeGreaterThan(30);
+    expect(t('AWS::Logs::Delivery', { RecordFields: cfFields }).atDefault).toEqual([
+      'RecordFields',
+    ]);
+    expect(t('AWS::Logs::Delivery', { RecordFields: cfFields.slice(0, 5) }).undeclared).toEqual([
+      'RecordFields',
+    ]);
+  });
+
   it('R104: StateMachineType STANDARD folds, EXPRESS stays undeclared (equality-gated curation)', () => {
     const t = (v: string) =>
       tiers(
@@ -1327,18 +1383,42 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       ]);
     });
 
-    it("an NLB's cross_zone default (false) does NOT fold (the ALB-keyed table holds true) and stays undeclared", () => {
-      // The table is keyed only by resourceType, and ALB cross_zone default "true" wins;
-      // an NLB's "false" must NOT mis-fold against "true" — the equality gate keeps it
-      // `undeclared` (recorded, fail-closed), a known minor residual noise on NLBs.
+    it("an NLB's cross_zone default (false) folds to atDefault via the per-LB-type override", () => {
+      // ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE keys on the live Type: an NLB's cross_zone
+      // default is "false" (the OPPOSITE of the shared ALB entry), so a fresh NLB is no
+      // longer first-run noise (observed live on iot-vpces-rich).
+      const nlbLive = (crossZone: string) => ({
+        Type: 'network',
+        LoadBalancerAttributes: [
+          { Key: 'deletion_protection.enabled', Value: 'false' },
+          { Key: 'load_balancing.cross_zone.enabled', Value: crossZone },
+        ],
+      });
+      const nlbDeclared = {
+        Type: 'network',
+        LoadBalancerAttributes: [{ Key: 'deletion_protection.enabled', Value: 'false' }],
+      };
+      const atDefault = classifyResource(res(T, nlbDeclared), nlbLive('false'), emptySchema).filter(
+        (f) => f.tier === 'atDefault'
+      );
+      expect(atDefault.map((f) => f.path)).toEqual([
+        'LoadBalancerAttributes[load_balancing.cross_zone.enabled]',
+      ]);
+    });
+
+    it("an NLB's out-of-band cross_zone ENABLE (true) stays undeclared — the shared ALB default must NOT mis-fold it", () => {
+      // Before the per-type override, "true" matched the shared ALB entry -> atDefault,
+      // so `record` never snapshotted a REAL undeclared change (an FN, not just noise).
       const undeclared = classifyResource(
         res(T, {
+          Type: 'network',
           LoadBalancerAttributes: [{ Key: 'deletion_protection.enabled', Value: 'false' }],
         }),
         {
+          Type: 'network',
           LoadBalancerAttributes: [
             { Key: 'deletion_protection.enabled', Value: 'false' },
-            { Key: 'load_balancing.cross_zone.enabled', Value: 'false' },
+            { Key: 'load_balancing.cross_zone.enabled', Value: 'true' },
           ],
         },
         emptySchema
@@ -1346,6 +1426,29 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(undeclared.map((f) => f.path)).toEqual([
         'LoadBalancerAttributes[load_balancing.cross_zone.enabled]',
       ]);
+    });
+
+    it("an ALB (no Type declared or read = application) keeps the shared cross_zone default: 'true' folds, 'false' surfaces", () => {
+      const albLive = (crossZone: string) => ({
+        LoadBalancerAttributes: [
+          { Key: 'deletion_protection.enabled', Value: 'false' },
+          { Key: 'load_balancing.cross_zone.enabled', Value: crossZone },
+        ],
+      });
+      const albDeclared = {
+        LoadBalancerAttributes: [{ Key: 'deletion_protection.enabled', Value: 'false' }],
+      };
+      const path = 'LoadBalancerAttributes[load_balancing.cross_zone.enabled]';
+      expect(
+        classifyResource(res(T, albDeclared), albLive('true'), emptySchema).find(
+          (f) => f.path === path
+        )?.tier
+      ).toBe('atDefault');
+      expect(
+        classifyResource(res(T, albDeclared), albLive('false'), emptySchema).find(
+          (f) => f.path === path
+        )?.tier
+      ).toBe('undeclared');
     });
 
     it('a genuine change to a DECLARED attribute still surfaces, named by Key (R78)', () => {
@@ -5279,6 +5382,49 @@ describe('CFn auto-generated name folding (generated tier)', () => {
     expect(tierOf({ GroupName: 'other-stack-name-8qZ9xcu9LOZR' }, 'GroupName')).toBe('undeclared');
     // right prefix but no random suffix (a real human-meaningful name)
     expect(tierOf({ GroupName: 'CdkRealDriftIntegSg-web-tier' }, 'GroupName')).toBe('undeclared');
+  });
+
+  it('a TRUNCATED CFn-generated short name (<stackPrefix>-<logicalIdPrefix>-<random>) folds as generated', () => {
+    // ELBv2 names are capped at 32 chars, so CFn truncates BOTH segments: stack
+    // `CdkRealDriftIntegIotVpces` + logical id `NlbBC02D1613` mints
+    // `CdkRea-NlbBC-Rz5FCsQXIO7E` (observed live on a fresh auto-named internal NLB).
+    const nlb: DesiredResource = {
+      logicalId: 'NlbBC02D1613',
+      resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+      physicalId:
+        'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/CdkRea-NlbBC-Rz5FCsQXIO7E/abc',
+      constructPath: 'CdkRealDriftIntegIotVpces/Nlb',
+      declared: {},
+    };
+    const f = classifyResource(nlb, { Name: 'CdkRea-NlbBC-Rz5FCsQXIO7E' }, bare).find(
+      (x) => x.path === 'Name'
+    );
+    expect(f?.tier).toBe('generated');
+  });
+
+  it('the truncated branch stays gated: both halves must be prefixes of THIS stack + logical id', () => {
+    const nlb = (name: string): [DesiredResource, Record<string, unknown>] => [
+      {
+        logicalId: 'NlbBC02D1613',
+        resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+        physicalId: 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/x/abc',
+        constructPath: 'CdkRealDriftIntegIotVpces/Nlb',
+        declared: {},
+      },
+      { Name: name },
+    ];
+    const tier = (name: string) => {
+      const [r, live] = nlb(name);
+      return classifyResource(r, live, bare).find((x) => x.path === 'Name')?.tier;
+    };
+    // stack half is not a prefix of the stack name -> a user-chosen name, surfaces
+    expect(tier('MyProd-NlbBC-Rz5FCsQXIO7E')).toBe('undeclared');
+    // logical-id half is not a prefix of this resource's logical id -> surfaces
+    expect(tier('CdkRea-WebLb-Rz5FCsQXIO7E')).toBe('undeclared');
+    // no random suffix -> a human-meaningful name, surfaces
+    expect(tier('CdkRea-NlbBC-internal')).toBe('undeclared');
+    // stack half must be a STRICT prefix (untruncated names take the strict branch)
+    expect(tier('CdkRealDriftIntegIotVpces-NlbBC02D1613-Rz5FCsQXIO7E')).toBe('generated');
   });
 
   it('no constructPath -> cannot derive the stack name -> never folds (safe)', () => {

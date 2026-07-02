@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Spread",
+    "resourceType": "AWS::EC2::PlacementGroup",
+    "physicalId": "CdkRealDriftIntegS3ExpressTables-Spread-PK9XWRK2PRG7",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/Spread",
+    "declared": {
+      "SpreadLevel": "rack",
+      "Strategy": "spread"
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegS3ExpressTables-Spread-PK9XWRK2PRG7",
+    "SpreadLevel": "rack",
+    "Strategy": "spread",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["GroupName"],
+    "writeOnly": [],
+    "createOnly": ["PartitionCount", "SpreadLevel", "Strategy", "Tags"],
+    "readOnlyPaths": ["GroupName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PartitionCount", "SpreadLevel", "Strategy", "Tags"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DevicePolicy",
+    "resourceType": "AWS::IoT::Policy",
+    "physicalId": "cdkrd-hunt-iot-policy",
+    "constructPath": "CdkRealDriftIntegIotVpces/DevicePolicy",
+    "declared": {
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": ["iot:Connect"],
+            "Resource": ["arn:aws:iot:us-east-1:111111111111:client/cdkrd-hunt-*"]
+          },
+          {
+            "Effect": "Allow",
+            "Action": ["iot:Publish"],
+            "Resource": ["arn:aws:iot:us-east-1:111111111111:topic/cdkrd/hunt/*"]
+          }
+        ]
+      },
+      "PolicyName": "cdkrd-hunt-iot-policy"
+    }
+  },
+  "liveRaw": {
+    "PolicyName": "cdkrd-hunt-iot-policy",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["iot:Connect"],
+          "Resource": ["arn:aws:iot:us-east-1:111111111111:client/cdkrd-hunt-*"],
+          "Effect": "Allow"
+        },
+        {
+          "Action": ["iot:Publish"],
+          "Resource": ["arn:aws:iot:us-east-1:111111111111:topic/cdkrd/hunt/*"],
+          "Effect": "Allow"
+        }
+      ]
+    },
+    "Id": "cdkrd-hunt-iot-policy",
+    "Arn": "arn:aws:iot:us-east-1:111111111111:policy/cdkrd-hunt-iot-policy",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["PolicyName"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PolicyName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

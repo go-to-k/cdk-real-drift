@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Thing",
+    "resourceType": "AWS::IoT::Thing",
+    "physicalId": "cdkrd-hunt-thing",
+    "constructPath": "CdkRealDriftIntegIotVpces/Thing",
+    "declared": {
+      "AttributePayload": {
+        "Attributes": {
+          "env": "hunt",
+          "owner": "cdkrd"
+        }
+      },
+      "ThingName": "cdkrd-hunt-thing"
+    }
+  },
+  "liveRaw": {
+    "AttributePayload": {
+      "Attributes": {
+        "owner": "cdkrd",
+        "env": "hunt"
+      }
+    },
+    "Id": "162515c1-d1b3-4c99-bd83-82a3ed0ebd63",
+    "ThingName": "cdkrd-hunt-thing",
+    "Arn": "arn:aws:iot:us-east-1:111111111111:thing/cdkrd-hunt-thing"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["ThingName"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ThingName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["AttributePayload.Attributes"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

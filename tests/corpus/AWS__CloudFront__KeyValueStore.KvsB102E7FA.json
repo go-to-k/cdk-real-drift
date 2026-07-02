@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "KvsB102E7FA",
+    "resourceType": "AWS::CloudFront::KeyValueStore",
+    "physicalId": "cdkrd-hunt-kvs",
+    "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Kvs",
+    "declared": {
+      "Comment": "cdkrd hunt fixture key-value store",
+      "Name": "cdkrd-hunt-kvs"
+    }
+  },
+  "liveRaw": {
+    "Status": "READY",
+    "Comment": "cdkrd hunt fixture key-value store",
+    "Id": "3fbbe012-5594-4bd7-88fc-a6094b4928ad",
+    "Arn": "arn:aws:cloudfront::111111111111:key-value-store/3fbbe012-5594-4bd7-88fc-a6094b4928ad",
+    "Tags": [],
+    "Name": "cdkrd-hunt-kvs"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "Status"],
+    "writeOnly": ["ImportSource"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id", "Status"],
+    "writeOnlyPaths": ["ImportSource"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

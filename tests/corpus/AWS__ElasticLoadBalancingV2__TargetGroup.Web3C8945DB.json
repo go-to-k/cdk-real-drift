@@ -328,7 +328,7 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "Name",

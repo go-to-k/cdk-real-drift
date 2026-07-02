@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TableBucket",
+    "resourceType": "AWS::S3Tables::TableBucket",
+    "physicalId": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/TableBucket",
+    "declared": {
+      "TableBucketName": "cdkrd-hunt-lowcov-tables",
+      "UnreferencedFileRemoval": {
+        "NoncurrentDays": 5,
+        "Status": "Enabled",
+        "UnreferencedDays": 10
+      }
+    }
+  },
+  "liveRaw": {
+    "TableBucketName": "cdkrd-hunt-lowcov-tables",
+    "TableBucketARN": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+    "StorageClassConfiguration": {
+      "StorageClass": "STANDARD"
+    },
+    "MetricsConfiguration": {
+      "Status": "Disabled"
+    },
+    "EncryptionConfiguration": {
+      "SSEAlgorithm": "AES256"
+    },
+    "UnreferencedFileRemoval": {
+      "Status": "Enabled",
+      "NoncurrentDays": 5,
+      "UnreferencedDays": 10
+    },
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["TableBucketARN"],
+    "writeOnly": [],
+    "createOnly": ["TableBucketName"],
+    "readOnlyPaths": ["TableBucketARN"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TableBucketName"],
+    "defaults": {},
+    "defaultPaths": {
+      "MetricsConfiguration.Status": "Disabled"
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TableBucket",
+      "resourceType": "AWS::S3Tables::TableBucket",
+      "path": "StorageClassConfiguration",
+      "actual": {
+        "StorageClass": "STANDARD"
+      },
+      "physicalId": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+      "constructPath": "CdkRealDriftIntegS3ExpressTables/TableBucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TableBucket",
+      "resourceType": "AWS::S3Tables::TableBucket",
+      "path": "MetricsConfiguration",
+      "actual": {
+        "Status": "Disabled"
+      },
+      "physicalId": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+      "constructPath": "CdkRealDriftIntegS3ExpressTables/TableBucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TableBucket",
+      "resourceType": "AWS::S3Tables::TableBucket",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "SSEAlgorithm": "AES256"
+      },
+      "physicalId": "arn:aws:s3tables:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov-tables",
+      "constructPath": "CdkRealDriftIntegS3ExpressTables/TableBucket"
+    }
+  ]
+}

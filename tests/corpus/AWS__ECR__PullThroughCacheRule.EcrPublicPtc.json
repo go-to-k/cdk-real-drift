@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EcrPublicPtc",
+    "resourceType": "AWS::ECR::PullThroughCacheRule",
+    "physicalId": "cdkrd-hunt-ecrpub",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/EcrPublicPtc",
+    "declared": {
+      "EcrRepositoryPrefix": "cdkrd-hunt-ecrpub",
+      "UpstreamRegistryUrl": "public.ecr.aws"
+    }
+  },
+  "liveRaw": {
+    "UpstreamRegistryUrl": "public.ecr.aws",
+    "EcrRepositoryPrefix": "cdkrd-hunt-ecrpub"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["CredentialArn", "CustomRoleArn", "UpstreamRegistry"],
+    "createOnly": [
+      "CredentialArn",
+      "CustomRoleArn",
+      "EcrRepositoryPrefix",
+      "UpstreamRegistry",
+      "UpstreamRegistryUrl",
+      "UpstreamRepositoryPrefix"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["CredentialArn", "CustomRoleArn", "UpstreamRegistry"],
+    "createOnlyPaths": [
+      "CredentialArn",
+      "CustomRoleArn",
+      "EcrRepositoryPrefix",
+      "UpstreamRegistry",
+      "UpstreamRegistryUrl",
+      "UpstreamRepositoryPrefix"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

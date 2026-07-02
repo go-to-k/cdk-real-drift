@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AnomalyDetector",
+    "resourceType": "AWS::Logs::LogAnomalyDetector",
+    "physicalId": "arn:aws:logs:us-east-1:111111111111:anomaly-detector:ac5f5ca2-b19a-48c0-97ef-7a12a5526f65",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/AnomalyDetector",
+    "declared": {
+      "AnomalyVisibilityTime": 14,
+      "DetectorName": "cdkrd-hunt-anomaly",
+      "EvaluationFrequency": "ONE_HOUR",
+      "LogGroupArnList": [
+        "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegS3ExpressTables-AnomalyLg0E01DA92-t2aNM2AlkO9W"
+      ]
+    }
+  },
+  "liveRaw": {
+    "AnomalyVisibilityTime": 14,
+    "LogGroupArnList": [
+      "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegS3ExpressTables-AnomalyLg0E01DA92-t2aNM2AlkO9W"
+    ],
+    "CreationTimeStamp": 1782966875230,
+    "AnomalyDetectorStatus": "TRAINING",
+    "EvaluationFrequency": "ONE_HOUR",
+    "AnomalyDetectorArn": "arn:aws:logs:us-east-1:111111111111:anomaly-detector:ac5f5ca2-b19a-48c0-97ef-7a12a5526f65",
+    "DetectorName": "cdkrd-hunt-anomaly",
+    "LastModifiedTimeStamp": 1782966875374
+  },
+  "schema": {
+    "readOnly": [
+      "AnomalyDetectorArn",
+      "AnomalyDetectorStatus",
+      "CreationTimeStamp",
+      "LastModifiedTimeStamp"
+    ],
+    "writeOnly": ["AccountId"],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "AnomalyDetectorArn",
+      "AnomalyDetectorStatus",
+      "CreationTimeStamp",
+      "LastModifiedTimeStamp"
+    ],
+    "writeOnlyPaths": ["AccountId"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["LogGroupArnList"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

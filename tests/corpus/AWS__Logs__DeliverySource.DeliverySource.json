@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DeliverySource",
+    "resourceType": "AWS::Logs::DeliverySource",
+    "physicalId": "cdkrd-hunt-cf-access",
+    "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliverySource",
+    "declared": {
+      "LogType": "ACCESS_LOGS",
+      "Name": "cdkrd-hunt-cf-access",
+      "ResourceArn": "arn:aws:cloudfront::111111111111:distribution/E35M9GMDFB6LAP"
+    }
+  },
+  "liveRaw": {
+    "LogType": "ACCESS_LOGS",
+    "Service": "cloudfront",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:delivery-source:cdkrd-hunt-cf-access",
+    "ResourceArns": ["arn:aws:cloudfront::111111111111:distribution/E35M9GMDFB6LAP"],
+    "Tags": [
+      {
+        "Value": "DeliverySource",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCfKvsLogsDel/467ad090-75cf-11f1-85ee-0ef9777f977d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegCfKvsLogsDel",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "cdkrd-hunt-cf-access"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ResourceArns", "Service", "Status", "StatusReason"],
+    "writeOnly": ["ResourceArn"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "ResourceArns", "Service", "Status", "StatusReason"],
+    "writeOnlyPaths": ["ResourceArn"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["ResourceArns"],
+    "freeFormMapPaths": ["DeliverySourceConfiguration"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "DeliverySource",
+      "resourceType": "AWS::Logs::DeliverySource",
+      "path": "ResourceArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-hunt-cf-access",
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliverySource"
+    }
+  ]
+}
