@@ -1,0 +1,90 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntWorkspace",
+    "resourceType": "AWS::APS::Workspace",
+    "physicalId": "arn:aws:aps:us-east-1:111111111111:workspace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e",
+    "constructPath": "CdkRealDriftIntegApsRich/HuntWorkspace",
+    "declared": {
+      "AlertManagerDefinition": "alertmanager_config: |\n  route:\n    receiver: 'default'\n  receivers:\n    - name: 'default'\n      sns_configs:\n        - topic_arn: 'arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-aps-alerts'\n          sigv4:\n            region: 'us-east-1'\n          message: '{{ .CommonAnnotations.summary }}'\n",
+      "Alias": "cdkrd-hunt-aps",
+      "LoggingConfiguration": {
+        "LogGroupArn": "arn:aws:logs:us-east-1:111111111111:log-group:/aws/vendedlogs/prometheus/cdkrd-hunt:*"
+      },
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-aps"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PrometheusEndpoint": "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e/",
+    "Alias": "cdkrd-hunt-aps",
+    "LoggingConfiguration": {
+      "LogGroupArn": "arn:aws:logs:us-east-1:111111111111:log-group:/aws/vendedlogs/prometheus/cdkrd-hunt:*"
+    },
+    "WorkspaceId": "ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e",
+    "WorkspaceConfiguration": {
+      "RuleQueryOffsetInSeconds": 60,
+      "RetentionPeriodInDays": 150,
+      "OutOfOrderTimeWindowInSeconds": 60,
+      "LimitsPerLabelSets": []
+    },
+    "AlertManagerDefinition": "alertmanager_config: |\n  route:\n    receiver: 'default'\n  receivers:\n    - name: 'default'\n      sns_configs:\n        - topic_arn: 'arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-aps-alerts'\n          sigv4:\n            region: 'us-east-1'\n          message: '{{ .CommonAnnotations.summary }}'\n",
+    "Arn": "arn:aws:aps:us-east-1:111111111111:workspace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegApsRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntWorkspace",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApsRich/f0c541f0-75d1-11f1-95d4-0e6e0ad93995",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "cdkrd-hunt-aps",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "PrometheusEndpoint", "WorkspaceId"],
+    "writeOnly": [],
+    "createOnly": ["KmsKeyArn"],
+    "readOnlyPaths": ["Arn", "PrometheusEndpoint", "WorkspaceId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KmsKeyArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkspace",
+      "resourceType": "AWS::APS::Workspace",
+      "path": "WorkspaceConfiguration",
+      "actual": {
+        "RuleQueryOffsetInSeconds": 60,
+        "RetentionPeriodInDays": 150,
+        "OutOfOrderTimeWindowInSeconds": 60,
+        "LimitsPerLabelSets": []
+      },
+      "physicalId": "arn:aws:aps:us-east-1:111111111111:workspace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e",
+      "constructPath": "CdkRealDriftIntegApsRich/HuntWorkspace"
+    }
+  ]
+}

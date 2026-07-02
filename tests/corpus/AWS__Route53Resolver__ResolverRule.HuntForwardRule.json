@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntForwardRule",
+    "resourceType": "AWS::Route53Resolver::ResolverRule",
+    "physicalId": "rslvr-rr-e8113ee708c4927a7",
+    "constructPath": "CdkRealDriftIntegResolverRich/HuntForwardRule",
+    "declared": {
+      "DomainName": "cdkrd-hunt.internal",
+      "Name": "cdkrd-hunt-forward",
+      "ResolverEndpointId": "rslvr-out-7345f2fdbd754018b",
+      "RuleType": "FORWARD",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-forward"
+        }
+      ],
+      "TargetIps": [
+        {
+          "Ip": "10.0.0.54",
+          "Port": "53"
+        },
+        {
+          "Ip": "10.0.0.53",
+          "Port": "53"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ResolverEndpointId": "rslvr-out-7345f2fdbd754018b",
+    "DomainName": "cdkrd-hunt.internal.",
+    "RuleType": "FORWARD",
+    "ResolverRuleId": "rslvr-rr-e8113ee708c4927a7",
+    "Arn": "arn:aws:route53resolver:us-east-1:111111111111:resolver-rule/rslvr-rr-e8113ee708c4927a7",
+    "Tags": [
+      {
+        "Value": "cdkrd-hunt-forward",
+        "Key": "Name"
+      }
+    ],
+    "TargetIps": [
+      {
+        "Ip": "10.0.0.54",
+        "Port": "53",
+        "Protocol": "Do53"
+      },
+      {
+        "Ip": "10.0.0.53",
+        "Port": "53",
+        "Protocol": "Do53"
+      }
+    ],
+    "Name": "cdkrd-hunt-forward"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ResolverRuleId"],
+    "writeOnly": [],
+    "createOnly": ["RuleType"],
+    "readOnlyPaths": ["Arn", "ResolverRuleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRules",
+    "resourceType": "AWS::APS::RuleGroupsNamespace",
+    "physicalId": "arn:aws:aps:us-east-1:111111111111:rulegroupsnamespace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e/cdkrd-hunt-rules",
+    "constructPath": "CdkRealDriftIntegApsRich/HuntRules",
+    "declared": {
+      "Data": "groups:\n  - name: cdkrd-hunt\n    rules:\n      - record: job:up:sum\n        expr: sum(up) by (job)\n      - alert: CdkrdHuntDown\n        expr: up == 0\n        for: 5m\n        labels:\n          severity: page\n        annotations:\n          summary: target down\n",
+      "Name": "cdkrd-hunt-rules",
+      "Workspace": "arn:aws:aps:us-east-1:111111111111:workspace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e"
+    }
+  },
+  "liveRaw": {
+    "Data": "groups:\n  - name: cdkrd-hunt\n    rules:\n      - record: job:up:sum\n        expr: sum(up) by (job)\n      - alert: CdkrdHuntDown\n        expr: up == 0\n        for: 5m\n        labels:\n          severity: page\n        annotations:\n          summary: target down\n",
+    "Arn": "arn:aws:aps:us-east-1:111111111111:rulegroupsnamespace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e/cdkrd-hunt-rules",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegApsRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntRules",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApsRich/f0c541f0-75d1-11f1-95d4-0e6e0ad93995",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Workspace": "arn:aws:aps:us-east-1:111111111111:workspace/ws-dd929d20-85e3-4e5b-aa7a-50e19305bf4e",
+    "Name": "cdkrd-hunt-rules"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Workspace"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Workspace"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

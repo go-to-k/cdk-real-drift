@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPgSpread",
+    "resourceType": "AWS::EC2::PlacementGroup",
+    "physicalId": "CdkRealDriftIntegMisc0Cov2Rich-HuntPgSpread-HPDMWGJNNPMY",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntPgSpread",
+    "declared": {
+      "SpreadLevel": "rack",
+      "Strategy": "spread",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-pg-spread"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "GroupName": "CdkRealDriftIntegMisc0Cov2Rich-HuntPgSpread-HPDMWGJNNPMY",
+    "SpreadLevel": "rack",
+    "Strategy": "spread",
+    "Tags": [
+      {
+        "Value": "cdkrd-hunt-pg-spread",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["GroupName"],
+    "writeOnly": [],
+    "createOnly": ["PartitionCount", "SpreadLevel", "Strategy", "Tags"],
+    "readOnlyPaths": ["GroupName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PartitionCount", "SpreadLevel", "Strategy", "Tags"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

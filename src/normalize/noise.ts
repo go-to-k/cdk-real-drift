@@ -556,6 +556,26 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::EC2::FlowLog': {
     MaxAggregationInterval: 600,
   },
+  // EC2 echoes SpreadLevel "rack" even on partition-strategy groups (where the
+  // property is inapplicable); "rack" is also the documented default for spread.
+  'AWS::EC2::PlacementGroup': {
+    SpreadLevel: 'rack',
+  },
+  // IPAM defaults metering to the IPAM owner's account.
+  'AWS::EC2::IPAM': {
+    MeteredAccount: 'ipam-owner',
+  },
+  // Managed Prometheus materializes a WorkspaceConfiguration of service defaults
+  // (150-day retention, 60s rule-query offset / out-of-order window) on every
+  // workspace that never declared one.
+  'AWS::APS::Workspace': {
+    WorkspaceConfiguration: {
+      RuleQueryOffsetInSeconds: 60,
+      RetentionPeriodInDays: 150,
+      OutOfOrderTimeWindowInSeconds: 60,
+      LimitsPerLabelSets: [],
+    },
+  },
   'AWS::Pipes::Pipe': {
     DesiredState: 'RUNNING',
   },
@@ -1629,6 +1649,15 @@ export function isEpochHourEqual(a: unknown, b: unknown): boolean {
 // own Name/DNSName via alignTrailingDot; HostedZone is CC-native, handled here.)
 export const TRAILING_DOT_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Route53::HostedZone': new Set(['Name']),
+  // Route53 canonicalizes record names to FQDN form the same way (CDK L2 emits
+  // the trailing dot, but raw-template / L1 users routinely omit it). The
+  // override reader's alignTrailingDot already handles Name/DNSName; this entry
+  // closes the same class for any non-override read path.
+  'AWS::Route53::RecordSet': new Set(['Name']),
+  // Route53 Resolver appends the trailing dot to a FORWARD rule's DomainName on
+  // read (live-proven: declared "cdkrd-hunt.internal" reads back
+  // "cdkrd-hunt.internal.").
+  'AWS::Route53Resolver::ResolverRule': new Set(['DomainName']),
 };
 export function isTrailingDotEqual(a: unknown, b: unknown): boolean {
   if (typeof a !== 'string' || typeof b !== 'string') return false;

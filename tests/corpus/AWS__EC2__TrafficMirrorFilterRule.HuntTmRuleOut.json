@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTmRuleOut",
+    "resourceType": "AWS::EC2::TrafficMirrorFilterRule",
+    "physicalId": "tmfr-03c8c5d80c52e4db2",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntTmRuleOut",
+    "declared": {
+      "Description": "cdkrd hunt egress rule",
+      "DestinationCidrBlock": "192.168.0.0/16",
+      "RuleAction": "reject",
+      "RuleNumber": 200,
+      "SourceCidrBlock": "0.0.0.0/0",
+      "TrafficDirection": "egress",
+      "TrafficMirrorFilterId": "tmf-05e8886c6eb86c35c"
+    }
+  },
+  "liveRaw": {
+    "TrafficMirrorFilterRuleId": "tmfr-03c8c5d80c52e4db2",
+    "Description": "cdkrd hunt egress rule",
+    "RuleAction": "reject",
+    "SourceCidrBlock": "0.0.0.0/0",
+    "RuleNumber": 200,
+    "DestinationCidrBlock": "192.168.0.0/16",
+    "TrafficMirrorFilterId": "tmf-05e8886c6eb86c35c",
+    "TrafficDirection": "egress",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov2Rich/efcd2650-75d1-11f1-a92e-0affda798e9d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegMisc0Cov2Rich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntTmRuleOut",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["TrafficMirrorFilterRuleId"],
+    "writeOnly": [],
+    "createOnly": ["TrafficMirrorFilterId"],
+    "readOnlyPaths": ["TrafficMirrorFilterRuleId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TrafficMirrorFilterId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

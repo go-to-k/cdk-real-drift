@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOamSink",
+    "resourceType": "AWS::Oam::Sink",
+    "physicalId": "arn:aws:oam:us-east-1:111111111111:sink/8abed248-9fa5-4121-9a16-1e28ca12cc01",
+    "constructPath": "CdkRealDriftIntegMisc0Cov2Rich/HuntOamSink",
+    "declared": {
+      "Name": "cdkrd-hunt-sink",
+      "Policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "111111111111"
+            },
+            "Resource": "*",
+            "Action": ["oam:CreateLink", "oam:UpdateLink"],
+            "Condition": {
+              "ForAllValues:StringEquals": {
+                "oam:ResourceTypes": ["AWS::CloudWatch::Metric", "AWS::Logs::LogGroup"]
+              }
+            }
+          }
+        ]
+      },
+      "Tags": {
+        "Name": "cdkrd-hunt-sink"
+      }
+    }
+  },
+  "liveRaw": {
+    "Policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Condition": {
+            "ForAllValues:StringEquals": {
+              "oam:ResourceTypes": ["AWS::CloudWatch::Metric", "AWS::Logs::LogGroup"]
+            }
+          },
+          "Action": ["oam:CreateLink", "oam:UpdateLink"],
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          }
+        }
+      ]
+    },
+    "Arn": "arn:aws:oam:us-east-1:111111111111:sink/8abed248-9fa5-4121-9a16-1e28ca12cc01",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegMisc0Cov2Rich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov2Rich/efcd2650-75d1-11f1-a92e-0affda798e9d",
+      "aws:cloudformation:logical-id": "HuntOamSink",
+      "Name": "cdkrd-hunt-sink"
+    },
+    "Name": "cdkrd-hunt-sink"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

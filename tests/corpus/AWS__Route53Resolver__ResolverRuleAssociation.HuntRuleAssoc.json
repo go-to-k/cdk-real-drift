@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRuleAssoc",
+    "resourceType": "AWS::Route53Resolver::ResolverRuleAssociation",
+    "physicalId": "rslvr-rrassoc-1eb3a8faa53c4a54a",
+    "constructPath": "CdkRealDriftIntegResolverRich/HuntRuleAssoc",
+    "declared": {
+      "Name": "cdkrd-hunt-assoc",
+      "ResolverRuleId": "rslvr-rr-e8113ee708c4927a7",
+      "VPCId": "vpc-0402a4de33684ab27"
+    }
+  },
+  "liveRaw": {
+    "VPCId": "vpc-0402a4de33684ab27",
+    "ResolverRuleId": "rslvr-rr-e8113ee708c4927a7",
+    "ResolverRuleAssociationId": "rslvr-rrassoc-1eb3a8faa53c4a54a",
+    "Name": "cdkrd-hunt-assoc"
+  },
+  "schema": {
+    "readOnly": ["ResolverRuleAssociationId"],
+    "writeOnly": [],
+    "createOnly": ["Name", "ResolverRuleId", "VPCId"],
+    "readOnlyPaths": ["ResolverRuleAssociationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "ResolverRuleId", "VPCId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
