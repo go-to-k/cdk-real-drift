@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Policy",
+    "resourceType": "AWS::DLM::LifecyclePolicy",
+    "physicalId": "policy-09189bfe06f31377b",
+    "constructPath": "CdkrdDlmDefault/Policy",
+    "declared": {
+      "CopyTags": false,
+      "CreateInterval": 1,
+      "DefaultPolicy": "VOLUME",
+      "Description": "cdkrd-dlm-default shorthand daily EBS backups",
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdDlmDefault-DlmRoleCE7C5775-WAc9I56Wh2WC",
+      "RetainInterval": 7,
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd-dlm-default shorthand daily EBS backups",
+    "State": "ENABLED",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdDlmDefault-DlmRoleCE7C5775-WAc9I56Wh2WC",
+    "CreateInterval": 1,
+    "RetainInterval": 7,
+    "CopyTags": false,
+    "ExtendDeletion": false
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Policy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "DefaultPolicy",
+      "note": "declared but not returned by live read",
+      "physicalId": "policy-09189bfe06f31377b",
+      "constructPath": "CdkrdDlmDefault/Policy"
+    }
+  ]
+}
