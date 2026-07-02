@@ -500,6 +500,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `cloudwatch:DescribeAnomalyDetectors` (reads an
   `AWS::CloudWatch::AnomalyDetector` — NON_PROVISIONABLE, no Cloud Control
   handlers),
+  `dlm:GetLifecyclePolicy` (reads an `AWS::DLM::LifecyclePolicy` — a Data
+  Lifecycle Manager EBS-snapshot / AMI backup-schedule policy, NON_PROVISIONABLE
+  with no Cloud Control handlers; the physical id IS the policy id),
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
@@ -535,6 +538,9 @@ is refused, never overwritten, so the un-read credential is never cleared),
 re-supplied in place, since Cloud Control has no handler for the type),
 `cloudwatch:PutAnomalyDetector` (reverts an `AWS::CloudWatch::AnomalyDetector`
 `Configuration` drift — an upsert keyed on the detector's createOnly identity),
+`dlm:UpdateLifecyclePolicy` (reverts an `AWS::DLM::LifecyclePolicy` — the same
+Description / State / ExecutionRoleArn / PolicyDetails shape is re-supplied in
+place, since Cloud Control has no handler for the type),
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
 `config:DescribeConfigRules` / `config:PutConfigRule`,
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /

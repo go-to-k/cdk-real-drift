@@ -1,5 +1,6 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { CloudWatchClient, DescribeAnomalyDetectorsCommand } from '@aws-sdk/client-cloudwatch';
+import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
@@ -66,6 +67,7 @@ const docdb = mockClient(DocDBClient);
 const ec2 = mockClient(EC2Client);
 const ses = mockClient(SESClient);
 const cloudwatch = mockClient(CloudWatchClient);
+const dlm = mockClient(DLMClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -95,6 +97,7 @@ beforeEach(() => {
     ec2,
     ses,
     cloudwatch,
+    dlm,
   ])
     m.reset();
 });
@@ -1103,6 +1106,83 @@ describe('SDK overrides', () => {
         AnomalyDetectorTypes: ['METRIC_MATH'],
         NextToken: undefined,
       });
+    });
+  });
+
+  describe('DLM LifecyclePolicy (NON_PROVISIONABLE, issue #468)', () => {
+    const livePolicyDetails = {
+      PolicyType: 'EBS_SNAPSHOT_MANAGEMENT',
+      ResourceTypes: ['VOLUME'],
+      TargetTags: [{ Key: 'backup', Value: 'true' }],
+      Schedules: [
+        {
+          Name: 'daily',
+          CreateRule: { Interval: 24, IntervalUnit: 'HOURS' },
+          RetainRule: { Count: 5 },
+        },
+      ],
+    };
+
+    it('custom style: reads GetLifecyclePolicy and emits the CFn model verbatim (id = physicalId)', async () => {
+      dlm.on(GetLifecyclePolicyCommand).resolves({
+        Policy: {
+          PolicyId: 'policy-0abc',
+          Description: 'backups',
+          State: 'ENABLED',
+          ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+          PolicyDetails: livePolicyDetails,
+          Tags: { team: 'ops' }, // map shape — deliberately NOT projected
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](
+        ctx({ PolicyDetails: livePolicyDetails }, 'policy-0abc')
+      );
+      expect(out).toEqual({
+        Description: 'backups',
+        State: 'ENABLED',
+        ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+        PolicyDetails: livePolicyDetails,
+      });
+      const call = dlm.commandCalls(GetLifecyclePolicyCommand)[0]!;
+      expect(call.args[0].input).toEqual({ PolicyId: 'policy-0abc' });
+    });
+
+    it('default-policy shorthand: projects the schedule knobs the API folded into PolicyDetails back to the top level', async () => {
+      dlm.on(GetLifecyclePolicyCommand).resolves({
+        Policy: {
+          PolicyId: 'policy-0def',
+          State: 'ENABLED',
+          PolicyDetails: {
+            PolicyType: 'EBS_SNAPSHOT_MANAGEMENT',
+            PolicyLanguage: 'SIMPLIFIED',
+            ResourceType: 'VOLUME',
+            CreateInterval: 24,
+            RetainInterval: 7,
+            CopyTags: true,
+          },
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](
+        ctx({ CreateInterval: 24, RetainInterval: 7 }, 'policy-0def')
+      );
+      // shorthand keys surface at the top level; the API-folded PolicyType/ResourceType do not
+      expect(out).toEqual({
+        State: 'ENABLED',
+        CreateInterval: 24,
+        RetainInterval: 7,
+        CopyTags: true,
+      });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('an empty Policy body -> ResourceGoneError (deleted out of band)', async () => {
+      dlm.on(GetLifecyclePolicyCommand).resolves({} as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](ctx({ PolicyDetails: {} }, 'policy-0abc'))
+      ).rejects.toThrow(/absent/);
     });
   });
 

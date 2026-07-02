@@ -800,6 +800,19 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'BackupPlan.BackupPlanRule.*.StartWindowMinutes': 480,
     'BackupPlan.BackupPlanRule.*.ScheduleExpressionTimezone': 'Etc/UTC',
   },
+  // AWS Data Lifecycle Manager materializes these constants into every live custom
+  // EBS-snapshot policy the template leaves unset: ResourceLocations defaults to ["CLOUD"]
+  // (vs an Outpost), PolicyLanguage to "STANDARD", each schedule's CreateRule.Location to
+  // "CLOUD", and a Count-based RetainRule reads back Interval 0 (the interval-based
+  // alternative unused). Schedules are keyed by Name (auto-detected identity). Folding keeps
+  // a clean policy clean; a real change away from any default still surfaces (equality-gated).
+  // Proven live on a minimal daily-backup policy (issue #468).
+  'AWS::DLM::LifecyclePolicy': {
+    'PolicyDetails.ResourceLocations': ['CLOUD'],
+    'PolicyDetails.PolicyLanguage': 'STANDARD',
+    'PolicyDetails.Schedules.*.CreateRule.Location': 'CLOUD',
+    'PolicyDetails.Schedules.*.RetainRule.Interval': 0,
+  },
   // AWS Route53 Resolver materializes a FirewallDomainRedirectionAction default into each
   // live FirewallRule (keyed by Priority — descended via NESTED_ARRAY_IDENTITY).
   // Equality-gated, so a rule changed away from the default still surfaces. Proven live on a
