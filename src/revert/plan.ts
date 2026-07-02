@@ -765,6 +765,56 @@ export function tagPreservingOps(
   });
 }
 
+// Service-echoed EMPTY sub-arrays that the service itself REJECTS when a Cloud Control
+// UpdateResource re-sends them (#481): the CC read of a VpcLattice Rule echoes
+// `Match.HttpMatch.HeaderMatches: []` for a rule declared with only a path match (the
+// common shape), and the CC update handler folds its own read-back state into
+// `UpdateRule` — which requires headerMatches to have >= 1 members. So ANY patch on such
+// a rule, even a Priority-only revert, failed with "Value '[]' at
+// 'match.httpMatch.headerMatches' failed to satisfy constraint" (reproduced live). The
+// CFn schema does not annotate the constraint (no minItems on HeaderMatches), so the
+// pointers are curated per type. An appended `remove` op drops the echoed empty array
+// from the handler's desired state; the service treats an absent headerMatches as "no
+// header matches", which is exactly what the empty echo meant.
+export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> = {
+  'AWS::VpcLattice::Rule': ['/Match/HttpMatch/HeaderMatches'],
+};
+function valueAtPointer(model: unknown, pointer: string): unknown {
+  let cur: unknown = model;
+  for (const seg of pointer.split('/').slice(1)) {
+    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return cur;
+}
+// Extra `remove` ops for a cc-kind item on a type in the table above. Fail-safe gates:
+// the LIVE model must carry the pointer as an EMPTY array (a populated array is real
+// data and is never dropped; an absent pointer needs no strip and a `remove` on it
+// would itself fail), and no planned op may already rewrite the pointer or an ANCESTOR
+// of it (such a rewrite replaces what lives there, so a trailing remove would target a
+// path the patch may have just dropped).
+export function rejectedEmptyStripOps(
+  resourceType: string,
+  ops: PatchOp[],
+  liveRaw: Record<string, unknown> | undefined
+): PatchOp[] {
+  const pointers = CC_UPDATE_REJECTED_EMPTY_PATHS[resourceType];
+  if (!pointers || !liveRaw || ops.length === 0) return [];
+  const out: PatchOp[] = [];
+  for (const pointer of pointers) {
+    const v = valueAtPointer(liveRaw, pointer);
+    if (!Array.isArray(v) || v.length > 0) continue;
+    const covered = ops.some((o) => pointer === o.path || pointer.startsWith(`${o.path}/`));
+    if (covered) continue;
+    out.push({
+      op: 'remove',
+      path: pointer,
+      human: `${pointer.slice(1).replaceAll('/', '.')} -> drop service-echoed empty array (service rejects [] on update)`,
+    });
+  }
+  return out;
+}
+
 /** Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control. */
 export function toPatchDocument(item: RevertItem): string {
   return JSON.stringify(
