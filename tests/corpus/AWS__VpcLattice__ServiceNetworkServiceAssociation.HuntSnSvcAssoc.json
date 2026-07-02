@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntSnSvcAssoc",
+    "resourceType": "AWS::VpcLattice::ServiceNetworkServiceAssociation",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
+    "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc",
+    "declared": {
+      "ServiceIdentifier": "svc-07215226a6b16ea1b",
+      "ServiceNetworkIdentifier": "sn-0952041c05218b28c"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "DnsEntry": {
+      "DomainName": "cdkrd-hunt-svc-07215226a6b16ea1b.7d67968.vpc-lattice-svcs.us-east-1.on.aws",
+      "HostedZoneId": "Z0681547Z82L3THDFSCZ"
+    },
+    "ServiceNetworkId": "sn-0952041c05218b28c",
+    "ServiceName": "cdkrd-hunt-svc",
+    "CreatedAt": "2026-07-02T12:22:51.976Z",
+    "ServiceNetworkName": "cdkrd-hunt-sn",
+    "Id": "snsa-00731c74e0ef3793e",
+    "ServiceArn": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLatticeListener/b64426b0-7610-11f1-9952-0e9cffe0e837",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLatticeListener",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntSnSvcAssoc",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "ServiceNetworkArn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-0952041c05218b28c",
+    "ServiceId": "svc-07215226a6b16ea1b"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CreatedAt",
+      "Id",
+      "ServiceArn",
+      "ServiceId",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceNetworkId",
+      "ServiceNetworkName",
+      "Status"
+    ],
+    "writeOnly": ["ServiceIdentifier", "ServiceNetworkIdentifier"],
+    "createOnly": ["ServiceIdentifier", "ServiceNetworkIdentifier"],
+    "readOnlyPaths": [
+      "Arn",
+      "CreatedAt",
+      "DnsEntry.DomainName",
+      "DnsEntry.HostedZoneId",
+      "Id",
+      "ServiceArn",
+      "ServiceId",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceNetworkId",
+      "ServiceNetworkName",
+      "Status"
+    ],
+    "writeOnlyPaths": ["ServiceIdentifier", "ServiceNetworkIdentifier"],
+    "createOnlyPaths": ["ServiceIdentifier", "ServiceNetworkIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntSnSvcAssoc",
+      "resourceType": "AWS::VpcLattice::ServiceNetworkServiceAssociation",
+      "path": "ServiceIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntSnSvcAssoc",
+      "resourceType": "AWS::VpcLattice::ServiceNetworkServiceAssociation",
+      "path": "ServiceNetworkIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc"
+    }
+  ]
+}

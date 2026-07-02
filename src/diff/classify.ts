@@ -55,8 +55,8 @@ import {
   READ_NORMALIZED_DECLARED_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
-  PARAMETER_NAME_SUBSET_PATHS,
-  alignParameterNameSubset,
+  NAME_VALUE_SUBSET_PATHS,
+  alignNameValueSubset,
   RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
   sortNestedObjectArrays,
@@ -1071,22 +1071,23 @@ export function classifyResource(
       // so the unresolvable leaf never becomes a false `declared` drift vs the symbol,
       // while its RESOLVED siblings still compare normally (the WAVE20-F1 fix).
       if (d.stateValue === UNRESOLVED || hasUnresolved(d.stateValue)) continue;
-      // A `[{ParameterName,ParameterValue}]` set the service reorders + default-fills
-      // (Firehose processor `Parameters`): when every declared param is present in live
-      // with an equal value (declared subset of live), the whole-array `declared` diff is
-      // a false positive — suppress it and surface the live-only (server-injected) params
-      // as nested undeclared inventory (recorded; a later change still surfaces). A genuine
-      // declared param change returns null and the finding is kept as real drift.
-      const paramSubsetRe = PARAMETER_NAME_SUBSET_PATHS[resourceType];
-      if (paramSubsetRe?.test(d.path)) {
-        const liveOnly = alignParameterNameSubset(d.stateValue, d.awsValue);
+      // A `[{<name>,<value>}]` pair set the service reorders + default-fills (Firehose
+      // processor `Parameters`, RDS OptionGroup `OptionSettings`): when every declared
+      // entry is present in live with an equal value (declared subset of live), the
+      // whole-array `declared` diff is a false positive — suppress it and surface the
+      // live-only (server-injected) entries as nested undeclared inventory (recorded; a
+      // later change still surfaces). A genuine declared entry change returns null and
+      // the finding is kept as real drift.
+      const nvSubsetSpec = NAME_VALUE_SUBSET_PATHS[resourceType];
+      if (nvSubsetSpec?.re.test(d.path)) {
+        const liveOnly = alignNameValueSubset(d.stateValue, d.awsValue, nvSubsetSpec);
         if (liveOnly) {
           for (const lo of liveOnly) {
             findings.push({
               tier: 'undeclared',
               logicalId,
               resourceType,
-              path: `${d.path}[${String((lo as Record<string, unknown>).ParameterName)}]`,
+              path: `${d.path}[${String((lo as Record<string, unknown>)[nvSubsetSpec.nameField])}]`,
               actual: lo,
               nested: true,
             });

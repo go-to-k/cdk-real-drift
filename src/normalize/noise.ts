@@ -170,6 +170,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::WAFv2::WebACL': {
     OnSourceDDoSProtectionConfig: { ALBLowReputationMode: 'ACTIVE_UNDER_DDOS' },
   },
+  // A VPC Lattice service network created without a SharingConfig reads back the
+  // service default `{enabled: true}` (RAM sharing allowed — note the service model's
+  // lowercase sub-key), so every fresh service network reports it as undeclared
+  // first-run noise. Equality-gated; a network with sharing disabled out of band
+  // ({enabled: false}) still surfaces. Observed live on a fresh vpclattice-listener
+  // deploy (issue #483).
+  'AWS::VpcLattice::ServiceNetwork': { SharingConfig: { enabled: true } },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
   // fixture): a broker created without these knobs reports all three as undeclared
   // first-run noise. AuthenticationStrategy is SIMPLE unless LDAP is configured;
@@ -2035,40 +2042,60 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
 // identical elements). Consulted by classify's declared loop, equality-gated:
 // the two sides must be the SAME multiset — a genuine element change still
 // reports.
-// Per-type path patterns for a `[{ParameterName, ParameterValue}]` array that the
-// service treats as an IDENTITY-KEYED SET (keyed by ParameterName) AND default-fills:
-// the template declares a SUBSET, the service REORDERS the set and INJECTS its own
-// server defaults. Kinesis Firehose's processor `Parameters` is the case (observed live
-// on a fresh firehose-processors-rich deploy: a Lambda processor declared
-// [RoleArn, BufferSizeInMBs, BufferIntervalInSeconds, LambdaArn] reads back reordered as
-// [LambdaArn, NumberOfRetries, RoleArn, BufferSizeInMBs, BufferIntervalInSeconds] — the
-// service injected NumberOfRetries=3). ParameterName is not in IDENTITY_FIELDS, so the
-// whole array false-flags as one `declared` drift. Matched against the dotted drift path
-// (which carries the Processors array index, e.g. `…Processors.0.Parameters`).
-export const PARAMETER_NAME_SUBSET_PATHS: Record<string, RegExp> = {
-  'AWS::KinesisFirehose::DeliveryStream': /(^|\.)Processors\.\d+\.Parameters$/,
+// Per-type path patterns for a `[{<name>, <value>}]` pair array that the service
+// treats as an IDENTITY-KEYED SET (keyed by the name field) AND default-fills: the
+// template declares a SUBSET, the service REORDERS the set and INJECTS its own server
+// defaults. The name field is not in IDENTITY_FIELDS, so the whole array false-flags
+// as one `declared` drift. Matched against the dotted drift path (which carries the
+// parent array index, e.g. `…Processors.0.Parameters`). Cases (both observed live):
+//   - Kinesis Firehose processor `Parameters` ({ParameterName,ParameterValue}): a
+//     Lambda processor declared [RoleArn, BufferSizeInMBs, BufferIntervalInSeconds,
+//     LambdaArn] reads back reordered with a server-injected NumberOfRetries=3
+//     (firehose-processors-rich).
+//   - RDS OptionGroup `OptionConfigurations[].OptionSettings` ({Name,Value}): RDS
+//     materializes EVERY option setting of a configured option (a MariaDB audit
+//     plugin declaring 2 settings reads back all 9, some Name-only with no Value) —
+//     a whole-array declared FP on every fresh deploy (#480, rds-optiongroup-evsub).
+export interface NameValueSubsetSpec {
+  re: RegExp;
+  nameField: string;
+  valueField: string;
+}
+export const NAME_VALUE_SUBSET_PATHS: Record<string, NameValueSubsetSpec> = {
+  'AWS::KinesisFirehose::DeliveryStream': {
+    re: /(^|\.)Processors\.\d+\.Parameters$/,
+    nameField: 'ParameterName',
+    valueField: 'ParameterValue',
+  },
+  'AWS::RDS::OptionGroup': {
+    re: /(^|\.)OptionConfigurations\.\d+\.OptionSettings$/,
+    nameField: 'Name',
+    valueField: 'Value',
+  },
 };
-// Align a declared `[{ParameterName,ParameterValue}]` array to a live one BY
-// ParameterName. Returns the live-only entries (server-injected / out-of-band params the
-// template never declared) when every DECLARED param is present in live with an equal
-// value (declared ⊆ live, reorder-insensitive) — the caller suppresses the false
-// whole-array `declared` drift and surfaces the live-only entries as undeclared
-// inventory (fail-closed, recorded). Returns null when a declared param is MISSING from
-// live or its value differs (a genuine declared drift the caller must keep), or when
-// either side is not a pure ParameterName/ParameterValue array.
-export function alignParameterNameSubset(declared: unknown, live: unknown): unknown[] | null {
+// Align a declared `[{<name>,<value>}]` array to a live one BY the spec's name field.
+// Returns the live-only entries (server-injected / out-of-band entries the template
+// never declared) when every DECLARED entry is present in live with an equal value
+// (declared ⊆ live, reorder-insensitive) — the caller suppresses the false whole-array
+// `declared` drift and surfaces the live-only entries as undeclared inventory
+// (fail-closed, recorded). Returns null when a declared entry is MISSING from live or
+// its value differs (a genuine declared drift the caller must keep), or when either
+// side is not a pure name/value pair array (an element carrying any OTHER key would
+// escape the value compare, so it disqualifies the fold rather than risk muting it).
+export function alignNameValueSubset(
+  declared: unknown,
+  live: unknown,
+  spec: NameValueSubsetSpec
+): unknown[] | null {
   if (!Array.isArray(declared) || !Array.isArray(live)) return null;
   const toMap = (arr: unknown[]): Map<string, unknown> | null => {
     const m = new Map<string, unknown>();
     for (const e of arr) {
-      if (
-        !e ||
-        typeof e !== 'object' ||
-        typeof (e as Record<string, unknown>).ParameterName !== 'string'
-      )
-        return null;
+      if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
       const r = e as Record<string, unknown>;
-      m.set(r.ParameterName as string, r.ParameterValue);
+      if (typeof r[spec.nameField] !== 'string') return null;
+      if (Object.keys(r).some((k) => k !== spec.nameField && k !== spec.valueField)) return null;
+      m.set(r[spec.nameField] as string, r[spec.valueField]);
     }
     return m;
   };
@@ -2080,7 +2107,7 @@ export function alignParameterNameSubset(declared: unknown, live: unknown): unkn
     const lVal = lm.get(name);
     if (dVal !== lVal && !isStringlyEqualScalar(dVal, lVal)) return null;
   }
-  return live.filter((e) => !dm.has((e as Record<string, unknown>).ParameterName as string));
+  return live.filter((e) => !dm.has((e as Record<string, unknown>)[spec.nameField] as string));
 }
 
 export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {

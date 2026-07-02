@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRule",
+    "resourceType": "AWS::VpcLattice::Rule",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
+    "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule",
+    "declared": {
+      "Action": {
+        "Forward": {
+          "TargetGroups": [
+            {
+              "TargetGroupIdentifier": "tg-0e0779e226ff58294",
+              "Weight": 1
+            }
+          ]
+        }
+      },
+      "ListenerIdentifier": "listener-0881ae4b2367b2037",
+      "Match": {
+        "HttpMatch": {
+          "PathMatch": {
+            "CaseSensitive": false,
+            "Match": {
+              "Prefix": "/api"
+            }
+          }
+        }
+      },
+      "Name": "cdkrd-hunt-rule",
+      "Priority": 10,
+      "ServiceIdentifier": "svc-07215226a6b16ea1b"
+    }
+  },
+  "liveRaw": {
+    "Action": {
+      "Forward": {
+        "TargetGroups": [
+          {
+            "Weight": 1,
+            "TargetGroupIdentifier": "tg-0e0779e226ff58294"
+          }
+        ]
+      }
+    },
+    "Priority": 10,
+    "Id": "rule-0262d24c9a9335dd9",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLatticeListener/b64426b0-7610-11f1-9952-0e9cffe0e837",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLatticeListener",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntRule",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Match": {
+      "HttpMatch": {
+        "HeaderMatches": [],
+        "PathMatch": {
+          "CaseSensitive": false,
+          "Match": {
+            "Prefix": "/api"
+          }
+        }
+      }
+    },
+    "Name": "cdkrd-hunt-rule"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": ["ListenerIdentifier", "ServiceIdentifier"],
+    "createOnly": ["ListenerIdentifier", "Name", "ServiceIdentifier"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": ["ListenerIdentifier", "ServiceIdentifier"],
+    "createOnlyPaths": ["ListenerIdentifier", "Name", "ServiceIdentifier"],
+    "defaults": {},
+    "defaultPaths": {
+      "Match.HttpMatch.PathMatch.CaseSensitive": false,
+      "Match.HttpMatch.HeaderMatches.*.CaseSensitive": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["Action.Forward.TargetGroups"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntRule",
+      "resourceType": "AWS::VpcLattice::Rule",
+      "path": "ListenerIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntRule",
+      "resourceType": "AWS::VpcLattice::Rule",
+      "path": "ServiceIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule"
+    }
+  ]
+}

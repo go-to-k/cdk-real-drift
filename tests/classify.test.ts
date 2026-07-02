@@ -1676,7 +1676,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
 
     it('a genuine change to a DECLARED parameter value still surfaces as declared drift (fail-closed)', () => {
-      // BufferSizeInMBs declared "1", live "5" -> alignParameterNameSubset returns null
+      // BufferSizeInMBs declared "1", live "5" -> alignNameValueSubset returns null
       // (a declared param value differs), so the whole-array finding is KEPT as drift.
       const declaredF = classifyResource(
         res(T, declared),
@@ -1708,7 +1708,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
 
     it('the fold is destination-agnostic: a Redshift (non-ExtendedS3) Processors path also folds', () => {
-      // PARAMETER_NAME_SUBSET_PATHS matches the dotted-path SUFFIX `Processors.<n>.Parameters`,
+      // NAME_VALUE_SUBSET_PATHS matches the dotted-path SUFFIX `Processors.<n>.Parameters`,
       // so the same reorder + default-fill on any destination config that carries a
       // ProcessingConfiguration (RedshiftDestinationConfiguration, AmazonopensearchserviceDestinationConfiguration,
       // SplunkDestinationConfiguration, …) is suppressed too — not just ExtendedS3.
@@ -1759,6 +1759,142 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(findings.filter((f) => f.tier === 'undeclared').map((f) => f.path)).toEqual([
         'RedshiftDestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
       ]);
+    });
+  });
+
+  describe('RDS OptionGroup OptionSettings subset (Name-keyed reorder + server default-fill, #480)', () => {
+    const T = 'AWS::RDS::OptionGroup';
+    const declared = {
+      EngineName: 'mariadb',
+      MajorEngineVersion: '10.11',
+      OptionGroupDescription: 'audit option group',
+      OptionConfigurations: [
+        {
+          OptionName: 'MARIADB_AUDIT_PLUGIN',
+          OptionSettings: [
+            { Name: 'SERVER_AUDIT_EVENTS', Value: 'CONNECT,QUERY' },
+            { Name: 'SERVER_AUDIT_QUERY_LOG_LIMIT', Value: '2048' },
+          ],
+        },
+      ],
+    };
+    // The live shape observed on a fresh rds-optiongroup-evsub deploy: RDS reorders the
+    // settings and materializes EVERY option setting of the configured option — some
+    // Name-only with no Value key at all.
+    const liveConfigs = (settings: unknown[]) => ({
+      EngineName: 'mariadb',
+      MajorEngineVersion: '10.11',
+      OptionGroupDescription: 'audit option group',
+      OptionConfigurations: [
+        {
+          OptionName: 'MARIADB_AUDIT_PLUGIN',
+          OptionSettings: settings,
+        },
+      ],
+    });
+    const liveDefaultFilled = [
+      { Value: '2048', Name: 'SERVER_AUDIT_QUERY_LOG_LIMIT' },
+      { Value: 'CONNECT,QUERY', Name: 'SERVER_AUDIT_EVENTS' },
+      { Value: 'ON', Name: 'SERVER_AUDIT_LOGGING' },
+      { Name: 'SERVER_AUDIT_INCL_USERS' },
+      { Value: 'FORCE_PLUS_PERMANENT', Name: 'SERVER_AUDIT' },
+      { Name: 'SERVER_AUDIT_FILE_ROTATIONS' },
+      { Value: '/rdsdbdata/log/audit/', Name: 'SERVER_AUDIT_FILE_PATH' },
+      { Name: 'SERVER_AUDIT_FILE_ROTATE_SIZE' },
+      { Name: 'SERVER_AUDIT_EXCL_USERS' },
+    ];
+
+    it('a reordered + default-filled OptionSettings is NOT declared drift; live-only settings surface as undeclared', () => {
+      const findings = classifyResource(
+        res(T, declared),
+        liveConfigs(liveDefaultFilled),
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+      const undeclared = findings.filter((f) => f.tier === 'undeclared');
+      expect(undeclared.map((f) => f.path).sort()).toEqual([
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_EXCL_USERS]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_PATH]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATE_SIZE]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATIONS]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_INCL_USERS]',
+        'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_LOGGING]',
+      ]);
+      expect(undeclared.every((f) => f.nested === true)).toBe(true);
+    });
+
+    it('a genuine change to a DECLARED setting value still surfaces as declared drift (fail-closed)', () => {
+      const mutated = liveDefaultFilled.map((s) =>
+        (s as { Name: string }).Name === 'SERVER_AUDIT_EVENTS'
+          ? { Name: 'SERVER_AUDIT_EVENTS', Value: 'CONNECT' }
+          : s
+      );
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveConfigs(mutated),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]?.path).toBe('OptionConfigurations.0.OptionSettings');
+    });
+
+    it('a declared setting MISSING from live is declared drift, not silently dropped', () => {
+      const withoutDeclared = liveDefaultFilled.filter(
+        (s) => (s as { Name: string }).Name !== 'SERVER_AUDIT_QUERY_LOG_LIMIT'
+      );
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveConfigs(withoutDeclared),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+    });
+
+    it('an element carrying an unexpected extra key disqualifies the fold (kept as declared drift)', () => {
+      // The subset compare only checks the Name/Value pair; an element with any other
+      // sub-key would escape it, so alignNameValueSubset refuses the fold entirely and
+      // the reordered + default-filled array stays a declared finding (fail-closed).
+      const withExtraKey = liveDefaultFilled.map((s) =>
+        (s as { Name: string }).Name === 'SERVER_AUDIT_EVENTS'
+          ? { Name: 'SERVER_AUDIT_EVENTS', Value: 'CONNECT,QUERY', ApplyMethod: 'immediate' }
+          : s
+      );
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveConfigs(withExtraKey),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]?.path).toBe('OptionConfigurations.0.OptionSettings');
+    });
+  });
+
+  describe('VpcLattice ServiceNetwork SharingConfig service default (#483)', () => {
+    const T = 'AWS::VpcLattice::ServiceNetwork';
+
+    it('an undeclared SharingConfig at the service default {enabled:true} folds to atDefault', () => {
+      const findings = classifyResource(
+        res(T, { Name: 'sn', AuthType: 'NONE' }),
+        { Name: 'sn', AuthType: 'NONE', SharingConfig: { enabled: true } },
+        emptySchema
+      );
+      const atDefault = findings.filter((f) => f.tier === 'atDefault');
+      expect(atDefault.map((f) => f.path)).toEqual(['SharingConfig']);
+      expect(findings.filter((f) => f.tier === 'undeclared')).toEqual([]);
+    });
+
+    it('fail-closed: sharing disabled out of band ({enabled:false}) never folds to atDefault', () => {
+      // {enabled:false} is all-falsy, so the generic trivial-empty suppression already
+      // keeps it out of the undeclared inventory (pre-existing behavior) — the guard
+      // this pins is that the equality-gated KNOWN_DEFAULTS entry must not claim it as
+      // "at the AWS default" (it is the opposite of the default).
+      const findings = classifyResource(
+        res(T, { Name: 'sn', AuthType: 'NONE' }),
+        { Name: 'sn', AuthType: 'NONE', SharingConfig: { enabled: false } },
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'atDefault')).toEqual([]);
     });
   });
 

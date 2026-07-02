@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntLambdaTg",
+    "resourceType": "AWS::VpcLattice::TargetGroup",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:targetgroup/tg-0e0779e226ff58294",
+    "constructPath": "CdkRealDriftIntegLatticeListener/HuntLambdaTg",
+    "declared": {
+      "Config": {
+        "LambdaEventStructureVersion": "V2"
+      },
+      "Name": "cdkrd-hunt-lambda-tg",
+      "Targets": [
+        {
+          "Id": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLatticeListe-HuntTargetFn297C3D14-DXOlvnjAJwyR"
+        }
+      ],
+      "Type": "LAMBDA"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "Type": "LAMBDA",
+    "LastUpdatedAt": "2026-07-02T12:23:10.145Z",
+    "Config": {
+      "LambdaEventStructureVersion": "V2"
+    },
+    "CreatedAt": "2026-07-02T12:23:10.145Z",
+    "Targets": [
+      {
+        "Id": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLatticeListe-HuntTargetFn297C3D14-DXOlvnjAJwyR"
+      }
+    ],
+    "Id": "tg-0e0779e226ff58294",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:targetgroup/tg-0e0779e226ff58294",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLatticeListener/b64426b0-7610-11f1-9952-0e9cffe0e837",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLatticeListener",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntLambdaTg",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-lambda-tg"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedAt", "Id", "LastUpdatedAt", "Status"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Type"],
+    "readOnlyPaths": ["Arn", "CreatedAt", "Id", "LastUpdatedAt", "Status"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Config.IpAddressType",
+      "Config.LambdaEventStructureVersion",
+      "Config.Port",
+      "Config.Protocol",
+      "Config.ProtocolVersion",
+      "Config.VpcIdentifier",
+      "Name",
+      "Type"
+    ],
+    "defaults": {
+      "Targets": []
+    },
+    "defaultPaths": {
+      "Config.ProtocolVersion": "HTTP1",
+      "Config.IpAddressType": "IPV4",
+      "Targets": []
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

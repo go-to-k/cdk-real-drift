@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEventSub",
+    "resourceType": "AWS::RDS::EventSubscription",
+    "physicalId": "cdkrd-hunt-evsub",
+    "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntEventSub",
+    "declared": {
+      "Enabled": true,
+      "EventCategories": ["maintenance", "failure", "availability"],
+      "SnsTopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-rds-events",
+      "SourceType": "db-instance",
+      "SubscriptionName": "cdkrd-hunt-evsub"
+    }
+  },
+  "liveRaw": {
+    "SourceType": "db-instance",
+    "Enabled": true,
+    "EventCategories": ["maintenance", "failure", "availability"],
+    "SubscriptionName": "cdkrd-hunt-evsub",
+    "SnsTopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-rds-events",
+    "SourceIds": [],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsOptEvsub",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntEventSub",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsOptEvsub/b6438a70-7610-11f1-bb37-0e4f3c578c99",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["SnsTopicArn", "SubscriptionName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["SnsTopicArn", "SubscriptionName"],
+    "defaults": {
+      "Enabled": true
+    },
+    "defaultPaths": {
+      "Enabled": true
+    },
+    "unorderedScalarPaths": ["SourceIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
