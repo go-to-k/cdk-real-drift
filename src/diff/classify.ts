@@ -44,6 +44,7 @@ import {
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
+  GENERATED_NESTED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
   EPOCH_HOUR_PATHS,
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
@@ -51,6 +52,7 @@ import {
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   READGAP_COLLECTION_PATHS,
+  READ_NORMALIZED_DECLARED_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
   PARAMETER_NAME_SUBSET_PATHS,
@@ -64,6 +66,7 @@ import {
   UNORDERED_ARRAY_PROPS,
   UNORDERED_NESTED_OBJECT_ARRAY_PATHS,
   UNORDERED_OBJECT_ARRAY_PROPS,
+  VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   VERSION_PREFIX_PATHS,
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
@@ -643,6 +646,13 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
+  // Drop declared scalar props AWS re-normalizes on read (SSM Document DocumentFormat:
+  // any authored YAML/TEXT is stored + returned as JSON) from BOTH sides so the write-time
+  // authoring hint is not a spurious declared drift (see READ_NORMALIZED_DECLARED_PATHS).
+  for (const p of READ_NORMALIZED_DECLARED_PATHS[resourceType] ?? []) {
+    delete declared[p];
+    delete live[p];
+  }
   // Subtract rules declared by sibling standalone SecurityGroupIngress/Egress resources from
   // an AWS::EC2::SecurityGroup's reflected live rule arrays (see SG_RULE_REFLECTION). Keyed by
   // the SG's resolved GroupId (== its physical id). The sibling rules are themselves compared
@@ -1222,7 +1232,12 @@ export function classifyResource(
     // the default no longer matches here and falls through to the `undeclared` tier.
     if (
       (k in schema.defaults && matchesKnownDefault(v, schema.defaults[k])) ||
-      (k in knownDef && matchesKnownDefault(v, knownDef[k]))
+      (k in knownDef && matchesKnownDefault(v, knownDef[k])) ||
+      // A top-level key whose AWS default is NON-DETERMINISTIC (ECS
+      // AvailabilityZoneRebalancing reads back ENABLED or DISABLED depending on the
+      // service) — folded atDefault regardless of value: undeclared, so any value is
+      // AWS's choice, not user intent.
+      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k)
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
@@ -1324,6 +1339,7 @@ export function classifyResource(
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
+  const generatedNestedPaths = GENERATED_NESTED_PATHS[resourceType];
   // Schema-detected FREE-FORM MAP properties (Lambda Environment.Variables, Glue
   // Parameters): a live-only sub-key directly under one is user-authored data, not an
   // AWS-materialized nested default — so flag it `freeFormKey` to surface it in the report
@@ -1364,7 +1380,10 @@ export function classifyResource(
           ? 'atDefault'
           : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
             // physical-id segment (the AWS default) — a custom value the user set surfaces.
-            generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)
+            (generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)) ||
+              // Value-INDEPENDENT nested generated path (KMS KeyPolicy.Id): AWS/CFn-injected,
+              // never derivable from the physical id — folded only in this live-only case.
+              generatedNestedPaths?.has(schemaPath)
             ? 'generated'
             : 'undeclared';
         // A free-form map key surfaces (not folded), but only when it is a real undeclared

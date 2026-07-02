@@ -78,15 +78,5 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": [
-    {
-      "tier": "atDefault",
-      "logicalId": "Doc",
-      "resourceType": "AWS::SSM::Document",
-      "path": "DocumentFormat",
-      "actual": "JSON",
-      "physicalId": "cdkrd-integ-doc",
-      "constructPath": "CdkRealDriftIntegSsm/Doc"
-    }
-  ]
+  "expected": []
 }

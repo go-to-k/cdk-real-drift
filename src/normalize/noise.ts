@@ -237,6 +237,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     IpAddressType: 'ipv4',
     EnablePrefixForIpv6SourceNat: 'off',
   },
+  'AWS::ElasticLoadBalancingV2::Listener': {
+    // A listener that declares no mutual-TLS config reads back the "off" default.
+    // Observed live on an HTTPS listener.
+    MutualAuthentication: { Mode: 'off' },
+  },
   'AWS::EC2::NatGateway': {
     ConnectivityType: 'public',
     AvailabilityMode: 'zonal',
@@ -406,8 +411,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // A service with no load-balancer health-check grace reads back 0 (the default) —
     // observed unanimous across the corpus services.
     HealthCheckGracePeriodSeconds: 0,
-    AvailabilityZoneRebalancing: 'ENABLED', // AWS default for new services
     EnableExecuteCommand: false,
+    // A service that declares no deployment controller reads back the default rolling
+    // (ECS) controller. Observed live on a fresh Fargate service.
+    DeploymentController: { Type: 'ECS' },
   },
   'AWS::AppSync::GraphQLApi': {
     ApiType: 'GRAPHQL',
@@ -760,6 +767,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  'AWS::Lambda::Function': {
+    // A function whose LoggingConfig declares no explicit format/level reads back the AWS
+    // defaults: plain-Text logs at the INFO system level. Equality-gated, so a function that
+    // opts into JSON logging (or a different level) still surfaces the non-default value.
+    'LoggingConfig.LogFormat': 'Text',
+    'LoggingConfig.SystemLogLevel': 'INFO',
+  },
   // EMR Serverless fills MaximumCapacity.Disk with the service-wide maximum
   // ("400000 GB") when the template declares only Cpu/Memory. A constant, not
   // capacity-derived (observed with a 4 vCPU / 16 GB cap on the misc-0cov-rich
@@ -905,6 +919,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // ROLLING strategy with a 0-minute bake time. Observed unanimous across the corpus.
     'DeploymentConfiguration.Strategy': 'ROLLING',
     'DeploymentConfiguration.BakeTimeInMinutes': 0,
+    // A service that enables the deployment circuit breaker reads back these AWS-filled
+    // sub-defaults (reset the deployment count once a task is healthy, and the built-in
+    // BOUNDED_PERCENT / 50% failure threshold). Observed live on a fresh Fargate service.
+    'DeploymentConfiguration.DeploymentCircuitBreaker.ResetOnHealthyTask': true,
+    'DeploymentConfiguration.DeploymentCircuitBreaker.ThresholdConfiguration': {
+      Type: 'BOUNDED_PERCENT',
+      Value: 50,
+    },
   },
   'AWS::OpenSearchService::Domain': {
     // A gp3 EBS volume reads back the gp3 baseline 3000 IOPS / 125 MiB/s throughput
@@ -915,6 +937,23 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::KinesisFirehose::DeliveryStream': {
     // S3 backup is Disabled by default when a destination declares no backup mode.
     'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
+    // A destination declaring no compression / encryption reads back the AWS defaults:
+    // UNCOMPRESSED delivery and no server-side encryption. Observed live.
+    'ExtendedS3DestinationConfiguration.CompressionFormat': 'UNCOMPRESSED',
+    'ExtendedS3DestinationConfiguration.EncryptionConfiguration': {
+      NoEncryptionConfig: 'NoEncryption',
+    },
+  },
+  'AWS::Athena::WorkGroup': {
+    // A workgroup that declares no configuration reads back AWS's defaults: the config is
+    // enforced on member queries, and the engine version auto-selects. Observed live.
+    'WorkGroupConfiguration.EnforceWorkGroupConfiguration': true,
+    'WorkGroupConfiguration.EngineVersion': { SelectedEngineVersion: 'AUTO' },
+  },
+  'AWS::ApplicationSignals::ServiceLevelObjective': {
+    // An SLO goal that declares no warning threshold reads back the 50(%) default.
+    // Observed live. Equality-gated, so a custom threshold still surfaces.
+    'Goal.WarningThreshold': 50,
   },
   // R-noise-sweep (offline corpus audit): nested constant defaults the schema does
   // not annotate. Equality-gated; a non-default value still surfaces.
@@ -1122,7 +1161,26 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // independently-editable property, so folding it `generated` (inventory: never drift) is
   // safe; a meaningful change is a change to SourceSecurityGroupId itself. Observed live on
   // the securitygroup-protocols-rich fixture's self-ref rule.
-  'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupOwnerId']),
+  // A standalone SG rule reads back the GroupName of the SG it attaches to (CDK derives
+  // the rule from GroupId, never declaring GroupName), so it floods a self-ref/peer rule's
+  // first run as undeclared. Tied to GroupId (which IS compared), not independently
+  // editable — a meaningful change is a change to the target SG. Observed live.
+  'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupOwnerId', 'GroupName']),
+  // An awsvpc/Fargate ECS service that declares no service role reads back the AWS-injected
+  // service-linked role ARN (`.../aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS`).
+  // AWS-managed, not user intent, present on every such service. A service that DOES declare
+  // a Role (classic-ELB pattern) carries it in the template and never reaches this loop.
+  'AWS::ECS::Service': new Set(['Role']),
+  // An Application Auto Scaling policy attached to a target via ScalingTargetId (the CDK
+  // pattern) reads back the target's ResourceId / ServiceNamespace / ScalableDimension,
+  // which AWS derives from the target and the template never declares. They echo the
+  // scalable target's identity, not independent settings. Observed live on an ECS
+  // service-scaling policy.
+  'AWS::ApplicationAutoScaling::ScalingPolicy': new Set([
+    'ResourceId',
+    'ServiceNamespace',
+    'ScalableDimension',
+  ]),
   // A published version's CodeSha256 is the base64 hash of the deployed code package —
   // a per-deploy, opaque, service-minted value (NOT a constant default, so KNOWN_DEFAULTS
   // cannot fold it). It is live-only ONLY when the template does not pin it; a version
@@ -1142,6 +1200,47 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // (inventory: never drift, recorded, or reverted) is safe — and necessary, since an
   // immutable token can never be an out-of-band edit. Observed live on lambda-efs-rich.
   'AWS::EFS::AccessPoint': new Set(['ClientToken']),
+};
+
+// Like GENERATED_TOPLEVEL_PATHS but for NESTED, value-INDEPENDENT paths (dotted, `*` for
+// array crossings) — a sub-key AWS/CloudFormation injects that the template never declares
+// and whose value is not derivable from the physical id (so isPhysicalIdSegment can't gate
+// it). Folded `generated` (inventory: never drift, recorded, or reverted) only in the
+// LIVE-only case: a user who DECLARES the sub-key carries it in the template and never
+// reaches the undeclared loop, so a meaningful out-of-band change to a declared value still
+// surfaces via the declared compare.
+//   AWS::KMS::Key.KeyPolicy.Id — CloudFormation injects a doc-level policy `Id` (the stack
+//   name) into a key policy that omits one, so a first check of a key with a default/simple
+//   policy floods `KeyPolicy.Id` as undeclared. It is cosmetic (a policy label, like a
+//   statement Sid) and stack-derived, not user intent.
+export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::KMS::Key': new Set(['KeyPolicy.Id']),
+  // An ECR repository's lifecycle policy reads back a RegistryId AWS injects (the owning
+  // account id) that the template never declares — folded regardless of value.
+  'AWS::ECR::Repository': new Set(['LifecyclePolicy.RegistryId']),
+  // A Lambda function that declares no custom log group reads back the AWS-created default
+  // `/aws/lambda/<functionName>`. The whole-object GENERATED_DEFAULTS fold misses it when the
+  // function ALSO carries a non-default LogFormat/ApplicationLogLevel (so the object differs);
+  // fold the LogGroup path itself, value-independently — a CUSTOM log group is DECLARED and
+  // compared in the declared loop, never reaching here.
+  'AWS::Lambda::Function': new Set(['LoggingConfig.LogGroup']),
+};
+
+// Undeclared TOP-LEVEL keys whose AWS-chosen default is NON-DETERMINISTIC — the value
+// varies by account / CDK feature-flag / creation date, so a single KNOWN_DEFAULTS value
+// cannot fold every valid form (folding one leaves the other as false undeclared drift).
+// Folded to `atDefault` REGARDLESS of value: the property is not declared, so any value AWS
+// returns is AWS's choice, never user intent (a user who cares DECLARES it, and then it is
+// compared in the declared loop and never reaches here).
+//   AWS::ECS::Service.AvailabilityZoneRebalancing — reads back "ENABLED" on some services
+//   and "DISABLED" on others (both observed live), depending on how/when the service was
+//   created; neither is "the" default.
+export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
+  //   AWS::ECS::Service.PlatformVersion — a service that declares no platform version reads
+  //   back the concrete version AWS provisioned ("1.4.0" today); "use the default/latest" is
+  //   satisfied by whatever concrete version is current, so any value is not user intent. (A
+  //   DECLARED "LATEST" is handled by LATEST_SENTINEL_PATHS in the declared loop.)
+  'AWS::ECS::Service': new Set(['AvailabilityZoneRebalancing', 'PlatformVersion']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
@@ -1415,6 +1514,9 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     'routing.http2.enabled': 'true',
     'waf.fail_open.enabled': 'false',
     'zonal_shift.config.enabled': 'false',
+    // A dualstack ALB reads back this IPv6 IGW-traffic attribute at its "false" default.
+    // Observed live on a bare dualstack ALB.
+    'ipv6.deny_all_igw_traffic': 'false',
   },
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
     'load_balancing.algorithm.anomaly_mitigation': 'off',
@@ -2050,6 +2152,20 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::DynamoDB::Table': new Set(['SSESpecification']),
 };
 
+// Declared SCALAR properties AWS does NOT echo faithfully — a write-time authoring hint
+// it normalizes to a canonical STORED form on read, so a declared value that differs from
+// the normalized read is a spurious `declared` drift, never a real divergence (and it is
+// not actionable: you cannot make AWS report the authored form). Stripped from BOTH the
+// declared and live model before compare — unlike a readGap (absent from the read), the
+// value IS present, just re-normalized. Distinct from writeOnly (schema-driven) because
+// AWS DOES return the property; it just returns its own value.
+//   AWS::SSM::Document.DocumentFormat — the format of the SUPPLIED content ("YAML"/"TEXT").
+//   AWS parses and STORES every Automation/Command document as JSON, so Cloud Control
+//   always reads DocumentFormat back as "JSON" regardless of the authored format.
+export const READ_NORMALIZED_DECLARED_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::SSM::Document': new Set(['DocumentFormat']),
+};
+
 // Per-type OBJECT-array props AWS treats as UNORDERED SETS whose element objects
 // carry NO single identity field (so canonicalizeTagListsDeep cannot key them) and
 // are NOT scalar (so isEqualUnorderedScalarSet does not apply): EC2 SecurityGroup
@@ -2068,6 +2184,14 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // needs no entry here. The entries below predate that fold or lack the schema flag —
   // Cognito UserPoolResourceServer `Scopes` is insertionOrder-ABSENT, proving the flag
   // is under-set and this manual table stays as the SUPPLEMENT, not replaced.)
+  // An ApplicationSignals SLO's `BurnRateConfigurations` is a SET of burn-rate windows
+  // ({LookBackWindowMinutes: N}) that AWS returns reordered relative to the template
+  // (declared [{60}, {360}] reads back [{360}, {60}]), so a positional compare
+  // false-flags each window's LookBackWindowMinutes as declared drift on a freshly
+  // recorded SLO. The element has no IDENTITY_FIELD (only LookBackWindowMinutes), so the
+  // keyed canonicalizer can't align it — sorting both sides by canonical JSON does, and a
+  // genuine window add/remove/change still differs.
+  'AWS::ApplicationSignals::ServiceLevelObjective': new Set(['BurnRateConfigurations']),
   // Cognito UserPoolResourceServer `Scopes` is a SET of {ScopeName, ScopeDescription}
   // OAuth scopes that AWS echoes SORTED by ScopeName, not in template order (declared
   // [zeta.write, alpha.read, mike.admin] reads back [alpha.read, mike.admin, zeta.write]),
@@ -2186,6 +2310,22 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
 // elements positionally; a genuine element add/remove/change still differs after the
 // sort. Observed live on a fresh bedrock-guardrail-rich deploy.
 export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<string>> = {
+  // A CloudFront cache policy's forwarded-header set
+  // (`...HeadersConfig.Headers`) is order-insensitive — CloudFront echoes it in its
+  // own canonical order, not template order (declared [Origin, A, B] reads back
+  // [Origin, B, A]), so a positional compare false-flags the identical header set as
+  // declared drift on a freshly recorded policy. A nested SCALAR set (plain header
+  // names — not id/ARN-shaped, so canonicalizeIdArraysDeep leaves it);
+  // sortNestedObjectArrays sorts scalar arrays by canonical JSON, so equal sets align
+  // and a genuine header add/remove/change still differs.
+  'AWS::CloudFront::CachePolicy': new Set([
+    'CachePolicyConfig.ParametersInCacheKeyAndForwardedToOrigin.HeadersConfig.Headers',
+  ]),
+  // A CloudFront distribution's `Aliases` (the CNAME set) is order-insensitive —
+  // CloudFront returns it reordered relative to the template (declared [apex, wildcard]
+  // reads back [wildcard, apex]), so a positional compare false-flags the identical
+  // alias set as declared drift. Same nested-scalar-set treatment as CachePolicy Headers.
+  'AWS::CloudFront::Distribution': new Set(['DistributionConfig.Aliases']),
   // RULE-OUT (observed-only, NOT folded): a WAFv2 RuleGroup/WebACL rate-based rule's
   // `Rules[].Statement.RateBasedStatement.CustomKeys` is a SET of discriminated-union
   // aggregate-key objects ({UriPath:{}}, {Header:{Name,…}}, {HTTPMethod:{}}, …) with

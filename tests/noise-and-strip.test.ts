@@ -17,6 +17,7 @@ import {
   INTELLIGENT_TIERING_PATHS,
   KNOWN_DEFAULTS,
   KNOWN_DEFAULT_PATHS,
+  VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   stripAwsTagsDeep,
   VERSION_PREFIX_PATHS,
   isTrailingDotEqual,
@@ -486,6 +487,11 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULT_PATHS['AWS::ECS::Service']).toEqual({
       'DeploymentConfiguration.Strategy': 'ROLLING',
       'DeploymentConfiguration.BakeTimeInMinutes': 0,
+      'DeploymentConfiguration.DeploymentCircuitBreaker.ResetOnHealthyTask': true,
+      'DeploymentConfiguration.DeploymentCircuitBreaker.ThresholdConfiguration': {
+        Type: 'BOUNDED_PERCENT',
+        Value: 50,
+      },
     });
     expect(KNOWN_DEFAULT_PATHS['AWS::OpenSearchService::Domain']).toEqual({
       'EBSOptions.Iops': 3000,
@@ -493,6 +499,10 @@ describe('noise suppressors', () => {
     });
     expect(KNOWN_DEFAULT_PATHS['AWS::KinesisFirehose::DeliveryStream']).toEqual({
       'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
+      'ExtendedS3DestinationConfiguration.CompressionFormat': 'UNCOMPRESSED',
+      'ExtendedS3DestinationConfiguration.EncryptionConfiguration': {
+        NoEncryptionConfig: 'NoEncryption',
+      },
     });
   });
 
@@ -567,7 +577,14 @@ describe('noise suppressors', () => {
       KNOWN_DEFAULTS['AWS::Cognito::UserPoolClient'].EnablePropagateAdditionalUserContextData
     ).toBe(false);
     expect(KNOWN_DEFAULTS['AWS::ECS::Service'].EnableExecuteCommand).toBe(false);
-    expect(KNOWN_DEFAULTS['AWS::ECS::Service'].AvailabilityZoneRebalancing).toBe('ENABLED');
+    expect(KNOWN_DEFAULTS['AWS::ECS::Service'].DeploymentController).toEqual({ Type: 'ECS' });
+    // AvailabilityZoneRebalancing has a NON-DETERMINISTIC default (ENABLED or DISABLED),
+    // so it is folded value-independently, not via KNOWN_DEFAULTS.
+    expect(
+      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::ECS::Service'].has(
+        'AvailabilityZoneRebalancing'
+      )
+    ).toBe(true);
     expect(KNOWN_DEFAULTS['AWS::ElasticLoadBalancingV2::ListenerRule'].IsDefault).toBe(false);
     expect(KNOWN_DEFAULTS['AWS::Glue::Crawler'].LakeFormationConfiguration).toEqual({
       AccountId: '',

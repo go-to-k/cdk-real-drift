@@ -6006,3 +6006,266 @@ describe('API Gateway default-config first-run folds', () => {
     expect(t2.atDefault).not.toContain('Target.RetryPolicy');
   });
 });
+
+// FP fixes surfaced by a real dev-stack `check` (reality-vs-intent oracle): the values
+// below are SYNTHETIC (no real names), but each class was observed live.
+describe('real-stack false-positive folds', () => {
+  const mkSchema = (over: Partial<SchemaInfo> = {}): SchemaInfo => ({
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+    ...over,
+  });
+
+  it('CloudFront CachePolicy forwarded Headers reorder is NOT drift', () => {
+    const res: DesiredResource = {
+      logicalId: 'CP',
+      resourceType: 'AWS::CloudFront::CachePolicy',
+      physicalId: 'cp-1',
+      declared: {
+        CachePolicyConfig: {
+          ParametersInCacheKeyAndForwardedToOrigin: {
+            HeadersConfig: { Headers: ['Origin', 'A', 'B'] },
+          },
+        },
+      },
+    };
+    const live = {
+      CachePolicyConfig: {
+        ParametersInCacheKeyAndForwardedToOrigin: {
+          HeadersConfig: { Headers: ['Origin', 'B', 'A'] },
+        },
+      },
+    };
+    expect(tiers(classifyResource(res, live, mkSchema())).declared).toEqual([]);
+    // a genuine header change still surfaces
+    const changed = {
+      CachePolicyConfig: {
+        ParametersInCacheKeyAndForwardedToOrigin: {
+          HeadersConfig: { Headers: ['Origin', 'B', 'C'] },
+        },
+      },
+    };
+    expect(tiers(classifyResource(res, changed, mkSchema())).declared).toEqual([
+      'CachePolicyConfig.ParametersInCacheKeyAndForwardedToOrigin.HeadersConfig.Headers',
+    ]);
+  });
+
+  it('CloudFront Distribution Aliases reorder is NOT drift', () => {
+    const res: DesiredResource = {
+      logicalId: 'D',
+      resourceType: 'AWS::CloudFront::Distribution',
+      physicalId: 'd-1',
+      declared: { DistributionConfig: { Aliases: ['apex.example.net', '*.example.net'] } },
+    };
+    const live = { DistributionConfig: { Aliases: ['*.example.net', 'apex.example.net'] } };
+    expect(tiers(classifyResource(res, live, mkSchema())).declared).toEqual([]);
+  });
+
+  it('ApplicationSignals SLO BurnRateConfigurations reorder is NOT drift', () => {
+    const res: DesiredResource = {
+      logicalId: 'SLO',
+      resourceType: 'AWS::ApplicationSignals::ServiceLevelObjective',
+      physicalId: 'slo-1',
+      declared: {
+        BurnRateConfigurations: [{ LookBackWindowMinutes: 60 }, { LookBackWindowMinutes: 360 }],
+      },
+    };
+    const live = {
+      BurnRateConfigurations: [{ LookBackWindowMinutes: 360 }, { LookBackWindowMinutes: 60 }],
+    };
+    expect(tiers(classifyResource(res, live, mkSchema())).declared).toEqual([]);
+  });
+
+  it('SSM Document DocumentFormat authored YAML vs read-back JSON is NOT drift', () => {
+    const res: DesiredResource = {
+      logicalId: 'Doc',
+      resourceType: 'AWS::SSM::Document',
+      physicalId: 'doc-1',
+      declared: { DocumentFormat: 'YAML', DocumentType: 'Automation' },
+    };
+    const live = { DocumentFormat: 'JSON', DocumentType: 'Automation' };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.declared).toEqual([]);
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual([]);
+  });
+
+  it('KMS KeyPolicy.Id injected by CloudFormation folds to generated (value-independent)', () => {
+    const res: DesiredResource = {
+      logicalId: 'Key',
+      resourceType: 'AWS::KMS::Key',
+      physicalId: 'beab2e6f-3dee-4d23-888d-000000000000',
+      declared: {
+        KeyPolicy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: { AWS: 'arn:aws:iam::111111111111:root' },
+              Action: 'kms:*',
+              Resource: '*',
+            },
+          ],
+        },
+      },
+    };
+    const live = {
+      KeyPolicy: {
+        Version: '2012-10-17',
+        Id: 'MyStack-Key',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: 'arn:aws:iam::111111111111:root' },
+            Action: 'kms:*',
+            Resource: '*',
+          },
+        ],
+      },
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.generated).toEqual(['KeyPolicy.Id']);
+    expect(t.undeclared).toEqual([]);
+    expect(t.declared).toEqual([]);
+  });
+
+  it('ECS AvailabilityZoneRebalancing undeclared folds atDefault for EITHER value', () => {
+    const res: DesiredResource = {
+      logicalId: 'Svc',
+      resourceType: 'AWS::ECS::Service',
+      physicalId: 'svc-1',
+      declared: {},
+    };
+    for (const v of ['ENABLED', 'DISABLED']) {
+      const t = tiers(classifyResource(res, { AvailabilityZoneRebalancing: v }, mkSchema()));
+      expect(t.atDefault).toEqual(['AvailabilityZoneRebalancing']);
+      expect(t.undeclared).toEqual([]);
+    }
+  });
+
+  it('ECS DeploymentController default + service-linked Role fold', () => {
+    const res: DesiredResource = {
+      logicalId: 'Svc',
+      resourceType: 'AWS::ECS::Service',
+      physicalId: 'svc-1',
+      declared: {},
+    };
+    const live = {
+      DeploymentController: { Type: 'ECS' },
+      Role: 'arn:aws:iam::111111111111:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS',
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.atDefault).toEqual(['DeploymentController']);
+    expect(t.generated).toEqual(['Role']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('ECR LifecyclePolicy.RegistryId (account echo) folds to generated', () => {
+    const res: DesiredResource = {
+      logicalId: 'Repo',
+      resourceType: 'AWS::ECR::Repository',
+      physicalId: 'repo-1',
+      declared: { LifecyclePolicy: { LifecyclePolicyText: '{"rules":[]}' } },
+    };
+    const live = {
+      LifecyclePolicy: { LifecyclePolicyText: '{"rules":[]}', RegistryId: '111111111111' },
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.generated).toEqual(['LifecyclePolicy.RegistryId']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('SecurityGroupIngress GroupName echo + ScalingPolicy identity echo fold to generated', () => {
+    const sg: DesiredResource = {
+      logicalId: 'Ing',
+      resourceType: 'AWS::EC2::SecurityGroupIngress',
+      physicalId: 'sgr-1',
+      declared: { GroupId: 'sg-123', IpProtocol: 'tcp' },
+    };
+    expect(
+      tiers(
+        classifyResource(
+          sg,
+          { GroupId: 'sg-123', IpProtocol: 'tcp', GroupName: 'my-sg' },
+          mkSchema()
+        )
+      ).generated
+    ).toEqual(['GroupName']);
+
+    const sp: DesiredResource = {
+      logicalId: 'Pol',
+      resourceType: 'AWS::ApplicationAutoScaling::ScalingPolicy',
+      physicalId: 'pol-1',
+      declared: { PolicyName: 'p' },
+    };
+    const t = tiers(
+      classifyResource(
+        sp,
+        {
+          PolicyName: 'p',
+          ResourceId: 'service/c/s',
+          ServiceNamespace: 'ecs',
+          ScalableDimension: 'ecs:service:DesiredCount',
+        },
+        mkSchema()
+      )
+    );
+    expect(t.generated).toEqual(['ResourceId', 'ScalableDimension', 'ServiceNamespace']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('ECS PlatformVersion undeclared (AWS-resolved concrete version) folds atDefault', () => {
+    const res: DesiredResource = {
+      logicalId: 'Svc',
+      resourceType: 'AWS::ECS::Service',
+      physicalId: 'svc-1',
+      declared: {},
+    };
+    const t = tiers(classifyResource(res, { PlatformVersion: '1.4.0' }, mkSchema()));
+    expect(t.atDefault).toEqual(['PlatformVersion']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('Lambda default LoggingConfig sub-keys fold (LogGroup generated, LogFormat/SystemLogLevel atDefault)', () => {
+    // The template declares a partial LoggingConfig (as a CDK provider-framework function
+    // does); AWS fills in the default LogGroup + format/level, which descend as sub-keys.
+    const res: DesiredResource = {
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      physicalId: 'my-fn',
+      declared: { FunctionName: 'my-fn', LoggingConfig: { ApplicationLogLevel: 'FATAL' } },
+    };
+    const live = {
+      FunctionName: 'my-fn',
+      LoggingConfig: {
+        ApplicationLogLevel: 'FATAL',
+        LogGroup: '/aws/lambda/my-fn',
+        LogFormat: 'Text',
+        SystemLogLevel: 'INFO',
+      },
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.generated).toEqual(['LoggingConfig.LogGroup']);
+    expect(t.atDefault.sort()).toEqual(['LoggingConfig.LogFormat', 'LoggingConfig.SystemLogLevel']);
+    expect(t.undeclared).toEqual([]);
+    // a function that opts into JSON logging still surfaces the non-default LogFormat
+    const jsonLive = {
+      FunctionName: 'my-fn',
+      LoggingConfig: {
+        ApplicationLogLevel: 'FATAL',
+        LogGroup: '/aws/lambda/my-fn',
+        LogFormat: 'JSON',
+        SystemLogLevel: 'INFO',
+      },
+    };
+    expect(tiers(classifyResource(res, jsonLive, mkSchema())).undeclared).toEqual([
+      'LoggingConfig.LogFormat',
+    ]);
+  });
+});

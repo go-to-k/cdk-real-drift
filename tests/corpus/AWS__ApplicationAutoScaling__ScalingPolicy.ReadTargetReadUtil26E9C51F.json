@@ -76,7 +76,7 @@
       "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ReadTargetReadUtil26E9C51F",
       "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
       "path": "ResourceId",
@@ -85,7 +85,7 @@
       "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ReadTargetReadUtil26E9C51F",
       "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
       "path": "ServiceNamespace",
@@ -94,7 +94,7 @@
       "constructPath": "CdkrdIntegHarvest4/ReadTarget/ReadUtil"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ReadTargetReadUtil26E9C51F",
       "resourceType": "AWS::ApplicationAutoScaling::ScalingPolicy",
       "path": "ScalableDimension",

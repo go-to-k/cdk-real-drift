@@ -154,7 +154,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",
       "path": "DeploymentController",
@@ -174,7 +174,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceCapacity/Svc/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "SvcServiceE0738BDC",
       "resourceType": "AWS::ECS::Service",
       "path": "Role",

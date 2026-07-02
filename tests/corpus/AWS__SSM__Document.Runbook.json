@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::SSM::Document model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::SSM::Document model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
   "resource": {
     "logicalId": "Runbook",
     "resourceType": "AWS::SSM::Document",
@@ -78,15 +78,5 @@
     "region": "us-east-1",
     "kmsAliasTargets": {}
   },
-  "expected": [
-    {
-      "tier": "atDefault",
-      "logicalId": "Runbook",
-      "resourceType": "AWS::SSM::Document",
-      "path": "DocumentFormat",
-      "actual": "JSON",
-      "physicalId": "CdkrdIntegHarvest4-Runbook-EFhGaKUli3ve",
-      "constructPath": "CdkrdIntegHarvest4/Runbook"
-    }
-  ]
+  "expected": []
 }
