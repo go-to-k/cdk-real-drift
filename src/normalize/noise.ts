@@ -1087,6 +1087,19 @@ export const GENERATED_PATHS: Record<string, string[]> = {
   'AWS::XRay::SamplingRule': ['SamplingRule.RuleARN'],
 };
 
+// Top-level UNDECLARED keys whose service default VALUE is derived from the READ
+// CONTEXT (the resource's own region), which a constant KNOWN_DEFAULTS entry cannot
+// express. Kinds: 'region' (the scalar region), 'regionList' (a single-element list
+// of the own region). Equality-gated against the resolved context like every default
+// fold — a value that differs (extra regions added out of band) no longer matches
+// and surfaces as real undeclared drift; with NO resolved region the value simply
+// stays `undeclared` (recordable), never a wrong fold. First case (observed live on
+// a fresh iot-vpces-rich deploy, issue #462): a VPC endpoint service that declares
+// no SupportedRegions reads back `[<own region>]`.
+export const CONTEXT_DEFAULTS: Record<string, Record<string, 'region' | 'regionList'>> = {
+  'AWS::EC2::VPCEndpointService': { SupportedRegions: 'regionList' },
+};
+
 // Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated
 // id — value-INDEPENDENT (unlike GENERATED_PATHS/isPhysicalIdSegment, the value is an
 // opaque churning id, not derivable from the physical id). An ApiGatewayV2 Stage with

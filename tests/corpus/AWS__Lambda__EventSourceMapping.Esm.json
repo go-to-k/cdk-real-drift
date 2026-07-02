@@ -135,17 +135,6 @@
       "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
     },
     {
-      "tier": "undeclared",
-      "logicalId": "Esm",
-      "resourceType": "AWS::Lambda::EventSourceMapping",
-      "path": "SelfManagedKafkaEventSourceConfig",
-      "actual": {
-        "ConsumerGroupId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec"
-      },
-      "physicalId": "81c7f62a-08ec-42fe-8709-1690fbcf48ec",
-      "constructPath": "CdkRealDriftIntegEsmSourceaccessRich/Esm"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "Esm",
       "resourceType": "AWS::Lambda::EventSourceMapping",

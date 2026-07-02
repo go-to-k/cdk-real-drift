@@ -43,6 +43,7 @@ import {
   LATEST_SENTINEL_PATHS,
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
+  CONTEXT_DEFAULTS,
   GENERATED_TOPLEVEL_PATHS,
   EPOCH_HOUR_PATHS,
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
@@ -347,6 +348,22 @@ function isCfnGeneratedName(
     logicalPart.length > 0 &&
     logicalId.startsWith(logicalPart)
   );
+}
+
+// A live-only OBJECT that is a SELF-IDENTITY ECHO WRAPPER: some CC read handlers
+// (AWS::Logs::DeliveryDestination's DeliveryDestinationPolicy) return
+// `{ <IdentityField>: <own physical id>, <Payload>: {} }` when the payload was never
+// set — semantically "nothing configured", but the id echo defeats the plain deep
+// trivially-empty drop. Ignore FIRST-LEVEL entries equal to the resource's own
+// physical id (at least one must match, so ordinary objects never take this path),
+// then apply the same deep trivially-empty test. A REAL payload (an actually
+// attached policy) is not trivially empty and still surfaces. Pure.
+function isSelfEchoTrivialEmpty(v: unknown, physicalId: string | undefined): boolean {
+  if (physicalId === undefined || v === null || typeof v !== 'object' || Array.isArray(v))
+    return false;
+  const entries = Object.entries(v as Record<string, unknown>);
+  const rest = entries.filter(([, val]) => val !== physicalId);
+  return rest.length < entries.length && rest.every(([, val]) => isTrivialEmpty(val));
 }
 
 // structuredClone rejects the UNRESOLVED Symbol a declared value may carry, so deep-clone
@@ -1210,6 +1227,19 @@ export function classifyResource(
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
     }
+    // A live value equal to its CONTEXT-DERIVED default — a default whose VALUE is
+    // this resource's own read context (region), which a constant KNOWN_DEFAULTS
+    // entry cannot express (a VPCEndpointService's SupportedRegions defaults to
+    // [own region]). Equality-gated like every default fold; with no resolved
+    // region it falls through to plain `undeclared` (recordable), never a wrong fold.
+    const ctxKind = CONTEXT_DEFAULTS[resourceType]?.[k];
+    if (ctxKind !== undefined && opts.region !== undefined) {
+      const ctxDefault = ctxKind === 'region' ? opts.region : [opts.region];
+      if (deepEqual(v, ctxDefault)) {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+    }
     // A live value EQUAL to the AWS/CDK-generated value for this resource (its minted
     // physical name, a default-named log group) is the `generated` tier: folded
     // inventory like atDefault, never drift, never recorded. Equality-gated against
@@ -1269,7 +1299,7 @@ export function classifyResource(
     // and trivially-empty {}/[]. These carry no inventory value, so they are not folded.
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
-    if (isTrivialEmpty(v)) continue;
+    if (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId)) continue;
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
