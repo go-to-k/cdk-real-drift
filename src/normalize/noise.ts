@@ -42,6 +42,77 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       ],
     },
   },
+  // S3 Express directory buckets are always encrypted; a never-declared bucket
+  // reads back SSE-S3 with the bucket key ON (unlike general-purpose buckets,
+  // which read BucketKeyEnabled:false and a BlockedEncryptionTypes field).
+  // Observed live on a fresh s3express-s3tables-rich deploy.
+  'AWS::S3Express::DirectoryBucket': {
+    BucketEncryption: {
+      ServerSideEncryptionConfiguration: [
+        {
+          BucketKeyEnabled: true,
+          ServerSideEncryptionByDefault: { SSEAlgorithm: 'AES256' },
+        },
+      ],
+    },
+  },
+  // S3 Tables table buckets materialize three constant service defaults on read:
+  // Standard storage class, table-level metrics off, and SSE-S3 encryption.
+  // Observed live on a fresh s3express-s3tables-rich deploy; equality-gated like
+  // every KNOWN_DEFAULTS entry, so moving any of them off the default (e.g. KMS
+  // encryption set out of band) re-surfaces as real undeclared drift.
+  'AWS::S3Tables::TableBucket': {
+    StorageClassConfiguration: { StorageClass: 'STANDARD' },
+    MetricsConfiguration: { Status: 'Disabled' },
+    EncryptionConfiguration: { SSEAlgorithm: 'AES256' },
+  },
+  // Vended-logs v2 (CloudWatch Logs Delivery family). DeliveryDestinationType is
+  // DERIVED from the declared DestinationResourceArn (a log-group destination always
+  // reads back "CWL") — observed-only like the ApiGateway Authorizer AuthType fold; an
+  // S3/FH/XRay destination's value simply doesn't match and surfaces once, recordable.
+  'AWS::Logs::DeliveryDestination': { DeliveryDestinationType: 'CWL' },
+  // A Delivery that declares no RecordFields materializes the source's FULL default
+  // field list on read. This is the CloudFront ACCESS_LOGS default (the most common
+  // vended source) — equality-gated, so a field added/removed/reordered out of band no
+  // longer matches and surfaces as real undeclared drift; other sources' lists simply
+  // don't fold. Observed live on a fresh cloudfront-kvs-logs-delivery deploy.
+  'AWS::Logs::Delivery': {
+    RecordFields: [
+      'date',
+      'time',
+      'x-edge-location',
+      'sc-bytes',
+      'c-ip',
+      'cs-method',
+      'cs(Host)',
+      'cs-uri-stem',
+      'sc-status',
+      'cs(Referer)',
+      'cs(User-Agent)',
+      'cs-uri-query',
+      'cs(Cookie)',
+      'x-edge-result-type',
+      'x-edge-request-id',
+      'x-host-header',
+      'cs-protocol',
+      'cs-bytes',
+      'time-taken',
+      'x-forwarded-for',
+      'ssl-protocol',
+      'ssl-cipher',
+      'x-edge-response-result-type',
+      'cs-protocol-version',
+      'fle-status',
+      'fle-encrypted-fields',
+      'c-port',
+      'time-to-first-byte',
+      'x-edge-detailed-result-type',
+      'sc-content-type',
+      'sc-content-len',
+      'sc-range-start',
+      'sc-range-end',
+    ],
+  },
   // R66 (dogfood-observed service defaults):
   'AWS::Lambda::Function': {
     TracingConfig: { Mode: 'PassThrough' },
@@ -1278,10 +1349,10 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     // idleTimeout). NLB has no idle_timeout attribute, so no cross-type conflict.
     'idle_timeout.timeout_seconds': '60',
     // ALB cross-zone load balancing is always on and not configurable -> AWS always
-    // returns "true". NB: an NLB's cross_zone default is "false" — the OPPOSITE — and
-    // this table is keyed only by resourceType (shared ALB/NLB), so the two cannot both
-    // fold; the ALB value wins and an NLB's cross_zone stays `undeclared` (a known minor
-    // residual; the equality gate keeps it correct, never mis-folding).
+    // returns "true". An NLB's / GWLB's default is "false" — the OPPOSITE — so those
+    // two override this entry via ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE below (the shared
+    // ALB value here previously mis-folded an out-of-band NLB cross_zone ENABLE as
+    // atDefault — a real undeclared change `record` then never snapshotted).
     'load_balancing.cross_zone.enabled': 'true',
     // NLB-only attribute keys (an ALB never returns them, so no conflict) — observed live
     // on a bare internal NLB.
@@ -1311,6 +1382,19 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     'target_group_health.unhealthy_state_routing.minimum_healthy_targets.count': '1',
     'target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage': 'off',
   },
+};
+
+// Load-balancer attribute defaults that differ BY LB TYPE (the LoadBalancer `Type`
+// property: application | network | gateway; omitted = application). Merged OVER the
+// shared ELB_ATTRIBUTE_DEFAULTS entry in classify, keyed by the live Type. cross_zone
+// is the one known split: an ALB is always-on ("true"), while an NLB / GWLB defaults
+// OFF ("false"). One shared entry could not fold the NLB first-run "false" AND
+// mis-folded an out-of-band NLB cross-zone ENABLE ("true" matched the shared ALB
+// default → atDefault, so `record` never snapshotted a real undeclared change and a
+// later flip could hide). Observed live on a fresh internal NLB (iot-vpces-rich).
+export const ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE: Record<string, Record<string, string>> = {
+  network: { 'load_balancing.cross_zone.enabled': 'false' },
+  gateway: { 'load_balancing.cross_zone.enabled': 'false' },
 };
 
 // (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live

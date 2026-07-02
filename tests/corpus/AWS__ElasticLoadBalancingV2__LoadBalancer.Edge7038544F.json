@@ -328,7 +328,7 @@
       "constructPath": "CdkrdIntegHarvest4/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Edge7038544F",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "Name",

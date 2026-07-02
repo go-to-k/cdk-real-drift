@@ -1,0 +1,134 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Delivery",
+    "resourceType": "AWS::Logs::Delivery",
+    "physicalId": "QoiN3vrTYs9CIX3u",
+    "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Delivery",
+    "declared": {
+      "DeliveryDestinationArn": "arn:aws:logs:us-east-1:111111111111:delivery-destination:cdkrd-hunt-cf-dest",
+      "DeliverySourceName": "cdkrd-hunt-cf-access"
+    }
+  },
+  "liveRaw": {
+    "DeliveryId": "QoiN3vrTYs9CIX3u",
+    "S3EnableHiveCompatiblePath": false,
+    "DeliveryDestinationArn": "arn:aws:logs:us-east-1:111111111111:delivery-destination:cdkrd-hunt-cf-dest",
+    "DeliverySourceName": "cdkrd-hunt-cf-access",
+    "RecordFields": [
+      "date",
+      "time",
+      "x-edge-location",
+      "sc-bytes",
+      "c-ip",
+      "cs-method",
+      "cs(Host)",
+      "cs-uri-stem",
+      "sc-status",
+      "cs(Referer)",
+      "cs(User-Agent)",
+      "cs-uri-query",
+      "cs(Cookie)",
+      "x-edge-result-type",
+      "x-edge-request-id",
+      "x-host-header",
+      "cs-protocol",
+      "cs-bytes",
+      "time-taken",
+      "x-forwarded-for",
+      "ssl-protocol",
+      "ssl-cipher",
+      "x-edge-response-result-type",
+      "cs-protocol-version",
+      "fle-status",
+      "fle-encrypted-fields",
+      "c-port",
+      "time-to-first-byte",
+      "x-edge-detailed-result-type",
+      "sc-content-type",
+      "sc-content-len",
+      "sc-range-start",
+      "sc-range-end"
+    ],
+    "S3SuffixPath": "",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:delivery:QoiN3vrTYs9CIX3u",
+    "DeliveryDestinationType": "CWL",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCfKvsLogsDel/467ad090-75cf-11f1-85ee-0ef9777f977d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegCfKvsLogsDel",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Delivery",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DeliveryDestinationType", "DeliveryId"],
+    "writeOnly": [],
+    "createOnly": ["DeliveryDestinationArn", "DeliverySourceName"],
+    "readOnlyPaths": ["Arn", "DeliveryDestinationType", "DeliveryId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DeliveryDestinationArn", "DeliverySourceName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Delivery",
+      "resourceType": "AWS::Logs::Delivery",
+      "path": "RecordFields",
+      "actual": [
+        "date",
+        "time",
+        "x-edge-location",
+        "sc-bytes",
+        "c-ip",
+        "cs-method",
+        "cs(Host)",
+        "cs-uri-stem",
+        "sc-status",
+        "cs(Referer)",
+        "cs(User-Agent)",
+        "cs-uri-query",
+        "cs(Cookie)",
+        "x-edge-result-type",
+        "x-edge-request-id",
+        "x-host-header",
+        "cs-protocol",
+        "cs-bytes",
+        "time-taken",
+        "x-forwarded-for",
+        "ssl-protocol",
+        "ssl-cipher",
+        "x-edge-response-result-type",
+        "cs-protocol-version",
+        "fle-status",
+        "fle-encrypted-fields",
+        "c-port",
+        "time-to-first-byte",
+        "x-edge-detailed-result-type",
+        "sc-content-type",
+        "sc-content-len",
+        "sc-range-start",
+        "sc-range-end"
+      ],
+      "physicalId": "QoiN3vrTYs9CIX3u",
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Delivery"
+    }
+  ]
+}

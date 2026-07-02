@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DirBucketPolicy",
+    "resourceType": "AWS::S3Express::BucketPolicy",
+    "physicalId": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+    "constructPath": "CdkRealDriftIntegS3ExpressTables/DirBucketPolicy",
+    "declared": {
+      "Bucket": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "DenyInsecureTransport",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3express:*",
+            "Resource": "arn:aws:s3express:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov--use1-az4--x-s3",
+            "Condition": {
+              "Bool": {
+                "aws:SecureTransport": "false"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "Bucket": "cdkrd-hunt-lowcov--use1-az4--x-s3",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          },
+          "Action": "s3express:*",
+          "Resource": "arn:aws:s3express:us-east-1:111111111111:bucket/cdkrd-hunt-lowcov--use1-az4--x-s3",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Sid": "DenyInsecureTransport"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Bucket"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Bucket"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

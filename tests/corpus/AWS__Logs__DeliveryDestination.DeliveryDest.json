@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DeliveryDest",
+    "resourceType": "AWS::Logs::DeliveryDestination",
+    "physicalId": "cdkrd-hunt-cf-dest",
+    "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliveryDest",
+    "declared": {
+      "DestinationResourceArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegCfKvsLogsDel-AccessLogs8B620ECA-rs0hNgn9n0pi:*",
+      "Name": "cdkrd-hunt-cf-dest",
+      "OutputFormat": "json"
+    }
+  },
+  "liveRaw": {
+    "DestinationResourceArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkRealDriftIntegCfKvsLogsDel-AccessLogs8B620ECA-rs0hNgn9n0pi:*",
+    "OutputFormat": "json",
+    "DeliveryDestinationPolicy": {
+      "DeliveryDestinationName": "cdkrd-hunt-cf-dest",
+      "DeliveryDestinationPolicy": {}
+    },
+    "Arn": "arn:aws:logs:us-east-1:111111111111:delivery-destination:cdkrd-hunt-cf-dest",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCfKvsLogsDel/467ad090-75cf-11f1-85ee-0ef9777f977d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegCfKvsLogsDel",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "DeliveryDest",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "DeliveryDestinationType": "CWL",
+    "Name": "cdkrd-hunt-cf-dest"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["DeliveryDestinationType", "DestinationResourceArn", "Name", "OutputFormat"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DeliveryDestinationType",
+      "DestinationResourceArn",
+      "Name",
+      "OutputFormat"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "DeliveryDest",
+      "resourceType": "AWS::Logs::DeliveryDestination",
+      "path": "DeliveryDestinationPolicy",
+      "actual": {
+        "DeliveryDestinationName": "cdkrd-hunt-cf-dest",
+        "DeliveryDestinationPolicy": {}
+      },
+      "physicalId": "cdkrd-hunt-cf-dest",
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliveryDest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DeliveryDest",
+      "resourceType": "AWS::Logs::DeliveryDestination",
+      "path": "DeliveryDestinationType",
+      "actual": "CWL",
+      "physicalId": "cdkrd-hunt-cf-dest",
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliveryDest"
+    }
+  ]
+}

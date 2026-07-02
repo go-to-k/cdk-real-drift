@@ -142,7 +142,7 @@
       "constructPath": "CdkRealDriftIntegElbNlbNoise/Nlb"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "NlbBCDB97FE",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",

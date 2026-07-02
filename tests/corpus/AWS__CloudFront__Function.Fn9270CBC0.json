@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Fn9270CBC0",
+    "resourceType": "AWS::CloudFront::Function",
+    "physicalId": "arn:aws:cloudfront::111111111111:function/cdkrd-hunt-kvs-fn",
+    "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Fn",
+    "declared": {
+      "AutoPublish": true,
+      "FunctionCode": "function handler(event) { return event.request; }",
+      "FunctionConfig": {
+        "Comment": "cdkrd hunt fixture function with a KVS association",
+        "KeyValueStoreAssociations": [
+          {
+            "KeyValueStoreARN": "arn:aws:cloudfront::111111111111:key-value-store/3fbbe012-5594-4bd7-88fc-a6094b4928ad"
+          }
+        ],
+        "Runtime": "cloudfront-js-2.0"
+      },
+      "Name": "cdkrd-hunt-kvs-fn"
+    }
+  },
+  "liveRaw": {
+    "FunctionConfig": {
+      "Comment": "cdkrd hunt fixture function with a KVS association",
+      "Runtime": "cloudfront-js-2.0",
+      "KeyValueStoreAssociations": [
+        {
+          "KeyValueStoreARN": "arn:aws:cloudfront::111111111111:key-value-store/3fbbe012-5594-4bd7-88fc-a6094b4928ad"
+        }
+      ]
+    },
+    "FunctionARN": "arn:aws:cloudfront::111111111111:function/cdkrd-hunt-kvs-fn",
+    "FunctionMetadata": {
+      "FunctionARN": "arn:aws:cloudfront::111111111111:function/cdkrd-hunt-kvs-fn"
+    },
+    "FunctionCode": "function handler(event) { return event.request; }",
+    "Stage": "LIVE",
+    "Tags": [],
+    "Name": "cdkrd-hunt-kvs-fn"
+  },
+  "schema": {
+    "readOnly": ["FunctionARN", "Stage"],
+    "writeOnly": ["AutoPublish"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["FunctionARN", "FunctionMetadata.FunctionARN", "Stage"],
+    "writeOnlyPaths": ["AutoPublish"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Fn9270CBC0",
+      "resourceType": "AWS::CloudFront::Function",
+      "path": "AutoPublish",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:cloudfront::111111111111:function/cdkrd-hunt-kvs-fn",
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Fn"
+    }
+  ]
+}

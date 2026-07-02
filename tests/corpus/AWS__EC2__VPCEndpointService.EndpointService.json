@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EndpointService",
+    "resourceType": "AWS::EC2::VPCEndpointService",
+    "physicalId": "vpce-svc-0cc5642a6bca215f9",
+    "constructPath": "CdkRealDriftIntegIotVpces/EndpointService",
+    "declared": {
+      "AcceptanceRequired": true,
+      "NetworkLoadBalancerArns": [
+        "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRea-NlbBC-Rz5FCsQXIO7E/001bc53fc064a60c"
+      ],
+      "SupportedIpAddressTypes": ["ipv4"]
+    }
+  },
+  "liveRaw": {
+    "NetworkLoadBalancerArns": [
+      "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRea-NlbBC-Rz5FCsQXIO7E/001bc53fc064a60c"
+    ],
+    "AcceptanceRequired": true,
+    "SupportedIpAddressTypes": ["ipv4"],
+    "GatewayLoadBalancerArns": [],
+    "SupportedRegions": ["us-east-1"],
+    "Tags": [],
+    "ServiceId": "vpce-svc-0cc5642a6bca215f9"
+  },
+  "schema": {
+    "readOnly": ["ServiceId"],
+    "writeOnly": ["ContributorInsightsEnabled"],
+    "createOnly": [],
+    "readOnlyPaths": ["ServiceId"],
+    "writeOnlyPaths": ["ContributorInsightsEnabled"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SupportedIpAddressTypes", "SupportedRegions"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "EndpointService",
+      "resourceType": "AWS::EC2::VPCEndpointService",
+      "path": "SupportedRegions",
+      "actual": ["us-east-1"],
+      "physicalId": "vpce-svc-0cc5642a6bca215f9",
+      "constructPath": "CdkRealDriftIntegIotVpces/EndpointService"
+    }
+  ]
+}

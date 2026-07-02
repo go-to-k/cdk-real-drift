@@ -51,6 +51,7 @@ import {
   KNOWN_DEFAULTS,
   READGAP_COLLECTION_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
+  ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
   PARAMETER_NAME_SUBSET_PATHS,
   alignParameterNameSubset,
   RATE_EXPRESSION_PATHS,
@@ -308,19 +309,44 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 // CFn mints `<stackName>-<logicalId>-<random>` (the stack name is the FIRST segment of the
 // CDK construct path). DELIBERATELY strict — it must start with this stack's name AND end
 // with CFn's ~12+ char alphanumeric random suffix — so a user-chosen name is not folded away
-// (that would hide a real undeclared value, defeating the differentiator). Pure.
+// (that would hide a real undeclared value, defeating the differentiator). For SHORT-name
+// resource types (an ELBv2 load balancer / target group name is capped at 32 chars) CFn
+// TRUNCATES both segments — stack `CdkRealDriftIntegIotVpces` + logical id `NlbBC…` mints
+// `CdkRea-NlbBC-Rz5FCsQXIO7E` — so the full-prefix test misses and every auto-named
+// NLB/ALB/target group was first-run noise (observed live). The truncated branch stays
+// tightly gated: BOTH halves must be prefixes of this stack's name and this resource's own
+// logical id, with the stack half a STRICT prefix (truncation actually happened — the
+// untruncated form is the branch above) — a user-chosen name realistically never matches
+// all of that. Pure.
 const CFN_RANDOM_SUFFIX = /-[0-9A-Za-z]{12,}$/;
 function isCfnGeneratedName(
   value: unknown,
   constructPath: string | undefined,
-  physicalId: string | undefined
+  physicalId: string | undefined,
+  logicalId?: string
 ): boolean {
   // The bare physical-id echo (value === physicalId) is a STRUCTURAL drop handled separately
   // — never fold it into a `generated` finding here, or a resource whose physical id IS its
   // CFn-generated name gains a phantom finding.
   if (typeof value !== 'string' || !constructPath || value === physicalId) return false;
   const stackName = constructPath.split('/')[0];
-  return !!stackName && value.startsWith(`${stackName}-`) && CFN_RANDOM_SUFFIX.test(value);
+  if (!stackName || !CFN_RANDOM_SUFFIX.test(value)) return false;
+  if (value.startsWith(`${stackName}-`)) return true;
+  if (!logicalId) return false;
+  // Truncated short-name form: `<stackPrefix>-<logicalIdPrefix>-<random>`. Logical ids are
+  // alphanumeric (never '-'), so the LAST '-' in the de-suffixed base splits the two halves
+  // even when the stack name itself contains dashes.
+  const base = value.replace(CFN_RANDOM_SUFFIX, '');
+  const sep = base.lastIndexOf('-');
+  if (sep <= 0) return false;
+  const stackPart = base.slice(0, sep);
+  const logicalPart = base.slice(sep + 1);
+  return (
+    stackPart.length < stackName.length &&
+    stackName.startsWith(stackPart) &&
+    logicalPart.length > 0 &&
+    logicalId.startsWith(logicalPart)
+  );
 }
 
 // structuredClone rejects the UNRESOLVED Symbol a declared value may carry, so deep-clone
@@ -832,7 +858,17 @@ export function classifyResource(
       const declaredKeys = new Set(
         v.filter(isKeyValueEntry).map((e) => (e as { Key: string }).Key)
       );
-      const attrDefaults = ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {};
+      // A LoadBalancer's per-type defaults (NLB/GWLB cross_zone "false") override the
+      // shared table — the live `Type` is authoritative (readable, createOnly), with
+      // the omitted-Type default `application` as the fallback.
+      const lbType =
+        resourceType === 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+          ? String(live.Type ?? declared.Type ?? 'application')
+          : undefined;
+      const attrDefaults = {
+        ...(ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {}),
+        ...(lbType === undefined ? {} : (ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE[lbType] ?? {})),
+      };
       for (const lEl of liveBag) {
         if (!isKeyValueEntry(lEl)) continue;
         const key = (lEl as { Key: string }).Key;
@@ -1176,7 +1212,7 @@ export function classifyResource(
     // so an auto-named resource is not first-run noise. Tightly gated to avoid hiding a REAL
     // undeclared value (the differentiator): the value must start with THIS stack's name AND
     // end with CFn's random suffix — a user-chosen name realistically never matches both.
-    if (isCfnGeneratedName(v, resource.constructPath, physicalId)) {
+    if (isCfnGeneratedName(v, resource.constructPath, physicalId, logicalId)) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }
