@@ -27,7 +27,9 @@ import {
   isJsonStringStructEqual,
   JSON_STRING_PROPS,
   isPemEqual,
+  isAccessStringEqual,
   isSshPublicKeyEqual,
+  ACCESS_STRING_PATHS,
   SSH_PUBLIC_KEY_PATHS,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
@@ -1132,6 +1134,15 @@ export function classifyResource(
       if (
         SSH_PUBLIC_KEY_PATHS[resourceType]?.has(d.path) &&
         isSshPublicKeyEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type Redis/Valkey ACL access-string paths (ElastiCache/MemoryDB User
+      // AccessString via SDK_SUPPLEMENTS — #482): the service canonicalizes the
+      // string on write by inserting a `-@all` baseline term, so the same ACL modulo
+      // that term is not drift; a genuine grant/pattern change still differs.
+      if (
+        ACCESS_STRING_PATHS[resourceType]?.has(d.path) &&
+        isAccessStringEqual(d.stateValue, d.awsValue)
       )
         continue;
       // CloudFormation's GetTemplate returns non-ASCII string literals with every

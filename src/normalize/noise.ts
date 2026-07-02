@@ -1718,6 +1718,49 @@ export function isSshPublicKeyEqual(a: unknown, b: unknown): boolean {
   return ma !== undefined && ma === material(b);
 }
 
+// Per-type Redis/Valkey ACL access-string paths (ElastiCache / MemoryDB `User.
+// AccessString`, read via SDK_SUPPLEMENTS — #482). The service CANONICALIZES the
+// string on write: a declared `on ~app:* +@read` reads back `on ~app:* -@all +@read`
+// (a `-@all` reset baseline is inserted after the key/channel patterns). A raw string
+// compare would false-flag every user on every check, hiding the very drift the
+// supplement exists to catch behind an instant FP.
+export const ACCESS_STRING_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::ElastiCache::User': new Set(['AccessString']),
+  'AWS::MemoryDB::User': new Set(['AccessString']),
+};
+// True when two ACL strings are equal modulo the service-inserted `-@all` baseline
+// term. Redis ACL rules are ORDER-SENSITIVE (later terms override earlier ones), so
+// this deliberately does NOT sort or set-compare: the token sequences must match
+// exactly once surplus `-@all` tokens on either side are dropped down to the other
+// side's count. Dropping `-@all` is safe because it is the ACL's implicit starting
+// state (every user starts with no commands granted): re-stating it cannot widen
+// access, and a canonicalized live string always re-inserts it — so a genuine
+// out-of-band grant (an added `+@write`, a changed key pattern) still differs
+// token-for-token.
+export function isAccessStringEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const tokens = (s: string): string[] => s.trim().split(/\s+/);
+  const ta = tokens(a);
+  const tb = tokens(b);
+  const surplus = ta.filter((t) => t === '-@all').length - tb.filter((t) => t === '-@all').length;
+  const drop = (list: string[], n: number): string[] => {
+    if (n <= 0) return list;
+    const out: string[] = [];
+    let left = n;
+    for (const t of list) {
+      if (t === '-@all' && left > 0) {
+        left--;
+        continue;
+      }
+      out.push(t);
+    }
+    return out;
+  };
+  const na = drop(ta, surplus);
+  const nb = drop(tb, -surplus);
+  return na.length === nb.length && na.every((t, i) => t === nb[i]);
+}
+
 // Per-type property paths whose value is a set of HTTP HEADER NAMES, which AWS
 // stores/echoes LOWERCASED (header names are case-insensitive per RFC 9110). The
 // template keeps the author's casing (CDK CORS `AllowHeaders:

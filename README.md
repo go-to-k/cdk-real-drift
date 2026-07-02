@@ -512,6 +512,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   from the member cache cluster), `ecs:DescribeServices` (supplements an
   `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration` /
   `VolumeConfigurations`, read from the PRIMARY deployment),
+  `elasticache:DescribeUsers` + `memorydb:DescribeUsers` (supplement an
+  `AWS::ElastiCache::User` / `AWS::MemoryDB::User` with its writeOnly
+  `AccessString` — the Redis/Valkey ACL; an out-of-band permission grant is
+  otherwise invisible to the Cloud Control read),
   `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)

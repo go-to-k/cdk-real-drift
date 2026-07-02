@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEcUserGroup",
+    "resourceType": "AWS::ElastiCache::UserGroup",
+    "physicalId": "cdkrd-hunt-group",
+    "constructPath": "CdkRealDriftIntegCacheUsers/HuntEcUserGroup",
+    "declared": {
+      "Engine": "redis",
+      "UserGroupId": "cdkrd-hunt-group",
+      "UserIds": [
+        "cdkrd-hunt-reader",
+        "cdkrd-hunt-default"
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "active",
+    "UserGroupId": "cdkrd-hunt-group",
+    "Arn": "arn:aws:elasticache:us-east-1:111111111111:usergroup:cdkrd-hunt-group",
+    "Engine": "redis",
+    "UserIds": [
+      "cdkrd-hunt-reader",
+      "cdkrd-hunt-default"
+    ],
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "UserGroupId"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "UserGroupId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "UserIds"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

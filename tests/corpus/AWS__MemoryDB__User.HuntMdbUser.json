@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntMdbUser",
+    "resourceType": "AWS::MemoryDB::User",
+    "physicalId": "cdkrd-hunt-mdb-user",
+    "constructPath": "CdkRealDriftIntegCacheUsers/HuntMdbUser",
+    "declared": {
+      "AccessString": "on ~* &* +@read",
+      "AuthenticationMode": {
+        "Type": "iam"
+      },
+      "UserName": "cdkrd-hunt-mdb-user"
+    }
+  },
+  "liveRaw": {
+    "Status": "active",
+    "UserName": "cdkrd-hunt-mdb-user",
+    "Arn": "arn:aws:memorydb:us-east-1:111111111111:user/cdkrd-hunt-mdb-user",
+    "Tags": [],
+    "AccessString": "on ~* &* -@all +@read"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnly": [
+      "AuthenticationMode"
+    ],
+    "createOnly": [
+      "UserName"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnlyPaths": [
+      "AuthenticationMode"
+    ],
+    "createOnlyPaths": [
+      "UserName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntMdbUser",
+      "resourceType": "AWS::MemoryDB::User",
+      "path": "AuthenticationMode",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-hunt-mdb-user",
+      "constructPath": "CdkRealDriftIntegCacheUsers/HuntMdbUser"
+    }
+  ]
+}

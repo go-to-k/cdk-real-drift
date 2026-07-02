@@ -56,8 +56,13 @@ import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   DescribeCacheClustersCommand,
   DescribeReplicationGroupsCommand,
+  DescribeUsersCommand as DescribeCacheUsersCommand,
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
+import {
+  DescribeUsersCommand as DescribeMemoryDbUsersCommand,
+  MemoryDBClient,
+} from '@aws-sdk/client-memorydb';
 import {
   type AnomalyDetector,
   CloudWatchClient,
@@ -1717,8 +1722,38 @@ const supplementEcsService: SupplementReader = async ({ physicalId, declared, re
   return Object.keys(extra).length > 0 ? extra : undefined;
 };
 
+// AWS::ElastiCache::User / AWS::MemoryDB::User — `AccessString` (the Redis/Valkey ACL:
+// WHAT the user may do) is writeOnly in both registry schemas, so Cloud Control never
+// returns it and an out-of-band ACL grant (e.g. adding +@write in the console) was
+// silently invisible — a security-relevant FN (#482). Both plain DescribeUsers APIs
+// return the live AccessString, so project it (always present on an active user;
+// FP-safe: projected only when returned). NOTE the service CANONICALIZES the string on
+// write (declared `on ~app:* +@read` reads back `on ~app:* -@all +@read`), so the
+// declared compare goes through isAccessStringEqual (ACCESS_STRING_PATHS in noise.ts)
+// instead of raw string equality. AuthenticationMode stays a writeOnly readGap: its
+// read shape ({Type, PasswordCount}) differs from the CFn input ({Type, Passwords}).
+const supplementElastiCacheUser: SupplementReader = async ({ physicalId, declared, region }) => {
+  const userId = str(declared.UserId) ?? str(physicalId);
+  if (!userId) return undefined;
+  const c = new ElastiCacheClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeCacheUsersCommand({ UserId: userId }));
+  const access = str(r.Users?.[0]?.AccessString);
+  return access !== undefined ? { AccessString: access } : undefined;
+};
+
+const supplementMemoryDbUser: SupplementReader = async ({ physicalId, declared, region }) => {
+  const userName = str(declared.UserName) ?? str(physicalId);
+  if (!userName) return undefined;
+  const c = new MemoryDBClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeMemoryDbUsersCommand({ UserName: userName }));
+  const access = str(r.Users?.[0]?.AccessString);
+  return access !== undefined ? { AccessString: access } : undefined;
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,
+  'AWS::ElastiCache::User': supplementElastiCacheUser,
+  'AWS::MemoryDB::User': supplementMemoryDbUser,
 };
