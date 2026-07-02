@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "XrayGroup",
+    "resourceType": "AWS::XRay::Group",
+    "physicalId": "arn:aws:xray:us-east-1:111111111111:group/cdkrd-hunt-xray-group/DVNQJS5JPVPDLVRGFHHS7B5MMY3HK33CXLTF52NVKBFJTAGED3HQ",
+    "constructPath": "CdkRealDriftIntegXrayInsightRich/XrayGroup",
+    "declared": {
+      "FilterExpression": "service(\"cdkrd-hunt-svc\")",
+      "GroupName": "cdkrd-hunt-xray-group",
+      "InsightsConfiguration": {
+        "InsightsEnabled": true,
+        "NotificationsEnabled": false
+      }
+    }
+  },
+  "liveRaw": {
+    "GroupName": "cdkrd-hunt-xray-group",
+    "GroupARN": "arn:aws:xray:us-east-1:111111111111:group/cdkrd-hunt-xray-group/DVNQJS5JPVPDLVRGFHHS7B5MMY3HK33CXLTF52NVKBFJTAGED3HQ",
+    "InsightsConfiguration": {
+      "NotificationsEnabled": false,
+      "InsightsEnabled": true
+    },
+    "FilterExpression": "service(\"cdkrd-hunt-svc\")",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegXrayInsightRich/95bd10d0-75cc-11f1-a377-12dea6fced63",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegXrayInsightRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "XrayGroup",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["GroupARN"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["GroupARN"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

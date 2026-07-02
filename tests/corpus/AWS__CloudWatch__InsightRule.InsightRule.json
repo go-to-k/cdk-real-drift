@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "InsightRule",
+    "resourceType": "AWS::CloudWatch::InsightRule",
+    "physicalId": "arn:aws:cloudwatch:us-east-1:111111111111:insight-rule/cdkrd-hunt-insight-rule",
+    "constructPath": "CdkRealDriftIntegXrayInsightRich/InsightRule",
+    "declared": {
+      "RuleBody": "{\"Schema\":{\"Name\":\"CloudWatchLogRule\",\"Version\":1},\"LogGroupNames\":[\"/cdkrd/hunt/insightrule\"],\"LogFormat\":\"JSON\",\"Contribution\":{\"Keys\":[\"$.requestId\"],\"Filters\":[{\"Match\":\"$.status\",\"GreaterThan\":499}]},\"AggregateOn\":\"Count\"}",
+      "RuleName": "cdkrd-hunt-insight-rule",
+      "RuleState": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "RuleState": "ENABLED",
+    "Arn": "arn:aws:cloudwatch:us-east-1:111111111111:insight-rule/cdkrd-hunt-insight-rule",
+    "RuleBody": "{\"Schema\":{\"Name\":\"CloudWatchLogRule\",\"Version\":1},\"LogGroupNames\":[\"/cdkrd/hunt/insightrule\"],\"LogFormat\":\"JSON\",\"Contribution\":{\"Keys\":[\"$.requestId\"],\"Filters\":[{\"Match\":\"$.status\",\"GreaterThan\":499}]},\"AggregateOn\":\"Count\"}",
+    "ApplyOnTransformedLogs": false,
+    "RuleName": "cdkrd-hunt-insight-rule",
+    "Tags": [
+      {
+        "Value": "InsightRule",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegXrayInsightRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegXrayInsightRich/95bd10d0-75cc-11f1-a377-12dea6fced63",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["RuleName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleName"],
+    "defaults": {
+      "ApplyOnTransformedLogs": false
+    },
+    "defaultPaths": {
+      "ApplyOnTransformedLogs": false
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "InsightRule",
+      "resourceType": "AWS::CloudWatch::InsightRule",
+      "path": "ApplyOnTransformedLogs",
+      "actual": false,
+      "physicalId": "arn:aws:cloudwatch:us-east-1:111111111111:insight-rule/cdkrd-hunt-insight-rule",
+      "constructPath": "CdkRealDriftIntegXrayInsightRich/InsightRule"
+    }
+  ]
+}

@@ -27,6 +27,8 @@ import {
   isJsonStringStructEqual,
   JSON_STRING_PROPS,
   isPemEqual,
+  isSshPublicKeyEqual,
+  SSH_PUBLIC_KEY_PATHS,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
   isStringlyEqualDeep,
@@ -1010,6 +1012,15 @@ export function classifyResource(
       // round-trips with only surrounding-whitespace differences — AWS appends a
       // trailing newline after the END marker — is not drift.
       if (isPemEqual(d.stateValue, d.awsValue)) continue;
+      // Per-type OpenSSH public-key paths (EC2 KeyPair PublicKeyMaterial — EC2
+      // rewrites the comment field to the key pair name and appends a newline):
+      // the same key material (type + base64) is not drift; a genuine key change
+      // still differs.
+      if (
+        SSH_PUBLIC_KEY_PATHS[resourceType]?.has(d.path) &&
+        isSshPublicKeyEqual(d.stateValue, d.awsValue)
+      )
+        continue;
       // CloudFormation's GetTemplate returns non-ASCII string literals with every
       // non-ASCII character replaced by `?` (a documented API limitation). The DECLARED
       // side (fetched via GetTemplate) is therefore corrupted while the LIVE side is

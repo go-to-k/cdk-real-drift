@@ -1,0 +1,93 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntExperiment",
+    "resourceType": "AWS::FIS::ExperimentTemplate",
+    "physicalId": "EXT8bzEM7ED1LXHiQ",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntExperiment",
+    "declared": {
+      "Actions": {
+        "justWait": {
+          "ActionId": "aws:fis:wait",
+          "Parameters": {
+            "duration": "PT1M"
+          }
+        }
+      },
+      "Description": "cdkrd hunt wait-only experiment",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegMisc0CovRich-FisRoleF2C479C1-SMZIFRzxNLee",
+      "StopConditions": [
+        {
+          "Source": "none"
+        }
+      ],
+      "Tags": {
+        "Name": "cdkrd-hunt-experiment"
+      },
+      "Targets": {}
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt wait-only experiment",
+    "Actions": {
+      "justWait": {
+        "ActionId": "aws:fis:wait",
+        "Parameters": {
+          "duration": "PT1M"
+        },
+        "Targets": {},
+        "StartAfter": []
+      }
+    },
+    "ExperimentOptions": {
+      "EmptyTargetResolutionMode": "fail",
+      "AccountTargeting": "single-account"
+    },
+    "StopConditions": [
+      {
+        "Source": "none"
+      }
+    ],
+    "Targets": {},
+    "Id": "EXT8bzEM7ED1LXHiQ",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegMisc0CovRich-FisRoleF2C479C1-SMZIFRzxNLee",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegMisc0CovRich",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0CovRich/8c547740-75cc-11f1-830d-0affe48f6bc1",
+      "aws:cloudformation:logical-id": "HuntExperiment",
+      "Name": "cdkrd-hunt-experiment"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ExperimentOptions.AccountTargeting"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": ["Actions", "Targets"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntExperiment",
+      "resourceType": "AWS::FIS::ExperimentTemplate",
+      "path": "ExperimentOptions",
+      "actual": {
+        "EmptyTargetResolutionMode": "fail",
+        "AccountTargeting": "single-account"
+      },
+      "physicalId": "EXT8bzEM7ED1LXHiQ",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntExperiment"
+    }
+  ]
+}

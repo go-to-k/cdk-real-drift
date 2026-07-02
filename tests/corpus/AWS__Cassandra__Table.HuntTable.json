@@ -1,0 +1,164 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTable",
+    "resourceType": "AWS::Cassandra::Table",
+    "physicalId": "cdkrd_hunt_ks|hunt_table",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntTable",
+    "declared": {
+      "BillingMode": {
+        "Mode": "ON_DEMAND"
+      },
+      "ClusteringKeyColumns": [
+        {
+          "Column": {
+            "ColumnName": "sk",
+            "ColumnType": "int"
+          },
+          "OrderBy": "ASC"
+        }
+      ],
+      "DefaultTimeToLive": 0,
+      "KeyspaceName": "cdkrd_hunt_ks",
+      "PartitionKeyColumns": [
+        {
+          "ColumnName": "id",
+          "ColumnType": "text"
+        }
+      ],
+      "PointInTimeRecoveryEnabled": false,
+      "RegularColumns": [
+        {
+          "ColumnName": "payload",
+          "ColumnType": "text"
+        }
+      ],
+      "TableName": "hunt_table"
+    }
+  },
+  "liveRaw": {
+    "ClusteringKeyColumns": [
+      {
+        "OrderBy": "ASC",
+        "Column": {
+          "ColumnName": "sk",
+          "ColumnType": "int"
+        }
+      }
+    ],
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 12000,
+      "WriteUnitsPerSecond": 4000
+    },
+    "KeyspaceName": "cdkrd_hunt_ks",
+    "EncryptionSpecification": {
+      "EncryptionType": "AWS_OWNED_KMS_KEY"
+    },
+    "TableName": "hunt_table",
+    "PointInTimeRecoveryEnabled": false,
+    "CdcSpecification": {
+      "Status": "DISABLED"
+    },
+    "ClientSideTimestampsEnabled": false,
+    "PartitionKeyColumns": [
+      {
+        "ColumnName": "id",
+        "ColumnType": "text"
+      }
+    ],
+    "BillingMode": {
+      "Mode": "ON_DEMAND"
+    },
+    "DefaultTimeToLive": 0,
+    "RegularColumns": [
+      {
+        "ColumnName": "payload",
+        "ColumnType": "text"
+      }
+    ],
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["AutoScalingSpecifications", "ReplicaSpecifications"],
+    "createOnly": [
+      "ClientSideTimestampsEnabled",
+      "ClusteringKeyColumns",
+      "KeyspaceName",
+      "PartitionKeyColumns",
+      "TableName"
+    ],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["AutoScalingSpecifications", "ReplicaSpecifications"],
+    "createOnlyPaths": [
+      "ClientSideTimestampsEnabled",
+      "ClusteringKeyColumns",
+      "KeyspaceName",
+      "PartitionKeyColumns",
+      "TableName"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ClusteringKeyColumns.*.OrderBy": "ASC",
+      "BillingMode.Mode": "ON_DEMAND",
+      "EncryptionSpecification.EncryptionType": "AWS_OWNED_KMS_KEY",
+      "AutoScalingSpecifications.WriteCapacityAutoScaling.AutoScalingDisabled": false,
+      "AutoScalingSpecifications.WriteCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.DisableScaleIn": "false",
+      "AutoScalingSpecifications.WriteCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleInCooldown": 0,
+      "AutoScalingSpecifications.WriteCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleOutCooldown": 0,
+      "AutoScalingSpecifications.ReadCapacityAutoScaling.AutoScalingDisabled": false,
+      "AutoScalingSpecifications.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.DisableScaleIn": "false",
+      "AutoScalingSpecifications.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleInCooldown": 0,
+      "AutoScalingSpecifications.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleOutCooldown": 0,
+      "CdcSpecification.ViewType": "NEW_AND_OLD_IMAGES",
+      "ReplicaSpecifications.*.ReadCapacityAutoScaling.AutoScalingDisabled": false,
+      "ReplicaSpecifications.*.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.DisableScaleIn": "false",
+      "ReplicaSpecifications.*.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleInCooldown": 0,
+      "ReplicaSpecifications.*.ReadCapacityAutoScaling.ScalingPolicy.TargetTrackingScalingPolicyConfiguration.ScaleOutCooldown": 0
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTable",
+      "resourceType": "AWS::Cassandra::Table",
+      "path": "CdcSpecification",
+      "actual": {
+        "Status": "DISABLED"
+      },
+      "physicalId": "cdkrd_hunt_ks|hunt_table",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTable",
+      "resourceType": "AWS::Cassandra::Table",
+      "path": "EncryptionSpecification",
+      "actual": {
+        "EncryptionType": "AWS_OWNED_KMS_KEY"
+      },
+      "physicalId": "cdkrd_hunt_ks|hunt_table",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTable",
+      "resourceType": "AWS::Cassandra::Table",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000
+      },
+      "physicalId": "cdkrd_hunt_ks|hunt_table",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntTable"
+    }
+  ]
+}

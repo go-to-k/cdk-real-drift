@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntKeyspace",
+    "resourceType": "AWS::Cassandra::Keyspace",
+    "physicalId": "cdkrd_hunt_ks",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntKeyspace",
+    "declared": {
+      "KeyspaceName": "cdkrd_hunt_ks"
+    }
+  },
+  "liveRaw": {
+    "KeyspaceName": "cdkrd_hunt_ks",
+    "ReplicationSpecification": {
+      "ReplicationStrategy": "SINGLE_REGION"
+    },
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["KeyspaceName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KeyspaceName"],
+    "defaults": {},
+    "defaultPaths": {
+      "ReplicationSpecification": {
+        "properties": {
+          "ReplicationStrategy": {
+            "type": "string",
+            "const": "SINGLE_REGION"
+          }
+        }
+      }
+    },
+    "unorderedScalarPaths": ["ReplicationSpecification.RegionList"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntKeyspace",
+      "resourceType": "AWS::Cassandra::Keyspace",
+      "path": "ReplicationSpecification",
+      "actual": {
+        "ReplicationStrategy": "SINGLE_REGION"
+      },
+      "physicalId": "cdkrd_hunt_ks",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntKeyspace"
+    }
+  ]
+}

@@ -7,6 +7,9 @@ import {
   isAllAwsTags,
   isCfnTemplateNonAsciiMask,
   isPemEqual,
+  isSshPublicKeyEqual,
+  SSH_PUBLIC_KEY_PATHS,
+  CASE_INSENSITIVE_PATHS,
   isPhysicalIdSegment,
   isTrivialEmpty,
   isVersionPrefixMatch,
@@ -685,6 +688,84 @@ describe('noise suppressors', () => {
     expect(isPemEqual(1, 1)).toBe(false);
   });
 
+  it('isSshPublicKeyEqual: EC2 rewrites the comment to the key name + appends a newline — same material is not drift', () => {
+    // Observed live (misc-0cov-rich): an imported KeyPair reads PublicKeyMaterial
+    // back with the comment replaced by the KeyName and a trailing newline.
+    const declared =
+      'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJPRfhD3vb5rmS6P4rVU65OFl8aLIHppMwCNy0+r49tT cdkrd-hunt';
+    const live =
+      'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJPRfhD3vb5rmS6P4rVU65OFl8aLIHppMwCNy0+r49tT cdkrd-hunt-keypair\n';
+    expect(isSshPublicKeyEqual(declared, live)).toBe(true);
+    // comment entirely absent on one side still folds
+    expect(
+      isSshPublicKeyEqual('ssh-rsa AAAAB3Nza+/x== me@laptop', 'ssh-rsa AAAAB3Nza+/x==\n')
+    ).toBe(true);
+    // sk-/ecdsa key types parse too
+    expect(
+      isSshPublicKeyEqual(
+        'sk-ssh-ed25519@openssh.com AAAAGnNr me@laptop',
+        'sk-ssh-ed25519@openssh.com AAAAGnNr imported-key\n'
+      )
+    ).toBe(true);
+    // a genuinely different key blob still differs (fail-closed)
+    expect(isSshPublicKeyEqual(declared, declared.replace('IJPRfhD3', 'IDIFFRNT'))).toBe(false);
+    // a different key TYPE still differs
+    expect(isSshPublicKeyEqual('ssh-ed25519 AAAAC3 c', 'ssh-rsa AAAAC3 c')).toBe(false);
+    // both sides must parse as OpenSSH public keys — arbitrary strings never fold
+    expect(isSshPublicKeyEqual('hello world', 'hello world\n')).toBe(false);
+    expect(isSshPublicKeyEqual(declared, 'not-a-key')).toBe(false);
+    // non-strings never match
+    expect(isSshPublicKeyEqual(1, 1)).toBe(false);
+    // the KeyPair path is registered
+    expect(SSH_PUBLIC_KEY_PATHS['AWS::EC2::KeyPair']?.has('PublicKeyMaterial')).toBe(true);
+  });
+
+  it('CASE_INSENSITIVE_PATHS: EMR Serverless Application Type is folded case-insensitively', () => {
+    // Observed live (misc-0cov-rich): declared "SPARK" reads back "Spark".
+    expect(CASE_INSENSITIVE_PATHS['AWS::EMRServerless::Application']?.has('Type')).toBe(true);
+  });
+
+  it('KNOWN_DEFAULTS: misc-0cov-rich first-run service defaults are registered', () => {
+    // Observed live (misc-0cov-rich): constant service defaults a fresh resource
+    // reads back without declaring them.
+    expect(KNOWN_DEFAULTS['AWS::FIS::ExperimentTemplate']).toEqual({
+      ExperimentOptions: {
+        EmptyTargetResolutionMode: 'fail',
+        AccountTargeting: 'single-account',
+      },
+    });
+    expect(KNOWN_DEFAULTS['AWS::VerifiedPermissions::PolicyStore']).toEqual({
+      DeletionProtection: { Mode: 'DISABLED' },
+    });
+    expect(KNOWN_DEFAULTS['AWS::Cassandra::Keyspace']).toEqual({
+      ReplicationSpecification: { ReplicationStrategy: 'SINGLE_REGION' },
+    });
+    expect(KNOWN_DEFAULTS['AWS::Cassandra::Table']).toEqual({
+      WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
+      EncryptionSpecification: { EncryptionType: 'AWS_OWNED_KMS_KEY' },
+      CdcSpecification: { Status: 'DISABLED' },
+    });
+    expect(KNOWN_DEFAULTS['AWS::EMRServerless::Application']).toEqual({
+      Architecture: 'X86_64',
+      MonitoringConfiguration: {
+        ManagedPersistenceMonitoringConfiguration: { Enabled: true },
+      },
+    });
+    expect(KNOWN_DEFAULT_PATHS['AWS::EMRServerless::Application']).toEqual({
+      'MaximumCapacity.Disk': '400000 GB',
+    });
+    // amplify-codeconnections-rich first-run defaults
+    expect(KNOWN_DEFAULTS['AWS::Amplify::App']).toEqual({
+      JobConfig: { BuildComputeType: 'STANDARD_8GB' },
+      CacheConfig: { Type: 'AMPLIFY_MANAGED_NO_COOKIES' },
+    });
+    // the all-zeros "no host" sentinel ARN AWS echoes for cloud-provider connections
+    expect(KNOWN_DEFAULTS['AWS::CodeStarConnections::Connection']).toEqual({
+      HostArn:
+        'arn:aws:codestar-connections:us-west-2:000000000000:host/00000000-0000-0000-0000-000000000000',
+    });
+  });
+
   it('isCfnTemplateNonAsciiMask: GetTemplate `?`-masked non-ASCII declared value is not drift', () => {
     // GetTemplate returns the deployed template with every non-ASCII char as `?`
     // (one per codepoint). The declared side is corrupted; the live side is intact.
@@ -1060,6 +1141,15 @@ describe('isPhysicalIdSegment (R142 — value echoes a physical-id segment)', ()
     expect(isPhysicalIdSegment('api1', pid)).toBe(true);
     expect(isPhysicalIdSegment('GET', pid)).toBe(true);
     expect(isPhysicalIdSegment('bucket-x', 'arn:aws:s3:::bucket-x')).toBe(true); // ':'-split segment
+  });
+
+  it('the WHOLE physical id echoed verbatim matches (XRay SamplingRule.RuleARN)', () => {
+    // The live read echoes the rule's own ARN inside the declared SamplingRule
+    // object — a full-ARN value a ':'-split could never reassemble.
+    const arn = 'arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling';
+    expect(isPhysicalIdSegment(arn, arn)).toBe(true);
+    // a DIFFERENT rule's ARN still does not match
+    expect(isPhysicalIdSegment(arn.replace('hunt', 'other'), arn)).toBe(false);
   });
 
   it('a custom value that is NOT a segment does not match', () => {

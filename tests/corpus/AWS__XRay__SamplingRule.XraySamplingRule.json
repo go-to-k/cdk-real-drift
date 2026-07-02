@@ -1,0 +1,105 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "XraySamplingRule",
+    "resourceType": "AWS::XRay::SamplingRule",
+    "physicalId": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+    "constructPath": "CdkRealDriftIntegXrayInsightRich/XraySamplingRule",
+    "declared": {
+      "SamplingRule": {
+        "Attributes": {
+          "env": "hunt"
+        },
+        "FixedRate": 0.05,
+        "HTTPMethod": "GET",
+        "Host": "*",
+        "Priority": 9000,
+        "ReservoirSize": 1,
+        "ResourceARN": "*",
+        "RuleName": "cdkrd-hunt-sampling",
+        "ServiceName": "cdkrd-hunt-svc",
+        "ServiceType": "*",
+        "URLPath": "/api/*",
+        "Version": 1
+      }
+    }
+  },
+  "liveRaw": {
+    "RuleARN": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+    "SamplingRule": {
+      "Priority": 9000,
+      "ReservoirSize": 1,
+      "RuleARN": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+      "URLPath": "/api/*",
+      "Attributes": {
+        "env": "hunt"
+      },
+      "FixedRate": 0.05,
+      "Host": "*",
+      "ResourceARN": "*",
+      "HTTPMethod": "GET",
+      "ServiceName": "cdkrd-hunt-svc",
+      "Version": 1,
+      "ServiceType": "*",
+      "RuleName": "cdkrd-hunt-sampling"
+    },
+    "RuleName": "cdkrd-hunt-sampling",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegXrayInsightRich/95bd10d0-75cc-11f1-a377-12dea6fced63",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegXrayInsightRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "XraySamplingRule",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["RuleARN"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["RuleARN"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["SamplingRule.Version"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": [
+      "SamplingRule.Attributes",
+      "SamplingRuleRecord.SamplingRule.Attributes",
+      "SamplingRuleUpdate.Attributes"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "XraySamplingRule",
+      "resourceType": "AWS::XRay::SamplingRule",
+      "path": "RuleName",
+      "actual": "cdkrd-hunt-sampling",
+      "physicalId": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+      "constructPath": "CdkRealDriftIntegXrayInsightRich/XraySamplingRule"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "XraySamplingRule",
+      "resourceType": "AWS::XRay::SamplingRule",
+      "path": "SamplingRule.RuleARN",
+      "actual": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+      "nested": true,
+      "physicalId": "arn:aws:xray:us-east-1:111111111111:sampling-rule/cdkrd-hunt-sampling",
+      "constructPath": "CdkRealDriftIntegXrayInsightRich/XraySamplingRule"
+    }
+  ]
+}
