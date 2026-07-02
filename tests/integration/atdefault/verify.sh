@@ -10,7 +10,7 @@
 #      actually match what Cloud Control returns today. A shape mismatch would
 #      reclassify the value as real undeclared and surface it in the body — caught
 #      here as a failure;
-#   3. `--show-all` expands the fold and lists those same values under AT AWS DEFAULT;
+#   3. `--show-all` expands the fold and lists those same values under At AWS Default;
 #   4. the equality gate has teeth: mutate one at-default value AWAY from its
 #      default out of band and `check` MUST surface it as real drift (the fold
 #      never blinds cdkrd to an actual change).
@@ -55,10 +55,10 @@ for p in PublicAccessBlockConfiguration BucketEncryption OwnershipControls Traci
     && fail "$p is at its AWS default but was listed in the body (KNOWN_DEFAULTS shape drift?)"
 done
 
-# ---- 3: --show-all expands the fold and lists them under AT AWS DEFAULT ----
-echo "=== check --show-all: the folded values must appear under AT AWS DEFAULT ==="
+# ---- 3: --show-all expands the fold and lists them under At AWS Default ----
+echo "=== check --show-all: the folded values must appear under At AWS Default ==="
 $CLI check "$STACK" --region "$REGION" --show-all | tee /tmp/cdkrd-atdef-showall.out
-grep -q "AT AWS DEFAULT" /tmp/cdkrd-atdef-showall.out || fail "no AT AWS DEFAULT section under --show-all"
+grep -q "At AWS Default" /tmp/cdkrd-atdef-showall.out || fail "no At AWS Default section under --show-all"
 for p in PublicAccessBlockConfiguration BucketEncryption TracingConfig; do
   grep -q "$p" /tmp/cdkrd-atdef-showall.out || fail "$p missing from the --show-all inventory"
 done
