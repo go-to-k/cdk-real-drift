@@ -652,7 +652,10 @@ only when non-zero — unrecorded values are named as such, never folded into
   stays `Status: UPDATING` for minutes after an out-of-band change while it
   propagates to endpoint ENIs, so a revert in that window honestly failed and only a
   later retry succeeded), plus the cross-service concurrent-modification / operation-
-  in-progress / throttling class. A terminal ValidationException/AccessDenied returns
+  in-progress / throttling class and the stateful-DB "not in the available state" faults
+  (RDS/Aurora/DocDB/Neptune/ElastiCache/Redshift reject a modify while `modifying` —
+  `InvalidDBInstanceState` & friends — so a revert of a just-modified BackupRetention /
+  node type retries until it settles). A terminal ValidationException/AccessDenied returns
   on the first attempt (no wasted waiting). When retries are exhausted on a still-
   transient failure, the `FAILED:` line gains a targeted `↳ retry in a few minutes`
   hint instead of a bare provider error, and the drift correctly still shows as

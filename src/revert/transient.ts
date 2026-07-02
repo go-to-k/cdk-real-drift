@@ -52,6 +52,19 @@ const TRANSIENT_PATTERNS: readonly { pattern: RegExp; hint: string }[] = [
       /another (operation|update|change|request)[^.]*in progress|operation[^.]*(already )?in progress|update[^.]*in progress|modification[^.]*in progress|currently being (created|updated|modified|deleted|provisioned)|is not in a stable state|resource is in use|please try again|try again (later|in a few)/i,
     hint: RETRY_HINT,
   },
+  // Stateful resources (RDS / Aurora / DocDB / Neptune / ElastiCache / Redshift) reject
+  // a modify while the resource is mid-change with an "invalid state" fault whose message
+  // says it is "not in the available state". This is the SAME mid-update-retry-later class
+  // as RSLVR-00705 for the DB reverts cdkrd already supports (RDS/DocDB BackupRetention,
+  // DBInstanceClass, ElastiCache node type, …): an out-of-band `modify-*` leaves the
+  // resource `modifying`/`rebooting` for minutes, so an immediate revert fails and only a
+  // later retry succeeds. Matched by the service state-fault codes plus AWS's shared
+  // "not in the available state" / "not in available state" phrasing.
+  {
+    pattern:
+      /InvalidDBInstanceState|InvalidDBClusterState|InvalidClusterState|InvalidReplicationGroupState|InvalidCacheClusterState|InvalidGlobalClusterState|is not (currently )?in (the |an? )?available state/i,
+    hint: RETRY_HINT,
+  },
   // Throttling / rate limiting — retryable, but a distinct hint.
   {
     pattern:
