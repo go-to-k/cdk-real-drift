@@ -21,6 +21,36 @@ new CfnAnomalyDetector(stack, "Detector", {
   },
   configuration: {
     metricTimeZone: "Asia/Tokyo",
+    // Declared in the CFn Range pattern (zone-less UTC — the schema REJECTS a
+    // trailing Z at deploy). The reader must project the API's Date objects in the
+    // SAME pattern or every declared range false-flags on a clean stack.
+    excludedTimeRanges: [
+      { startTime: "2026-12-24T00:00:00", endTime: "2026-12-26T00:00:00" },
+    ],
+  },
+});
+
+// Metric-math detector with a query Label: DescribeAnomalyDetectors never echoes
+// the cosmetic Label back, so without the SDK_READER_GAP_PATHS strip a declared
+// label false-flags `desired="send rate" actual=undefined` on a clean stack.
+new CfnAnomalyDetector(stack, "MetricMath", {
+  metricMathAnomalyDetector: {
+    metricDataQueries: [
+      {
+        id: "m1",
+        metricStat: {
+          metric: {
+            namespace: "AWS/SQS",
+            metricName: "NumberOfMessagesSent",
+            dimensions: [{ name: "QueueName", value: "cdkrd-integ-anomaly-q" }],
+          },
+          period: 300,
+          stat: "Sum",
+        },
+        returnData: false,
+      },
+      { id: "e1", expression: "m1/300", label: "send rate", returnData: true },
+    ],
   },
 });
 

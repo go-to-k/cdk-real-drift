@@ -1010,6 +1010,70 @@ describe('SDK overrides', () => {
       ).toBeUndefined();
     });
 
+    it('ExcludedTimeRanges project in the CFn Range pattern (zone-less UTC — the schema rejects a trailing Z)', async () => {
+      cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({
+        AnomalyDetectors: [
+          {
+            ...liveSingle,
+            Configuration: {
+              MetricTimezone: 'UTC',
+              ExcludedTimeRanges: [
+                {
+                  StartTime: new Date('2026-12-24T00:00:00Z'),
+                  EndTime: new Date('2026-12-26T00:00:00Z'),
+                },
+              ],
+            },
+          },
+        ],
+      } as never);
+      const out = (await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Stat: 'Sum',
+            Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+          },
+        })
+      )) as Record<string, unknown>;
+      // a declared range MUST be `YYYY-MM-DDTHH:MM:SS` (deploy rejects `Z`), so the
+      // projection uses the same shape or every declared range would false-flag.
+      expect(out.Configuration).toEqual({
+        MetricTimeZone: 'UTC',
+        ExcludedTimeRanges: [{ StartTime: '2026-12-24T00:00:00', EndTime: '2026-12-26T00:00:00' }],
+      });
+    });
+
+    it('the own-account AccountId echo is projected ONLY when the template declares it', async () => {
+      const withAccount = {
+        ...liveSingle,
+        SingleMetricAnomalyDetector: {
+          ...liveSingle.SingleMetricAnomalyDetector,
+          AccountId: '123456789012',
+        },
+      };
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolves({ AnomalyDetectors: [withAccount] } as never);
+      const decl = {
+        Namespace: 'AWS/Lambda',
+        MetricName: 'Errors',
+        Stat: 'Sum',
+        Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+      };
+      // undeclared -> suppressed (first-run noise: the API echoes the own account)
+      const out = (await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({ SingleMetricAnomalyDetector: decl })
+      )) as { SingleMetricAnomalyDetector: Record<string, unknown> };
+      expect(out.SingleMetricAnomalyDetector).not.toHaveProperty('AccountId');
+      // declared (cross-account monitoring) -> compared like any prop
+      const out2 = (await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({ SingleMetricAnomalyDetector: { ...decl, AccountId: '123456789012' } })
+      )) as { SingleMetricAnomalyDetector: Record<string, unknown> };
+      expect(out2.SingleMetricAnomalyDetector.AccountId).toBe('123456789012');
+    });
+
     it('metric-math style: lists unfiltered and matches by query-id set', async () => {
       const mathDetector = {
         MetricMathAnomalyDetector: {
@@ -1031,9 +1095,14 @@ describe('SDK overrides', () => {
         })
       )) as Record<string, unknown>;
       expect(out.MetricMathAnomalyDetector).toEqual(mathDetector.MetricMathAnomalyDetector);
-      // no Namespace/MetricName filter for math detectors
+      // no Namespace/MetricName filter for math detectors — but the type MUST be
+      // requested explicitly: the API defaults to SINGLE_METRIC when omitted, so an
+      // unfiltered listing never returns math detectors (live-caught deleted-FP).
       const call = cloudwatch.commandCalls(DescribeAnomalyDetectorsCommand)[0]!;
-      expect(call.args[0].input).toEqual({ NextToken: undefined });
+      expect(call.args[0].input).toEqual({
+        AnomalyDetectorTypes: ['METRIC_MATH'],
+        NextToken: undefined,
+      });
     });
   });
 

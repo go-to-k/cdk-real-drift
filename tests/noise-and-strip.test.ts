@@ -28,6 +28,8 @@ import {
 import { canonicalizeForCompare } from '../src/normalize/pipeline.js';
 import {
   exemptOverrideReadable,
+  injectReaderGaps,
+  SDK_READER_GAP_PATHS,
   OVERRIDE_READABLE_WRITEONLY,
   parseSchema,
 } from '../src/schema/schema-strip.js';
@@ -892,6 +894,20 @@ describe('parseSchema', () => {
     expect(info.readOnlyPaths).toContain('Lifecycle.Rules.*.X');
     expect([...info.writeOnly]).toEqual(['AccessControl']);
     expect(info.defaults).toEqual({ Path: '/' });
+  });
+
+  it('injectReaderGaps appends SDK-reader-unreadable nested paths as writeOnly strips (AnomalyDetector Label)', () => {
+    // DescribeAnomalyDetectors never echoes a metric-math query's cosmetic Label, so a
+    // declared label would false-flag as declared drift against the override reader's
+    // live model — the gap path strips it from BOTH sides (readGap semantics).
+    const raw = parseSchema(JSON.stringify({ properties: { Namespace: { type: 'string' } } }));
+    const info = injectReaderGaps(raw, 'AWS::CloudWatch::AnomalyDetector');
+    expect(info.writeOnlyPaths).toContain('MetricMathAnomalyDetector.MetricDataQueries.*.Label');
+    // a type with no reader gaps is returned untouched
+    expect(injectReaderGaps(raw, 'AWS::S3::Bucket')).toBe(raw);
+    expect(SDK_READER_GAP_PATHS['AWS::CloudWatch::AnomalyDetector']).toEqual([
+      'MetricMathAnomalyDetector.MetricDataQueries.*.Label',
+    ]);
   });
 
   it('exemptOverrideReadable un-marks a writeOnly prop an SDK override can read (EC2 LaunchTemplate)', () => {
