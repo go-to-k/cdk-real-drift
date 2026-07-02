@@ -95,12 +95,40 @@ function canonicalizeStatement(s: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(s).sort()) {
     const v = s[k];
+    // A statement declared WITHOUT a Sid comes back from AWS (S3 BucketPolicy, SQS/SNS
+    // policies, ...) with an auto-assigned sequential numeric string Sid ("1", "2", …).
+    // The declared side has none → the statement's canonical JSON differs → false
+    // declared drift on the whole Statement array PLUS a false undeclared `Statement[N].Sid`.
+    // Drop a purely-numeric Sid on BOTH sides: it is never author-meaningful (a
+    // deliberate label is a non-numeric string, preserved and still compared), and two
+    // auto-assigned numeric Sids carry no drift signal. See policy-canonical tests.
+    if (k === 'Sid' && typeof v === 'string' && /^\d+$/.test(v)) continue;
     if (ARRAYISH_KEYS.has(k)) out[k] = toSortedArray(v);
     else if (k === 'Principal' || k === 'NotPrincipal') out[k] = canonicalizePrincipal(v);
     else if (k === 'Condition') out[k] = canonicalizeCondition(v);
     else out[k] = v;
   }
   return out;
+}
+
+// AWS's vended-log-delivery service (`delivery.logs.amazonaws.com`) APPENDS a statement
+// to a destination S3 bucket's policy when log delivery is enabled (CloudFront standard
+// logging v2, VPC flow logs, etc.) — Sid `AWSLogDeliveryWrite`/`AWSLogDeliveryAclCheck`.
+// It is AWS-managed and never in the template, so it fires a false declared drift on the
+// bucket policy's Statement array (an extra live-only statement). Recognized by the
+// `AWSLogDelivery` Sid prefix AND the delivery-logs service principal (both required, so a
+// user statement is never dropped), it is subtracted before compare — same philosophy as
+// stripping AWS-managed fields / aws:* tags. Symmetric: a user who declared the identical
+// statement still compares equal (both sides drop it).
+function isAwsManagedLogDeliveryStatement(s: unknown): boolean {
+  if (!isObj(s)) return false;
+  const sid = s.Sid;
+  if (typeof sid !== 'string' || !/^AWSLogDelivery/.test(sid)) return false;
+  const principal = s.Principal;
+  if (!isObj(principal)) return false;
+  const svc = principal.Service;
+  const services = Array.isArray(svc) ? svc : [svc];
+  return services.includes('delivery.logs.amazonaws.com');
 }
 function canonicalizePrincipal(v: unknown): unknown {
   if (isObj(v)) {
@@ -124,7 +152,8 @@ function normalizeAccountPrincipal(v: unknown): unknown {
 }
 
 export function canonicalizePolicy(doc: Record<string, unknown>): Record<string, unknown> {
-  const statements = Array.isArray(doc.Statement) ? doc.Statement : [doc.Statement];
+  const rawStatements = Array.isArray(doc.Statement) ? doc.Statement : [doc.Statement];
+  const statements = rawStatements.filter((s) => !isAwsManagedLogDeliveryStatement(s));
   // Preserve ALL top-level keys (only `Statement` is rewritten). A policy document
   // may carry a doc-level `Id` (IAM/S3 policy grammar) or other top-level fields; a
   // prior whitelist of just `Statement`/`Version` DROPPED them, so two policies that

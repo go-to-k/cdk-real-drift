@@ -143,7 +143,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Service",
       "resourceType": "AWS::ECS::Service",
       "path": "DeploymentController",
@@ -163,7 +163,7 @@
       "constructPath": "CdkRealDriftIntegEcsServiceLbRich/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Service",
       "resourceType": "AWS::ECS::Service",
       "path": "Role",

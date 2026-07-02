@@ -487,6 +487,17 @@ const alignTrailingDot = (live: string | undefined, declared: unknown): string |
   return declHasDot ? (live.endsWith('.') ? live : `${live}.`) : live.replace(/\.$/, '');
 };
 
+// Route53 stores/returns special characters in a record name as octal escapes
+// (`\ooo`): a wildcard `*.example.net` comes back as `\052.example.net.`, and space
+// → `\040`, etc. The declared/template name uses the literal character, so a
+// verbatim compare misreads the wildcard record as absent — throwing ResourceGoneError
+// → a FALSE `deleted` finding (and leaving the record's returned Name as false
+// declared drift). Unescape before matching AND in the returned model so both the
+// existence check and the value compare see the literal form. See
+// https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/DomainNameFormat.html
+const unescapeRoute53Name = (s: string): string =>
+  s.replace(/\\(\d{3})/g, (_m, oct: string) => String.fromCharCode(Number.parseInt(oct, 8)));
+
 // AWS::Route53::RecordSet — CC API GetResource throws UnsupportedActionException.
 // Read via Route53 ListResourceRecordSets (the CFn physical id is
 // `<HostedZoneId>_<Name>_<Type>`; declared values are preferred, id is the fallback).
@@ -505,7 +516,7 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
   // StartRecord cursor, which holds all variants of one name+type consecutively) and
   // disambiguate by SetIdentifier below.
   const c = new Route53Client({ region, ...READ_RETRY });
-  const canon = (s: string): string => s.replace(/\.$/, '').toLowerCase();
+  const canon = (s: string): string => unescapeRoute53Name(s).replace(/\.$/, '').toLowerCase();
   // Match the declared SetIdentifier too: a simple record declares none and AWS
   // returns none (undefined === undefined), while a weighted/latency variant matches
   // its specific identifier instead of whichever sibling happened to come first.
@@ -555,7 +566,10 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       `Route53 RecordSet ${name} ${type} absent from zone ${hostedZoneId}`
     );
   const model: Record<string, unknown> = {
-    Name: alignTrailingDot(rec.Name, declared.Name),
+    Name: alignTrailingDot(
+      rec.Name === undefined ? undefined : unescapeRoute53Name(rec.Name),
+      declared.Name
+    ),
     Type: rec.Type,
     HostedZoneId: hostedZoneId,
   };

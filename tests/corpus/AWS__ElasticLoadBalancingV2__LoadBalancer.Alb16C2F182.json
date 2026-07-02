@@ -333,22 +333,6 @@
       "actual": "off",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
       "constructPath": "CdkRealDriftIntegAlbRich/Alb"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Alb16C2F182",
-      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "path": "SubnetMappings",
-      "actual": [
-        {
-          "SubnetId": "subnet-0a6286029be181fd0"
-        },
-        {
-          "SubnetId": "subnet-0c6cfbd2761ec8536"
-        }
-      ],
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-alb-rich/ad889bbaa8149b3c",
-      "constructPath": "CdkRealDriftIntegAlbRich/Alb"
     }
   ]
 }

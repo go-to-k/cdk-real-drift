@@ -376,3 +376,41 @@ describe('CloudFront OAI principal reconciliation (rewriteOaiPrincipalsDeep)', (
     expect(rewriteOaiPrincipalsDeep(doc, map)).toEqual(doc);
   });
 });
+
+describe('policy canonicalization: AWS-injected Sid + vended-log-delivery statement', () => {
+  const stmt = (extra: Record<string, unknown> = {}) => ({
+    Effect: 'Allow',
+    Action: 's3:PutObject',
+    Principal: { Service: 'delivery.logs.amazonaws.com' },
+    Resource: 'arn:aws:s3:::bucket/*',
+    ...extra,
+  });
+
+  it('a statement declared without a Sid equals the same statement AWS returns with a numeric Sid', () => {
+    const declared = canonicalizePolicy({ Statement: [stmt()] });
+    const live = canonicalizePolicy({ Statement: [stmt({ Sid: '1' })] });
+    expect(deepEqual(declared, live)).toBe(true);
+    // a MEANINGFUL (non-numeric) Sid is preserved, so a real Sid change still differs
+    const labeled = canonicalizePolicy({ Statement: [stmt({ Sid: 'AllowLogDelivery' })] });
+    expect(deepEqual(declared, labeled)).toBe(false);
+  });
+
+  it("AWS's vended-log-delivery statement (AWSLogDelivery* + delivery.logs principal) is dropped", () => {
+    const withVended = canonicalizePolicy({
+      Statement: [
+        stmt({ Sid: '1' }),
+        stmt({
+          Sid: 'AWSLogDeliveryWrite1',
+          Resource: 'arn:aws:s3:::bucket/AWSLogs/1/CloudFront/*',
+        }),
+      ],
+    });
+    const declaredOnly = canonicalizePolicy({ Statement: [stmt()] });
+    expect(deepEqual(withVended, declaredOnly)).toBe(true);
+  });
+
+  it('does NOT drop a user statement that uses the delivery-logs principal WITHOUT an AWSLogDelivery Sid', () => {
+    const doc = canonicalizePolicy({ Statement: [stmt({ Sid: 'MyOwnRule' })] });
+    expect(Array.isArray(doc.Statement) ? doc.Statement.length : 0).toBe(1);
+  });
+});

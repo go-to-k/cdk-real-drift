@@ -596,6 +596,34 @@ describe('SDK overrides', () => {
       expect(await SDK_OVERRIDES['AWS::Route53::RecordSet'](ctx({}, 'opaque-id'))).toBeUndefined();
     });
 
+    it('matches a WILDCARD record: Route53 returns `\\052.` for a declared `*.` (no false deleted)', async () => {
+      // Route53 stores/returns a wildcard name in octal-escaped form. A verbatim compare
+      // against the declared literal `*` misread it as absent -> a FALSE `deleted`. The
+      // returned Name is also unescaped so it is not false declared drift either.
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          {
+            Name: '\\052.example.com.', // AWS's escaped form of `*.example.com.`
+            Type: 'A',
+            AliasTarget: {
+              DNSName: 'd123.cloudfront.net.',
+              HostedZoneId: 'Z2FDTNDATAQYW2',
+              EvaluateTargetHealth: false,
+            },
+          },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({
+          HostedZoneId: 'Z1',
+          Name: '*.example.com.',
+          Type: 'A',
+          AliasTarget: { DNSName: 'd123.cloudfront.net' },
+        })
+      );
+      expect(out).toMatchObject({ Name: '*.example.com.', Type: 'A', HostedZoneId: 'Z1' });
+    });
+
     it('follows IsTruncated to find a record paginated past the first page (no false deleted, WAVE23)', async () => {
       // A name+type with many SetIdentifier variants can land the declared one on page 2.
       // Reading only page 1 would throw ResourceGoneError -> a FALSE `deleted`.

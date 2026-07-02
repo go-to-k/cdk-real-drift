@@ -344,22 +344,6 @@
       "actual": "off",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
       "constructPath": "CdkrdIntegHarvest4/Edge"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Edge7038544F",
-      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "path": "SubnetMappings",
-      "actual": [
-        {
-          "SubnetId": "subnet-0e4bae13856face36"
-        },
-        {
-          "SubnetId": "subnet-0f3317e0d9ac5df28"
-        }
-      ],
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8",
-      "constructPath": "CdkrdIntegHarvest4/Edge"
     }
   ]
 }

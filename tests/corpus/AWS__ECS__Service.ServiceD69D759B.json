@@ -147,7 +147,7 @@
       "constructPath": "CdkdriftIntegHarvest10/Service/Service"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "ServiceD69D759B",
       "resourceType": "AWS::ECS::Service",
       "path": "Role",
