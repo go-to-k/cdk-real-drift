@@ -57,7 +57,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Sn",
       "resourceType": "AWS::VpcLattice::ServiceNetwork",
       "path": "SharingConfig",

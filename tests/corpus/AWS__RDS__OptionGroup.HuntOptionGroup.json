@@ -1,0 +1,213 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOptionGroup",
+    "resourceType": "AWS::RDS::OptionGroup",
+    "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+    "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup",
+    "declared": {
+      "EngineName": "mariadb",
+      "MajorEngineVersion": "10.11",
+      "OptionConfigurations": [
+        {
+          "OptionName": "MARIADB_AUDIT_PLUGIN",
+          "OptionSettings": [
+            {
+              "Name": "SERVER_AUDIT_EVENTS",
+              "Value": "CONNECT,QUERY"
+            },
+            {
+              "Name": "SERVER_AUDIT_QUERY_LOG_LIMIT",
+              "Value": "2048"
+            }
+          ]
+        }
+      ],
+      "OptionGroupDescription": "cdkrd hunt mariadb audit option group",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "cdkrd-hunt-og"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "OptionGroupDescription": "cdkrd hunt mariadb audit option group",
+    "OptionGroupName": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+    "OptionConfigurations": [
+      {
+        "VpcSecurityGroupMemberships": [],
+        "OptionSettings": [
+          {
+            "Value": "2048",
+            "Name": "SERVER_AUDIT_QUERY_LOG_LIMIT"
+          },
+          {
+            "Value": "CONNECT,QUERY",
+            "Name": "SERVER_AUDIT_EVENTS"
+          },
+          {
+            "Value": "ON",
+            "Name": "SERVER_AUDIT_LOGGING"
+          },
+          {
+            "Name": "SERVER_AUDIT_INCL_USERS"
+          },
+          {
+            "Value": "FORCE_PLUS_PERMANENT",
+            "Name": "SERVER_AUDIT"
+          },
+          {
+            "Name": "SERVER_AUDIT_FILE_ROTATIONS"
+          },
+          {
+            "Value": "/rdsdbdata/log/audit/",
+            "Name": "SERVER_AUDIT_FILE_PATH"
+          },
+          {
+            "Name": "SERVER_AUDIT_FILE_ROTATE_SIZE"
+          },
+          {
+            "Name": "SERVER_AUDIT_EXCL_USERS"
+          }
+        ],
+        "OptionName": "MARIADB_AUDIT_PLUGIN",
+        "DBSecurityGroupMemberships": []
+      }
+    ],
+    "MajorEngineVersion": "10.11",
+    "EngineName": "mariadb",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsOptEvsub",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntOptionGroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsOptEvsub/b6438a70-7610-11f1-bb37-0e4f3c578c99",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "cdkrd-hunt-og",
+        "Key": "Name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["EngineName", "MajorEngineVersion", "OptionGroupDescription", "OptionGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "EngineName",
+      "MajorEngineVersion",
+      "OptionGroupDescription",
+      "OptionGroupName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT]",
+      "actual": {
+        "Value": "FORCE_PLUS_PERMANENT",
+        "Name": "SERVER_AUDIT"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_EXCL_USERS]",
+      "actual": {
+        "Name": "SERVER_AUDIT_EXCL_USERS"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_PATH]",
+      "actual": {
+        "Value": "/rdsdbdata/log/audit/",
+        "Name": "SERVER_AUDIT_FILE_PATH"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATE_SIZE]",
+      "actual": {
+        "Name": "SERVER_AUDIT_FILE_ROTATE_SIZE"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATIONS]",
+      "actual": {
+        "Name": "SERVER_AUDIT_FILE_ROTATIONS"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_INCL_USERS]",
+      "actual": {
+        "Name": "SERVER_AUDIT_INCL_USERS"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntOptionGroup",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_LOGGING]",
+      "actual": {
+        "Value": "ON",
+        "Name": "SERVER_AUDIT_LOGGING"
+      },
+      "nested": true,
+      "physicalId": "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287",
+      "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
+    }
+  ]
+}

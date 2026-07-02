@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntLogsDestination",
+    "resourceType": "AWS::Logs::Destination",
+    "physicalId": "cdkrd-hunt-dest",
+    "constructPath": "CdkRealDriftIntegMisc0Cov3/HuntLogsDestination",
+    "declared": {
+      "DestinationName": "cdkrd-hunt-dest",
+      "DestinationPolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"111111111111\"},\"Action\":\"logs:PutSubscriptionFilter\",\"Resource\":\"arn:aws:logs:us-east-1:111111111111:destination:cdkrd-hunt-dest\"}]}",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegMisc0Cov3-HuntLogsDestRole8F433513-VQJJ75qz3aXi",
+      "TargetArn": "arn:aws:kinesis:us-east-1:111111111111:stream/cdkrd-hunt-dest-stream"
+    }
+  },
+  "liveRaw": {
+    "DestinationPolicy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"111111111111\"},\"Action\":\"logs:PutSubscriptionFilter\",\"Resource\":\"arn:aws:logs:us-east-1:111111111111:destination:cdkrd-hunt-dest\"}]}",
+    "DestinationName": "cdkrd-hunt-dest",
+    "TargetArn": "arn:aws:kinesis:us-east-1:111111111111:stream/cdkrd-hunt-dest-stream",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:destination:cdkrd-hunt-dest",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0Cov3/4b3d5bb0-7611-11f1-b51b-126405eab07b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "HuntLogsDestination",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegMisc0Cov3",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegMisc0Cov3-HuntLogsDestRole8F433513-VQJJ75qz3aXi"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["DestinationName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DestinationName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
