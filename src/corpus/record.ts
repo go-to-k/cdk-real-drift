@@ -65,6 +65,7 @@ export interface CorpusCase {
     defaults: Record<string, unknown>;
     defaultPaths: Record<string, unknown>;
     unorderedScalarPaths?: string[]; // optional for backward compat with pre-insertionOrder cases
+    unorderedObjectArrayPaths?: string[]; // optional for backward compat with pre-#459 cases
     freeFormMapPaths?: string[]; // optional for backward compat with pre-free-form-map cases
   };
   opts: {
@@ -139,6 +140,7 @@ export function buildCorpusCase(
       defaults: schema.defaults,
       defaultPaths: schema.defaultPaths,
       unorderedScalarPaths: [...(schema.unorderedScalarPaths ?? [])].sort(),
+      unorderedObjectArrayPaths: [...(schema.unorderedObjectArrayPaths ?? [])].sort(),
       freeFormMapPaths: [...(schema.freeFormMapPaths ?? [])].sort(),
     },
     opts: {
@@ -167,6 +169,7 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
     defaults: s.defaults,
     defaultPaths: s.defaultPaths ?? {},
     unorderedScalarPaths: s.unorderedScalarPaths ?? [],
+    unorderedObjectArrayPaths: s.unorderedObjectArrayPaths ?? [],
     freeFormMapPaths: s.freeFormMapPaths ?? [],
   };
 }

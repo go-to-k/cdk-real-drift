@@ -1145,6 +1145,101 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['RequiresCompatibilities']);
     });
 
+    // Schema-driven OBJECT-array fold (#459): the schema marks ArchiveRules
+    // insertionOrder:false and its items carry no identity field, so AWS echoing the
+    // set sorted by RuleName folds FROM THE SCHEMA — no UNORDERED_OBJECT_ARRAY_PROPS
+    // entry for this (fake) type. Mirrors the live AccessAnalyzer ArchiveRules FP.
+    it('unorderedObjectArrayPaths: a schema-unordered OBJECT array reorder is NOT drift (no per-type entry)', () => {
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedObjectArrayPaths: ['ArchiveRules'],
+      };
+      const rules = [
+        { RuleName: 'zeta', Filter: [{ Property: 'isPublic', Eq: ['false'] }] },
+        { RuleName: 'alpha', Filter: [{ Property: 'resourceType', Eq: ['AWS::S3::Bucket'] }] },
+      ];
+      const an = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Analyzer',
+        resourceType: 'AWS::Fake::Analyzer', // NOT in any manual table
+        physicalId: 'an-1',
+        declared,
+      });
+      // AWS echoes the set sorted by RuleName -> folds via the schema flag
+      expect(
+        classifyResource(
+          an({ ArchiveRules: rules }),
+          { ArchiveRules: [rules[1], rules[0]] },
+          schema
+        )
+      ).toEqual([]);
+      // a genuine element change still reports
+      expect(
+        tiers(
+          classifyResource(
+            an({ ArchiveRules: rules }),
+            {
+              ArchiveRules: [
+                {
+                  RuleName: 'alpha',
+                  Filter: [{ Property: 'resourceType', Eq: ['AWS::SQS::Queue'] }],
+                },
+                rules[0],
+              ],
+            },
+            schema
+          )
+        ).declared.length
+      ).toBeGreaterThan(0);
+      // WITHOUT the schema path (empty schema), the same reorder DOES report — proving
+      // the suppression is driven by the schema flag, not a manual table.
+      expect(
+        tiers(
+          classifyResource(
+            an({ ArchiveRules: rules }),
+            { ArchiveRules: [rules[1], rules[0]] },
+            emptySchema
+          )
+        ).declared.length
+      ).toBeGreaterThan(0);
+    });
+
+    // Schema-driven OBJECT-array fold, NESTED dotted path: the unordered set lives
+    // under a structured object (Config.Rules) — folded via the nestedSubPaths
+    // mechanics UNORDERED_NESTED_OBJECT_ARRAY_PATHS uses, but schema-driven.
+    it('unorderedObjectArrayPaths: a schema-unordered NESTED object array reorder is NOT drift', () => {
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedObjectArrayPaths: ['Config.Rules'],
+      };
+      const rules = [
+        { Pattern: 'zzz', Action: 'BLOCK' },
+        { Pattern: 'aaa', Action: 'ALLOW' },
+      ];
+      const res = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'R',
+        resourceType: 'AWS::Fake::RuleThing',
+        physicalId: 'r-1',
+        declared,
+      });
+      expect(
+        classifyResource(
+          res({ Config: { Rules: rules } }),
+          { Config: { Rules: [rules[1], rules[0]] } },
+          schema
+        )
+      ).toEqual([]);
+      // a genuine nested change still reports
+      expect(
+        tiers(
+          classifyResource(
+            res({ Config: { Rules: rules } }),
+            { Config: { Rules: [{ Pattern: 'aaa', Action: 'COUNT' }, rules[0]] } },
+            schema
+          )
+        ).declared.length
+      ).toBeGreaterThan(0);
+    });
+
     // Schema-driven fold (nested): Route53 marks HealthCheckConfig.Regions
     // insertionOrder:false; AWS sorts the region set alphabetically (declared
     // [us-west-2, us-east-1, eu-west-1] read back [eu-west-1, us-east-1, us-west-2]).
@@ -2182,10 +2277,24 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
   // SORTED by RuleName, not in template order (found by accessanalyzer-iot-rich:
   // declared [ArchiveNonPublic, ArchiveKnownPrincipal] read back alphabetical —
   // 4 false declared drifts on a 2-rule analyzer). RuleName is NOT an
-  // IDENTITY_FIELD and ArchiveRules is an OBJECT array, so the schema's
-  // insertionOrder:false (scalar-only fold) can't align it — only the per-type fold.
+  // IDENTITY_FIELD; since #459 the fold is SCHEMA-DRIVEN — the real Analyzer schema
+  // marks ArchiveRules insertionOrder:false with non-identity object items, so
+  // parseSchema collects it into unorderedObjectArrayPaths (mirrored here) and the
+  // per-type UNORDERED_OBJECT_ARRAY_PROPS entry was removed.
   describe('AccessAnalyzer Analyzer ArchiveRules (RuleName-keyed reordered set, found by accessanalyzer-iot-rich)', () => {
     const T = 'AWS::AccessAnalyzer::Analyzer';
+    const analyzerSchema: SchemaInfo = {
+      ...emptySchema,
+      unorderedObjectArrayPaths: ['ArchiveRules'],
+    };
+    const declaredTiers = (
+      rt: string,
+      declared: Record<string, unknown>,
+      live: Record<string, unknown>
+    ) =>
+      classifyResource(res(rt, declared), live, analyzerSchema)
+        .filter((f) => f.tier === 'declared')
+        .map((f) => f.path);
     const declared = {
       Type: 'ACCOUNT',
       ArchiveRules: [

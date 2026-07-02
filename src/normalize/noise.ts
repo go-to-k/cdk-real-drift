@@ -2020,19 +2020,12 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
 // canonical JSON before the positional diff — a genuine rule change still differs.
 export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
-  // An Access Analyzer's `ArchiveRules` is a SET of {RuleName, Filter} rules that AWS
-  // echoes SORTED by RuleName, not in template order (declared [ArchiveNonPublic,
-  // ArchiveKnownPrincipal] reads back [ArchiveKnownPrincipal, ArchiveNonPublic]), so a
-  // positional compare false-flags every shifted rule's RuleName AND whole Filter array
-  // as declared drift on a freshly recorded analyzer. `RuleName` is NOT one of
-  // canonicalizeTagListsDeep's IDENTITY_FIELDS (Key/Id/AttributeName/IndexName/Name),
-  // so that keyed canonicalizer can't align it — hence the per-type opt-in. The schema
-  // marks ArchiveRules insertionOrder:false, but the schema-driven unorderedScalarPaths
-  // fold is scalar-items-only, so this OBJECT array needs the manual entry. Sorting both
-  // sides by canonical JSON aligns equal rules; a genuine rule add/remove/filter change
-  // still differs. Observed live on a fresh accessanalyzer-iot-rich deploy (4 false
-  // declared drifts on a 2-rule analyzer).
-  'AWS::AccessAnalyzer::Analyzer': new Set(['ArchiveRules']),
+  // (AccessAnalyzer Analyzer `ArchiveRules` — the reorder FP that motivated #459 — is
+  // now folded by the schema-driven `SchemaInfo.unorderedObjectArrayPaths` (its schema
+  // marks the array insertionOrder:false and RuleName is not an identity field), so it
+  // needs no entry here. The entries below predate that fold or lack the schema flag —
+  // Cognito UserPoolResourceServer `Scopes` is insertionOrder-ABSENT, proving the flag
+  // is under-set and this manual table stays as the SUPPLEMENT, not replaced.)
   // Cognito UserPoolResourceServer `Scopes` is a SET of {ScopeName, ScopeDescription}
   // OAuth scopes that AWS echoes SORTED by ScopeName, not in template order (declared
   // [zeta.write, alpha.read, mike.admin] reads back [alpha.read, mike.admin, zeta.write]),
