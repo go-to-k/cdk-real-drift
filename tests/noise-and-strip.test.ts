@@ -408,6 +408,18 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('WarmPool + ECS CapacityProvider known defaults present (bug-hunt: ecs-capacityprovider-rich)', () => {
+    // Constant service defaults a fresh ECS-on-EC2 deploy reports as first-run
+    // undeclared inventory; equality-gated, so a value set away from the default
+    // still surfaces. Exercised by the AWS__AutoScaling__WarmPool and
+    // AWS__ECS__CapacityProvider corpus cases. Per-resource values (the WarmPool's
+    // MaxGroupPreparedCapacity, the provider's ASG ARN) are deliberately NOT folded.
+    expect(KNOWN_DEFAULTS['AWS::AutoScaling::WarmPool']).toEqual({ MinSize: 0 });
+    expect(KNOWN_DEFAULT_PATHS['AWS::ECS::CapacityProvider']).toEqual({
+      'AutoScalingGroupProvider.ManagedDraining': 'ENABLED',
+    });
+  });
+
   it('AppSync + Logs SubscriptionFilter known defaults present (bug-hunt: appsync-resolver-rich / logs-subscriptionfilter-rich)', () => {
     // Constant service defaults a fresh deploy reports as first-run undeclared
     // inventory; equality-gated, so a value set away from the default still surfaces.

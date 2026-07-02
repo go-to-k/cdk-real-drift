@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Link1234EF21",
+    "resourceType": "AWS::ApiGatewayV2::VpcLink",
+    "physicalId": "aiy2m2",
+    "constructPath": "CdkRealDriftIntegVpcLinkEndpointSvc/Link",
+    "declared": {
+      "Name": "cdkrd-hunt-vpclink",
+      "SecurityGroupIds": ["sg-09fc7234dffd50693", "sg-0b47c3521ea43939e"],
+      "SubnetIds": ["subnet-0e480d6adfbcab461", "subnet-02a3be4d32aed38c6"]
+    }
+  },
+  "liveRaw": {
+    "VpcLinkId": "aiy2m2",
+    "SubnetIds": ["subnet-0e480d6adfbcab461", "subnet-02a3be4d32aed38c6"],
+    "SecurityGroupIds": ["sg-09fc7234dffd50693", "sg-0b47c3521ea43939e"],
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegVpcLinkEndpointSvc",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcLinkEndpointSvc/4c41bce0-75d0-11f1-9173-12e6c1f74983",
+      "aws:cloudformation:logical-id": "Link1234EF21"
+    },
+    "Name": "cdkrd-hunt-vpclink"
+  },
+  "schema": {
+    "readOnly": ["VpcLinkId"],
+    "writeOnly": [],
+    "createOnly": ["SecurityGroupIds", "SubnetIds"],
+    "readOnlyPaths": ["VpcLinkId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["SecurityGroupIds", "SubnetIds"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds", "SubnetIds"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
