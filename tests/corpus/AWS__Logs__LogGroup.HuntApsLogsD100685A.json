@@ -1,0 +1,115 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntApsLogsD100685A",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+    "constructPath": "CdkRealDriftIntegApsRich/HuntApsLogs",
+    "declared": {
+      "LogGroupName": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+      "RetentionInDays": 1
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [],
+    "RetentionInDays": 1,
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "STANDARD",
+    "ResourcePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Condition": {
+            "StringEquals": {
+              "aws:SourceAccount": "111111111111"
+            },
+            "ArnLike": {
+              "aws:SourceArn": "arn:aws:logs:us-east-1:111111111111:*"
+            }
+          },
+          "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:us-east-1:111111111111:log-group:/aws/vendedlogs/prometheus/cdkrd-hunt:log-stream:*",
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "delivery.logs.amazonaws.com"
+          },
+          "Sid": "AWSLogDeliveryWrite1"
+        }
+      ]
+    },
+    "LogGroupName": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:/aws/vendedlogs/prometheus/cdkrd-hunt:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "HuntApsLogsD100685A",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegApsRich/893d79d0-75f9-11f1-9e6b-0affc6e75353",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegApsRich",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "DataProtectionPolicy": {}
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "defaultPaths": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntApsLogsD100685A",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "BearerTokenAuthenticationEnabled",
+      "actual": false,
+      "physicalId": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+      "constructPath": "CdkRealDriftIntegApsRich/HuntApsLogs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntApsLogsD100685A",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "LogGroupClass",
+      "actual": "STANDARD",
+      "physicalId": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+      "constructPath": "CdkRealDriftIntegApsRich/HuntApsLogs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntApsLogsD100685A",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "/aws/vendedlogs/prometheus/cdkrd-hunt",
+      "constructPath": "CdkRealDriftIntegApsRich/HuntApsLogs"
+    }
+  ]
+}

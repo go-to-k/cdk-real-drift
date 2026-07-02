@@ -374,6 +374,27 @@ function isSelfEchoTrivialEmpty(v: unknown, physicalId: string | undefined): boo
   return rest.length < entries.length && rest.every(([, val]) => isTrivialEmpty(val));
 }
 
+// A live-only policy DOCUMENT whose statements were ALL subtracted as AWS-managed
+// (canonicalizePolicy drops the delivery.logs `AWSLogDelivery*` statements a service
+// auto-attaches when vended logs are pointed at a log group — a CloudWatch Logs
+// Delivery, an APS Workspace LoggingConfiguration, VPC flow logs; issue #462 item 2,
+// APS instance per the #464 addendum). What survives is the bare policy-grammar
+// shell `{Version, Statement: []}` — Version is a non-empty constant string, so the
+// plain deep trivially-empty drop misses it and every vended-logs user saw one line
+// of first-run noise on the LOG GROUP. The shell carries no inventory value; drop it
+// as structural noise. Gated: `Statement` must be present and EMPTY (a doc with any
+// surviving statement — a real out-of-band policy, a foreign principal, a user grant
+// — is not a shell), and every other key must be the grammar boilerplate
+// (Version/Id strings). Pure.
+function isEmptyPolicyShell(v: unknown): boolean {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as Record<string, unknown>;
+  if (!Array.isArray(o.Statement) || o.Statement.length > 0) return false;
+  return Object.entries(o).every(
+    ([k, val]) => k === 'Statement' || ((k === 'Version' || k === 'Id') && typeof val === 'string')
+  );
+}
+
 // structuredClone rejects the UNRESOLVED Symbol a declared value may carry, so deep-clone
 // the declared model symbol-safe (symbols/primitives pass through by reference/value). Used
 // to clone the declared side before stripAsymmetricIdentityFields mutates it.
@@ -1357,7 +1378,8 @@ export function classifyResource(
     // and trivially-empty {}/[]. These carry no inventory value, so they are not folded.
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
-    if (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId)) continue;
+    if (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId) || isEmptyPolicyShell(v))
+      continue;
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
