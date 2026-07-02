@@ -290,6 +290,7 @@ checked.
     `applicableActions` / `cycleAction` / `setAllToAction` / `groupByAction` are pure +
     unit-tested.
   - **gather.ts** — shared read+classify pipeline (the 2-pass GetAtt resolution lives here).
+  - **progress.ts** — the gather-phase spinner shared by all four verbs (`gatherWithProgress` / `progressLabel`): the live read + diff runs silently for seconds, so a spinner shows it is working, not hung. TTY + text mode only — `--json` / non-TTY is an untouched pass-through.
   - **resolve-stacks.ts** — synth-discover the app, then turn args into `{stackName, region}[]` (all / exact / glob).
   - **glob-match.ts** — pure `*`/`?` matcher (`isGlob` / `globToRegExp` / `matchesGlob`).
   - **bulk-multiselect.ts** — the record/revert multiselect, built on `@clack/core`'s `MultiSelectPrompt` so it can bind bulk keys the high-level wrapper hides (space = toggle, → = all, ← = none, enter = confirm; mirrors cdk-local's target picker, R116). `bulkSelectValues` / `bulkSelectHint` are pure + unit-tested.

@@ -7,6 +7,7 @@ import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
+import { gatherWithProgress, progressLabel } from './progress.js';
 import { recordStack } from './stack-actions.js';
 
 export async function runRecord(args: string[]): Promise<number> {
@@ -34,7 +35,9 @@ export async function runRecord(args: string[]): Promise<number> {
   }
 
   let worst = 0;
-  for (const { stackName, region, template } of stacks) {
+  // gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
+  const showProgress = !a.json && isInteractive();
+  for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
       console.error(
         `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
@@ -46,7 +49,11 @@ export async function runRecord(args: string[]): Promise<number> {
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals.
-      const { desired, findings } = await gatherFindings(stackName, region, undefined, template);
+      const { desired, findings } = await gatherWithProgress(
+        showProgress,
+        progressLabel(idx, stacks.length, stackName, region),
+        () => gatherFindings(stackName, region, undefined, template)
+      );
       // ignore rules re-tag matching undeclared findings out of the record set, so an
       // externally-managed property is never recorded (and never re-detected).
       const result = await recordStack({
