@@ -39,6 +39,33 @@ describe('classifyTransient — transient (retry-later) error class', () => {
     }
   });
 
+  it('classifies stateful-DB mid-modify "not in available state" faults (RDS/ElastiCache/Redshift)', () => {
+    for (const msg of [
+      'InvalidDBInstanceState: The instance mydb is not in the available state.',
+      'InvalidDBClusterStateFault: Cluster is not in available state',
+      'InvalidClusterState: cluster is not in the available state', // Redshift
+      'InvalidReplicationGroupState: Replication group is not in available state', // ElastiCache
+      'InvalidCacheClusterState: not currently in the available state',
+      'The DB instance is not in the available state',
+    ]) {
+      const v = classifyTransient(msg);
+      expect(v.transient).toBe(true);
+      expect(v.hint).toBe(
+        'the resource is still applying a previous update — retry in a few minutes'
+      );
+    }
+  });
+
+  it('does NOT misclassify a terminal DB error as the mid-modify state fault', () => {
+    for (const msg of [
+      'DBInstanceNotFound: DBInstance mydb not found',
+      'InvalidParameterValue: Invalid backup retention period',
+      'InvalidParameterCombination: bad combo',
+    ]) {
+      expect(classifyTransient(msg).transient).toBe(false);
+    }
+  });
+
   it('classifies throttling with the throttle-specific hint', () => {
     for (const msg of [
       'ThrottlingException: Rate exceeded',
