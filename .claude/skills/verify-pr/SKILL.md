@@ -87,6 +87,18 @@ Run each check and report pass/fail:
      up after themselves) — they need credentials and a bootstrapped account.
    - If credentials are absent, say so explicitly and DO NOT set the
      `verify-pr` marker — let the human run them or decide.
+   - **Sweep the orphans the fixtures ALWAYS leave.** The `basic`/`revert`
+     fixtures' S3 `autoDeleteObjects` custom-resource Lambdas auto-create
+     `/aws/lambda/*CustomS3AutoDeleteObjects*` log groups that stack deletion
+     does NOT remove — every core-fixture run leaves ~4 of them (observed on
+     three consecutive runs). After the fixtures pass, run:
+
+     ```bash
+     AWS_REGION=us-east-1 bash tests/integration/sweep-orphans.sh --delete
+     AWS_REGION=us-east-1 bash tests/integration/sweep-orphans.sh   # must print SWEEP CLEAN
+     ```
+
+     Do not set the `verify-pr` marker while the re-run reports orphans.
 
 8. **Retrospective + rules update**
    - Walk back over the session that produced this change. For each surprise,
