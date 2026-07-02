@@ -35,6 +35,7 @@ import {
   tagPreservingOps,
   writeOnlyReincludeOps,
 } from '../revert/plan.js';
+import { errorText, retryTransient } from '../revert/transient.js';
 import { resolveSdkWriter } from '../revert/writers.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
@@ -587,21 +588,42 @@ export function formatPlan(
  *  fully reverted resource never prints twice and a partial failure is never shown as a
  *  plain success. Insertion order (first item per resource) is preserved. */
 export function summarizeRevertResults(
-  applied: readonly { logicalId: string; displayId: string; ok: boolean; error?: string }[]
-): { displayId: string; ok: boolean; error?: string }[] {
-  const byResource = new Map<string, { displayId: string; ok: boolean; errors: string[] }>();
+  applied: readonly {
+    logicalId: string;
+    displayId: string;
+    ok: boolean;
+    error?: string;
+    hint?: string;
+  }[]
+): { displayId: string; ok: boolean; error?: string; hint?: string }[] {
+  const byResource = new Map<
+    string,
+    { displayId: string; ok: boolean; errors: string[]; hints: string[] }
+  >();
   for (const a of applied) {
-    const g = byResource.get(a.logicalId) ?? { displayId: a.displayId, ok: true, errors: [] };
+    const g = byResource.get(a.logicalId) ?? {
+      displayId: a.displayId,
+      ok: true,
+      errors: [],
+      hints: [],
+    };
     if (!a.ok) {
       g.ok = false;
       if (a.error) g.errors.push(a.error);
+      // Collapse duplicate hints (a cc + sdk split can both fail transiently) to one line.
+      if (a.hint && !g.hints.includes(a.hint)) g.hints.push(a.hint);
     }
     byResource.set(a.logicalId, g);
   }
   return [...byResource.values()].map((g) =>
     g.ok
       ? { displayId: g.displayId, ok: true }
-      : { displayId: g.displayId, ok: false, error: g.errors.join('; ') }
+      : {
+          displayId: g.displayId,
+          ok: false,
+          error: g.errors.join('; '),
+          ...(g.hints.length > 0 && { hint: g.hints.join('; ') }),
+        }
   );
 }
 
@@ -798,40 +820,51 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // correctly vanishes from `post`, but a FAILED one would vanish too (reading as CLEAN).
   // Track the failed ones and re-add their findings so they still count as drift.
   const failedDeleteIds = new Set<string>();
-  const applied: { logicalId: string; displayId: string; ok: boolean; error?: string }[] = [];
+  const applied: {
+    logicalId: string;
+    displayId: string;
+    ok: boolean;
+    error?: string;
+    hint?: string;
+  }[] = [];
   for (const item of plan.items) {
-    let r: { ok: boolean; error?: string };
+    let r: { ok: boolean; error?: string; hint?: string };
     if (item.kind === 'delete') {
       // physicalId IS the CC identifier (the composite the finding carried); delete it.
       r = await applyRevertDelete(cc, item, item.physicalId);
       if (!r.ok) failedDeleteIds.add(item.logicalId);
     } else if (item.kind === 'sdk') {
       const res = byLogical.get(item.logicalId);
-      try {
-        const writer = resolveSdkWriter(item.resourceType, item.ops);
-        if (!writer) throw new Error(`no SDK writer for ${item.resourceType}`);
-        // A Cloud-Control-routed nested writer addresses the resource by the composite CC
-        // identifier (e.g. AWS::ApiGateway::Stage `RestApiId|StageName`) the READ path
-        // resolves — pass it so its GetResource/UpdateResource doesn't ValidationException
-        // on the bare physical id. Falls back to the physical id when no adapter applies.
-        const identifier =
-          CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(item.physicalId, res?.declared ?? {}) ??
-          item.physicalId;
-        await writer(
-          {
-            physicalId: item.physicalId,
-            identifier,
-            declared: res?.declared ?? {},
-            region,
-            accountId: gathered.desired.accountId,
-            resourceType: item.resourceType,
-          },
-          item.ops
-        );
-        r = { ok: true };
-      } catch (e) {
-        r = { ok: false, error: (e as Error).message };
-      }
+      // Same transient-retry wrapper as the Cloud Control path (issue #467): an SDK
+      // writer can also throw a "resource is currently updating" error that settles on
+      // a retry, and exhausted retries carry the targeted hint.
+      r = await retryTransient(async () => {
+        try {
+          const writer = resolveSdkWriter(item.resourceType, item.ops);
+          if (!writer) throw new Error(`no SDK writer for ${item.resourceType}`);
+          // A Cloud-Control-routed nested writer addresses the resource by the composite CC
+          // identifier (e.g. AWS::ApiGateway::Stage `RestApiId|StageName`) the READ path
+          // resolves — pass it so its GetResource/UpdateResource doesn't ValidationException
+          // on the bare physical id. Falls back to the physical id when no adapter applies.
+          const identifier =
+            CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(item.physicalId, res?.declared ?? {}) ??
+            item.physicalId;
+          await writer(
+            {
+              physicalId: item.physicalId,
+              identifier,
+              declared: res?.declared ?? {},
+              region,
+              accountId: gathered.desired.accountId,
+              resourceType: item.resourceType,
+            },
+            item.ops
+          );
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, error: errorText(e) };
+        }
+      });
     } else {
       const res = byLogical.get(item.logicalId);
       const identifier =
@@ -857,17 +890,21 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       displayId: item.displayId,
       ok: r.ok,
       ...(r.error !== undefined && { error: r.error }),
+      ...(r.hint !== undefined && { hint: r.hint }),
     });
     if (!r.ok) worst = Math.max(worst, 2);
   }
   // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
   // produced two results) so a fully reverted resource never prints `reverted:` twice.
   for (const s of summarizeRevertResults(applied)) {
-    console.log(
-      s.ok
-        ? style.ok(`  reverted: ${s.displayId}`)
-        : style.fail(`  FAILED: ${s.displayId} — ${s.error}`)
-    );
+    if (s.ok) {
+      console.log(style.ok(`  reverted: ${s.displayId}`));
+    } else {
+      console.log(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
+      // Transient "resource is mid-update" failure that survived bounded retries:
+      // add a targeted hint so the user knows this is retry-later, not a real failure.
+      if (s.hint) console.log(style.infoTier(`    ↳ ${s.hint}`));
+    }
   }
 
   // Re-check convergence — scoped to the resources the revert just touched (R44).

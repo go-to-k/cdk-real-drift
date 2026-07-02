@@ -1,11 +1,18 @@
-import { CloudControlClient, DeleteResourceCommand } from '@aws-sdk/client-cloudcontrol';
+import {
+  CloudControlClient,
+  DeleteResourceCommand,
+  UpdateResourceCommand,
+} from '@aws-sdk/client-cloudcontrol';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
-import { applyRevertDelete, isAlreadyGone } from '../src/revert/apply.js';
+import { applyRevertDelete, applyRevertItem, isAlreadyGone } from '../src/revert/apply.js';
 import type { RevertItem } from '../src/revert/plan.js';
 
 const cc = mockClient(CloudControlClient);
 beforeEach(() => cc.reset());
+
+// No real backoff waiting in tests.
+const noNap = { sleep: () => Promise.resolve() };
 
 const deleteItem = (): RevertItem => ({
   logicalId: 'Child',
@@ -15,6 +22,19 @@ const deleteItem = (): RevertItem => ({
   kind: 'delete',
   ops: [],
 });
+
+const updateItem = (): RevertItem => ({
+  logicalId: 'RR',
+  displayId: 'Stack/ResolverRule',
+  resourceType: 'AWS::Route53Resolver::ResolverRule',
+  physicalId: 'rslvr-rr-abc',
+  kind: 'cc',
+  ops: [
+    { op: 'add', path: '/DomainName', value: 'example.internal.', human: 'DomainName -> default' },
+  ],
+});
+
+const RSLVR_UPDATING = "[RSLVR-00705] Cannot update Resolver Rule because it's currently updating.";
 
 describe('isAlreadyGone', () => {
   it('true for not-found error names', () => {
@@ -50,5 +70,105 @@ describe('applyRevertDelete — already-gone tolerance', () => {
     const r = await applyRevertDelete(cc as unknown as CloudControlClient, deleteItem());
     expect(r.ok).toBe(false);
     expect(r.error).toContain('not authorized');
+  });
+});
+
+describe('applyRevertItem — transient retry then hint (issue #467)', () => {
+  it('retries an RSLVR-00705 mid-update FAILED event and succeeds on a later attempt', async () => {
+    cc.on(UpdateResourceCommand)
+      .resolvesOnce({
+        ProgressEvent: {
+          RequestToken: 't1',
+          OperationStatus: 'FAILED',
+          StatusMessage: RSLVR_UPDATING,
+        },
+      })
+      .resolves({ ProgressEvent: { RequestToken: 't2', OperationStatus: 'SUCCESS' } });
+    const r = await applyRevertItem(
+      cc as unknown as CloudControlClient,
+      updateItem(),
+      undefined,
+      noNap
+    );
+    expect(r.ok).toBe(true);
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(2);
+  });
+
+  it('exhausts retries on a persistent mid-update failure and returns a transient hint', async () => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: {
+        RequestToken: 't1',
+        OperationStatus: 'FAILED',
+        StatusMessage: RSLVR_UPDATING,
+      },
+    });
+    const r = await applyRevertItem(cc as unknown as CloudControlClient, updateItem(), undefined, {
+      maxAttempts: 3,
+      sleep: () => Promise.resolve(),
+    });
+    expect(r.ok).toBe(false);
+    expect(r.transient).toBe(true);
+    expect(r.hint).toContain('async propagation');
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(3);
+  });
+
+  it('does NOT retry a terminal ValidationException (fails on first attempt)', async () => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: {
+        RequestToken: 't1',
+        OperationStatus: 'FAILED',
+        StatusMessage: 'Invalid property DomainName',
+        ErrorCode: 'InvalidRequest',
+      },
+    });
+    const r = await applyRevertItem(
+      cc as unknown as CloudControlClient,
+      updateItem(),
+      undefined,
+      noNap
+    );
+    expect(r.ok).toBe(false);
+    expect(r.transient).toBeUndefined();
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(1);
+  });
+
+  it('surfaces the Cloud Control ErrorCode alongside the message for classification', async () => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: {
+        RequestToken: 't1',
+        OperationStatus: 'FAILED',
+        StatusMessage: 'Rate exceeded',
+        ErrorCode: 'Throttling',
+      },
+    });
+    const r = await applyRevertItem(cc as unknown as CloudControlClient, updateItem(), undefined, {
+      maxAttempts: 2,
+      sleep: () => Promise.resolve(),
+    });
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain('Throttling');
+    expect(r.transient).toBe(true);
+  });
+});
+
+describe('applyRevertDelete — transient retry', () => {
+  it('retries a mid-update DeleteResource failure and succeeds', async () => {
+    cc.on(DeleteResourceCommand)
+      .resolvesOnce({
+        ProgressEvent: {
+          RequestToken: 't1',
+          OperationStatus: 'FAILED',
+          StatusMessage: 'ConcurrentModificationException: another operation is in progress',
+        },
+      })
+      .resolves({ ProgressEvent: { RequestToken: 't2', OperationStatus: 'SUCCESS' } });
+    const r = await applyRevertDelete(
+      cc as unknown as CloudControlClient,
+      deleteItem(),
+      undefined,
+      noNap
+    );
+    expect(r.ok).toBe(true);
+    expect(cc.commandCalls(DeleteResourceCommand).length).toBe(2);
   });
 });

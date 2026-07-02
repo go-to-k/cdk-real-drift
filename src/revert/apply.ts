@@ -9,10 +9,15 @@ import {
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { type RevertItem, toPatchDocument } from './plan.js';
+import { errorText, type RetryOptions, retryTransient } from './transient.js';
 
 export interface ApplyResult {
   ok: boolean;
   error?: string;
+  // Set when the FINAL failure (after bounded retries) is a transient "resource is
+  // mid-update" class — carries a targeted hint for the report layer (issue #467).
+  transient?: boolean;
+  hint?: string;
 }
 
 const POLL_INTERVAL_MS = 2000;
@@ -53,7 +58,11 @@ async function pollToCompletion(
     const status = event?.OperationStatus;
     if (status === 'SUCCESS') return { ok: true };
     if (status === 'FAILED' || status === 'CANCEL_COMPLETE') {
-      return { ok: false, error: event?.StatusMessage ?? status };
+      // StatusMessage carries the service code (e.g. RSLVR-00705) for transient
+      // classification; ErrorCode is a coarser CC enum, appended when present.
+      const msg = event?.StatusMessage ?? status;
+      const code = event?.ErrorCode;
+      return { ok: false, error: code && !msg.includes(code) ? `${code}: ${msg}` : msg };
     }
     await sleep(POLL_INTERVAL_MS);
     const polled = await cc.send(new GetResourceRequestStatusCommand({ RequestToken: token }));
@@ -69,20 +78,26 @@ export async function applyRevertItem(
   // composite-identifier types (e.g. AWS::ECS::Service = `${ServiceArn}|${Cluster}`)
   // need the same adapted identifier the READ path uses — the caller resolves it via
   // CC_IDENTIFIER_ADAPTERS and passes it here, else UpdateResource ValidationExceptions.
-  identifier: string = item.physicalId
+  identifier: string = item.physicalId,
+  // Bounded-backoff retry knobs (issue #467) — tests inject a no-op sleep.
+  retry: RetryOptions = {}
 ): Promise<ApplyResult> {
-  try {
-    const res = await cc.send(
-      new UpdateResourceCommand({
-        TypeName: item.resourceType,
-        Identifier: identifier,
-        PatchDocument: toPatchDocument(item),
-      })
-    );
-    return await pollToCompletion(cc, res.ProgressEvent);
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
+  // Retry ONLY transient "resource is mid-update" failures (RSLVR-00705 & friends);
+  // a terminal ValidationException returns on the first attempt.
+  return retryTransient(async () => {
+    try {
+      const res = await cc.send(
+        new UpdateResourceCommand({
+          TypeName: item.resourceType,
+          Identifier: identifier,
+          PatchDocument: toPatchDocument(item),
+        })
+      );
+      return await pollToCompletion(cc, res.ProgressEvent);
+    } catch (e) {
+      return { ok: false, error: errorText(e) };
+    }
+  }, retry);
 }
 
 // DELETE an `added` (out-of-band) resource via Cloud Control DeleteResource. The
@@ -91,19 +106,24 @@ export async function applyRevertItem(
 export async function applyRevertDelete(
   cc: CloudControlClient,
   item: RevertItem,
-  identifier: string = item.physicalId
+  identifier: string = item.physicalId,
+  retry: RetryOptions = {}
 ): Promise<ApplyResult> {
-  try {
-    const res = await cc.send(
-      new DeleteResourceCommand({ TypeName: item.resourceType, Identifier: identifier })
-    );
-    const result = await pollToCompletion(cc, res.ProgressEvent);
-    // already-gone surfaced as a FAILED event (vs a thrown error, handled below)
-    if (!result.ok && isAlreadyGone({ message: result.error })) return { ok: true };
-    return result;
-  } catch (e) {
-    const err = e as { name?: string; message?: string };
-    if (isAlreadyGone(err)) return { ok: true };
-    return { ok: false, error: err.message ?? String(e) };
-  }
+  // Same transient-retry wrapper as the update path: a DeleteResource can also hit a
+  // "resource is currently updating / in use" window and settle on a retry.
+  return retryTransient(async () => {
+    try {
+      const res = await cc.send(
+        new DeleteResourceCommand({ TypeName: item.resourceType, Identifier: identifier })
+      );
+      const result = await pollToCompletion(cc, res.ProgressEvent);
+      // already-gone surfaced as a FAILED event (vs a thrown error, handled below)
+      if (!result.ok && isAlreadyGone({ message: result.error })) return { ok: true };
+      return result;
+    } catch (e) {
+      const err = e as { name?: string; message?: string };
+      if (isAlreadyGone(err)) return { ok: true };
+      return { ok: false, error: errorText(e) };
+    }
+  }, retry);
 }

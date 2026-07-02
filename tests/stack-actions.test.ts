@@ -357,6 +357,44 @@ describe('summarizeRevertResults (one outcome per resource even when it split in
       { displayId: 'Stack/A', ok: false, error: 'e1; e2' },
     ]);
   });
+
+  it('carries a transient hint through on a failed entry (issue #467)', () => {
+    const out = summarizeRevertResults([
+      {
+        logicalId: 'RR',
+        displayId: 'Stack/ResolverRule',
+        ok: false,
+        error: '[RSLVR-00705] currently updating',
+        hint: 'retry in a few minutes',
+      },
+    ]);
+    expect(out).toEqual([
+      {
+        displayId: 'Stack/ResolverRule',
+        ok: false,
+        error: '[RSLVR-00705] currently updating',
+        hint: 'retry in a few minutes',
+      },
+    ]);
+  });
+
+  it('deduplicates identical hints from a cc+sdk split into one', () => {
+    const out = summarizeRevertResults([
+      { logicalId: 'X', displayId: 'Stack/X', ok: false, error: 'e1', hint: 'retry later' },
+      { logicalId: 'X', displayId: 'Stack/X', ok: false, error: 'e2', hint: 'retry later' },
+    ]);
+    expect(out).toEqual([
+      { displayId: 'Stack/X', ok: false, error: 'e1; e2', hint: 'retry later' },
+    ]);
+  });
+
+  it('omits the hint entirely for a plain (non-transient) failure', () => {
+    const out = summarizeRevertResults([
+      { logicalId: 'Y', displayId: 'Stack/Y', ok: false, error: 'AccessDenied' },
+    ]);
+    expect(out).toEqual([{ displayId: 'Stack/Y', ok: false, error: 'AccessDenied' }]);
+    expect(out[0]).not.toHaveProperty('hint');
+  });
 });
 
 describe('revertSelectOptions / filterRevertPlan distinguish ELB attribute-bag ops', () => {
