@@ -57,6 +57,25 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S', '--dry-run']).stackNames).toEqual(['S']);
   });
 
+  it('revert --wait: undefined by default, 10m bare, inline durations (issue #467)', () => {
+    expect(parseCommonArgs(['S']).waitMs).toBeUndefined();
+    expect(parseCommonArgs(['S', '--wait']).waitMs).toBe(10 * 60 * 1000);
+    expect(parseCommonArgs(['S', '--wait=5m']).waitMs).toBe(300_000);
+    expect(parseCommonArgs(['S', '--wait=90s']).waitMs).toBe(90_000);
+    expect(parseCommonArgs(['S', '--wait=1h']).waitMs).toBe(3_600_000);
+    expect(parseCommonArgs(['S', '--wait=45']).waitMs).toBe(45_000); // bare number = seconds
+  });
+
+  it('revert --wait consumes NO following token (inline form only — avoids stack misparse)', () => {
+    const a = parseCommonArgs(['revertMe', '--wait', '5m']);
+    expect(a.waitMs).toBe(10 * 60 * 1000); // bare --wait; "5m" is a positional
+    expect(a.stackNames).toEqual(['revertMe', '5m']);
+  });
+
+  it('revert --wait rejects a malformed inline duration', () => {
+    expect(() => parseCommonArgs(['S', '--wait=5min'])).toThrow(/invalid --wait duration/);
+  });
+
   it('-a is an alias for --app — value goes to app, never to stackNames', () => {
     const a = parseCommonArgs(['MyStack', '-a', 'cdk.out']);
     expect(a.app).toBe('cdk.out');

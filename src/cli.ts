@@ -63,6 +63,9 @@ OPTIONS
   --declared-only             (check) declared drift vs the DEPLOYED template only
                               (undeclared tier skipped; baseline untouched)
   --dry-run                   (revert) print the plan; make no changes
+  --wait[=DURATION]           (revert) on a transient "resource is mid-update" error
+                              (e.g. RSLVR-00705) keep retrying until it settles, up to
+                              DURATION (default 10m; e.g. --wait=5m, --wait=90s)
   --remove-unrecorded         (revert) REMOVE unrecorded values + DELETE unrecorded
                               added resources (never recorded; default: refuse —
                               record the ones that are right)

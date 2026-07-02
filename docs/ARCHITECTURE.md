@@ -659,7 +659,19 @@ only when non-zero — unrecorded values are named as such, never folded into
   unconverged (exit stays 2). `classifyTransient` matches the error TEXT (Cloud
   Control surfaces async failures as a FAILED `StatusMessage`, not a thrown error), so
   `errorText` prepends the error name/`ErrorCode` for name-only signals like
-  `ThrottlingException`.
+  `ThrottlingException`. Each retry prints a `↻ <id>: <reason> — retry N (next in Ns)…`
+  progress line so the wait never looks frozen.
+  - **`revert --wait[=DURATION]`** turns the short default backoff (3 attempts) into a
+    DEADLINE-bounded retry (`retryTransient`'s `deadlineMs`): keep re-issuing the write
+    until the resource settles, up to DURATION (default 10m; `parseDurationMs` accepts
+    `90`, `30s`, `5m`, `1h`), so a minutes-long RSLVR-00705 window converges in ONE
+    command instead of stopping at the hint. It is GENERIC — retrying the write until it
+    succeeds needs no per-type "is it stable yet?" waiter (the write itself rejects with
+    the transient code until the resource is ready). Opt-in on purpose: the default stays
+    non-blocking + explanatory (issue #467's design call), and when `--wait` is off the
+    hint points at it (`… or re-run with --wait to block until it settles`). Backoff is
+    linear (3s, 6s, …) capped at `DEFAULT_MAX_DELAY_MS` (30s), and never sleeps past the
+    deadline.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).

@@ -35,7 +35,7 @@ import {
   tagPreservingOps,
   writeOnlyReincludeOps,
 } from '../revert/plan.js';
-import { errorText, retryTransient } from '../revert/transient.js';
+import { errorText, type RetryOptions, retryTransient } from '../revert/transient.js';
 import { resolveSdkWriter } from '../revert/writers.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
@@ -660,6 +660,14 @@ export interface RevertStackParams {
   // behind their API response — eventual consistency). Overridable so unit tests
   // don't sleep for real.
   convergeRetryDelayMs?: number;
+  // `revert --wait[=DURATION]` (issue #467): on a TRANSIENT "resource is mid-update"
+  // failure (RSLVR-00705 & friends), keep retrying the write until the resource settles
+  // (up to this many ms) instead of stopping at the short default backoff — so a
+  // minutes-long UPDATING window converges in one command. undefined = default backoff.
+  waitMs?: number;
+  // Injected clock/sleep for the wait path so deadline-mode unit tests don't sleep.
+  waitNow?: () => number;
+  waitSleep?: (ms: number) => Promise<void>;
 }
 
 const CONVERGE_RETRY_DELAY_MS = 3000;
@@ -713,6 +721,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     verbose,
     interactive,
     autoSelectAll,
+    waitMs,
+    waitNow,
+    waitSleep,
   } = p;
   let worst = 0;
   // R113: a standout undeclared value is surfaced to the user as [Potential Drift] (it is
@@ -827,11 +838,28 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     error?: string;
     hint?: string;
   }[] = [];
+  // Per-item transient-retry options (issue #467). `--wait` turns the short default
+  // backoff into a deadline-bounded wait so a minutes-long UPDATING window (RSLVR-00705)
+  // converges in one command; each item gets its OWN wait budget. `onRetry` prints a
+  // per-retry progress line so the wait never looks frozen (see #477's spinner ethos).
+  const clock = waitNow ?? Date.now;
+  const buildRetryOpts = (displayId: string): RetryOptions => ({
+    ...(waitMs !== undefined && { deadlineMs: clock() + waitMs }),
+    ...(waitNow && { now: waitNow }),
+    ...(waitSleep && { sleep: waitSleep }),
+    onRetry: ({ attempt, delayMs, hint }) => {
+      const reason = (hint ?? 'transient error').split(' — ')[0];
+      const secs = Math.max(1, Math.round(delayMs / 1000));
+      console.log(
+        style.infoTier(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`)
+      );
+    },
+  });
   for (const item of plan.items) {
     let r: { ok: boolean; error?: string; hint?: string };
     if (item.kind === 'delete') {
       // physicalId IS the CC identifier (the composite the finding carried); delete it.
-      r = await applyRevertDelete(cc, item, item.physicalId);
+      r = await applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId));
       if (!r.ok) failedDeleteIds.add(item.logicalId);
     } else if (item.kind === 'sdk') {
       const res = byLogical.get(item.logicalId);
@@ -864,7 +892,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         } catch (e) {
           return { ok: false, error: errorText(e) };
         }
-      });
+      }, buildRetryOpts(item.displayId));
     } else {
       const res = byLogical.get(item.logicalId);
       const identifier =
@@ -883,7 +911,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         tagged
       );
       const ccItem = { ...item, ops: extra.length > 0 ? [...tagged, ...extra] : tagged };
-      r = await applyRevertItem(cc, ccItem, identifier);
+      r = await applyRevertItem(cc, ccItem, identifier, buildRetryOpts(item.displayId));
     }
     applied.push({
       logicalId: item.logicalId,
@@ -901,9 +929,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       console.log(style.ok(`  reverted: ${s.displayId}`));
     } else {
       console.log(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
-      // Transient "resource is mid-update" failure that survived bounded retries:
-      // add a targeted hint so the user knows this is retry-later, not a real failure.
-      if (s.hint) console.log(style.infoTier(`    ↳ ${s.hint}`));
+      // Transient "resource is mid-update" failure that survived the retries: add a
+      // targeted hint so the user knows this is retry-later, not a real failure. When we
+      // did NOT already wait (`--wait` off), point at it as the one-command settle path.
+      if (s.hint) {
+        const suffix =
+          waitMs === undefined ? ' (or re-run with --wait to block until it settles)' : '';
+        console.log(style.infoTier(`    ↳ ${s.hint}${suffix}`));
+      }
     }
   }
 

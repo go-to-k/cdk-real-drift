@@ -293,24 +293,25 @@ CI (with `--yes`).
 
 ### Options
 
-| option                     | meaning                                                                                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); else `env.region` per stack, else the `--profile`'s region                               |
-| `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                 |
-| `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                    |
-| `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                      |
-| `--all`                    | target every stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                     |
-| `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                            |
-| `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                           |
-| `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`    |
-| `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                        |
-| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                   |
-| `--pre-deploy`             | (check) compare live vs the LOCAL synth template: the declared drift your next `cdk deploy` would silently overwrite                            |
-| `--undeclared-only`        | (check) undeclared drift only: pair cdkrd with `cdk drift` for the declared side                                                                |
-| `--declared-only`          | (check) declared drift vs the deployed template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                          |
-| `--dry-run`                | (revert) print the plan; make no changes                                                                                                        |
-| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them |
-| `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                   |
+| option                     | meaning                                                                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); else `env.region` per stack, else the `--profile`'s region                                                                          |
+| `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                                                            |
+| `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                                                               |
+| `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                                                                 |
+| `--all`                    | target every stack the app defines (the default when no `<stack>` is named; overrides any positional names)                                                                                |
+| `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                                                                       |
+| `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                                                                      |
+| `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`                                               |
+| `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                                                                   |
+| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                                                              |
+| `--pre-deploy`             | (check) compare live vs the LOCAL synth template: the declared drift your next `cdk deploy` would silently overwrite                                                                       |
+| `--undeclared-only`        | (check) undeclared drift only: pair cdkrd with `cdk drift` for the declared side                                                                                                           |
+| `--declared-only`          | (check) declared drift vs the deployed template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                                                                     |
+| `--dry-run`                | (revert) print the plan; make no changes                                                                                                                                                   |
+| `--wait[=DURATION]`        | (revert) on a transient "resource is mid-update" error (e.g. Route53Resolver `RSLVR-00705`) keep retrying until it settles, up to DURATION (default `10m`; e.g. `--wait=5m`, `--wait=90s`) |
+| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them                                            |
+| `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                                                              |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
 the line) are errors (exit `2`): a typo'd flag never silently becomes a stack name.

@@ -1,4 +1,5 @@
 // Tiny shared CLI arg parser (no dependency).
+import { DEFAULT_WAIT_MS, parseDurationMs } from './revert/transient.js';
 
 // The complete known-option surface. parseCommonArgs is shared by all three
 // verbs, so verb-specific flags (--dry-run) are recorded here and interpreted
@@ -59,6 +60,11 @@ export interface CommonArgs {
   strict: boolean;
   removeUnrecorded: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
+  // (revert) `--wait[=DURATION]`: block on a TRANSIENT "resource is mid-update" failure
+  // (RSLVR-00705 & friends), retrying until the resource settles instead of stopping at
+  // the short default backoff. undefined = not requested (default short backoff → hint);
+  // a number = the wait budget in ms (bare `--wait` = DEFAULT_WAIT_MS). Issue #467.
+  waitMs: number | undefined;
 }
 
 /**
@@ -76,6 +82,7 @@ export function parseCommonArgs(args: string[]): CommonArgs {
   const found = new Set<string>(); // boolean flags seen
   const stackNames: string[] = [];
   const context: Record<string, string> = {};
+  let waitMs: number | undefined; // (revert) --wait[=DURATION]; undefined = not requested
 
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -129,6 +136,14 @@ export function parseCommonArgs(args: string[]): CommonArgs {
       found.add(flag);
       continue;
     }
+    // `--wait` (revert): optional value, INLINE form only (`--wait` or `--wait=5m`). A
+    // following separate token is deliberately NOT consumed — `--wait 5m` would be
+    // ambiguous with a positional stack name, the exact misparse this parser guards
+    // against for an AWS-mutating verb.
+    if (flag === '--wait') {
+      waitMs = inlineValue === undefined ? DEFAULT_WAIT_MS : parseDurationMs(inlineValue);
+      continue;
+    }
     throw new Error(`unknown option "${a}" — see cdkrd --help`);
   }
 
@@ -158,5 +173,6 @@ export function parseCommonArgs(args: string[]): CommonArgs {
     declaredOnly: has('--declared-only'),
     removeUnrecorded: has('--remove-unrecorded'),
     verbose: has('--verbose') || has('-v'),
+    waitMs,
   };
 }

@@ -685,6 +685,63 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     expect(logs).toContain('could not be confirmed converged');
     expect(logs).toContain('could not be re-read to verify');
   });
+
+  // issue #467 — the `revert --wait` path.
+  const rslvrFailed = {
+    ProgressEvent: {
+      OperationStatus: 'FAILED' as const,
+      RequestToken: 't',
+      StatusMessage: "[RSLVR-00705] Cannot update Resolver Rule because it's currently updating.",
+    },
+  };
+  const runWith = async (extra: Record<string, unknown>) => {
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (s: unknown) => logs.push(String(s));
+    try {
+      const outcome = await revertStack({ ...params(), ...extra } as Parameters<
+        typeof revertStack
+      >[0]);
+      return { outcome, logs: logs.join('\n') };
+    } finally {
+      console.log = orig;
+    }
+  };
+
+  it('--wait retries a transient mid-update failure PAST the default attempts until it settles', async () => {
+    const cc = mockClient(CloudControlClient);
+    // Four RSLVR-00705 failures (past the 3-attempt default), then success.
+    cc.on(UpdateResourceCommand)
+      .resolvesOnce(rslvrFailed)
+      .resolvesOnce(rslvrFailed)
+      .resolvesOnce(rslvrFailed)
+      .resolvesOnce(rslvrFailed)
+      .resolves({ ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' } });
+    cc.on(GetResourceCommand).resolves(liveRead('Enabled'));
+
+    const { outcome, logs } = await runWith({
+      waitMs: 600_000,
+      waitNow: () => 0, // constant clock < deadline → keep retrying (waitSleep is a no-op)
+      waitSleep: () => Promise.resolve(),
+    });
+    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(5); // 4 fails + 1 success
+    expect(logs).toMatch(/↻ .*retry 1/); // per-retry progress line printed
+    expect(logs).toContain('s: CLEAN after revert.');
+  });
+
+  it('without --wait, a persistent transient failure stops after the short backoff and suggests --wait', async () => {
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves(rslvrFailed);
+    cc.on(GetResourceCommand).resolves(liveRead('Suspended')); // still drifted
+
+    const { outcome, logs } = await runWith({
+      waitSleep: () => Promise.resolve(), // no-op the DEFAULT backoff so the test is fast
+    });
+    expect(outcome.exit).toBe(2); // apply failed
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(3); // default maxAttempts
+    expect(logs).toContain('or re-run with --wait to block until it settles');
+  });
 });
 
 describe('recordStack non-interactive refusal (R38)', () => {
