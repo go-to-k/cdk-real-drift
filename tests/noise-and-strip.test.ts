@@ -7,6 +7,7 @@ import {
   isAllAwsTags,
   isCfnTemplateNonAsciiMask,
   isPemEqual,
+  isAccessStringEqual,
   isSshPublicKeyEqual,
   SSH_PUBLIC_KEY_PATHS,
   CASE_INSENSITIVE_PATHS,
@@ -1344,5 +1345,33 @@ describe('stripAsymmetricIdentityFields (AWS-generated identity field)', () => {
     const live = { Rules: [{ V: 1 }, { V: 2 }] };
     stripAsymmetricIdentityFields(declared, live);
     expect(declared.Rules.every((r) => 'Id' in r)).toBe(false);
+  });
+});
+
+describe('isAccessStringEqual — Redis/Valkey ACL canonicalization (#482)', () => {
+  it('the service-inserted -@all baseline term is not drift', () => {
+    // Observed live on CdkRealDriftIntegCacheUsers: declared `on ~app:* +@read` reads
+    // back `on ~app:* -@all +@read` after ElastiCache canonicalizes the write.
+    expect(isAccessStringEqual('on ~app:* +@read', 'on ~app:* -@all +@read')).toBe(true);
+    expect(isAccessStringEqual('on ~* &* +@read', 'on ~* &* -@all +@read')).toBe(true);
+    // symmetric + identity (a declared string that already states -@all)
+    expect(isAccessStringEqual('on ~app:* -@all +@read', 'on ~app:* +@read')).toBe(true);
+    expect(isAccessStringEqual('off ~* -@all', 'off ~* -@all')).toBe(true);
+  });
+
+  it('a genuine ACL change still differs (fail-closed)', () => {
+    // the out-of-band grant the supplement exists to catch
+    expect(isAccessStringEqual('on ~app:* +@read', 'on ~app:* -@all +@read +@write')).toBe(false);
+    // key-pattern widening
+    expect(isAccessStringEqual('on ~app:* +@read', 'on ~* -@all +@read')).toBe(false);
+    // on/off toggle
+    expect(isAccessStringEqual('on ~app:* +@read', 'off ~app:* -@all +@read')).toBe(false);
+    // order matters in Redis ACLs (later terms override) — never sorted away
+    expect(isAccessStringEqual('on +@all -@dangerous', 'on -@dangerous +@all')).toBe(false);
+  });
+
+  it('non-strings never match', () => {
+    expect(isAccessStringEqual(undefined, 'on ~* -@all')).toBe(false);
+    expect(isAccessStringEqual('on ~* -@all', 42)).toBe(false);
   });
 });

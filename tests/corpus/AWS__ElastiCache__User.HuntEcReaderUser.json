@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEcReaderUser",
+    "resourceType": "AWS::ElastiCache::User",
+    "physicalId": "cdkrd-hunt-reader",
+    "constructPath": "CdkRealDriftIntegCacheUsers/HuntEcReaderUser",
+    "declared": {
+      "AccessString": "on ~app:* +@read",
+      "Engine": "redis",
+      "Passwords": [
+        "cdkrd-hunt-Passw0rd-123456"
+      ],
+      "UserId": "cdkrd-hunt-reader",
+      "UserName": "cdkrd-hunt-reader"
+    }
+  },
+  "liveRaw": {
+    "Status": "active",
+    "UserName": "cdkrd-hunt-reader",
+    "UserId": "cdkrd-hunt-reader",
+    "Arn": "arn:aws:elasticache:us-east-1:111111111111:user:cdkrd-hunt-reader",
+    "Engine": "redis",
+    "Tags": [],
+    "AccessString": "on ~app:* -@all +@read"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnly": [
+      "AuthenticationMode",
+      "NoPasswordRequired",
+      "Passwords"
+    ],
+    "createOnly": [
+      "UserId",
+      "UserName"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "Status"
+    ],
+    "writeOnlyPaths": [
+      "AuthenticationMode",
+      "NoPasswordRequired",
+      "Passwords"
+    ],
+    "createOnlyPaths": [
+      "UserId",
+      "UserName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntEcReaderUser",
+      "resourceType": "AWS::ElastiCache::User",
+      "path": "Passwords",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-hunt-reader",
+      "constructPath": "CdkRealDriftIntegCacheUsers/HuntEcReaderUser"
+    }
+  ]
+}

@@ -63,6 +63,14 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // (CC never echoes them — they live on the service's deployments); the SDK_SUPPLEMENTS
   // reader reconstructs both from the PRIMARY deployment, so compare them, don't readGap.
   'AWS::ECS::Service': ['ServiceConnectConfiguration', 'VolumeConfigurations'],
+  // AWS::ElastiCache::User / AWS::MemoryDB::User `AccessString` (the Redis/Valkey ACL)
+  // is writeOnly in both schemas, so an out-of-band ACL grant was silently invisible
+  // (#482 — a security-relevant FN); the SDK_SUPPLEMENTS readers fetch it via each
+  // service's DescribeUsers, so compare it (through isAccessStringEqual — the service
+  // canonicalizes the string on write), don't readGap. AuthenticationMode/Passwords/
+  // NoPasswordRequired stay writeOnly readGaps (read shape differs from CFn input).
+  'AWS::ElastiCache::User': ['AccessString'],
+  'AWS::MemoryDB::User': ['AccessString'],
 };
 
 // The MIRROR of OVERRIDE_READABLE_WRITEONLY: nested paths an SDK_OVERRIDES reader

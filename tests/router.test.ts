@@ -4,8 +4,13 @@ import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   DescribeCacheClustersCommand,
   DescribeReplicationGroupsCommand,
+  DescribeUsersCommand as DescribeCacheUsersCommand,
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
+import {
+  DescribeUsersCommand as DescribeMemoryDbUsersCommand,
+  MemoryDBClient,
+} from '@aws-sdk/client-memorydb';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -17,6 +22,7 @@ const s3 = mockClient(S3Client);
 const ssm = mockClient(SSMClient);
 const elasticache = mockClient(ElastiCacheClient);
 const ecs = mockClient(ECSClient);
+const memorydb = mockClient(MemoryDBClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -34,6 +40,7 @@ beforeEach(() => {
   ssm.reset();
   elasticache.reset();
   ecs.reset();
+  memorydb.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1021,5 +1028,63 @@ describe('readLive (SDK supplement path — ECS Service ServiceConnectConfigurat
     const r = await readLive(cc as unknown as CloudControlClient, svc(), 'us-east-1', '1');
     const vols = (r.live?.VolumeConfigurations as Record<string, unknown>[])[0];
     expect((vols?.ManagedEBSVolume as Record<string, unknown>).FilesystemType).toBe('ext4');
+  });
+});
+
+describe('readLive (SDK supplement path — cache user AccessString, #482)', () => {
+  const ecUser = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::ElastiCache::User',
+      physicalId: 'reader',
+      declared: { UserId: 'reader', UserName: 'reader', Engine: 'redis' },
+    });
+  const mdbUser = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::MemoryDB::User',
+      physicalId: 'mdb-reader',
+      declared: { UserName: 'mdb-reader' },
+    });
+
+  it('merges the writeOnly AccessString from elasticache DescribeUsers onto the CC model', async () => {
+    // Cloud Control never echoes AccessString (writeOnly in the registry schema) — the
+    // exact live shape observed on CdkRealDriftIntegCacheUsers (#482).
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"UserId":"reader","UserName":"reader","Engine":"redis","Status":"active"}',
+      },
+    });
+    elasticache.on(DescribeCacheUsersCommand).resolves({
+      Users: [{ UserId: 'reader', AccessString: 'on ~app:* -@all +@read' }],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, ecUser(), 'us-east-1', '1');
+    expect(r.live?.AccessString).toBe('on ~app:* -@all +@read');
+    expect(elasticache.commandCalls(DescribeCacheUsersCommand)[0]?.args[0].input).toEqual({
+      UserId: 'reader',
+    });
+  });
+
+  it('merges the writeOnly AccessString from memorydb DescribeUsers onto the CC model', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"UserName":"mdb-reader","Status":"active"}',
+      },
+    });
+    memorydb.on(DescribeMemoryDbUsersCommand).resolves({
+      Users: [{ Name: 'mdb-reader', AccessString: 'on ~* &* -@all +@read' }],
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, mdbUser(), 'us-east-1', '1');
+    expect(r.live?.AccessString).toBe('on ~* &* -@all +@read');
+    expect(memorydb.commandCalls(DescribeMemoryDbUsersCommand)[0]?.args[0].input).toEqual({
+      UserName: 'mdb-reader',
+    });
+  });
+
+  it('keeps the CC model when the user is not found / the read throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"UserId":"reader","Status":"active"}' },
+    });
+    elasticache.on(DescribeCacheUsersCommand).rejects(named('UserNotFoundFault'));
+    const r = await readLive(cc as unknown as CloudControlClient, ecUser(), 'us-east-1', '1');
+    expect(r.live).toEqual({ UserId: 'reader', Status: 'active' });
   });
 });

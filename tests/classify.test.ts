@@ -6622,3 +6622,65 @@ describe('real-stack false-positive folds', () => {
     expect(t.undeclared).toEqual([]);
   });
 });
+
+describe('ElastiCache/MemoryDB User AccessString canonicalization (#482)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: 'p',
+    declared,
+  });
+  const declared = {
+    Engine: 'redis',
+    UserId: 'reader',
+    UserName: 'reader',
+    AccessString: 'on ~app:* +@read',
+  };
+
+  it('the canonicalized live echo (-@all inserted) is NOT declared drift', () => {
+    const findings = classifyResource(
+      res('AWS::ElastiCache::User', declared),
+      { ...declared, AccessString: 'on ~app:* -@all +@read', Status: 'active' },
+      emptySchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+  });
+
+  it('an out-of-band grant (+@write) surfaces as declared drift — the #482 FN closed', () => {
+    const findings = classifyResource(
+      res('AWS::ElastiCache::User', declared),
+      { ...declared, AccessString: 'on ~app:* -@all +@read +@write', Status: 'active' },
+      emptySchema
+    ).filter((f) => f.tier === 'declared');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.path).toBe('AccessString');
+  });
+
+  it('the MemoryDB twin folds the same echo and catches the same grant', () => {
+    const mdb = { UserName: 'u', AccessString: 'on ~* &* +@read' };
+    expect(
+      classifyResource(
+        res('AWS::MemoryDB::User', mdb),
+        { ...mdb, AccessString: 'on ~* &* -@all +@read', Status: 'active' },
+        emptySchema
+      ).filter((f) => f.tier === 'declared')
+    ).toEqual([]);
+    expect(
+      classifyResource(
+        res('AWS::MemoryDB::User', mdb),
+        { ...mdb, AccessString: 'on ~* &* -@all +@read +@admin', Status: 'active' },
+        emptySchema
+      ).filter((f) => f.tier === 'declared')
+    ).toHaveLength(1);
+  });
+});
