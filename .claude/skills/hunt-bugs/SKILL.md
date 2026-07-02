@@ -296,8 +296,14 @@ enforced structurally rather than by discipline:
   non-empty** — so you physically cannot land the fix PR (or any commit) until the
   bug-hunt stacks are deleted and verified gone.
 - `bughunt-track.sh verify` asserts each tracked stack is GONE from CloudFormation
-  AND `sweep-orphans.sh` reports SWEEP CLEAN; `bughunt-track.sh clear` empties the
-  sentinel (releasing the gate) and is meant to be run ONLY after that passes.
+  AND `sweep-orphans.sh` reports SWEEP CLEAN, and on success STAMPS the verified
+  pending set; `bughunt-track.sh clear` empties the sentinel (releasing the gate)
+  and REFUSES without a stamp matching the current pending set — "verify passed
+  first" is enforced structurally, not by shell plumbing (a piped
+  `verify | tail && clear` once chained a clear onto a FAILED verify because the
+  pipeline's exit was tail's). Run `verify` and `clear` as separate, un-piped
+  commands from the SAME directory (the owner key is cwd-derived — a cwd that
+  drifted back to the main checkout arms/clears the WRONG owner).
 
 `delstack` only deletes stack MEMBERS. `sweep-orphans.sh` catches the
 stack-EXTERNAL orphans teardown leaves behind — auto-created `/aws/lambda/*` log
