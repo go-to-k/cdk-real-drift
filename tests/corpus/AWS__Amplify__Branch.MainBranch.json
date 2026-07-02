@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MainBranch",
+    "resourceType": "AWS::Amplify::Branch",
+    "physicalId": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h/branches/main",
+    "constructPath": "CdkRealDriftIntegAmplifyConnRich/MainBranch",
+    "declared": {
+      "AppId": "d29o73zx4mc67h",
+      "BranchName": "main",
+      "Description": "cdkrd hunt main branch",
+      "EnableAutoBuild": false,
+      "EnablePullRequestPreview": false,
+      "EnvironmentVariables": [
+        {
+          "Name": "BRANCH_FLAG",
+          "Value": "on"
+        }
+      ],
+      "Stage": "PRODUCTION"
+    }
+  },
+  "liveRaw": {
+    "Backend": {},
+    "Description": "cdkrd hunt main branch",
+    "EnvironmentVariables": [
+      {
+        "Value": "on",
+        "Name": "BRANCH_FLAG"
+      }
+    ],
+    "AppId": "d29o73zx4mc67h",
+    "EnablePullRequestPreview": false,
+    "EnableAutoBuild": false,
+    "EnablePerformanceMode": false,
+    "Stage": "PRODUCTION",
+    "BranchName": "main",
+    "Arn": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h/branches/main"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["BasicAuthConfig"],
+    "createOnly": ["AppId", "BranchName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["BasicAuthConfig"],
+    "createOnlyPaths": ["AppId", "BranchName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

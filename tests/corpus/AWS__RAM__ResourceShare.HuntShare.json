@@ -1,0 +1,59 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntShare",
+    "resourceType": "AWS::RAM::ResourceShare",
+    "physicalId": "arn:aws:ram:us-east-1:111111111111:resource-share/c4b9ed31-c4c8-4804-bc3a-d2e9a3fc4c81",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntShare",
+    "declared": {
+      "AllowExternalPrincipals": false,
+      "Name": "cdkrd-hunt-share"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "ResourceShareConfiguration": {
+      "RetainSharingOnAccountLeaveOrganization": false
+    },
+    "CreationTime": "2026-07-02T04:14:53.186Z",
+    "LastUpdatedTime": "2026-07-02T04:14:53.186Z",
+    "OwningAccountId": "111111111111",
+    "FeatureSet": "STANDARD",
+    "AllowExternalPrincipals": false,
+    "Arn": "arn:aws:ram:us-east-1:111111111111:resource-share/c4b9ed31-c4c8-4804-bc3a-d2e9a3fc4c81",
+    "Name": "cdkrd-hunt-share"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CreationTime",
+      "FeatureSet",
+      "LastUpdatedTime",
+      "OwningAccountId",
+      "Status"
+    ],
+    "writeOnly": ["PermissionArns", "Principals", "ResourceArns", "Sources"],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "Arn",
+      "CreationTime",
+      "FeatureSet",
+      "LastUpdatedTime",
+      "OwningAccountId",
+      "Status"
+    ],
+    "writeOnlyPaths": ["PermissionArns", "Principals", "ResourceArns", "Sources"],
+    "createOnlyPaths": ["ResourceShareConfiguration.RetainSharingOnAccountLeaveOrganization"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["PermissionArns", "Principals", "ResourceArns", "Sources"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

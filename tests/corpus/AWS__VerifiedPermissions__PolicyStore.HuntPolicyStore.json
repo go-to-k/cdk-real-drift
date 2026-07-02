@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPolicyStore",
+    "resourceType": "AWS::VerifiedPermissions::PolicyStore",
+    "physicalId": "Hb4xWipDFTXhjpffXbAtva",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntPolicyStore",
+    "declared": {
+      "Description": "cdkrd hunt policy store",
+      "Schema": {
+        "CedarJson": "{\"CdkrdHunt\":{\"entityTypes\":{\"User\":{\"shape\":{\"type\":\"Record\",\"attributes\":{}}},\"Doc\":{\"shape\":{\"type\":\"Record\",\"attributes\":{}}}},\"actions\":{\"view\":{\"appliesTo\":{\"principalTypes\":[\"User\"],\"resourceTypes\":[\"Doc\"]}}}}}"
+      },
+      "ValidationSettings": {
+        "Mode": "STRICT"
+      }
+    }
+  },
+  "liveRaw": {
+    "EncryptionState": {
+      "Default": {}
+    },
+    "Description": "cdkrd hunt policy store",
+    "ValidationSettings": {
+      "Mode": "STRICT"
+    },
+    "Schema": {
+      "CedarJson": "{\"CdkrdHunt\":{\"entityTypes\":{\"User\":{\"shape\":{\"type\":\"Record\",\"attributes\":{}}},\"Doc\":{\"shape\":{\"type\":\"Record\",\"attributes\":{}}}},\"actions\":{\"view\":{\"appliesTo\":{\"principalTypes\":[\"User\"],\"resourceTypes\":[\"Doc\"]}}}}}"
+    },
+    "PolicyStoreId": "Hb4xWipDFTXhjpffXbAtva",
+    "DeletionProtection": {
+      "Mode": "DISABLED"
+    },
+    "Arn": "arn:aws:verifiedpermissions::111111111111:policy-store/Hb4xWipDFTXhjpffXbAtva",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegMisc0CovRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMisc0CovRich/8c547740-75cc-11f1-830d-0affe48f6bc1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "HuntPolicyStore",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "EncryptionState", "PolicyStoreId"],
+    "writeOnly": ["EncryptionSettings"],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "EncryptionState", "PolicyStoreId"],
+    "writeOnlyPaths": ["EncryptionSettings"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {
+      "DeletionProtection.Mode": "DISABLED"
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPolicyStore",
+      "resourceType": "AWS::VerifiedPermissions::PolicyStore",
+      "path": "DeletionProtection",
+      "actual": {
+        "Mode": "DISABLED"
+      },
+      "physicalId": "Hb4xWipDFTXhjpffXbAtva",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntPolicyStore"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntKeyPair",
+    "resourceType": "AWS::EC2::KeyPair",
+    "physicalId": "cdkrd-hunt-keypair",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntKeyPair",
+    "declared": {
+      "KeyName": "cdkrd-hunt-keypair",
+      "KeyType": "ed25519",
+      "PublicKeyMaterial": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJPRfhD3vb5rmS6P4rVU65OFl8aLIHppMwCNy0+r49tT cdkrd-hunt"
+    }
+  },
+  "liveRaw": {
+    "KeyName": "cdkrd-hunt-keypair",
+    "KeyType": "ed25519",
+    "KeyPairId": "key-00a03cde1f7c868e1",
+    "KeyFingerprint": "DelxzwGc+COUwB3s31Y6fgPw1bBs9df1V6Tzxjv6Xik=",
+    "PublicKeyMaterial": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJPRfhD3vb5rmS6P4rVU65OFl8aLIHppMwCNy0+r49tT cdkrd-hunt-keypair\n",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["KeyFingerprint", "KeyPairId"],
+    "writeOnly": ["KeyFormat"],
+    "createOnly": ["KeyFormat", "KeyName", "KeyType", "PublicKeyMaterial", "Tags"],
+    "readOnlyPaths": ["KeyFingerprint", "KeyPairId"],
+    "writeOnlyPaths": ["KeyFormat"],
+    "createOnlyPaths": ["KeyFormat", "KeyName", "KeyType", "PublicKeyMaterial", "Tags"],
+    "defaults": {
+      "KeyType": "rsa",
+      "KeyFormat": "pem"
+    },
+    "defaultPaths": {
+      "KeyType": "rsa",
+      "KeyFormat": "pem"
+    },
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,117 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEmrApp",
+    "resourceType": "AWS::EMRServerless::Application",
+    "physicalId": "00g6t55ue4n9oc09",
+    "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntEmrApp",
+    "declared": {
+      "AutoStartConfiguration": {
+        "Enabled": true
+      },
+      "AutoStopConfiguration": {
+        "Enabled": true,
+        "IdleTimeoutMinutes": 5
+      },
+      "MaximumCapacity": {
+        "Cpu": "4 vCPU",
+        "Memory": "16 GB"
+      },
+      "Name": "cdkrd-hunt-emrsl",
+      "ReleaseLabel": "emr-7.0.0",
+      "Type": "SPARK"
+    }
+  },
+  "liveRaw": {
+    "AutoStartConfiguration": {
+      "Enabled": true
+    },
+    "Architecture": "X86_64",
+    "WorkerTypeSpecifications": {},
+    "MonitoringConfiguration": {
+      "ManagedPersistenceMonitoringConfiguration": {
+        "Enabled": true
+      }
+    },
+    "MaximumCapacity": {
+      "Memory": "16 GB",
+      "Cpu": "4 vCPU",
+      "Disk": "400000 GB"
+    },
+    "AutoStopConfiguration": {
+      "Enabled": true,
+      "IdleTimeoutMinutes": 5
+    },
+    "RuntimeConfiguration": [],
+    "Name": "cdkrd-hunt-emrsl",
+    "Type": "Spark",
+    "InitialCapacity": [],
+    "ReleaseLabel": "emr-7.0.0",
+    "Arn": "arn:aws:emr-serverless:us-east-1:111111111111:/applications/00g6t55ue4n9oc09",
+    "ApplicationId": "00g6t55ue4n9oc09",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["ApplicationId", "Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Type"],
+    "readOnlyPaths": ["ApplicationId", "Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Type"],
+    "defaults": {},
+    "defaultPaths": {
+      "AutoStartConfiguration.Enabled": true,
+      "AutoStopConfiguration.Enabled": true,
+      "MonitoringConfiguration.ManagedPersistenceMonitoringConfiguration.Enabled": true,
+      "MonitoringConfiguration.CloudWatchLoggingConfiguration.Enabled": false,
+      "InteractiveConfiguration.LivyEndpointEnabled": false,
+      "InteractiveConfiguration.StudioEnabled": false,
+      "InteractiveConfiguration.SessionEnabled": false
+    },
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.SecurityGroupIds",
+      "NetworkConfiguration.SubnetIds"
+    ],
+    "freeFormMapPaths": ["RuntimeConfiguration.*.Properties", "WorkerTypeSpecifications"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEmrApp",
+      "resourceType": "AWS::EMRServerless::Application",
+      "path": "Architecture",
+      "actual": "X86_64",
+      "physicalId": "00g6t55ue4n9oc09",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntEmrApp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEmrApp",
+      "resourceType": "AWS::EMRServerless::Application",
+      "path": "MaximumCapacity.Disk",
+      "actual": "400000 GB",
+      "nested": true,
+      "physicalId": "00g6t55ue4n9oc09",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntEmrApp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEmrApp",
+      "resourceType": "AWS::EMRServerless::Application",
+      "path": "MonitoringConfiguration",
+      "actual": {
+        "ManagedPersistenceMonitoringConfiguration": {
+          "Enabled": true
+        }
+      },
+      "physicalId": "00g6t55ue4n9oc09",
+      "constructPath": "CdkRealDriftIntegMisc0CovRich/HuntEmrApp"
+    }
+  ]
+}

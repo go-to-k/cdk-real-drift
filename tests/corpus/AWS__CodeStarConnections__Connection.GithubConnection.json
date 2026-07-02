@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GithubConnection",
+    "resourceType": "AWS::CodeStarConnections::Connection",
+    "physicalId": "arn:aws:codestar-connections:us-east-1:111111111111:connection/f631dda8-47dd-4116-8b29-5cf64ffd5a53",
+    "constructPath": "CdkRealDriftIntegAmplifyConnRich/GithubConnection",
+    "declared": {
+      "ConnectionName": "cdkrd-hunt-conn",
+      "ProviderType": "GitHub"
+    }
+  },
+  "liveRaw": {
+    "ConnectionName": "cdkrd-hunt-conn",
+    "HostArn": "arn:aws:codestar-connections:us-west-2:000000000000:host/00000000-0000-0000-0000-000000000000",
+    "ConnectionArn": "arn:aws:codestar-connections:us-east-1:111111111111:connection/f631dda8-47dd-4116-8b29-5cf64ffd5a53",
+    "ProviderType": "GitHub",
+    "ConnectionStatus": "PENDING",
+    "OwnerAccountId": "111111111111",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegAmplifyConnRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAmplifyConnRich/8b6b4fc0-75cc-11f1-83af-0affcafaad9f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "GithubConnection",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ConnectionArn", "ConnectionStatus", "OwnerAccountId"],
+    "writeOnly": [],
+    "createOnly": ["ConnectionName", "HostArn", "ProviderType"],
+    "readOnlyPaths": ["ConnectionArn", "ConnectionStatus", "OwnerAccountId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ConnectionName", "HostArn", "ProviderType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "GithubConnection",
+      "resourceType": "AWS::CodeStarConnections::Connection",
+      "path": "HostArn",
+      "actual": "arn:aws:codestar-connections:us-west-2:000000000000:host/00000000-0000-0000-0000-000000000000",
+      "physicalId": "arn:aws:codestar-connections:us-east-1:111111111111:connection/f631dda8-47dd-4116-8b29-5cf64ffd5a53",
+      "constructPath": "CdkRealDriftIntegAmplifyConnRich/GithubConnection"
+    }
+  ]
+}

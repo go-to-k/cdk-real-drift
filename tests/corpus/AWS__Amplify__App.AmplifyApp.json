@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AmplifyApp",
+    "resourceType": "AWS::Amplify::App",
+    "physicalId": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h",
+    "constructPath": "CdkRealDriftIntegAmplifyConnRich/AmplifyApp",
+    "declared": {
+      "CustomRules": [
+        {
+          "Source": "/docs/<*>",
+          "Status": "301",
+          "Target": "/documentation/<*>"
+        },
+        {
+          "Source": "/<*>",
+          "Status": "404-200",
+          "Target": "/index.html"
+        }
+      ],
+      "Description": "cdkrd amplify rich hunt fixture",
+      "EnableBranchAutoDeletion": false,
+      "EnvironmentVariables": [
+        {
+          "Name": "STAGE",
+          "Value": "hunt"
+        },
+        {
+          "Name": "API_URL",
+          "Value": "https://example.invalid/api"
+        }
+      ],
+      "Name": "cdkrd-hunt-amplify",
+      "Platform": "WEB"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd amplify rich hunt fixture",
+    "Platform": "WEB",
+    "EnableBranchAutoDeletion": false,
+    "DefaultDomain": "d29o73zx4mc67h.amplifyapp.com",
+    "JobConfig": {
+      "BuildComputeType": "STANDARD_8GB"
+    },
+    "AppName": "cdkrd-hunt-amplify",
+    "Name": "cdkrd-hunt-amplify",
+    "EnvironmentVariables": [
+      {
+        "Value": "https://example.invalid/api",
+        "Name": "API_URL"
+      },
+      {
+        "Value": "hunt",
+        "Name": "STAGE"
+      }
+    ],
+    "AppId": "d29o73zx4mc67h",
+    "CustomRules": [
+      {
+        "Status": "301",
+        "Target": "/documentation/<*>",
+        "Source": "/docs/<*>"
+      },
+      {
+        "Status": "404-200",
+        "Target": "/index.html",
+        "Source": "/<*>"
+      }
+    ],
+    "Arn": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h",
+    "CacheConfig": {
+      "Type": "AMPLIFY_MANAGED_NO_COOKIES"
+    },
+    "CustomHeaders": ""
+  },
+  "schema": {
+    "readOnly": ["AppId", "AppName", "Arn", "DefaultDomain"],
+    "writeOnly": ["AccessToken", "AutoBranchCreationConfig", "BasicAuthConfig", "OauthToken"],
+    "createOnly": [],
+    "readOnlyPaths": ["AppId", "AppName", "Arn", "DefaultDomain"],
+    "writeOnlyPaths": ["AccessToken", "AutoBranchCreationConfig", "BasicAuthConfig", "OauthToken"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AmplifyApp",
+      "resourceType": "AWS::Amplify::App",
+      "path": "CacheConfig",
+      "actual": {
+        "Type": "AMPLIFY_MANAGED_NO_COOKIES"
+      },
+      "physicalId": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h",
+      "constructPath": "CdkRealDriftIntegAmplifyConnRich/AmplifyApp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AmplifyApp",
+      "resourceType": "AWS::Amplify::App",
+      "path": "JobConfig",
+      "actual": {
+        "BuildComputeType": "STANDARD_8GB"
+      },
+      "physicalId": "arn:aws:amplify:us-east-1:111111111111:apps/d29o73zx4mc67h",
+      "constructPath": "CdkRealDriftIntegAmplifyConnRich/AmplifyApp"
+    }
+  ]
+}

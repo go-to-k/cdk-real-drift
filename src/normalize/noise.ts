@@ -570,6 +570,63 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Platform: 'Web',
     DeobfuscationConfiguration: { JavaScriptSourceMaps: { Status: 'DISABLED' } },
   },
+  // FIS experiment templates read back the documented option defaults (fail on
+  // empty target resolution, single-account targeting) when the template declares
+  // no ExperimentOptions. Observed live on the misc-0cov-rich fixture.
+  // Equality-gated: multi-account targeting or skip-mode no longer matches.
+  'AWS::FIS::ExperimentTemplate': {
+    ExperimentOptions: {
+      EmptyTargetResolutionMode: 'fail',
+      AccountTargeting: 'single-account',
+    },
+  },
+  // A Verified Permissions policy store is created without deletion protection by
+  // default. Observed live on the misc-0cov-rich fixture. Equality-gated: enabling
+  // protection out of band no longer matches and surfaces.
+  'AWS::VerifiedPermissions::PolicyStore': {
+    DeletionProtection: { Mode: 'DISABLED' },
+  },
+  // Amazon Keyspaces service defaults (observed live on the misc-0cov-rich
+  // fixture): a keyspace with no ReplicationSpecification is single-region; a
+  // table with no explicit settings reads back the account-constant warm
+  // throughput floor (12000/4000 — same constant DynamoDB TableV2 reports), the
+  // AWS-owned KMS key, and CDC disabled. All equality-gated.
+  'AWS::Cassandra::Keyspace': {
+    ReplicationSpecification: { ReplicationStrategy: 'SINGLE_REGION' },
+  },
+  'AWS::Cassandra::Table': {
+    WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
+    EncryptionSpecification: { EncryptionType: 'AWS_OWNED_KMS_KEY' },
+    CdcSpecification: { Status: 'DISABLED' },
+  },
+  // EMR Serverless application service defaults (observed live on the
+  // misc-0cov-rich fixture): x86_64 architecture and managed-persistence
+  // monitoring enabled. Equality-gated: an ARM64 app or disabled managed
+  // persistence no longer matches and surfaces.
+  'AWS::EMRServerless::Application': {
+    Architecture: 'X86_64',
+    MonitoringConfiguration: {
+      ManagedPersistenceMonitoringConfiguration: { Enabled: true },
+    },
+  },
+  // Amplify app service defaults (observed live on the amplify-codeconnections-rich
+  // fixture): the standard build compute size and the managed no-cookies CDN cache.
+  // Equality-gated: a larger build machine or cookie-forwarding cache no longer
+  // matches and surfaces.
+  'AWS::Amplify::App': {
+    JobConfig: { BuildComputeType: 'STANDARD_8GB' },
+    CacheConfig: { Type: 'AMPLIFY_MANAGED_NO_COOKIES' },
+  },
+  // A hostless connection (GitHub/Bitbucket cloud providers) reads HostArn back as
+  // this literal ALL-ZEROS placeholder ARN — a service sentinel for "no host", not
+  // a reference to anything in the user's account (region/account/id are all
+  // zeroed constants). Observed live on the amplify-codeconnections-rich fixture.
+  // Equality-gated: a real GitHub Enterprise / GitLab self-managed host ARN no
+  // longer matches and surfaces.
+  'AWS::CodeStarConnections::Connection': {
+    HostArn:
+      'arn:aws:codestar-connections:us-west-2:000000000000:host/00000000-0000-0000-0000-000000000000',
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
@@ -605,6 +662,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // EMR Serverless fills MaximumCapacity.Disk with the service-wide maximum
+  // ("400000 GB") when the template declares only Cpu/Memory. A constant, not
+  // capacity-derived (observed with a 4 vCPU / 16 GB cap on the misc-0cov-rich
+  // fixture). Equality-gated: a real disk cap no longer matches and surfaces.
+  'AWS::EMRServerless::Application': {
+    'MaximumCapacity.Disk': '400000 GB',
+  },
   // AWS Backup materializes these defaults into each live BackupPlanRule (keyed by RuleName
   // — descended via NESTED_ARRAY_IDENTITY). Folding them keeps a clean plan clean; an
   // out-of-band change away from one still surfaces (equality-gated). Proven live: a
@@ -911,6 +975,10 @@ export const GENERATED_DEFAULTS: Record<string, Record<string, unknown>> = {
 // out-of-band change to it reports as drift (R142; was value-independent in R140).
 export const GENERATED_PATHS: Record<string, string[]> = {
   'AWS::ApiGateway::Method': ['Integration.CacheNamespace'],
+  // The live read echoes the rule's own ARN (== the resource's physical id) inside
+  // the declared SamplingRule object — pure identity, never user-editable.
+  // Observed live on the xray-insightrule-rich fixture.
+  'AWS::XRay::SamplingRule': ['SamplingRule.RuleARN'],
 };
 
 // Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated
@@ -963,6 +1031,10 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
 // `RestApiId|ResourceId|HttpMethod`), leaving a user-set custom value to surface.
 export function isPhysicalIdSegment(value: unknown, physicalId: string | undefined): boolean {
   if (typeof value !== 'string' || physicalId === undefined) return false;
+  // The whole-id echo (XRay SamplingRule.RuleARN returns the rule's own ARN — the
+  // physical id verbatim) is the purest physical-id segment; a split on `:` would
+  // otherwise never reassemble a full ARN.
+  if (value === physicalId) return true;
   return physicalId.split(/[|:/]/).includes(value);
 }
 
@@ -1330,9 +1402,46 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // two valid values differ beyond case, so case-insensitive equality hides no real
   // drift. Observed live on a fresh batch-rich deploy.
   'AWS::Batch::ComputeEnvironment': new Set(['Type']),
+  // EMR Serverless Application `Type` — the CFn schema enum is UPPERCASE
+  // (`SPARK`/`HIVE`) but the EMR Serverless API canonicalizes to mixed case on
+  // read (`Spark`/`Hive`), so a case-sensitive compare false-flags declared drift
+  // on every check of a freshly deployed application. `Type` is create-only and
+  // the two valid values differ beyond case, so case-insensitive equality hides
+  // no real drift. Observed live on a fresh misc-0cov-rich deploy.
+  'AWS::EMRServerless::Application': new Set(['Type']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+}
+
+// Per-type OpenSSH public-key paths (EC2 KeyPair `PublicKeyMaterial`). EC2 stores
+// only the key MATERIAL: on read it rewrites the free-text comment field to the
+// key pair NAME and appends a trailing newline (declared
+// `ssh-ed25519 AAAA... me@laptop`, live `ssh-ed25519 AAAA... <KeyName>\n`), so a
+// string compare false-flags declared drift on every check of an imported key
+// pair. The comment is not part of the key and is unenforceable (AWS always
+// overwrites it), so compare only `<type> <base64>`; a genuine key-material
+// change still differs. `PublicKeyMaterial` is create-only, so the folded
+// comment hides nothing revertable. Observed live on a fresh misc-0cov-rich deploy.
+export const SSH_PUBLIC_KEY_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::EC2::KeyPair': new Set(['PublicKeyMaterial']),
+};
+// True when both values parse as OpenSSH public keys (`<type> <base64> [comment]`)
+// with the same type + base64 material. Non-parsing inputs never match, so the
+// fold can't fire on an arbitrary string pair.
+export function isSshPublicKeyEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const material = (s: string): string | undefined => {
+    const parts = s.trim().split(/\s+/);
+    const type = parts[0];
+    const blob = parts[1];
+    if (type === undefined || blob === undefined) return undefined;
+    if (!/^(?:sk-)?(?:ssh|ecdsa)-[a-z0-9-]+(?:@[a-z0-9.-]+)?$/.test(type)) return undefined;
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(blob)) return undefined;
+    return `${type} ${blob}`;
+  };
+  const ma = material(a);
+  return ma !== undefined && ma === material(b);
 }
 
 // Per-type property paths whose value is a set of HTTP HEADER NAMES, which AWS
