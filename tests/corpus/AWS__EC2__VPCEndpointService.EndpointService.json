@@ -44,7 +44,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EndpointService",
       "resourceType": "AWS::EC2::VPCEndpointService",
       "path": "SupportedRegions",

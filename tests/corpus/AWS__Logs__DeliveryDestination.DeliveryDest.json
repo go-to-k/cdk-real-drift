@@ -61,18 +61,6 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
-      "logicalId": "DeliveryDest",
-      "resourceType": "AWS::Logs::DeliveryDestination",
-      "path": "DeliveryDestinationPolicy",
-      "actual": {
-        "DeliveryDestinationName": "cdkrd-hunt-cf-dest",
-        "DeliveryDestinationPolicy": {}
-      },
-      "physicalId": "cdkrd-hunt-cf-dest",
-      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliveryDest"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "DeliveryDest",
       "resourceType": "AWS::Logs::DeliveryDestination",

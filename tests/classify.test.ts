@@ -5507,6 +5507,100 @@ describe('nested removed collection → declared drift (issue #421 TASK 1 regres
   });
 });
 
+describe('issue #462 residual first-run noise folds', () => {
+  const bare462: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  describe('self-identity echo wrapper (DeliveryDestinationPolicy shape)', () => {
+    const dest = (live: Record<string, unknown>) =>
+      classifyResource(
+        {
+          logicalId: 'DeliveryDest',
+          resourceType: 'AWS::Logs::DeliveryDestination',
+          physicalId: 'cdkrd-dest',
+          constructPath: 'Stack/DeliveryDest',
+          declared: {},
+        },
+        live,
+        bare462
+      ).find((f) => f.path === 'DeliveryDestinationPolicy');
+
+    it('an empty-policy wrapper carrying only the self-name echo is dropped (structural noise)', () => {
+      expect(
+        dest({
+          DeliveryDestinationPolicy: {
+            DeliveryDestinationName: 'cdkrd-dest',
+            DeliveryDestinationPolicy: {},
+          },
+        })
+      ).toBeUndefined();
+    });
+
+    it('a REAL attached policy still surfaces (payload is not trivially empty)', () => {
+      expect(
+        dest({
+          DeliveryDestinationPolicy: {
+            DeliveryDestinationName: 'cdkrd-dest',
+            DeliveryDestinationPolicy: {
+              Version: '2012-10-17',
+              Statement: [{ Effect: 'Allow', Principal: '*', Action: 'logs:PutLogEvents' }],
+            },
+          },
+        })?.tier
+      ).toBe('undeclared');
+    });
+
+    it('an echo of a DIFFERENT resource (not the own physical id) still surfaces', () => {
+      expect(
+        dest({
+          DeliveryDestinationPolicy: {
+            DeliveryDestinationName: 'someone-elses-dest',
+            DeliveryDestinationPolicy: {},
+          },
+        })?.tier
+      ).toBe('undeclared');
+    });
+  });
+
+  describe('context-derived defaults (CONTEXT_DEFAULTS)', () => {
+    const vpces = (live: Record<string, unknown>, region?: string) =>
+      classifyResource(
+        {
+          logicalId: 'EndpointService',
+          resourceType: 'AWS::EC2::VPCEndpointService',
+          physicalId: 'vpce-svc-0123456789abcdef0',
+          constructPath: 'Stack/EndpointService',
+          declared: {},
+        },
+        live,
+        bare462,
+        region === undefined ? {} : { region }
+      ).find((f) => f.path === 'SupportedRegions');
+
+    it('SupportedRegions equal to [own region] folds to atDefault', () => {
+      expect(vpces({ SupportedRegions: ['us-east-1'] }, 'us-east-1')?.tier).toBe('atDefault');
+    });
+
+    it('extra regions added out of band no longer match and surface as undeclared', () => {
+      expect(vpces({ SupportedRegions: ['us-east-1', 'eu-west-1'] }, 'us-east-1')?.tier).toBe(
+        'undeclared'
+      );
+    });
+
+    it('with no resolved region the value stays undeclared (never a wrong fold)', () => {
+      expect(vpces({ SupportedRegions: ['us-east-1'] })?.tier).toBe('undeclared');
+    });
+  });
+});
+
 describe('CFn auto-generated name folding (generated tier)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
