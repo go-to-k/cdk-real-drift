@@ -1500,6 +1500,9 @@ function canonicalizeTagLists(
 export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {
     'access_logs.s3.enabled': 'false',
+    // Deletion protection is off by default on every LB type (ALB/NLB/GWLB). Equality-gated,
+    // so a load balancer that enables it still surfaces the non-default "true".
+    'deletion_protection.enabled': 'false',
     'client_keep_alive.seconds': '3600',
     'connection_logs.s3.enabled': 'false',
     'health_check_logs.s3.enabled': 'false',

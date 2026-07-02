@@ -1233,7 +1233,19 @@ export function classifyResource(
     // the curated AWS default folds `atDefault`, and anything else stays `undeclared` (so a
     // genuinely-set attribute still surfaces, fail-closed).
     if (k === ELB_ATTRIBUTE_BAGS[resourceType] && Array.isArray(v)) {
-      const attrDefaults = ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {};
+      // Same per-LB-type default resolution as the declared-bag branch above: an NLB/GWLB
+      // whose LoadBalancerAttributes is WHOLLY undeclared reads back its type-specific
+      // defaults (cross_zone "false", deletion_protection "false"), which the shared
+      // application-oriented table does not carry — merge the BY_LB_TYPE overrides so they
+      // fold `atDefault` instead of surfacing as false undeclared drift.
+      const lbType =
+        resourceType === 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+          ? String(live.Type ?? declared.Type ?? 'application')
+          : undefined;
+      const attrDefaults = {
+        ...(ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {}),
+        ...(lbType === undefined ? {} : (ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE[lbType] ?? {})),
+      };
       for (const lEl of v) {
         if (!isKeyValueEntry(lEl)) continue;
         const key = (lEl as { Key: string }).Key;
