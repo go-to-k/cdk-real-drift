@@ -4822,6 +4822,53 @@ describe('EC2 Instance BlockDeviceMappings identity-keyed subset (found by ec2-i
   });
 });
 
+describe('Route53Resolver ResolverEndpoint IpAddresses identity-keyed subset (issue #467 --wait live-test)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const endpoint = (declared: Record<string, unknown>) => ({
+    logicalId: 'HuntOutboundEndpoint',
+    resourceType: 'AWS::Route53Resolver::ResolverEndpoint',
+    physicalId: 'rslvr-out-abc',
+    declared,
+  });
+  // The template declares SubnetId only (AWS assigns the IP).
+  const declaredA = { SubnetId: 'subnet-a' };
+  const declaredB = { SubnetId: 'subnet-b' };
+  // AWS enriches each live entry with the assigned Ip (+ IpId/Status) and returns them
+  // in a NON-deterministic order (here: b before a, the reverse of the declared order).
+  const liveA = { SubnetId: 'subnet-a', Ip: '10.0.0.53', IpId: 'rni-a', Status: 'ATTACHED' };
+  const liveB = { SubnetId: 'subnet-b', Ip: '10.0.0.106', IpId: 'rni-b', Status: 'ATTACHED' };
+
+  it('reordered + IP-enriched IpAddresses does NOT false-drift the SubnetId (the RSLVR-00405 FP)', () => {
+    const findings = classifyResource(
+      endpoint({ IpAddresses: [declaredA, declaredB] }),
+      { IpAddresses: [liveB, liveA] }, // reversed order + assigned Ip/IpId
+      bare
+    );
+    // no declared drift at all — the phantom SubnetId drift (that then failed to revert
+    // with RSLVR-00405) is gone; the assigned Ip/IpId are an undeclared superset, not a
+    // declared change, so aligning by SubnetId leaves the declared subset matching.
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+  });
+
+  it('a declared subnet genuinely absent from live is still declared drift', () => {
+    const declaredDrift = classifyResource(
+      endpoint({ IpAddresses: [declaredA, declaredB] }),
+      { IpAddresses: [liveA] }, // subnet-b endpoint IP removed out of band
+      bare
+    ).filter((f) => f.tier === 'declared');
+    expect(declaredDrift).toHaveLength(1);
+  });
+});
+
 describe('EC2 Instance Volumes identity-keyed subset (found by ec2-instance-sets)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),

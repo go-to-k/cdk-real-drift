@@ -149,6 +149,20 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   // email) still surfaces. Exposed once UserPoolUser became CC-readable (router.ts adapter
   // above); observed live on a fresh cognito-userpooluser-rich deploy (sub injected).
   'AWS::Cognito::UserPoolUser': { UserAttributes: { idField: 'Name' } },
+  // A Route53Resolver ResolverEndpoint's `IpAddresses` is a SET keyed by SubnetId where
+  // the template declares only `{SubnetId}` (letting AWS assign the IP) but the live model
+  // is a SUPERSET: AWS fills in the assigned `Ip` (+ `IpId`/`Status`) per entry AND returns
+  // the entries in a NON-deterministic order. A positional compare then false-flags each
+  // shifted entry's `SubnetId` as declared drift on a freshly recorded endpoint — and the
+  // resulting phantom revert FAILS (writing the SubnetId-only entry back makes AWS re-pick
+  // an IP → `[RSLVR-00405] … not in subnet CIDR range or is reserved`). SubnetId is NOT one
+  // of the global IDENTITY_FIELDS, so only this per-type key aligns it. Aligning declared
+  // entries to live BY SubnetId neutralizes the reorder and subset-compares each declared
+  // `{SubnetId}` against its live twin (the assigned Ip/IpId are undeclared inventory,
+  // foldable/recordable); a genuinely changed subnet still surfaces. Assumes one IP per
+  // subnet (the hybrid-DNS norm — one endpoint IP per AZ); multiple IPs in one subnet would
+  // collapse on the key, an accepted edge case. Surfaced by the issue #467 --wait live-test.
+  'AWS::Route53Resolver::ResolverEndpoint': { IpAddresses: { idField: 'SubnetId' } },
 };
 // Nested object-arrays whose element identity is a NON-standard field (not Key/Id/
 // AttributeName/IndexName/Name). collectNestedUndeclared aligns identity-keyed arrays so a
