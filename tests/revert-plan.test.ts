@@ -8,6 +8,7 @@ import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import {
   buildRevertPlan,
   type PatchOp,
+  rejectedEmptyStripOps,
   tagPreservingOps,
   toPatchDocument,
   writeOnlyReincludeOps,
@@ -1760,5 +1761,87 @@ describe('removed declared collection reverts via Cloud Control add /Prop (issue
         value: f.desired,
       }),
     ]);
+  });
+});
+
+describe('rejectedEmptyStripOps — service-rejected empty-array echoes (#481)', () => {
+  const T = 'AWS::VpcLattice::Rule';
+  const priorityOp: PatchOp = {
+    op: 'add',
+    path: '/Priority',
+    value: 10,
+    human: 'Priority -> deployed-template value',
+  };
+  const liveWithEmptyEcho = {
+    Priority: 20,
+    Match: {
+      HttpMatch: {
+        HeaderMatches: [],
+        PathMatch: { Match: { Prefix: '/api' }, CaseSensitive: false },
+      },
+    },
+  };
+
+  it('appends a remove op for a live EMPTY HeaderMatches echo on a Priority-only revert', () => {
+    // The live shape reproduced on CdkRealDriftIntegLatticeListener: the CC read echoes
+    // Match.HttpMatch.HeaderMatches [] the template never declared, and the CC update
+    // handler re-sends it to UpdateRule which requires >= 1 members — so the
+    // Priority-only revert failed. The strip op drops the echo from the patched state.
+    const strip = rejectedEmptyStripOps(T, [priorityOp], liveWithEmptyEcho);
+    expect(strip).toHaveLength(1);
+    expect(strip[0]).toMatchObject({ op: 'remove', path: '/Match/HttpMatch/HeaderMatches' });
+    // serialized without a value (RFC6902 remove)
+    expect(
+      toPatchDocument({
+        logicalId: 'HuntRule',
+        displayId: 'HuntRule',
+        resourceType: T,
+        physicalId: 'arn:rule',
+        kind: 'cc',
+        ops: [priorityOp, ...strip],
+      })
+    ).toBe(
+      JSON.stringify([
+        { op: 'add', path: '/Priority', value: 10 },
+        { op: 'remove', path: '/Match/HttpMatch/HeaderMatches' },
+      ])
+    );
+  });
+
+  it('a POPULATED live HeaderMatches is real data — never stripped', () => {
+    const live = structuredClone(liveWithEmptyEcho);
+    live.Match.HttpMatch.HeaderMatches = [
+      { Name: 'x-tenant', Match: { Exact: 'a' } },
+    ] as unknown as never[];
+    expect(rejectedEmptyStripOps(T, [priorityOp], live)).toEqual([]);
+  });
+
+  it('an ABSENT pointer needs no strip (a remove on it would itself fail)', () => {
+    expect(rejectedEmptyStripOps(T, [priorityOp], { Priority: 20 })).toEqual([]);
+    expect(
+      rejectedEmptyStripOps(T, [priorityOp], { Priority: 20, Match: { HttpMatch: {} } })
+    ).toEqual([]);
+  });
+
+  it('an op already rewriting the pointer or an ancestor suppresses the strip', () => {
+    const matchOp: PatchOp = {
+      op: 'add',
+      path: '/Match',
+      value: { HttpMatch: { PathMatch: { Match: { Prefix: '/api' } } } },
+      human: 'Match -> deployed-template value',
+    };
+    expect(rejectedEmptyStripOps(T, [matchOp], liveWithEmptyEcho)).toEqual([]);
+    const exactOp: PatchOp = {
+      op: 'remove',
+      path: '/Match/HttpMatch/HeaderMatches',
+      human: 'already handled',
+    };
+    expect(rejectedEmptyStripOps(T, [exactOp], liveWithEmptyEcho)).toEqual([]);
+  });
+
+  it('unknown types and missing live models are untouched', () => {
+    expect(rejectedEmptyStripOps('AWS::SQS::Queue', [priorityOp], liveWithEmptyEcho)).toEqual([]);
+    expect(rejectedEmptyStripOps(T, [priorityOp], undefined)).toEqual([]);
+    expect(rejectedEmptyStripOps(T, [], liveWithEmptyEcho)).toEqual([]);
   });
 });

@@ -129,7 +129,14 @@ TransitGatewayAttachmentId]` composite is built from TWO declared props (its
    them (cdkd #812 — reverting any prop on an ECS Service with a managed EBS volume
    lost the write-only `VolumeConfigurations` and UpdateService hard-failed). The
    revert now re-includes every fully-resolved declared write-only top-level prop the
-   patch does not already touch (`writeOnlyReincludeOps` in plan.ts).
+   patch does not already touch (`writeOnlyReincludeOps` in plan.ts). A second
+   edge (#481): a service can REJECT its own read-back — the CC read of a
+   VpcLattice Rule echoes `Match.HttpMatch.HeaderMatches: []`, and the update
+   handler re-sends it to an UpdateRule that requires >= 1 members, so ANY
+   patch on such a rule failed. The revert appends a `remove` op for curated
+   per-type pointers when the live model carries them as an EMPTY array
+   (`CC_UPDATE_REJECTED_EMPTY_PATHS` + `rejectedEmptyStripOps` in plan.ts —
+   live-gated, populated arrays are never dropped).
 
 If these six bets are right, the tool is right. The rest of this document is how each
 is realized in code.

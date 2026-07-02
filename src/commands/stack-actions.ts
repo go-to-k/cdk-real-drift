@@ -30,6 +30,7 @@ import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
 import { applyRevertDelete, applyRevertItem } from '../revert/apply.js';
 import {
   buildRevertPlan,
+  rejectedEmptyStripOps,
   type RevertItem,
   type RevertPlan,
   tagPreservingOps,
@@ -910,7 +911,15 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         gathered.schemas.get(item.resourceType),
         tagged
       );
-      const ccItem = { ...item, ops: extra.length > 0 ? [...tagged, ...extra] : tagged };
+      // Drop service-echoed empty arrays the service itself rejects on update
+      // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.
+      const strip = rejectedEmptyStripOps(
+        item.resourceType,
+        [...tagged, ...extra],
+        gathered.liveByLogical.get(item.logicalId)
+      );
+      const combined = [...tagged, ...extra, ...strip];
+      const ccItem = { ...item, ops: combined.length > tagged.length ? combined : tagged };
       r = await applyRevertItem(cc, ccItem, identifier, buildRetryOpts(item.displayId));
     }
     applied.push({
