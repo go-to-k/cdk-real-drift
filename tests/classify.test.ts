@@ -6268,4 +6268,76 @@ describe('real-stack false-positive folds', () => {
       'LoggingConfig.LogFormat',
     ]);
   });
+
+  it('ALB SubnetMappings (echo of declared Subnets) is dropped, not undeclared', () => {
+    const res: DesiredResource = {
+      logicalId: 'Alb',
+      resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+      physicalId: 'alb-1',
+      declared: { Subnets: ['subnet-a', 'subnet-b'] },
+    };
+    const live = {
+      Subnets: ['subnet-a', 'subnet-b'],
+      SubnetMappings: [{ SubnetId: 'subnet-a' }, { SubnetId: 'subnet-b' }],
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.undeclared).toEqual([]);
+    expect(t.declared).toEqual([]);
+  });
+
+  it('wholly-undeclared Listener attribute bag folds per-key (empty skipped, server.enabled atDefault)', () => {
+    const res: DesiredResource = {
+      logicalId: 'Lst',
+      resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+      physicalId: 'lst-1',
+      declared: {},
+    };
+    const live = {
+      ListenerAttributes: [
+        { Key: 'routing.http.request.x_amzn_mtls_clientcert.header_name', Value: '' },
+        { Key: 'routing.http.response.server.enabled', Value: 'true' },
+      ],
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.atDefault).toEqual(['ListenerAttributes[routing.http.response.server.enabled]']);
+    expect(t.undeclared).toEqual([]);
+    // a genuinely-set mTLS header (non-default, non-empty) still surfaces
+    const setLive = {
+      ListenerAttributes: [
+        { Key: 'routing.http.request.x_amzn_mtls_clientcert.header_name', Value: 'x-cert' },
+      ],
+    };
+    expect(tiers(classifyResource(res, setLive, mkSchema())).undeclared).toEqual([
+      'ListenerAttributes[routing.http.request.x_amzn_mtls_clientcert.header_name]',
+    ]);
+  });
+
+  it('SecretsManager Secret generated Name (no stack prefix) + TargetGroup runtime Targets fold to generated', () => {
+    const secret: DesiredResource = {
+      logicalId: 'Sec',
+      resourceType: 'AWS::SecretsManager::Secret',
+      physicalId:
+        'arn:aws:secretsmanager:ap-northeast-1:111111111111:secret:MyCred-AbCdEf12-x9Y8z7',
+      declared: {},
+    };
+    expect(
+      tiers(classifyResource(secret, { Name: 'MyCred-AbCdEf12' }, mkSchema())).generated
+    ).toEqual(['Name']);
+
+    const tg: DesiredResource = {
+      logicalId: 'Tg',
+      resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+      physicalId: 'tg-1',
+      declared: {},
+    };
+    const t = tiers(
+      classifyResource(
+        tg,
+        { Targets: [{ Port: 80, AvailabilityZone: 'ap-northeast-1a', Id: '10.0.0.1' }] },
+        mkSchema()
+      )
+    );
+    expect(t.generated).toEqual(['Targets']);
+    expect(t.undeclared).toEqual([]);
+  });
 });

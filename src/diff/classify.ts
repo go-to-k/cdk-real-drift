@@ -83,6 +83,7 @@ import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'LoadBalancerAttributes',
   'AWS::ElasticLoadBalancingV2::TargetGroup': 'TargetGroupAttributes',
+  'AWS::ElasticLoadBalancingV2::Listener': 'ListenerAttributes',
 };
 
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
@@ -267,6 +268,10 @@ const CC_ALT_REPRESENTATION: Record<string, Record<string, string>> = {
     AvailabilityZoneId: 'AvailabilityZone',
     AvailabilityZone: 'AvailabilityZoneId',
   },
+  // An ALB reads back `SubnetMappings` (`[{SubnetId}]`) — the object-array echo of the
+  // declared scalar `Subnets` list. Drop it when `Subnets` is declared so it is not
+  // reported as a live-only property (the subnets ARE compared via `Subnets`).
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': { SubnetMappings: 'Subnets' },
 };
 
 // Per-type attachment-list properties handled by tier rather than a positional compare.
@@ -1222,6 +1227,32 @@ export function classifyResource(
   // undeclared (A1/A2/A4 + identity suppression)
   for (const [k, v] of Object.entries(live)) {
     if (k in declared) continue;
+    // A WHOLLY-undeclared ELB attribute bag (a Listener that declares no ListenerAttributes
+    // reads back ~20 server-default attributes) — fold PER KEY like the declared-bag branch
+    // above instead of emitting the whole array: an empty value is skipped, a value equal to
+    // the curated AWS default folds `atDefault`, and anything else stays `undeclared` (so a
+    // genuinely-set attribute still surfaces, fail-closed).
+    if (k === ELB_ATTRIBUTE_BAGS[resourceType] && Array.isArray(v)) {
+      const attrDefaults = ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {};
+      for (const lEl of v) {
+        if (!isKeyValueEntry(lEl)) continue;
+        const key = (lEl as { Key: string }).Key;
+        const value = (lEl as { Value: unknown }).Value;
+        if (isTrivialEmpty(value)) continue;
+        const isDefault =
+          key in attrDefaults &&
+          (value === attrDefaults[key] || isStringlyEqualScalar(value, attrDefaults[key]));
+        findings.push({
+          tier: isDefault ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: `${k}[${key}]`,
+          actual: value,
+          nested: true,
+        });
+      }
+      continue;
+    }
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
     // already stripped from `live` by writeOnlyPaths above, so it cannot reach here
     // (the old guard was dead code for top-level keys).

@@ -103,56 +103,12 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EdgeHttp4128BFC4",
       "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
-      "path": "ListenerAttributes",
-      "actual": [
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_allow_credentials.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_allow_headers.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_allow_methods.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_allow_origin.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_expose_headers.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.access_control_max_age.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.content_security_policy.header_value"
-        },
-        {
-          "Value": "true",
-          "Key": "routing.http.response.server.enabled"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.strict_transport_security.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.x_content_type_options.header_value"
-        },
-        {
-          "Value": "",
-          "Key": "routing.http.response.x_frame_options.header_value"
-        }
-      ],
+      "path": "ListenerAttributes[routing.http.response.server.enabled]",
+      "actual": "true",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdI-Edge7-ivPMKfmp3Fts/6d19553c7d7ef1c8/bdc3da920490ea14",
       "constructPath": "CdkrdIntegHarvest4/Edge/Http"
     }

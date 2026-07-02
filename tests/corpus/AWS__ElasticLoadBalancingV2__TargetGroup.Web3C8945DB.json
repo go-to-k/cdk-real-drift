@@ -292,6 +292,15 @@
       "constructPath": "CdkrdIntegHarvest4/Web"
     },
     {
+      "tier": "generated",
+      "logicalId": "Web3C8945DB",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Targets",
+      "actual": [],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
+      "constructPath": "CdkrdIntegHarvest4/Web"
+    },
+    {
       "tier": "atDefault",
       "logicalId": "Web3C8945DB",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",

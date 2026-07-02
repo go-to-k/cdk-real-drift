@@ -1171,6 +1171,17 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // AWS-managed, not user intent, present on every such service. A service that DOES declare
   // a Role (classic-ELB pattern) carries it in the template and never reaches this loop.
   'AWS::ECS::Service': new Set(['Role']),
+  // A Secret whose Name the template omits reads back a CloudFormation-generated name
+  // (`<constructId>-<random>` — NO stack prefix, so isCfnGeneratedName misses it). It is the
+  // AWS-minted identity, not user intent; a Secret that DECLARES a Name carries it in the
+  // template and never reaches this loop.
+  'AWS::SecretsManager::Secret': new Set(['Name']),
+  // A target group's `Targets` that the template does not declare holds the targets AWS/ECS
+  // registered at RUNTIME (dynamic task IPs) — not template intent, and they churn as tasks
+  // recycle, so surfacing them as recordable drift is non-actionable (a record snapshot
+  // immediately re-drifts). A group that DECLARES static Targets carries them in the template
+  // and is compared normally, so a removed/changed static target still surfaces.
+  'AWS::ElasticLoadBalancingV2::TargetGroup': new Set(['Targets']),
   // An Application Auto Scaling policy attached to a target via ScalingTargetId (the CDK
   // pattern) reads back the target's ResourceId / ServiceNamespace / ScalableDimension,
   // which AWS derives from the target and the template never declares. They echo the
@@ -1517,6 +1528,12 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     // A dualstack ALB reads back this IPv6 IGW-traffic attribute at its "false" default.
     // Observed live on a bare dualstack ALB.
     'ipv6.deny_all_igw_traffic': 'false',
+  },
+  'AWS::ElasticLoadBalancingV2::Listener': {
+    // A listener that declares no attributes reads back AWS's defaults: the mTLS
+    // advertise / response-header attributes are all empty (folded by isTrivialEmpty),
+    // and the `server` response header is enabled. Observed live.
+    'routing.http.response.server.enabled': 'true',
   },
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
     'load_balancing.algorithm.anomaly_mitigation': 'off',

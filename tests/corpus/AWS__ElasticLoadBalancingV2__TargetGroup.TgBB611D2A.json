@@ -294,6 +294,15 @@
       "constructPath": "CdkRealDriftIntegAlbRich/Tg"
     },
     {
+      "tier": "generated",
+      "logicalId": "TgBB611D2A",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Targets",
+      "actual": [],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-tg-rich/3fa66492270b342d",
+      "constructPath": "CdkRealDriftIntegAlbRich/Tg"
+    },
+    {
       "tier": "atDefault",
       "logicalId": "TgBB611D2A",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",

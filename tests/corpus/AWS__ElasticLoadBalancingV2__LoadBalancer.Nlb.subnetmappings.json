@@ -132,44 +132,62 @@
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
     {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[access_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
       "tier": "undeclared",
       "logicalId": "Nlb",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "path": "LoadBalancerAttributes",
-      "actual": [
-        {
-          "Value": "",
-          "Key": "access_logs.s3.bucket"
-        },
-        {
-          "Value": "false",
-          "Key": "access_logs.s3.enabled"
-        },
-        {
-          "Value": "",
-          "Key": "access_logs.s3.prefix"
-        },
-        {
-          "Value": "false",
-          "Key": "deletion_protection.enabled"
-        },
-        {
-          "Value": "any_availability_zone",
-          "Key": "dns_record.client_routing_policy"
-        },
-        {
-          "Value": "false",
-          "Key": "load_balancing.cross_zone.enabled"
-        },
-        {
-          "Value": "0",
-          "Key": "secondary_ips.auto_assigned.per_subnet"
-        },
-        {
-          "Value": "false",
-          "Key": "zonal_shift.config.enabled"
-        }
-      ],
+      "path": "LoadBalancerAttributes[deletion_protection.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[dns_record.client_routing_policy]",
+      "actual": "any_availability_zone",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[secondary_ips.auto_assigned.per_subnet]",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
+      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Nlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[zonal_shift.config.enabled]",
+      "actual": "false",
+      "nested": true,
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
