@@ -1,4 +1,5 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
+import { CloudWatchClient, DescribeAnomalyDetectorsCommand } from '@aws-sdk/client-cloudwatch';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
@@ -64,6 +65,7 @@ const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const ec2 = mockClient(EC2Client);
 const ses = mockClient(SESClient);
+const cloudwatch = mockClient(CloudWatchClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -92,6 +94,7 @@ beforeEach(() => {
     appsync,
     ec2,
     ses,
+    cloudwatch,
   ])
     m.reset();
 });
@@ -926,6 +929,111 @@ describe('SDK overrides', () => {
 
     it('undefined when no connection name can be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::Glue::Connection'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('CloudWatch AnomalyDetector (NON_PROVISIONABLE, issue #461)', () => {
+    const liveSingle = {
+      SingleMetricAnomalyDetector: {
+        Namespace: 'AWS/Lambda',
+        MetricName: 'Errors',
+        Stat: 'Sum',
+        Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+      },
+      Configuration: { MetricTimezone: 'Asia/Tokyo' },
+      StateValue: 'TRAINED',
+    };
+
+    it('nested single-metric style: matches by identity and mirrors the declared shape (MetricTimezone -> MetricTimeZone)', async () => {
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolves({ AnomalyDetectors: [liveSingle] } as never);
+      const out = await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Stat: 'Sum',
+            Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+          },
+        })
+      );
+      expect(out).toEqual({
+        SingleMetricAnomalyDetector: {
+          Namespace: 'AWS/Lambda',
+          MetricName: 'Errors',
+          Stat: 'Sum',
+          Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+        },
+        Configuration: { MetricTimeZone: 'Asia/Tokyo' },
+      });
+      // the identity filters are pushed down to the API for single-metric detectors
+      const call = cloudwatch.commandCalls(DescribeAnomalyDetectorsCommand)[0]!;
+      expect(call.args[0].input).toMatchObject({ Namespace: 'AWS/Lambda', MetricName: 'Errors' });
+    });
+
+    it('legacy top-level style: emits the legacy shape the template declared', async () => {
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolves({ AnomalyDetectors: [liveSingle] } as never);
+      const out = await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({
+          Namespace: 'AWS/Lambda',
+          MetricName: 'Errors',
+          Stat: 'Sum',
+          Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+        })
+      );
+      expect(out).toEqual({
+        Namespace: 'AWS/Lambda',
+        MetricName: 'Errors',
+        Stat: 'Sum',
+        Dimensions: [{ Name: 'FunctionName', Value: 'fn' }],
+        Configuration: { MetricTimeZone: 'Asia/Tokyo' },
+      });
+    });
+
+    it('a different Stat / dimension set does not match -> ResourceGoneError (deleted out of band)', async () => {
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolves({ AnomalyDetectors: [liveSingle] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+          ctx({ Namespace: 'AWS/Lambda', MetricName: 'Errors', Stat: 'Average' })
+        )
+      ).rejects.toThrow(/absent/);
+    });
+
+    it('unresolved identity -> undefined (skipped, never a false read)', async () => {
+      expect(
+        await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](ctx({ Namespace: 'AWS/Lambda' }))
+      ).toBeUndefined();
+    });
+
+    it('metric-math style: lists unfiltered and matches by query-id set', async () => {
+      const mathDetector = {
+        MetricMathAnomalyDetector: {
+          MetricDataQueries: [
+            { Id: 'e1', Expression: 'SUM(METRICS())', ReturnData: true },
+            { Id: 'm1', MetricStat: { Stat: 'Sum' }, ReturnData: false },
+          ],
+        },
+        Configuration: {},
+      };
+      cloudwatch
+        .on(DescribeAnomalyDetectorsCommand)
+        .resolves({ AnomalyDetectors: [mathDetector] } as never);
+      const out = (await SDK_OVERRIDES['AWS::CloudWatch::AnomalyDetector'](
+        ctx({
+          MetricMathAnomalyDetector: {
+            MetricDataQueries: [{ Id: 'm1' }, { Id: 'e1' }],
+          },
+        })
+      )) as Record<string, unknown>;
+      expect(out.MetricMathAnomalyDetector).toEqual(mathDetector.MetricMathAnomalyDetector);
+      // no Namespace/MetricName filter for math detectors
+      const call = cloudwatch.commandCalls(DescribeAnomalyDetectorsCommand)[0]!;
+      expect(call.args[0].input).toEqual({ NextToken: undefined });
     });
   });
 

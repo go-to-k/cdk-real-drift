@@ -4,6 +4,11 @@ import {
   UpdateIntegrationResponseCommand,
   UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
+import {
+  CloudWatchClient,
+  DescribeAnomalyDetectorsCommand,
+  PutAnomalyDetectorCommand,
+} from '@aws-sdk/client-cloudwatch';
 import { ECSClient, UpdateServiceCommand } from '@aws-sdk/client-ecs';
 import {
   CloudFrontClient,
@@ -129,6 +134,7 @@ const configService = mockClient(ConfigServiceClient);
 const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
 const ecs = mockClient(ECSClient);
+const cloudwatch = mockClient(CloudWatchClient);
 const cloudcontrol = mockClient(CloudControlClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
@@ -176,7 +182,84 @@ beforeEach(() => {
   eventbridge.reset();
   apigw.reset();
   ecs.reset();
+  cloudwatch.reset();
   cloudcontrol.reset();
+});
+
+describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #461)', () => {
+  const liveDetector = {
+    SingleMetricAnomalyDetector: {
+      Namespace: 'AWS/Lambda',
+      MetricName: 'Errors',
+      Stat: 'Sum',
+    },
+    Configuration: { MetricTimezone: 'UTC' }, // drifted out of band
+  };
+  const cwCtx = ctx({
+    physicalId: 'abc-generated-id',
+    declared: {
+      SingleMetricAnomalyDetector: { Namespace: 'AWS/Lambda', MetricName: 'Errors', Stat: 'Sum' },
+      Configuration: { MetricTimeZone: 'Asia/Tokyo' },
+    },
+  });
+
+  it('re-supplies the createOnly identity + desired Configuration (MetricTimeZone -> MetricTimezone)', async () => {
+    cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [liveDetector] });
+    cloudwatch.on(PutAnomalyDetectorCommand).resolves({});
+    await SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](cwCtx, [
+      {
+        op: 'add',
+        path: '/Configuration/MetricTimeZone',
+        value: 'Asia/Tokyo',
+        human: 'Configuration.MetricTimeZone -> deployed-template value',
+      },
+    ]);
+    const calls = cloudwatch.commandCalls(PutAnomalyDetectorCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as Record<string, unknown>;
+    expect(input.SingleMetricAnomalyDetector).toEqual({
+      Namespace: 'AWS/Lambda',
+      MetricName: 'Errors',
+      Stat: 'Sum',
+    });
+    expect(input.Configuration).toEqual({ MetricTimezone: 'Asia/Tokyo' });
+  });
+
+  it('a REMOVE op (revert an out-of-band-added timezone) sends an empty Configuration', async () => {
+    cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [liveDetector] });
+    cloudwatch.on(PutAnomalyDetectorCommand).resolves({});
+    await SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](
+      ctx({
+        physicalId: 'abc-generated-id',
+        declared: {
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Stat: 'Sum',
+          },
+        },
+      }),
+      [
+        {
+          op: 'remove',
+          path: '/Configuration/MetricTimeZone',
+          human: 'Configuration.MetricTimeZone -> remove (undeclared)',
+        },
+      ]
+    );
+    const input = cloudwatch.commandCalls(PutAnomalyDetectorCommand)[0]!.args[0].input as Record<
+      string,
+      unknown
+    >;
+    expect(input.Configuration).toEqual({});
+  });
+
+  it('throws when no detector identity can be resolved', async () => {
+    cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [] });
+    await expect(
+      SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](ctx({ physicalId: '', declared: {} }), [])
+    ).rejects.toThrow(/anomaly-detector/);
+  });
 });
 
 describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via UpdateService)', () => {

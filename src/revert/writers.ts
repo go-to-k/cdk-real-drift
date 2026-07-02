@@ -28,6 +28,7 @@ import {
   UpdateIntegrationResponseCommand,
   UpdateMethodResponseCommand,
 } from '@aws-sdk/client-api-gateway';
+import { CloudWatchClient, PutAnomalyDetectorCommand } from '@aws-sdk/client-cloudwatch';
 import {
   CloudControlClient,
   GetResourceCommand,
@@ -815,6 +816,59 @@ const writeSesReceiptRule: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::CloudWatch::AnomalyDetector — read via the DescribeAnomalyDetectors override
+// (NON_PROVISIONABLE, no Cloud Control handlers), so it was detect-only. Every
+// identity property (Namespace/MetricName/Stat/Dimensions or the nested
+// SingleMetric/MetricMath detector) is createOnly — the one mutable property is
+// `Configuration` (MetricTimeZone + ExcludedTimeRanges), and cloudwatch
+// PutAnomalyDetector is an UPSERT keyed on the detector identity: re-supply the
+// identity from the desired model plus the desired Configuration and the config is
+// overwritten in place. Field mapping mirrors the reader (CFn MetricTimeZone -> API
+// MetricTimezone; ISO strings -> Dates). A desired model with NO Configuration sends
+// an empty {} — proven live to clear an out-of-band timezone back to the default.
+const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::CloudWatch::AnomalyDetector', ctx, ops);
+  const single = m.SingleMetricAnomalyDetector as Record<string, unknown> | undefined;
+  const math = m.MetricMathAnomalyDetector as Record<string, unknown> | undefined;
+  const legacyNs = str(m.Namespace);
+  if (!single && !math && !legacyNs)
+    throw new Error('cannot resolve anomaly-detector identity for revert');
+  const cfg = m.Configuration as
+    | {
+        MetricTimeZone?: unknown;
+        ExcludedTimeRanges?: { StartTime?: unknown; EndTime?: unknown }[];
+      }
+    | undefined;
+  const toDate = (v: unknown): Date | undefined =>
+    typeof v === 'string' ? new Date(v) : v instanceof Date ? v : undefined;
+  const configuration = {
+    ...(str(cfg?.MetricTimeZone) && { MetricTimezone: cfg?.MetricTimeZone as string }),
+    ...((cfg?.ExcludedTimeRanges ?? []).length > 0 && {
+      ExcludedTimeRanges: (cfg?.ExcludedTimeRanges ?? []).map((r) => ({
+        StartTime: toDate(r.StartTime),
+        EndTime: toDate(r.EndTime),
+      })),
+    }),
+  };
+  await new CloudWatchClient({ region: ctx.region }).send(
+    new PutAnomalyDetectorCommand({
+      ...(single && { SingleMetricAnomalyDetector: single as never }),
+      ...(math && { MetricMathAnomalyDetector: math as never }),
+      ...(!single &&
+        !math && {
+          SingleMetricAnomalyDetector: {
+            Namespace: legacyNs,
+            MetricName: str(m.MetricName),
+            Stat: str(m.Stat),
+            ...(Array.isArray(m.Dimensions) &&
+              m.Dimensions.length > 0 && { Dimensions: m.Dimensions as never }),
+          },
+        }),
+      Configuration: configuration,
+    })
+  );
+};
+
 // AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
 // composite id), so it is read via DescribeMetricFilters and was not revertable.
 // CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
@@ -1263,6 +1317,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Workflow': writeGlueWorkflow,
   'AWS::Glue::Connection': writeGlueConnection,
   'AWS::SES::ReceiptRule': writeSesReceiptRule,
+  'AWS::CloudWatch::AnomalyDetector': writeCloudWatchAnomalyDetector,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
