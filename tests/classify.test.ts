@@ -5519,6 +5519,81 @@ describe('issue #462 residual first-run noise folds', () => {
     defaultPaths: {},
   };
 
+  describe('service-attached log-group policy shell (item 2 + the #464 APS addendum)', () => {
+    const logGroup = (live: Record<string, unknown>) =>
+      classifyResource(
+        {
+          logicalId: 'HuntApsLogs',
+          resourceType: 'AWS::Logs::LogGroup',
+          physicalId: '/aws/vendedlogs/prometheus/cdkrd-hunt',
+          constructPath: 'Stack/HuntApsLogs',
+          declared: { LogGroupName: '/aws/vendedlogs/prometheus/cdkrd-hunt' },
+        },
+        { LogGroupName: '/aws/vendedlogs/prometheus/cdkrd-hunt', ...live },
+        bare462
+      ).find((f) => f.path === 'ResourcePolicyDocument');
+
+    // The REAL policy APS attaches to its vended-logs target group (harvested live
+    // from a fresh aps-rich deploy) — the CloudWatch Logs Delivery / VPC flow logs /
+    // CloudFront v2 auto-attach carries the same AWSLogDeliveryWrite* + delivery.logs
+    // shape. canonicalizePolicy subtracts the statement; the surviving grammar shell
+    // must then drop as structural noise, end to end.
+    const apsAutoAttached = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'AWSLogDeliveryWrite1',
+          Effect: 'Allow',
+          Principal: { Service: 'delivery.logs.amazonaws.com' },
+          Action: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+          Resource:
+            'arn:aws:logs:us-east-1:111111111111:log-group:/aws/vendedlogs/prometheus/cdkrd-hunt:log-stream:*',
+          Condition: {
+            StringEquals: { 'aws:SourceAccount': '111111111111' },
+            ArnLike: { 'aws:SourceArn': 'arn:aws:logs:us-east-1:111111111111:*' },
+          },
+        },
+      ],
+    };
+
+    it('the live auto-attached policy (all statements AWS-managed) produces NO finding', () => {
+      expect(logGroup({ ResourcePolicyDocument: apsAutoAttached })).toBeUndefined();
+    });
+
+    it('a surviving USER statement keeps the document surfaced as undeclared', () => {
+      const withUserGrant = {
+        ...apsAutoAttached,
+        Statement: [
+          ...apsAutoAttached.Statement,
+          {
+            Sid: 'UserGrant',
+            Effect: 'Allow',
+            Principal: { AWS: 'arn:aws:iam::222222222222:root' },
+            Action: 'logs:PutLogEvents',
+            Resource: '*',
+          },
+        ],
+      };
+      expect(logGroup({ ResourcePolicyDocument: withUserGrant })?.tier).toBe('undeclared');
+    });
+
+    it('a delivery-shaped statement WITHOUT the AWSLogDelivery Sid is not subtracted and surfaces', () => {
+      const attackerShaped = {
+        Version: '2012-10-17',
+        Statement: [{ ...apsAutoAttached.Statement[0], Sid: 'LooksLikeDelivery' }],
+      };
+      expect(logGroup({ ResourcePolicyDocument: attackerShaped })?.tier).toBe('undeclared');
+    });
+
+    it('a shell carrying a non-boilerplate key is not dropped', () => {
+      expect(
+        logGroup({
+          ResourcePolicyDocument: { Version: '2012-10-17', Statement: [], Extra: { x: 1 } },
+        })?.tier
+      ).toBe('undeclared');
+    });
+  });
+
   describe('self-identity echo wrapper (DeliveryDestinationPolicy shape)', () => {
     const dest = (live: Record<string, unknown>) =>
       classifyResource(
