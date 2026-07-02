@@ -1,0 +1,99 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Analyzer",
+    "resourceType": "AWS::AccessAnalyzer::Analyzer",
+    "physicalId": "arn:aws:access-analyzer:us-east-1:111111111111:analyzer/cdkrd-hunt-analyzer",
+    "constructPath": "CdkRealDriftIntegAnalyzerIot/Analyzer",
+    "declared": {
+      "AnalyzerName": "cdkrd-hunt-analyzer",
+      "ArchiveRules": [
+        {
+          "Filter": [
+            {
+              "Eq": ["false"],
+              "Property": "isPublic"
+            }
+          ],
+          "RuleName": "ArchiveNonPublic"
+        },
+        {
+          "Filter": [
+            {
+              "Contains": ["999988887777"],
+              "Property": "principal.AWS"
+            },
+            {
+              "Eq": ["AWS::S3::Bucket"],
+              "Property": "resourceType"
+            }
+          ],
+          "RuleName": "ArchiveKnownPrincipal"
+        }
+      ],
+      "Type": "ACCOUNT"
+    }
+  },
+  "liveRaw": {
+    "ArchiveRules": [
+      {
+        "Filter": [
+          {
+            "Contains": ["999988887777"],
+            "Property": "principal.AWS"
+          },
+          {
+            "Eq": ["AWS::S3::Bucket"],
+            "Property": "resourceType"
+          }
+        ],
+        "RuleName": "ArchiveKnownPrincipal"
+      },
+      {
+        "Filter": [
+          {
+            "Eq": ["false"],
+            "Property": "isPublic"
+          }
+        ],
+        "RuleName": "ArchiveNonPublic"
+      }
+    ],
+    "Type": "ACCOUNT",
+    "AnalyzerName": "cdkrd-hunt-analyzer",
+    "Arn": "arn:aws:access-analyzer:us-east-1:111111111111:analyzer/cdkrd-hunt-analyzer",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAnalyzerIot/4cd8a5b0-75d0-11f1-b9d0-0e73b11ab369",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegAnalyzerIot",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Analyzer",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["AnalyzerName", "Type"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AnalyzerName", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

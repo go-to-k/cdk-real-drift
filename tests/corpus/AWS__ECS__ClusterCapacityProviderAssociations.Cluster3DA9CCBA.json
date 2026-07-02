@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster3DA9CCBA",
+    "resourceType": "AWS::ECS::ClusterCapacityProviderAssociations",
+    "physicalId": "CdkRealDriftIntegEcsCapacityProvider-ClusterEB0386A7-9d4xKYE58fcq",
+    "constructPath": "CdkRealDriftIntegEcsCapacityProvider/Cluster/Cluster",
+    "declared": {
+      "CapacityProviders": ["FARGATE", "FARGATE_SPOT", "cdkrd-hunt-cp"],
+      "Cluster": "CdkRealDriftIntegEcsCapacityProvider-ClusterEB0386A7-9d4xKYE58fcq",
+      "DefaultCapacityProviderStrategy": []
+    }
+  },
+  "liveRaw": {
+    "DefaultCapacityProviderStrategy": [],
+    "CapacityProviders": ["FARGATE", "FARGATE_SPOT", "cdkrd-hunt-cp"],
+    "Cluster": "CdkRealDriftIntegEcsCapacityProvider-ClusterEB0386A7-9d4xKYE58fcq"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Cluster"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Cluster"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

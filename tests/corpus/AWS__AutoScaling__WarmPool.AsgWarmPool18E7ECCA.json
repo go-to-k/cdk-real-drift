@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AsgWarmPool18E7ECCA",
+    "resourceType": "AWS::AutoScaling::WarmPool",
+    "physicalId": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+    "constructPath": "CdkRealDriftIntegEcsCapacityProvider/Asg/WarmPool",
+    "declared": {
+      "AutoScalingGroupName": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+      "InstanceReusePolicy": {
+        "ReuseOnScaleIn": false
+      },
+      "MaxGroupPreparedCapacity": 0,
+      "PoolState": "Stopped"
+    }
+  },
+  "liveRaw": {
+    "MinSize": 0,
+    "MaxGroupPreparedCapacity": 0,
+    "AutoScalingGroupName": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+    "PoolState": "Stopped",
+    "InstanceReusePolicy": {
+      "ReuseOnScaleIn": false
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AsgWarmPool18E7ECCA",
+      "resourceType": "AWS::AutoScaling::WarmPool",
+      "path": "MinSize",
+      "actual": 0,
+      "physicalId": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+      "constructPath": "CdkRealDriftIntegEcsCapacityProvider/Asg/WarmPool"
+    }
+  ]
+}

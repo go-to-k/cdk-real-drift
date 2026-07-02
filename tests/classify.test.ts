@@ -2178,6 +2178,54 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  // An Access Analyzer's `ArchiveRules` is a SET of {RuleName, Filter} AWS echoes
+  // SORTED by RuleName, not in template order (found by accessanalyzer-iot-rich:
+  // declared [ArchiveNonPublic, ArchiveKnownPrincipal] read back alphabetical —
+  // 4 false declared drifts on a 2-rule analyzer). RuleName is NOT an
+  // IDENTITY_FIELD and ArchiveRules is an OBJECT array, so the schema's
+  // insertionOrder:false (scalar-only fold) can't align it — only the per-type fold.
+  describe('AccessAnalyzer Analyzer ArchiveRules (RuleName-keyed reordered set, found by accessanalyzer-iot-rich)', () => {
+    const T = 'AWS::AccessAnalyzer::Analyzer';
+    const declared = {
+      Type: 'ACCOUNT',
+      ArchiveRules: [
+        { RuleName: 'ArchiveNonPublic', Filter: [{ Property: 'isPublic', Eq: ['false'] }] },
+        {
+          RuleName: 'ArchiveKnownPrincipal',
+          Filter: [
+            { Property: 'principal.AWS', Contains: ['999988887777'] },
+            { Property: 'resourceType', Eq: ['AWS::S3::Bucket'] },
+          ],
+        },
+      ],
+    };
+
+    it('AWS returning the ArchiveRules sorted by RuleName is NOT drift', () => {
+      const live = {
+        Type: 'ACCOUNT',
+        ArchiveRules: [declared.ArchiveRules[1], declared.ArchiveRules[0]],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine rule change (an edited Filter value) still surfaces', () => {
+      const live = {
+        Type: 'ACCOUNT',
+        ArchiveRules: [
+          {
+            RuleName: 'ArchiveKnownPrincipal',
+            Filter: [
+              { Property: 'principal.AWS', Contains: ['111122223333'] }, // account edited
+              { Property: 'resourceType', Eq: ['AWS::S3::Bucket'] },
+            ],
+          },
+          declared.ArchiveRules[0],
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   // An IAM principal's inline `Policies` is a SET of {PolicyName, PolicyDocument}
   // AWS returns SORTED by PolicyName, not in template order (found by
   // iam-permboundary-rich: declared [readObjects, describeOnly] read back

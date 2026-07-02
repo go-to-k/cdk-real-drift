@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CpADC102F4",
+    "resourceType": "AWS::ECS::CapacityProvider",
+    "physicalId": "cdkrd-hunt-cp",
+    "constructPath": "CdkRealDriftIntegEcsCapacityProvider/Cp/Cp",
+    "declared": {
+      "AutoScalingGroupProvider": {
+        "AutoScalingGroupArn": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+        "ManagedScaling": {
+          "InstanceWarmupPeriod": 120,
+          "MaximumScalingStepSize": 5,
+          "MinimumScalingStepSize": 1,
+          "Status": "ENABLED",
+          "TargetCapacity": 80
+        },
+        "ManagedTerminationProtection": "DISABLED"
+      },
+      "Name": "cdkrd-hunt-cp"
+    }
+  },
+  "liveRaw": {
+    "AutoScalingGroupProvider": {
+      "ManagedScaling": {
+        "Status": "ENABLED",
+        "MinimumScalingStepSize": 1,
+        "InstanceWarmupPeriod": 120,
+        "TargetCapacity": 80,
+        "MaximumScalingStepSize": 5
+      },
+      "AutoScalingGroupArn": "CdkRealDriftIntegEcsCapacityProvider-AsgASGD1D7B4E2-jR1Tyi7kHDEe",
+      "ManagedTerminationProtection": "DISABLED",
+      "ManagedDraining": "ENABLED"
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEcsCapacityProvider/4b3b4960-75d0-11f1-8bf3-0affc63b653f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEcsCapacityProvider",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CpADC102F4",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-cp"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ClusterName", "Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AutoScalingGroupProvider.AutoScalingGroupArn",
+      "ClusterName",
+      "ManagedInstancesProvider.InstanceLaunchTemplate.FipsEnabled",
+      "Name"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CpADC102F4",
+      "resourceType": "AWS::ECS::CapacityProvider",
+      "path": "AutoScalingGroupProvider.ManagedDraining",
+      "actual": "ENABLED",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-cp",
+      "constructPath": "CdkRealDriftIntegEcsCapacityProvider/Cp/Cp"
+    }
+  ]
+}

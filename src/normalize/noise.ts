@@ -582,6 +582,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     HealthCheckType: 'EC2',
     HealthCheckGracePeriod: 0,
   },
+  // A warm pool that declares no MinSize reads back MinSize:0 — the documented
+  // constant default ("minimum 0 warmed instances"). Observed undeclared on a fresh
+  // ecs-capacityprovider-rich deploy. Equality-gated: raise it out of band and it
+  // no longer matches, so it surfaces as real undeclared drift.
+  'AWS::AutoScaling::WarmPool': {
+    MinSize: 0,
+  },
   'AWS::DocDB::DBCluster': {
     Port: 27017, // DocDB's fixed default port
   },
@@ -739,6 +746,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   // fixture). Equality-gated: a real disk cap no longer matches and surfaces.
   'AWS::EMRServerless::Application': {
     'MaximumCapacity.Disk': '400000 GB',
+  },
+  // ECS materializes ManagedDraining:"ENABLED" (the documented constant default) into
+  // AutoScalingGroupProvider when the template omits it — CDK's AsgCapacityProvider
+  // doesn't render it unless set, so every ECS-on-EC2 first run reports it as
+  // undeclared. Equality-gated: disable draining out of band and it surfaces.
+  // Observed live on a fresh ecs-capacityprovider-rich deploy.
+  'AWS::ECS::CapacityProvider': {
+    'AutoScalingGroupProvider.ManagedDraining': 'ENABLED',
   },
   // AWS Backup materializes these defaults into each live BackupPlanRule (keyed by RuleName
   // — descended via NESTED_ARRAY_IDENTITY). Folding them keeps a clean plan clean; an
@@ -2005,6 +2020,19 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
 // canonical JSON before the positional diff — a genuine rule change still differs.
 export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::EC2::SecurityGroup': new Set(['SecurityGroupIngress', 'SecurityGroupEgress']),
+  // An Access Analyzer's `ArchiveRules` is a SET of {RuleName, Filter} rules that AWS
+  // echoes SORTED by RuleName, not in template order (declared [ArchiveNonPublic,
+  // ArchiveKnownPrincipal] reads back [ArchiveKnownPrincipal, ArchiveNonPublic]), so a
+  // positional compare false-flags every shifted rule's RuleName AND whole Filter array
+  // as declared drift on a freshly recorded analyzer. `RuleName` is NOT one of
+  // canonicalizeTagListsDeep's IDENTITY_FIELDS (Key/Id/AttributeName/IndexName/Name),
+  // so that keyed canonicalizer can't align it — hence the per-type opt-in. The schema
+  // marks ArchiveRules insertionOrder:false, but the schema-driven unorderedScalarPaths
+  // fold is scalar-items-only, so this OBJECT array needs the manual entry. Sorting both
+  // sides by canonical JSON aligns equal rules; a genuine rule add/remove/filter change
+  // still differs. Observed live on a fresh accessanalyzer-iot-rich deploy (4 false
+  // declared drifts on a 2-rule analyzer).
+  'AWS::AccessAnalyzer::Analyzer': new Set(['ArchiveRules']),
   // Cognito UserPoolResourceServer `Scopes` is a SET of {ScopeName, ScopeDescription}
   // OAuth scopes that AWS echoes SORTED by ScopeName, not in template order (declared
   // [zeta.write, alpha.read, mike.admin] reads back [alpha.read, mike.admin, zeta.write]),
