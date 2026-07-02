@@ -1,0 +1,131 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Policy",
+    "resourceType": "AWS::DLM::LifecyclePolicy",
+    "physicalId": "policy-0673ac990b7d6c55e",
+    "constructPath": "CdkrdDlmLive/Policy",
+    "declared": {
+      "Description": "cdkrd-dlm-live daily EBS backups",
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdDlmLive-DlmRoleCE7C5775-tJ0TMlsvZVUe",
+      "PolicyDetails": {
+        "PolicyType": "EBS_SNAPSHOT_MANAGEMENT",
+        "ResourceTypes": ["VOLUME"],
+        "Schedules": [
+          {
+            "CreateRule": {
+              "Interval": 24,
+              "IntervalUnit": "HOURS",
+              "Times": ["03:00"]
+            },
+            "Name": "daily",
+            "RetainRule": {
+              "Count": 14
+            }
+          }
+        ],
+        "TargetTags": [
+          {
+            "Key": "cdkrd-dlm-live",
+            "Value": "true"
+          }
+        ]
+      },
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd-dlm-live daily EBS backups",
+    "State": "ENABLED",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdDlmLive-DlmRoleCE7C5775-tJ0TMlsvZVUe",
+    "PolicyDetails": {
+      "PolicyType": "EBS_SNAPSHOT_MANAGEMENT",
+      "ResourceTypes": ["VOLUME"],
+      "ResourceLocations": ["CLOUD"],
+      "TargetTags": [
+        {
+          "Key": "cdkrd-dlm-live",
+          "Value": "true"
+        }
+      ],
+      "Schedules": [
+        {
+          "Name": "daily",
+          "CopyTags": false,
+          "CreateRule": {
+            "Location": "CLOUD",
+            "Interval": 24,
+            "IntervalUnit": "HOURS",
+            "Times": ["03:00"]
+          },
+          "RetainRule": {
+            "Count": 14,
+            "Interval": 0
+          }
+        }
+      ],
+      "PolicyLanguage": "STANDARD"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Policy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.ResourceLocations",
+      "actual": ["CLOUD"],
+      "nested": true,
+      "physicalId": "policy-0673ac990b7d6c55e",
+      "constructPath": "CdkrdDlmLive/Policy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Policy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.Schedules[daily].CreateRule.Location",
+      "actual": "CLOUD",
+      "nested": true,
+      "physicalId": "policy-0673ac990b7d6c55e",
+      "constructPath": "CdkrdDlmLive/Policy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Policy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.Schedules[daily].RetainRule.Interval",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "policy-0673ac990b7d6c55e",
+      "constructPath": "CdkrdDlmLive/Policy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Policy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.PolicyLanguage",
+      "actual": "STANDARD",
+      "nested": true,
+      "physicalId": "policy-0673ac990b7d6c55e",
+      "constructPath": "CdkrdDlmLive/Policy"
+    }
+  ]
+}

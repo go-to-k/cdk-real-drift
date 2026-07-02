@@ -9,6 +9,11 @@ import {
   DescribeAnomalyDetectorsCommand,
   PutAnomalyDetectorCommand,
 } from '@aws-sdk/client-cloudwatch';
+import {
+  DLMClient,
+  GetLifecyclePolicyCommand,
+  UpdateLifecyclePolicyCommand,
+} from '@aws-sdk/client-dlm';
 import { ECSClient, UpdateServiceCommand } from '@aws-sdk/client-ecs';
 import {
   CloudFrontClient,
@@ -135,6 +140,7 @@ const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
 const ecs = mockClient(ECSClient);
 const cloudwatch = mockClient(CloudWatchClient);
+const dlm = mockClient(DLMClient);
 const cloudcontrol = mockClient(CloudControlClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
@@ -183,6 +189,7 @@ beforeEach(() => {
   apigw.reset();
   ecs.reset();
   cloudwatch.reset();
+  dlm.reset();
   cloudcontrol.reset();
 });
 
@@ -309,6 +316,127 @@ describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #4
     await expect(
       SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](ctx({ physicalId: '', declared: {} }), [])
     ).rejects.toThrow(/anomaly-detector/);
+  });
+});
+
+describe('DLM LifecyclePolicy writer (UpdateLifecyclePolicy, issue #468)', () => {
+  // live GetLifecyclePolicy has the schedule retain count drifted (5) away from intent (14)
+  const livePolicy = {
+    Policy: {
+      PolicyId: 'policy-0abc',
+      Description: 'backups',
+      State: 'ENABLED',
+      ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+      PolicyDetails: {
+        PolicyType: 'EBS_SNAPSHOT_MANAGEMENT',
+        ResourceTypes: ['VOLUME'],
+        TargetTags: [{ Key: 'backup', Value: 'true' }],
+        Schedules: [
+          {
+            Name: 'daily',
+            CreateRule: { Interval: 24, IntervalUnit: 'HOURS' },
+            RetainRule: { Count: 5 },
+          },
+        ],
+      },
+    },
+  };
+  const dlmCtx = (declared: Record<string, unknown>): OverrideCtx =>
+    ctx({ physicalId: 'policy-0abc', declared });
+
+  it('reconstructs the desired PolicyDetails (custom style) and re-sends it via UpdateLifecyclePolicy', async () => {
+    dlm.on(GetLifecyclePolicyCommand).resolves(livePolicy as never);
+    dlm.on(UpdateLifecyclePolicyCommand).resolves({});
+    await SDK_WRITERS['AWS::DLM::LifecyclePolicy'](
+      dlmCtx({
+        Description: 'backups',
+        State: 'ENABLED',
+        ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+        PolicyDetails: livePolicy.Policy.PolicyDetails,
+      }),
+      [
+        {
+          op: 'add',
+          path: '/PolicyDetails/Schedules/0/RetainRule/Count',
+          value: 14,
+          human: 'PolicyDetails.Schedules.0.RetainRule.Count -> deployed-template value',
+        },
+      ]
+    );
+    const calls = dlm.commandCalls(UpdateLifecyclePolicyCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.PolicyId).toBe('policy-0abc');
+    const details = input.PolicyDetails as { Schedules: { RetainRule: { Count: number } }[] };
+    expect(details.Schedules[0]!.RetainRule.Count).toBe(14);
+  });
+
+  it('reverts a State flip (DISABLED -> ENABLED)', async () => {
+    dlm.on(GetLifecyclePolicyCommand).resolves({
+      Policy: { ...livePolicy.Policy, State: 'DISABLED' },
+    } as never);
+    dlm.on(UpdateLifecyclePolicyCommand).resolves({});
+    await SDK_WRITERS['AWS::DLM::LifecyclePolicy'](
+      dlmCtx({
+        State: 'ENABLED',
+        ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+        PolicyDetails: livePolicy.Policy.PolicyDetails,
+      }),
+      [
+        {
+          op: 'add',
+          path: '/State',
+          value: 'ENABLED',
+          human: 'State -> deployed-template value',
+        },
+      ]
+    );
+    const input = dlm.commandCalls(UpdateLifecyclePolicyCommand)[0]!.args[0]
+      .input as unknown as Record<string, unknown>;
+    expect(input.State).toBe('ENABLED');
+  });
+
+  it('default-policy shorthand: overlays the desired shorthand key onto the live PolicyDetails', async () => {
+    dlm.on(GetLifecyclePolicyCommand).resolves({
+      Policy: {
+        PolicyId: 'policy-0def',
+        PolicyDetails: {
+          PolicyType: 'EBS_SNAPSHOT_MANAGEMENT',
+          PolicyLanguage: 'SIMPLIFIED',
+          ResourceType: 'VOLUME',
+          CreateInterval: 24, // drifted from intent (12)
+          RetainInterval: 7,
+        },
+      },
+    } as never);
+    dlm.on(UpdateLifecyclePolicyCommand).resolves({});
+    await SDK_WRITERS['AWS::DLM::LifecyclePolicy'](
+      ctx({
+        physicalId: 'policy-0def',
+        declared: { CreateInterval: 12, RetainInterval: 7 },
+      }),
+      [
+        {
+          op: 'add',
+          path: '/CreateInterval',
+          value: 12,
+          human: 'CreateInterval -> deployed-template value',
+        },
+      ]
+    );
+    const input = dlm.commandCalls(UpdateLifecyclePolicyCommand)[0]!.args[0]
+      .input as unknown as Record<string, unknown>;
+    const details = input.PolicyDetails as Record<string, unknown>;
+    // the immutable PolicyType/ResourceType survive from the live read; the drifted
+    // shorthand key is reverted
+    expect(details.PolicyType).toBe('EBS_SNAPSHOT_MANAGEMENT');
+    expect(details.CreateInterval).toBe(12);
+  });
+
+  it('throws when the policy id cannot be resolved', async () => {
+    await expect(
+      SDK_WRITERS['AWS::DLM::LifecyclePolicy'](ctx({ physicalId: '', declared: {} }), [])
+    ).rejects.toThrow(/DLM lifecycle policy/);
   });
 });
 

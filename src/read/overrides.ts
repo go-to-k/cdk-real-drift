@@ -63,6 +63,7 @@ import {
   CloudWatchClient,
   DescribeAnomalyDetectorsCommand,
 } from '@aws-sdk/client-cloudwatch';
+import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
   DescribeReceiptRuleCommand,
@@ -521,6 +522,56 @@ const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region 
   }
   if (found.MetricCharacteristics !== undefined)
     model.MetricCharacteristics = found.MetricCharacteristics;
+  return model;
+};
+
+// AWS::DLM::LifecyclePolicy — NON_PROVISIONABLE in the registry (no Cloud Control read
+// handler; issue #468), so every Data Lifecycle Manager policy — a common EBS snapshot /
+// AMI backup-schedule staple — came back a silent `skipped` read-gap. The CFn physical id
+// IS the DLM policy id (`policy-0abc…`), which dlm:GetLifecyclePolicy accepts directly. The
+// DLM API models the policy in the SAME PascalCase shape the CFn registry uses
+// (PolicyDetails / Schedules / CreateRule / RetainRule / CrossRegionCopyRules / …), so the
+// live PolicyDetails is emitted verbatim for the classifier (like the Glue family — a
+// whole-object read). Two declaration styles exist: a full custom policy (declared
+// PolicyDetails) and the default-policy shorthand (top-level CreateInterval / RetainInterval
+// / CopyTags / …, which the API folds INTO PolicyDetails); the live model is emitted in the
+// SAME style the template used so the compare is shape-stable. Tags are a `{k: v}` map on
+// the API but a `[{Key,Value}]` list in CFn, so they are not projected here (the shape
+// mismatch would false-drift; `aws:*` tag noise is handled elsewhere). A deleted policy
+// throws ResourceNotFoundException → the router maps it to `deleted`.
+export const DLM_DEFAULT_POLICY_SHORTHAND = [
+  'CreateInterval',
+  'RetainInterval',
+  'CopyTags',
+  'ExtendDeletion',
+  'CrossRegionCopyTargets',
+  'Exclusions',
+] as const;
+const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new DLMClient({ region, ...READ_RETRY });
+  // Not-found (ResourceNotFoundException) propagates so the router maps a deleted policy
+  // to `deleted` rather than an empty model.
+  const p = (await c.send(new GetLifecyclePolicyCommand({ PolicyId: id }))).Policy;
+  if (!p) throw new ResourceGoneError(`DLM LifecyclePolicy ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(p.Description) !== undefined) model.Description = p.Description;
+  if (str(p.State) !== undefined) model.State = p.State;
+  if (str(p.ExecutionRoleArn) !== undefined) model.ExecutionRoleArn = p.ExecutionRoleArn;
+  const details = (p.PolicyDetails ?? {}) as Record<string, unknown>;
+  // Emit in the template's style. The default-policy shorthand declares the schedule
+  // knobs at the TOP level and no PolicyDetails; the API folds them into PolicyDetails, so
+  // project just those keys back up. Every other case is a custom policy → PolicyDetails.
+  const usesShorthand =
+    declared.PolicyDetails === undefined &&
+    DLM_DEFAULT_POLICY_SHORTHAND.some((k) => declared[k] !== undefined);
+  if (usesShorthand) {
+    for (const k of DLM_DEFAULT_POLICY_SHORTHAND)
+      if (details[k] !== undefined) model[k] = details[k];
+  } else if (Object.keys(details).length > 0) {
+    model.PolicyDetails = details;
+  }
   return model;
 };
 
@@ -1481,6 +1532,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
   'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
+  'AWS::DLM::LifecyclePolicy': readDlmLifecyclePolicy,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,

@@ -30,6 +30,12 @@ import {
 } from '@aws-sdk/client-api-gateway';
 import { CloudWatchClient, PutAnomalyDetectorCommand } from '@aws-sdk/client-cloudwatch';
 import {
+  DLMClient,
+  GetLifecyclePolicyCommand,
+  type SettablePolicyStateValues,
+  UpdateLifecyclePolicyCommand,
+} from '@aws-sdk/client-dlm';
+import {
   CloudControlClient,
   GetResourceCommand,
   UpdateResourceCommand,
@@ -123,7 +129,11 @@ import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
-import { type OverrideCtx, SDK_OVERRIDES } from '../read/overrides.js';
+import {
+  DLM_DEFAULT_POLICY_SHORTHAND,
+  type OverrideCtx,
+  SDK_OVERRIDES,
+} from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
 import type { PatchOp } from './plan.js';
 
@@ -876,6 +886,41 @@ const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::DLM::LifecyclePolicy — read via the GetLifecyclePolicy override (NON_PROVISIONABLE,
+// no Cloud Control handlers), so it was detect-only. dlm:UpdateLifecyclePolicy takes the
+// SAME shape as the read (PolicyId + the mutable Description / State / ExecutionRoleArn /
+// PolicyDetails — PolicyType and ResourceType are the only immutable bits and are re-sent
+// unchanged inside PolicyDetails), so reconstruct the desired model (current + revert ops)
+// and write it back. Covers the common drifts: an out-of-band State flip (ENABLED↔DISABLED),
+// a changed schedule retain count / interval, an ExecutionRoleArn swap. The default-policy
+// shorthand emits the schedule knobs at the top level, which Update does NOT accept, so
+// re-fetch the live PolicyDetails and overlay the desired shorthand keys into it.
+const writeDlmLifecyclePolicy: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId);
+  if (!id) throw new Error('cannot resolve DLM lifecycle policy id for revert');
+  const c = new DLMClient({ region: ctx.region });
+  const m = await desiredModel('AWS::DLM::LifecyclePolicy', ctx, ops);
+  let details = m.PolicyDetails as Record<string, unknown> | undefined;
+  if (details === undefined && DLM_DEFAULT_POLICY_SHORTHAND.some((k) => m[k] !== undefined)) {
+    // Shorthand style: Update only accepts a full PolicyDetails, so start from the live
+    // PolicyDetails (carries the immutable PolicyType/ResourceType the API folded in) and
+    // overlay the desired shorthand values.
+    const live = (await c.send(new GetLifecyclePolicyCommand({ PolicyId: id }))).Policy
+      ?.PolicyDetails as Record<string, unknown> | undefined;
+    details = { ...(live ?? {}) };
+    for (const k of DLM_DEFAULT_POLICY_SHORTHAND) if (m[k] !== undefined) details[k] = m[k];
+  }
+  await c.send(
+    new UpdateLifecyclePolicyCommand({
+      PolicyId: id,
+      ...(str(m.Description) !== undefined && { Description: str(m.Description) }),
+      ...(str(m.State) !== undefined && { State: str(m.State) as SettablePolicyStateValues }),
+      ...(str(m.ExecutionRoleArn) !== undefined && { ExecutionRoleArn: str(m.ExecutionRoleArn) }),
+      ...(details !== undefined && { PolicyDetails: details as never }),
+    })
+  );
+};
+
 // AWS::Logs::MetricFilter — Cloud Control GetResource throws ValidationException (its
 // composite id), so it is read via DescribeMetricFilters and was not revertable.
 // CloudWatch Logs PutMetricFilter is an UPSERT of the whole filter, and the override
@@ -1325,6 +1370,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Connection': writeGlueConnection,
   'AWS::SES::ReceiptRule': writeSesReceiptRule,
   'AWS::CloudWatch::AnomalyDetector': writeCloudWatchAnomalyDetector,
+  'AWS::DLM::LifecyclePolicy': writeDlmLifecyclePolicy,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
