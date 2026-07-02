@@ -6,6 +6,7 @@
 // exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
 // suppressed. Errors always exit 2. The exit is the worst across all checked
 // stacks.
+import { spinner } from '@clack/prompts';
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -26,7 +27,7 @@ import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
-import { gatherFindings } from './gather.js';
+import { gatherFindings, type GatherResult } from './gather.js';
 import { resolveInteractively } from './interactive-resolve.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
@@ -159,6 +160,33 @@ export function finalCheckExit(code: number, fail: boolean): number {
   return fail || code !== 1 ? code : 0;
 }
 
+// A stack's live read + drift computation (gatherFindings) runs SILENTLY and can take
+// many seconds on a large stack — long enough that a run looks frozen before the first
+// report, and (in a multi-stack run) in the gap between one stack's interactive prompt
+// and the next stack's report, where the user has no cue anything is happening. Show a
+// spinner while it runs so it is clear cdkrd is working, not hung. TTY + text mode only:
+// a spinner would corrupt --json's machine stdout and is noise in a non-TTY/CI pipe, so
+// the caller passes `show=false` there and this is a plain pass-through. The spinner is
+// stopped on BOTH success (`stop`) and error (`error`, which renders the failure symbol)
+// so a throw still tears the animation down before the outer catch prints its message.
+export async function gatherWithProgress(
+  show: boolean,
+  label: string,
+  run: () => Promise<GatherResult>
+): Promise<GatherResult> {
+  if (!show) return run();
+  const s = spinner();
+  s.start(`${label}: reading live AWS state & computing drift…`);
+  try {
+    const gathered = await run();
+    s.stop(`${label}: live state read`);
+    return gathered;
+  } catch (e) {
+    s.error(`${label}: read failed`);
+    throw e;
+  }
+}
+
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args);
   if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
@@ -216,7 +244,9 @@ export async function runCheck(args: string[]): Promise<number> {
   // R37: one blank line between consecutive stack reports (text mode only) — done
   // here at the call site so a single-stack run never gets a stray leading blank.
   const separate = stackSeparator();
-  for (const { stackName, region, template } of stacks) {
+  // The gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
+  const showProgress = !a.json && isInteractive();
+  for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
       console.error(
         `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
@@ -233,7 +263,14 @@ export async function runCheck(args: string[]): Promise<number> {
       // The stack's synth template (always carried by resolveStacks) is the non-ASCII
       // RECOVERY source for the deployed-template path — loadDesired ignores it under
       // --pre-deploy (where synthTemplates is already the declared override).
-      const gathered = await gatherFindings(stackName, region, synthTemplates?.get(sKey), template);
+      // Progress counter only when there is more than one stack to check (a lone
+      // "[1/1]" is noise). The spinner is suppressed under --json / non-TTY.
+      const progressPrefix = stacks.length > 1 ? `[${idx + 1}/${stacks.length}] ` : '';
+      const gathered = await gatherWithProgress(
+        showProgress,
+        `${progressPrefix}${stackName} (${region})`,
+        () => gatherFindings(stackName, region, synthTemplates?.get(sKey), template)
+      );
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
 
