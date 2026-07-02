@@ -311,7 +311,7 @@ checked.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (machine-generated DATA → JSON, `.cdkrd/baselines/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
 - **config/config-file.ts** — git-committed ignore-rule file (hand-edited POLICY → YAML so it can carry `#` comments, `.cdkrd/ignore.yaml`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier; rule shape `{ path, stack?, account?, region? }`) + `addIgnoreRules` (comment-preserving, append-only).
-- **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged; Lambda Alias `Description` is the same shape — `UpdateAlias` ignores an omitted description, so revert writes the empty-string default to clear it; Cognito IdentityPool `AllowClassicFlow` likewise — `UpdateIdentityPool` ignores an omitted flag, so a bare `remove` of an out-of-band `true` is a no-op and the `false` default is written explicitly (all proven live). Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers).
+- **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged; Lambda Alias `Description` is the same shape — `UpdateAlias` ignores an omitted description, so revert writes the empty-string default to clear it; Cognito IdentityPool `AllowClassicFlow` likewise — `UpdateIdentityPool` ignores an omitted flag, so a bare `remove` of an out-of-band `true` is a no-op and the `false` default is written explicitly (all proven live). Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs), **apply.ts** (CC UpdateResource / DeleteResource + poll), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers), **transient.ts** (`classifyTransient` + `retryTransient` — bounded backoff on transient "resource is mid-update" errors like RSLVR-00705, then a targeted retry-later hint; issue #467).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`).
 - **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
   TTY-only semantic colors (R43). **aws-errors.ts** — `isStackNotDeployed` etc.
@@ -644,6 +644,21 @@ only when non-zero — unrecorded values are named as such, never folded into
   endorses the live value (it stops being drift entirely — record is never a step
   toward reverting that same value), while `--remove-unrecorded` removes it. When
   the guard fires, the plan leads with a note spelling out that fork.
+- **Transient-error retry then hint (issue #467)**: every mutating write (`cc`,
+  `sdk`, and the `added`-resource `delete`) is wrapped in a bounded backoff that
+  retries ONLY failures classified as transient "resource is mid-operation" by
+  [transient.ts](../src/revert/transient.ts) — RSLVR-00705 (a Route53Resolver rule
+  stays `Status: UPDATING` for minutes after an out-of-band change while it
+  propagates to endpoint ENIs, so a revert in that window honestly failed and only a
+  later retry succeeded), plus the cross-service concurrent-modification / operation-
+  in-progress / throttling class. A terminal ValidationException/AccessDenied returns
+  on the first attempt (no wasted waiting). When retries are exhausted on a still-
+  transient failure, the `FAILED:` line gains a targeted `↳ retry in a few minutes`
+  hint instead of a bare provider error, and the drift correctly still shows as
+  unconverged (exit stays 2). `classifyTransient` matches the error TEXT (Cloud
+  Control surfaces async failures as a FAILED `StatusMessage`, not a thrown error), so
+  `errorText` prepends the error name/`ErrorCode` for name-only signals like
+  `ThrottlingException`.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).
