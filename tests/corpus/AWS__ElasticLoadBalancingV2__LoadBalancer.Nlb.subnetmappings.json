@@ -142,7 +142,7 @@
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Nlb",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[deletion_protection.enabled]",
@@ -162,7 +162,7 @@
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Nlb",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
       "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",

@@ -6312,6 +6312,29 @@ describe('real-stack false-positive folds', () => {
     ]);
   });
 
+  it('wholly-undeclared NLB LoadBalancerAttributes folds per-LB-type defaults (cross_zone/deletion_protection)', () => {
+    const res: DesiredResource = {
+      logicalId: 'Nlb',
+      resourceType: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
+      physicalId: 'nlb-1',
+      declared: { Type: 'network' },
+    };
+    const live = {
+      Type: 'network',
+      LoadBalancerAttributes: [
+        { Key: 'load_balancing.cross_zone.enabled', Value: 'false' }, // NLB default (BY_LB_TYPE)
+        { Key: 'deletion_protection.enabled', Value: 'false' }, // shared default
+        { Key: 'access_logs.s3.enabled', Value: 'true' }, // NON-default -> still surfaces
+      ],
+    };
+    const t = tiers(classifyResource(res, live, mkSchema()));
+    expect(t.atDefault.sort()).toEqual([
+      'LoadBalancerAttributes[deletion_protection.enabled]',
+      'LoadBalancerAttributes[load_balancing.cross_zone.enabled]',
+    ]);
+    expect(t.undeclared).toEqual(['LoadBalancerAttributes[access_logs.s3.enabled]']);
+  });
+
   it('SecretsManager Secret generated Name (no stack prefix) + TargetGroup runtime Targets fold to generated', () => {
     const secret: DesiredResource = {
       logicalId: 'Sec',
