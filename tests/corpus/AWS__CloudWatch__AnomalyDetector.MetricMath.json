@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MetricMath",
+    "resourceType": "AWS::CloudWatch::AnomalyDetector",
+    "physicalId": "MetricMath-4qw3U8Fiyqcw",
+    "constructPath": "CdkRealDriftIntegCwAnomaly/MetricMath",
+    "declared": {
+      "MetricMathAnomalyDetector": {
+        "MetricDataQueries": [
+          {
+            "Id": "m1",
+            "MetricStat": {
+              "Metric": {
+                "Dimensions": [
+                  {
+                    "Name": "QueueName",
+                    "Value": "cdkrd-integ-anomaly-q"
+                  }
+                ],
+                "MetricName": "NumberOfMessagesSent",
+                "Namespace": "AWS/SQS"
+              },
+              "Period": 300,
+              "Stat": "Sum"
+            },
+            "ReturnData": false
+          },
+          {
+            "Expression": "m1/300",
+            "Id": "e1",
+            "Label": "send rate",
+            "ReturnData": true
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "MetricMathAnomalyDetector": {
+      "MetricDataQueries": [
+        {
+          "Id": "m1",
+          "MetricStat": {
+            "Metric": {
+              "Namespace": "AWS/SQS",
+              "MetricName": "NumberOfMessagesSent",
+              "Dimensions": [
+                {
+                  "Name": "QueueName",
+                  "Value": "cdkrd-integ-anomaly-q"
+                }
+              ]
+            },
+            "Period": 300,
+            "Stat": "Sum"
+          },
+          "ReturnData": false
+        },
+        {
+          "Id": "e1",
+          "Expression": "m1/300",
+          "ReturnData": true
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "Dimensions",
+      "MetricCharacteristics",
+      "MetricMathAnomalyDetector",
+      "MetricName",
+      "Namespace",
+      "SingleMetricAnomalyDetector",
+      "Stat"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["MetricMathAnomalyDetector.MetricDataQueries.*.Label"],
+    "createOnlyPaths": [
+      "Dimensions",
+      "MetricCharacteristics",
+      "MetricMathAnomalyDetector",
+      "MetricName",
+      "Namespace",
+      "SingleMetricAnomalyDetector",
+      "Stat"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

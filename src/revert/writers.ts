@@ -839,8 +839,15 @@ const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
         ExcludedTimeRanges?: { StartTime?: unknown; EndTime?: unknown }[];
       }
     | undefined;
+  // The CFn Range pattern is ZONE-LESS UTC (`YYYY-MM-DDTHH:MM:SS`) — a bare
+  // `new Date(s)` would parse that as LOCAL time and shift every range by the
+  // machine's UTC offset on revert. Pin zone-less strings to UTC explicitly.
   const toDate = (v: unknown): Date | undefined =>
-    typeof v === 'string' ? new Date(v) : v instanceof Date ? v : undefined;
+    typeof v === 'string'
+      ? new Date(/Z$|[+-]\d\d:\d\d$/.test(v) ? v : `${v}Z`)
+      : v instanceof Date
+        ? v
+        : undefined;
   const configuration = {
     ...(str(cfg?.MetricTimeZone) && { MetricTimezone: cfg?.MetricTimeZone as string }),
     ...((cfg?.ExcludedTimeRanges ?? []).length > 0 && {

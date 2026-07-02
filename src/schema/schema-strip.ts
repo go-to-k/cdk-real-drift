@@ -65,6 +65,25 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   'AWS::ECS::Service': ['ServiceConnectConfiguration', 'VolumeConfigurations'],
 };
 
+// The MIRROR of OVERRIDE_READABLE_WRITEONLY: nested paths an SDK_OVERRIDES reader
+// CANNOT read back even though the registry schema does not mark them writeOnly —
+// the type's Describe API simply never returns them. Appended to `writeOnlyPaths`
+// so BOTH sides strip the path (readGap semantics): without this, a declared value
+// at such a path false-flags as declared drift against the reader's live model
+// (found live on AnomalyDetector: DescribeAnomalyDetectors never echoes a metric-math
+// query's cosmetic `Label`, so a declared label reported `desired="…" actual=undefined`).
+export const SDK_READER_GAP_PATHS: Record<string, readonly string[]> = {
+  'AWS::CloudWatch::AnomalyDetector': ['MetricMathAnomalyDetector.MetricDataQueries.*.Label'],
+};
+
+// Append a type's SDK-reader gap paths to writeOnlyPaths (strip from both sides).
+// Exported for unit testing without an AWS call.
+export function injectReaderGaps(info: SchemaInfo, resourceType: string): SchemaInfo {
+  const gaps = SDK_READER_GAP_PATHS[resourceType];
+  if (!gaps?.length) return info;
+  return { ...info, writeOnlyPaths: [...info.writeOnlyPaths, ...gaps] };
+}
+
 // Remove the override-readable writeOnly props from a type's writeOnly sets so the
 // classify pipeline compares (not strips/readGaps) the value the override now supplies.
 // Exported for unit testing without an AWS call.
@@ -84,7 +103,10 @@ async function fetch(client: CloudFormationClient, resourceType: string): Promis
     const r = await client.send(
       new DescribeTypeCommand({ Type: 'RESOURCE', TypeName: resourceType })
     );
-    return exemptOverrideReadable(parseSchema(r.Schema ?? '{}'), resourceType);
+    return injectReaderGaps(
+      exemptOverrideReadable(parseSchema(r.Schema ?? '{}'), resourceType),
+      resourceType
+    );
   } catch {
     return EMPTY;
   }

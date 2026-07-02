@@ -3,10 +3,16 @@
   "resource": {
     "logicalId": "Detector",
     "resourceType": "AWS::CloudWatch::AnomalyDetector",
-    "physicalId": "Detector-hBQuGyRQLp3R",
+    "physicalId": "Detector-5YH1QJhaeEW2",
     "constructPath": "CdkRealDriftIntegCwAnomaly/Detector",
     "declared": {
       "Configuration": {
+        "ExcludedTimeRanges": [
+          {
+            "EndTime": "2026-12-26T00:00:00",
+            "StartTime": "2026-12-24T00:00:00"
+          }
+        ],
         "MetricTimeZone": "Asia/Tokyo"
       },
       "SingleMetricAnomalyDetector": {
@@ -35,7 +41,13 @@
       ]
     },
     "Configuration": {
-      "MetricTimeZone": "Asia/Tokyo"
+      "MetricTimeZone": "Asia/Tokyo",
+      "ExcludedTimeRanges": [
+        {
+          "StartTime": "2026-12-24T00:00:00",
+          "EndTime": "2026-12-26T00:00:00"
+        }
+      ]
     }
   },
   "schema": {
@@ -51,7 +63,7 @@
       "Stat"
     ],
     "readOnlyPaths": ["Id"],
-    "writeOnlyPaths": [],
+    "writeOnlyPaths": ["MetricMathAnomalyDetector.MetricDataQueries.*.Label"],
     "createOnlyPaths": [
       "Dimensions",
       "MetricCharacteristics",

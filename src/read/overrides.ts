@@ -418,8 +418,11 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
 // Dimensions); the live model is emitted in the SAME style the template used so the
 // compare is shape-stable. Field mapping: the CW API spells the timezone
 // `MetricTimezone` while CFn spells it `MetricTimeZone`; ExcludedTimeRanges come back
-// as Date objects and are projected as ISO strings only when present (FP-safe: an
-// unset Configuration stays absent on both sides).
+// as Date objects and are projected in the CFn Range pattern — the registry schema
+// enforces `YYYY-MM-DDTHH:MM:SS` (zone-less UTC; a trailing `Z` is REJECTED at deploy,
+// live-proven), so a full-ISO projection would false-flag every declared range
+// (`desired="…T00:00:00" actual="…T00:00:00.000Z"`). Only projected when present
+// (FP-safe: an unset Configuration stays absent on both sides).
 const dimSetEqual = (a: unknown, b: unknown): boolean => {
   const norm = (v: unknown): string =>
     JSON.stringify(
@@ -429,6 +432,9 @@ const dimSetEqual = (a: unknown, b: unknown): boolean => {
     );
   return norm(a) === norm(b);
 };
+// CFn Range pattern: `YYYY-MM-DDTHH:MM:SS` in UTC (the schema rejects a zone suffix).
+const cfnRangeTime = (v: unknown): unknown =>
+  v instanceof Date ? v.toISOString().slice(0, 19) : v;
 const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region }) => {
   const singleDecl = declared.SingleMetricAnomalyDetector as Record<string, unknown> | undefined;
   const mathDecl = declared.MetricMathAnomalyDetector as Record<string, unknown> | undefined;
@@ -439,9 +445,15 @@ const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region 
   if (!mathDecl && (!ns || !metric || !stat)) return undefined; // unresolved identity -> skipped
 
   const c = new CloudWatchClient({ region, ...READ_RETRY });
-  // Namespace/MetricName filters match only single-metric detectors, so a math
-  // detector needs the unfiltered listing.
-  const filters = mathDecl ? {} : { Namespace: ns, MetricName: metric };
+  // Namespace/MetricName filters match only single-metric detectors. A math
+  // detector MUST request AnomalyDetectorTypes=METRIC_MATH explicitly: the API
+  // DEFAULTS to SINGLE_METRIC when the field is omitted, so an "unfiltered"
+  // listing never returns math detectors — every metric-math detector then
+  // false-reported "deleted out of band" on a fresh stack (live-caught; the
+  // unit-test mock returned detectors regardless of the filter, masking it).
+  const filters = mathDecl
+    ? { AnomalyDetectorTypes: ['METRIC_MATH' as const] }
+    : { Namespace: ns, MetricName: metric };
   const detectors: AnomalyDetector[] = [];
   let nextToken: string | undefined;
   do {
@@ -477,6 +489,11 @@ const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region 
   } else if (singleDecl) {
     const s = found.SingleMetricAnomalyDetector;
     model.SingleMetricAnomalyDetector = {
+      // AccountId is projected ONLY when the template declares it (cross-account
+      // monitoring): the API echoes the OWN account id on every detector, which would
+      // otherwise surface as undeclared first-run noise.
+      ...(str(singleDecl.AccountId) !== undefined &&
+        str(s?.AccountId) !== undefined && { AccountId: s?.AccountId }),
       Namespace: s?.Namespace ?? found.Namespace,
       MetricName: s?.MetricName ?? found.MetricName,
       Stat: s?.Stat ?? found.Stat,
@@ -497,8 +514,8 @@ const readCloudWatchAnomalyDetector: OverrideReader = async ({ declared, region 
     if (str(cfg.MetricTimezone)) out.MetricTimeZone = cfg.MetricTimezone;
     if ((cfg.ExcludedTimeRanges ?? []).length > 0)
       out.ExcludedTimeRanges = (cfg.ExcludedTimeRanges ?? []).map((rng) => ({
-        StartTime: rng.StartTime instanceof Date ? rng.StartTime.toISOString() : rng.StartTime,
-        EndTime: rng.EndTime instanceof Date ? rng.EndTime.toISOString() : rng.EndTime,
+        StartTime: cfnRangeTime(rng.StartTime),
+        EndTime: cfnRangeTime(rng.EndTime),
       }));
     if (Object.keys(out).length > 0) model.Configuration = out;
   }

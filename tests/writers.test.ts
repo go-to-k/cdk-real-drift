@@ -254,6 +254,56 @@ describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #4
     expect(input.Configuration).toEqual({});
   });
 
+  it('zone-less CFn range strings are parsed as UTC, not local time', async () => {
+    cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({
+      AnomalyDetectors: [
+        {
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Stat: 'Sum',
+          },
+          Configuration: {
+            MetricTimezone: 'UTC',
+            ExcludedTimeRanges: [
+              {
+                StartTime: new Date('2026-12-24T06:00:00Z'), // drifted out of band
+                EndTime: new Date('2026-12-26T00:00:00Z'),
+              },
+            ],
+          },
+        },
+      ],
+    });
+    cloudwatch.on(PutAnomalyDetectorCommand).resolves({});
+    await SDK_WRITERS['AWS::CloudWatch::AnomalyDetector'](
+      ctx({
+        physicalId: 'abc-generated-id',
+        declared: {
+          SingleMetricAnomalyDetector: {
+            Namespace: 'AWS/Lambda',
+            MetricName: 'Errors',
+            Stat: 'Sum',
+          },
+        },
+      }),
+      [
+        {
+          op: 'add',
+          // the declared value is in the CFn Range pattern: zone-less, meaning UTC —
+          // a bare new Date() would shift it by the machine's local offset.
+          path: '/Configuration/ExcludedTimeRanges/0/StartTime',
+          value: '2026-12-24T00:00:00',
+          human: 'Configuration.ExcludedTimeRanges.0.StartTime -> deployed-template value',
+        },
+      ]
+    );
+    const input = cloudwatch.commandCalls(PutAnomalyDetectorCommand)[0]!.args[0].input;
+    expect(input.Configuration?.ExcludedTimeRanges?.[0]?.StartTime).toEqual(
+      new Date('2026-12-24T00:00:00Z')
+    );
+  });
+
   it('throws when no detector identity can be resolved', async () => {
     cloudwatch.on(DescribeAnomalyDetectorsCommand).resolves({ AnomalyDetectors: [] });
     await expect(
