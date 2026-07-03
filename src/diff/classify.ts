@@ -234,7 +234,13 @@ const CLUSTER_ECHO_CHILD: Record<string, { parentIdKey: string; aliases: Record<
   {
     'AWS::RDS::DBInstance': {
       parentIdKey: 'DBClusterIdentifier',
-      aliases: { VPCSecurityGroups: 'VpcSecurityGroupIds' },
+      // The two APIs spell a few shared settings differently: an instance's VPCSecurityGroups
+      // is the cluster's VpcSecurityGroupIds; its EnablePerformanceInsights is the cluster's
+      // PerformanceInsightsEnabled (Aurora manages PI cluster-wide, so the instance mirrors it).
+      aliases: {
+        VPCSecurityGroups: 'VpcSecurityGroupIds',
+        EnablePerformanceInsights: 'PerformanceInsightsEnabled',
+      },
     },
   };
 

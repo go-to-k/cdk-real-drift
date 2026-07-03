@@ -4505,28 +4505,27 @@ describe('Aurora DBInstance cluster-echo strip (CLUSTER_ECHO_CHILD)', () => {
     expect(t.undeclared).toEqual([]);
   });
 
-  it('KEEPS an instance value that DIVERGES from the cluster (its own maintenance window)', () => {
+  it('KEEPS an instance value that DIVERGES from the cluster (echo strip is equality-gated)', () => {
+    // EngineVersion echoes the cluster; an instance value that DIFFERS must surface (it is not
+    // an echo). Uses a non-value-independent prop so the echo-strip gate is what is tested.
     const t = tiers(
       classifyResource(
         inst({ DBClusterIdentifier: 'c1' }),
-        { PreferredMaintenanceWindow: 'fri:15:16-fri:15:46' },
+        { EngineVersion: '8.0.mysql_aurora.3.09.0' },
         bareEcho,
         { clusterEchoModel }
       )
     );
-    expect(t.undeclared).toEqual(['PreferredMaintenanceWindow']);
+    expect(t.undeclared).toEqual(['EngineVersion']);
   });
 
-  it('KEEPS an instance-only property the cluster does not carry (its single AvailabilityZone)', () => {
+  it('KEEPS an instance-only property the cluster does not carry (equality-gated)', () => {
     const t = tiers(
-      classifyResource(
-        inst({ DBClusterIdentifier: 'c1' }),
-        { AvailabilityZone: 'ap-northeast-1d' },
-        bareEcho,
-        { clusterEchoModel }
-      )
+      classifyResource(inst({ DBClusterIdentifier: 'c1' }), { Iops: 3000 }, bareEcho, {
+        clusterEchoModel,
+      })
     );
-    expect(t.undeclared).toEqual(['AvailabilityZone']);
+    expect(t.undeclared).toEqual(['Iops']);
   });
 
   it('with NO cluster echo model, the echoes surface (unchanged behavior — fail-open)', () => {
@@ -4714,6 +4713,80 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
 // CACertificateIdentifier constant): values the user never set that AWS fills in from the
 // engine family, folded to atDefault so a clean CDK Aurora first run is not flooded with
 // potential-drift noise. Observed live on dev-main-AuroraDB / dev-main-DbUsers-DB.
+// AWS-ASSIGNED RDS values a user never declared: the KMS key, AZ placement, and randomly-
+// assigned maintenance/backup windows AWS picks at creation. Undeclared → AWS's choice, not
+// user intent → folded value-independent (atDefault). A DECLARED value is user intent →
+// compared in the declared loop (detected). Observed live on dev-main-AuroraDB / DbUsers-DB.
+describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    tiers(
+      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+    );
+
+  it('DBCluster undeclared KmsKeyId/AZs/windows fold to atDefault (not undeclared drift)', () => {
+    const r = t(
+      'AWS::RDS::DBCluster',
+      {},
+      {
+        KmsKeyId: 'arn:aws:kms:ap-northeast-1:1:key/abc',
+        AvailabilityZones: ['ap-northeast-1a', 'ap-northeast-1c'],
+        PreferredMaintenanceWindow: 'tue:14:55-tue:15:25',
+        PreferredBackupWindow: '20:30-21:00',
+      }
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining([
+        'KmsKeyId',
+        'AvailabilityZones',
+        'PreferredMaintenanceWindow',
+        'PreferredBackupWindow',
+      ])
+    );
+  });
+
+  it('DBInstance undeclared AZ/window fold', () => {
+    const r = t(
+      'AWS::RDS::DBInstance',
+      {},
+      { AvailabilityZone: 'ap-northeast-1d', PreferredMaintenanceWindow: 'fri:15:16-fri:15:46' }
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining(['AvailabilityZone', 'PreferredMaintenanceWindow'])
+    );
+  });
+
+  it('a DECLARED window is user intent — compared in the declared loop, still detected', () => {
+    const r = t(
+      'AWS::RDS::DBCluster',
+      { PreferredMaintenanceWindow: 'mon:00:00-mon:00:30' },
+      { PreferredMaintenanceWindow: 'tue:14:55-tue:15:25' }
+    );
+    expect(r.declared).toEqual(['PreferredMaintenanceWindow']);
+    expect(r.atDefault).not.toContain('PreferredMaintenanceWindow');
+  });
+
+  it('the value-independent fold is gated per-type — another type stays undeclared', () => {
+    const r = t('AWS::Other::Thing', {}, { KmsKeyId: 'arn:aws:kms:x:1:key/abc' });
+    expect(r.undeclared).toContain('KmsKeyId');
+  });
+});
+
 describe('RDS engine-derived defaults fold to atDefault', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
