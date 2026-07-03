@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CostCat",
+    "resourceType": "AWS::CE::CostCategory",
+    "physicalId": "arn:aws:ce::111111111111:costcategory/a0a6da6c-4258-4a6b-a417-452df2a37910",
+    "constructPath": "CdkRealDriftHuntMisc0Cov4/CostCat",
+    "declared": {
+      "DefaultValue": "other",
+      "Name": "cdkrd-hunt-costcat",
+      "RuleVersion": "CostCategoryExpression.v1",
+      "Rules": "[{\"Value\":\"storage\",\"Rule\":{\"Dimensions\":{\"Key\":\"SERVICE_CODE\",\"Values\":[\"AmazonS3\"]}}},{\"Value\":\"compute\",\"Rule\":{\"Dimensions\":{\"Key\":\"SERVICE_CODE\",\"Values\":[\"AmazonEC2\",\"AWSLambda\"]}}}]"
+    }
+  },
+  "liveRaw": {
+    "DefaultValue": "other",
+    "EffectiveStart": "2026-07-01T00:00:00Z",
+    "RuleVersion": "CostCategoryExpression.v1",
+    "Arn": "arn:aws:ce::111111111111:costcategory/a0a6da6c-4258-4a6b-a417-452df2a37910",
+    "Rules": "[ {\n  \"Value\" : \"storage\",\n  \"Rule\" : {\n    \"Dimensions\" : {\n      \"Key\" : \"SERVICE_CODE\",\n      \"Values\" : [ \"AmazonS3\" ]\n    }\n  },\n  \"Type\" : \"REGULAR\"\n}, {\n  \"Value\" : \"compute\",\n  \"Rule\" : {\n    \"Dimensions\" : {\n      \"Key\" : \"SERVICE_CODE\",\n      \"Values\" : [ \"AmazonEC2\", \"AWSLambda\" ]\n    }\n  },\n  \"Type\" : \"REGULAR\"\n} ]",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHuntMisc0Cov4/64e887a0-76a8-11f1-aca8-121efa337807",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHuntMisc0Cov4",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CostCat",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-costcat"
+  },
+  "schema": {
+    "readOnly": ["Arn", "EffectiveStart"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "EffectiveStart"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
