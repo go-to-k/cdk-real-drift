@@ -7883,9 +7883,20 @@ describe('Face-stack false-positive folds', () => {
   });
 
   it('CFn-generated LayerName / ClientName fold to generated', () => {
+    // A BucketDeployment's AwsCliLayer reads its LayerName back as its OWN logical id
+    // verbatim (the real flood); it folds via isCfnGeneratedName's `value === logicalId`
+    // echo — NOT a value-independent LayerName fold, which would also hide an undeclared
+    // user-set LayerName (see the "merely SIMILAR" case above).
     const layer = tiers(
       classifyResource(
-        res('AWS::Lambda::LayerVersion', {}),
+        {
+          logicalId: 'WebsiteDeploymentAwsCliLayer0783B164',
+          resourceType: 'AWS::Lambda::LayerVersion',
+          physicalId:
+            'arn:aws:lambda:us-east-1:111111111111:layer:WebsiteDeploymentAwsCliLayer0783B164:1',
+          constructPath: 'Stack/WebsiteDeployment/AwsCliLayer',
+          declared: {},
+        },
         { LayerName: 'WebsiteDeploymentAwsCliLayer0783B164' },
         emptySchema
       )
