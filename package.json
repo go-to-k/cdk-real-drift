@@ -89,6 +89,7 @@
     "@aws-sdk/client-kafka": "^3.1079.0",
     "@aws-sdk/client-kms": "^3.1066.0",
     "@aws-sdk/client-lambda": "^3.1065.0",
+    "@aws-sdk/client-lex-models-v2": "^3.1079.0",
     "@aws-sdk/client-mediaconvert": "^3.1079.0",
     "@aws-sdk/client-memorydb": "^3.1078.0",
     "@aws-sdk/client-opensearch": "^3.1073.0",

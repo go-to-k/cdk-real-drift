@@ -103,6 +103,17 @@ import {
   KafkaClient,
 } from '@aws-sdk/client-kafka';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
+import {
+  DescribeBotLocaleCommand,
+  DescribeIntentCommand,
+  DescribeSlotCommand,
+  DescribeSlotTypeCommand,
+  LexModelsV2Client,
+  ListBotLocalesCommand,
+  ListIntentsCommand,
+  ListSlotsCommand,
+  ListSlotTypesCommand,
+} from '@aws-sdk/client-lex-models-v2';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
   DescribeReceiptRuleCommand,
@@ -2282,7 +2293,216 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
   return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
 };
 
+// AWS::Lex::Bot — `BotLocales` (the ENTIRE conversational model: every locale, its
+// intents, sample utterances, slots, slot types, and prompts) is writeOnly in the
+// registry schema, so Cloud Control echoes only the bot's top-level props (Name /
+// Description / RoleArn / DataPrivacy / IdleSessionTTLInSeconds) and NEVER the model.
+// An out-of-band console edit to an utterance, a slot, or a whole intent was therefore
+// a completely silent false negative (#527). CC cannot read it, but the lexv2-models
+// API CAN — there is no single "get the model" call, so this supplement RECONSTRUCTS
+// the CFn `BotLocales` array by walking the tree: ListBotLocales → per locale
+// DescribeBotLocale + (ListSlotTypes → DescribeSlotType) + (ListIntents →
+// DescribeIntent → ListSlots → DescribeSlot), always at botVersion "DRAFT" (the CFn
+// working copy). The physical id is the Bot Id (e.g. "I3PRF2VKMG"). This is the
+// DEEPEST reader in cdkrd. READ-ONLY: no revert writer — an out-of-band change surfaces
+// as drift but is not auto-reverted (revert reports it not-revertable).
+//
+// FP-safe: project a CFn field ONLY when the API returns it (so an unset optional prop
+// stays absent on BOTH sides). API field names verified against the lex-models-v2 model
+// types. Built-in slot types (AMAZON.* — a Describe on their signature errors and they
+// carry no user-authored values) are skipped: an intent Slot that points at a built-in
+// keeps its slotTypeId AS the SlotTypeName (built-in signatures ARE the CFn name), and a
+// built-in slot type never appears in the reconstructed SlotTypes array (CFn declares
+// only custom slot types). Non-fatal: ANY thrown error aborts the whole reconstruction
+// and returns undefined (keep the CC model) rather than a partial/false model.
+type Rec = Record<string, unknown>;
+function projectLexPrompt(p: unknown): Rec | undefined {
+  const ps = p as {
+    maxRetries?: number;
+    allowInterrupt?: boolean;
+    messageGroups?: { message?: { plainTextMessage?: { value?: string } } }[];
+  } | null;
+  if (!ps || typeof ps !== 'object') return undefined;
+  const out: Rec = {};
+  if (typeof ps.maxRetries === 'number') out.MaxRetries = ps.maxRetries;
+  if (Array.isArray(ps.messageGroups)) {
+    out.MessageGroupsList = ps.messageGroups.map((g) => {
+      const msg: Rec = {};
+      const value = g?.message?.plainTextMessage?.value;
+      if (typeof value === 'string') msg.PlainTextMessage = { Value: value };
+      return { Message: msg };
+    });
+  }
+  if (typeof ps.allowInterrupt === 'boolean') out.AllowInterrupt = ps.allowInterrupt;
+  return out;
+}
+// lexv2 API SlotValueResolutionStrategy (PascalCase) -> CFn ResolutionStrategy (SCREAMING_SNAKE).
+const LEX_RESOLUTION_STRATEGY_TO_CFN: Record<string, string> = {
+  OriginalValue: 'ORIGINAL_VALUE',
+  TopResolution: 'TOP_RESOLUTION',
+  Concatenation: 'CONCATENATION',
+};
+const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
+  const botId = str(physicalId);
+  if (!botId) return undefined;
+  const botVersion = 'DRAFT';
+  const c = new LexModelsV2Client({ region, ...READ_RETRY });
+  try {
+    const locales = await c.send(new ListBotLocalesCommand({ botId, botVersion }));
+    const localeSummaries = locales.botLocaleSummaries ?? [];
+    const botLocales: Rec[] = [];
+    for (const ls of localeSummaries) {
+      const localeId = str(ls.localeId);
+      if (!localeId) continue;
+
+      const loc = await c.send(new DescribeBotLocaleCommand({ botId, botVersion, localeId }));
+      const cfnLocale: Rec = { LocaleId: localeId };
+      const desc = str(loc.description);
+      if (desc !== undefined) cfnLocale.Description = desc;
+      if (typeof loc.nluIntentConfidenceThreshold === 'number') {
+        cfnLocale.NluConfidenceThreshold = loc.nluIntentConfidenceThreshold;
+      }
+      const voiceId = str(loc.voiceSettings?.voiceId);
+      if (voiceId !== undefined) {
+        const vs: Rec = { VoiceId: voiceId };
+        const engine = str(loc.voiceSettings?.engine);
+        if (engine !== undefined) vs.Engine = engine;
+        cfnLocale.VoiceSettings = vs;
+      }
+
+      // SlotTypes — custom slot types only; build id→name for slot resolution.
+      const slotTypeNames = new Map<string, string>();
+      const slotTypes = await c.send(new ListSlotTypesCommand({ botId, botVersion, localeId }));
+      const cfnSlotTypes: Rec[] = [];
+      for (const sts of slotTypes.slotTypeSummaries ?? []) {
+        const slotTypeId = str(sts.slotTypeId);
+        if (!slotTypeId) continue;
+        // Built-in slot types (AMAZON.*) carry no describe-able user model; skip them.
+        if (slotTypeId.startsWith('AMAZON.')) {
+          slotTypeNames.set(slotTypeId, slotTypeId);
+          continue;
+        }
+        const st = await c.send(
+          new DescribeSlotTypeCommand({ botId, botVersion, localeId, slotTypeId })
+        );
+        const name = str(st.slotTypeName);
+        if (name !== undefined) slotTypeNames.set(slotTypeId, name);
+        const cfnSt: Rec = {};
+        if (name !== undefined) cfnSt.Name = name;
+        const stDesc = str(st.description);
+        if (stDesc !== undefined) cfnSt.Description = stDesc;
+        if (Array.isArray(st.slotTypeValues)) {
+          cfnSt.SlotTypeValues = st.slotTypeValues.map((v) => {
+            const entry: Rec = {};
+            const sv = str(v.sampleValue?.value);
+            if (sv !== undefined) entry.SampleValue = { Value: sv };
+            if (Array.isArray(v.synonyms)) {
+              const syns = v.synonyms
+                .map((s) => str(s.value))
+                .filter((x): x is string => x !== undefined)
+                .map((x) => ({ Value: x }));
+              if (syns.length > 0) entry.Synonyms = syns;
+            }
+            return entry;
+          });
+        }
+        // The lexv2 API enum is PascalCase (OriginalValue/TopResolution/Concatenation) while
+        // CFn's ResolutionStrategy is SCREAMING_SNAKE (ORIGINAL_VALUE/TOP_RESOLUTION/
+        // CONCATENATION) — translate, else EVERY custom slot type false-drifts. Fall back to the
+        // raw value for any future enum member so an unknown value surfaces rather than mangles.
+        const strategy = str(st.valueSelectionSetting?.resolutionStrategy);
+        if (strategy !== undefined) {
+          cfnSt.ValueSelectionSetting = {
+            ResolutionStrategy: LEX_RESOLUTION_STRATEGY_TO_CFN[strategy] ?? strategy,
+          };
+        }
+        cfnSlotTypes.push(cfnSt);
+      }
+
+      // Intents — with their slots + slot-priority name resolution.
+      const intents = await c.send(new ListIntentsCommand({ botId, botVersion, localeId }));
+      const cfnIntents: Rec[] = [];
+      for (const is of intents.intentSummaries ?? []) {
+        const intentId = str(is.intentId);
+        if (!intentId) continue;
+        const intent = await c.send(
+          new DescribeIntentCommand({ botId, botVersion, localeId, intentId })
+        );
+        const cfnIntent: Rec = {};
+        const iName = str(intent.intentName);
+        if (iName !== undefined) cfnIntent.Name = iName;
+        const iDesc = str(intent.description);
+        if (iDesc !== undefined) cfnIntent.Description = iDesc;
+        const parentSig = str(intent.parentIntentSignature);
+        if (parentSig !== undefined) cfnIntent.ParentIntentSignature = parentSig;
+        if (Array.isArray(intent.sampleUtterances)) {
+          const utterances = intent.sampleUtterances
+            .map((u) => str(u.utterance))
+            .filter((x): x is string => x !== undefined)
+            .map((x) => ({ Utterance: x }));
+          if (utterances.length > 0) cfnIntent.SampleUtterances = utterances;
+        }
+
+        // Slots — build id→name for the SlotPriorities resolution.
+        const slotNames = new Map<string, string>();
+        const cfnSlots: Rec[] = [];
+        const slots = await c.send(new ListSlotsCommand({ botId, botVersion, localeId, intentId }));
+        for (const ss of slots.slotSummaries ?? []) {
+          const slotId = str(ss.slotId);
+          if (!slotId) continue;
+          const slot = await c.send(
+            new DescribeSlotCommand({ botId, botVersion, localeId, intentId, slotId })
+          );
+          const slotName = str(slot.slotName);
+          if (slotName !== undefined) slotNames.set(slotId, slotName);
+          const cfnSlot: Rec = {};
+          if (slotName !== undefined) cfnSlot.Name = slotName;
+          const slotTypeId = str(slot.slotTypeId);
+          if (slotTypeId !== undefined) {
+            // Built-in slotTypeIds (AMAZON.*) map to themselves; custom ones resolve via
+            // the slot-type name map (fall back to the raw id if unresolved).
+            cfnSlot.SlotTypeName = slotTypeNames.get(slotTypeId) ?? slotTypeId;
+          }
+          const elic = slot.valueElicitationSetting;
+          if (elic && typeof elic === 'object') {
+            const cfnElic: Rec = {};
+            const constraint = str(elic.slotConstraint);
+            if (constraint !== undefined) cfnElic.SlotConstraint = constraint;
+            const prompt = projectLexPrompt(elic.promptSpecification);
+            if (prompt !== undefined) cfnElic.PromptSpecification = prompt;
+            if (Object.keys(cfnElic).length > 0) cfnSlot.ValueElicitationSetting = cfnElic;
+          }
+          cfnSlots.push(cfnSlot);
+        }
+
+        if (Array.isArray(intent.slotPriorities)) {
+          const priorities = intent.slotPriorities
+            .map((p) => {
+              const slotName = str(p.slotId) ? slotNames.get(str(p.slotId) as string) : undefined;
+              if (typeof p.priority !== 'number' || slotName === undefined) return undefined;
+              return { Priority: p.priority, SlotName: slotName };
+            })
+            .filter((x): x is { Priority: number; SlotName: string } => x !== undefined);
+          if (priorities.length > 0) cfnIntent.SlotPriorities = priorities;
+        }
+        if (cfnSlots.length > 0) cfnIntent.Slots = cfnSlots;
+        cfnIntents.push(cfnIntent);
+      }
+
+      if (cfnSlotTypes.length > 0) cfnLocale.SlotTypes = cfnSlotTypes;
+      if (cfnIntents.length > 0) cfnLocale.Intents = cfnIntents;
+      botLocales.push(cfnLocale);
+    }
+    return botLocales.length > 0 ? { BotLocales: botLocales } : undefined;
+  } catch {
+    // Non-fatal: any failure (a describe on a built-in, a transient, a missing DRAFT
+    // version) keeps the CC model rather than emitting a partial/false BotLocales.
+    return undefined;
+  }
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
+  'AWS::Lex::Bot': supplementLexBot,
   'AWS::MSK::Configuration': supplementMskConfiguration,
   'AWS::ElasticLoadBalancingV2::TrustStore': supplementTrustStore,
   'AWS::SSM::Parameter': supplementSsmParameter,
