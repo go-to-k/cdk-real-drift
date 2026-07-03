@@ -8411,13 +8411,17 @@ describe('#531 EKS + Athena first-run default folds', () => {
     const t = tiers(classifyResource(res, live, emptySchema));
     expect(t.atDefault).toEqual([
       'ControlPlaneScalingConfig',
+      // #555: KubernetesNetworkConfig is fully undeclared but DESCENDED — its constant IpFamily
+      // folds here (ElasticLoadBalancing {Enabled:false} drops as trivially-empty).
+      'KubernetesNetworkConfig.IpFamily',
       'ResourcesVpcConfig.ControlPlaneEgressMode',
       'ResourcesVpcConfig.EndpointPublicAccess',
       'ResourcesVpcConfig.PublicAccessCidrs',
       'UpgradePolicy',
     ]);
-    // The per-deploy-variable bits are deliberately still surfaced (record-worthy).
-    expect(t.undeclared).toEqual(['KubernetesNetworkConfig', 'Version']);
+    // The per-deploy-variable bits are deliberately still surfaced (record-worthy). #555:
+    // only the residue ServiceIpv4Cidr surfaces now, not the whole KubernetesNetworkConfig.
+    expect(t.undeclared).toEqual(['KubernetesNetworkConfig.ServiceIpv4Cidr', 'Version']);
   });
 
   it('EKS Cluster: an out-of-band-narrowed PublicAccessCidrs still surfaces (equality-gated)', () => {
@@ -8668,5 +8672,71 @@ describe('#529 Logs Transformer order-significant pipeline (revert index skew)',
       schema
     ).filter((f) => f.tier === 'declared');
     expect(declared.length).toBeGreaterThan(0);
+  });
+});
+
+describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PATHS)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const bare = (resourceType: string): DesiredResource => ({
+    logicalId: 'L',
+    resourceType,
+    physicalId: 'phys',
+    declared: {},
+  });
+
+  it('EKS KubernetesNetworkConfig: fold IpFamily default + drop empty ELB, surface only the CIDR residue', () => {
+    const t = tiers(
+      classifyResource(
+        bare('AWS::EKS::Cluster'),
+        {
+          KubernetesNetworkConfig: {
+            ServiceIpv4Cidr: '172.20.0.0/16',
+            IpFamily: 'ipv4',
+            ElasticLoadBalancing: { Enabled: false },
+          },
+        },
+        emptySchema
+      )
+    );
+    // the whole object is NO LONGER one undeclared finding — it is split leaf-by-leaf
+    expect(t.undeclared).toEqual(['KubernetesNetworkConfig.ServiceIpv4Cidr']);
+    expect(t.atDefault).toEqual(['KubernetesNetworkConfig.IpFamily']);
+  });
+
+  it('equality-gated: a non-default IpFamily (ipv6) surfaces as undeclared, not folded', () => {
+    const t = tiers(
+      classifyResource(
+        bare('AWS::EKS::Cluster'),
+        { KubernetesNetworkConfig: { ServiceIpv4Cidr: '10.100.0.0/16', IpFamily: 'ipv6' } },
+        emptySchema
+      )
+    );
+    expect(t.undeclared.sort()).toEqual([
+      'KubernetesNetworkConfig.IpFamily',
+      'KubernetesNetworkConfig.ServiceIpv4Cidr',
+    ]);
+    expect(t.atDefault).toEqual([]);
+  });
+
+  it('a fully-undeclared object NOT in the allowlist stays ONE whole undeclared finding (no fragmentation)', () => {
+    // EKS AccessConfig is a fully-undeclared object but NOT registered to descend — it must
+    // remain a single whole-object finding, proving the descend is opt-in per (type, path).
+    const t = classifyResource(
+      bare('AWS::EKS::Cluster'),
+      { AccessConfig: { AuthenticationMode: 'CONFIG_MAP' } },
+      emptySchema
+    );
+    expect(t.map((f) => f.path)).toEqual(['AccessConfig']);
+    expect(t[0]!.tier).toBe('undeclared');
+    expect(t[0]!.actual).toEqual({ AuthenticationMode: 'CONFIG_MAP' });
   });
 });
