@@ -27,7 +27,12 @@ import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
-import { gatherWithProgress, progressLabel } from './progress.js';
+import {
+  gatherWithProgress,
+  positionPrefix,
+  progressLabel,
+  stackCountAnnouncement,
+} from './progress.js';
 import { resolveInteractively } from './interactive-resolve.js';
 
 // --pre-deploy reports declared-side drift the next deploy would clobber; the
@@ -186,6 +191,16 @@ export async function runCheck(args: string[]): Promise<number> {
     return 0;
   }
 
+  // Announce the total up front (issue #539): in a multi-stack run each stack prints its
+  // report + interactive prompt one at a time, so without this the count only ever shows
+  // embedded in the scrolled-away `[i/N]` spinner line. To stderr (never pollutes --json
+  // stdout) and suppressed under --json; a lone stack gets nothing (stackCountAnnouncement
+  // returns null — consistent with the `[1/1]`-is-noise rule).
+  if (!a.json) {
+    const announce = stackCountAnnouncement(stacks.map((s) => s.stackName));
+    if (announce) console.error(announce);
+  }
+
   // --pre-deploy: synth the local app once and use each stack's synth template as
   // the declared source, so check reports the declared drift the next deploy would
   // overwrite (clobber) rather than comparing against the already-deployed template.
@@ -227,6 +242,11 @@ export async function runCheck(args: string[]): Promise<number> {
       worst = Math.max(worst, 2);
       continue;
     }
+    // The `[i/N] ` position cue (issue #539) — same gating as the spinner label: only in
+    // a multi-stack text run, '' for a lone stack or --json. Threaded into the report
+    // header and the interactive prompt so the cue is present where the user reads/decides,
+    // not only on the scrolled-away spinner line.
+    const posPrefix = a.json ? '' : positionPrefix(idx, stacks.length);
     try {
       const sKey = synthKey(stackName, region);
       if (synthTemplates && !synthTemplates.has(sKey)) {
@@ -302,7 +322,7 @@ export async function runCheck(args: string[]): Promise<number> {
         if (!a.json) separate();
         const preDeployCode = report(
           applyIgnores(declaredOnly, { stackName, accountId: desired.accountId, region }, config),
-          `${stackName} (${region})`,
+          `${posPrefix}${stackName} (${region})`,
           {
             json: a.json,
             verbose: a.verbose,
@@ -365,7 +385,7 @@ export async function runCheck(args: string[]): Promise<number> {
         config
       );
       if (!a.json) separate();
-      let code = report(reconciled, `${stackName} (${region})`, {
+      let code = report(reconciled, `${posPrefix}${stackName} (${region})`, {
         json: a.json,
         verbose: a.verbose,
         // --show-all is inventory mode: list every undeclared value, including the
@@ -405,6 +425,7 @@ export async function runCheck(args: string[]): Promise<number> {
           yes: a.yes,
           removeUnrecorded: a.removeUnrecorded,
           verbose: a.verbose,
+          positionPrefix: posPrefix,
         });
       } else if (!baseline && !hasUnrecorded && !a.json && !a.showAll && !a.preDeploy) {
         // R142: no interactive establish prompt could fire (non-TTY, or --fail) and there is

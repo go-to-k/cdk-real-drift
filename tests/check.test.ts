@@ -182,6 +182,22 @@ describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
   it('R141: establishOnly says "no .cdkrd baseline yet"', () => {
     expect(resolveMenuMessage('S', 0, true)).toContain('no .cdkrd baseline yet');
   });
+
+  // issue #539: the multi-stack [i/N] position cue is carried into the interactive prompt.
+  it('prefixes the [i/N] position cue before the stack name (drift)', () => {
+    expect(resolveMenuMessage('S', 1, false, '[2/3] ')).toBe(
+      '[2/3] S: drift found — what do you want to do?'
+    );
+  });
+  it('prefixes the [i/N] cue for the potential-drift and establish wordings too', () => {
+    expect(resolveMenuMessage('S', 0, false, '[2/3] ')).toMatch(
+      /^\[2\/3\] S: potential drift found/
+    );
+    expect(resolveMenuMessage('S', 0, true, '[2/3] ')).toMatch(/^\[2\/3\] S: no \.cdkrd baseline/);
+  });
+  it('adds nothing when the prefix is empty (lone stack — default)', () => {
+    expect(resolveMenuMessage('S', 1)).toBe('S: drift found — what do you want to do?');
+  });
 });
 
 describe('finalCheckExit (R53 — report-only by default, --fail opts into exit 1)', () => {
