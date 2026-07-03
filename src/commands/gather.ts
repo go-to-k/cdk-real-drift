@@ -138,6 +138,7 @@ interface ClassifyOpts {
   oaiCanonicalIds: Record<string, string>;
   siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   bucketNotificationManaged: Set<string>;
+  clusterEchoModel: Record<string, Record<string, unknown>>;
 }
 
 // Rules declared by standalone AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress
@@ -211,6 +212,31 @@ export function buildBucketNotificationManaged(desired: Desired): Set<string> {
     }
   }
   return managed;
+}
+
+// Per Aurora DBInstance physical id, the parent DBCluster's live model — the source for the
+// CLUSTER_ECHO_CHILD strip in classify (an instance's undeclared property that echoes its
+// cluster's cluster-level config). Resolved via the instance's declared DBClusterIdentifier
+// (a Ref that resolves to the cluster's physical id). Fail-open: an instance whose parent
+// cannot be resolved is simply not stripped (its echoes stay a one-time visible inventory,
+// never a hidden change).
+export function buildClusterEchoModels(desired: Desired): Record<string, Record<string, unknown>> {
+  const clusterByPhys: Record<string, Record<string, unknown>> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::RDS::DBCluster' || !r.physicalId) continue;
+    const live = desired.ctx.liveAttrs[r.logicalId];
+    if (live && typeof live === 'object')
+      clusterByPhys[r.physicalId] = live as Record<string, unknown>;
+  }
+  const map: Record<string, Record<string, unknown>> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::RDS::DBInstance' || !r.physicalId) continue;
+    const clusterId = (r.declared as Record<string, unknown> | undefined)?.DBClusterIdentifier;
+    if (typeof clusterId !== 'string') continue;
+    const clusterLive = clusterByPhys[clusterId];
+    if (clusterLive) map[r.physicalId] = clusterLive;
+  }
+  return map;
 }
 
 // CloudFront legacy OAI id -> S3CanonicalUserId, harvested from the stack's own
@@ -422,6 +448,7 @@ export async function gatherFindings(
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
+    clusterEchoModel: buildClusterEchoModels(desired),
   };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
@@ -506,6 +533,7 @@ export async function regatherTouched(
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
+    clusterEchoModel: buildClusterEchoModels(desired),
   };
 
   const fresh: Finding[] = [];

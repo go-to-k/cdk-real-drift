@@ -4334,6 +4334,113 @@ describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `genera
 // TRUE/FALSE interchangeably; RDS canonicalizes a declared "ON"/"OFF" to "1"/"0" on read, so a
 // case that declares "ON" false-flags declared drift against the live "1". Observed live on
 // dev-main-AuroraDB.
+// An Aurora DBInstance's live model echoes its parent DBCluster's cluster-level config
+// (encryption, engine version, backup, security groups, subnet group, …) — undeclared on the
+// instance, mirroring the cluster (which cdkrd classifies independently). classify drops the
+// echo via opts.clusterEchoModel, equality-gated so an instance value that DIVERGES stays.
+describe('Aurora DBInstance cluster-echo strip (CLUSTER_ECHO_CHILD)', () => {
+  const bareEcho: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const inst = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'Writer',
+    resourceType: 'AWS::RDS::DBInstance',
+    physicalId: 'inst-1',
+    declared,
+  });
+  const clusterEchoModel = {
+    'inst-1': {
+      StorageEncrypted: true,
+      EngineVersion: '8.0.mysql_aurora.3.08.0',
+      KmsKeyId: 'arn:aws:kms:ap-northeast-1:1:key/abc',
+      BackupRetentionPeriod: 14,
+      VpcSecurityGroupIds: ['sg-1'],
+      PreferredMaintenanceWindow: 'tue:14:55-tue:15:25',
+    },
+  };
+
+  it('drops undeclared instance props that ECHO the parent cluster (same key + value)', () => {
+    const t = tiers(
+      classifyResource(
+        inst({ DBClusterIdentifier: 'c1' }),
+        {
+          StorageEncrypted: true,
+          EngineVersion: '8.0.mysql_aurora.3.08.0',
+          KmsKeyId: 'arn:aws:kms:ap-northeast-1:1:key/abc',
+          BackupRetentionPeriod: 14,
+        },
+        bareEcho,
+        { clusterEchoModel }
+      )
+    );
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('drops VPCSecurityGroups via the VpcSecurityGroupIds alias', () => {
+    const t = tiers(
+      classifyResource(
+        inst({ DBClusterIdentifier: 'c1' }),
+        { VPCSecurityGroups: ['sg-1'] },
+        bareEcho,
+        { clusterEchoModel }
+      )
+    );
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('KEEPS an instance value that DIVERGES from the cluster (its own maintenance window)', () => {
+    const t = tiers(
+      classifyResource(
+        inst({ DBClusterIdentifier: 'c1' }),
+        { PreferredMaintenanceWindow: 'fri:15:16-fri:15:46' },
+        bareEcho,
+        { clusterEchoModel }
+      )
+    );
+    expect(t.undeclared).toEqual(['PreferredMaintenanceWindow']);
+  });
+
+  it('KEEPS an instance-only property the cluster does not carry (its single AvailabilityZone)', () => {
+    const t = tiers(
+      classifyResource(
+        inst({ DBClusterIdentifier: 'c1' }),
+        { AvailabilityZone: 'ap-northeast-1d' },
+        bareEcho,
+        { clusterEchoModel }
+      )
+    );
+    expect(t.undeclared).toEqual(['AvailabilityZone']);
+  });
+
+  it('with NO cluster echo model, the echoes surface (unchanged behavior — fail-open)', () => {
+    const t = tiers(
+      classifyResource(inst({ DBClusterIdentifier: 'c1' }), { StorageEncrypted: true }, bareEcho)
+    );
+    expect(t.undeclared).toEqual(['StorageEncrypted']);
+  });
+
+  it('a DECLARED instance property is compared normally, never echo-stripped', () => {
+    // declared StorageEncrypted:false but live true (== cluster) — a real declared drift the
+    // echo strip must NOT swallow.
+    const t = tiers(
+      classifyResource(
+        inst({ DBClusterIdentifier: 'c1', StorageEncrypted: false }),
+        { StorageEncrypted: true },
+        bareEcho,
+        { clusterEchoModel }
+      )
+    );
+    expect(t.declared).toEqual(['StorageEncrypted']);
+  });
+});
+
 describe('RDS parameter-group boolean tokens (ON≡1, OFF≡0)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),

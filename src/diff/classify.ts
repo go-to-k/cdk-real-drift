@@ -215,6 +215,23 @@ export const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
   'AWS::ApiGateway::Stage': { MethodSettings: 'HttpMethod' },
 };
 
+// Child resources whose live model ECHOES their parent's cluster-level configuration. An
+// Aurora DBInstance reports the DBCluster's encryption / engine version / backup / security
+// groups / subnet group / master user / log exports — settings the CDK `ClusterInstance`
+// never declares on the instance, so they flood a first run as undeclared inventory that
+// merely mirrors the cluster (which cdkrd classifies independently). classify drops an
+// UNDECLARED instance property whose value EQUALS the parent cluster's value for the same
+// key; `aliases` maps the few keys the two APIs spell differently. The parent's own property
+// still carries detection, so no out-of-band change is hidden — and an instance value that
+// DIVERGES from the cluster (its own maintenance window, its single AZ) still surfaces.
+const CLUSTER_ECHO_CHILD: Record<string, { parentIdKey: string; aliases: Record<string, string> }> =
+  {
+    'AWS::RDS::DBInstance': {
+      parentIdKey: 'DBClusterIdentifier',
+      aliases: { VPCSecurityGroups: 'VpcSecurityGroupIds' },
+    },
+  };
+
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&
   typeof t === 'object' &&
@@ -773,6 +790,9 @@ export function classifyResource(
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
     // rather than surfaced as false undeclared drift.
     bucketNotificationManaged?: Set<string>;
+    // Per child physical id, the parent cluster's live model — for the CLUSTER_ECHO_CHILD
+    // strip (an Aurora DBInstance echoing its DBCluster's cluster-level config).
+    clusterEchoModel?: Record<string, Record<string, unknown>>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -845,6 +865,21 @@ export function classifyResource(
     !('NotificationConfiguration' in declared)
   ) {
     delete live.NotificationConfiguration;
+  }
+  // Drop an UNDECLARED property whose value ECHOES the parent cluster's value (an Aurora
+  // DBInstance mirroring its DBCluster's cluster-level config — see CLUSTER_ECHO_CHILD).
+  // Equality-gated: a declared property compares normally, and an instance value that
+  // DIVERGES from the cluster still surfaces. The parent's own property carries detection.
+  const echoSpec = CLUSTER_ECHO_CHILD[resourceType];
+  const echoModel = echoSpec && physicalId ? opts.clusterEchoModel?.[physicalId] : undefined;
+  if (echoSpec && echoModel) {
+    for (const k of Object.keys(live)) {
+      if (k in declared) continue;
+      const parentKey = echoSpec.aliases[k] ?? k;
+      if (!(parentKey in echoModel)) continue;
+      const pv = echoModel[parentKey];
+      if (deepEqual(live[k], pv) || isStringlyEqualDeep(live[k], pv)) delete live[k];
+    }
   }
   // ManagedPolicy attachment lists (Roles/Users/Groups). A DECLARED list is handled
   // per-member in the declared loop below (declared-but-missing = detach; live-only =
