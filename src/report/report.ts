@@ -64,7 +64,7 @@ const TIER_NOTES: Partial<Record<Tier, string>> = {
   ignored: 'matched a .cdkrd/ignore.yaml ignore rule — not drift',
   readGap: "declared, but AWS doesn't return it on read so cdkrd can't verify it — not drift",
   unresolved:
-    "declared, but its value references a CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value, so it can't be compared — skipped, not drift",
+    "declared, but its value references a CloudFormation intrinsic cdkrd couldn't resolve to a concrete value — e.g. Fn::GetAZs, a {{resolve:...}} dynamic reference, or an Fn::GetAtt whose target wasn't readable — so it can't be compared, not drift",
   skipped:
     'NOT checked (coverage incomplete) — CC API unsupported / no physical id / custom resource',
 };
@@ -440,11 +440,14 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       return `readGap=${items.length} (declared but unverifiable — AWS doesn't return them on read, not drift: ${parts.join(', ')})`;
     }
     // unresolved is jargon too: these are declared values whose CloudFormation intrinsic
-    // (Fn::GetAtt, Fn::GetAZs, …) cdkrd could not resolve to a concrete value, so there is
-    // nothing concrete to compare against live — unverifiable, not drift. The generic
-    // groupReasons breakdown would just echo "intrinsic unresolved N", so spell it out.
+    // cdkrd could not resolve to a concrete value, so there is nothing concrete to compare
+    // against live — unverifiable, not drift. The representative examples are ones that are
+    // resolution-unable BY NATURE: Fn::GetAZs and {{resolve:...}} dynamic references (SSM /
+    // Secrets Manager). Fn::GetAtt is NOT listed bare — cdkrd re-resolves it once the target
+    // is read live (gather.ts), so it lands here only when the target itself wasn't readable.
+    // The generic groupReasons breakdown would just echo "intrinsic unresolved N", so spell it out.
     if (t === 'unresolved')
-      return `unresolved=${items.length} (declared values whose CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value — unverifiable, not drift)`;
+      return `unresolved=${items.length} (declared values whose CloudFormation intrinsic cdkrd couldn't resolve to a concrete value — e.g. Fn::GetAZs, a {{resolve:...}} dynamic reference, or an Fn::GetAtt whose target wasn't readable — unverifiable, not drift)`;
     // skipped = resources cdkrd genuinely could NOT read this run (CC-unsupported with
     // no SDK override, read error, missing physical id, custom resource). It is the one
     // info: tier that is a COVERAGE GAP, not a not-drift classification — so it carries

@@ -545,12 +545,16 @@ describe('report', () => {
       ]);
       expect(code).toBe(0);
       expect(text).toMatch(/^result: CLEAN$/m);
-      // the message must explain WHY (unverifiable intrinsic) and must NOT claim every
-      // unresolved value is a Fn::GetAtt — a Subnet AZ is Fn::Select(Fn::GetAZs).
+      // the message must explain WHY (unverifiable intrinsic) and must lead with the
+      // resolution-unable-by-nature examples (Fn::GetAZs / {{resolve:...}}), NOT imply every
+      // unresolved value is a Fn::GetAtt — cdkrd re-resolves GetAtt once the target reads live
+      // (gather.ts), so it lands here only when the target itself wasn't readable.
       expect(text).toContain(
-        "info: unresolved=2 (declared values whose CloudFormation intrinsic (e.g. Fn::GetAtt, Fn::GetAZs) cdkrd couldn't resolve to a concrete value — unverifiable, not drift)"
+        "info: unresolved=2 (declared values whose CloudFormation intrinsic cdkrd couldn't resolve to a concrete value — e.g. Fn::GetAZs, a {{resolve:...}} dynamic reference, or an Fn::GetAtt whose target wasn't readable — unverifiable, not drift)"
       );
       expect(text).not.toContain('GetAtt unresolved');
+      // Fn::GetAtt must never be the bare leading example (the misleading form we fixed).
+      expect(text).not.toContain('(e.g. Fn::GetAtt');
     });
 
     it('--verbose expands unresolved to a full section listing each declared path', () => {
