@@ -1845,3 +1845,68 @@ describe('rejectedEmptyStripOps — service-rejected empty-array echoes (#481)',
     expect(rejectedEmptyStripOps(T, [], liveWithEmptyEcho)).toEqual([]);
   });
 });
+
+describe('rejectedEmptyStripOps — array-WILDCARD husk inside array elements (#506)', () => {
+  const T = 'AWS::ImageBuilder::DistributionConfiguration';
+  const descOp: PatchOp = {
+    op: 'add',
+    path: '/Distributions/0/AmiDistributionConfiguration/Description',
+    value: 'cdkrd probe AMI',
+    human: 'Description -> deployed-template value',
+  };
+  // The live shape reproduced on CdkRealDriftIntegImageBuilderRich: the CC read echoes
+  // TargetAccountIds [] inside EACH distribution's AmiDistributionConfiguration, and the
+  // ImageBuilder update handler rejects it — so even a Description-only revert failed.
+  const live = (n: number) => ({
+    Distributions: Array.from({ length: n }, (_, i) => ({
+      Region: 'us-east-1',
+      AmiDistributionConfiguration: {
+        Name: `img-${i}`,
+        Description: 'cdkrd probe AMI MUTATED',
+        AmiTags: { app: 'x' },
+        TargetAccountIds: [],
+      },
+      FastLaunchConfigurations: [],
+      LaunchTemplateConfigurations: [],
+    })),
+  });
+
+  it('appends a remove op for every empty husk (TargetAccountIds + sibling arrays) in every distribution', () => {
+    const strip = rejectedEmptyStripOps(T, [descOp], live(2));
+    expect(strip.map((o) => `${o.op} ${o.path}`)).toEqual([
+      'remove /Distributions/0/AmiDistributionConfiguration/TargetAccountIds',
+      'remove /Distributions/1/AmiDistributionConfiguration/TargetAccountIds',
+      'remove /Distributions/0/FastLaunchConfigurations',
+      'remove /Distributions/1/FastLaunchConfigurations',
+      'remove /Distributions/0/LaunchTemplateConfigurations',
+      'remove /Distributions/1/LaunchTemplateConfigurations',
+    ]);
+  });
+
+  it('a POPULATED array is real data — never stripped', () => {
+    const l = live(1);
+    const d = l.Distributions[0] as {
+      AmiDistributionConfiguration: { TargetAccountIds: string[] };
+      FastLaunchConfigurations: unknown[];
+      LaunchTemplateConfigurations: unknown[];
+    };
+    d.AmiDistributionConfiguration.TargetAccountIds = ['111111111111'];
+    d.FastLaunchConfigurations = [{ Enabled: true }];
+    d.LaunchTemplateConfigurations = [{ LaunchTemplateId: 'lt-1' }];
+    expect(rejectedEmptyStripOps(T, [descOp], l)).toEqual([]);
+  });
+
+  it('an op already rewriting a distribution (an ancestor of the husk) suppresses the strip', () => {
+    const wholeDistOp: PatchOp = {
+      op: 'add',
+      path: '/Distributions/0',
+      value: {},
+      human: 'Distributions[0] -> deployed-template value',
+    };
+    expect(rejectedEmptyStripOps(T, [wholeDistOp], live(1))).toEqual([]);
+  });
+
+  it('no Distributions array -> nothing to expand', () => {
+    expect(rejectedEmptyStripOps(T, [descOp], { Name: 'dist' })).toEqual([]);
+  });
+});

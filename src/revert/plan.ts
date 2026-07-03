@@ -776,16 +776,52 @@ export function tagPreservingOps(
 // pointers are curated per type. An appended `remove` op drops the echoed empty array
 // from the handler's desired state; the service treats an absent headerMatches as "no
 // header matches", which is exactly what the empty echo meant.
+// A pointer segment may be `*` — an ARRAY WILDCARD matching every index — so a husk that
+// sits INSIDE an array element is reachable (#506: ImageBuilder DistributionConfiguration
+// echoes `TargetAccountIds: []` inside EACH Distributions[i].AmiDistributionConfiguration,
+// out of reach of a static object-only pointer). Each `*` fans the pointer out to one
+// concrete pointer per live index.
 export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> = {
   'AWS::VpcLattice::Rule': ['/Match/HttpMatch/HeaderMatches'],
+  // ImageBuilder folds its own read-back state into UpdateDistributionConfiguration, and
+  // the handler rejects the echoed `targetAccountIds: []` inside every distribution's
+  // amiDistributionConfiguration — so ANY patch (even a Description-only revert) failed
+  // with "The value supplied for parameter 'distributions[0].amiDistributionConfiguration.
+  // targetAccountIds' is not valid" (reproduced live, 2026-07-03). Dropping the echoed
+  // empty array lets the handler treat it as absent (no cross-account distribution), which
+  // is what the empty echo meant. The CC read echoes the sibling FastLaunchConfigurations /
+  // LaunchTemplateConfigurations arrays as `[]` too (corpus-observed), and they carry the
+  // same "must be non-empty when present" shape — so they are included pre-emptively.
+  // Stripping is a safe no-op regardless: the fail-safe gate only drops a live value that is
+  // ALREADY an empty array (a populated array is real data and never touched), and an absent
+  // array means "no config", exactly what the echoed `[]` meant. TargetAccountIds is the
+  // live-proven rejection; the siblings guard against the same wall on a distribution that
+  // sets one of them.
+  'AWS::ImageBuilder::DistributionConfiguration': [
+    '/Distributions/*/AmiDistributionConfiguration/TargetAccountIds',
+    '/Distributions/*/FastLaunchConfigurations',
+    '/Distributions/*/LaunchTemplateConfigurations',
+  ],
 };
-function valueAtPointer(model: unknown, pointer: string): unknown {
-  let cur: unknown = model;
+// Expand a JSON pointer that MAY contain `*` array-wildcard segments into a {pointer, value}
+// pair for every matching live node. A `*` matches each index of an array node; a normal
+// segment indexes an object. A wildcard-free pointer yields one pair (or none if a segment
+// is absent). Pure.
+function expandPointer(model: unknown, pointer: string): { pointer: string; value: unknown }[] {
+  let frontier: { path: string[]; node: unknown }[] = [{ path: [], node: model }];
   for (const seg of pointer.split('/').slice(1)) {
-    if (cur === null || typeof cur !== 'object' || Array.isArray(cur)) return undefined;
-    cur = (cur as Record<string, unknown>)[seg];
+    const next: { path: string[]; node: unknown }[] = [];
+    for (const { path, node } of frontier) {
+      if (seg === '*') {
+        if (Array.isArray(node))
+          node.forEach((el, i) => next.push({ path: [...path, String(i)], node: el }));
+      } else if (node !== null && typeof node === 'object' && !Array.isArray(node)) {
+        next.push({ path: [...path, seg], node: (node as Record<string, unknown>)[seg] });
+      }
+    }
+    frontier = next;
   }
-  return cur;
+  return frontier.map(({ path, node }) => ({ pointer: `/${path.join('/')}`, value: node }));
 }
 // Extra `remove` ops for a cc-kind item on a type in the table above. Fail-safe gates:
 // the LIVE model must carry the pointer as an EMPTY array (a populated array is real
@@ -802,15 +838,16 @@ export function rejectedEmptyStripOps(
   if (!pointers || !liveRaw || ops.length === 0) return [];
   const out: PatchOp[] = [];
   for (const pointer of pointers) {
-    const v = valueAtPointer(liveRaw, pointer);
-    if (!Array.isArray(v) || v.length > 0) continue;
-    const covered = ops.some((o) => pointer === o.path || pointer.startsWith(`${o.path}/`));
-    if (covered) continue;
-    out.push({
-      op: 'remove',
-      path: pointer,
-      human: `${pointer.slice(1).replaceAll('/', '.')} -> drop service-echoed empty array (service rejects [] on update)`,
-    });
+    for (const { pointer: concrete, value } of expandPointer(liveRaw, pointer)) {
+      if (!Array.isArray(value) || value.length > 0) continue;
+      const covered = ops.some((o) => concrete === o.path || concrete.startsWith(`${o.path}/`));
+      if (covered) continue;
+      out.push({
+        op: 'remove',
+        path: concrete,
+        human: `${concrete.slice(1).replaceAll('/', '.')} -> drop service-echoed empty array (service rejects [] on update)`,
+      });
+    }
   }
   return out;
 }
