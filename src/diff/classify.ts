@@ -1434,6 +1434,16 @@ export function classifyResource(
       // so the unresolvable leaf never becomes a false `declared` drift vs the symbol,
       // while its RESOLVED siblings still compare normally (the WAVE20-F1 fix).
       if (d.stateValue === UNRESOLVED || hasUnresolved(d.stateValue)) continue;
+      // A NESTED declared trivially-EMPTY value (an empty sub-config `{}`, `[]`, or a
+      // `false`/`""` leaf) whose live counterpart is ABSENT or equally empty is not drift:
+      // many services simply OMIT an empty optional sub-object on read (Scheduler
+      // `Target.SqsParameters: {}` reads back undefined). This mirrors the top-level
+      // `!(k in live)` branch's rule that a declared EMPTY collection vs absent is not drift,
+      // applied to a sub-path the top-level branch can't reach (the parent IS present). Gated
+      // on the DECLARED side being empty, so a declared empty value against a POPULATED live
+      // value still differs and surfaces as real drift.
+      if (isTrivialEmpty(d.stateValue) && (d.awsValue === undefined || isTrivialEmpty(d.awsValue)))
+        continue;
       // A `[{<name>,<value>}]` pair set the service reorders + default-fills (Firehose
       // processor `Parameters`, RDS OptionGroup `OptionSettings`): when every declared
       // entry is present in live with an equal value (declared subset of live), the

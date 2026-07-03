@@ -155,6 +155,66 @@ describe('classifyResource (the heart)', () => {
     expect(drifted.declared).toEqual(['Value']);
   });
 
+  // Reported bug: EventBridge Scheduler declares `Target.SqsParameters: {}` (an empty
+  // optional sub-config), but the live read OMITS the key entirely — the drift-calculator
+  // emits a per-leaf record `Target.SqsParameters` with desired `{}` / actual undefined,
+  // false-flagging every clean deploy as declared drift. A NESTED declared trivially-empty
+  // value whose live counterpart is absent (or equally empty) is not drift.
+  it('nested declared empty sub-object vs absent live is not drift (Scheduler SqsParameters)', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'Scheduler',
+      resourceType: 'AWS::Scheduler::Schedule',
+      physicalId: 'sched-phys',
+      declared: {
+        Target: { Arn: 'arn:aws:lambda:...', RoleArn: 'arn:aws:iam:...', SqsParameters: {} },
+      },
+    };
+    // Live omits the empty SqsParameters entirely — no declared drift.
+    const clean = tiers(
+      classifyResource(
+        res,
+        { Target: { Arn: 'arn:aws:lambda:...', RoleArn: 'arn:aws:iam:...' } },
+        emptySchema
+      )
+    );
+    expect(clean.declared).toEqual([]);
+  });
+
+  // The empty-vs-absent fold is gated on the DECLARED side being trivially empty: a
+  // declared EMPTY collection the live read POPULATED out of band is still real drift.
+  it('nested declared empty collection vs a populated live value still surfaces as drift', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'Widget',
+      resourceType: 'AWS::Example::Widget',
+      physicalId: 'w-phys',
+      declared: { Config: { Name: 'w', Items: [] } }, // declared empty list
+    };
+    const drifted = tiers(
+      classifyResource(res, { Config: { Name: 'w', Items: ['x', 'y'] } }, emptySchema)
+    );
+    expect(drifted.declared).toEqual(['Config.Items']);
+  });
+
   // A CloudFormation JSON-STRING property (AWS::Config::ConfigRule InputParameters):
   // CDK declares it as an object, Cloud Control returns it parsed. It must be compared
   // and reported as a WHOLE UNIT at the top-level path — never descended — so the revert
