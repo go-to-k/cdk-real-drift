@@ -117,7 +117,12 @@ Each block above is one kind of finding, and neither needed a baseline:
 - **`[Potential Drift]`**: settings that live only on the real resource, not in
   your template. cdkrd detects these too: it strips the obvious noise (AWS
   defaults, auto-generated names) so what's left is the values most likely to be
-  real drift. They're only _potential_ because there's no baseline yet.
+  real drift. They're only _potential_ because there's no baseline yet — and,
+  being an unconfirmed best-effort guess, this is the one tier that **can include
+  false positives** (an AWS-managed default or noise the fold tables didn't yet
+  strip). Confirmed `[CFn-Declared Drift]` never guesses. If a potential-drift
+  value is really noise, [please report it](https://github.com/go-to-k/cdk-real-drift/issues)
+  so it becomes a fold-table fix.
 
 At the prompt you act on each finding: **record** it (accept and watch),
 **revert** it (undo the change), or **ignore** it (stop reporting).
@@ -630,6 +635,18 @@ Control cannot sub-path patch it).
 informational, never guessed (zero false drift). For the full list of what it does
 not do (revert's boundaries, nested stacks, per-type read gaps, stack-state
 handling), see [docs/limitations.md](docs/limitations.md).
+
+The exception to zero-false-drift is the **`[Potential Drift]`** tier: with no
+baseline yet, cdkrd can't confirm those live-only values, so it strips the noise
+it recognizes and shows the rest as a best-effort guess — which can occasionally
+surface an AWS-managed default or noise it hasn't catalogued (a false positive).
+
+## Reporting issues
+
+Found a false positive in `[Potential Drift]` (an AWS-managed default or noise
+that should have been folded), a missed detection, or any other bug? Please
+[open an issue](https://github.com/go-to-k/cdk-real-drift/issues) — noise reports
+turn directly into fold-table fixes and make the next run quieter for everyone.
 
 ## FAQ
 

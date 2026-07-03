@@ -34,6 +34,22 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
   });
 
+  it('the Potential Drift section carries a false-positive caveat + issue-tracker link', () => {
+    const { text } = run([U(), U('Q')]);
+    // Potential drift is the one unconfirmed tier, so it points the user at the tracker
+    // (noise reports become fold-table fixes). Scoped as a `↳` note like the origin hint.
+    expect(text).toContain('can include false positives');
+    expect(text).toContain('https://github.com/go-to-k/cdk-real-drift/issues');
+  });
+
+  it('the false-positive caveat is scoped to Potential Drift — confirmed drift never carries it', () => {
+    // A declared drift with NO potential-drift values: the guess/false-positive note must
+    // not appear (declared drift is confirmed against the template, never guessed).
+    const { text } = run([F('declared')]);
+    expect(text).not.toContain('can include false positives');
+    expect(text).not.toContain('/issues');
+  });
+
   it('nested undeclared values are SURFACED in [Potential Drift], like top-level ones', () => {
     // 2 top-level + 3 nested = 5 shown potential drift. The R96 fold is gone: a nested
     // undeclared value that survived the upstream atDefault/generated/KNOWN_DEFAULT_PATHS

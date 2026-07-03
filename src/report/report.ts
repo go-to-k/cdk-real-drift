@@ -355,8 +355,19 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       style.undeclaredTier,
       driftSections > 0
     )
-  )
+  ) {
     driftSections++;
+    // Potential drift is UNCONFIRMED by definition (no baseline), so it is the one tier
+    // where a value can be a false positive — an AWS-managed default or noise that slipped
+    // the fold tables. Point the user at the issue tracker so those become fold-table fixes.
+    // Scoped to THIS tier only (a `↳` note like the origin hint): declared / deleted drift
+    // is confirmed against the template, never guessed, so it carries no such caveat.
+    log(
+      style.note(
+        '  ↳ this tier is a best-effort guess and can include false positives — if a value here is really an AWS-managed default or noise, please report it: https://github.com/go-to-k/cdk-real-drift/issues'
+      )
+    );
+  }
   // result: line — the conclusion. Lists ONLY the non-zero DRIFT tier counts (the
   // informational breakdown lives on the `info:` line, so the two never duplicate);
   // CLEAN prints just `CLEAN`. `^result:` stays greppable for the verdict; the formal
