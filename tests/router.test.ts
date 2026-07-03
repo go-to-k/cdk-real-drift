@@ -12,9 +12,13 @@ import {
   MemoryDBClient,
 } from '@aws-sdk/client-memorydb';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
+import {
+  ElasticLoadBalancingV2Client,
+  GetTrustStoreCaCertificatesBundleCommand,
+} from '@aws-sdk/client-elastic-load-balancing-v2';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import { mockClient } from 'aws-sdk-client-mock';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { readLive } from '../src/read/router.js';
 import type { DesiredResource } from '../src/types.js';
 
@@ -25,6 +29,7 @@ const elasticache = mockClient(ElastiCacheClient);
 const ecs = mockClient(ECSClient);
 const memorydb = mockClient(MemoryDBClient);
 const redshiftServerless = mockClient(RedshiftServerlessClient);
+const elbv2 = mockClient(ElasticLoadBalancingV2Client);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -44,6 +49,7 @@ beforeEach(() => {
   ecs.reset();
   memorydb.reset();
   redshiftServerless.reset();
+  elbv2.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1209,5 +1215,62 @@ describe('readLive (SDK supplement path — RedshiftServerless Workgroup writeOn
     redshiftServerless.on(GetWorkgroupCommand).rejects(named('ResourceNotFoundException'));
     const r = await readLive(cc as unknown as CloudControlClient, workgroup(), 'us-east-1', '1');
     expect(r.live).toEqual({ WorkgroupName: 'cdkrd-wg', BaseCapacity: 8 });
+  });
+});
+
+describe('readLive (SDK supplement path — ELBv2 TrustStore CA bundle content hash, #505)', () => {
+  const arn = 'arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-ts/abc';
+  const ts = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::ElasticLoadBalancingV2::TrustStore',
+      physicalId: arn,
+      declared: { Name: 'cdkrd-ts' },
+    });
+  const bundle = '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n';
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('projects CaCertificatesBundleSha256 from the fetched presigned bundle', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: `{"TrustStoreArn":"${arn}","Name":"cdkrd-ts"}` },
+    });
+    elbv2
+      .on(GetTrustStoreCaCertificatesBundleCommand)
+      .resolves({ Location: 'https://s3.example.com/presigned' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(bundle) })
+    );
+    const r = await readLive(cc as unknown as CloudControlClient, ts(), 'us-east-1', '1');
+    expect(r.live?.CaCertificatesBundleSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(elbv2.commandCalls(GetTrustStoreCaCertificatesBundleCommand)[0]?.args[0].input).toEqual({
+      TrustStoreArn: arn,
+    });
+  });
+
+  it('keeps the CC model when GetTrustStoreCaCertificatesBundle throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: `{"TrustStoreArn":"${arn}","Name":"cdkrd-ts"}` },
+    });
+    elbv2.on(GetTrustStoreCaCertificatesBundleCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(cc as unknown as CloudControlClient, ts(), 'us-east-1', '1');
+    expect(r.live).toEqual({ TrustStoreArn: arn, Name: 'cdkrd-ts' });
+  });
+
+  it('keeps the CC model when the presigned fetch fails (non-fatal, no bogus hash)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: `{"TrustStoreArn":"${arn}","Name":"cdkrd-ts"}` },
+    });
+    elbv2
+      .on(GetTrustStoreCaCertificatesBundleCommand)
+      .resolves({ Location: 'https://s3.example.com/presigned' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, text: () => Promise.resolve('Access Denied') })
+    );
+    const r = await readLive(cc as unknown as CloudControlClient, ts(), 'us-east-1', '1');
+    expect(r.live).toEqual({ TrustStoreArn: arn, Name: 'cdkrd-ts' });
   });
 });

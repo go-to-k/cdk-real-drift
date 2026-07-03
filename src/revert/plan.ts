@@ -30,6 +30,16 @@ import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js'
 // Empty for now; ECS `VolumeConfigurations` will populate it once that prop is projected.)
 const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {};
 
+// Per type, SYNTHETIC top-level fields an SDK_SUPPLEMENTS reader COMPUTES (not real AWS
+// properties) as an integrity signal for a value that is otherwise unreadable — currently
+// AWS::ElasticLoadBalancingV2::TrustStore `CaCertificatesBundleSha256`, a digest of the live
+// CA bundle content (#505). They surface as undeclared drift that `record` snapshots (so a
+// later content swap re-surfaces), but they have no write target, so a revert on one is
+// reported not-revertable rather than emitting a `remove` that always fails.
+const SYNTHETIC_READ_SIGNAL_PATHS: Record<string, readonly string[]> = {
+  'AWS::ElasticLoadBalancingV2::TrustStore': ['CaCertificatesBundleSha256'],
+};
+
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
 // UpdateResource revert is valid and they are EXEMPT from the "read-override => not
@@ -341,6 +351,20 @@ export function buildRevertPlan(
       continue;
     }
     if (!DRIFT_TIERS.has(f.tier)) continue; // only declared/undeclared are drift to revert
+    // A SYNTHETIC integrity signal an SDK_SUPPLEMENTS reader computes (ELBv2 TrustStore
+    // `CaCertificatesBundleSha256`, a digest of the live CA bundle content — #505) is not a
+    // real AWS property, so it has no write target: a `remove` would fail. It exists only to
+    // re-surface an out-of-band content swap as recordable undeclared drift; report it
+    // detect/record-only.
+    if (SYNTHETIC_READ_SIGNAL_PATHS[f.resourceType]?.includes(f.path)) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'read-only integrity signal — detect/record only, not revertable',
+      });
+      continue;
+    }
     if (!f.physicalId) {
       notRevertable.push({
         displayId,

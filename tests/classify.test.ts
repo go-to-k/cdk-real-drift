@@ -8008,3 +8008,55 @@ describe('Face-stack false-positive folds', () => {
     expect(declaredInline.some((f) => f.tier === 'declared' || f.tier === 'undeclared')).toBe(true);
   });
 });
+
+describe('ELBv2 TrustStore CA bundle content-hash integrity signal (#505)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(['NumberOfCaCertificates', 'Status', 'TrustStoreArn']),
+    writeOnly: new Set([
+      'CaCertificatesBundleS3Bucket',
+      'CaCertificatesBundleS3Key',
+      'CaCertificatesBundleS3ObjectVersion',
+    ]),
+    createOnly: new Set(['Name']),
+    readOnlyPaths: ['NumberOfCaCertificates', 'Status', 'TrustStoreArn'],
+    writeOnlyPaths: [
+      'CaCertificatesBundleS3Bucket',
+      'CaCertificatesBundleS3Key',
+      'CaCertificatesBundleS3ObjectVersion',
+    ],
+    createOnlyPaths: ['Name'],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res: DesiredResource = {
+    logicalId: 'TrustStore',
+    resourceType: 'AWS::ElasticLoadBalancingV2::TrustStore',
+    physicalId: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/ts/abc',
+    declared: {
+      Name: 'cdkrd-ts',
+      CaCertificatesBundleS3Bucket: 'bkt',
+      CaCertificatesBundleS3Key: 'ca.pem',
+    },
+  };
+
+  it('the supplemented CaCertificatesBundleSha256 surfaces as recordable undeclared drift', () => {
+    // The supplement adds the synthetic hash to the live model; it is not a CFn property,
+    // so it is undeclared inventory that `record` snapshots and a later swap re-surfaces.
+    const findings = classifyResource(
+      res,
+      {
+        Name: 'cdkrd-ts',
+        Status: 'ACTIVE',
+        NumberOfCaCertificates: 1,
+        CaCertificatesBundleSha256: 'f'.repeat(64),
+      },
+      schema
+    );
+    const undeclared = findings.filter((f) => f.tier === 'undeclared');
+    expect(undeclared.map((f) => f.path)).toContain('CaCertificatesBundleSha256');
+    // the writeOnly bundle-location props stay readGaps (correct — unreadable)
+    expect(
+      findings.some((f) => f.tier === 'readGap' && f.path === 'CaCertificatesBundleS3Bucket')
+    ).toBe(true);
+  });
+});
