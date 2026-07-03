@@ -137,14 +137,24 @@ import {
 } from '@aws-sdk/client-ec2';
 import {
   BuildBotLocaleCommand,
+  CreateIntentCommand,
+  CreateSlotCommand,
+  CreateSlotTypeCommand,
+  DeleteIntentCommand,
+  DeleteSlotCommand,
+  DeleteSlotTypeCommand,
   DescribeBotLocaleCommand,
   DescribeIntentCommand,
+  DescribeSlotCommand,
+  DescribeSlotTypeCommand,
   LexModelsV2Client,
   ListIntentsCommand,
   ListSlotsCommand,
   ListSlotTypesCommand,
   UpdateBotLocaleCommand,
   UpdateIntentCommand,
+  UpdateSlotCommand,
+  UpdateSlotTypeCommand,
 } from '@aws-sdk/client-lex-models-v2';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -2564,25 +2574,154 @@ describe('Lex BotLocales writer (revert-by-rebuild via lexv2-models Update* APIs
     expect(calls[0]!.args[0].input.intentName).toBe('OrderFlowers');
   });
 
-  it('REFUSES a structural diff (a whole intent added/removed out of band)', async () => {
-    // live has ONLY OrderFlowers; declared has OrderFlowers + AddOns → a declared intent is
-    // missing from live (structural delete out of band) → update-only writer refuses.
+  it('CREATES a declared intent missing from live (out-of-band delete) then updates it (#564)', async () => {
+    // live has ONLY OrderFlowers; declared has OrderFlowers + AddOns → the declared AddOns intent
+    // was deleted out of band → recreate it, then converge both via UpdateIntent.
     lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
     lex.on(ListIntentsCommand).resolves({
       intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
     });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    lex.on(CreateIntentCommand).resolves({ intentId: 'I2', intentName: 'AddOns' });
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
     const twoIntents = {
       BotLocales: [
         {
           LocaleId: 'en_US',
-          Intents: [{ Name: 'OrderFlowers' }, { Name: 'AddOns' }],
+          Intents: [
+            { Name: 'OrderFlowers', SampleUtterances: [{ Utterance: 'order' }] },
+            { Name: 'AddOns', SampleUtterances: [{ Utterance: 'add ons' }] },
+          ],
         },
       ],
     };
-    await expect(
-      SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(twoIntents), [utteranceOp])
-    ).rejects.toThrow(/structural rebuild/);
-    expect(lex.commandCalls(UpdateIntentCommand)).toHaveLength(0);
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(twoIntents), [utteranceOp]);
+    const created = lex.commandCalls(CreateIntentCommand);
+    expect(created).toHaveLength(1);
+    expect(created[0]!.args[0].input.intentName).toBe('AddOns');
+    // the declared utterances are supplied on create (mapped CFn Utterance -> API utterance)
+    expect(created[0]!.args[0].input.sampleUtterances).toEqual([{ utterance: 'add ons' }]);
+    // both intents (the pre-existing OrderFlowers and the just-created AddOns) are then converged
+    expect(lex.commandCalls(UpdateIntentCommand)).toHaveLength(2);
+    // no intent was deleted, and the locale is rebuilt once
+    expect(lex.commandCalls(DeleteIntentCommand)).toHaveLength(0);
+    expect(lex.commandCalls(BuildBotLocaleCommand)).toHaveLength(1);
+  });
+
+  it('DELETES a live intent absent from the declared set (out-of-band add) — never FallbackIntent (#564)', async () => {
+    // live has OrderFlowers + a rogue Rogue intent + the built-in FallbackIntent; declared has
+    // only OrderFlowers → Rogue is deleted, OrderFlowers updated, FallbackIntent left alone.
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [
+        { intentId: 'I1', intentName: 'OrderFlowers' },
+        { intentId: 'IR', intentName: 'Rogue' },
+        { intentId: 'IF', intentName: 'FallbackIntent' },
+      ],
+    });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(DeleteIntentCommand).resolves({});
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(declared), [utteranceOp]);
+    const deleted = lex.commandCalls(DeleteIntentCommand);
+    expect(deleted).toHaveLength(1);
+    // ONLY the rogue intent is deleted — the built-in FallbackIntent is never touched
+    expect(deleted[0]!.args[0].input.intentId).toBe('IR');
+    // the sole declared user intent is updated, none created
+    expect(lex.commandCalls(UpdateIntentCommand)).toHaveLength(1);
+    expect(lex.commandCalls(CreateIntentCommand)).toHaveLength(0);
+  });
+
+  it('CREATES a missing slot type / DELETES an extra one, ordered around the slots (#564)', async () => {
+    // live has an extra custom slot type Extra; declared has a custom slot type Flavor + one
+    // intent OrderFlowers with a slot bound to Flavor → Flavor is created (missing), the intent's
+    // declared slot is created, then Extra is deleted last (after slots resolve).
+    lex.on(ListSlotTypesCommand).resolves({
+      slotTypeSummaries: [{ slotTypeId: 'STX', slotTypeName: 'Extra' }],
+    });
+    lex.on(CreateSlotTypeCommand).resolves({ slotTypeId: 'STF', slotTypeName: 'Flavor' });
+    lex.on(DescribeSlotTypeCommand).resolves({ slotTypeId: 'STF' } as never);
+    lex.on(UpdateSlotTypeCommand).resolves({});
+    lex.on(DeleteSlotTypeCommand).resolves({});
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+    });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    lex.on(CreateSlotCommand).resolves({ slotId: 'SL1' });
+    lex.on(DescribeSlotCommand).resolves({ slotId: 'SL1' } as never);
+    lex.on(UpdateSlotCommand).resolves({});
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    const withSlotType = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          SlotTypes: [
+            {
+              Name: 'Flavor',
+              SlotTypeValues: [{ SampleValue: { Value: 'vanilla' } }],
+              ValueSelectionSetting: { ResolutionStrategy: 'ORIGINAL_VALUE' },
+            },
+          ],
+          Intents: [
+            {
+              Name: 'OrderFlowers',
+              Slots: [
+                {
+                  Name: 'Flavor',
+                  SlotTypeName: 'Flavor',
+                  ValueElicitationSetting: { SlotConstraint: 'Required' },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(withSlotType), [utteranceOp]);
+    const createdSt = lex.commandCalls(CreateSlotTypeCommand);
+    expect(createdSt).toHaveLength(1);
+    expect(createdSt[0]!.args[0].input.slotTypeName).toBe('Flavor');
+    // the declared slot for the intent is created and bound to the just-created slot type id
+    const createdSlot = lex.commandCalls(CreateSlotCommand);
+    expect(createdSlot).toHaveLength(1);
+    expect(createdSlot[0]!.args[0].input.slotName).toBe('Flavor');
+    expect(createdSlot[0]!.args[0].input.slotTypeId).toBe('STF');
+    // the extra live slot type is deleted (last, once nothing references it)
+    const deletedSt = lex.commandCalls(DeleteSlotTypeCommand);
+    expect(deletedSt).toHaveLength(1);
+    expect(deletedSt[0]!.args[0].input.slotTypeId).toBe('STX');
+  });
+
+  it('DELETES a live slot absent from the declared intent (out-of-band add) (#564)', async () => {
+    // live intent OrderFlowers carries a rogue slot; declared intent has no slots → delete it.
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+    });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [{ slotId: 'SR', slotName: 'Rogue' }] });
+    lex.on(DeleteSlotCommand).resolves({});
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(declared), [utteranceOp]);
+    const deletedSlot = lex.commandCalls(DeleteSlotCommand);
+    expect(deletedSlot).toHaveLength(1);
+    expect(deletedSlot[0]!.args[0].input.slotId).toBe('SR');
+    expect(deletedSlot[0]!.args[0].input.intentId).toBe('I1');
   });
 
   it('throws when the Bot id is unresolvable', async () => {
