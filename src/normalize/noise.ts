@@ -2835,6 +2835,29 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::RDS::DBCluster': new Set(['EnableCloudwatchLogsExports']),
   'AWS::Neptune::DBCluster': new Set(['EnableCloudwatchLogsExports']),
   'AWS::DocDB::DBCluster': new Set(['EnableCloudwatchLogsExports']),
+  // Live-observed on a fresh codepipeline-triggers deploy: a V2 pipeline's Git trigger
+  // filter lists — the Branches / FilePaths / Tags Includes/Excludes glob sets and the
+  // PullRequest Events enum set — are declared in the CFn schema as `uniqueItems: true`
+  // arrays WITHOUT `insertionOrder: false`, so the schema-driven `unorderedScalarPaths`
+  // fold does NOT cover them. CodePipeline stores them as SETS: an out-of-band reorder of
+  // an identical branch/path/tag list (or a console edit that re-canonicalizes them) reads
+  // back in a different order, which a positional compare false-drifts (declared `Includes`
+  // [release/*, main, develop] vs live [develop, release/*, main]). A genuine glob
+  // add/remove still changes the multiset. Keyed with `*` wildcards (Triggers[] and Push[]/
+  // PullRequest[] are arrays); the classify lookup normalizes numeric segments to `*`.
+  'AWS::CodePipeline::Pipeline': new Set([
+    'Triggers.*.GitConfiguration.Push.*.Branches.Includes',
+    'Triggers.*.GitConfiguration.Push.*.Branches.Excludes',
+    'Triggers.*.GitConfiguration.Push.*.FilePaths.Includes',
+    'Triggers.*.GitConfiguration.Push.*.FilePaths.Excludes',
+    'Triggers.*.GitConfiguration.Push.*.Tags.Includes',
+    'Triggers.*.GitConfiguration.Push.*.Tags.Excludes',
+    'Triggers.*.GitConfiguration.PullRequest.*.Branches.Includes',
+    'Triggers.*.GitConfiguration.PullRequest.*.Branches.Excludes',
+    'Triggers.*.GitConfiguration.PullRequest.*.FilePaths.Includes',
+    'Triggers.*.GitConfiguration.PullRequest.*.FilePaths.Excludes',
+    'Triggers.*.GitConfiguration.PullRequest.*.Events',
+  ]),
 };
 
 // True when both values are scalar arrays containing the same multiset of

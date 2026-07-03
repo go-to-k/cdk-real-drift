@@ -1,0 +1,244 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PipelineC660917D",
+    "resourceType": "AWS::CodePipeline::Pipeline",
+    "physicalId": "cdkrd-triggers-pipeline",
+    "constructPath": "CdkRealDriftIntegCodepipelineTriggers/Pipeline",
+    "declared": {
+      "ArtifactStore": {
+        "Location": "cdkrealdriftintegcodepipelinetri-artifacts82dd59a1-1ajvvnudpqcf",
+        "Type": "S3"
+      },
+      "Name": "cdkrd-triggers-pipeline",
+      "PipelineType": "V2",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipelineT-PipelineRoleD68726F7-eIOQaULO9eUx",
+      "Stages": [
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Source",
+                "Owner": "AWS",
+                "Provider": "CodeStarSourceConnection",
+                "Version": "1"
+              },
+              "Configuration": {
+                "ConnectionArn": "arn:aws:codeconnections:us-east-1:111111111111:connection/34793d66-518b-4b87-bd4d-e90e9ff99666",
+                "FullRepositoryId": "cdkrd-hunt-owner/cdkrd-hunt-repo",
+                "BranchName": "main",
+                "DetectChanges": false
+              },
+              "Name": "GitHubSource",
+              "OutputArtifacts": [
+                {
+                  "Name": "Artifact_Source_GitHubSource"
+                }
+              ],
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineSourceGitHubSourc-jiQV75tmDcnk",
+              "RunOrder": 1
+            }
+          ],
+          "Name": "Source"
+        },
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Build",
+                "Owner": "AWS",
+                "Provider": "CodeBuild",
+                "Version": "1"
+              },
+              "Configuration": {
+                "ProjectName": "cdkrd-triggers-build"
+              },
+              "InputArtifacts": [
+                {
+                  "Name": "Artifact_Source_GitHubSource"
+                }
+              ],
+              "Name": "Build",
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineBuildCodePipeline-1isE19wjhBY4",
+              "RunOrder": 1
+            }
+          ],
+          "Name": "Build"
+        }
+      ],
+      "Triggers": [
+        {
+          "GitConfiguration": {
+            "Push": [
+              {
+                "Branches": {
+                  "Excludes": ["experimental/*", "hotfix/*"],
+                  "Includes": ["release/*", "main", "develop"]
+                },
+                "FilePaths": {
+                  "Excludes": ["docs/**", "README.md"],
+                  "Includes": ["src/**", "package.json", "lib/**"]
+                }
+              }
+            ],
+            "SourceActionName": "GitHubSource"
+          },
+          "ProviderType": "CodeStarSourceConnection"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ArtifactStores": [],
+    "DisableInboundStageTransitions": [],
+    "Stages": [
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Source",
+              "Version": "1",
+              "Provider": "CodeStarSourceConnection"
+            },
+            "Configuration": {
+              "DetectChanges": "false",
+              "ConnectionArn": "arn:aws:codeconnections:us-east-1:111111111111:connection/34793d66-518b-4b87-bd4d-e90e9ff99666",
+              "BranchName": "main",
+              "FullRepositoryId": "cdkrd-hunt-owner/cdkrd-hunt-repo"
+            },
+            "InputArtifacts": [],
+            "OutputArtifacts": [
+              {
+                "Files": [],
+                "Name": "Artifact_Source_GitHubSource"
+              }
+            ],
+            "Commands": [],
+            "OutputVariables": [],
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineSourceGitHubSourc-jiQV75tmDcnk",
+            "RunOrder": 1,
+            "Name": "GitHubSource"
+          }
+        ],
+        "Name": "Source"
+      },
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Build",
+              "Version": "1",
+              "Provider": "CodeBuild"
+            },
+            "Configuration": {
+              "ProjectName": "cdkrd-triggers-build"
+            },
+            "InputArtifacts": [
+              {
+                "Name": "Artifact_Source_GitHubSource"
+              }
+            ],
+            "OutputArtifacts": [],
+            "Commands": [],
+            "OutputVariables": [],
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipe-PipelineBuildCodePipeline-1isE19wjhBY4",
+            "RunOrder": 1,
+            "Name": "Build"
+          }
+        ],
+        "Name": "Build"
+      }
+    ],
+    "ExecutionMode": "SUPERSEDED",
+    "Triggers": [
+      {
+        "GitConfiguration": {
+          "PullRequest": [],
+          "Push": [
+            {
+              "FilePaths": {
+                "Includes": ["lib/**", "src/**", "package.json"],
+                "Excludes": ["README.md", "docs/**"]
+              },
+              "Branches": {
+                "Includes": ["develop", "release/*", "main"],
+                "Excludes": ["hotfix/*", "experimental/*"]
+              }
+            }
+          ],
+          "SourceActionName": "GitHubSource"
+        },
+        "ProviderType": "CodeStarSourceConnection"
+      }
+    ],
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodepipelineT-PipelineRoleD68726F7-eIOQaULO9eUx",
+    "Name": "cdkrd-triggers-pipeline",
+    "Variables": [],
+    "Version": "1",
+    "ArtifactStore": {
+      "Type": "S3",
+      "Location": "cdkrealdriftintegcodepipelinetri-artifacts82dd59a1-1ajvvnudpqcf"
+    },
+    "PipelineType": "V2",
+    "Arn": "arn:aws:codepipeline:us-east-1:111111111111:cdkrd-triggers-pipeline",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "Version"],
+    "writeOnly": ["RestartExecutionOnUpdate"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Version"],
+    "writeOnlyPaths": ["RestartExecutionOnUpdate"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "ExecutionMode": "SUPERSEDED"
+    },
+    "defaultPaths": {
+      "ExecutionMode": "SUPERSEDED"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "PipelineC660917D",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "ExecutionMode",
+      "actual": "SUPERSEDED",
+      "physicalId": "cdkrd-triggers-pipeline",
+      "constructPath": "CdkRealDriftIntegCodepipelineTriggers/Pipeline"
+    }
+  ]
+}

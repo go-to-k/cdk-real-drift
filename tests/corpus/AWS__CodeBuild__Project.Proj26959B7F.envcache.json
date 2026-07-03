@@ -1,0 +1,173 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Proj26959B7F",
+    "resourceType": "AWS::CodeBuild::Project",
+    "physicalId": "cdkrd-envcache-build",
+    "constructPath": "CdkRealDriftIntegCodeBuildEnvCache/Proj",
+    "declared": {
+      "Artifacts": {
+        "Location": "cdkrealdriftintegcodebuildenvcache-bucket83908e77-yntppdvl8gqc",
+        "Name": "out",
+        "NamespaceType": "NONE",
+        "Packaging": "NONE",
+        "Type": "S3"
+      },
+      "Cache": {
+        "Modes": ["LOCAL_SOURCE_CACHE", "LOCAL_DOCKER_LAYER_CACHE", "LOCAL_CUSTOM_CACHE"],
+        "Type": "LOCAL"
+      },
+      "EncryptionKey": "alias/aws/s3",
+      "Environment": {
+        "ComputeType": "BUILD_GENERAL1_SMALL",
+        "EnvironmentVariables": [
+          {
+            "Name": "ZED",
+            "Type": "PLAINTEXT",
+            "Value": "z-value"
+          },
+          {
+            "Name": "ALPHA",
+            "Type": "PLAINTEXT",
+            "Value": "a-value"
+          },
+          {
+            "Name": "MID",
+            "Type": "PLAINTEXT",
+            "Value": "m-value"
+          }
+        ],
+        "Image": "aws/codebuild/standard:7.0",
+        "ImagePullCredentialsType": "CODEBUILD",
+        "PrivilegedMode": false,
+        "Type": "LINUX_CONTAINER"
+      },
+      "Name": "cdkrd-envcache-build",
+      "ServiceRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodeBuildEnvCache-ProjRoleA26DD2F4-unkl0GS79b8Q",
+      "Source": {
+        "BuildSpec": "{\n  \"version\": \"0.2\",\n  \"phases\": {\n    \"build\": {\n      \"commands\": [\n        \"echo hi\"\n      ]\n    }\n  }\n}",
+        "Location": "cdkrealdriftintegcodebuildenvcache-bucket83908e77-yntppdvl8gqc/source.zip",
+        "Type": "S3"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-envcache-build",
+    "ServiceRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCodeBuildEnvCache-ProjRoleA26DD2F4-unkl0GS79b8Q",
+    "TimeoutInMinutes": 60,
+    "QueuedTimeoutInMinutes": 480,
+    "EncryptionKey": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+    "Source": {
+      "Type": "S3",
+      "Location": "cdkrealdriftintegcodebuildenvcache-bucket83908e77-yntppdvl8gqc/source.zip",
+      "BuildSpec": "{\n  \"version\": \"0.2\",\n  \"phases\": {\n    \"build\": {\n      \"commands\": [\n        \"echo hi\"\n      ]\n    }\n  }\n}",
+      "InsecureSsl": false
+    },
+    "Artifacts": {
+      "Type": "S3",
+      "Location": "cdkrealdriftintegcodebuildenvcache-bucket83908e77-yntppdvl8gqc",
+      "Name": "out",
+      "NamespaceType": "NONE",
+      "Packaging": "NONE",
+      "EncryptionDisabled": false
+    },
+    "Environment": {
+      "Type": "LINUX_CONTAINER",
+      "ComputeType": "BUILD_GENERAL1_SMALL",
+      "Image": "aws/codebuild/standard:7.0",
+      "PrivilegedMode": false,
+      "ImagePullCredentialsType": "CODEBUILD",
+      "EnvironmentVariables": [
+        {
+          "Name": "ZED",
+          "Value": "z-value",
+          "Type": "PLAINTEXT"
+        },
+        {
+          "Name": "ALPHA",
+          "Value": "a-value",
+          "Type": "PLAINTEXT"
+        },
+        {
+          "Name": "MID",
+          "Value": "m-value",
+          "Type": "PLAINTEXT"
+        }
+      ]
+    },
+    "Visibility": "PRIVATE",
+    "BadgeEnabled": false,
+    "Cache": {
+      "Type": "LOCAL",
+      "Modes": ["LOCAL_SOURCE_CACHE", "LOCAL_DOCKER_LAYER_CACHE", "LOCAL_CUSTOM_CACHE"]
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Proj26959B7F",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "TimeoutInMinutes",
+      "actual": 60,
+      "physicalId": "cdkrd-envcache-build",
+      "constructPath": "CdkRealDriftIntegCodeBuildEnvCache/Proj"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Proj26959B7F",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "QueuedTimeoutInMinutes",
+      "actual": 480,
+      "physicalId": "cdkrd-envcache-build",
+      "constructPath": "CdkRealDriftIntegCodeBuildEnvCache/Proj"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Proj26959B7F",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "Visibility",
+      "actual": "PRIVATE",
+      "physicalId": "cdkrd-envcache-build",
+      "constructPath": "CdkRealDriftIntegCodeBuildEnvCache/Proj"
+    }
+  ]
+}
