@@ -30,6 +30,14 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
     expect(isArnNameMatch('MyFn', `${fnArn}:PROD`)).toBe(false);
   });
 
+  it('matches a QUALIFIED name (NAME:QUALIFIER) against a qualified function ARN', () => {
+    // An EventSourceMapping FunctionName declared as `fn:alias` reads back as the full
+    // qualified ARN `arn:…:function:fn:alias`; the whole colon-joined resource id matches.
+    expect(isArnNameMatch('MyFn:FnAlias', `${fnArn}:FnAlias`)).toBe(true);
+    // but a DIFFERENT qualifier is still real drift
+    expect(isArnNameMatch('MyFn:FnAlias', `${fnArn}:OTHER`)).toBe(false);
+  });
+
   it('does NOT match a MULTI-segment path suffix (a different object is not hidden)', () => {
     // A bare name that is only a partial path-suffix of a longer key is a DIFFERENT
     // resource — must surface as drift, not be equated. (The old endsWith matched it.)

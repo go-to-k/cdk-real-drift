@@ -7355,3 +7355,350 @@ describe('ElastiCache/MemoryDB User AccessString canonicalization (#482)', () =>
     ).toHaveLength(1);
   });
 });
+
+// Real-stack (dev-main-Face) false-positive batch: AWS-materialized defaults + derived
+// echoes that flooded a clean first check. Each fold is equality-gated, so a genuine
+// out-of-band change still surfaces.
+describe('Face-stack false-positive folds', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: 'phys',
+    declared,
+  });
+
+  it('Cognito UserPool undeclared default Policies/KeyConfiguration/IssuerConfiguration fold', () => {
+    const live = {
+      Policies: {
+        PasswordPolicy: {
+          MinimumLength: 8,
+          RequireLowercase: true,
+          RequireNumbers: true,
+          RequireSymbols: true,
+          RequireUppercase: true,
+          TemporaryPasswordValidityDays: 7,
+        },
+        SignInPolicy: { AllowedFirstAuthFactors: ['PASSWORD'] },
+      },
+      KeyConfiguration: { KeyType: 'AWS_OWNED_KEY' },
+      IssuerConfiguration: { Type: 'ORIGINAL' },
+    };
+    const t = tiers(classifyResource(res('AWS::Cognito::UserPool', {}), live, emptySchema));
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault.sort()).toEqual(['IssuerConfiguration', 'KeyConfiguration', 'Policies']);
+    // a non-default password policy (min length raised) still surfaces
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::Cognito::UserPool', {}),
+        { ...live, Policies: { ...live.Policies, PasswordPolicy: { MinimumLength: 12 } } },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['Policies']);
+  });
+
+  it('Cognito UserPool partially-declared Schema attr: AWS-filled type/constraints fold', () => {
+    const declared = { Schema: [{ Name: 'email', Required: true, Mutable: true }] };
+    const live = {
+      Schema: [
+        {
+          Name: 'email',
+          Required: true,
+          Mutable: true,
+          AttributeDataType: 'String',
+          StringAttributeConstraints: { MinLength: '0', MaxLength: '2048' },
+        },
+      ],
+    };
+    const t = tiers(classifyResource(res('AWS::Cognito::UserPool', declared), live, emptySchema));
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault.sort()).toEqual([
+      'Schema[email].AttributeDataType',
+      'Schema[email].StringAttributeConstraints',
+    ]);
+    // a non-default constraint (custom max length) still surfaces
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::Cognito::UserPool', declared),
+        {
+          Schema: [
+            {
+              Name: 'email',
+              Required: true,
+              Mutable: true,
+              AttributeDataType: 'String',
+              StringAttributeConstraints: { MinLength: '0', MaxLength: '100' },
+            },
+          ],
+        },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['Schema[email].StringAttributeConstraints']);
+  });
+
+  it('Cognito Google IdP derived ProviderDetails endpoints + username mapping fold', () => {
+    const declared = {
+      ProviderDetails: { client_id: 'x', client_secret: 'y', authorize_scopes: 'openid' },
+      AttributeMapping: { email: 'email' },
+    };
+    const live = {
+      ProviderDetails: {
+        client_id: 'x',
+        client_secret: 'y',
+        authorize_scopes: 'openid',
+        authorize_url: 'https://accounts.google.com/o/oauth2/v2/auth',
+        token_url: 'https://www.googleapis.com/oauth2/v4/token',
+        attributes_url: 'https://people.googleapis.com/v1/people/me?personFields=',
+        oidc_issuer: 'https://accounts.google.com',
+        token_request_method: 'POST',
+        attributes_url_add_attributes: 'true',
+      },
+      AttributeMapping: { email: 'email', username: 'sub' },
+    };
+    const t = tiers(
+      classifyResource(res('AWS::Cognito::UserPoolIdentityProvider', declared), live, emptySchema)
+    );
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toContain('AttributeMapping.username');
+    expect(t.atDefault).toContain('ProviderDetails.oidc_issuer');
+    // a different (non-Google) endpoint still surfaces
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::Cognito::UserPoolIdentityProvider', declared),
+        {
+          ...live,
+          ProviderDetails: { ...live.ProviderDetails, token_url: 'https://evil.example/token' },
+        },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['ProviderDetails.token_url']);
+  });
+
+  it('REGIONAL RestApi EndpointConfiguration.IpAddressType=ipv4 folds; dualstack surfaces', () => {
+    const declared = { EndpointConfiguration: { Types: ['REGIONAL'] } };
+    const clean = tiers(
+      classifyResource(
+        res('AWS::ApiGateway::RestApi', declared),
+        { EndpointConfiguration: { Types: ['REGIONAL'], IpAddressType: 'ipv4' } },
+        emptySchema
+      )
+    );
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.atDefault).toEqual(['EndpointConfiguration.IpAddressType']);
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::ApiGateway::RestApi', declared),
+        { EndpointConfiguration: { Types: ['REGIONAL'], IpAddressType: 'dualstack' } },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['EndpointConfiguration.IpAddressType']);
+  });
+
+  it('EventSourceMapping MaximumBatchingWindowInSeconds=0 folds; a real window surfaces', () => {
+    const clean = tiers(
+      classifyResource(
+        res('AWS::Lambda::EventSourceMapping', { FunctionName: 'fn' }),
+        { FunctionName: 'fn', MaximumBatchingWindowInSeconds: 0 },
+        emptySchema
+      )
+    );
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.atDefault).toEqual(['MaximumBatchingWindowInSeconds']);
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::Lambda::EventSourceMapping', { FunctionName: 'fn' }),
+        { FunctionName: 'fn', MaximumBatchingWindowInSeconds: 5 },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['MaximumBatchingWindowInSeconds']);
+  });
+
+  it('Lambda LoggingConfig.ApplicationLogLevel=INFO folds; a live-only JSON LogFormat surfaces', () => {
+    const declared = { LoggingConfig: { LogGroup: '/custom/lg' } };
+    const t = tiers(
+      classifyResource(
+        res('AWS::Lambda::Function', declared),
+        {
+          LoggingConfig: { LogGroup: '/custom/lg', LogFormat: 'JSON', ApplicationLogLevel: 'INFO' },
+        },
+        emptySchema
+      )
+    );
+    // the level default folds; the JSON format (default is Text) is a real undeclared value
+    expect(t.atDefault).toContain('LoggingConfig.ApplicationLogLevel');
+    expect(t.undeclared).toEqual(['LoggingConfig.LogFormat']);
+  });
+
+  it('Lambda Durable Function (DurableConfig) LogFormat=JSON folds; a durable Text pin surfaces', () => {
+    // A durable function's default log format IS JSON (durable/managed compute substrate),
+    // so JSON reads back at default and must fold — unlike a regular function (above).
+    const declared = {
+      LoggingConfig: { LogGroup: '/custom/lg' },
+      DurableConfig: { ExecutionTimeout: 3600, RetentionPeriodInDays: 30 },
+    };
+    const durable = tiers(
+      classifyResource(
+        res('AWS::Lambda::Function', declared),
+        {
+          LoggingConfig: { LogGroup: '/custom/lg', LogFormat: 'JSON', ApplicationLogLevel: 'INFO' },
+          DurableConfig: { ExecutionTimeout: 3600, RetentionPeriodInDays: 30 },
+        },
+        emptySchema
+      )
+    );
+    expect(durable.atDefault).toContain('LoggingConfig.LogFormat');
+    expect(durable.undeclared).toEqual([]);
+    // a durable function that reads back plain Text (not the durable default) still surfaces
+    const textPinned = tiers(
+      classifyResource(
+        res('AWS::Lambda::Function', declared),
+        {
+          LoggingConfig: { LogGroup: '/custom/lg', LogFormat: 'Text' },
+          DurableConfig: { ExecutionTimeout: 3600, RetentionPeriodInDays: 30 },
+        },
+        emptySchema
+      )
+    );
+    expect(textPinned.undeclared).toEqual(['LoggingConfig.LogFormat']);
+  });
+
+  it('CFn-generated LayerName / ClientName fold to generated', () => {
+    const layer = tiers(
+      classifyResource(
+        res('AWS::Lambda::LayerVersion', {}),
+        { LayerName: 'WebsiteDeploymentAwsCliLayer0783B164' },
+        emptySchema
+      )
+    );
+    expect(layer.generated).toEqual(['LayerName']);
+    expect(layer.undeclared).toEqual([]);
+    const client = tiers(
+      classifyResource(
+        res('AWS::Cognito::UserPoolClient', {}),
+        { ClientName: 'AuthUserPoolUserPoolClientBB863FCC-qWmhWWbfzd1Q' },
+        emptySchema
+      )
+    );
+    expect(client.generated).toEqual(['ClientName']);
+    expect(client.undeclared).toEqual([]);
+  });
+
+  it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {
+    const declared = {
+      Rules: [
+        {
+          Name: 'RateLimit',
+          Statement: {
+            RateBasedStatement: {
+              ScopeDownStatement: { ByteMatchStatement: { SearchString: '/api/forms/public' } },
+            },
+          },
+        },
+      ],
+    };
+    // live echoes BOTH the plain SearchString AND its redundant base64 twin
+    const b64 = Buffer.from('/api/forms/public', 'utf8').toString('base64');
+    const live = {
+      Rules: [
+        {
+          Name: 'RateLimit',
+          Statement: {
+            RateBasedStatement: {
+              ScopeDownStatement: {
+                ByteMatchStatement: { SearchString: '/api/forms/public', SearchStringBase64: b64 },
+              },
+            },
+          },
+        },
+      ],
+    };
+    const clean = tiers(classifyResource(res('AWS::WAFv2::WebACL', declared), live, emptySchema));
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.declared).toEqual([]);
+    // an out-of-band pattern change (both live keys move in lockstep) still surfaces
+    const changed = {
+      Rules: [
+        {
+          Name: 'RateLimit',
+          Statement: {
+            RateBasedStatement: {
+              ScopeDownStatement: {
+                ByteMatchStatement: {
+                  SearchString: '/api/other',
+                  SearchStringBase64: Buffer.from('/api/other', 'utf8').toString('base64'),
+                },
+              },
+            },
+          },
+        },
+      ],
+    };
+    const drifted = classifyResource(res('AWS::WAFv2::WebACL', declared), changed, emptySchema);
+    expect(drifted.some((f) => f.tier === 'declared')).toBe(true);
+    expect(drifted.some((f) => f.tier === 'undeclared')).toBe(false);
+  });
+
+  it('WAF LoggingConfiguration RedactedFields header-name case is not drift; a real change is', () => {
+    const declared = { RedactedFields: [{ SingleHeader: { Name: 'Authorization' } }] };
+    const clean = classifyResource(
+      res('AWS::WAFv2::LoggingConfiguration', declared),
+      { RedactedFields: [{ SingleHeader: { Name: 'authorization' } }] },
+      emptySchema
+    );
+    expect(clean.filter((f) => f.tier === 'declared')).toEqual([]);
+    const drifted = classifyResource(
+      res('AWS::WAFv2::LoggingConfiguration', declared),
+      { RedactedFields: [{ SingleHeader: { Name: 'x-custom' } }] },
+      emptySchema
+    );
+    expect(drifted.some((f) => f.tier === 'declared')).toBe(true);
+  });
+
+  it('S3 bucket NotificationConfiguration managed by a CR is dropped, not surfaced', () => {
+    const live = {
+      NotificationConfiguration: {
+        TopicConfigurations: [],
+        QueueConfigurations: [],
+        LambdaConfigurations: [],
+        EventBridgeConfiguration: { EventBridgeEnabled: true },
+      },
+    };
+    // no managing CR -> the reflected config surfaces as undeclared
+    const surfaced = tiers(classifyResource(res('AWS::S3::Bucket', {}), live, emptySchema));
+    expect(surfaced.undeclared).toEqual(['NotificationConfiguration']);
+    // a Custom::S3BucketNotifications CR manages this bucket -> dropped
+    const dropped = tiers(
+      classifyResource(res('AWS::S3::Bucket', {}), live, emptySchema, {
+        bucketNotificationManaged: new Set(['phys']),
+      })
+    );
+    expect(dropped.undeclared).toEqual([]);
+    // but a bucket that DECLARES NotificationConfiguration inline is still compared
+    const declaredInline = classifyResource(
+      res('AWS::S3::Bucket', { NotificationConfiguration: { EventBridgeConfiguration: {} } }),
+      {
+        NotificationConfiguration: {
+          EventBridgeConfiguration: {},
+          QueueConfigurations: [{ Event: 's3:x' }],
+        },
+      },
+      emptySchema,
+      { bucketNotificationManaged: new Set(['phys']) }
+    );
+    expect(declaredInline.some((f) => f.tier === 'declared' || f.tier === 'undeclared')).toBe(true);
+  });
+});

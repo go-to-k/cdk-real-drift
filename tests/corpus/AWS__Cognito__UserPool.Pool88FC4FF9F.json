@@ -332,7 +332,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Policies",

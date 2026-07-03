@@ -56,9 +56,14 @@ function arnMatchesName(
   const afterSlash = afterColon.includes('/')
     ? afterColon.slice(afterColon.lastIndexOf('/') + 1)
     : afterColon;
-  if (name !== afterColon && name !== afterSlash) return false;
   // arn:partition:service:region:account:resource — segments 3 (region) + 4 (account)
   const seg = arn.split(':');
+  // A resource id that itself carries a colon (a Lambda function ARN qualified by an
+  // alias/version: `arn:…:function:NAME:QUALIFIER`) reassembles as segments 6.. — the
+  // declared side is the bare `NAME:QUALIFIER`, which the last-colon-segment rule would
+  // otherwise truncate to just `QUALIFIER`. Compare the whole colon-joined resource id too.
+  const colonId = seg.length >= 7 ? seg.slice(6).join(':') : afterColon;
+  if (name !== afterColon && name !== afterSlash && name !== colonId) return false;
   const arnRegion = seg[3] ?? '';
   const arnAccount = seg[4] ?? '';
   if (opts?.region && arnRegion && arnRegion !== opts.region) return false;

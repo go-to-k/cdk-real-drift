@@ -768,6 +768,11 @@ export function classifyResource(
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
     // from an AWS::EC2::SecurityGroup's reflected live rule arrays so they are not double-counted.
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+    // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
+    // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
+    // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
+    // rather than surfaced as false undeclared drift.
+    bucketNotificationManaged?: Set<string>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -826,6 +831,20 @@ export function classifyResource(
         subtractSiblingSgRules(live, prop, sib[side]);
       }
     }
+  }
+  // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
+  // the CR-applied NotificationConfiguration it never declares itself (CDK renders
+  // addEventNotification/enableEventBridgeNotification as that CR, which cdkrd skips). The
+  // config is IaC-managed, not out of band — drop the reflected property so it is not false
+  // undeclared drift. Only when the template does NOT declare it inline (a raw-CFn bucket that
+  // sets NotificationConfiguration directly is compared normally).
+  if (
+    resourceType === 'AWS::S3::Bucket' &&
+    physicalId &&
+    opts.bucketNotificationManaged?.has(physicalId) &&
+    !('NotificationConfiguration' in declared)
+  ) {
+    delete live.NotificationConfiguration;
   }
   // ManagedPolicy attachment lists (Roles/Users/Groups). A DECLARED list is handled
   // per-member in the declared loop below (declared-but-missing = detach; live-only =
@@ -1332,9 +1351,12 @@ export function classifyResource(
         continue;
       }
       // Per-type case-insensitive scalar paths (R75: Route53 AliasTarget.DNSName
-      // — the ALB's generated DNS name is mixed-case declared, lowercase live).
+      // — the ALB's generated DNS name is mixed-case declared, lowercase live). A `*`
+      // in a table entry matches an array index: numeric path segments are normalized to
+      // `*` before the lookup (e.g. `RedactedFields.0.SingleHeader.Name` -> `.*.`).
       if (
-        CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) &&
+        (CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) ||
+          CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path.replace(/\.\d+(?=\.|$)/g, '.*'))) &&
         isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
       )
         continue;
@@ -1613,7 +1635,21 @@ export function classifyResource(
   // R108: KNOWN_DEFAULT_PATHS is the hand-coded twin for the nested service defaults
   // the CFn schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read
   // through the SAME wildcard lookup, equality-gated identically.
-  const knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  let knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  // A Lambda DURABLE FUNCTION (declares DurableConfig — enabling durable execution) runs on
+  // AWS's durable/managed compute substrate, which emits structured JSON logs by default
+  // (the Durable Execution SDK's default logger always emits JSON), NOT the plain-Text
+  // default of a regular function. So a durable function that declares no explicit LogFormat
+  // reads back "JSON", which the base `LoggingConfig.LogFormat: 'Text'` default cannot fold
+  // and would surface as false undeclared drift. Override the LogFormat default to JSON when
+  // DurableConfig is present (the reliable in-template discriminator; the paired
+  // ApplicationLogLevel/SystemLogLevel INFO defaults already fold via the base table).
+  // Equality-gated + value-independent proof: observed live that DurableConfig <=> JSON on a
+  // 9-function stack (same nodejs24.x runtime) where only the durable function reads JSON. A
+  // durable function that pins Text explicitly declares it and is compared, never reaching here.
+  if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
+    knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
+  }
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];

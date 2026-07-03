@@ -94,7 +94,7 @@
       "constructPath": "CdkRealDriftIntegApigwRestRich/Api"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiF70053CD",
       "resourceType": "AWS::ApiGateway::RestApi",
       "path": "EndpointConfiguration.IpAddressType",

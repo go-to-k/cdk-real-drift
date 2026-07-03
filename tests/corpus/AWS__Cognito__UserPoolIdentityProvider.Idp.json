@@ -59,7 +59,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.authorize_url",
@@ -69,7 +69,7 @@
       "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.attributes_url_add_attributes",
@@ -79,7 +79,7 @@
       "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.token_url",
@@ -89,7 +89,7 @@
       "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.attributes_url",
@@ -99,7 +99,7 @@
       "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.oidc_issuer",
@@ -109,7 +109,7 @@
       "constructPath": "CdkRealDriftIntegCognitoIdpRich/Idp"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Idp",
       "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
       "path": "ProviderDetails.token_request_method",

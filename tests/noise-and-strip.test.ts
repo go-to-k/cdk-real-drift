@@ -540,10 +540,13 @@ describe('noise suppressors', () => {
     // construct reads back. All three live on the SINGLE EventSourceMapping entry —
     // #438 added Enabled as a SECOND object-literal key, which (JS last-key-wins) silently
     // dropped the retry/age fold; this asserts they coexist so that regression can't recur.
+    // MaximumBatchingWindowInSeconds: 0 (the "no window" default) was later merged into the
+    // SAME entry — asserted here so a future append can't re-introduce a duplicate key.
     expect(KNOWN_DEFAULTS['AWS::Lambda::EventSourceMapping']).toEqual({
       MaximumRetryAttempts: -1,
       MaximumRecordAgeInSeconds: -1,
       Enabled: true,
+      MaximumBatchingWindowInSeconds: 0,
     });
   });
 

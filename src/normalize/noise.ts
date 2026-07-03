@@ -145,6 +145,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MaximumRetryAttempts: -1,
     MaximumRecordAgeInSeconds: -1,
     Enabled: true,
+    // A mapping that declares no batching window reads back MaximumBatchingWindowInSeconds: 0
+    // (the documented "no window" default) — the CDK SqsEventSource omits it unless set.
+    // Equality-gated: a mapping that pins a real window no longer matches and surfaces.
+    // Observed live on a dev SQS-triggered function.
+    MaximumBatchingWindowInSeconds: 0,
   },
   // An alias created without a Description reads back the empty string. Folded as
   // atDefault so a never-declared alias does not report `Description=""` as drift; it
@@ -396,6 +401,31 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // the documented default; a pool that switches to DEVELOPER (its own SES) reads a
     // non-matching object and stays undeclared (equality-gated).
     EmailConfiguration: { EmailSendingAccount: 'COGNITO_DEFAULT' },
+    // A pool that declares NO Policies reads back Cognito's constant default password
+    // policy (min length 8, all four character classes required, 7-day temp-password
+    // lifetime) plus the SignInPolicy default (PASSWORD as the sole first factor). The
+    // whole object is live-only on such a pool, so the KNOWN_DEFAULT_PATHS sub-entries
+    // (which fold only when a PARTIAL Policies is declared) never reach it — fold the
+    // full default object here. Equality-gated (subset-tolerant): a pool that pins any
+    // non-default policy value no longer matches and surfaces. Observed live.
+    Policies: {
+      PasswordPolicy: {
+        MinimumLength: 8,
+        RequireLowercase: true,
+        RequireNumbers: true,
+        RequireSymbols: true,
+        RequireUppercase: true,
+        TemporaryPasswordValidityDays: 7,
+      },
+      SignInPolicy: { AllowedFirstAuthFactors: ['PASSWORD'] },
+    },
+    // A pool that declares no custom KMS key reads back the AWS-owned-key default, and a
+    // pool that does not customize its token issuer reads back Type "ORIGINAL" — both
+    // Cognito-materialized constants the template never carries. Equality-gated: a pool
+    // that wires its own CMK (KeyType != AWS_OWNED_KEY) or a non-original issuer no
+    // longer matches and surfaces. Observed live.
+    KeyConfiguration: { KeyType: 'AWS_OWNED_KEY' },
+    IssuerConfiguration: { Type: 'ORIGINAL' },
   },
   // An identity pool that declares no allowClassicFlow reads back AllowClassicFlow=false
   // (the documented default). Equality-gated: switch it on out of band and the value no
@@ -915,7 +945,8 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // application log level reads back the AWS default INFO for the undeclared
     // `ApplicationLogLevel` sub-key — observed live on fresh (non-imported) stacks whose
     // functions set only LogFormat. Equality-gated, so a function that pins a different level
-    // (DEBUG/ERROR/…) still surfaces the non-default value.
+    // (DEBUG/ERROR/…) still surfaces the non-default value. (A Lambda DURABLE FUNCTION defaults
+    // LogFormat itself to JSON — see the DurableConfig override in classify.ts.)
     'LoggingConfig.ApplicationLogLevel': 'INFO',
   },
   // EMR Serverless fills MaximumCapacity.Disk with the service-wide maximum
@@ -1032,6 +1063,40 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // reads back the 7-day default (observed live); a pool that sets a different value
     // no longer matches and surfaces (equality-gated).
     'Policies.PasswordPolicy.TemporaryPasswordValidityDays': 7,
+    // A DECLARED standard schema attribute (email/name, keyed by Name via
+    // NESTED_ARRAY_IDENTITY) that omits its data type / string constraints reads back
+    // Cognito's constant defaults: a String attribute with a 0..2048 length range. The
+    // whole live-only standard attributes fold via IDENTITY_KEYED_DEFAULT_ELEMENTS, but a
+    // PARTIALLY-declared one (Required/Mutable set, type left to AWS) surfaces these two
+    // AWS-filled sub-keys instead. Equality-gated: a Number attribute reads a non-String
+    // type, and a custom-constrained String reads a non-matching range, so both surface.
+    'Schema.*.AttributeDataType': 'String',
+    'Schema.*.StringAttributeConstraints': { MinLength: '0', MaxLength: '2048' },
+  },
+  // A Google (or any social/OIDC) identity provider declares only its credentials
+  // (client_id / client_secret / authorize_scopes) and attribute mappings; Cognito
+  // DERIVES and returns the provider's well-known OIDC endpoints and its default
+  // username->sub mapping, which the template never carries, so a fresh provider floods
+  // every first run with these live-only sub-keys. They are Cognito-injected provider
+  // metadata, not user intent. Equality-gated to Google's constant endpoints, so a
+  // different provider's URLs (or a value AWS changes) do not match and surface.
+  // Observed live on a dev Google IdP.
+  'AWS::Cognito::UserPoolIdentityProvider': {
+    'ProviderDetails.authorize_url': 'https://accounts.google.com/o/oauth2/v2/auth',
+    'ProviderDetails.token_url': 'https://www.googleapis.com/oauth2/v4/token',
+    'ProviderDetails.attributes_url': 'https://people.googleapis.com/v1/people/me?personFields=',
+    'ProviderDetails.oidc_issuer': 'https://accounts.google.com',
+    'ProviderDetails.token_request_method': 'POST',
+    'ProviderDetails.attributes_url_add_attributes': 'true',
+    'AttributeMapping.username': 'sub',
+  },
+  // A REGIONAL RestApi (EndpointConfiguration declares only Types:['REGIONAL']) reads
+  // back EndpointConfiguration.IpAddressType: 'ipv4' — the server default the template
+  // never sets. The whole-object KNOWN_DEFAULTS entry only covers the EDGE default shape,
+  // so a REGIONAL api's IpAddressType surfaces as an undeclared sub-key; fold the path
+  // here. Equality-gated: a dualstack api no longer matches and surfaces. Observed live.
+  'AWS::ApiGateway::RestApi': {
+    'EndpointConfiguration.IpAddressType': 'ipv4',
   },
   'AWS::DynamoDB::Table': {
     'PointInTimeRecoverySpecification.RecoveryPeriodInDays': 35,
@@ -1448,6 +1513,18 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // (inventory: never drift, recorded, or reverted) is safe — and necessary, since an
   // immutable token can never be an out-of-band edit. Observed live on lambda-efs-rich.
   'AWS::EFS::AccessPoint': new Set(['ClientToken']),
+  // A LayerVersion whose LayerName the template omits reads back a CloudFormation-generated
+  // name (`<logicalId>` — NO stack prefix and NO random-suffix dash, so isCfnGeneratedName
+  // misses it, and it is not the ARN's trailing segment, so isGeneratedName misses it too).
+  // It is the AWS-minted identity, not user intent; a layer that DECLARES a LayerName carries
+  // it in the template and never reaches this loop. Floods every CDK BucketDeployment (its
+  // AwsCliLayer names itself from the logical id). Observed live.
+  'AWS::Lambda::LayerVersion': new Set(['LayerName']),
+  // A UserPoolClient whose ClientName the template omits reads back a CloudFormation-generated
+  // name (`<logicalId>-<random>` — NO stack prefix, so isCfnGeneratedName misses it). It is
+  // the AWS-minted identity, not user intent; a client that DECLARES a ClientName carries it
+  // in the template and never reaches this loop. Observed live.
+  'AWS::Cognito::UserPoolClient': new Set(['ClientName']),
 };
 
 // Like GENERATED_TOPLEVEL_PATHS but for NESTED, value-INDEPENDENT paths (dotted, `*` for
@@ -1918,6 +1995,14 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // of band) and the two valid values differ beyond case, so case-insensitive
   // equality hides no real drift. Observed live on a fresh DMS Endpoint deploy.
   'AWS::DMS::Endpoint': new Set(['EndpointType']),
+  // A WAFv2 LoggingConfiguration's RedactedFields SingleHeader.Name is stored/echoed
+  // LOWERCASED (HTTP header names are case-insensitive per RFC 9110), so a template that
+  // declares `Authorization` / `Cookie` false-flags declared drift against the live
+  // `authorization` / `cookie` on every check. The `*` matches the array index (the path
+  // arrives as `RedactedFields.0.SingleHeader.Name`); the lookup normalizes numeric
+  // indices to `*`. Two header names that differ beyond case are a genuine change and
+  // still surface. Observed live on a fresh WAF logging deploy.
+  'AWS::WAFv2::LoggingConfiguration': new Set(['RedactedFields.*.SingleHeader.Name']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
@@ -2013,6 +2098,46 @@ function deepEqualValue(a: unknown, b: unknown): boolean {
   const ak = Object.keys(ao);
   if (ak.length !== Object.keys(bo).length) return false;
   return ak.every((k) => Object.hasOwn(bo, k) && deepEqualValue(ao[k], bo[k]));
+}
+
+// A WAFv2 ByteMatchStatement accepts its search pattern as either `SearchString` (the
+// plain form CDK emits) or `SearchStringBase64`; the live CC read echoes BOTH back — the
+// plain `SearchString` AND its redundant `SearchStringBase64` twin — so a template that
+// declares only `SearchString` reports the live-only `SearchStringBase64` as a spurious
+// UNDECLARED value on every byte-match rule (nested under a RateBasedStatement's
+// ScopeDownStatement it floods the first run). Canonicalize BOTH compare sides to the
+// plain `SearchString`: wherever an object carries a `SearchStringBase64`,
+//   - if a `SearchString` sibling is present and the base64 IS its faithful echo, drop the
+//     redundant twin (the observed CC shape), or
+//   - if there is no `SearchString` sibling, decode the base64 to UTF-8 and rename it —
+// both gated on a base64 ROUND-TRIP (re-encoding yields the same base64), so a genuinely
+// binary pattern, or a mismatched twin, is left untouched and still surfaces. The declared
+// side (plain `SearchString`, no base64) is a no-op; the live side is folded to match, so a
+// clean rule is not drift while an out-of-band pattern change (both live keys change in
+// lockstep) still surfaces via the `SearchString` compare. Applied (via
+// canonicalizeForCompare) only for AWS::WAFv2::WebACL. Pure.
+export function normalizeWafByteMatchDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeWafByteMatchDeep);
+  if (value === null || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>))
+    out[k] = normalizeWafByteMatchDeep(v);
+  const b64 = out.SearchStringBase64;
+  if (typeof b64 === 'string') {
+    const plain = out.SearchString;
+    if (typeof plain === 'string') {
+      // Both present: drop the base64 twin when it faithfully echoes the plain string.
+      if (Buffer.from(plain, 'utf8').toString('base64') === b64) delete out.SearchStringBase64;
+    } else if (!('SearchString' in out)) {
+      // base64 only: decode to the plain form the template declares, if it round-trips.
+      const decoded = Buffer.from(b64, 'base64').toString('utf8');
+      if (Buffer.from(decoded, 'utf8').toString('base64') === b64) {
+        delete out.SearchStringBase64;
+        out.SearchString = decoded;
+      }
+    }
+  }
+  return out;
 }
 
 // Per-type OpenSSH public-key paths (EC2 KeyPair `PublicKeyMaterial`). EC2 stores
