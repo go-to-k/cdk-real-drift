@@ -126,6 +126,28 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('MyJobDef-abc');
   });
 
+  it('ECR RepositoryCreationTemplate: a trailing-slash Prefix physical id is stripped to the stored id (#502)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ECR::RepositoryCreationTemplate', physicalId: 'cdkrd-hunt/' }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-hunt');
+  });
+
+  it('ECR RepositoryCreationTemplate: the literal ROOT prefix (no slash) passes through (#502)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::ECR::RepositoryCreationTemplate', physicalId: 'ROOT' }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('ROOT');
+  });
+
   it('Cognito UserPoolClient: builds the composite UserPoolId|ClientId identifier', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(

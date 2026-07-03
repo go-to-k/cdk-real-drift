@@ -37,6 +37,17 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     const tail = pid.startsWith('arn:') ? (pid.split('/').pop() ?? pid) : pid;
     return tail.replace(/:\d+$/, '');
   },
+  // ECR RepositoryCreationTemplate: the primaryIdentifier is the Prefix, but the
+  // service NORMALIZES a trailing `/` away (`cdkrd-hunt/` is stored as `cdkrd-hunt`)
+  // while CloudFormation keeps the user's declared form (with the slash) as the
+  // physical id. So CC GetResource on `cdkrd-hunt/` returns NotFound and the template
+  // is falsely reported `deleted` out of band (masking every declared prop on it, and
+  // a revert would plan a re-CREATE of a template that already exists). Strip the
+  // trailing slash to match the stored id. Verified live (misc0cov4 fixture,
+  // 2026-07-03): `cdkrd-hunt/` NotFounds, `cdkrd-hunt` reads. The literal `ROOT`
+  // prefix has no slash, so it passes through untouched. The residual declared
+  // `Prefix` diff (`cdkrd-hunt/` vs `cdkrd-hunt`) is folded by TRAILING_SLASH_PATHS.
+  'AWS::ECR::RepositoryCreationTemplate': (pid) => pid.replace(/\/$/, ''),
   // The rest are `[<parent ref>, <child id>]` composites: the CFn physical id is
   // only the child id; the parent id comes from the resolved declared Ref. CC's
   // composite-identifier separator is `|` (verified live — R74 Cognito, R76
