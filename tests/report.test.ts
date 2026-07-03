@@ -119,6 +119,24 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     expect(code).toBe(1);
     expect(text).toContain('[CFn-Undeclared Drift: 1]');
   });
+
+  it('an undeclared value renders on its OWN indented line (actual =), not inline after the id', () => {
+    // A long ARN/JSON list crammed inline after the id was unreadable and read inconsistently
+    // next to a declared drift's stacked desired/actual. The live value now sits on its own
+    // `actual =` line, aligned with declared's actual column.
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'Layers',
+      actual: ['arn:aws:lambda:ap-northeast-1:580247275435:layer:LambdaInsightsExtension:80'],
+    };
+    const out = formatFinding(f);
+    expect(out).toBe(
+      'Fn.Layers (AWS::Lambda::Function)\n      actual =["arn:aws:lambda:ap-northeast-1:580247275435:layer:LambdaInsightsExtension:80"]'
+    );
+    expect(out).not.toContain(') = ['); // never crammed inline after the (type)
+  });
 });
 
 describe('report', () => {
@@ -463,7 +481,9 @@ describe('report', () => {
     it('--verbose expands atDefault to a full section with each value shown', () => {
       const { text } = run([AD('TracingConfig')], { verbose: true });
       expect(text).toContain('[At AWS Default: 1]');
-      expect(text).toContain('L.TracingConfig (AWS::Lambda::Function) = {"Mode":"PassThrough"}');
+      expect(text).toContain(
+        'L.TracingConfig (AWS::Lambda::Function)\n      actual ={"Mode":"PassThrough"}'
+      );
       expect(text).not.toContain('info:');
     });
 
@@ -503,7 +523,9 @@ describe('report', () => {
     it('--verbose expands generated to a full section showing each value', () => {
       const { text } = run([G('TopicName')], { verbose: true });
       expect(text).toContain('[AWS Generated: 1]');
-      expect(text).toContain('L.TopicName (AWS::SNS::Topic) = "Stack-TopicABC123-9F16VRgpExOs"');
+      expect(text).toContain(
+        'L.TopicName (AWS::SNS::Topic)\n      actual ="Stack-TopicABC123-9F16VRgpExOs"'
+      );
       expect(text).not.toContain('info:');
     });
   });
