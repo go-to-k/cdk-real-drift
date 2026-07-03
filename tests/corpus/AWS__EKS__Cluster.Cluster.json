@@ -150,14 +150,19 @@
       "tier": "undeclared",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
-      "path": "KubernetesNetworkConfig",
-      "actual": {
-        "ServiceIpv4Cidr": "172.20.0.0/16",
-        "IpFamily": "ipv4",
-        "ElasticLoadBalancing": {
-          "Enabled": false
-        }
-      },
+      "path": "KubernetesNetworkConfig.ServiceIpv4Cidr",
+      "actual": "172.20.0.0/16",
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
+      "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "KubernetesNetworkConfig.IpFamily",
+      "actual": "ipv4",
+      "nested": true,
       "physicalId": "CdkRealDriftIntegDogfoodEks-cluster",
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },

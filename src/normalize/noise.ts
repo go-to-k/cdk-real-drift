@@ -1231,6 +1231,11 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'ResourcesVpcConfig.EndpointPublicAccess': true,
     'ResourcesVpcConfig.PublicAccessCidrs': ['0.0.0.0/0'],
     'ResourcesVpcConfig.ControlPlaneEgressMode': 'AWS_MANAGED',
+    // KubernetesNetworkConfig is fully undeclared, so it is DESCENDED via
+    // DESCEND_UNDECLARED_OBJECT_PATHS (#555). IpFamily is the constant "ipv4" default (the
+    // only alternative, "ipv6", is an explicit opt-in); ElasticLoadBalancing {Enabled:false}
+    // folds as trivially-empty, leaving only the per-deploy ServiceIpv4Cidr as residue.
+    'KubernetesNetworkConfig.IpFamily': 'ipv4',
   },
   'AWS::ApplicationSignals::ServiceLevelObjective': {
     // An SLO goal that declares no warning threshold reads back the 50(%) default.
@@ -1584,6 +1589,26 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // GENERATED_LOGICALID_PREFIX_PATHS below. A value-independent entry would additionally
   // fold an undeclared user-set ClientName that is NOT the logical-id form, hiding real
   // undeclared drift.
+};
+
+// FULLY-undeclared top-level OBJECT properties to DESCEND into leaf-by-leaf instead of
+// reporting whole (#555). A fully-undeclared object is normally one `undeclared` finding, so
+// its constant sub-keys (which KNOWN_DEFAULT_PATHS folds only inside a PARTIALLY-declared —
+// thus descended — object) can't fold; the whole object surfaces even when only ONE leaf is
+// record-worthy. Listing (type → top-level path) here descends that object through the SAME
+// nested machinery: known-default / generated / trivially-empty leaves fold (atDefault /
+// generated / dropped) and only the non-default residue surfaces (nested, at `Prop.sub`).
+//
+// CURATED, not "every fully-undeclared object": a blanket descend would FRAGMENT objects with
+// no foldable defaults (a VPCEndpoint `PolicyDocument`, an S3 `NotificationConfiguration`) into
+// noisier per-leaf findings — strictly worse. Only add a (type, path) whose leaves genuinely
+// split into "constant AWS defaults + a small record-worthy residue", with the residue's
+// constants registered in KNOWN_DEFAULT_PATHS. EKS `KubernetesNetworkConfig` is the first: AWS
+// materializes `IpFamily: "ipv4"` (constant, folds) and `ElasticLoadBalancing: {Enabled:false}`
+// (trivially-empty, dropped), leaving only `ServiceIpv4Cidr` (10.100 or 172.20 per deploy) —
+// the single value worth recording.
+export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::EKS::Cluster': new Set(['KubernetesNetworkConfig']),
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value

@@ -56,6 +56,7 @@ import {
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
+  DESCEND_UNDECLARED_OBJECT_PATHS,
   ENGINE_DEFAULTS,
   GENERATED_LOGICALID_PREFIX_PATHS,
   GENERATED_NESTED_PATHS,
@@ -999,6 +1000,78 @@ export function classifyResource(
   // by property, consulted by the undeclared loop below. Empty when the type has no
   // template or the physical id is unknown.
   const genDef = resolveGeneratedDefault(resourceType, physicalId) ?? {};
+
+  // --- Nested-undeclared fold setup + shared emit closure ---------------------------------
+  // Used by BOTH the nested descent into DECLARED objects (R96, below) and the descent into a
+  // fully-undeclared object listed in DESCEND_UNDECLARED_OBJECT_PATHS (#555). Defined here so
+  // the fully-undeclared descend (which runs inside the top-level undeclared loop, earlier than
+  // the declared-nested loop) can reuse the exact same leaf classification.
+  // R108: KNOWN_DEFAULT_PATHS is the hand-coded twin for the nested service defaults the CFn
+  // schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read through the SAME
+  // wildcard lookup, equality-gated identically.
+  let knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  // A Lambda DURABLE FUNCTION (declares DurableConfig — enabling durable execution) runs on
+  // AWS's durable/managed compute substrate, which emits structured JSON logs by default
+  // (the Durable Execution SDK's default logger always emits JSON), NOT the plain-Text
+  // default of a regular function. So a durable function that declares no explicit LogFormat
+  // reads back "JSON", which the base `LoggingConfig.LogFormat: 'Text'` default cannot fold
+  // and would surface as false undeclared drift. Override the LogFormat default to JSON when
+  // DurableConfig is present (the reliable in-template discriminator; the paired
+  // ApplicationLogLevel/SystemLogLevel INFO defaults already fold via the base table).
+  // Equality-gated + value-independent proof: observed live that DurableConfig <=> JSON on a
+  // 9-function stack (same nodejs24.x runtime) where only the durable function reads JSON. A
+  // durable function that pins Text explicitly declares it and is compared, never reaching here.
+  if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
+    knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
+  }
+  // R140: nested paths that are always an AWS-assigned generated id (value-independent),
+  // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
+  const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
+  const generatedNestedPaths = GENERATED_NESTED_PATHS[resourceType];
+  // Schema-detected FREE-FORM MAP properties (Lambda Environment.Variables, Glue
+  // Parameters): a live-only sub-key directly under one is user-authored data, not an
+  // AWS-materialized nested default — so flag it `freeFormKey` to surface it in the report
+  // (the generic nested fold would hide a console-added env var as first-run noise).
+  const freeFormMapPaths = schema.freeFormMapPaths ?? [];
+  const underFreeFormMap = (schemaPath: string): boolean =>
+    freeFormMapPaths.some((ff) => schemaPath.startsWith(`${ff}.`));
+  const emitNested = (path: string, value: unknown): void => {
+    if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
+    const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
+    // Same subset-tolerant default match as the top-level atDefault compare: an
+    // OBJECT-valued nested default (CloudFront GeoRestriction, Scheduler RetryPolicy,
+    // Cognito SignInPolicy, …) that AWS returns with a sub-key omitted still folds,
+    // while a sub-key changed away from the default — or an extra key — surfaces.
+    // Falls back to deepEqual for scalars/arrays, so nothing else changes.
+    const atDefault =
+      (schemaPath in schema.defaultPaths &&
+        matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
+      (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath]));
+    const tier = atDefault
+      ? 'atDefault'
+      : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
+        // physical-id segment (the AWS default) — a custom value the user set surfaces.
+        (generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)) ||
+          // Value-INDEPENDENT nested generated path (KMS KeyPolicy.Id): AWS/CFn-injected,
+          // never derivable from the physical id — folded only in this live-only case.
+          generatedNestedPaths?.has(schemaPath)
+        ? 'generated'
+        : 'undeclared';
+    // A free-form map key surfaces (not folded), but only when it is a real undeclared
+    // value — an atDefault/generated one stays informational like any other.
+    const freeFormKey = tier === 'undeclared' && underFreeFormMap(schemaPath);
+    findings.push({
+      tier,
+      logicalId,
+      resourceType,
+      path,
+      actual: value,
+      nested: true,
+      ...(freeFormKey && { freeFormKey: true }),
+    });
+  };
+  // ----------------------------------------------------------------------------------------
+
   for (const [k, v] of Object.entries(declared)) {
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
@@ -1782,6 +1855,15 @@ export function classifyResource(
     if (physicalId !== undefined && v === physicalId) continue;
     if (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId) || isEmptyPolicyShell(v))
       continue;
+    // #555: a FULLY-undeclared OBJECT listed in DESCEND_UNDECLARED_OBJECT_PATHS is descended
+    // leaf-by-leaf (via the SAME emitNested classification the declared-nested loop uses)
+    // instead of surfacing whole — its constant sub-keys fold (atDefault / generated /
+    // trivially-empty) and only the non-default residue surfaces (nested, at `k.sub`). Curated
+    // per (type, path) so objects with no foldable defaults are never fragmented into noise.
+    if (isNestedObject(v) && DESCEND_UNDECLARED_OBJECT_PATHS[resourceType]?.has(k)) {
+      collectNestedUndeclared({}, v, k, emitNested, NESTED_ARRAY_IDENTITY[resourceType]);
+      continue;
+    }
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });
   }
 
@@ -1798,36 +1880,9 @@ export function classifyResource(
   // drowning the report in materialized defaults. Live array-element paths carry the
   // element identity (`Prop[<id>].sub`); the schema keys it with a `*` wildcard, so
   // normalize `[<id>]` -> `.*` before the lookup. Equality-gated: a value changed
-  // AWAY from its default no longer matches and falls back to `undeclared`.
-  // R108: KNOWN_DEFAULT_PATHS is the hand-coded twin for the nested service defaults
-  // the CFn schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read
-  // through the SAME wildcard lookup, equality-gated identically.
-  let knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
-  // A Lambda DURABLE FUNCTION (declares DurableConfig — enabling durable execution) runs on
-  // AWS's durable/managed compute substrate, which emits structured JSON logs by default
-  // (the Durable Execution SDK's default logger always emits JSON), NOT the plain-Text
-  // default of a regular function. So a durable function that declares no explicit LogFormat
-  // reads back "JSON", which the base `LoggingConfig.LogFormat: 'Text'` default cannot fold
-  // and would surface as false undeclared drift. Override the LogFormat default to JSON when
-  // DurableConfig is present (the reliable in-template discriminator; the paired
-  // ApplicationLogLevel/SystemLogLevel INFO defaults already fold via the base table).
-  // Equality-gated + value-independent proof: observed live that DurableConfig <=> JSON on a
-  // 9-function stack (same nodejs24.x runtime) where only the durable function reads JSON. A
-  // durable function that pins Text explicitly declares it and is compared, never reaching here.
-  if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
-    knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
-  }
-  // R140: nested paths that are always an AWS-assigned generated id (value-independent),
-  // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
-  const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
-  const generatedNestedPaths = GENERATED_NESTED_PATHS[resourceType];
-  // Schema-detected FREE-FORM MAP properties (Lambda Environment.Variables, Glue
-  // Parameters): a live-only sub-key directly under one is user-authored data, not an
-  // AWS-materialized nested default — so flag it `freeFormKey` to surface it in the report
-  // (the generic nested fold would hide a console-added env var as first-run noise).
-  const freeFormMapPaths = schema.freeFormMapPaths ?? [];
-  const underFreeFormMap = (schemaPath: string): boolean =>
-    freeFormMapPaths.some((ff) => schemaPath.startsWith(`${ff}.`));
+  // AWAY from its default no longer matches and falls back to `undeclared`. The leaf
+  // classification lives in the shared `emitNested` closure (defined above, also used by
+  // the fully-undeclared-object descend #555).
   for (const [k, dv] of Object.entries(declared)) {
     // Only skip a WHOLLY-unresolved property: collectNestedUndeclared descends to emit
     // LIVE-only keys, and an UNRESOLVED declared leaf is inert there (isNestedObject/
@@ -1841,47 +1896,7 @@ export function classifyResource(
     // WHOLE UNIT in the declared loop above — never descend into it for nested undeclared
     // sub-keys, which would emit a fragile dotted finding the revert can't target.
     if (JSON_STRING_PROPS[resourceType]?.has(k)) continue;
-    collectNestedUndeclared(
-      dv,
-      live[k],
-      k,
-      (path, value) => {
-        if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
-        const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
-        // Same subset-tolerant default match as the top-level atDefault compare: an
-        // OBJECT-valued nested default (CloudFront GeoRestriction, Scheduler RetryPolicy,
-        // Cognito SignInPolicy, …) that AWS returns with a sub-key omitted still folds,
-        // while a sub-key changed away from the default — or an extra key — surfaces.
-        // Falls back to deepEqual for scalars/arrays, so nothing else changes.
-        const atDefault =
-          (schemaPath in schema.defaultPaths &&
-            matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
-          (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath]));
-        const tier = atDefault
-          ? 'atDefault'
-          : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
-            // physical-id segment (the AWS default) — a custom value the user set surfaces.
-            (generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)) ||
-              // Value-INDEPENDENT nested generated path (KMS KeyPolicy.Id): AWS/CFn-injected,
-              // never derivable from the physical id — folded only in this live-only case.
-              generatedNestedPaths?.has(schemaPath)
-            ? 'generated'
-            : 'undeclared';
-        // A free-form map key surfaces (not folded), but only when it is a real undeclared
-        // value — an atDefault/generated one stays informational like any other.
-        const freeFormKey = tier === 'undeclared' && underFreeFormMap(schemaPath);
-        findings.push({
-          tier,
-          logicalId,
-          resourceType,
-          path,
-          actual: value,
-          nested: true,
-          ...(freeFormKey && { freeFormKey: true }),
-        });
-      },
-      NESTED_ARRAY_IDENTITY[resourceType]
-    );
+    collectNestedUndeclared(dv, live[k], k, emitNested, NESTED_ARRAY_IDENTITY[resourceType]);
   }
 
   // attach physicalId (for revert) + construct path (display) onto every finding
