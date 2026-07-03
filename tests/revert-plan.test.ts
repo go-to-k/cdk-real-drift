@@ -454,6 +454,38 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]).toMatchObject({ kind: 'cc', resourceType: 'AWS::Scheduler::Schedule' });
   });
 
+  it('#552: NON_PROVISIONABLE types with new SDK writers route to sdk items (not "type not revertable yet")', () => {
+    // CodeBuild ReportGroup / DAX Cluster / DAX ParameterGroup / ClientVpnEndpoint are all
+    // SDK-override READ types (CC has no handler). Once each has an SDK_WRITERS entry, a drift
+    // on it must become a revertable kind='sdk' item, not the "type not revertable yet" refusal.
+    const cases = [
+      { resourceType: 'AWS::CodeBuild::ReportGroup', path: 'ExportConfig.S3Destination.Packaging' },
+      { resourceType: 'AWS::DAX::Cluster', path: 'Description' },
+      { resourceType: 'AWS::DAX::ParameterGroup', path: 'ParameterNameValues.record-ttl-millis' },
+      { resourceType: 'AWS::EC2::ClientVpnEndpoint', path: 'Description' },
+    ];
+    for (const c of cases) {
+      const plan = buildRevertPlan(
+        [
+          F({
+            tier: 'declared',
+            resourceType: c.resourceType,
+            path: c.path,
+            desired: 'x',
+            actual: 'y',
+          }),
+        ],
+        undefined
+      );
+      expect(plan.notRevertable, c.resourceType).toHaveLength(0);
+      expect(plan.items, c.resourceType).toHaveLength(1);
+      expect(plan.items[0], c.resourceType).toMatchObject({
+        kind: 'sdk',
+        resourceType: c.resourceType,
+      });
+    }
+  });
+
   it('Cognito IdentityPool: CognitoEvents -> prop-scoped sdk item, a base prop -> cc item', () => {
     // The IdentityPool SDK override only ENRICHES the CC read with the writeOnly
     // CognitoEvents, so it is CC_REVERTABLE_DESPITE_READ_OVERRIDE: base-property reverts

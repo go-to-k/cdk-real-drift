@@ -117,6 +117,24 @@ import {
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
+import {
+  BatchGetReportGroupsCommand,
+  CodeBuildClient,
+  UpdateReportGroupCommand,
+} from '@aws-sdk/client-codebuild';
+import {
+  DAXClient,
+  DescribeClustersCommand,
+  DescribeParameterGroupsCommand,
+  DescribeParametersCommand as DescribeDaxParametersCommand,
+  UpdateClusterCommand,
+  UpdateParameterGroupCommand as UpdateDaxParameterGroupCommand,
+} from '@aws-sdk/client-dax';
+import {
+  DescribeClientVpnEndpointsCommand,
+  EC2Client,
+  ModifyClientVpnEndpointCommand,
+} from '@aws-sdk/client-ec2';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -144,6 +162,9 @@ const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
 const cloudcontrol = mockClient(CloudControlClient);
 const kafka = mockClient(KafkaClient);
+const codebuild = mockClient(CodeBuildClient);
+const dax = mockClient(DAXClient);
+const ec2 = mockClient(EC2Client);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -194,6 +215,9 @@ beforeEach(() => {
   cloudwatch.reset();
   dlm.reset();
   cloudcontrol.reset();
+  codebuild.reset();
+  dax.reset();
+  ec2.reset();
 });
 
 describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #461)', () => {
@@ -1416,6 +1440,253 @@ describe('DocDB DBInstance writer (CC read+write gap; mirror of the cluster writ
         windowOp('sun:05:00-sun:06:00'),
       ])
     ).rejects.toThrow(/instance identifier/);
+  });
+});
+
+describe('CodeBuild ReportGroup writer (NON_PROVISIONABLE; UpdateReportGroup, issue #552)', () => {
+  const RG_ARN = 'arn:aws:codebuild:us-east-1:123456789012:report-group/cdkrd-rg';
+  const packagingOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/ExportConfig/S3Destination/Packaging',
+    value,
+    human: 'ExportConfig.S3Destination.Packaging -> deployed-template value',
+  });
+  // the override reader (BatchGetReportGroups) returns the DRIFTED live model
+  const stubRead = (over: Record<string, unknown> = {}): void => {
+    codebuild.on(BatchGetReportGroupsCommand).resolves({
+      reportGroups: [
+        {
+          name: 'cdkrd-rg',
+          type: 'TEST',
+          exportConfig: {
+            exportConfigType: 'S3',
+            s3Destination: { bucket: 'my-bucket', path: 'reports', packaging: 'ZIP' },
+          },
+          tags: [{ key: 'team', value: 'platform' }],
+          ...over,
+        },
+      ],
+    } as never);
+  };
+
+  it('reverts the ExportConfig packaging + re-sends tags via UpdateReportGroup', async () => {
+    stubRead();
+    codebuild.on(UpdateReportGroupCommand).resolves({});
+    // revert Packaging back to NONE (drifted to ZIP out of band)
+    await SDK_WRITERS['AWS::CodeBuild::ReportGroup'](ctx({ physicalId: RG_ARN }), [
+      packagingOp('NONE'),
+    ]);
+    const calls = codebuild.commandCalls(UpdateReportGroupCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    expect(input.arn).toBe(RG_ARN);
+    expect(input.exportConfig).toEqual({
+      exportConfigType: 'S3',
+      s3Destination: {
+        bucket: 'my-bucket',
+        path: 'reports',
+        packaging: 'NONE',
+        encryptionKey: undefined,
+        encryptionDisabled: undefined,
+      },
+    });
+    // tags round-trip (camelCase key/value) so a Tags-only edit would not wipe them
+    expect(input.tags).toEqual([{ key: 'team', value: 'platform' }]);
+  });
+
+  it('sends an empty tag list when the group has no tags (clears an out-of-band tag)', async () => {
+    stubRead({ tags: undefined });
+    codebuild.on(UpdateReportGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::CodeBuild::ReportGroup'](ctx({ physicalId: RG_ARN }), [
+      packagingOp('NONE'),
+    ]);
+    expect(codebuild.commandCalls(UpdateReportGroupCommand)[0]!.args[0].input.tags).toEqual([]);
+  });
+
+  it('throws when the report-group ARN is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::CodeBuild::ReportGroup'](ctx({ physicalId: '', declared: {} }), [
+        packagingOp('NONE'),
+      ])
+    ).rejects.toThrow(/ReportGroup ARN/);
+  });
+});
+
+describe('DAX Cluster writer (NON_PROVISIONABLE; UpdateCluster partial modify, issue #552)', () => {
+  const CN = 'cdkrd-dax';
+  const descOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/Description',
+    value,
+    human: 'Description -> deployed-template value',
+  });
+  const stubRead = (over: Record<string, unknown> = {}): void => {
+    dax.on(DescribeClustersCommand).resolves({
+      Clusters: [
+        { ClusterName: CN, Description: 'drifted desc', NodeType: 'dax.r5.large', ...over },
+      ],
+    } as never);
+  };
+
+  it('reverts Description via UpdateCluster, only the drifted prop mapped CFn->API', async () => {
+    stubRead();
+    dax.on(UpdateClusterCommand).resolves({});
+    await SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [descOp('intended desc')]);
+    const calls = dax.commandCalls(UpdateClusterCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({ ClusterName: CN, Description: 'intended desc' });
+  });
+
+  it('maps NotificationTopicARN -> NotificationTopicArn and clears it on a remove', async () => {
+    stubRead({ NotificationConfiguration: { TopicArn: 'arn:aws:sns:us-east-1:123456789012:t' } });
+    dax.on(UpdateClusterCommand).resolves({});
+    // a REMOVE (topic never declared → revert detaches it) sends the empty string DAX accepts
+    await SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [
+      { op: 'remove', path: '/NotificationTopicARN', human: 'NotificationTopicARN -> (none)' },
+    ]);
+    expect(dax.commandCalls(UpdateClusterCommand)[0]!.args[0].input).toEqual({
+      ClusterName: CN,
+      NotificationTopicArn: '',
+    });
+  });
+
+  it('ignores a create-only prop off the modify allowlist (NodeType)', async () => {
+    stubRead();
+    dax.on(UpdateClusterCommand).resolves({});
+    await SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [
+      { op: 'add', path: '/NodeType', value: 'dax.r5.xlarge', human: 'x' },
+    ]);
+    expect(dax.commandCalls(UpdateClusterCommand)).toHaveLength(0);
+  });
+});
+
+describe('DAX ParameterGroup writer (NON_PROVISIONABLE; UpdateParameterGroup, issue #552)', () => {
+  const PGN = 'cdkrd-dax-params';
+  const stubRead = (values: Record<string, string>): void => {
+    dax.on(DescribeParameterGroupsCommand).resolves({
+      ParameterGroups: [{ ParameterGroupName: PGN, Description: 'd' }],
+    } as never);
+    dax.on(DescribeDaxParametersCommand).resolves({
+      Parameters: Object.entries(values).map(([ParameterName, ParameterValue]) => ({
+        ParameterName,
+        ParameterValue,
+        IsModifiable: 'TRUE',
+      })),
+    } as never);
+  };
+
+  it('re-asserts the drifted parameter (map -> [{ParameterName,ParameterValue}] list)', async () => {
+    // desired value (record-ttl-millis) reads back 10000 after applying the revert op
+    stubRead({ 'record-ttl-millis': '10000', 'query-ttl-millis': '5000' });
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+      {
+        op: 'add',
+        path: '/ParameterNameValues/record-ttl-millis',
+        value: '10000',
+        human: 'ParameterNameValues.record-ttl-millis -> deployed-template value',
+      },
+    ]);
+    const calls = dax.commandCalls(UpdateDaxParameterGroupCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      ParameterGroupName: PGN,
+      // ONLY the drifted key is re-sent (UpdateParameterGroup leaves others untouched)
+      ParameterNameValues: [{ ParameterName: 'record-ttl-millis', ParameterValue: '10000' }],
+    });
+  });
+
+  it('sends nothing when no ParameterNameValues op is present', async () => {
+    stubRead({ 'record-ttl-millis': '10000' });
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+      { op: 'add', path: '/Description', value: 'x', human: 'x' },
+    ]);
+    expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
+  });
+});
+
+describe('EC2 ClientVpnEndpoint writer (NON_PROVISIONABLE; ModifyClientVpnEndpoint, issue #552)', () => {
+  const CVID = 'cvpn-endpoint-0123456789abcdef0';
+  const stubRead = (over: Record<string, unknown> = {}): void => {
+    ec2.on(DescribeClientVpnEndpointsCommand).resolves({
+      ClientVpnEndpoints: [
+        {
+          ClientVpnEndpointId: CVID,
+          Description: 'drifted',
+          SplitTunnel: true,
+          VpnPort: 443,
+          TransportProtocol: 'udp',
+          VpcId: 'vpc-abc',
+          ...over,
+        },
+      ],
+    } as never);
+  };
+
+  it('reverts scalar props (Description/SplitTunnel) via ModifyClientVpnEndpoint, drifted only', async () => {
+    stubRead();
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+      { op: 'add', path: '/Description', value: 'intended', human: 'Description -> value' },
+    ]);
+    const calls = ec2.commandCalls(ModifyClientVpnEndpointCommand);
+    expect(calls).toHaveLength(1);
+    // the reader read Description as 'drifted', revert op sets it to 'intended'
+    expect(calls[0]!.args[0].input).toEqual({
+      ClientVpnEndpointId: CVID,
+      Description: 'intended',
+    });
+  });
+
+  it('reshapes DnsServers (string[] read -> {CustomDnsServers,Enabled} modify)', async () => {
+    stubRead({ DnsServers: ['10.0.0.2'] });
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+      { op: 'add', path: '/DnsServers', value: ['10.0.0.2'], human: 'DnsServers -> value' },
+    ]);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)[0]!.args[0].input).toEqual({
+      ClientVpnEndpointId: CVID,
+      DnsServers: { CustomDnsServers: ['10.0.0.2'], Enabled: true },
+    });
+  });
+
+  it('clears DnsServers when the revert removes them (Enabled:false)', async () => {
+    stubRead({ DnsServers: undefined });
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+      { op: 'remove', path: '/DnsServers', human: 'DnsServers -> (none)' },
+    ]);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)[0]!.args[0].input).toEqual({
+      ClientVpnEndpointId: CVID,
+      DnsServers: { Enabled: false },
+    });
+  });
+
+  it('sends SecurityGroupIds together with VpcId (API requires the pair)', async () => {
+    stubRead({ SecurityGroupIds: ['sg-111'] });
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+      {
+        op: 'add',
+        path: '/SecurityGroupIds',
+        value: ['sg-111'],
+        human: 'SecurityGroupIds -> value',
+      },
+    ]);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)[0]!.args[0].input).toEqual({
+      ClientVpnEndpointId: CVID,
+      SecurityGroupIds: ['sg-111'],
+      VpcId: 'vpc-abc',
+    });
+  });
+
+  it('throws when the endpoint id is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: '', declared: {} }), [
+        { op: 'add', path: '/Description', value: 'x', human: 'x' },
+      ])
+    ).rejects.toThrow(/endpoint id/);
   });
 });
 

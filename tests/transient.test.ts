@@ -56,6 +56,20 @@ describe('classifyTransient — transient (retry-later) error class', () => {
     }
   });
 
+  it('#552: classifies DAX mid-modify parameter-group / cluster state faults', () => {
+    for (const msg of [
+      // The exact live error from the #552 detect→revert live-test.
+      'InvalidParameterGroupStateFault: The parameter record-ttl-millis is being modified.',
+      'InvalidClusterStateFault: Cluster cdkrd-dax is being modified',
+    ]) {
+      const v = classifyTransient(msg);
+      expect(v.transient).toBe(true);
+      expect(v.hint).toBe(
+        'the resource is still applying a previous update — retry in a few minutes'
+      );
+    }
+  });
+
   it('does NOT misclassify a terminal DB error as the mid-modify state fault', () => {
     for (const msg of [
       'DBInstanceNotFound: DBInstance mydb not found',
