@@ -237,6 +237,16 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // log stream). Verified live: `<LogGroupName>|<LogStreamName>` reads, the reverse
   // ResourceNotFoundExceptions.
   'AWS::Logs::LogStream': compositeWith('LogGroupName'),
+  // SSM MaintenanceWindowTarget / MaintenanceWindowTask primaryIdentifier is
+  // [WindowId, WindowTargetId] / [WindowId, WindowTaskId] (parent-first), but the CFn
+  // physical id (Ref) is the bare child UUID — so CC GetResource ValidationException-skips
+  // both on every check (silent read-gap on any patch-window automation). WindowId is a
+  // required create prop (a Ref to the window) so it is always a resolved declared value.
+  // Verified live (opsmisc-rich): `<WindowId>|<childId>` reads both; the bare child id is
+  // rejected. (The sibling Athena PreparedStatement needs NO adapter — its CFn Ref is
+  // already the `<StatementName>|<WorkGroup>` composite.)
+  'AWS::SSM::MaintenanceWindowTarget': compositeWith('WindowId'),
+  'AWS::SSM::MaintenanceWindowTask': compositeWith('WindowId'),
   // TransitGatewayRouteTablePropagation primaryIdentifier is [TransitGatewayRouteTableId,
   // TransitGatewayAttachmentId], but its CFn physical id (Ref) is the AWS console id
   // format `${attachmentId}_${routeTableId}` (underscore, ATTACHMENT first) — NOT the CC
