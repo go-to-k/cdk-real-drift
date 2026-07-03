@@ -295,16 +295,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGateway::DomainName': {
     SecurityPolicy: 'TLS_1_2',
   },
-  // A Cognito authorizer declares only Type: COGNITO_USER_POOLS; AWS derives and
-  // returns AuthType "cognito_user_pools" (the lowercase form), which the template
-  // never carries, so the live read reports it as undeclared on every first run —
-  // observed live on a dev LineLink stack with no out-of-band edit. AuthType is purely
-  // derived from Type and cannot be set independently, so only this Cognito value is
-  // folded; a TOKEN/REQUEST authorizer's "custom" AuthType is unobserved and left to
-  // surface (observed-only discipline). Equality-gated like every other entry.
-  'AWS::ApiGateway::Authorizer': {
-    AuthType: 'cognito_user_pools',
-  },
+  // NOTE: AWS::ApiGateway::Authorizer.AuthType is NOT a KNOWN_DEFAULTS entry — it is
+  // folded value-independently via VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS below
+  // (AuthType is a derived, non-declarable read-back of the declared Type).
   // A VPC is in nearly every CDK stack. AWS reports these two constant defaults on
   // every first run when the template does not declare them (raw CfnVPC, or an L2 Vpc
   // that sets only DNS hostnames): InstanceTenancy "default" (vs dedicated/host) and
@@ -1588,6 +1581,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   value-independent: undeclared, so whatever window AWS chose is its default, not user
   //   intent. A DECLARED window goes through the declared loop (compared), unaffected.
   'AWS::KinesisAnalyticsV2::Application': new Set(['ApplicationMaintenanceConfiguration']),
+  //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
+  //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
+  //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for
+  //   TOKEN/REQUEST, "cognito_user_pools" for COGNITO_USER_POOLS). Since AuthType can
+  //   never be declared, any value AWS returns is a pure reflection of the declared Type,
+  //   not user intent — and a real change to Type surfaces in the declared loop on `Type`
+  //   itself. Fold value-independent so both derived forms (and any future enum) fold
+  //   without enumerating each. Both observed live first-run (LineLink cognito, dev-main
+  //   AimAssociation TOKEN "custom") with no out-of-band edit.
+  'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
