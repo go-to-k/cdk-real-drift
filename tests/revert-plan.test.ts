@@ -309,6 +309,21 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('unrecorded');
   });
 
+  it('ELBv2 TrustStore CaCertificatesBundleSha256 (synthetic integrity signal) is notRevertable (#505)', () => {
+    // A cdkrd-computed digest of the live CA bundle content, not a real AWS property, so a
+    // remove op would fail — it exists only to re-surface a content swap as recordable drift.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ElasticLoadBalancingV2::TrustStore',
+      path: 'CaCertificatesBundleSha256',
+      actual: 'a'.repeat(64),
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('integrity signal');
+  });
+
   it('--remove-unrecorded re-enables the remove op for unrecorded values', () => {
     const f = F({
       tier: 'undeclared',
