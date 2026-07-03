@@ -136,6 +136,22 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // Verified live (codedeploy-deploymentgroup-readgap): `ApplicationName|DeploymentGroupName`
   // reads; the reverse order returns NotFound ("No application found for name").
   'AWS::CodeDeploy::DeploymentGroup': compositeWith('ApplicationName'),
+  // ElasticBeanstalk ConfigurationTemplate primaryIdentifier is [ApplicationName,
+  // TemplateName] — parent-first. The CFn physical id is the bare TemplateName; the
+  // ApplicationName comes from the resolved declared Ref. Without this a declared
+  // configuration template is a CC ValidationException skip on every check (read-gap),
+  // so both undeclared drift on it AND an out-of-band change to a declared property
+  // (OptionSettings, SolutionStackName, …) are invisible. Verified live (#493,
+  // CdkRealDriftHuntEbElbVpn, us-east-1): `ApplicationName|TemplateName` reads; the
+  // reverse order (`TemplateName|ApplicationName`) returns NotFound.
+  'AWS::ElasticBeanstalk::ConfigurationTemplate': compositeWith('ApplicationName'),
+  // ElasticBeanstalk ApplicationVersion primaryIdentifier is [ApplicationName, Id] —
+  // parent-first, the same shape as its ConfigurationTemplate sibling above. The CFn
+  // physical id is the bare version label; the ApplicationName comes from the resolved
+  // declared Ref, so it almost certainly shares the same composite read-gap. Added
+  // BY ANALOGY with the live-proven ConfigurationTemplate (#493) — not separately
+  // live-verified this round.
+  'AWS::ElasticBeanstalk::ApplicationVersion': compositeWith('ApplicationName'),
   // AutoScaling ScheduledAction primaryIdentifier is [ScheduledActionName,
   // AutoScalingGroupName] — CHILD-first, the REVERSE of its sibling LifecycleHook
   // (parent-first). The CFn physical id is the bare ScheduledActionName; the ASG name

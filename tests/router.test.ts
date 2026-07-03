@@ -444,6 +444,55 @@ describe('readLive (CC identifier adapters, R74)', () => {
     });
   }
 
+  // #493: ElasticBeanstalk ConfigurationTemplate [ApplicationName, TemplateName] —
+  // parent-first. CFn physical id is the bare TemplateName; without the adapter it is a
+  // CC ValidationException skip. Verified live: ApplicationName|TemplateName reads, reverse 404s.
+  it('ElasticBeanstalk ConfigurationTemplate: builds the ApplicationName|TemplateName composite — PARENT first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ElasticBeanstalk::ConfigurationTemplate',
+        physicalId: 'MyStack-EbTemplate-1CZ1zQUn5g9T',
+        declared: { ApplicationName: 'cdkrd-hunt-ebapp' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-hunt-ebapp|MyStack-EbTemplate-1CZ1zQUn5g9T');
+  });
+
+  it('ElasticBeanstalk ConfigurationTemplate: an unresolved ApplicationName falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ElasticBeanstalk::ConfigurationTemplate',
+        physicalId: 'MyStack-EbTemplate-1CZ1zQUn5g9T',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('MyStack-EbTemplate-1CZ1zQUn5g9T');
+  });
+
+  // #493 (by analogy): ApplicationVersion [ApplicationName, Id] — parent-first, same shape.
+  it('ElasticBeanstalk ApplicationVersion: builds the ApplicationName|Id composite — PARENT first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ElasticBeanstalk::ApplicationVersion',
+        physicalId: 'v-1a2b3c',
+        declared: { ApplicationName: 'cdkrd-hunt-ebapp' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('cdkrd-hunt-ebapp|v-1a2b3c');
+  });
+
   it('ApiGateway Model: an unresolved RestApiId falls back to the raw physical id', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(

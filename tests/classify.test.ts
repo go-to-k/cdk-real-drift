@@ -1870,6 +1870,133 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  describe('ElasticBeanstalk ConfigurationTemplate OptionSettings subset (composite Namespace+OptionName key + live-only ResourceName, #493)', () => {
+    const T = 'AWS::ElasticBeanstalk::ConfigurationTemplate';
+    // The template declares a handful of settings; each is keyed by Namespace+OptionName.
+    const declared = {
+      ApplicationName: 'cdkrd-hunt-ebapp',
+      TemplateName: 'MyStack-EbTemplate-1CZ1zQUn5g9T',
+      SolutionStackName: '64bit Amazon Linux 2 v3.5.0 running Docker',
+      OptionSettings: [
+        {
+          Namespace: 'aws:autoscaling:asg',
+          OptionName: 'MinSize',
+          Value: '1',
+        },
+        {
+          Namespace: 'aws:autoscaling:asg',
+          OptionName: 'MaxSize',
+          Value: '2',
+        },
+        {
+          Namespace: 'aws:elasticbeanstalk:environment',
+          OptionName: 'EnvironmentType',
+          Value: 'LoadBalanced',
+        },
+      ],
+    };
+    // The live shape observed once the composite-identifier adapter makes the template
+    // CC-readable: the service reorders the settings, materializes the fully resolved set
+    // (here truncated for the test but representative of the ~58 live entries), AND injects
+    // a `ResourceName` field on many entries that the template never declares.
+    const liveModel = (settings: unknown[]) => ({
+      ApplicationName: 'cdkrd-hunt-ebapp',
+      TemplateName: 'MyStack-EbTemplate-1CZ1zQUn5g9T',
+      SolutionStackName: '64bit Amazon Linux 2 v3.5.0 running Docker',
+      // PlatformArn is a service-echoed top-level default the template never declares.
+      PlatformArn:
+        'arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2/3.5.0',
+      OptionSettings: settings,
+    });
+    const liveDefaultFilled = [
+      // declared entries, reordered + carrying a live-only ResourceName
+      {
+        ResourceName: 'AWSEBAutoScalingGroup',
+        Value: 'LoadBalanced',
+        Namespace: 'aws:elasticbeanstalk:environment',
+        OptionName: 'EnvironmentType',
+      },
+      {
+        ResourceName: 'AWSEBAutoScalingGroup',
+        Value: '2',
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'MaxSize',
+      },
+      {
+        ResourceName: 'AWSEBAutoScalingGroup',
+        Value: '1',
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'MinSize',
+      },
+      // service-filled extras the template never declared
+      {
+        ResourceName: 'AWSEBAutoScalingGroup',
+        Value: 'Any',
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'Availability Zones',
+      },
+      {
+        Value: '30',
+        Namespace: 'aws:autoscaling:asg',
+        OptionName: 'Cooldown',
+      },
+      {
+        Value: 'tcp',
+        Namespace: 'aws:elb:healthcheck',
+        OptionName: 'HealthyThreshold',
+      },
+    ];
+
+    it('a reordered + default-filled OptionSettings (with live-only ResourceName) is NOT declared drift; live-only settings surface as undeclared', () => {
+      const findings = classifyResource(
+        res(T, declared),
+        liveModel(liveDefaultFilled),
+        emptySchema
+      );
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+      const undeclared = findings.filter((f) => f.tier === 'undeclared');
+      // the three service-filled extras surface (composite-key path), plus the top-level
+      // PlatformArn echo (undeclared inventory, recordable — NOT a declared drift).
+      expect(undeclared.map((f) => f.path).sort()).toEqual([
+        'OptionSettings[aws:autoscaling:asg|Availability Zones]',
+        'OptionSettings[aws:autoscaling:asg|Cooldown]',
+        'OptionSettings[aws:elb:healthcheck|HealthyThreshold]',
+        'PlatformArn',
+      ]);
+      // the OptionSettings extras are nested inventory
+      expect(
+        undeclared
+          .filter((f) => f.path.startsWith('OptionSettings'))
+          .every((f) => f.nested === true)
+      ).toBe(true);
+    });
+
+    it('a genuine change to a DECLARED setting value still surfaces as declared drift (fail-closed)', () => {
+      const mutated = liveDefaultFilled.map((s) =>
+        (s as { OptionName: string }).OptionName === 'MaxSize'
+          ? { ...(s as object), Value: '9' }
+          : s
+      );
+      const declaredF = classifyResource(res(T, declared), liveModel(mutated), emptySchema).filter(
+        (f) => f.tier === 'declared'
+      );
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]?.path).toBe('OptionSettings');
+    });
+
+    it('a declared setting MISSING from live is declared drift, not silently dropped', () => {
+      const withoutDeclared = liveDefaultFilled.filter(
+        (s) => (s as { OptionName: string }).OptionName !== 'MinSize'
+      );
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveModel(withoutDeclared),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+    });
+  });
+
   describe('VpcLattice ServiceNetwork SharingConfig service default (#483)', () => {
     const T = 'AWS::VpcLattice::ServiceNetwork';
 
