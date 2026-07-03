@@ -1529,13 +1529,12 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // (inventory: never drift, recorded, or reverted) is safe — and necessary, since an
   // immutable token can never be an out-of-band edit. Observed live on lambda-efs-rich.
   'AWS::EFS::AccessPoint': new Set(['ClientToken']),
-  // A LayerVersion whose LayerName the template omits reads back a CloudFormation-generated
-  // name (`<logicalId>` — NO stack prefix and NO random-suffix dash, so isCfnGeneratedName
-  // misses it, and it is not the ARN's trailing segment, so isGeneratedName misses it too).
-  // It is the AWS-minted identity, not user intent; a layer that DECLARES a LayerName carries
-  // it in the template and never reaches this loop. Floods every CDK BucketDeployment (its
-  // AwsCliLayer names itself from the logical id). Observed live.
-  'AWS::Lambda::LayerVersion': new Set(['LayerName']),
+  // NOTE: AWS::Lambda::LayerVersion.LayerName is NOT folded here. The flood case — a CDK
+  // BucketDeployment's AwsCliLayer reads back its own logical id verbatim — is handled
+  // PRECISELY by isCfnGeneratedName's `value === logicalId` echo (classify.ts). A
+  // value-independent GENERATED_TOPLEVEL_PATHS entry would additionally fold an undeclared
+  // user-set LayerName (e.g. "my-custom-layer") that is NOT the logical id, hiding real
+  // undeclared drift — the exact differentiator cdkrd exists to surface.
   // A UserPoolClient whose ClientName the template omits reads back a CloudFormation-generated
   // name (`<logicalId>-<random>` — NO stack prefix, so isCfnGeneratedName misses it). It is
   // the AWS-minted identity, not user intent; a client that DECLARES a ClientName carries it
