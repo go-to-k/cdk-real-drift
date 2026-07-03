@@ -2596,6 +2596,27 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::DynamoDB::Table': new Set(['SSESpecification']),
 };
 
+// SCALAR_RETURNED_WHEN_SET is the ALLOWLIST inverse of the collection default in the
+// `else if (!(k in live))` branch (#416): a declared SCALAR absent from the live read
+// normally stays an informational `readGap` ("AWS may legitimately not echo a scalar"),
+// which is the right FP-cautious default — but it means every service with replace-omit
+// update semantics has silently clearable declared scalars (a real console/CLI slip that
+// `check` then reports CLEAN). For the paths listed here — scalars OBSERVED to be ALWAYS
+// returned by the live read when set (provable with a fresh deploy: zero readGap on a
+// clean check) — an absent-from-live declared scalar is DECLARED drift (whole-property
+// emit; revert re-adds it via a top-level `add`, same shape as the collection case).
+// FP-safety mirrors #416 exactly: a wrongly-listed path surfaces as a VISIBLE, removable
+// false positive, never a silent FN. Curated per-path; do NOT broaden to whole types.
+//   AWS::NetworkFirewall::RuleGroup.Description — live-proven (#507): a fresh deploy
+//   returns Description (zero readGap), and `update-rule-group` WITHOUT --description
+//   CLEARS it (replace-omit semantics), which was a silent FN.
+//   AWS::NetworkFirewall::FirewallPolicy.Description — same service, same update-replace
+//   semantics.
+export const SCALAR_RETURNED_WHEN_SET: Record<string, ReadonlySet<string>> = {
+  'AWS::NetworkFirewall::RuleGroup': new Set(['Description']),
+  'AWS::NetworkFirewall::FirewallPolicy': new Set(['Description']),
+};
+
 // Declared SCALAR properties AWS does NOT echo faithfully — a write-time authoring hint
 // it normalizes to a canonical STORED form on read, so a declared value that differs from
 // the normalized read is a spurious `declared` drift, never a real divergence (and it is
