@@ -8770,6 +8770,43 @@ describe('#531 EKS + Athena first-run default folds', () => {
     expect(t.atDefault).toEqual(['State', 'WorkGroupConfiguration']);
     expect(t.undeclared).toEqual([]);
   });
+
+  it('Athena WorkGroup: a non-default sub-key surfaces alone; the constant defaults still fold (#565)', () => {
+    const res: DesiredResource = {
+      logicalId: 'Wg',
+      resourceType: 'AWS::Athena::WorkGroup',
+      physicalId: 'cdkrd-wg',
+      declared: { Name: 'cdkrd-wg' },
+    };
+    const t = tiers(
+      classifyResource(
+        res,
+        {
+          Name: 'cdkrd-wg',
+          State: 'ENABLED',
+          // WorkGroupConfiguration is fully undeclared, but one sub-key (an out-of-band scan cap)
+          // is non-default, so the whole-object KNOWN_DEFAULTS fold misses and it is DESCENDED
+          // (#565): the constants fold and only BytesScannedCutoffPerQuery surfaces.
+          WorkGroupConfiguration: {
+            EnforceWorkGroupConfiguration: true,
+            EngineVersion: { SelectedEngineVersion: 'AUTO' },
+            PublishCloudWatchMetricsEnabled: true,
+            RequesterPaysEnabled: false,
+            BytesScannedCutoffPerQuery: 10_000_000,
+          },
+        },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual([
+      'State',
+      'WorkGroupConfiguration.EnforceWorkGroupConfiguration',
+      'WorkGroupConfiguration.EngineVersion',
+      'WorkGroupConfiguration.PublishCloudWatchMetricsEnabled',
+    ]);
+    // RequesterPaysEnabled:false drops as trivially-empty; only the residue surfaces.
+    expect(t.undeclared).toEqual(['WorkGroupConfiguration.BytesScannedCutoffPerQuery']);
+  });
 });
 
 describe('#535 AOSS / SAMLProvider / ENI first-run default folds', () => {

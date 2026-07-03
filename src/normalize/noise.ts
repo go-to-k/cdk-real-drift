@@ -1249,9 +1249,13 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Athena::WorkGroup': {
     // A workgroup that declares no configuration reads back AWS's defaults: the config is
-    // enforced on member queries, and the engine version auto-selects. Observed live.
+    // enforced on member queries, the engine version auto-selects, and CloudWatch query
+    // metrics are published. Observed live. These fold when WorkGroupConfiguration is DESCENDED
+    // (DESCEND_UNDECLARED_OBJECT_PATHS, #565) because a non-default sibling made the whole
+    // object miss the whole-object fold; RequesterPaysEnabled:false folds as trivially-empty.
     'WorkGroupConfiguration.EnforceWorkGroupConfiguration': true,
     'WorkGroupConfiguration.EngineVersion': { SelectedEngineVersion: 'AUTO' },
+    'WorkGroupConfiguration.PublishCloudWatchMetricsEnabled': true,
   },
   'AWS::EKS::Cluster': {
     // A cluster that declares SubnetIds (partially declaring ResourcesVpcConfig, so it is
@@ -1638,6 +1642,16 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
 // the single value worth recording.
 export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::EKS::Cluster': new Set(['KubernetesNetworkConfig']),
+  // A workgroup that declares no WorkGroupConfiguration reads back AWS's whole default config;
+  // when it matches the default exactly the whole-object KNOWN_DEFAULTS fold (above) folds it
+  // atDefault. But once ONE sub-key is set out of band (a ResultConfiguration output location, a
+  // BytesScannedCutoffPerQuery cap) the whole object no longer matches and surfaces WHOLE,
+  // obscuring which sub-key changed. Descend so the four constant defaults fold
+  // (EnforceWorkGroupConfiguration / EngineVersion / PublishCloudWatchMetricsEnabled via
+  // KNOWN_DEFAULT_PATHS, RequesterPaysEnabled:false as trivially-empty) and only the record-
+  // worthy residue surfaces. Every other sub-key is a meaningful config value (not noise), so
+  // fragmenting is the desired behavior here. Follow-up to #555 (#565).
+  'AWS::Athena::WorkGroup': new Set(['WorkGroupConfiguration']),
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value
