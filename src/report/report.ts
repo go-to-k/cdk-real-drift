@@ -19,10 +19,18 @@
 // one-line-per-tier bullet list when 2+ (R37); `--verbose` expands them to full
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
+import { withinStackPath } from '../construct-path.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
+
+// The report header is `<stackName> (<region>)`; recover the bare stack name (used to
+// strip the stack/Stage prefix off each finding's construct path). Only a TRAILING
+// ` (...)` is removed, so a stack name that itself contains parens survives.
+function stackNameFromHeader(header: string): string {
+  return header.replace(/\s*\([^)]*\)\s*$/, '');
+}
 
 // Strip SGR color codes to measure a line's VISIBLE width (for the result-line rule).
 // Built from the ESC char via fromCharCode so no control byte sits in a regex literal.
@@ -101,12 +109,18 @@ export interface ReportOptions {
 // section, are excluded from the drift verdict/exit, and the result line points
 // at `cdkrd record`.
 
-export function formatFinding(f: Finding): string {
+export function formatFinding(f: Finding, stackName = ''): string {
   // prefer the CDK construct path for the human-facing id; fall back to logical id
   // (the id stays uncolored — it gets copy-pasted; only the values are styled,
   // and style.* is the identity when stdout is not a TTY, so piped output and
-  // unit-test assertions see plain text)
-  const id = f.constructPath ?? f.logicalId;
+  // unit-test assertions see plain text). The construct path is shown WITHIN its stack
+  // (the stack/Stage prefix stripped — the header already names the stack), so a Stage's
+  // `dev-main/AuroraDB/...` no longer sits beside the `dev-main-AuroraDB` header looking
+  // like a different id. `stackName` defaults to '' (no strip) for direct unit calls; the
+  // report passes the real name. The displayed id stays byte-identical to the ignore-rule
+  // path token (both are `withinStackPath(...).<path>`), so what you see IS what an
+  // ignore.yaml rule uses.
+  const id = f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
   // R78: an ELB attribute-bag drift names the changed attribute by Key
   // (LoadBalancerAttributes[idle_timeout.timeout_seconds]) rather than a bare
   // array index, so the report points at the exact setting.
@@ -258,6 +272,7 @@ function groupReasons(items: Finding[]): string {
 
 export function report(rawFindings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
+  const stackName = stackNameFromHeader(header);
   // Annotate origin hints (diff/hints.ts) here, at the single render chokepoint, so the
   // text report, the --json payload, and the --pre-deploy report all carry them. A hint is
   // display-only — it never changes a tier — so the `drifted` verdict below is unaffected.
@@ -305,7 +320,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
         color(`[${name}: ${items.length}]`) +
         (note ? ' ' + style.note(`(${note})`) : '')
     );
-    for (const f of items) log('  ' + formatFinding(f));
+    for (const f of items) log('  ' + formatFinding(f, stackName));
     return true;
   };
   const tierSection = (tier: Tier, leadingBlank: boolean): boolean =>

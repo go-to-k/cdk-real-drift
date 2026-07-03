@@ -492,7 +492,9 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
       return { wrote: false, refused: false, added: 0 };
     }
   }
-  const { path, added, alreadyPresent } = await addIgnoreRules(chosen.map(ignoreRuleFor));
+  const { path, added, alreadyPresent } = await addIgnoreRules(
+    chosen.map((f) => ignoreRuleFor(f, stackName))
+  );
   if (added.length > 0) {
     const dup = alreadyPresent.length > 0 ? `, ${alreadyPresent.length} already present` : '';
     console.log(style.ok(`ignore rule(s) added: ${path} (${added.length} new${dup})`));

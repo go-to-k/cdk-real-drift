@@ -24,7 +24,7 @@ explainable, so the same change shows up:
 $ npx cdkrd check
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
-  ApiStack/ApiRole.Policies (AWS::IAM::Role) — appeared since record
+  ApiRole.Policies (AWS::IAM::Role) — appeared since record
       actual =[{"PolicyName":"manual-debug-access", ...}]
 
 ─────────────────────────────────
@@ -66,14 +66,14 @@ The first time you run `check` on a stack, before recording anything:
 No baseline yet — live-only values can't be confirmed as drift, but declared drift and out-of-band deletes always can.
 
 [CFn-Declared Drift: 1] (declared in your CloudFormation template — the live value differs)
-  ApiStack/Topic.DisplayName (AWS::SNS::Topic)
+  Topic.DisplayName (AWS::SNS::Topic)
       desired="prod-alerts"
       actual ="test"
 
 [Potential Drift: 2] (live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it)
-  ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue)
+  Queue.RedrivePolicy (AWS::SQS::Queue)
       actual ={"maxReceiveCount":5}
-  ApiStack/Role.Policies (AWS::IAM::Role)
+  Role.Policies (AWS::IAM::Role)
       actual =[{"PolicyName":"adhoc", ...}]
 
 ─────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ your CloudFormation template, the kind `cdk drift` can't see:
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
-  ApiStack/Role.Policies (AWS::IAM::Role) — changed since record
+  Role.Policies (AWS::IAM::Role) — changed since record
       actual =[{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
 
 ─────────────────────────────────
@@ -372,7 +372,7 @@ $ npx cdkrd check --pre-deploy
 (--pre-deploy) comparing live state against the LOCAL synth template
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Declared Drift: 1]
-  ApiStack/Api/Handler.MemorySize (AWS::Lambda::Function)
+  Api/Handler.MemorySize (AWS::Lambda::Function)
       desired=1024
       actual =2048
 
@@ -424,8 +424,11 @@ ignore:
 - Every rule is a mapping `{ path, stack?, account?, region? }`. `cdkrd ignore`
   writes the unscoped form (and is **comment-preserving and append-only**: it keeps
   your existing comments and layout, and appends new rules at the end — you own the
-  order). `path` is an exact `<constructPath>.<path>` (or `<logicalId>.<path>` on a
-  non-CDK stack); the optional `stack` / `account` / `region` scopes are a hand-edit.
+  order). `path` is an exact `<constructPath>.<path>` — the construct path WITHIN the
+  stack (the stack/Stage prefix stripped), byte-identical to what `cdkrd check` prints, so
+  you can copy what you see (or `<logicalId>.<path>` on a non-CDK stack). Rules written with
+  the older full `<stack>/<constructPath>.<path>` form still match. The optional `stack` /
+  `account` / `region` scopes are a hand-edit.
 - All four fields accept the same `*` / `?` glob, and a parent `path` covers child
   paths. The three scope axes — **stack, account, region** — are exactly the
   baseline file's identity axes. **Account** keeps a `stack: "Prod*"` rule from
@@ -444,7 +447,7 @@ that folds everything informational.
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Declared Drift: 1]
-  ApiStack/UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
+  UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"
       actual ="Suspended"
 

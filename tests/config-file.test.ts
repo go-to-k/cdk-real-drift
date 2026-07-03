@@ -499,6 +499,30 @@ describe('ignoreRuleFor', () => {
     expect(ignoreRuleFor(f)).toEqual({ path: 'MyStack/ApiRole.Policies' });
   });
 
+  it('writes the WITHIN-stack path when given the stack name (matches what the report shows)', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ApiRole1234ABCD',
+      constructPath: 'MyStack/ApiRole',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    // plain stack + a CDK Stage both collapse to the same within-stack rule
+    expect(ignoreRuleFor(f, 'MyStack')).toEqual({ path: 'ApiRole.Policies' });
+    expect(
+      ignoreRuleFor({ ...f, constructPath: 'dev-main/AuroraDB/ApiRole' }, 'dev-main-AuroraDB')
+    ).toEqual({ path: 'ApiRole.Policies' });
+    // round-trip: the within-stack rule the verb now writes matches the finding it came from
+    expect(ign([f], 'MyStack', cfg([ignoreRuleFor(f, 'MyStack')]))[0]?.tier).toBe('ignored');
+    const staged: Finding = { ...f, constructPath: 'dev-main/AuroraDB/ApiRole' };
+    expect(
+      ign([staged], 'dev-main-AuroraDB', cfg([ignoreRuleFor(staged, 'dev-main-AuroraDB')]))[0]?.tier
+    ).toBe('ignored');
+    // and an OLDER full-path rule (pre-strip) still matches (back-compat)
+    expect(ign([f], 'MyStack', cfg([p('MyStack/ApiRole.Policies')]))[0]?.tier).toBe('ignored');
+  });
+
   it('falls back to logicalId when constructPath is absent (non-CDK stack)', () => {
     expect(ignoreRuleFor(declared('ApiRole', 'Policies'))).toEqual({ path: 'ApiRole.Policies' });
   });
