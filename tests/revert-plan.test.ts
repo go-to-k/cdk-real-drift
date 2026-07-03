@@ -1975,3 +1975,24 @@ describe('rejectedEmptyStripOps — array-WILDCARD husk inside array elements (#
     expect(rejectedEmptyStripOps(T, [descOp], { Name: 'dist' })).toEqual([]);
   });
 });
+
+describe('#553: Lex BotLocales routes to the nested SDK writer (kind=sdk), not CC', () => {
+  it('a declared drift under BotLocales becomes a revertable kind=sdk item', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::Lex::Bot',
+          path: 'BotLocales[0].Intents[0].SampleUtterances',
+          nested: true,
+          desired: [{ Utterance: 'x' }],
+          actual: [{ Utterance: 'y' }],
+        }),
+      ],
+      undefined
+    );
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]).toMatchObject({ kind: 'sdk', resourceType: 'AWS::Lex::Bot' });
+  });
+});

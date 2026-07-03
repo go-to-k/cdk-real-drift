@@ -131,6 +131,25 @@ import {
   type ServiceVolumeConfiguration,
   UpdateServiceCommand,
 } from '@aws-sdk/client-ecs';
+import {
+  BuildBotLocaleCommand,
+  DescribeBotLocaleCommand,
+  DescribeIntentCommand,
+  DescribeSlotCommand,
+  DescribeSlotTypeCommand,
+  LexModelsV2Client,
+  ListIntentsCommand,
+  ListSlotsCommand,
+  ListSlotTypesCommand,
+  type SlotValueElicitationSetting,
+  UpdateBotLocaleCommand,
+  type UpdateBotLocaleCommandInput,
+  UpdateIntentCommand,
+  UpdateSlotCommand,
+  UpdateSlotTypeCommand,
+  type UpdateSlotTypeCommandInput,
+  type VoiceSettings,
+} from '@aws-sdk/client-lex-models-v2';
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
@@ -1542,6 +1561,298 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
   await new EC2Client({ region: ctx.region }).send(new ModifyClientVpnEndpointCommand(input));
 };
 
+// AWS::Lex::Bot `BotLocales` is the ENTIRE conversational model (locales → intents → slots +
+// slot types), writeOnly in the registry schema and read back by supplementLexBot walking the
+// lexv2-models DRAFT tree. Cloud Control cannot write it, so revert re-supplies the DECLARED
+// model through the lexv2-models write APIs (#553). SCOPE = UPDATE-ONLY: it converges each
+// EXISTING node (locale settings / slot type / intent / slot) to its declared value via a
+// read-modify-write (Describe → overlay the declared-projected fields → Update, preserving any
+// un-projected setting), then BuildBotLocale. A STRUCTURAL diff — a whole intent / slot / slot
+// type added or removed out of band (the declared and live node-NAME sets differ) — is REFUSED
+// (throws → an honest per-resource revert failure, never a wrong rebuild that could delete a
+// live node); creating/deleting whole nodes is deferred. Handles the common out-of-band case
+// (an utterance / description / slot-value / prompt edit).
+const LEX_CFN_TO_LEX_RESOLUTION_STRATEGY: Record<string, string> = {
+  ORIGINAL_VALUE: 'OriginalValue',
+  TOP_RESOLUTION: 'TopResolution',
+  CONCATENATION: 'Concatenation',
+};
+type LexRec = Record<string, unknown>;
+const lexStr = (v: unknown): string | undefined =>
+  typeof v === 'string' && v.length > 0 ? v : undefined;
+// Build the lexv2 promptSpecification from a declared CFn PromptSpecification (inverse of the
+// reader's projectLexPrompt). Only the fields the reader projects are set.
+const lexBuildPrompt = (declared: unknown): LexRec | undefined => {
+  if (!declared || typeof declared !== 'object') return undefined;
+  const d = declared as LexRec;
+  const out: LexRec = {};
+  if (typeof d.MaxRetries === 'number') out.maxRetries = d.MaxRetries;
+  if (typeof d.AllowInterrupt === 'boolean') out.allowInterrupt = d.AllowInterrupt;
+  if (Array.isArray(d.MessageGroupsList)) {
+    out.messageGroups = d.MessageGroupsList.map((g) => {
+      const value = (g as LexRec)?.Message as LexRec | undefined;
+      const plain = value?.PlainTextMessage as LexRec | undefined;
+      return { message: { plainTextMessage: { value: lexStr(plain?.Value) ?? '' } } };
+    });
+  }
+  return out;
+};
+const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
+  const botId = str(ctx.physicalId);
+  if (!botId) throw new Error('cannot resolve Lex Bot id for revert');
+  const declaredLocales = ctx.declared['BotLocales'];
+  if (!Array.isArray(declaredLocales))
+    throw new Error('Lex BotLocales revert: declared BotLocales is not an array');
+  void ops; // reconcile the WHOLE declared model (declared IS the desired target); ops only route.
+  const c = new LexModelsV2Client({ region: ctx.region });
+  const botVersion = 'DRAFT';
+
+  for (const rawLocale of declaredLocales) {
+    if (!rawLocale || typeof rawLocale !== 'object') continue;
+    const loc = rawLocale as LexRec;
+    const localeId = lexStr(loc.LocaleId);
+    if (!localeId) throw new Error('Lex BotLocales revert: a declared locale has no LocaleId');
+
+    // --- slot types: name<->id + structural check (custom only; AMAZON.* are built-in) ---
+    const liveSlotTypes = await c.send(new ListSlotTypesCommand({ botId, botVersion, localeId }));
+    const slotTypeNameToId = new Map<string, string>();
+    for (const s of liveSlotTypes.slotTypeSummaries ?? []) {
+      const id = lexStr(s.slotTypeId);
+      const name = lexStr(s.slotTypeName);
+      if (id && name && !id.startsWith('AMAZON.')) slotTypeNameToId.set(name, id);
+    }
+    const declaredSlotTypes = Array.isArray(loc.SlotTypes) ? (loc.SlotTypes as LexRec[]) : [];
+    const declaredStNames = new Set(
+      declaredSlotTypes.map((s) => lexStr(s.Name)).filter((n): n is string => n !== undefined)
+    );
+    if (
+      declaredStNames.size !== slotTypeNameToId.size ||
+      [...declaredStNames].some((n) => !slotTypeNameToId.has(n))
+    )
+      throw new Error(
+        `Lex BotLocales revert (${localeId}): custom slot types added/removed out of band — ` +
+          'structural rebuild (create/delete) not supported, only in-place updates'
+      );
+    // resolve a declared SlotTypeName to a live slotTypeId (built-ins map to themselves)
+    const resolveSlotTypeId = (name: string | undefined): string | undefined =>
+      name === undefined
+        ? undefined
+        : name.startsWith('AMAZON.')
+          ? name
+          : slotTypeNameToId.get(name);
+
+    for (const dst of declaredSlotTypes) {
+      const name = lexStr(dst.Name);
+      const slotTypeId = name ? slotTypeNameToId.get(name) : undefined;
+      if (!slotTypeId || !name) continue;
+      const live = await c.send(
+        new DescribeSlotTypeCommand({ botId, botVersion, localeId, slotTypeId })
+      );
+      const input: LexRec = {
+        botId,
+        botVersion,
+        localeId,
+        slotTypeId,
+        slotTypeName: name,
+        parentSlotTypeSignature: live.parentSlotTypeSignature,
+        externalSourceSetting: live.externalSourceSetting,
+        compositeSlotTypeSetting: live.compositeSlotTypeSetting,
+        description: lexStr(dst.Description),
+        slotTypeValues: Array.isArray(dst.SlotTypeValues)
+          ? (dst.SlotTypeValues as LexRec[]).map((v) => {
+              const sv = (v.SampleValue as LexRec | undefined)?.Value;
+              const syns = Array.isArray(v.Synonyms)
+                ? (v.Synonyms as LexRec[])
+                    .map((s) => lexStr(s.Value))
+                    .filter((x): x is string => x !== undefined)
+                    .map((x) => ({ value: x }))
+                : undefined;
+              return {
+                sampleValue: { value: lexStr(sv) ?? '' },
+                ...(syns && syns.length > 0 ? { synonyms: syns } : {}),
+              };
+            })
+          : live.slotTypeValues,
+      };
+      const strat = lexStr((dst.ValueSelectionSetting as LexRec | undefined)?.ResolutionStrategy);
+      if (strat !== undefined)
+        input.valueSelectionSetting = {
+          ...(live.valueSelectionSetting ?? {}),
+          resolutionStrategy: LEX_CFN_TO_LEX_RESOLUTION_STRATEGY[strat] ?? strat,
+        };
+      else input.valueSelectionSetting = live.valueSelectionSetting;
+      await c.send(new UpdateSlotTypeCommand(input as unknown as UpdateSlotTypeCommandInput));
+    }
+
+    // --- intents: name<->id + structural check (skip AMAZON.FallbackIntent-style built-ins) ---
+    const liveIntents = await c.send(new ListIntentsCommand({ botId, botVersion, localeId }));
+    const intentNameToId = new Map<string, string>();
+    for (const i of liveIntents.intentSummaries ?? []) {
+      const id = lexStr(i.intentId);
+      const name = lexStr(i.intentName);
+      if (id && name) intentNameToId.set(name, id);
+    }
+    const declaredIntents = Array.isArray(loc.Intents) ? (loc.Intents as LexRec[]) : [];
+    // The built-in FallbackIntent is auto-created/managed by Lex — it is always present live and
+    // its declaration is optional, so it is NOT a user-authored node that can be added/removed
+    // out of band. Exclude it (and any AMAZON.* signature intent) from the structural check on
+    // BOTH sides, and skip re-writing it below (reverting the auto-managed fallback is not a
+    // target case). Compare only the USER intents.
+    const isBuiltinIntent = (n: string): boolean =>
+      n === 'FallbackIntent' || n.startsWith('AMAZON.');
+    const declaredIntentNames = new Set(
+      declaredIntents.map((i) => lexStr(i.Name)).filter((n): n is string => n !== undefined)
+    );
+    const declaredUserIntents = [...declaredIntentNames].filter((n) => !isBuiltinIntent(n));
+    const liveUserIntents = [...intentNameToId.keys()].filter((n) => !isBuiltinIntent(n));
+    if (
+      declaredUserIntents.length !== liveUserIntents.length ||
+      liveUserIntents.some((n) => !declaredIntentNames.has(n))
+    )
+      throw new Error(
+        `Lex BotLocales revert (${localeId}): intents added/removed out of band — ` +
+          'structural rebuild (create/delete) not supported, only in-place updates'
+      );
+
+    for (const di of declaredIntents) {
+      const iName = lexStr(di.Name);
+      const intentId = iName ? intentNameToId.get(iName) : undefined;
+      if (!intentId || !iName || isBuiltinIntent(iName)) continue;
+
+      // slots for this intent: name<->id + structural check, then update each to declared
+      const liveSlots = await c.send(
+        new ListSlotsCommand({ botId, botVersion, localeId, intentId })
+      );
+      const slotNameToId = new Map<string, string>();
+      for (const s of liveSlots.slotSummaries ?? []) {
+        const id = lexStr(s.slotId);
+        const name = lexStr(s.slotName);
+        if (id && name) slotNameToId.set(name, id);
+      }
+      const declaredSlots = Array.isArray(di.Slots) ? (di.Slots as LexRec[]) : [];
+      const declaredSlotNames = new Set(
+        declaredSlots.map((s) => lexStr(s.Name)).filter((n): n is string => n !== undefined)
+      );
+      if (
+        declaredSlotNames.size !== slotNameToId.size ||
+        [...declaredSlotNames].some((n) => !slotNameToId.has(n))
+      )
+        throw new Error(
+          `Lex BotLocales revert (${localeId}/${iName}): slots added/removed out of band — ` +
+            'structural rebuild (create/delete) not supported, only in-place updates'
+        );
+
+      for (const ds of declaredSlots) {
+        const sName = lexStr(ds.Name);
+        const slotId = sName ? slotNameToId.get(sName) : undefined;
+        if (!slotId || !sName) continue;
+        const live = await c.send(
+          new DescribeSlotCommand({ botId, botVersion, localeId, intentId, slotId })
+        );
+        const declaredElic = ds.ValueElicitationSetting as LexRec | undefined;
+        const liveElic = (live.valueElicitationSetting ?? {}) as LexRec;
+        const elic: LexRec = { ...liveElic };
+        if (declaredElic) {
+          const constraint = lexStr(declaredElic.SlotConstraint);
+          if (constraint !== undefined) elic.slotConstraint = constraint;
+          const prompt = lexBuildPrompt(declaredElic.PromptSpecification);
+          if (prompt !== undefined) elic.promptSpecification = prompt;
+        }
+        await c.send(
+          new UpdateSlotCommand({
+            botId,
+            botVersion,
+            localeId,
+            intentId,
+            slotId,
+            slotName: sName,
+            slotTypeId: resolveSlotTypeId(lexStr(ds.SlotTypeName)) ?? live.slotTypeId,
+            description: lexStr(ds.Description) ?? live.description,
+            obfuscationSetting: live.obfuscationSetting,
+            multipleValuesSetting: live.multipleValuesSetting,
+            subSlotSetting: live.subSlotSetting,
+            // valueElicitationSetting is REQUIRED; a slot always has one (SlotConstraint).
+            valueElicitationSetting: elic as unknown as SlotValueElicitationSetting,
+          })
+        );
+      }
+
+      // intent itself: overlay declared fields onto the live intent, resolve SlotPriorities.
+      const live = await c.send(
+        new DescribeIntentCommand({ botId, botVersion, localeId, intentId })
+      );
+      const slotPriorities = Array.isArray(di.SlotPriorities)
+        ? (di.SlotPriorities as LexRec[])
+            .map((p) => {
+              const sid = slotNameToId.get(lexStr(p.SlotName) ?? '');
+              return typeof p.Priority === 'number' && sid
+                ? { priority: p.Priority, slotId: sid }
+                : undefined;
+            })
+            .filter((x): x is { priority: number; slotId: string } => x !== undefined)
+        : live.slotPriorities;
+      await c.send(
+        new UpdateIntentCommand({
+          botId,
+          botVersion,
+          localeId,
+          intentId,
+          intentName: iName,
+          description: lexStr(di.Description) ?? live.description,
+          parentIntentSignature: lexStr(di.ParentIntentSignature) ?? live.parentIntentSignature,
+          sampleUtterances: Array.isArray(di.SampleUtterances)
+            ? (di.SampleUtterances as LexRec[])
+                .map((u) => lexStr(u.Utterance))
+                .filter((x): x is string => x !== undefined)
+                .map((utterance) => ({ utterance }))
+            : live.sampleUtterances,
+          slotPriorities,
+          // preserve un-projected live settings (code hooks, confirmation, contexts, …)
+          dialogCodeHook: live.dialogCodeHook,
+          fulfillmentCodeHook: live.fulfillmentCodeHook,
+          intentConfirmationSetting: live.intentConfirmationSetting,
+          intentClosingSetting: live.intentClosingSetting,
+          inputContexts: live.inputContexts,
+          outputContexts: live.outputContexts,
+          kendraConfiguration: live.kendraConfiguration,
+          initialResponseSetting: live.initialResponseSetting,
+        })
+      );
+    }
+
+    // --- locale-level settings (Description / NluConfidenceThreshold / VoiceSettings) ---
+    const liveLocale = await c.send(new DescribeBotLocaleCommand({ botId, botVersion, localeId }));
+    const voice = loc.VoiceSettings as LexRec | undefined;
+    await c.send(
+      new UpdateBotLocaleCommand({
+        botId,
+        botVersion,
+        localeId,
+        description: lexStr(loc.Description) ?? liveLocale.description,
+        // nluIntentConfidenceThreshold is REQUIRED; fall back to the live value.
+        nluIntentConfidenceThreshold:
+          typeof loc.NluConfidenceThreshold === 'number'
+            ? loc.NluConfidenceThreshold
+            : liveLocale.nluIntentConfidenceThreshold,
+        voiceSettings: voice
+          ? ({
+              voiceId: lexStr(voice.VoiceId) ?? '',
+              engine: lexStr(voice.Engine),
+            } as VoiceSettings)
+          : liveLocale.voiceSettings,
+      } satisfies UpdateBotLocaleCommandInput)
+    );
+
+    // Rebuild the DRAFT locale so the reverted model is consistent (best-effort, bounded wait).
+    await c.send(new BuildBotLocaleCommand({ botId, botVersion, localeId }));
+    for (let i = 0; i < 30; i++) {
+      const s = await c.send(new DescribeBotLocaleCommand({ botId, botVersion, localeId }));
+      if (s.botLocaleStatus !== 'Building' && s.botLocaleStatus !== 'Processing') break;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
   'AWS::DAX::Cluster': writeDaxCluster,
@@ -1717,6 +2028,14 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   'AWS::ApiGateway::Stage': {
     match: (p) => p.startsWith('MethodSettings['),
     writer: writeCloudControlIndexNested,
+  },
+  // Any drift UNDER the writeOnly BotLocales (an utterance / slot / slot-type / prompt edit)
+  // re-supplies the DECLARED conversational model via the lexv2-models Update* APIs — CC cannot
+  // write the writeOnly prop. Update-only: a structural add/delete of a whole node is refused
+  // (see writeLexBotLocales). #553.
+  'AWS::Lex::Bot': {
+    match: (p) => p === 'BotLocales' || p.startsWith('BotLocales.') || p.startsWith('BotLocales['),
+    writer: writeLexBotLocales,
   },
 };
 

@@ -2304,8 +2304,10 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
 // DescribeBotLocale + (ListSlotTypes → DescribeSlotType) + (ListIntents →
 // DescribeIntent → ListSlots → DescribeSlot), always at botVersion "DRAFT" (the CFn
 // working copy). The physical id is the Bot Id (e.g. "I3PRF2VKMG"). This is the
-// DEEPEST reader in cdkrd. READ-ONLY: no revert writer — an out-of-band change surfaces
-// as drift but is not auto-reverted (revert reports it not-revertable).
+// DEEPEST reader in cdkrd. REVERTABLE (update-only) via the SDK_NESTED_WRITERS
+// `writeLexBotLocales` (#553): an out-of-band edit to an EXISTING node reverts by
+// re-supplying the declared model through the lexv2-models Update* APIs + BuildBotLocale;
+// a STRUCTURAL add/delete of a whole node is refused (not-revertable), deferred.
 //
 // FP-safe: project a CFn field ONLY when the API returns it (so an unset optional prop
 // stays absent on BOTH sides). API field names verified against the lex-models-v2 model

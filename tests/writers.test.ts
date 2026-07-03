@@ -135,11 +135,22 @@ import {
   EC2Client,
   ModifyClientVpnEndpointCommand,
 } from '@aws-sdk/client-ec2';
+import {
+  BuildBotLocaleCommand,
+  DescribeBotLocaleCommand,
+  DescribeIntentCommand,
+  LexModelsV2Client,
+  ListIntentsCommand,
+  ListSlotsCommand,
+  ListSlotTypesCommand,
+  UpdateBotLocaleCommand,
+  UpdateIntentCommand,
+} from '@aws-sdk/client-lex-models-v2';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
 import type { PatchOp } from '../src/revert/plan.js';
-import { resolveSdkWriter, SDK_WRITERS } from '../src/revert/writers.js';
+import { resolveSdkWriter, SDK_NESTED_WRITERS, SDK_WRITERS } from '../src/revert/writers.js';
 
 const iam = mockClient(IAMClient);
 const elb = mockClient(ElasticLoadBalancingV2Client);
@@ -165,6 +176,7 @@ const kafka = mockClient(KafkaClient);
 const codebuild = mockClient(CodeBuildClient);
 const dax = mockClient(DAXClient);
 const ec2 = mockClient(EC2Client);
+const lex = mockClient(LexModelsV2Client);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -218,6 +230,7 @@ beforeEach(() => {
   codebuild.reset();
   dax.reset();
   ec2.reset();
+  lex.reset();
 });
 
 describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #461)', () => {
@@ -2449,5 +2462,135 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         ops
       )
     ).rejects.toThrow(/cannot locate/);
+  });
+});
+
+describe('Lex BotLocales writer (revert-by-rebuild via lexv2-models Update* APIs, #553)', () => {
+  const BOT = 'B1234567';
+  const lexCtx = (declared: Record<string, unknown>): OverrideCtx =>
+    ctx({ physicalId: BOT, declared, resourceType: 'AWS::Lex::Bot' });
+  const utteranceOp: PatchOp = {
+    op: 'add',
+    path: '/BotLocales/0/Intents/0/SampleUtterances',
+    value: [{ Utterance: 'declared utterance' }],
+    human: 'BotLocales.0.Intents.0.SampleUtterances -> deployed-template value',
+  };
+  // One locale, one intent (OrderFlowers) with one declared utterance, no slots/slotTypes.
+  const declared = {
+    BotLocales: [
+      {
+        LocaleId: 'en_US',
+        NluConfidenceThreshold: 0.4,
+        Intents: [
+          { Name: 'OrderFlowers', SampleUtterances: [{ Utterance: 'declared utterance' }] },
+        ],
+      },
+    ],
+  };
+  const stubTree = (): void => {
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [
+        { intentId: 'I1', intentName: 'OrderFlowers' },
+        // the auto-created built-in FallbackIntent is present in live but not declared — ignored
+        { intentId: 'IF', intentName: 'FallbackIntent' },
+      ],
+    });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    // live intent carries an un-projected setting (dialogCodeHook) that revert must PRESERVE
+    lex.on(DescribeIntentCommand).resolves({
+      intentId: 'I1',
+      intentName: 'OrderFlowers',
+      sampleUtterances: [{ utterance: 'OUT OF BAND EDIT' }],
+      dialogCodeHook: { enabled: true },
+    } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({
+      localeId: 'en_US',
+      nluIntentConfidenceThreshold: 0.4,
+      botLocaleStatus: 'Built',
+    } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+  };
+
+  it('routes a BotLocales path to the Lex writer (SDK_NESTED_WRITERS)', () => {
+    expect(
+      SDK_NESTED_WRITERS['AWS::Lex::Bot']!.match('BotLocales[0].Intents[0].SampleUtterances')
+    ).toBe(true);
+    expect(SDK_NESTED_WRITERS['AWS::Lex::Bot']!.match('Name')).toBe(false);
+    expect(resolveSdkWriter('AWS::Lex::Bot', [utteranceOp])).toBe(
+      SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer
+    );
+  });
+
+  it('reverts an utterance edit via UpdateIntent (preserving un-projected settings) + BuildBotLocale', async () => {
+    stubTree();
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(declared), [utteranceOp]);
+    const calls = lex.commandCalls(UpdateIntentCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    // the declared utterance is re-supplied (mapped CFn Utterance -> API utterance)
+    expect(input.sampleUtterances).toEqual([{ utterance: 'declared utterance' }]);
+    // read-modify-write: the un-projected dialogCodeHook from the live intent is preserved
+    expect(input.dialogCodeHook).toEqual({ enabled: true });
+    expect(input.botId).toBe(BOT);
+    expect(input.botVersion).toBe('DRAFT');
+    // the locale is rebuilt so the reverted model is consistent
+    expect(lex.commandCalls(BuildBotLocaleCommand)).toHaveLength(1);
+  });
+
+  it('does NOT false-refuse when FallbackIntent IS declared (live-caught: symmetric built-in exclusion)', async () => {
+    // The live scenario: the template declares both the user OrderFlowers intent AND the
+    // auto-managed FallbackIntent; live has both. An earlier version filtered FallbackIntent from
+    // the LIVE set only, so the sizes differed and it false-refused. Assert it reconciles and
+    // skips re-writing the built-in fallback.
+    stubTree();
+    const withFallback = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Intents: [
+            { Name: 'OrderFlowers', SampleUtterances: [{ Utterance: 'declared utterance' }] },
+            { Name: 'FallbackIntent', ParentIntentSignature: 'AMAZON.FallbackIntent' },
+          ],
+        },
+      ],
+    };
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(withFallback), [utteranceOp]);
+    const calls = lex.commandCalls(UpdateIntentCommand);
+    // only the USER intent is updated — the built-in FallbackIntent is skipped
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input.intentName).toBe('OrderFlowers');
+  });
+
+  it('REFUSES a structural diff (a whole intent added/removed out of band)', async () => {
+    // live has ONLY OrderFlowers; declared has OrderFlowers + AddOns → a declared intent is
+    // missing from live (structural delete out of band) → update-only writer refuses.
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+    });
+    const twoIntents = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Intents: [{ Name: 'OrderFlowers' }, { Name: 'AddOns' }],
+        },
+      ],
+    };
+    await expect(
+      SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(twoIntents), [utteranceOp])
+    ).rejects.toThrow(/structural rebuild/);
+    expect(lex.commandCalls(UpdateIntentCommand)).toHaveLength(0);
+  });
+
+  it('throws when the Bot id is unresolvable', async () => {
+    await expect(
+      SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(
+        lexCtx(declared) && ctx({ physicalId: '', declared }),
+        [utteranceOp]
+      )
+    ).rejects.toThrow(/Lex Bot id/);
   });
 });
