@@ -1,0 +1,97 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Wg",
+    "resourceType": "AWS::Athena::WorkGroup",
+    "physicalId": "cdkrd-wg-e",
+    "constructPath": "CdkRealDriftIntegOpsMiscRich/Wg",
+    "declared": {
+      "Description": "cdkrd probe workgroup",
+      "Name": "cdkrd-wg-e"
+    }
+  },
+  "liveRaw": {
+    "WorkGroupConfiguration": {
+      "EnforceWorkGroupConfiguration": true,
+      "EngineVersion": {
+        "SelectedEngineVersion": "AUTO",
+        "EffectiveEngineVersion": "Athena engine version 3"
+      },
+      "PublishCloudWatchMetricsEnabled": true,
+      "RequesterPaysEnabled": false
+    },
+    "Description": "cdkrd probe workgroup",
+    "State": "ENABLED",
+    "CreationTime": "1783077542",
+    "Tags": [],
+    "Name": "cdkrd-wg-e"
+  },
+  "schema": {
+    "readOnly": ["CreationTime"],
+    "writeOnly": ["RecursiveDeleteOption", "WorkGroupConfigurationUpdates"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "CreationTime",
+      "WorkGroupConfiguration.EngineVersion.EffectiveEngineVersion",
+      "WorkGroupConfigurationUpdates.EngineVersion.EffectiveEngineVersion"
+    ],
+    "writeOnlyPaths": [
+      "RecursiveDeleteOption",
+      "WorkGroupConfiguration.AdditionalConfiguration",
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.CoordinatorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.DefaultExecutorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.MaxConcurrentDpus",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfiguration.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Wg",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration",
+      "actual": {
+        "EnforceWorkGroupConfiguration": true,
+        "EngineVersion": {
+          "SelectedEngineVersion": "AUTO"
+        },
+        "PublishCloudWatchMetricsEnabled": true,
+        "RequesterPaysEnabled": false
+      },
+      "physicalId": "cdkrd-wg-e",
+      "constructPath": "CdkRealDriftIntegOpsMiscRich/Wg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Wg",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "cdkrd-wg-e",
+      "constructPath": "CdkRealDriftIntegOpsMiscRich/Wg"
+    }
+  ]
+}

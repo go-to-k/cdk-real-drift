@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Addon",
+    "resourceType": "AWS::EKS::Addon",
+    "physicalId": "cdkrd-eks|vpc-cni",
+    "constructPath": "CdkRealDriftIntegEksRich/Addon",
+    "declared": {
+      "AddonName": "vpc-cni",
+      "ClusterName": "cdkrd-eks",
+      "ConfigurationValues": "{\"env\":{\"ENABLE_PREFIX_DELEGATION\":\"true\"}}",
+      "ResolveConflicts": "OVERWRITE"
+    }
+  },
+  "liveRaw": {
+    "NamespaceConfig": {
+      "Namespace": "kube-system"
+    },
+    "AddonVersion": "v1.21.2-eksbuild.2",
+    "ClusterName": "cdkrd-eks",
+    "AddonName": "vpc-cni",
+    "Arn": "arn:aws:eks:us-east-1:111111111111:addon/cdkrd-eks/vpc-cni/c8cf93db-310b-cd6f-a379-7eecc3e26f74",
+    "Tags": [
+      {
+        "Value": "Addon",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEksRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEksRich/21580dd0-76d0-11f1-b35a-0affd8210315",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "ConfigurationValues": "{\"env\":{\"ENABLE_PREFIX_DELEGATION\":\"true\"}}"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["PodIdentityAssociations", "PreserveOnDelete", "ResolveConflicts"],
+    "createOnly": ["AddonName", "ClusterName", "NamespaceConfig"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["PodIdentityAssociations", "PreserveOnDelete", "ResolveConflicts"],
+    "createOnlyPaths": ["AddonName", "ClusterName", "NamespaceConfig"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["PodIdentityAssociations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Addon",
+      "resourceType": "AWS::EKS::Addon",
+      "path": "ResolveConflicts",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-eks|vpc-cni",
+      "constructPath": "CdkRealDriftIntegEksRich/Addon"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Addon",
+      "resourceType": "AWS::EKS::Addon",
+      "path": "NamespaceConfig",
+      "actual": {
+        "Namespace": "kube-system"
+      },
+      "physicalId": "cdkrd-eks|vpc-cni",
+      "constructPath": "CdkRealDriftIntegEksRich/Addon"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Addon",
+      "resourceType": "AWS::EKS::Addon",
+      "path": "AddonVersion",
+      "actual": "v1.21.2-eksbuild.2",
+      "physicalId": "cdkrd-eks|vpc-cni",
+      "constructPath": "CdkRealDriftIntegEksRich/Addon"
+    }
+  ]
+}

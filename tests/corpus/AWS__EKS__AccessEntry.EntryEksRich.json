@@ -1,0 +1,84 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Entry",
+    "resourceType": "AWS::EKS::AccessEntry",
+    "physicalId": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg|cdkrd-eks",
+    "constructPath": "CdkRealDriftIntegEksRich/Entry",
+    "declared": {
+      "AccessPolicies": [
+        {
+          "AccessScope": {
+            "Type": "cluster"
+          },
+          "PolicyArn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
+        }
+      ],
+      "ClusterName": "cdkrd-eks",
+      "KubernetesGroups": ["cdkrd-viewers"],
+      "PrincipalArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg",
+      "Type": "STANDARD"
+    }
+  },
+  "liveRaw": {
+    "Type": "STANDARD",
+    "PrincipalArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg",
+    "KubernetesGroups": ["cdkrd-viewers"],
+    "Username": "arn:aws:sts::111111111111:assumed-role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg/{{SessionName}}",
+    "ClusterName": "cdkrd-eks",
+    "AccessEntryArn": "arn:aws:eks:us-east-1:111111111111:access-entry/cdkrd-eks/role/111111111111/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg/aecf93db-31e2-bd9b-777c-b70761a1f919",
+    "AccessPolicies": [
+      {
+        "PolicyArn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy",
+        "AccessScope": {
+          "Namespaces": [],
+          "Type": "cluster"
+        }
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegEksRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEksRich/21580dd0-76d0-11f1-b35a-0affd8210315",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Entry",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AccessEntryArn"],
+    "writeOnly": [],
+    "createOnly": ["ClusterName", "PrincipalArn", "Type"],
+    "readOnlyPaths": ["AccessEntryArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ClusterName", "PrincipalArn", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["KubernetesGroups"],
+    "unorderedObjectArrayPaths": ["AccessPolicies"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Entry",
+      "resourceType": "AWS::EKS::AccessEntry",
+      "path": "Username",
+      "actual": "arn:aws:sts::111111111111:assumed-role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg/{{SessionName}}",
+      "physicalId": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4PlmWNg|cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Entry"
+    }
+  ]
+}

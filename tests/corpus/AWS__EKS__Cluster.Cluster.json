@@ -162,7 +162,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "UpgradePolicy",
@@ -173,7 +173,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "ControlPlaneScalingConfig",
@@ -184,7 +184,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "ResourcesVpcConfig.ControlPlaneEgressMode",
@@ -194,7 +194,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "ResourcesVpcConfig.PublicAccessCidrs",
