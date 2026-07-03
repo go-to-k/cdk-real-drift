@@ -535,7 +535,7 @@ export function formatPlan(
   plan: RevertPlan,
   opts: PlanDisplayOptions = {}
 ): string[] {
-  const lines: string[] = [`\n=== cdkrd revert: ${stackName} (${region}) ===`];
+  const lines: string[] = [`\n=== revert: ${stackName} (${region}) ===`];
   if (opts.unrecordedGuidance) {
     // A fork, not a sequence (R55): recording these values endorses them (they
     // leave the report) — it is NOT a step toward reverting them.

@@ -10,7 +10,7 @@
 import pc from 'picocolors';
 
 export interface Style {
-  header: (s: string) => string; // === cdkrd check/revert: ... === banners
+  header: (s: string) => string; // === check/revert: ... === banners
   resultLabel: (s: string) => string; // the `result:` prefix — the conclusion anchor
   driftTier: (s: string) => string; // deleted / declared section titles
   undeclaredTier: (s: string) => string; // the differentiator tier title

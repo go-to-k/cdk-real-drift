@@ -22,7 +22,7 @@ explainable, so the same change shows up:
 
 ```console
 $ npx cdkrd check
-=== cdkrd check: ApiStack (us-east-1) ===
+=== check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
   ApiRole.Policies (AWS::IAM::Role) — appeared since record
       actual =[{"PolicyName":"manual-debug-access", ...}]
@@ -62,7 +62,7 @@ turns up.
 The first time you run `check` on a stack, before recording anything:
 
 ```console
-=== cdkrd check: ApiStack (us-east-1) ===
+=== check: ApiStack (us-east-1) ===
 No baseline yet — live-only values can't be confirmed as drift, but declared drift and out-of-band deletes always can.
 
 [CFn-Declared Drift: 1] (declared in your CloudFormation template — the live value differs)
@@ -113,7 +113,7 @@ surfaces as **`[CFn-Undeclared Drift]`**: confirmed drift on a value that isn't 
 your CloudFormation template, the kind `cdk drift` can't see:
 
 ```console
-=== cdkrd check: ApiStack (us-east-1) ===
+=== check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
   Role.Policies (AWS::IAM::Role) — changed since record
       actual =[{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
@@ -156,7 +156,7 @@ prompt). Baselines stay a reviewed, git-committed artifact either way; CI never
 writes one. It re-reads each touched resource afterward to verify it converged:
 
 ```console
-=== cdkrd revert: ApiStack (us-east-1) ===
+=== revert: ApiStack (us-east-1) ===
 
   ApiRole (AWS::IAM::Role)
     - Policies -> remove (undeclared, not in baseline)
@@ -370,7 +370,7 @@ reverts it:
 ```console
 $ npx cdkrd check --pre-deploy
 (--pre-deploy) comparing live state against the LOCAL synth template
-=== cdkrd check: ApiStack (us-east-1) ===
+=== check: ApiStack (us-east-1) ===
 [CFn-Declared Drift: 1]
   Api/Handler.MemorySize (AWS::Lambda::Function)
       desired=1024
@@ -445,7 +445,7 @@ Two parts: the **drift sections** in full detail, then a one-line `info:` footer
 that folds everything informational.
 
 ```console
-=== cdkrd check: ApiStack (us-east-1) ===
+=== check: ApiStack (us-east-1) ===
 [CFn-Declared Drift: 1]
   UploadBucket.VersioningConfiguration.Status (AWS::S3::Bucket)
       desired="Enabled"

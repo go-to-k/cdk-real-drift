@@ -326,7 +326,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   const tierSection = (tier: Tier, leadingBlank: boolean): boolean =>
     section(byTier(tier), TIER_NAMES[tier], TIER_NOTES[tier], tierStyle(tier), leadingBlank);
 
-  log(style.header(`=== cdkrd check: ${header} ===`));
+  log(style.header(`=== check: ${header} ===`));
   // When STANDOUT live-only values have no baseline yet, say so up front: with nothing
   // to compare against, cdkrd genuinely CANNOT tell whether they are intentional or an
   // out-of-band change — that ambiguity (not "all clear") is why they are POTENTIAL
