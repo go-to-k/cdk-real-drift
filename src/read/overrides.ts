@@ -28,10 +28,20 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   DescribeAddressesCommand,
+  DescribeClientVpnAuthorizationRulesCommand,
+  DescribeClientVpnEndpointsCommand,
+  DescribeClientVpnTargetNetworksCommand,
   DescribeLaunchTemplateVersionsCommand,
   DescribeNetworkAclsCommand,
   EC2Client,
 } from '@aws-sdk/client-ec2';
+import {
+  DAXClient,
+  DescribeClustersCommand,
+  DescribeParameterGroupsCommand,
+  DescribeParametersCommand as DescribeDaxParametersCommand,
+  DescribeSubnetGroupsCommand,
+} from '@aws-sdk/client-dax';
 import {
   GetClassifierCommand,
   GetConnectionCommand,
@@ -842,6 +852,235 @@ const readEc2LaunchTemplate: OverrideReader = async ({ physicalId, region }) => 
   if (str(v.LaunchTemplateName)) model.LaunchTemplateName = v.LaunchTemplateName;
   if (v.LaunchTemplateData !== undefined)
     model.LaunchTemplateData = v.LaunchTemplateData as Record<string, unknown>;
+  return model;
+};
+
+// AWS::EC2::ClientVpnEndpoint — NON_PROVISIONABLE (no Cloud Control read handler; issue #534).
+// The CFn physical id (Ref) IS the ClientVpnEndpointId, which
+// ec2:DescribeClientVpnEndpoints accepts directly. Project the CFn-declarable props; drop the
+// computed/managed fields (Status/CreationTime/DeletionTime/DnsName/VpnProtocol/
+// AssociatedTargetNetworks/ClientConnectOptions/ClientLoginBannerOptions/
+// ClientRouteEnforcementOptions/EndpointIpAddressType/Tags). Read-ONLY. A deleted endpoint
+// yields an empty result -> ResourceGoneError so the router maps it to `deleted`.
+const readEc2ClientVpnEndpoint: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new EC2Client({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeClientVpnEndpointsCommand({ ClientVpnEndpointIds: [id] }));
+  const e = r.ClientVpnEndpoints?.[0];
+  if (!e) throw new ResourceGoneError(`ClientVpnEndpoint ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(e.Description)) model.Description = e.Description;
+  if (str(e.ClientCidrBlock)) model.ClientCidrBlock = e.ClientCidrBlock;
+  const dnsServers = (e.DnsServers ?? []).filter((v): v is string => str(v) !== undefined);
+  if (dnsServers.length > 0) model.DnsServers = dnsServers;
+  if (typeof e.SplitTunnel === 'boolean') model.SplitTunnel = e.SplitTunnel;
+  if (str(e.TransportProtocol)) model.TransportProtocol = e.TransportProtocol;
+  if (typeof e.VpnPort === 'number') model.VpnPort = e.VpnPort;
+  if (str(e.ServerCertificateArn)) model.ServerCertificateArn = e.ServerCertificateArn;
+  const securityGroupIds = (e.SecurityGroupIds ?? []).filter(
+    (v): v is string => str(v) !== undefined
+  );
+  if (securityGroupIds.length > 0) model.SecurityGroupIds = securityGroupIds;
+  if (str(e.VpcId)) model.VpcId = e.VpcId;
+  if (typeof e.SessionTimeoutHours === 'number') model.SessionTimeoutHours = e.SessionTimeoutHours;
+  if (typeof e.DisconnectOnSessionTimeout === 'boolean')
+    model.DisconnectOnSessionTimeout = e.DisconnectOnSessionTimeout;
+  // SelfServicePortal is NOT projected: the API returns a `SelfServicePortalUrl` for EVERY
+  // endpoint regardless of whether the CFn `SelfServicePortal` is enabled or disabled
+  // (live-verified: an endpoint that declares no SelfServicePortal — i.e. the "disabled"
+  // default — still returns a URL). So URL presence cannot distinguish enabled from disabled,
+  // and deriving "enabled" from it would false-drift against a declared "disabled". There is
+  // no reliable read-back signal, so the field is left unread (a declared value becomes a
+  // readGap — honest — rather than a false positive).
+  // ConnectionLogOptions: API ConnectionLogResponseOptions carries the SAME CFn field names
+  // (Enabled/CloudwatchLogGroup/CloudwatchLogStream). Project the sub-fields that are present.
+  if (e.ConnectionLogOptions) {
+    const clo: Record<string, unknown> = {};
+    if (typeof e.ConnectionLogOptions.Enabled === 'boolean')
+      clo.Enabled = e.ConnectionLogOptions.Enabled;
+    if (str(e.ConnectionLogOptions.CloudwatchLogGroup))
+      clo.CloudwatchLogGroup = e.ConnectionLogOptions.CloudwatchLogGroup;
+    if (str(e.ConnectionLogOptions.CloudwatchLogStream))
+      clo.CloudwatchLogStream = e.ConnectionLogOptions.CloudwatchLogStream;
+    if (Object.keys(clo).length > 0) model.ConnectionLogOptions = clo;
+  }
+  // AuthenticationOptions: API ClientVpnAuthentication[] -> CFn ClientAuthenticationRequest[].
+  // The CFn sub-field names DIFFER from the API: MutualAuthentication.ClientRootCertificateChain
+  // (API) -> ClientRootCertificateChainArn (CFn); FederatedAuthentication.SamlProviderArn (API)
+  // -> SAMLProviderArn (CFn); SelfServiceSamlProviderArn (API) -> SelfServiceSAMLProviderArn
+  // (CFn). These CFn names are validated live. Project each sub-object only when present.
+  if (Array.isArray(e.AuthenticationOptions) && e.AuthenticationOptions.length > 0) {
+    const auth = e.AuthenticationOptions.map((a) => {
+      const item: Record<string, unknown> = {};
+      if (str(a.Type)) item.Type = a.Type;
+      if (a.ActiveDirectory && str(a.ActiveDirectory.DirectoryId))
+        item.ActiveDirectory = { DirectoryId: a.ActiveDirectory.DirectoryId };
+      if (a.MutualAuthentication && str(a.MutualAuthentication.ClientRootCertificateChain))
+        item.MutualAuthentication = {
+          ClientRootCertificateChainArn: a.MutualAuthentication.ClientRootCertificateChain,
+        };
+      if (a.FederatedAuthentication) {
+        const fed: Record<string, unknown> = {};
+        if (str(a.FederatedAuthentication.SamlProviderArn))
+          fed.SAMLProviderArn = a.FederatedAuthentication.SamlProviderArn;
+        if (str(a.FederatedAuthentication.SelfServiceSamlProviderArn))
+          fed.SelfServiceSAMLProviderArn = a.FederatedAuthentication.SelfServiceSamlProviderArn;
+        if (Object.keys(fed).length > 0) item.FederatedAuthentication = fed;
+      }
+      return item;
+    });
+    model.AuthenticationOptions = auth;
+  }
+  return model;
+};
+
+// AWS::EC2::ClientVpnAuthorizationRule — NON_PROVISIONABLE (issue #534). The CFn Ref is an
+// opaque generated id, so the reader resolves the PARENT ClientVpnEndpointId from the declared
+// props and MATCHES the specific rule by its declared identity (TargetNetworkCidr === live
+// DestinationCidr, and — when declared — AccessGroupId === live GroupId). Read-ONLY. No matching
+// rule -> ResourceGoneError (deleted out of band); unresolved parent -> undefined (skipped).
+const readEc2ClientVpnAuthorizationRule: OverrideReader = async ({ declared, region }) => {
+  const endpointId = str(declared.ClientVpnEndpointId);
+  if (!endpointId) return undefined;
+  const cidr = str(declared.TargetNetworkCidr);
+  const groupId = str(declared.AccessGroupId);
+  const c = new EC2Client({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeClientVpnAuthorizationRulesCommand({ ClientVpnEndpointId: endpointId })
+  );
+  const rule = (r.AuthorizationRules ?? []).find(
+    (a) =>
+      (cidr === undefined || a.DestinationCidr === cidr) &&
+      (groupId === undefined || a.GroupId === groupId)
+  );
+  if (!rule)
+    throw new ResourceGoneError(
+      `ClientVpnAuthorizationRule cidr=${cidr} group=${groupId} absent from endpoint ${endpointId}`
+    );
+  const model: Record<string, unknown> = {};
+  // Echo the parent endpoint id (the declared, resolved value) so a declared
+  // ClientVpnEndpointId compares rather than read-gapping (the describe call is scoped
+  // to it, so it is authoritative).
+  model.ClientVpnEndpointId = endpointId;
+  if (str(rule.DestinationCidr)) model.TargetNetworkCidr = rule.DestinationCidr;
+  if (str(rule.GroupId)) model.AccessGroupId = rule.GroupId;
+  if (str(rule.Description)) model.Description = rule.Description;
+  if (typeof rule.AccessAll === 'boolean') model.AuthorizeAllGroups = rule.AccessAll;
+  return model;
+};
+
+// AWS::EC2::ClientVpnTargetNetworkAssociation — NON_PROVISIONABLE (issue #534). The CFn physical
+// id (Ref) IS the AssociationId; ec2:DescribeClientVpnTargetNetworks requires the parent
+// ClientVpnEndpointId (resolved from declared) plus the AssociationId. Read-ONLY. Empty result ->
+// ResourceGoneError (deleted out of band); unresolved parent -> undefined (skipped).
+const readEc2ClientVpnTargetNetworkAssociation: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+}) => {
+  const id = str(physicalId);
+  const endpointId = str(declared.ClientVpnEndpointId);
+  if (!endpointId || !id) return undefined;
+  const c = new EC2Client({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeClientVpnTargetNetworksCommand({
+      ClientVpnEndpointId: endpointId,
+      AssociationIds: [id],
+    })
+  );
+  const n = r.ClientVpnTargetNetworks?.[0];
+  if (!n) throw new ResourceGoneError(`ClientVpnTargetNetworkAssociation ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(n.ClientVpnEndpointId)) model.ClientVpnEndpointId = n.ClientVpnEndpointId;
+  if (str(n.TargetNetworkId)) model.SubnetId = n.TargetNetworkId;
+  return model;
+};
+
+// AWS::DAX::Cluster — NON_PROVISIONABLE (no Cloud Control read handler; issue #534). The CFn
+// physical id (Ref) IS the ClusterName, which dax:DescribeClusters accepts via ClusterNames.
+// Project the CFn-declarable props; drop the computed/managed fields (ClusterArn/TotalNodes/
+// ActiveNodes/Status/ClusterDiscoveryEndpoint/NodeIdsToRemove/Nodes/NetworkType). Note the CFn
+// casing IAMRoleARN (from API IamRoleArn) and the nested field extractions (SubnetGroupName from
+// SubnetGroup, SecurityGroupIds from SecurityGroups[].SecurityGroupIdentifier, ParameterGroupName
+// from ParameterGroup.ParameterGroupName, NotificationTopicARN from
+// NotificationConfiguration.TopicArn, SSESpecification from SSEDescription.Status). Read-ONLY.
+// Empty result -> ResourceGoneError so the router maps it to `deleted`.
+const readDaxCluster: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new DAXClient({ region, ...READ_RETRY });
+  const cl = (await c.send(new DescribeClustersCommand({ ClusterNames: [name] }))).Clusters?.[0];
+  if (!cl) throw new ResourceGoneError(`DAX Cluster ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(cl.ClusterName)) model.ClusterName = cl.ClusterName;
+  if (str(cl.Description)) model.Description = cl.Description;
+  if (str(cl.NodeType)) model.NodeType = cl.NodeType;
+  if (str(cl.IamRoleArn)) model.IAMRoleARN = cl.IamRoleArn;
+  if (str(cl.PreferredMaintenanceWindow))
+    model.PreferredMaintenanceWindow = cl.PreferredMaintenanceWindow;
+  if (str(cl.SubnetGroup)) model.SubnetGroupName = cl.SubnetGroup;
+  if (str(cl.ClusterEndpointEncryptionType))
+    model.ClusterEndpointEncryptionType = cl.ClusterEndpointEncryptionType;
+  const securityGroupIds = (cl.SecurityGroups ?? [])
+    .map((s) => str(s.SecurityGroupIdentifier))
+    .filter((v): v is string => v !== undefined);
+  if (securityGroupIds.length > 0) model.SecurityGroupIds = securityGroupIds;
+  if (cl.ParameterGroup && str(cl.ParameterGroup.ParameterGroupName))
+    model.ParameterGroupName = cl.ParameterGroup.ParameterGroupName;
+  if (cl.NotificationConfiguration && str(cl.NotificationConfiguration.TopicArn))
+    model.NotificationTopicARN = cl.NotificationConfiguration.TopicArn;
+  if (cl.SSEDescription?.Status === 'ENABLED') model.SSESpecification = { SSEEnabled: true };
+  return model;
+};
+
+// AWS::DAX::ParameterGroup — NON_PROVISIONABLE (issue #534). The CFn physical id (Ref) IS the
+// ParameterGroupName. DescribeParameterGroups yields the name + description;
+// DescribeParameters yields the parameter values, projected as the CFn free-form map
+// ParameterNameValues { name -> value }. Only user-settable parameters (IsModifiable !== 'FALSE')
+// are projected — DAX returns many system-fixed defaults that the user never declared. Read-ONLY.
+// Empty result -> ResourceGoneError so the router maps it to `deleted`.
+const readDaxParameterGroup: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new DAXClient({ region, ...READ_RETRY });
+  const g = (await c.send(new DescribeParameterGroupsCommand({ ParameterGroupNames: [name] })))
+    .ParameterGroups?.[0];
+  if (!g) throw new ResourceGoneError(`DAX ParameterGroup ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(g.ParameterGroupName)) model.ParameterGroupName = g.ParameterGroupName;
+  if (str(g.Description)) model.Description = g.Description;
+  const p = await c.send(new DescribeDaxParametersCommand({ ParameterGroupName: name }));
+  const values: Record<string, string> = {};
+  for (const param of p.Parameters ?? []) {
+    // Skip system-fixed parameters (IsModifiable === 'FALSE') — they are not user-declarable.
+    if (param.IsModifiable === 'FALSE') continue;
+    const pName = str(param.ParameterName);
+    const pValue = param.ParameterValue;
+    if (pName !== undefined && typeof pValue === 'string') values[pName] = pValue;
+  }
+  if (Object.keys(values).length > 0) model.ParameterNameValues = values;
+  return model;
+};
+
+// AWS::DAX::SubnetGroup — NON_PROVISIONABLE (issue #534). The CFn physical id (Ref) IS the
+// SubnetGroupName. Project SubnetGroupName/Description and flatten Subnets[].SubnetIdentifier to
+// the CFn SubnetIds list. Drop the computed/managed fields (VpcId/SupportedNetworkTypes).
+// Read-ONLY. Empty result -> ResourceGoneError so the router maps it to `deleted`.
+const readDaxSubnetGroup: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new DAXClient({ region, ...READ_RETRY });
+  const g = (await c.send(new DescribeSubnetGroupsCommand({ SubnetGroupNames: [name] })))
+    .SubnetGroups?.[0];
+  if (!g) throw new ResourceGoneError(`DAX SubnetGroup ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(g.SubnetGroupName)) model.SubnetGroupName = g.SubnetGroupName;
+  if (str(g.Description)) model.Description = g.Description;
+  const subnetIds = (g.Subnets ?? [])
+    .map((s) => str(s.SubnetIdentifier))
+    .filter((v): v is string => v !== undefined);
+  if (subnetIds.length > 0) model.SubnetIds = subnetIds;
   return model;
 };
 
@@ -1728,6 +1967,12 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::EIP': readEc2Eip,
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
+  'AWS::EC2::ClientVpnEndpoint': readEc2ClientVpnEndpoint,
+  'AWS::EC2::ClientVpnAuthorizationRule': readEc2ClientVpnAuthorizationRule,
+  'AWS::EC2::ClientVpnTargetNetworkAssociation': readEc2ClientVpnTargetNetworkAssociation,
+  'AWS::DAX::Cluster': readDaxCluster,
+  'AWS::DAX::ParameterGroup': readDaxParameterGroup,
+  'AWS::DAX::SubnetGroup': readDaxSubnetGroup,
   'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
   'AWS::CodeBuild::ReportGroup': readCodeBuildReportGroup,
   'AWS::DLM::LifecyclePolicy': readDlmLifecyclePolicy,

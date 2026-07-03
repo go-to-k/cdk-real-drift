@@ -62,6 +62,9 @@ importers:
       '@aws-sdk/client-database-migration-service':
         specifier: ^3.1079.0
         version: 3.1079.0
+      '@aws-sdk/client-dax':
+        specifier: ^3.1079.0
+        version: 3.1079.0
       '@aws-sdk/client-dlm':
         specifier: ^3.1078.0
         version: 3.1078.0
@@ -363,6 +366,10 @@ packages:
 
   '@aws-sdk/client-database-migration-service@3.1079.0':
     resolution: {integrity: sha512-ty9OA2Ypn4uFJ4KwbkEgoP6+rdMsJsAIbF9+7SI8ZY78okiKStfk1p22khUP1PEvuvxjh3mLS2fV1DwmD2r2Qg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-dax@3.1079.0':
+    resolution: {integrity: sha512-8cdaRlfUDnlLA+6rSCZO61xEaiDlHunxvZxgbD8rCSBUz7+l75duaNGDDWFRTVYCGCZv0ooa5BHx5QlLt7FWqA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-dlm@3.1078.0':
@@ -3958,6 +3965,17 @@ snapshots:
       tslib: 2.8.1
 
   '@aws-sdk/client-database-migration-service@3.1079.0':
+    dependencies:
+      '@aws-sdk/core': 3.974.27
+      '@aws-sdk/credential-provider-node': 3.972.62
+      '@aws-sdk/types': 3.973.15
+      '@smithy/core': 3.29.0
+      '@smithy/fetch-http-handler': 5.6.2
+      '@smithy/node-http-handler': 4.9.2
+      '@smithy/types': 4.15.0
+      tslib: 2.8.1
+
+  '@aws-sdk/client-dax@3.1079.0':
     dependencies:
       '@aws-sdk/core': 3.974.27
       '@aws-sdk/credential-provider-node': 3.972.62
