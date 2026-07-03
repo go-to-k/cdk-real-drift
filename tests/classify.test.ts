@@ -964,6 +964,38 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'custom' }).undeclared).toEqual([]);
   });
 
+  it('dev-main-Db2Csv first-run folds: Glue::Job derived capacity / SG rule peer-name echo', () => {
+    // Undeclared values a fresh dev-main-Db2Csv stack reported with NO out-of-band edit.
+    const t = (rt: string, live: Record<string, unknown>) =>
+      tiers(classifyResource(bare(rt), live, emptySchema));
+
+    // A glueetl job sized with WorkerType/NumberOfWorkers declares neither capacity field;
+    // AWS derives both and reads them back (G.1X × 10 → 10, G.025X × 2 → 0.5). Value-
+    // independent, so every DPU value folds; a job that DECLARES MaxCapacity still surfaces.
+    expect(t('AWS::Glue::Job', { MaxCapacity: 10, AllocatedCapacity: 10 }).atDefault).toEqual([
+      'AllocatedCapacity',
+      'MaxCapacity',
+    ]);
+    expect(t('AWS::Glue::Job', { MaxCapacity: 0.5, AllocatedCapacity: 0 }).atDefault).toEqual([
+      'AllocatedCapacity',
+      'MaxCapacity',
+    ]);
+    expect(t('AWS::Glue::Job', { MaxCapacity: 10 }).undeclared).toEqual([]);
+
+    // A rule referencing its peer by id (SourceSecurityGroupId) reads back the peer group's
+    // NAME — an AWS reflection of the declared id, never user intent when undeclared.
+    expect(
+      t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'dev-main-Db2Csv-Glue-sg' })
+        .atDefault
+    ).toEqual(['SourceSecurityGroupName']);
+    expect(
+      t('AWS::EC2::SecurityGroupEgress', { SourceSecurityGroupName: 'some-other-sg' }).atDefault
+    ).toEqual(['SourceSecurityGroupName']);
+    expect(
+      t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'x' }).undeclared
+    ).toEqual([]);
+  });
+
   it('hunt-lowcov first-run folds: S3Express DirectoryBucket / S3Tables TableBucket / Logs Delivery family', () => {
     // Constant service defaults observed live on fresh s3express-s3tables-rich and
     // cloudfront-kvs-logs-delivery deploys with NO out-of-band edit — first-run noise

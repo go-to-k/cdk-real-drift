@@ -79,7 +79,7 @@
       "constructPath": "CdkRealDriftIntegSgProto/Sg/from CdkRealDriftIntegSgProtoSg90F3118B:9000"
     },
     {
-      "tier": "generated",
+      "tier": "atDefault",
       "logicalId": "SgfromCdkRealDriftIntegSgProtoSg90F3118B9000D4C163DB",
       "resourceType": "AWS::EC2::SecurityGroupIngress",
       "path": "SourceSecurityGroupName",
