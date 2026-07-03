@@ -1,0 +1,252 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::EKS::Cluster",
+    "physicalId": "cdkrd-eks",
+    "constructPath": "CdkRealDriftIntegEksRich/Cluster",
+    "declared": {
+      "AccessConfig": {
+        "AuthenticationMode": "API_AND_CONFIG_MAP"
+      },
+      "Logging": {
+        "ClusterLogging": {
+          "EnabledTypes": [
+            {
+              "Type": "api"
+            },
+            {
+              "Type": "audit"
+            }
+          ]
+        }
+      },
+      "Name": "cdkrd-eks",
+      "ResourcesVpcConfig": {
+        "SubnetIds": [
+          "subnet-009fa2e0b8cca055d",
+          "subnet-0e9e19d9507df130e",
+          "subnet-0df8652e0fa4970aa",
+          "subnet-09ce4dfdf112af53c"
+        ]
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-ClusterRoleD9CA7471-eGoUJWSUITF9"
+    }
+  },
+  "liveRaw": {
+    "Logging": {
+      "ClusterLogging": {
+        "EnabledTypes": [
+          {
+            "Type": "api"
+          },
+          {
+            "Type": "audit"
+          }
+        ]
+      }
+    },
+    "DeletionProtection": false,
+    "AccessConfig": {
+      "AuthenticationMode": "API_AND_CONFIG_MAP"
+    },
+    "CertificateAuthorityData": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJWFk5dzJZV0xuQzh3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBM01ETXhNVEUwTURCYUZ3MHpOakEyTXpBeE1URTVNREJhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURyZVZKeWltMlQ2SDRZbVFXV213QUFPWXBxaHZ3TFBLTlFUUkpGRjNZaUNTWWJtOEFGWHNMTTZRQUgKNCtJV2JYUGpTVDBrbGo2UlFNV3Y1QU9lbTBTWG9JSGViNjU4RXhGQkNKNUpLU0tzTnNlL053aVR1OHZTOFFpVwpjUk5Eellld0Z6V0JWbjRvSGZRZng5MHhpRlB0b200alRkQ1o1SWEvNEZSUDc1Mm1pZlFQdVRFSFR4ejRIZWVyClpibnZ4aVVGSFBNQTBFa1Y5aUVMSTFJdllQbk00Mnc4Q1UzamJ1cTFIWXdGWTZrZGpSVHBwUU5mMVIzVGd0M04KbmkrUkVzdXp5UTJVQXJDbUlnc0FiMW00ckpFR1dmcEZWcVRabkpYdkNFeXlSZmdOV1FvaUp5VndaRlcyQjZ3bQo3RUozTE92a0hvWklvbFB3UW9rY055Zjcrd0oxQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUdy8reEptV3JkSUhoc2NQYktqR2lNYjBYRWZ6QVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRRFBFZGpkSUdkcQpDbmZEeXhkRDYxbSsxaXBYL1NiUDc4clZrUVVWRDVnMUFOV0Irck5LQ0M1MXBqWFJURy9mTXN4VWpkelJXN1dCClhvUkEyMm0venZJWmQ4Tll2VkMrK1FFNUtkcE14eUZISk95MmRqbjVycE0wTXNtWm1oTVd3NTBldkEzemZSbFEKWVErRGtZUDVvTklwcTJxNitWN0drcE1OWWJXanlQTkU0bXZMb2dHNG0zVkFJcXlaS2R0MDRJTHBDdGFEaDVTTQo1ZWFqd1F4UG9IczdlRERNQkFsQUp3QlRrS1g1ak15UjFkNTZtclZtM1l1RUhBZU1iektHTTZ0dUJ0Mzh5dDJVCk9MNC9GOW1wRUszaEt0aktMYnNYRDJ1MVJvbC9RZUszY3ZOYkdrUlNWMFdWbWc5Q25UR1pQeUlSWUZBdm9VK1YKMlRWUG5PUWdBbWk1Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+    "EncryptionConfig": [],
+    "KubernetesNetworkConfig": {
+      "ServiceIpv4Cidr": "172.20.0.0/16",
+      "IpFamily": "ipv4",
+      "ElasticLoadBalancing": {
+        "Enabled": false
+      }
+    },
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-ClusterRoleD9CA7471-eGoUJWSUITF9",
+    "Name": "cdkrd-eks",
+    "UpgradePolicy": {
+      "SupportType": "EXTENDED"
+    },
+    "Endpoint": "https://600D650FD28CFB3F9E60D272E34D3415.gr7.us-east-1.eks.amazonaws.com",
+    "Version": "1.36",
+    "ControlPlaneScalingConfig": {
+      "Tier": "standard"
+    },
+    "ClusterSecurityGroupId": "sg-09ac0591a9d27e1c6",
+    "Arn": "arn:aws:eks:us-east-1:111111111111:cluster/cdkrd-eks",
+    "ResourcesVpcConfig": {
+      "EndpointPublicAccess": true,
+      "ControlPlaneEgressMode": "AWS_MANAGED",
+      "PublicAccessCidrs": ["0.0.0.0/0"],
+      "EndpointPrivateAccess": false,
+      "SecurityGroupIds": [],
+      "SubnetIds": [
+        "subnet-009fa2e0b8cca055d",
+        "subnet-0e9e19d9507df130e",
+        "subnet-0df8652e0fa4970aa",
+        "subnet-09ce4dfdf112af53c"
+      ]
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegEksRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Cluster",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEksRich/21580dd0-76d0-11f1-b35a-0affd8210315",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "OpenIdConnectIssuerUrl": "https://oidc.eks.us-east-1.amazonaws.com/id/600D650FD28CFB3F9E60D272E34D3415"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CertificateAuthorityData",
+      "ClusterSecurityGroupId",
+      "EncryptionConfigKeyArn",
+      "Endpoint",
+      "Id",
+      "OpenIdConnectIssuerUrl"
+    ],
+    "writeOnly": ["BootstrapSelfManagedAddons", "Force", "RollbackConfig"],
+    "createOnly": [
+      "BootstrapSelfManagedAddons",
+      "EncryptionConfig",
+      "Name",
+      "OutpostConfig",
+      "RoleArn"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "CertificateAuthorityData",
+      "ClusterSecurityGroupId",
+      "EncryptionConfigKeyArn",
+      "Endpoint",
+      "Id",
+      "KubernetesNetworkConfig.ServiceIpv6Cidr",
+      "OpenIdConnectIssuerUrl"
+    ],
+    "writeOnlyPaths": [
+      "AccessConfig.BootstrapClusterCreatorAdminPermissions",
+      "BootstrapSelfManagedAddons",
+      "Force",
+      "RollbackConfig"
+    ],
+    "createOnlyPaths": [
+      "AccessConfig.BootstrapClusterCreatorAdminPermissions",
+      "BootstrapSelfManagedAddons",
+      "EncryptionConfig",
+      "KubernetesNetworkConfig.IpFamily",
+      "KubernetesNetworkConfig.ServiceIpv4Cidr",
+      "Name",
+      "OutpostConfig",
+      "RoleArn"
+    ],
+    "defaults": {
+      "Force": false
+    },
+    "defaultPaths": {
+      "Force": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeConfig.NodePools",
+      "OutpostConfig.OutpostArns",
+      "ResourcesVpcConfig.PublicAccessCidrs",
+      "ResourcesVpcConfig.SecurityGroupIds",
+      "ResourcesVpcConfig.SubnetIds"
+    ],
+    "unorderedObjectArrayPaths": [
+      "EncryptionConfig",
+      "Logging.ClusterLogging.EnabledTypes",
+      "RemoteNetworkConfig.RemoteNodeNetworks",
+      "RemoteNetworkConfig.RemotePodNetworks"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "KubernetesNetworkConfig",
+      "actual": {
+        "ServiceIpv4Cidr": "172.20.0.0/16",
+        "IpFamily": "ipv4",
+        "ElasticLoadBalancing": {
+          "Enabled": false
+        }
+      },
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "UpgradePolicy",
+      "actual": {
+        "SupportType": "EXTENDED"
+      },
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "Version",
+      "actual": "1.36",
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ControlPlaneScalingConfig",
+      "actual": {
+        "Tier": "standard"
+      },
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ResourcesVpcConfig.EndpointPublicAccess",
+      "actual": true,
+      "nested": true,
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ResourcesVpcConfig.ControlPlaneEgressMode",
+      "actual": "AWS_MANAGED",
+      "nested": true,
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::EKS::Cluster",
+      "path": "ResourcesVpcConfig.PublicAccessCidrs",
+      "actual": ["0.0.0.0/0"],
+      "nested": true,
+      "physicalId": "cdkrd-eks",
+      "constructPath": "CdkRealDriftIntegEksRich/Cluster"
+    }
+  ]
+}

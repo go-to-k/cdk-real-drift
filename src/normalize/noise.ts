@@ -172,7 +172,33 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // GENERATED_TOPLEVEL_PATHS instead.
   'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
   'AWS::Events::Rule': { EventBusName: 'default' },
-  'AWS::Athena::WorkGroup': { State: 'ENABLED' },
+  'AWS::Athena::WorkGroup': {
+    State: 'ENABLED',
+    // A workgroup that declares ONLY Name/Description reads back AWS's whole default
+    // WorkGroupConfiguration (the existing WorkGroupConfiguration.* nested paths only fire
+    // when the object is PARTIALLY declared and thus descended; a fully-undeclared object is
+    // reported whole, so it needs this top-level fold). EngineVersion's read-only
+    // EffectiveEngineVersion is schema-stripped, leaving SelectedEngineVersion:AUTO. Observed
+    // live (hunt 2026-07-03 round E). Equality-gated: any enforced non-default surfaces.
+    WorkGroupConfiguration: {
+      EnforceWorkGroupConfiguration: true,
+      EngineVersion: { SelectedEngineVersion: 'AUTO' },
+      PublishCloudWatchMetricsEnabled: true,
+      RequesterPaysEnabled: false,
+    },
+  },
+  // A fresh EKS cluster reads back several whole-object service defaults the template never
+  // declares. Constants (equality-gated) — an out-of-band change to any surfaces. The
+  // per-deploy-variable bits (KubernetesNetworkConfig.ServiceIpv4Cidr is 10.100 OR 172.20,
+  // Version tracks the service default) are deliberately NOT folded — they stay record-worthy.
+  // Observed live (hunt 2026-07-03 round E).
+  'AWS::EKS::Cluster': {
+    ControlPlaneScalingConfig: { Tier: 'standard' },
+    UpgradePolicy: { SupportType: 'EXTENDED' },
+  },
+  // A vpc-cni (and other) addon reads back the kube-system namespace it installs into when
+  // the template declares no NamespaceConfig. AddonVersion is per-cluster-version → record-worthy.
+  'AWS::EKS::Addon': { NamespaceConfig: { Namespace: 'kube-system' } },
   // A WebACL that declares no on-source DDoS protection reads back AWS's default
   // OnSourceDDoSProtectionConfig — ALBLowReputationMode=ACTIVE_UNDER_DDOS (the first
   // enum value / documented default), so the live read reports it as undeclared
@@ -1181,6 +1207,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'WorkGroupConfiguration.EnforceWorkGroupConfiguration': true,
     'WorkGroupConfiguration.EngineVersion': { SelectedEngineVersion: 'AUTO' },
   },
+  'AWS::EKS::Cluster': {
+    // A cluster that declares SubnetIds (partially declaring ResourcesVpcConfig, so it is
+    // descended) reads back AWS's endpoint defaults on the sibling sub-keys. Constants,
+    // equality-gated. Observed live (hunt 2026-07-03 round E).
+    'ResourcesVpcConfig.EndpointPublicAccess': true,
+    'ResourcesVpcConfig.PublicAccessCidrs': ['0.0.0.0/0'],
+    'ResourcesVpcConfig.ControlPlaneEgressMode': 'AWS_MANAGED',
+  },
   'AWS::ApplicationSignals::ServiceLevelObjective': {
     // An SLO goal that declares no warning threshold reads back the 50(%) default.
     // Observed live. Equality-gated, so a custom threshold still surfaces.
@@ -1645,6 +1679,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'PreferredMaintenanceWindow',
     'PreferredBackupWindow',
   ]),
+  //   AWS::EKS::AccessEntry.Username — an access entry that declares no explicit Username reads
+  //   back the value EKS DERIVES from the declared PrincipalArn
+  //   ("arn:aws:sts::<acct>:assumed-role/<role>/{{SessionName}}" for an IAM role). It can never
+  //   be a constant we pin (it embeds the per-resource role name), and it is never user intent
+  //   when undeclared — a user who sets a custom Username declares it (compared in the declared
+  //   loop). Fold value-independent. Observed live first-run (hunt 2026-07-03 round E).
+  'AWS::EKS::AccessEntry': new Set(['Username']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

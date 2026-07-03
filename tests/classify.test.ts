@@ -8220,3 +8220,171 @@ describe('MSK Configuration ServerProperties properties-file compare (#508)', ()
     expect(findings[0]?.path).toBe('ServerProperties');
   });
 });
+
+describe('#531 EKS + Athena first-run default folds', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('EKS Cluster: constant service defaults fold; ServiceIpv4Cidr + Version stay record-worthy', () => {
+    const res: DesiredResource = {
+      logicalId: 'Cluster',
+      resourceType: 'AWS::EKS::Cluster',
+      physicalId: 'cdkrd-eks',
+      declared: {
+        Name: 'cdkrd-eks',
+        RoleArn: 'arn:aws:iam::111111111111:role/ClusterRole',
+        ResourcesVpcConfig: { SubnetIds: ['subnet-a', 'subnet-b'] },
+      },
+    };
+    const live = {
+      Name: 'cdkrd-eks',
+      RoleArn: 'arn:aws:iam::111111111111:role/ClusterRole',
+      ResourcesVpcConfig: {
+        SubnetIds: ['subnet-a', 'subnet-b'],
+        EndpointPublicAccess: true,
+        PublicAccessCidrs: ['0.0.0.0/0'],
+        ControlPlaneEgressMode: 'AWS_MANAGED',
+        EndpointPrivateAccess: false,
+        SecurityGroupIds: [],
+      },
+      ControlPlaneScalingConfig: { Tier: 'standard' },
+      UpgradePolicy: { SupportType: 'EXTENDED' },
+      KubernetesNetworkConfig: {
+        ServiceIpv4Cidr: '172.20.0.0/16',
+        IpFamily: 'ipv4',
+        ElasticLoadBalancing: { Enabled: false },
+      },
+      Version: '1.36',
+    };
+    const t = tiers(classifyResource(res, live, emptySchema));
+    expect(t.atDefault).toEqual([
+      'ControlPlaneScalingConfig',
+      'ResourcesVpcConfig.ControlPlaneEgressMode',
+      'ResourcesVpcConfig.EndpointPublicAccess',
+      'ResourcesVpcConfig.PublicAccessCidrs',
+      'UpgradePolicy',
+    ]);
+    // The per-deploy-variable bits are deliberately still surfaced (record-worthy).
+    expect(t.undeclared).toEqual(['KubernetesNetworkConfig', 'Version']);
+  });
+
+  it('EKS Cluster: an out-of-band-narrowed PublicAccessCidrs still surfaces (equality-gated)', () => {
+    const res: DesiredResource = {
+      logicalId: 'Cluster',
+      resourceType: 'AWS::EKS::Cluster',
+      physicalId: 'cdkrd-eks',
+      declared: { ResourcesVpcConfig: { SubnetIds: ['subnet-a'] } },
+    };
+    const t = tiers(
+      classifyResource(
+        res,
+        { ResourcesVpcConfig: { SubnetIds: ['subnet-a'], PublicAccessCidrs: ['10.0.0.0/8'] } },
+        emptySchema
+      )
+    );
+    expect(t.undeclared).toEqual(['ResourcesVpcConfig.PublicAccessCidrs']);
+    expect(t.atDefault).toEqual([]);
+  });
+
+  it('EKS Addon: kube-system NamespaceConfig folds; AddonVersion stays record-worthy', () => {
+    const res: DesiredResource = {
+      logicalId: 'Addon',
+      resourceType: 'AWS::EKS::Addon',
+      physicalId: 'cdkrd-eks/vpc-cni',
+      declared: { AddonName: 'vpc-cni', ClusterName: 'cdkrd-eks' },
+    };
+    const t = tiers(
+      classifyResource(
+        res,
+        {
+          AddonName: 'vpc-cni',
+          ClusterName: 'cdkrd-eks',
+          NamespaceConfig: { Namespace: 'kube-system' },
+          AddonVersion: 'v1.21.2-eksbuild.2',
+        },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['NamespaceConfig']);
+    expect(t.undeclared).toEqual(['AddonVersion']);
+  });
+
+  it('EKS AccessEntry: derived Username folds value-independent; a declared Username is compared', () => {
+    const res: DesiredResource = {
+      logicalId: 'Entry',
+      resourceType: 'AWS::EKS::AccessEntry',
+      physicalId: 'entry-phys',
+      declared: {
+        ClusterName: 'cdkrd-eks',
+        PrincipalArn: 'arn:aws:iam::111111111111:role/EntryRole',
+      },
+    };
+    // Undeclared: whatever derived Username AWS returns folds (value-independent).
+    const t = tiers(
+      classifyResource(
+        res,
+        {
+          ClusterName: 'cdkrd-eks',
+          PrincipalArn: 'arn:aws:iam::111111111111:role/EntryRole',
+          Username: 'arn:aws:sts::111111111111:assumed-role/EntryRole/{{SessionName}}',
+        },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['Username']);
+    expect(t.undeclared).toEqual([]);
+    // Declared: a user-set Username that drifts surfaces in the declared loop.
+    const withDeclared: DesiredResource = {
+      ...res,
+      declared: { ...res.declared, Username: 'my-user' },
+    };
+    const t2 = tiers(
+      classifyResource(
+        withDeclared,
+        {
+          ClusterName: 'cdkrd-eks',
+          PrincipalArn: 'arn:aws:iam::111111111111:role/EntryRole',
+          Username: 'changed-out-of-band',
+        },
+        emptySchema
+      )
+    );
+    expect(t2.declared).toEqual(['Username']);
+  });
+
+  it('Athena WorkGroup: a Name/Description-only workgroup folds its whole default WorkGroupConfiguration', () => {
+    const res: DesiredResource = {
+      logicalId: 'Wg',
+      resourceType: 'AWS::Athena::WorkGroup',
+      physicalId: 'cdkrd-wg',
+      declared: { Name: 'cdkrd-wg', Description: 'probe' },
+    };
+    const t = tiers(
+      classifyResource(
+        res,
+        {
+          Name: 'cdkrd-wg',
+          Description: 'probe',
+          State: 'ENABLED',
+          WorkGroupConfiguration: {
+            EnforceWorkGroupConfiguration: true,
+            EngineVersion: { SelectedEngineVersion: 'AUTO' },
+            PublishCloudWatchMetricsEnabled: true,
+            RequesterPaysEnabled: false,
+          },
+        },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['State', 'WorkGroupConfiguration']);
+    expect(t.undeclared).toEqual([]);
+  });
+});

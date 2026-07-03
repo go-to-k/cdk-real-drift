@@ -74,7 +74,7 @@
       "constructPath": "CdkrdIntegHarvest/Queries"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Queries",
       "resourceType": "AWS::Athena::WorkGroup",
       "path": "WorkGroupConfiguration",
