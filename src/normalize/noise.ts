@@ -911,6 +911,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // opts into JSON logging (or a different level) still surfaces the non-default value.
     'LoggingConfig.LogFormat': 'Text',
     'LoggingConfig.SystemLogLevel': 'INFO',
+    // A function that opts into JSON logs (`LogFormat: 'JSON'`, declared) but does not pin an
+    // application log level reads back the AWS default INFO for the undeclared
+    // `ApplicationLogLevel` sub-key — observed live on fresh (non-imported) stacks whose
+    // functions set only LogFormat. Equality-gated, so a function that pins a different level
+    // (DEBUG/ERROR/…) still surfaces the non-default value.
+    'LoggingConfig.ApplicationLogLevel': 'INFO',
   },
   // EMR Serverless fills MaximumCapacity.Disk with the service-wide maximum
   // ("400000 GB") when the template declares only Cpu/Memory. A constant, not
@@ -1894,6 +1900,16 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // the two valid values differ beyond case, so case-insensitive equality hides
   // no real drift. Observed live on a fresh misc-0cov-rich deploy.
   'AWS::EMRServerless::Application': new Set(['Type']),
+  // RDS lowercases DB instance / cluster identifiers on creation, so a template
+  // that declares a mixed-case `DBInstanceIdentifier` (e.g. CDK derives it from the
+  // construct id `dev-main-DbUsers-DB-writer`) reads back all-lowercase
+  // (`dev-main-dbusers-db-writer`) and a case-sensitive compare false-flags declared
+  // drift on every check. The lowercasing is unconditional and unenforceable — you
+  // can never actually have an uppercase identifier live — so case-insensitive
+  // equality hides no revertable drift; a genuine rename still differs beyond case.
+  // Observed live on fresh (non-imported) Aurora stacks in ap-northeast-1.
+  'AWS::RDS::DBInstance': new Set(['DBInstanceIdentifier']),
+  'AWS::RDS::DBCluster': new Set(['DBClusterIdentifier']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
