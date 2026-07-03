@@ -789,6 +789,20 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       }).undeclared
     ).toEqual(['WarmThroughput']);
 
+    // The classic AWS::DynamoDB::Table (L1) reads back the SAME baseline warm throughput
+    // when on-demand — observed live on a dev reco-MailQueues stack — so it folds too;
+    // a warmed-up table still surfaces (equality-gated).
+    expect(
+      t('AWS::DynamoDB::Table', {
+        WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
+      }).atDefault
+    ).toEqual(['WarmThroughput']);
+    expect(
+      t('AWS::DynamoDB::Table', {
+        WarmThroughput: { ReadUnitsPerSecond: 24000, WriteUnitsPerSecond: 8000 },
+      }).undeclared
+    ).toEqual(['WarmThroughput']);
+
     // ESM created enabled → folds. (Enabled:false is dropped upstream as trivially-empty,
     // like the KMS Key Enabled case — neither undeclared nor atDefault.)
     expect(t('AWS::Lambda::EventSourceMapping', { Enabled: true }).atDefault).toEqual(['Enabled']);

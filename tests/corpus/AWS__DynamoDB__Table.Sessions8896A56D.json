@@ -88,7 +88,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Sessions8896A56D",
       "resourceType": "AWS::DynamoDB::Table",
       "path": "WarmThroughput",

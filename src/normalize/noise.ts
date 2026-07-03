@@ -352,18 +352,21 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Visibility: 'PRIVATE', // the default; folds to atDefault so a never-declared project is not first-run noise — flipping to PUBLIC_READ no longer matches and surfaces
     Cache: { Type: 'NO_CACHE' }, // BatchGetProjects always returns cache; the unconfigured default folds to atDefault so a never-declared cache is not first-run noise — switching to S3/LOCAL no longer matches and surfaces
   },
+  // A PAY_PER_REQUEST (on-demand) DynamoDB table reads back a baseline WarmThroughput
+  // that AWS assigns to every fresh table (12000 read / 4000 write units) even though the
+  // template never declares it — observed live on a dev LineLink stack (GlobalTable /
+  // TableV2) and a dev reco-MailQueues stack (classic AWS::DynamoDB::Table), neither with
+  // an out-of-band edit. The service default is identical for both CFn types, so both fold.
+  // Equality-gated: a table that has WARMED UP to a higher value under traffic no longer
+  // matches and surfaces as a real undeclared value (the warm throughput auto-ratchets and
+  // never decreases), and an explicitly declared WarmThroughput compares as declared
+  // instead. Top-level WarmThroughput only — the GSI-nested `*.WarmThroughput` stays
+  // surfaced (see KNOWN_DEFAULT_PATHS note below).
   'AWS::DynamoDB::Table': {
     BillingMode: 'PROVISIONED',
     DeletionProtectionEnabled: false,
+    WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
   },
-  // A PAY_PER_REQUEST (on-demand) TableV2 reads back a baseline WarmThroughput that
-  // AWS assigns to every fresh table (12000 read / 4000 write units) even though the
-  // template never declares it — observed live on a dev LineLink stack with no
-  // out-of-band edit. Equality-gated: a table that has WARMED UP to a higher value
-  // under traffic no longer matches and surfaces as a real undeclared value (the warm
-  // throughput auto-ratchets and never decreases), and an explicitly declared
-  // WarmThroughput compares as declared instead. Top-level WarmThroughput only — the
-  // GSI-nested `*.WarmThroughput` stays surfaced (see KNOWN_DEFAULT_PATHS note below).
   'AWS::DynamoDB::GlobalTable': {
     WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
   },
