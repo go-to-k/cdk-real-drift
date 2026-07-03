@@ -1528,12 +1528,40 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // value-independent GENERATED_TOPLEVEL_PATHS entry would additionally fold an undeclared
   // user-set LayerName (e.g. "my-custom-layer") that is NOT the logical id, hiding real
   // undeclared drift — the exact differentiator cdkrd exists to surface.
-  // A UserPoolClient whose ClientName the template omits reads back a CloudFormation-generated
-  // name (`<logicalId>-<random>` — NO stack prefix, so isCfnGeneratedName misses it). It is
-  // the AWS-minted identity, not user intent; a client that DECLARES a ClientName carries it
-  // in the template and never reaches this loop. Observed live.
+  // NOTE: AWS::Cognito::UserPoolClient.ClientName is NOT folded here either. Its generated
+  // form is `<logicalId>-<random>` (no stack prefix), now folded value-DEPENDENTLY via
+  // GENERATED_LOGICALID_PREFIX_PATHS below. A value-independent entry would additionally
+  // fold an undeclared user-set ClientName that is NOT the logical-id form, hiding real
+  // undeclared drift.
+};
+
+// Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value
+// to `generated` ONLY when it is the `<logicalId>-<random>` CFn auto-generated form — the
+// resource's logical id, a `-`, then CFn's 12+ char random suffix — for a type whose
+// no-explicit-name physical name takes that shape WITHOUT a `<stack>-` prefix (so the
+// isCfnGeneratedName stack-prefix branches miss it). UNLIKE the value-independent
+// GENERATED_TOPLEVEL_PATHS, an undeclared user-SET name (no logical-id prefix) does NOT match
+// and still surfaces as real drift. Deliberately NOT applied generically in
+// isCfnGeneratedName: a short raw-CFn logical id (e.g. a WAFv2 RegexPatternSet's `RegexSet`)
+// carries no construct hash, so `<logicalId>-<random>` would coincide with genuine undeclared
+// names and over-fold — this table gates it to the specific types/paths observed to need it.
+//   AWS::Cognito::UserPoolClient.ClientName — reads back `<logicalId>-<random>` when the
+//   template declares no ClientName (observed live).
+export const GENERATED_LOGICALID_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Cognito::UserPoolClient': new Set(['ClientName']),
 };
+
+// True when `value` is the `<logicalId>-<random>` CFn auto-generated-name form: the logical
+// id, a `-`, then CFn's random suffix. Consulted only for GENERATED_LOGICALID_PREFIX_PATHS
+// entries. Pure + exported for unit tests.
+const CFN_LOGICALID_RANDOM = /-[0-9A-Za-z]{12,}$/;
+export function isLogicalIdPrefixedGeneratedName(value: unknown, logicalId: string): boolean {
+  return (
+    typeof value === 'string' &&
+    value.startsWith(`${logicalId}-`) &&
+    CFN_LOGICALID_RANDOM.test(value)
+  );
+}
 
 // Like GENERATED_TOPLEVEL_PATHS but for NESTED, value-INDEPENDENT paths (dotted, `*` for
 // array crossings) — a sub-key AWS/CloudFormation injects that the template never declares
