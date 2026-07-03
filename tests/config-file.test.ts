@@ -236,6 +236,44 @@ describe('applyIgnores', () => {
     expect(ign([f], 'MyStack', cfg([p('ApiRole*.Policies')]))[0]?.tier).toBe('ignored');
   });
 
+  it('matches a Stage-nested constructPath (multi-slash: Stage/Stack/... — CDK Stages)', () => {
+    // In a CDK `Stage`, aws:cdk:path is `<stage>/<stack>/<...>` (slash-separated) while the
+    // CFn stack name is `<stage>-<stack>` (hyphen). So a finding's constructPath carries
+    // EXTRA leading `/`-segments vs a plain stack. `matchesPathGlob` bounds `*` on `.`/`[`
+    // only — NOT `/` — so both a full-path rule and a `*.prop` glob still match across the
+    // stage/stack slashes, and a parent rule still covers the subtree. This locks that in
+    // (existing tests only exercised a single-level `MyStack/ApiRole`).
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'ParameterGroup9AB12C',
+      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      resourceType: 'AWS::RDS::DBClusterParameterGroup',
+      path: 'Parameters.autocommit',
+      physicalId: 'pg-phys',
+      desired: '0',
+      actual: '1',
+    };
+    // the CFn stack name is stage-qualified (dev-main-AuroraDB); rules are matched under it
+    const atStack = (config: CdkrdConfig): Finding[] =>
+      applyIgnores([f], sc('dev-main-AuroraDB', ACCT, 'us-east-1'), config);
+    // (1) the full construct-path rule the `ignore` verb writes — literal exact match
+    expect(
+      atStack(cfg([p('dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit')]))[0]?.tier
+    ).toBe('ignored');
+    // (2) a `*.prop` glob whose leading `*` spans the whole stage/stack construct-path prefix
+    expect(atStack(cfg([p('*.Parameters.autocommit')]))[0]?.tier).toBe('ignored');
+    // (3) a `*/`-anchored glob crossing the multi-slash prefix
+    expect(atStack(cfg([p('*/ParameterGroup.Parameters.autocommit')]))[0]?.tier).toBe('ignored');
+    // (4) a PARENT rule ignores the subtree leaf via the ancestor walk
+    expect(atStack(cfg([p('dev-main/AuroraDB/Database/ParameterGroup.Parameters')]))[0]?.tier).toBe(
+      'ignored'
+    );
+    // (5) the logicalId target still works regardless of the construct path
+    expect(atStack(cfg([p('ParameterGroup*.Parameters.autocommit')]))[0]?.tier).toBe('ignored');
+    // NOT over-suppressed: a rule for a SIBLING resource in the same stage must not match
+    expect(atStack(cfg([p('*/OtherResource.Parameters.autocommit')]))[0]?.tier).toBe('declared');
+  });
+
   it('logicalId rule still matches when constructPath is absent (non-CDK stack)', () => {
     const f: Finding = {
       tier: 'undeclared',
