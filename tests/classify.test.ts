@@ -6099,6 +6099,86 @@ describe('SecurityGroup sibling-rule reflection (subtraction)', () => {
     expect(t.declared).toEqual(['SecurityGroupIngress']);
   });
 
+  // The canonical CDK Aurora shape: `cluster.connections.allowFrom(...)` emits a standalone
+  // ingress whose FromPort/ToPort are `Fn::GetAtt <Cluster>.Endpoint.Port`. That GetAtt
+  // resolves against the DBCluster's live model, where Endpoint.Port is a STRING ("3306"),
+  // while the SG reflects the merged rule with a NUMBER port (3306) — a typed<->string
+  // mismatch that must NOT block the sibling subtraction. Observed live on dev-main-DbUsers-DB.
+  it('subtracts a sibling rule whose port is a STRING against a live NUMBER port (GetAtt Endpoint.Port)', () => {
+    const sgAurora: DesiredResource = {
+      logicalId: 'Sg',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-1',
+      declared: {},
+    };
+    const liveAurora = {
+      SecurityGroupIngress: [
+        { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+      ],
+    };
+    const siblings = {
+      'sg-1': {
+        ingress: [
+          { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: '3306', ToPort: '3306' },
+        ],
+        egress: [] as unknown[],
+      },
+    };
+    const t = tiers(classifyResource(sgAurora, liveAurora, bare, { siblingSgRules: siblings }));
+    expect(t.undeclared).toEqual([]);
+  });
+
+  // A sibling field the resolver could not evaluate (UNRESOLVED) must act as a wildcard, not
+  // block the match — the CidrIp/protocol identity still gates the subtraction.
+  it('subtracts a sibling rule whose port is UNRESOLVED (wildcard on the unknowable field)', () => {
+    const sgAurora: DesiredResource = {
+      logicalId: 'Sg',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-1',
+      declared: {},
+    };
+    const liveAurora = {
+      SecurityGroupIngress: [
+        { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+      ],
+    };
+    const siblings = {
+      'sg-1': {
+        ingress: [
+          { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: UNRESOLVED, ToPort: UNRESOLVED },
+        ],
+        egress: [] as unknown[],
+      },
+    };
+    const t = tiers(classifyResource(sgAurora, liveAurora, bare, { siblingSgRules: siblings }));
+    expect(t.undeclared).toEqual([]);
+  });
+
+  // The coercion is scoped: a genuinely different port still surfaces (no over-subtraction).
+  it('does NOT subtract when the port genuinely differs (string "3307" vs live 3306)', () => {
+    const sgAurora: DesiredResource = {
+      logicalId: 'Sg',
+      resourceType: 'AWS::EC2::SecurityGroup',
+      physicalId: 'sg-1',
+      declared: {},
+    };
+    const liveAurora = {
+      SecurityGroupIngress: [
+        { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: 3306, ToPort: 3306 },
+      ],
+    };
+    const siblings = {
+      'sg-1': {
+        ingress: [
+          { CidrIp: '192.168.0.0/16', IpProtocol: 'tcp', FromPort: '3307', ToPort: '3307' },
+        ],
+        egress: [] as unknown[],
+      },
+    };
+    const t = tiers(classifyResource(sgAurora, liveAurora, bare, { siblingSgRules: siblings }));
+    expect(t.undeclared).toContain('SecurityGroupIngress');
+  });
+
   it('SecurityGroupIngress SourceSecurityGroupOwnerId folds to generated, not undeclared', () => {
     const ingress: DesiredResource = {
       logicalId: 'SgIn',

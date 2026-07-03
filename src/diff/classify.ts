@@ -246,8 +246,24 @@ const SG_RULE_REFLECTION: Record<string, 'ingress' | 'egress'> = {
   SecurityGroupEgress: 'egress',
 };
 
+// Match one sibling-declared rule field against the live element's value. The exact
+// deepEqual match is tried first (preserves every existing case), then two tolerances:
+//   - typed<->string scalar coercion: a rule port declared as `Fn::GetAtt <Cluster>.
+//     Endpoint.Port` resolves to the STRING "3306" (the DBCluster's live Endpoint.Port is
+//     a string), while the SG's reflected live rule carries the NUMBER 3306, so a strict
+//     deepEqual false-flags the whole declared ingress rule as undeclared drift on every
+//     CDK Aurora stack (`cluster.connections.allowFrom(...)` is the canonical shape).
+//   - UNRESOLVED wildcard: a declared field the intrinsic resolver could not evaluate is
+//     unknowable, so it must not BLOCK the match — the CidrIp/protocol/description identity
+//     still gates the subtraction. Consistent with the rest of the pipeline, which SKIPS an
+//     unresolved declared value rather than false-drifting on it.
+function siblingRuleFieldMatches(liveVal: unknown, sibVal: unknown): boolean {
+  if (sibVal === UNRESOLVED) return true;
+  return deepEqual(liveVal, sibVal) || isStringlyEqualScalar(liveVal, sibVal);
+}
+
 // Remove from `arr` the first element each sibling rule is a SUBSET of (every sibling key
-// deep-equals the live element's — the live element carries AWS-injected extras the sibling
+// matches the live element's — the live element carries AWS-injected extras the sibling
 // resource never declared, e.g. SourceSecurityGroupOwnerId on a self/peer-ref rule, so an
 // exact equality compare would miss the match). One removal per sibling rule preserves a
 // duplicate inline rule that legitimately repeats the shape.
@@ -265,7 +281,9 @@ function subtractSiblingSgRules(
       (el) =>
         el !== null &&
         typeof el === 'object' &&
-        Object.entries(sub).every(([k, v]) => deepEqual((el as Record<string, unknown>)[k], v))
+        Object.entries(sub).every(([k, v]) =>
+          siblingRuleFieldMatches((el as Record<string, unknown>)[k], v)
+        )
     );
     if (i >= 0) arr.splice(i, 1);
   }
