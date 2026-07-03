@@ -9,6 +9,12 @@
 // entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // A Managed Service for Apache Flink application that declares no ApplicationMode
+  // reads back STREAMING — the constant service default for Flink runtimes (the only
+  // other value, INTERACTIVE, requires a Zeppelin/Studio runtime, a different declared
+  // config; ApplicationMode is createOnly so it cannot drift). Equality-gated. Observed
+  // live on a fresh READY Flink app (streaming-rich fixture, 2026-07-03; #509).
+  'AWS::KinesisAnalyticsV2::Application': { ApplicationMode: 'STREAMING' },
   // S3 versioning can never return to the never-enabled state — a revert "remove"
   // lands on Suspended, which IS the off state. Without this entry an undeclared
   // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
@@ -938,6 +944,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A Managed Service for Apache Flink application that declares no encryption config
+  // reads back the AWS-owned-key default. Constant (a customer CMK is set explicitly).
+  // Equality-gated: an out-of-band switch to a customer key no longer matches. Observed
+  // live on a fresh READY Flink app (streaming-rich fixture, 2026-07-03; #509).
+  'AWS::KinesisAnalyticsV2::Application': {
+    'ApplicationConfiguration.ApplicationEncryptionConfiguration': { KeyType: 'AWS_OWNED_KEY' },
+  },
   'AWS::Lambda::Function': {
     // A function whose LoggingConfig declares no explicit format/level reads back the AWS
     // defaults: plain-Text logs at the INFO system level. Equality-gated, so a function that
@@ -1569,6 +1582,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   satisfied by whatever concrete version is current, so any value is not user intent. (A
   //   DECLARED "LATEST" is handled by LATEST_SENTINEL_PATHS in the declared loop.)
   'AWS::ECS::Service': new Set(['AvailabilityZoneRebalancing', 'PlatformVersion']),
+  //   AWS::KinesisAnalyticsV2::Application.ApplicationMaintenanceConfiguration — a Flink
+  //   app that declares no maintenance window reads back a service-ASSIGNED window
+  //   ({ApplicationMaintenanceWindowStartTime}). The window is not a constant we can pin
+  //   (AWS may assign it per app/region — constancy unverified live), so fold it
+  //   value-independent: undeclared, so whatever window AWS chose is its default, not user
+  //   intent. A DECLARED window goes through the declared loop (compared), unaffected.
+  'AWS::KinesisAnalyticsV2::Application': new Set(['ApplicationMaintenanceConfiguration']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
