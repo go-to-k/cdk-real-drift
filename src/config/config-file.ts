@@ -49,6 +49,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { type Document, isSeq, parseDocument, YAMLSeq } from 'yaml';
 import { matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
+import { withinStackPath } from '../construct-path.js';
 import type { Finding } from '../types.js';
 
 // An ignore rule. `path` is the glob against "<logicalId>.<path>" /
@@ -154,13 +155,18 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
  * rule (just `path`); the optional `stack` / `region` scopes stay hand-authored (the
  * verb writes the simplest rule; narrowing is a manual edit). Prefer the human-friendly
  * `<constructPath>.<path>` when present (CDK stacks): it is what `cdk-local` targets on
- * and it embeds the stack name, so it is naturally stack-scoped and readable in the
- * git-committed config diff. Falls back to `<logicalId>.<path>`, which is ALWAYS present
- * (the CloudFormation key) so a rule is always writable even on a non-CDK / metadata-
- * stripped stack. Pure + exported; `applyIgnores` matches on EITHER target, so both work.
+ * and readable in the git-committed config diff. The construct path is written WITHIN the
+ * stack (the stack/Stage prefix stripped, given `stackName`) so it is byte-identical to
+ * what the report prints for the finding — copy what you see. Naturally stack-scoped even
+ * without the prefix (a `stack:` scope narrows further). Falls back to `<logicalId>.<path>`,
+ * ALWAYS present (the CloudFormation key) so a rule is writable even on a non-CDK /
+ * metadata-stripped stack. Pure + exported; `applyIgnores` matches the within-stack path,
+ * the full construct path (older rules), AND the logicalId, so every form works.
  */
-export function ignoreRuleFor(finding: Finding): IgnoreRuleObject {
-  const id = finding.constructPath ?? finding.logicalId;
+export function ignoreRuleFor(finding: Finding, stackName = ''): IgnoreRuleObject {
+  const id = finding.constructPath
+    ? withinStackPath(finding.constructPath, stackName)
+    : finding.logicalId;
   return { path: finding.path ? `${id}.${finding.path}` : id };
 }
 
@@ -363,7 +369,14 @@ export function applyIgnores(
     // (a trailing dot would only match via the parent-segment fallback — fragile).
     const suffix = f.path ? `.${f.path}` : '';
     const targets = [`${f.logicalId}${suffix}`];
-    if (f.constructPath) targets.push(`${f.constructPath}${suffix}`);
+    if (f.constructPath) {
+      // The within-stack path is what the report shows and what `ignoreRuleFor` now writes;
+      // the FULL construct path is kept too so rules authored before the strip (or a
+      // Stage's full `dev-main/AuroraDB/...` form) still match. When there is no stack
+      // prefix to strip, both are identical — a harmless duplicate (`some` short-circuits).
+      targets.push(`${withinStackPath(f.constructPath, stackName)}${suffix}`);
+      targets.push(`${f.constructPath}${suffix}`);
+    }
     const hit = rules.find(
       (r) =>
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&

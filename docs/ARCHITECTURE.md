@@ -978,13 +978,16 @@ applied right after `applyBaseline` everywhere (check / revert / record / the
 interactive flow), so the tier is uniform across commands. It re-tags
 matching `declared` / `undeclared` findings to `ignored` (never `deleted` — a path
 rule must not silence a resource deletion; the already-informational tiers are left
-alone). The `path` pattern globs (`*` / `?`) against EITHER `<logicalId>.<path>` OR
-(when present) `<constructPath>.<path>`, so both styles work: the logicalId
-(`ApiRole1234ABCD.Policies`) is the CloudFormation template's resource key — always
+alone). The `path` pattern globs (`*` / `?`) against THREE targets, so every style
+works: `<logicalId>.<path>` — the CloudFormation template's resource key, always
 present, so rules work on ANY stack, **CDK or not** (raw CloudFormation / SAM); the
-constructPath (`MyStack/ApiRole.Policies`) is the human-friendly id `cdk-local` also
-targets by, offered as an additional match target (it comes from optional
-`aws:cdk:path` Metadata, so it can't be the only key). A parent-segment rule
+WITHIN-stack `<constructPath>.<path>` (the stack/Stage prefix stripped via
+`withinStackPath`, e.g. `ApiRole.Policies`) — byte-identical to what the report prints
+and what `ignoreRuleFor` now writes, so a rule is "copy what you see"; and the FULL
+`<stack>/<constructPath>.<path>` (`MyStack/ApiRole.Policies`, or a Stage's
+`dev-main/AuroraDB/...`) — kept so rules authored before the strip still match. The
+constructPath forms come from optional `aws:cdk:path` Metadata (absent on non-CDK
+stacks), so logicalId is the always-present fallback. A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).
 Ignored findings drop out of the revert plan and the record-set automatically
 (neither acts on the `ignored` tier). A malformed `ignore.yaml` — invalid YAML,

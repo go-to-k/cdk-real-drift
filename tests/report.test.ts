@@ -137,6 +137,51 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     );
     expect(out).not.toContain(') = ['); // never crammed inline after the (type)
   });
+
+  it('shows the construct path WITHIN the stack (stack/Stage prefix stripped, header names the stack)', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'ParameterGroup9AB',
+      constructPath: 'dev-main-AuroraDB/Database/ParameterGroup',
+      resourceType: 'AWS::RDS::DBClusterParameterGroup',
+      path: 'Parameters.autocommit',
+      desired: '0',
+      actual: '1',
+    };
+    // plain / stage-composed stack id: the leading stack segment is dropped
+    expect(formatFinding(f, 'dev-main-AuroraDB')).toContain(
+      'Database/ParameterGroup.Parameters.autocommit (AWS::RDS::DBClusterParameterGroup)'
+    );
+    // a CDK Stage: aws:cdk:path is `dev-main/AuroraDB/...` while the name is `dev-main-AuroraDB`
+    expect(
+      formatFinding(
+        { ...f, constructPath: 'dev-main/AuroraDB/Database/ParameterGroup' },
+        'dev-main-AuroraDB'
+      )
+    ).toContain('Database/ParameterGroup.Parameters.autocommit (');
+    // no stackName (direct call) or a non-matching (overridden) name: path stays full
+    expect(formatFinding(f)).toContain('dev-main-AuroraDB/Database/ParameterGroup.Parameters');
+    expect(formatFinding(f, 'prod-db')).toContain(
+      'dev-main-AuroraDB/Database/ParameterGroup.Parameters'
+    );
+  });
+
+  it('report() strips the stack prefix using the stack name parsed from the header', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'Role1234',
+      constructPath: 'ApiStack/ApiRole',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Description',
+      desired: 'a',
+      actual: 'b',
+    };
+    const lines: string[] = [];
+    report([f], 'ApiStack (us-east-1)', { log: (s) => lines.push(s) });
+    const text = lines.join('\n');
+    expect(text).toContain('ApiRole.Description (AWS::IAM::Role)');
+    expect(text).not.toContain('ApiStack/ApiRole'); // the redundant stack prefix is gone
+  });
 });
 
 describe('report', () => {
