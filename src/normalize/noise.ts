@@ -661,6 +661,23 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::EC2::IPAM': {
     MeteredAccount: 'ipam-owner',
   },
+  // A Client VPN endpoint that declares neither VpnPort nor DisconnectOnSessionTimeout
+  // reads back the constant service defaults (port 443, disconnect-on-timeout on).
+  // Observed live on a fresh ClientVPN deploy (us-east-1, 2026-07-03; #554 from #534's
+  // live verify). Equality-gated: flip either out of band (e.g. VpnPort=1194) and the
+  // value no longer matches, so it re-surfaces as real undeclared drift.
+  'AWS::EC2::ClientVpnEndpoint': {
+    VpnPort: 443,
+    DisconnectOnSessionTimeout: true,
+  },
+  // A DAX cluster that declares no ClusterEndpointEncryptionType reads back "NONE" (the
+  // constant service default; the only other value, "TLS", is an explicit opt-in).
+  // Observed live on a fresh DAX deploy (us-east-1, 2026-07-03; #554). Equality-gated.
+  // (PreferredMaintenanceWindow / SecurityGroupIds and the ParameterGroup's parameter
+  // values are per-resource/AWS-assigned, so they are deliberately NOT folded here.)
+  'AWS::DAX::Cluster': {
+    ClusterEndpointEncryptionType: 'NONE',
+  },
   // Managed Prometheus materializes a WorkspaceConfiguration of service defaults
   // (150-day retention, 60s rule-query offset / out-of-order window) on every
   // workspace that never declared one.

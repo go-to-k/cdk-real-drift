@@ -831,6 +831,27 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ]);
   });
 
+  it('#554: ClientVPN + DAX first-run defaults fold; an out-of-band change surfaces', () => {
+    const t = (rt: string, live: Record<string, unknown>) =>
+      tiers(classifyResource(bare(rt), live, emptySchema));
+    // ClientVpnEndpoint VpnPort 443 / DisconnectOnSessionTimeout true → fold; a flipped
+    // port (1194) or disabled disconnect surfaces as real undeclared drift.
+    expect(
+      t('AWS::EC2::ClientVpnEndpoint', {
+        VpnPort: 443,
+        DisconnectOnSessionTimeout: true,
+      }).atDefault.sort()
+    ).toEqual(['DisconnectOnSessionTimeout', 'VpnPort']);
+    expect(t('AWS::EC2::ClientVpnEndpoint', { VpnPort: 1194 }).undeclared).toEqual(['VpnPort']);
+    // DAX ClusterEndpointEncryptionType NONE → fold; TLS (an explicit opt-in) surfaces.
+    expect(t('AWS::DAX::Cluster', { ClusterEndpointEncryptionType: 'NONE' }).atDefault).toEqual([
+      'ClusterEndpointEncryptionType',
+    ]);
+    expect(t('AWS::DAX::Cluster', { ClusterEndpointEncryptionType: 'TLS' }).undeclared).toEqual([
+      'ClusterEndpointEncryptionType',
+    ]);
+  });
+
   it('LineLink first-run folds: GlobalTable WarmThroughput / ESM Enabled / Authorizer AuthType', () => {
     // Three undeclared values a fresh dev LineLink stack reported with NO out-of-band
     // edit — first-run noise that must fold to atDefault, while a meaningful change to
