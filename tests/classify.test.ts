@@ -4771,6 +4771,20 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     ).toEqual(['EngineVersion']);
   });
 
+  // PROACTIVE guard (corpus-proven latent trap): Amazon MQ resolves a partial EngineVersion
+  // "5.18" to the concrete "5.18.7". Today EngineVersion is writeOnly (a readGap, never in the
+  // live model), so the fold is inert; this pins that IF a future SDK_SUPPLEMENTS reader ever
+  // projects the concrete EngineVersion back, the partial->concrete is folded, not false-drift.
+  it('AmazonMQ Broker EngineVersion "5.18" resolved to live "5.18.7" is NOT declared drift', () => {
+    expect(
+      declaredPaths('AWS::AmazonMQ::Broker', { EngineVersion: '5.18' }, { EngineVersion: '5.18.7' })
+    ).toEqual([]);
+    // a genuine engine-version change still differs
+    expect(
+      declaredPaths('AWS::AmazonMQ::Broker', { EngineVersion: '5.17' }, { EngineVersion: '5.18.7' })
+    ).toEqual(['EngineVersion']);
+  });
+
   it('MasterUsername resolved to UNRESOLVED (dynamic ref) is unresolved, not declared drift', () => {
     // loadDesired resolves the {{resolve:secretsmanager:…}} dynamic reference to
     // UNRESOLVED; classify then emits an `unresolved` finding, never `declared`.

@@ -2036,7 +2036,16 @@ export const ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE: Record<string, Record<string, st
 const SENTINEL_UNPARSEABLE = Symbol('unparseable');
 function deepCompareUnordered(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  const aObj = a !== null && typeof a === 'object';
+  const bObj = b !== null && typeof b === 'object';
+  // Leaf vs leaf: allow the typed<->string collapse. Inside a JSON string AWS serializes
+  // numbers/booleans as quoted strings, so a declared object `{Port: 443, Tls: true}` reads
+  // back as `'{"Port":"443","Tls":"true"}'` — after parse the leaves are `443` vs `"443"`,
+  // which strict `===` would false-drift the whole JSON-string prop. isStringlyEqualScalar
+  // folds only the representation difference; a genuine value change (443 vs 8080) still differs.
+  if (!aObj && !bObj) return isStringlyEqualScalar(a, b);
+  // One side object/array, the other scalar/null: a genuine structural mismatch.
+  if (aObj !== bObj) return false;
   const aArr = Array.isArray(a);
   if (aArr !== Array.isArray(b)) return false;
   if (aArr) {
@@ -2559,6 +2568,14 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // symmetric isVersionPrefixMatch covers both. A genuine track change (`"1.5"` vs
   // `"1.6.22"`) still differs.
   'AWS::ElastiCache::CacheCluster': new Set(['EngineVersion']),
+  // Amazon MQ resolves a partial EngineVersion the same way (corpus-proven: declared
+  // `"5.18"` provisions the concrete `"5.18.7"`, surfaced in the readOnly
+  // `EngineVersionCurrent`). Today `EngineVersion` itself is writeOnly -> a readGap, so
+  // this entry is a PROACTIVE guard, not an active fold: it fires ONLY if a future
+  // SDK_SUPPLEMENTS reader ever projects the concrete `EngineVersion` back (as was done
+  // for the ElastiCache RG above), at which point a declared `"5.18"` vs live `"5.18.7"`
+  // would otherwise false-drift. Equality-gated + symmetric, so harmless while inert.
+  'AWS::AmazonMQ::Broker': new Set(['EngineVersion']),
 };
 export function isVersionPrefixMatch(declared: unknown, live: unknown): boolean {
   if (typeof declared !== 'string' || typeof live !== 'string') return false;
