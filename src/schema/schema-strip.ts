@@ -73,6 +73,40 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   'AWS::MemoryDB::User': ['AccessString'],
 };
 
+// Curated readOnly SUPPLEMENTS: JSON-pointer property paths a type's CloudFormation
+// schema FORGETS to mark `readOnly`, so the readOnly strip leaves them in the live model
+// and they surface as first-run Potential Drift. This is the MIRROR of SDK_SUPPLEMENTS
+// (which patches writeOnly gaps the other direction, #482): here we patch a readOnly gap.
+// Applied on top of the fetched schema's readOnlyProperties BEFORE the strip runs, so the
+// property is stripped for EVERY tier (first-run noise, baseline, revert planning) — the
+// right treatment for a lifecycle/status attribute that can never be user intent and flaps
+// between values (so an equality-gated KNOWN_DEFAULTS fold would be wrong).
+//
+// AWS::NetworkManager::GlobalNetwork forgets readOnly on its lifecycle `State`
+// (AVAILABLE/UPDATING/DELETING) and `CreatedAt` timestamp — provably an AWS oversight:
+// the sibling AWS::NetworkManager::Site marks the SAME pair readOnly
+// (readOnlyProperties = [SiteId, SiteArn, State, CreatedAt]). GlobalNetwork's schema has
+// readOnly = [Id, Arn] only (#495). Keep this table CURATED/minimal — the corpus scan
+// found no other currently-leaking type, so do NOT add speculative entries.
+export const SCHEMA_READONLY_SUPPLEMENTS: Record<string, readonly string[]> = {
+  'AWS::NetworkManager::GlobalNetwork': ['/properties/State', '/properties/CreatedAt'],
+};
+
+// Merge a type's readOnly supplement paths into readOnly (top-level set) + readOnlyPaths
+// (nested strip), so the schema-strip layer removes them exactly as if the registry schema
+// had listed them in readOnlyProperties. Exported for unit testing without an AWS call.
+export function supplementReadOnly(info: SchemaInfo, resourceType: string): SchemaInfo {
+  const supplements = SCHEMA_READONLY_SUPPLEMENTS[resourceType];
+  if (!supplements?.length) return info;
+  const dotted = supplements.map(pointerToDotted);
+  const readOnlyPaths = [...new Set([...info.readOnlyPaths, ...dotted])];
+  return {
+    ...info,
+    readOnly: new Set([...info.readOnly, ...dotted.filter((p) => !p.includes('.'))]),
+    readOnlyPaths,
+  };
+}
+
 // The MIRROR of OVERRIDE_READABLE_WRITEONLY: nested paths an SDK_OVERRIDES reader
 // CANNOT read back even though the registry schema does not mark them writeOnly —
 // the type's Describe API simply never returns them. Appended to `writeOnlyPaths`
@@ -112,7 +146,10 @@ async function fetch(client: CloudFormationClient, resourceType: string): Promis
       new DescribeTypeCommand({ Type: 'RESOURCE', TypeName: resourceType })
     );
     return injectReaderGaps(
-      exemptOverrideReadable(parseSchema(r.Schema ?? '{}'), resourceType),
+      exemptOverrideReadable(
+        supplementReadOnly(parseSchema(r.Schema ?? '{}'), resourceType),
+        resourceType
+      ),
       resourceType
     );
   } catch {
