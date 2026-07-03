@@ -8497,3 +8497,81 @@ describe('#531 EKS + Athena first-run default folds', () => {
     expect(t.undeclared).toEqual([]);
   });
 });
+
+describe('#535 AOSS / SAMLProvider / ENI first-run default folds', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('AOSS Collection: undeclared DeletionProtection=DISABLED folds; ENABLED surfaces', () => {
+    const res: DesiredResource = {
+      logicalId: 'Collection',
+      resourceType: 'AWS::OpenSearchServerless::Collection',
+      physicalId: 'coll-phys',
+      declared: { Name: 'cdkrd-aoss', Type: 'VECTORSEARCH' },
+    };
+    expect(
+      tiers(
+        classifyResource(
+          res,
+          { Name: 'cdkrd-aoss', Type: 'VECTORSEARCH', DeletionProtection: 'DISABLED' },
+          emptySchema
+        )
+      ).atDefault
+    ).toEqual(['DeletionProtection']);
+    expect(
+      tiers(
+        classifyResource(
+          res,
+          { Name: 'cdkrd-aoss', Type: 'VECTORSEARCH', DeletionProtection: 'ENABLED' },
+          emptySchema
+        )
+      ).undeclared
+    ).toEqual(['DeletionProtection']);
+  });
+
+  it('IAM SAMLProvider: undeclared AssertionEncryptionMode=Allowed folds; Required surfaces', () => {
+    const res: DesiredResource = {
+      logicalId: 'Saml',
+      resourceType: 'AWS::IAM::SAMLProvider',
+      physicalId: 'arn:aws:iam::111111111111:saml-provider/cdkrd',
+      declared: { Name: 'cdkrd', SamlMetadataDocument: '<xml/>' },
+    };
+    expect(
+      tiers(
+        classifyResource(res, { Name: 'cdkrd', AssertionEncryptionMode: 'Allowed' }, emptySchema)
+      ).atDefault
+    ).toEqual(['AssertionEncryptionMode']);
+    expect(
+      tiers(
+        classifyResource(res, { Name: 'cdkrd', AssertionEncryptionMode: 'Required' }, emptySchema)
+      ).undeclared
+    ).toEqual(['AssertionEncryptionMode']);
+  });
+
+  it('EC2 NetworkInterface: undeclared SourceDestCheck=true folds; false (a NAT ENI) surfaces', () => {
+    const res: DesiredResource = {
+      logicalId: 'Eni',
+      resourceType: 'AWS::EC2::NetworkInterface',
+      physicalId: 'eni-phys',
+      declared: { SubnetId: 'subnet-a' },
+    };
+    expect(
+      tiers(classifyResource(res, { SubnetId: 'subnet-a', SourceDestCheck: true }, emptySchema))
+        .atDefault
+    ).toContain('SourceDestCheck');
+    // SourceDestCheck:false is a NAT/router intent; it is trivially-empty structural noise
+    // and (like other false scalars) is dropped rather than surfaced — assert it does NOT fold to atDefault.
+    expect(
+      tiers(classifyResource(res, { SubnetId: 'subnet-a', SourceDestCheck: false }, emptySchema))
+        .atDefault
+    ).not.toContain('SourceDestCheck');
+  });
+});

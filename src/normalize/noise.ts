@@ -537,7 +537,19 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Ipv4PrefixCount: 0,
     Ipv6PrefixCount: 0,
     SecondaryPrivateIpAddressCount: 0,
+    // The documented EC2 default: a standard ENI has source/destination checking on. A NAT
+    // instance / router explicitly declares SourceDestCheck:false, which still surfaces
+    // (equality-gated). Observed live (hunt 2026-07-03 round F).
+    SourceDestCheck: true,
   },
+  // A collection that declares no DeletionProtection reads back AWS's DISABLED default.
+  // A user who enables it declares "ENABLED", which still surfaces (equality-gated).
+  // Observed live (hunt 2026-07-03 round F).
+  'AWS::OpenSearchServerless::Collection': { DeletionProtection: 'DISABLED' },
+  // A SAML provider that declares no AssertionEncryptionMode reads back AWS's "Allowed"
+  // default. A user who requires encryption declares "Required", which still surfaces
+  // (equality-gated). Observed live (hunt 2026-07-03 round F).
+  'AWS::IAM::SAMLProvider': { AssertionEncryptionMode: 'Allowed' },
   'AWS::ElastiCache::CacheCluster': {
     NetworkType: 'ipv4',
     IpDiscovery: 'ipv4',

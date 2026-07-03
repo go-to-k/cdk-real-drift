@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Collection",
+    "resourceType": "AWS::OpenSearchServerless::Collection",
+    "physicalId": "cbvp6kz66jyxtz5zf0fg",
+    "constructPath": "CdkRealDriftIntegAossRich/Collection",
+    "declared": {
+      "Description": "cdkrd hunt vector collection",
+      "Name": "cdkrd-aoss-f",
+      "StandbyReplicas": "DISABLED",
+      "Type": "VECTORSEARCH"
+    }
+  },
+  "liveRaw": {
+    "Type": "VECTORSEARCH",
+    "Description": "cdkrd hunt vector collection",
+    "FipsEndpoints": {
+      "CollectionEndpoint": "https://cbvp6kz66jyxtz5zf0fg.us-east-1.aoss-fips.amazonaws.com",
+      "DashboardEndpoint": "https://cbvp6kz66jyxtz5zf0fg.us-east-1.aoss-fips.amazonaws.com/_dashboards"
+    },
+    "KmsKeyArn": "auto",
+    "StandbyReplicas": "DISABLED",
+    "CollectionEndpoint": "https://cbvp6kz66jyxtz5zf0fg.us-east-1.aoss.amazonaws.com",
+    "Id": "cbvp6kz66jyxtz5zf0fg",
+    "DeletionProtection": "DISABLED",
+    "Arn": "arn:aws:aoss:us-east-1:111111111111:collection/cbvp6kz66jyxtz5zf0fg",
+    "Name": "cdkrd-aoss-f",
+    "DashboardEndpoint": "https://cbvp6kz66jyxtz5zf0fg.us-east-1.aoss.amazonaws.com/_dashboards"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CollectionEndpoint",
+      "DashboardEndpoint",
+      "FipsEndpoints",
+      "Id",
+      "KmsKeyArn"
+    ],
+    "writeOnly": ["EncryptionConfig", "Tags"],
+    "createOnly": [
+      "CollectionGroupName",
+      "EncryptionConfig",
+      "Name",
+      "StandbyReplicas",
+      "Tags",
+      "Type"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "CollectionEndpoint",
+      "DashboardEndpoint",
+      "FipsEndpoints",
+      "Id",
+      "KmsKeyArn"
+    ],
+    "writeOnlyPaths": ["EncryptionConfig", "Tags"],
+    "createOnlyPaths": [
+      "CollectionGroupName",
+      "EncryptionConfig",
+      "Name",
+      "StandbyReplicas",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Collection",
+      "resourceType": "AWS::OpenSearchServerless::Collection",
+      "path": "DeletionProtection",
+      "actual": "DISABLED",
+      "physicalId": "cbvp6kz66jyxtz5zf0fg",
+      "constructPath": "CdkRealDriftIntegAossRich/Collection"
+    }
+  ]
+}

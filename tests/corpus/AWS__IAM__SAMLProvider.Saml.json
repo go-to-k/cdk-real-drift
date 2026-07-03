@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Saml",
+    "resourceType": "AWS::IAM::SAMLProvider",
+    "physicalId": "arn:aws:iam::111111111111:saml-provider/cdkrd-hunt-idp",
+    "constructPath": "CdkRealDriftIntegAuthNetRich/Saml",
+    "declared": {
+      "Name": "cdkrd-hunt-idp",
+      "SamlMetadataDocument": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<md:EntityDescriptor xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"https://cdkrd-hunt-idp.example.local/idp\">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned=\"false\" protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\">\n    <md:KeyDescriptor use=\"signing\">\n      <ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIDLzCCAhegAwIBAgIUEeV4K+7jYtaZt27b9Jght+ORisIwDQYJKoZIhvcNAQELBQAwJzElMCMGA1UEAwwcY2RrcmQtaHVudC1pZHAuZXhhbXBsZS5sb2NhbDAeFw0yNjA3MDMxMTU1NTdaFw0yNjA4MDIxMTU1NTdaMCcxJTAjBgNVBAMMHGNka3JkLWh1bnQtaWRwLmV4YW1wbGUubG9jYWwwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDAQihP+XsEBxWkNFRn50Q4v1CuKY+zhxF8yqz2hcY6SB/hXStI/1dsTsPyFpDKhfjPI+OOr1hglu1TkxYrVTZzJyb9FY2/6vWmisI1JZWcQ20v8c0J3lyMAKr0jwiLQPoIwrrFUrVApLdSFehJNhwrQGrecX4OxMsI74Zd2Dr/SAIFSQbZgvjeowDP3VbBOokw+pGXzZ8oTOFY8yYNc6/sK3arfSUUZZMdKSp93lNwnvqmaECh0niAkKaEQqspbPeSSd0SohcxqSmk/6+uDEJbrxliBZjxeyaoIpuEUl6vehVEjWyWOb1zhU8EecicB2wvl/vCSjqUG08rm56I3K+rAgMBAAGjUzBRMB0GA1UdDgQWBBR4ky/fCbgk53yDikMDiqvOJxhaSjAfBgNVHSMEGDAWgBR4ky/fCbgk53yDikMDiqvOJxhaSjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBOxT1VO2lwwnFUuScQijtBs+HTkgR9rr2oQFGKd0OzbEcwK4XE0BcRbKsN2CUSshULvtjiwHz2RXM8nFy9qClvMo8XddosgY7oLSuIZ2zwOQl+JQV/HQb/Xg864d/9k3VuFOfuEW4Z8H+LWvNo1FXcYEvMPgO4A+tOq1V6uQTJmgoH9i4aAgjJSjN0OVi/zzqvaoGpbbr5jKsBFZD6HWkmgFHHcx6PzgxO/PP5XUWyFqgRUuz4cjt6ZMs/cKusDGELoW/4dw71ftuC7bikp8pNnasGavVP9AyUh0sNu/X30nWGq74JvgJoWsZmGk8lAoZXz/YvsqRdm9Nszc97MOVa</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat>\n    <md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://cdkrd-hunt-idp.example.local/sso\"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>\n"
+    }
+  },
+  "liveRaw": {
+    "AssertionEncryptionMode": "Allowed",
+    "SamlMetadataDocument": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<md:EntityDescriptor xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"https://cdkrd-hunt-idp.example.local/idp\">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned=\"false\" protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\">\n    <md:KeyDescriptor use=\"signing\">\n      <ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIDLzCCAhegAwIBAgIUEeV4K+7jYtaZt27b9Jght+ORisIwDQYJKoZIhvcNAQELBQAwJzElMCMGA1UEAwwcY2RrcmQtaHVudC1pZHAuZXhhbXBsZS5sb2NhbDAeFw0yNjA3MDMxMTU1NTdaFw0yNjA4MDIxMTU1NTdaMCcxJTAjBgNVBAMMHGNka3JkLWh1bnQtaWRwLmV4YW1wbGUubG9jYWwwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDAQihP+XsEBxWkNFRn50Q4v1CuKY+zhxF8yqz2hcY6SB/hXStI/1dsTsPyFpDKhfjPI+OOr1hglu1TkxYrVTZzJyb9FY2/6vWmisI1JZWcQ20v8c0J3lyMAKr0jwiLQPoIwrrFUrVApLdSFehJNhwrQGrecX4OxMsI74Zd2Dr/SAIFSQbZgvjeowDP3VbBOokw+pGXzZ8oTOFY8yYNc6/sK3arfSUUZZMdKSp93lNwnvqmaECh0niAkKaEQqspbPeSSd0SohcxqSmk/6+uDEJbrxliBZjxeyaoIpuEUl6vehVEjWyWOb1zhU8EecicB2wvl/vCSjqUG08rm56I3K+rAgMBAAGjUzBRMB0GA1UdDgQWBBR4ky/fCbgk53yDikMDiqvOJxhaSjAfBgNVHSMEGDAWgBR4ky/fCbgk53yDikMDiqvOJxhaSjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBOxT1VO2lwwnFUuScQijtBs+HTkgR9rr2oQFGKd0OzbEcwK4XE0BcRbKsN2CUSshULvtjiwHz2RXM8nFy9qClvMo8XddosgY7oLSuIZ2zwOQl+JQV/HQb/Xg864d/9k3VuFOfuEW4Z8H+LWvNo1FXcYEvMPgO4A+tOq1V6uQTJmgoH9i4aAgjJSjN0OVi/zzqvaoGpbbr5jKsBFZD6HWkmgFHHcx6PzgxO/PP5XUWyFqgRUuz4cjt6ZMs/cKusDGELoW/4dw71ftuC7bikp8pNnasGavVP9AyUh0sNu/X30nWGq74JvgJoWsZmGk8lAoZXz/YvsqRdm9Nszc97MOVa</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat>\n    <md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://cdkrd-hunt-idp.example.local/sso\"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>\n",
+    "Arn": "arn:aws:iam::111111111111:saml-provider/cdkrd-hunt-idp",
+    "PrivateKeyList": [],
+    "SamlProviderUUID": "SAMLSPTB50WWXNEXQMO41M",
+    "Tags": [],
+    "Name": "cdkrd-hunt-idp"
+  },
+  "schema": {
+    "readOnly": ["Arn", "SamlProviderUUID"],
+    "writeOnly": ["AddPrivateKey", "RemovePrivateKey"],
+    "createOnly": ["AddPrivateKey", "Name", "RemovePrivateKey"],
+    "readOnlyPaths": ["Arn", "SamlProviderUUID"],
+    "writeOnlyPaths": ["AddPrivateKey", "RemovePrivateKey"],
+    "createOnlyPaths": ["AddPrivateKey", "Name", "RemovePrivateKey"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["PrivateKeyList"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Saml",
+      "resourceType": "AWS::IAM::SAMLProvider",
+      "path": "AssertionEncryptionMode",
+      "actual": "Allowed",
+      "physicalId": "arn:aws:iam::111111111111:saml-provider/cdkrd-hunt-idp",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/Saml"
+    }
+  ]
+}

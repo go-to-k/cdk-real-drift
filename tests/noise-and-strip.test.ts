@@ -477,6 +477,7 @@ describe('noise suppressors', () => {
       Ipv4PrefixCount: 0,
       Ipv6PrefixCount: 0,
       SecondaryPrivateIpAddressCount: 0,
+      SourceDestCheck: true,
     });
     expect(KNOWN_DEFAULTS['AWS::ElastiCache::CacheCluster']).toEqual({
       NetworkType: 'ipv4',
