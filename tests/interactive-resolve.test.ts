@@ -23,6 +23,7 @@ import { select } from '@clack/prompts';
 import {
   buildScopeOptions,
   isFoldedFinding,
+  pickerLabel,
   resolveInteractively,
 } from '../src/commands/interactive-resolve.js';
 import { ignoreStack, recordStack, revertStack } from '../src/commands/stack-actions.js';
@@ -192,5 +193,35 @@ describe('scope gate narrows the ignore picker to the report-shown findings (def
     expect(vi.mocked(ignoreStack).mock.calls[0]![0].findings).toHaveLength(3);
     // exactly two select calls: top menu + the re-shown menu — no scope prompt in between
     expect(vi.mocked(select)).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('pickerLabel — the per-finding "decide per finding" row (mirrors the report)', () => {
+  const uf = (over: Partial<Finding>): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'R',
+    resourceType: 'AWS::IAM::Role',
+    path: 'Policies',
+    ...over,
+  });
+
+  it('shows the construct path WITHIN the stack when given the stack name', () => {
+    const f = uf({ constructPath: 'dev-main/App/ApiRole' });
+    // a CDK Stage: aws:cdk:path is dev-main/App/..., the CFn name is dev-main-App
+    expect(pickerLabel(f, 'dev-main-App')).toContain('ApiRole.Policies  (');
+    expect(pickerLabel(f, 'dev-main-App')).not.toContain('dev-main/App/ApiRole');
+    // no stackName -> full construct path (unit default)
+    expect(pickerLabel(f)).toContain('dev-main/App/ApiRole.Policies  (');
+  });
+
+  it('keeps the attributeKey suffix after the stripped id', () => {
+    const f = uf({
+      constructPath: 'S/Edge',
+      path: 'LoadBalancerAttributes',
+      attributeKey: 'idle_timeout.timeout_seconds',
+    });
+    expect(pickerLabel(f, 'S')).toContain(
+      'Edge.LoadBalancerAttributes[idle_timeout.timeout_seconds]'
+    );
   });
 });

@@ -22,6 +22,7 @@ import {
   recordedKey,
 } from '../baseline/baseline-file.js';
 import { applyIgnores, type CdkrdConfig, loadConfig } from '../config/config-file.js';
+import { withinStackPath } from '../construct-path.js';
 import type { Desired } from '../desired/template-adapter.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import {
@@ -105,10 +106,12 @@ const tierTag = (f: Finding): string =>
 // so ELB attribute-bag rows are distinguishable in the picker — without it the bag's
 // rows render identically and the user can't tell which attribute they're deciding
 // on (mirrors report.ts's `path[attributeKey]`).
-const pickerLabel = (f: Finding): string =>
-  `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''}${
+export const pickerLabel = (f: Finding, stackName = ''): string => {
+  const id = f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
+  return `${id}${f.path ? `.${f.path}` : ''}${
     f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''
   }  (${tierTag(f)})`;
+};
 
 // Mirrors report.ts's R96 fold: a NESTED unrecorded undeclared value (a live-only sub-key
 // inside a declared object) collapses out of the report body by default — the live model
@@ -472,7 +475,10 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
   if (scope === null) return null; // scope prompt cancelled → back to the menu
   const scoped =
     scope === 'all' ? decidable : decidable.filter((f) => !isFoldedFinding(f, p.verbose));
-  const rows = scoped.map((f) => ({ label: pickerLabel(f), applicable: applicableActions(f) }));
+  const rows = scoped.map((f) => ({
+    label: pickerLabel(f, p.stackName),
+    applicable: applicableActions(f),
+  }));
   const chosen = await actionPicker(`${p.stackName}: assign an action to each finding`, rows);
   if (chosen === undefined) return null; // picker cancelled (Esc) → back to the menu
   const groups = groupByAction(scoped, chosen);
