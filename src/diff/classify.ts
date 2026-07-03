@@ -268,6 +268,15 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
+// IAM principal types whose inline live `Policies` can be sibling-managed by a separate
+// AWS::IAM::Policy resource (the CDK `<Principal>DefaultPolicy` pattern). Used for the
+// revert-hazard guard when the sibling PolicyName was UNRESOLVED (see below).
+const IAM_PRINCIPAL_POLICY_TYPES: ReadonlySet<string> = new Set([
+  'AWS::IAM::Role',
+  'AWS::IAM::User',
+  'AWS::IAM::Group',
+]);
+
 // AWS::EC2::SecurityGroup reflects, in its live SecurityGroupIngress / SecurityGroupEgress
 // arrays, the rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress /
 // ::SecurityGroupEgress resources that target it. CDK emits such a standalone rule resource
@@ -891,6 +900,17 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
+  // An ECS Cluster reflects the CapacityProviders / DefaultCapacityProviderStrategy declared by
+  // its sibling AWS::ECS::ClusterCapacityProviderAssociations resource — the only CFn way to set
+  // them (the Cluster's own schema carries neither). The association is tracked + compared as its
+  // own resource, so leaving them on the cluster's live model reads as false undeclared drift. Drop
+  // them ONLY when a sibling association references this cluster (hasSiblingCapacityProviders); a
+  // cluster with capacity providers set purely out of band (no association resource) keeps them.
+  if (resourceType === 'AWS::ECS::Cluster' && resource.hasSiblingCapacityProviders) {
+    for (const p of ['CapacityProviders', 'DefaultCapacityProviderStrategy']) {
+      if (!(p in declared)) delete live[p];
+    }
+  }
   // Drop declared scalar props AWS re-normalizes on read (SSM Document DocumentFormat:
   // any authored YAML/TEXT is stored + returned as JSON) from BOTH sides so the write-time
   // authoring hint is not a spurious declared drift (see READ_NORMALIZED_DECLARED_PATHS).
@@ -1912,16 +1932,16 @@ export function classifyResource(
   // attach physicalId (for revert) + construct path (display) onto every finding
   const cp = resource.constructPath;
   const pid = resource.physicalId;
-  // R111 fail-open carries a revert hazard: when the role's sibling AWS::IAM::Policy
+  // R111 fail-open carries a revert hazard: when the principal's sibling AWS::IAM::Policy
   // names were UNRESOLVED we did NOT filter the sibling-managed (DefaultPolicy)
   // entries out of the live Policies array (above), so a declared `Policies` diff
   // here lists own + sibling-managed entries together. The per-entry revert writer
-  // (writeIamRoleInlinePolicies) deletes every prior entry the declared set drops —
-  // which would DELETE the sibling-managed inline policy, removing real IAM grants.
-  // We cannot separate them, so mark the Policies finding(s) so the revert plan
-  // refuses to act (a wrong-write to live IAM is worse than an un-reverted FP).
+  // deletes every prior entry the declared set drops — which would DELETE the
+  // sibling-managed inline policy, removing real IAM grants. We cannot separate them,
+  // so mark the Policies finding(s) so the revert plan refuses to act (a wrong-write to
+  // live IAM is worse than an un-reverted FP). Applies to Role / User / Group alike.
   const unresolvedSibling =
-    resourceType === 'AWS::IAM::Role' && resource.siblingPolicyNames === 'unresolved';
+    IAM_PRINCIPAL_POLICY_TYPES.has(resourceType) && resource.siblingPolicyNames === 'unresolved';
   return findings.map((f) => ({
     ...f,
     ...(pid !== undefined && { physicalId: pid }),

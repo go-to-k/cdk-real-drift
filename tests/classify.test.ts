@@ -806,6 +806,149 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
   });
 });
 
+// The sibling-managed inline Policies mechanism is NOT Role-only: an AWS::IAM::Policy also
+// attaches to Users and Groups (via its Users / Groups ref lists), the same CDK
+// `<Principal>DefaultPolicy` shape. Observed live on dev-main-db2bq: a data-transfer IAM
+// User read back Path:'/' + an inline Policies entry owned by its sibling DefaultPolicy →
+// two false undeclared drifts. Path is the IAM default (KNOWN_DEFAULTS); the Policies entry
+// is dropped by the sibling filter now that siblingPolicyNames is plumbed for Users/Groups.
+describe('sibling-managed inline Policies (IAM User / Group)', () => {
+  const noSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const DOC = {
+    Version: '2012-10-17',
+    Statement: [
+      { Effect: 'Allow', Action: ['s3:GetBucket*', 's3:GetObject*', 's3:List*'], Resource: '*' },
+    ],
+  };
+  // db2bq's real live shape: PolicyName === the sibling AWS::IAM::Policy's literal name.
+  const sibling = { PolicyName: 'DataTransferIamUserDefaultPolicy758350EB', PolicyDocument: DOC };
+  const rogue = { PolicyName: 'rogue-inline', PolicyDocument: DOC };
+  const principal = (
+    resourceType: string,
+    siblingPolicyNames?: string[] | 'unresolved',
+    declared: Record<string, unknown> = {}
+  ): DesiredResource => ({
+    logicalId: 'P',
+    resourceType,
+    physicalId: 'principal-name',
+    declared,
+    siblingPolicyNames,
+  });
+
+  it('IAM User: Path:/ folds atDefault and the sibling-owned Policies entry is filtered out', () => {
+    const t = tiers(
+      classifyResource(
+        principal('AWS::IAM::User', ['DataTransferIamUserDefaultPolicy758350EB']),
+        { Path: '/', Policies: [sibling] },
+        noSchema
+      )
+    );
+    expect(t.atDefault).toEqual(['Path']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('IAM Group: Path:/ folds atDefault and the sibling-owned Policies entry is filtered out', () => {
+    const t = tiers(
+      classifyResource(
+        principal('AWS::IAM::Group', ['DataTransferIamUserDefaultPolicy758350EB']),
+        { Path: '/', Policies: [sibling] },
+        noSchema
+      )
+    );
+    expect(t.atDefault).toEqual(['Path']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('IAM User: an out-of-band inline policy next to a sibling still surfaces as undeclared', () => {
+    const findings = classifyResource(
+      principal('AWS::IAM::User', ['DataTransferIamUserDefaultPolicy758350EB']),
+      { Policies: [sibling, rogue] },
+      noSchema
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ tier: 'undeclared', path: 'Policies' });
+    const actual = findings[0]!.actual as { PolicyName: string }[];
+    expect(actual.map((p) => p.PolicyName)).toEqual(['rogue-inline']);
+  });
+
+  it('IAM User: an UNRESOLVED sibling stamps the revert-hazard marker on a declared Policies finding', () => {
+    const declared = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }] };
+    const live = { Policies: [{ PolicyName: 'inline-a', PolicyDocument: DOC }, sibling] };
+    const findings = classifyResource(
+      principal('AWS::IAM::User', 'unresolved', declared),
+      live,
+      noSchema
+    );
+    const f = findings.find((x) => x.path === 'Policies');
+    expect(f).toBeDefined();
+    expect(f!.siblingPolicyNames).toBe('unresolved');
+  });
+});
+
+// An ECS Cluster reflects the CapacityProviders / DefaultCapacityProviderStrategy declared by
+// its sibling AWS::ECS::ClusterCapacityProviderAssociations resource (the only CFn way to set
+// them), plus ClusterSettings:[{containerInsights,disabled}] (the AWS default). Observed live on
+// dev-main-db2bq: 3 false undeclared drifts on every Fargate cluster. ClusterSettings folds as a
+// KNOWN_DEFAULT; the two reflected props are dropped when a sibling association is present.
+describe('ECS Cluster sibling capacity providers + ClusterSettings default (dev-main-db2bq)', () => {
+  const noSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const cluster = (hasSiblingCapacityProviders?: boolean): DesiredResource => ({
+    logicalId: 'Cluster',
+    resourceType: 'AWS::ECS::Cluster',
+    physicalId: 'cluster-name',
+    declared: {},
+    hasSiblingCapacityProviders,
+  });
+  // the exact live model db2bq's cluster read back (key order as CC returned it)
+  const live = {
+    ClusterSettings: [{ Value: 'disabled', Name: 'containerInsights' }],
+    CapacityProviders: ['FARGATE', 'FARGATE_SPOT'],
+    DefaultCapacityProviderStrategy: [
+      { CapacityProvider: 'FARGATE', Weight: 0, Base: 0 },
+      { CapacityProvider: 'FARGATE_SPOT', Weight: 1, Base: 0 },
+    ],
+  };
+
+  it('with a sibling association: all three read as clean (ClusterSettings=default, providers dropped)', () => {
+    const t = tiers(classifyResource(cluster(true), structuredClone(live), noSchema));
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual(['ClusterSettings']);
+  });
+
+  it('without a sibling association: the capacity providers DO surface (the guard is load-bearing)', () => {
+    const t = tiers(classifyResource(cluster(false), structuredClone(live), noSchema));
+    expect(t.undeclared).toEqual(['CapacityProviders', 'DefaultCapacityProviderStrategy']);
+    // ClusterSettings still folds as a default regardless of the sibling flag
+    expect(t.atDefault).toEqual(['ClusterSettings']);
+  });
+
+  it('an enabled ClusterSettings is NOT the default and surfaces (equality-gated)', () => {
+    const enabled = {
+      ClusterSettings: [{ Name: 'containerInsights', Value: 'enabled' }],
+    };
+    const t = tiers(classifyResource(cluster(true), enabled, noSchema));
+    expect(t.undeclared).toEqual(['ClusterSettings']);
+  });
+});
+
 describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)', () => {
   const emptySchema: SchemaInfo = {
     readOnly: new Set(),

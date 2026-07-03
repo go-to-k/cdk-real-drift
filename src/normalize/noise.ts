@@ -517,8 +517,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Group': {
     Path: '/',
   },
+  'AWS::IAM::User': {
+    Path: '/',
+  },
   'AWS::IAM::InstanceProfile': {
     Path: '/',
+  },
+  // A fresh ECS Cluster reads back `ClusterSettings: [{Name:'containerInsights',Value:'disabled'}]`
+  // — Container Insights defaults to disabled unless the account-level ECS setting turns it on, and
+  // CDK does not declare it unless `containerInsights` is passed. Equality-gated (an enabled cluster
+  // reports a different Value and re-surfaces). CapacityProviders / DefaultCapacityProviderStrategy
+  // are NOT defaults — they are declared by the sibling ClusterCapacityProviderAssociations resource
+  // and dropped in classify (see hasSiblingCapacityProviders).
+  'AWS::ECS::Cluster': {
+    ClusterSettings: [{ Name: 'containerInsights', Value: 'disabled' }],
   },
   'AWS::Scheduler::Schedule': {
     GroupName: 'default',

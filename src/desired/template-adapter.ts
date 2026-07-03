@@ -225,10 +225,20 @@ export async function loadDesired(
   }
 
   const resources: DesiredResource[] = [];
-  // Roles whose inline Policies are managed by SIBLING AWS::IAM::Policy resources
-  // (the CDK pattern). classify uses the per-role POLICY NAMES to drop only the
-  // sibling-owned live entries — an out-of-band inline policy still surfaces.
-  const rolesWithSiblingPolicy = collectRolesWithSiblingPolicies(template.Resources ?? {}, ctx);
+  // IAM principals (Role / User / Group) whose inline Policies are managed by SIBLING
+  // AWS::IAM::Policy resources (the CDK pattern). classify uses the per-principal POLICY
+  // NAMES to drop only the sibling-owned live entries — an out-of-band inline policy still
+  // surfaces.
+  const principalsWithSiblingPolicy = collectPrincipalsWithSiblingPolicies(
+    template.Resources ?? {},
+    ctx
+  );
+  // ECS Cluster logicalIds whose CapacityProviders / DefaultCapacityProviderStrategy are
+  // declared by a sibling AWS::ECS::ClusterCapacityProviderAssociations resource (the only
+  // CFn way to set them). classify drops those reflected live props on the flagged cluster.
+  const clustersWithSiblingCapacityProviders = collectClustersWithSiblingCapacityProviders(
+    template.Resources ?? {}
+  );
 
   for (const [logicalId, res] of Object.entries(
     (template.Resources ?? {}) as Record<string, any>
@@ -245,12 +255,25 @@ export async function loadDesired(
       // re-resolves declaredRaw once liveAttrs is populated, reducing UNRESOLVED.
       declared: resolveProperties(declaredRaw, ctx),
       declaredRaw,
-      siblingPolicyNames:
-        res.Type === 'AWS::IAM::Role' ? rolesWithSiblingPolicy.get(logicalId) : undefined,
+      siblingPolicyNames: IAM_PRINCIPAL_TYPES.has(res.Type)
+        ? principalsWithSiblingPolicy.get(logicalId)
+        : undefined,
+      hasSiblingCapacityProviders:
+        res.Type === 'AWS::ECS::Cluster'
+          ? clustersWithSiblingCapacityProviders.has(logicalId)
+          : undefined,
     });
   }
   return { stackName, region, accountId, resources, rawTemplate, ctx, stackStatusWarning };
 }
+
+// The IAM principal types an AWS::IAM::Policy can attach an inline policy to, via its
+// Roles / Users / Groups reference lists (the CDK `<Principal>DefaultPolicy` pattern).
+const IAM_PRINCIPAL_TYPES: ReadonlySet<string> = new Set([
+  'AWS::IAM::Role',
+  'AWS::IAM::User',
+  'AWS::IAM::Group',
+]);
 
 // CDK construct paths end in "/Resource" for the L1 node; drop it for readability
 // (e.g. "MyStack/Bucket/Resource" -> "MyStack/Bucket").
@@ -259,30 +282,56 @@ function prettyConstructPath(p: string): string {
 }
 
 /**
- * Map each role logicalId to the PolicyNames of the sibling AWS::IAM::Policy
- * resources attached to it. A sibling whose PolicyName cannot be resolved to a
- * string (an intrinsic the resolver can't evaluate) marks the role 'unresolved' —
- * classify then falls back to suppressing the whole live Policies property rather
- * than risk a false positive on the unidentifiable sibling entry.
+ * Map each IAM principal logicalId (Role / User / Group) to the PolicyNames of the
+ * sibling AWS::IAM::Policy resources attached to it via its Roles / Users / Groups
+ * reference lists. A sibling whose PolicyName cannot be resolved to a string (an
+ * intrinsic the resolver can't evaluate) marks the principal 'unresolved' — classify
+ * then falls back to suppressing the whole live Policies property rather than risk a
+ * false positive on the unidentifiable sibling entry.
  */
-export function collectRolesWithSiblingPolicies(
+export function collectPrincipalsWithSiblingPolicies(
   resources: Record<string, any>,
   ctx?: ResolverContext
 ): Map<string, string[] | 'unresolved'> {
-  const roles = new Map<string, string[] | 'unresolved'>();
+  const principals = new Map<string, string[] | 'unresolved'>();
   for (const res of Object.values(resources)) {
     if (res?.Type !== 'AWS::IAM::Policy') continue;
     const name = resolvePolicyName(res.Properties?.PolicyName, ctx);
-    for (const r of (res.Properties?.Roles ?? []) as unknown[]) {
+    const refs = [
+      ...((res.Properties?.Roles ?? []) as unknown[]),
+      ...((res.Properties?.Users ?? []) as unknown[]),
+      ...((res.Properties?.Groups ?? []) as unknown[]),
+    ];
+    for (const r of refs) {
       const ref = r && typeof r === 'object' ? (r as Record<string, unknown>).Ref : undefined;
       if (typeof ref !== 'string') continue;
-      const prev = roles.get(ref);
+      const prev = principals.get(ref);
       if (prev === 'unresolved') continue;
-      if (name === undefined) roles.set(ref, 'unresolved');
-      else roles.set(ref, [...(prev ?? []), name]);
+      if (name === undefined) principals.set(ref, 'unresolved');
+      else principals.set(ref, [...(prev ?? []), name]);
     }
   }
-  return roles;
+  return principals;
+}
+
+/**
+ * The set of ECS Cluster logicalIds that a sibling AWS::ECS::ClusterCapacityProviderAssociations
+ * resource references (via its `Cluster: { Ref }`). CapacityProviders and
+ * DefaultCapacityProviderStrategy can only be set through that separate resource — the Cluster's
+ * own schema has no such property — so the association reflects them into the cluster's live model
+ * where they read as false undeclared drift. The association is tracked + compared as its own
+ * resource, so classify drops the reflected props on a flagged cluster.
+ */
+export function collectClustersWithSiblingCapacityProviders(
+  resources: Record<string, any>
+): Set<string> {
+  const clusters = new Set<string>();
+  for (const res of Object.values(resources)) {
+    if (res?.Type !== 'AWS::ECS::ClusterCapacityProviderAssociations') continue;
+    const ref = res.Properties?.Cluster?.Ref;
+    if (typeof ref === 'string') clusters.add(ref);
+  }
+  return clusters;
 }
 
 // CDK emits literal PolicyNames (e.g. "RoleDefaultPolicyABC123"); hand-written
