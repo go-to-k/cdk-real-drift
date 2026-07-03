@@ -1591,6 +1591,32 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   without enumerating each. Both observed live first-run (LineLink cognito, dev-main
   //   AimAssociation TOKEN "custom") with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
+  //   AWS::RDS::DBCluster / ::DBInstance — an Aurora cluster/instance that declares no explicit
+  //   KMS key, availability-zone placement, or maintenance/backup window reads back the values
+  //   AWS ASSIGNED at creation: a specific `KmsKeyId` (the account/CDK key — create-only, so it
+  //   can never drift), the `AvailabilityZone(s)` AWS placed it in (create-only), and a
+  //   RANDOMLY-assigned `PreferredMaintenanceWindow` / `PreferredBackupWindow`. None is a
+  //   constant we can pin, and none is user intent — a user who cares DECLARES it, and then it
+  //   is compared in the declared loop (detected) and never reaches here. Fold value-independent
+  //   (mirrors the KinesisAnalytics maintenance-window precedent above). Observed live first-run
+  //   on dev-main-AuroraDB / dev-main-DbUsers-DB with no out-of-band edit.
+  //   `PerformanceInsightsKmsKeyId` (cluster) / `PerformanceInsightsKMSKeyId` (instance — note
+  //   the API's different casing) is the same shape as `KmsKeyId`: a Performance-Insights-
+  //   enabled cluster/instance that pins no explicit PI key reads back the AWS-assigned key.
+  'AWS::RDS::DBCluster': new Set([
+    'KmsKeyId',
+    'PerformanceInsightsKmsKeyId',
+    'AvailabilityZones',
+    'PreferredMaintenanceWindow',
+    'PreferredBackupWindow',
+  ]),
+  'AWS::RDS::DBInstance': new Set([
+    'KmsKeyId',
+    'PerformanceInsightsKMSKeyId',
+    'AvailabilityZone',
+    'PreferredMaintenanceWindow',
+    'PreferredBackupWindow',
+  ]),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
