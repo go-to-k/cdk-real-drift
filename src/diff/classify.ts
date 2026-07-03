@@ -30,6 +30,7 @@ import {
   isEquivalentRateExpression,
   isJsonStringStructEqual,
   JSON_STRING_PROPS,
+  JSON_STRING_DEFAULT_FILLS,
   isPemEqual,
   isAccessStringEqual,
   isSshPublicKeyEqual,
@@ -473,6 +474,37 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 // untruncated form is the branch above) — a user-chosen name realistically never matches
 // all of that. Pure.
 const CFN_RANDOM_SUFFIX = /-[0-9A-Za-z]{12,}$/;
+
+// #503: return a copy of a parsed JSON-string LIVE value with service-injected default
+// members subtracted, so the JSON_STRING_PROPS structural compare does not false-flag them.
+// A key is dropped from a live object only when it is a listed default, the DECLARED side
+// omits it, AND the live value equals the default (equality-gated — a member the template
+// set to a non-default value is kept and still compares). Runs per element when the parsed
+// value is a top-level array, at the root when it is an object; leaves anything else as-is.
+function stripInjectedJsonStringDefaults(
+  declared: unknown,
+  live: unknown,
+  defaults: Record<string, unknown>
+): unknown {
+  const stripObject = (d: unknown, l: unknown): unknown => {
+    if (l === null || typeof l !== 'object' || Array.isArray(l)) return l;
+    const dObj =
+      d !== null && typeof d === 'object' && !Array.isArray(d)
+        ? (d as Record<string, unknown>)
+        : {};
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(l as Record<string, unknown>)) {
+      if (key in defaults && !(key in dObj) && deepEqual(val, defaults[key])) continue;
+      out[key] = val;
+    }
+    return out;
+  };
+  if (Array.isArray(live)) {
+    const dArr = Array.isArray(declared) ? declared : [];
+    return live.map((l, i) => stripObject(dArr[i], l));
+  }
+  return stripObject(declared, live);
+}
 function isCfnGeneratedName(
   value: unknown,
   constructPath: string | undefined,
@@ -1015,6 +1047,30 @@ export function classifyResource(
         });
       }
       continue;
+    }
+    // #503: a JSON-STRING property into which the service INJECTS a constant default member
+    // the template never sent (CE CostCategory `Rules` gets `"Type":"REGULAR"` per rule).
+    // Both sides arrive as canonicalized JSON strings, so the plain string compare below
+    // false-flags the injected member as permanent declared drift (and revert can never
+    // converge — the re-read re-injects it). This prop is NOT in JSON_STRING_PROPS (its
+    // revert works via a plain Cloud Control whole-prop replace), so fold it HERE: parse
+    // both sides, subtract the service-injected defaults from live where the declared side
+    // omits them and the value equals the default, and skip if the remainder matches. A
+    // genuine change (a member set to a non-default value) does NOT match and falls through
+    // to the normal compare below, reported with the full live state.
+    const jsonFills = JSON_STRING_DEFAULT_FILLS[resourceType]?.[k];
+    if (jsonFills !== undefined && typeof v === 'string' && typeof live[k] === 'string') {
+      try {
+        const dvParsed = JSON.parse(v) as unknown;
+        const lvStripped = stripInjectedJsonStringDefaults(
+          dvParsed,
+          JSON.parse(live[k] as string),
+          jsonFills
+        );
+        if (deepEqual(dvParsed, lvStripped) || isStringlyEqualDeep(dvParsed, lvStripped)) continue;
+      } catch {
+        /* not JSON on one side — fall through to the normal compare */
+      }
     }
     // A CloudFormation JSON-STRING property (AWS::Config::ConfigRule InputParameters):
     // the schema types it as a string holding JSON, but CDK declares it as an object and

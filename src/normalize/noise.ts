@@ -1977,6 +1977,23 @@ export const JSON_STRING_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::Config::ConfigRule': new Set(['InputParameters']),
 };
 
+// Per-type JSON-STRING props whose service INJECTS a constant default MEMBER into the
+// parsed document that the template never sent — the same "service fills a default" class
+// as KNOWN_DEFAULT_PATHS / matchesKnownDefault, except the default lives INSIDE a parsed
+// JSON-string value, so those model-path-keyed tables can't reach it. Keyed
+// type -> prop -> a partial object of default KEY:VALUE pairs. Before the JSON_STRING_PROPS
+// structural compare, these are subtracted from the LIVE parsed side wherever the DECLARED
+// side omits the key AND the live value EQUALS the default (equality-gated: a member
+// declared with a non-default value still surfaces). If the parsed value is a top-level
+// ARRAY the subtraction runs per element; if an OBJECT, at its root.
+//   AWS::CE::CostCategory.Rules — the service injects `"Type":"REGULAR"` (the default
+//   rule type) into every rule, so a freshly deployed cost category reported permanent
+//   declared drift and revert could never converge (#503). A split-charge rule that sets a
+//   non-default Type is not omitted on the declared side, so it still compares.
+export const JSON_STRING_DEFAULT_FILLS: Record<string, Record<string, Record<string, unknown>>> = {
+  'AWS::CE::CostCategory': { Rules: { Type: 'REGULAR' } },
+};
+
 // Per-type property paths AWS compares CASE-INSENSITIVELY (R75: Route53
 // RecordSet AliasTarget.DNSName — an ALB's generated DNS name is mixed-case in
 // the template's GetAtt and all-lowercase in the live record; DNS hostnames are

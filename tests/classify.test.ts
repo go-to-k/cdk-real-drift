@@ -203,6 +203,67 @@ describe('classifyResource (the heart)', () => {
     expect(asString.declared).toEqual([]);
   });
 
+  // #503: CE CostCategory Rules is a JSON-STRING prop; the service injects `"Type":"REGULAR"`
+  // (the default rule type) into every rule, so a clean deploy reported permanent declared
+  // drift. The values arrive as canonicalized JSON strings (normalize runs before classify).
+  it('JSON-string default-fill (CostCategory Rules Type:REGULAR): clean folds, non-default surfaces', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const res: DesiredResource = {
+      logicalId: 'CostCat',
+      resourceType: 'AWS::CE::CostCategory',
+      physicalId: 'arn:aws:ce::111111111111:costcategory/abc',
+      declared: {
+        Rules:
+          '[{"Rule":{"Dimensions":{"Key":"SERVICE_CODE","Values":["AmazonS3"]}},"Value":"storage"}]',
+      },
+    };
+    // Clean: live is identical except the service-injected Type:"REGULAR" per rule.
+    const clean = tiers(
+      classifyResource(
+        res,
+        {
+          Rules:
+            '[{"Rule":{"Dimensions":{"Key":"SERVICE_CODE","Values":["AmazonS3"]}},"Type":"REGULAR","Value":"storage"}]',
+        },
+        emptySchema
+      )
+    );
+    expect(clean.declared).toEqual([]);
+    // A rule whose Type is a NON-default value is not stripped -> still surfaces as drift.
+    const drifted = tiers(
+      classifyResource(
+        res,
+        {
+          Rules:
+            '[{"Rule":{"Dimensions":{"Key":"SERVICE_CODE","Values":["AmazonS3"]}},"Type":"INHERITED_VALUE","Value":"storage"}]',
+        },
+        emptySchema
+      )
+    );
+    expect(drifted.declared).toEqual(['Rules']);
+    // A genuine dimension change still surfaces even though Type:REGULAR is present.
+    const valueChange = tiers(
+      classifyResource(
+        res,
+        {
+          Rules:
+            '[{"Rule":{"Dimensions":{"Key":"SERVICE_CODE","Values":["AmazonEC2"]}},"Type":"REGULAR","Value":"storage"}]',
+        },
+        emptySchema
+      )
+    );
+    expect(valueChange.declared).toEqual(['Rules']);
+  });
+
   // First-run noise folds for a clean deploy: a Cognito user pool
   // ALWAYS returns the immutable OIDC standard attributes in Schema (fold to atDefault via
   // IDENTITY_KEYED_DEFAULT_ELEMENTS) and a Lambda Version's CodeSha256 is a per-deploy
