@@ -557,12 +557,21 @@ describe('report', () => {
       ]);
     });
 
-    it('drift: first section directly under the header; blank line BEFORE result: (R48)', () => {
+    it('drift: first section under the header; verdict FRAMED by a rule, blank before the frame (R48)', () => {
       const lines = run([F('declared')]).text.split('\n');
       expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
       expect(lines[1]).toMatch(/^\[CFn-Declared Drift: 1\]/); // no stray blank after the header
       const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
-      expect(lines[resultIdx - 1]).toBe(''); // the verdict is separated from the section above
+      expect(lines[resultIdx - 1]).toMatch(/^─+$/); // top rule directly above the verdict
+      expect(lines[resultIdx - 2]).toBe(''); // blank separates the framed verdict from the section above
+      expect(lines[resultIdx + 1]).toMatch(/^─+$/); // bottom rule
+      // rule width tracks the verdict line so the frame reads intentional
+      expect(lines[resultIdx - 1]?.length).toBe(lines[resultIdx]?.length);
+    });
+
+    it('CLEAN stack is NOT framed by rules — nothing above the verdict to get lost under', () => {
+      const lines = run([]).text.split('\n');
+      expect(lines).toEqual(['=== cdkrd check: stack (us-east-1) ===', 'result: CLEAN']);
     });
 
     it('two drift sections: blank BETWEEN them, none after the header (R48)', () => {

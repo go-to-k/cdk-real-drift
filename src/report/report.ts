@@ -5,10 +5,12 @@
 //   header -> DRIFT tier sections (full detail) -> result: -> info: footer
 // Spacing (R37, revised by R48): no blank line before the header; the FIRST drift
 // section follows the header directly (no stray blank); subsequent sections get a
-// blank line between them (grouping); `result:` gets a blank line before it ONLY
-// when at least one drift section was printed — so the verdict never reads as a
-// member of the section above it, while a CLEAN stack with one informational tier
-// stays exactly 3 lines. Section headers carry the count INSIDE the brackets
+// blank line between them (grouping); when at least one drift section was printed
+// `result:` is FRAMED by a horizontal rule above and below (with a blank line before
+// the frame) so the verdict stands out from the wall of findings — bold alone got lost;
+// a CLEAN stack (no sections) skips the frame and stays exactly 3 lines. `result:` keeps
+// column 0 for the `^result:` grep contract (the rules are their own lines). Section
+// headers carry the count INSIDE the brackets
 // (`[CFn-Declared Drift: 3]`) — a bare digit to the right of `]` read as noise (R48);
 // the explanatory note follows outside the brackets. DRIFT tiers
 // (deleted/declared/undeclared) are ALWAYS shown in full — they are the point.
@@ -21,6 +23,10 @@ import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
+
+// Strip SGR color codes to measure a line's VISIBLE width (for the result-line rule).
+// Built from the ESC char via fromCharCode so no control byte sits in a regex literal.
+const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
 // Section headers are Title Case (not all-caps) — uniform and readable, and crucially
 // so `CFn-Declared Drift` vs `CFn-Undeclared Drift`, which share the `CFn-` prefix, the
@@ -133,8 +139,9 @@ export function formatFinding(f: Finding): string {
   else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     s += ` = ${style.actual(j(f.actual))}`;
   // A non-classifying origin hint (diff/hints.ts) — the finding is still real drift; this
-  // just names where the live value likely came from. Dim trailing line, below the values.
-  if (f.hint) s += `\n      ${style.infoTier(`↳ ${f.hint}`)}`;
+  // just names where the live value likely came from. Readable (style.note) trailing line
+  // below the values — it is meant to be read, so NOT dim.
+  if (f.hint) s += `\n      ${style.note(`↳ ${f.hint}`)}`;
   return s;
 }
 
@@ -206,7 +213,8 @@ function formatArrayDelta(d: ArrayDelta): string {
 }
 
 // section-title color by tier: deleted/declared = red (drift), undeclared =
-// yellow (the differentiator), informational tiers = dim.
+// yellow (the differentiator), informational tiers = readable default (style.note,
+// not dim — a --verbose info section is content to read).
 function tierStyle(t: Tier): (s: string) => string {
   // All three DRIFT tiers are RED — they are drift (exit-affecting). undeclared was
   // previously yellow (undeclaredTier), which collided with the [Potential Drift] section
@@ -215,7 +223,7 @@ function tierStyle(t: Tier): (s: string) => string {
   // review" — so colour alone separates drift (red) from to-review (yellow). R125.
   if (t === 'deleted' || t === 'added' || t === 'declared' || t === 'undeclared')
     return style.driftTier;
-  return style.infoTier;
+  return style.note;
 }
 
 // A short, human label for WHY an informational finding is not actionable drift, so
@@ -276,7 +284,8 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   // folded-count machinery below is a no-op rather than a special case.
   const unrecordedShown = unrecordedItems;
   const nestedFolded: Finding[] = [];
-  // Count inside the brackets (`[NAME: N]`), explanation outside (dim) — see the
+  // Count inside the brackets (`[NAME: N]`), explanation outside (readable — style.note,
+  // not dim: it is meant to be read) — see the
   // layout comment at the top (R48). `leadingBlank` separates a section from
   // whatever precedes it; the FIRST drift section sits directly under the header.
   const section = (
@@ -290,7 +299,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
     log(
       (leadingBlank ? '\n' : '') +
         color(`[${name}: ${items.length}]`) +
-        (note ? ' ' + style.infoTier(`(${note})`) : '')
+        (note ? ' ' + style.note(`(${note})`) : '')
     );
     for (const f of items) log('  ' + formatFinding(f));
     return true;
@@ -361,7 +370,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
     resultBody =
       `${drifted + shown} findings — ${style.drift(`${drifted} drift`)} (${driftCounts})` +
       ` + ${style.undeclaredTier(`${shown} potential drift`)}` +
-      style.infoTier(nestedTail);
+      style.note(nestedTail);
   } else {
     // the verdict is the one line that must stand out: green CLEAN / red drift count.
     // "CLEAN" is reserved for a truly clean stack (nothing unrecorded). With only FOLDED
@@ -376,17 +385,29 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
           : style.clean('CLEAN');
     const unrecordedNote =
       shown > 0
-        ? style.undeclaredTier(` · ${shown} potential drift`) + style.infoTier(nestedTail)
+        ? style.undeclaredTier(` · ${shown} potential drift`) + style.note(nestedTail)
         : folded > 0
-          ? style.infoTier(
-              ` · ${folded} live-only value(s) to record as baseline (run cdkrd record)`
-            )
+          ? style.note(` · ${folded} live-only value(s) to record as baseline (run cdkrd record)`)
           : '';
     resultBody = `${verdict}${unrecordedNote}`;
   }
-  // A blank line before the verdict ONLY when drift sections were printed — it must
-  // not read as a member of the last section (R48); a CLEAN stack stays 3 lines.
-  log((driftSections > 0 ? '\n' : '') + `result: ${resultBody}`);
+  // The verdict is the one line that must stand out. Bold alone got lost under a wall of
+  // findings, so when drift sections were printed the verdict is FRAMED with a horizontal
+  // rule above and below (and a blank line separating it from the section above — R48). A
+  // leading glyph was rejected: `result:` must stay at column 0 for the `^result:` CI/integ
+  // grep contract, and the rules are their own lines so grep is untouched. The rule width
+  // tracks the (uncolored) verdict length so it reads intentional. A CLEAN stack (no
+  // sections) keeps its compact 3-line form — nothing above it to get lost under.
+  const resultLine = `${style.resultLabel('result:')} ${resultBody}`;
+  if (driftSections > 0) {
+    const width = resultLine.replace(ANSI_RE, '').length;
+    const rule = style.note('─'.repeat(width));
+    log('\n' + rule);
+    log(resultLine);
+    log(rule);
+  } else {
+    log(resultLine);
+  }
   // INFORMATIONAL tiers: footer below result. Each tier is either EXPANDED to a full
   // section or FOLDED into the `info:` summary. --verbose expands all of them;
   // --show-all expands ONLY atDefault (inventory mode lists every undeclared value but
@@ -444,11 +465,11 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       `undeclared-subkey=${nestedFolded.length} (undeclared live-only values inside a declared object — record to record; --show-all to list)`
     );
   if (summaries.length === 1) {
-    log(style.infoTier(`info: ${summaries[0]} — run with --verbose for the list`));
+    log(style.note(`info: ${summaries[0]} — run with --verbose for the list`));
   } else if (summaries.length > 1) {
-    log(style.infoTier('info:'));
-    for (const s of summaries) log(style.infoTier(`  - ${s}`));
-    log(style.infoTier('  run with --verbose for the list'));
+    log(style.note('info:'));
+    for (const s of summaries) log(style.note(`  - ${s}`));
+    log(style.note('  run with --verbose for the list'));
   }
   return drifted === 0 ? 0 : 1;
 }
