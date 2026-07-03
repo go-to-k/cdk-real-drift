@@ -23,32 +23,12 @@
     "AccessString": "off ~* -@all"
   },
   "schema": {
-    "readOnly": [
-      "Arn",
-      "Status"
-    ],
-    "writeOnly": [
-      "AuthenticationMode",
-      "NoPasswordRequired",
-      "Passwords"
-    ],
-    "createOnly": [
-      "UserId",
-      "UserName"
-    ],
-    "readOnlyPaths": [
-      "Arn",
-      "Status"
-    ],
-    "writeOnlyPaths": [
-      "AuthenticationMode",
-      "NoPasswordRequired",
-      "Passwords"
-    ],
-    "createOnlyPaths": [
-      "UserId",
-      "UserName"
-    ],
+    "readOnly": ["Arn", "Status"],
+    "writeOnly": ["AuthenticationMode", "NoPasswordRequired", "Passwords"],
+    "createOnly": ["UserId", "UserName"],
+    "readOnlyPaths": ["Arn", "Status"],
+    "writeOnlyPaths": ["AuthenticationMode", "NoPasswordRequired", "Passwords"],
+    "createOnlyPaths": ["UserId", "UserName"],
     "defaults": {},
     "defaultPaths": {},
     "unorderedScalarPaths": [],
