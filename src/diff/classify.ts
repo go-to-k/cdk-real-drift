@@ -46,6 +46,8 @@ import {
   TRAILING_DOT_PATHS,
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
+  DEFAULT_MANAGED_NAME_PATHS,
+  ENGINE_DEFAULTS,
   GENERATED_NESTED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
   EPOCH_HOUR_PATHS,
@@ -1344,6 +1346,28 @@ export function classifyResource(
         findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
         continue;
       }
+    }
+    // A live value EQUAL to its ENGINE-DERIVED default — an RDS default whose VALUE depends on
+    // the resource's own live `Engine` (StorageType "aurora" for Aurora, Port 3306 for MySQL /
+    // 5432 for Postgres, …), which a constant KNOWN_DEFAULTS entry cannot express. Equality-
+    // gated with typed<->string coercion (a DBInstance echoes the port/storage as a string, a
+    // DBCluster as a number); an engine with no single default, or a value that differs, falls
+    // through to plain `undeclared` (recordable), never a wrong fold.
+    const engineDefault = ENGINE_DEFAULTS[resourceType]?.[k];
+    if (engineDefault !== undefined && typeof live.Engine === 'string') {
+      const def = engineDefault(live.Engine);
+      if (def !== undefined && (deepEqual(v, def) || isStringlyEqualScalar(v, def))) {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+    }
+    // A live value that is an AWS-MANAGED default resource NAME, recognized by its reserved
+    // `default.` / `default:` prefix (an RDS instance's default parameter/option group) rather
+    // than a constant — a CUSTOM group name never carries the prefix, so it still surfaces.
+    const namePattern = DEFAULT_MANAGED_NAME_PATHS[resourceType]?.[k];
+    if (namePattern !== undefined && typeof v === 'string' && namePattern.test(v)) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
     }
     // A live value EQUAL to the AWS/CDK-generated value for this resource (its minted
     // physical name, a default-named log group) is the `generated` tier: folded

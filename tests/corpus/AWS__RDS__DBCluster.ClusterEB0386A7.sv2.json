@@ -222,7 +222,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "Port",
@@ -258,7 +258,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "StorageType",
@@ -294,7 +294,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "AllocatedStorage",

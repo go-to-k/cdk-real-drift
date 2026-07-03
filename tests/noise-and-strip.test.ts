@@ -623,6 +623,9 @@ describe('noise suppressors', () => {
       ManageMasterUserPassword: false,
       MultiAZ: false,
       StorageEncrypted: false,
+      // The current AWS default RDS server CA (constant; engine-derived RDS values fold via
+      // ENGINE_DEFAULTS / DEFAULT_MANAGED_NAME_PATHS instead).
+      CACertificateIdentifier: 'rds-ca-rsa2048-g1',
     });
     expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].NetworkType).toBe('IPV4');
     expect(KNOWN_DEFAULTS['AWS::ElastiCache::ReplicationGroup']).toEqual({

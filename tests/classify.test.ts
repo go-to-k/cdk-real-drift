@@ -4065,6 +4065,156 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
   });
 });
 
+// Engine-derived RDS defaults (ENGINE_DEFAULTS + DEFAULT_MANAGED_NAME_PATHS + the
+// CACertificateIdentifier constant): values the user never set that AWS fills in from the
+// engine family, folded to atDefault so a clean CDK Aurora first run is not flooded with
+// potential-drift noise. Observed live on dev-main-AuroraDB / dev-main-DbUsers-DB.
+describe('RDS engine-derived defaults fold to atDefault', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const cls = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    tiers(
+      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+    );
+
+  it('DBInstance StorageType "aurora" (Engine aurora-mysql) folds atDefault', () => {
+    const t = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'aurora-mysql' },
+      { Engine: 'aurora-mysql', StorageType: 'aurora' }
+    );
+    expect(t.atDefault).toContain('StorageType');
+    expect(t.undeclared).not.toContain('StorageType');
+  });
+
+  it('DBInstance echoes Port/AllocatedStorage as STRINGS — typed<->string coercion folds them', () => {
+    const t = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'aurora-mysql' },
+      { Engine: 'aurora-mysql', Port: '3306', AllocatedStorage: '1' }
+    );
+    expect(t.atDefault).toEqual(expect.arrayContaining(['Port', 'AllocatedStorage']));
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('DBCluster carries Port/AllocatedStorage as NUMBERS — both fold', () => {
+    const t = cls(
+      'AWS::RDS::DBCluster',
+      { Engine: 'aurora-mysql' },
+      { Engine: 'aurora-mysql', Port: 3306, AllocatedStorage: 1, StorageType: 'aurora' }
+    );
+    expect(t.atDefault).toEqual(
+      expect.arrayContaining(['Port', 'AllocatedStorage', 'StorageType'])
+    );
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('LicenseModel folds per engine family (mysql -> general-public-license, postgres -> postgresql-license)', () => {
+    expect(
+      cls(
+        'AWS::RDS::DBInstance',
+        { Engine: 'aurora-mysql' },
+        { Engine: 'aurora-mysql', LicenseModel: 'general-public-license' }
+      ).atDefault
+    ).toContain('LicenseModel');
+    expect(
+      cls(
+        'AWS::RDS::DBInstance',
+        { Engine: 'aurora-postgresql' },
+        { Engine: 'aurora-postgresql', LicenseModel: 'postgresql-license' }
+      ).atDefault
+    ).toContain('LicenseModel');
+  });
+
+  it('Postgres default Port 5432 folds; a MySQL 3306 on a Postgres engine still surfaces (equality-gated)', () => {
+    expect(
+      cls(
+        'AWS::RDS::DBInstance',
+        { Engine: 'aurora-postgresql' },
+        { Engine: 'aurora-postgresql', Port: '5432' }
+      ).atDefault
+    ).toContain('Port');
+    expect(
+      cls('AWS::RDS::DBInstance', { Engine: 'postgres' }, { Engine: 'postgres', Port: '3306' })
+        .undeclared
+    ).toContain('Port');
+  });
+
+  it('non-Aurora StorageType (gp2 on plain MySQL) does NOT fold — only the aurora constant does', () => {
+    const t = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'mysql' },
+      { Engine: 'mysql', StorageType: 'gp2' }
+    );
+    expect(t.undeclared).toContain('StorageType');
+    expect(t.atDefault).not.toContain('StorageType');
+  });
+
+  it('default parameter/option groups fold by the reserved default. / default: prefix', () => {
+    const t = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'aurora-mysql' },
+      {
+        Engine: 'aurora-mysql',
+        DBParameterGroupName: 'default.aurora-mysql8.0',
+        OptionGroupName: 'default:aurora-mysql-8-0',
+      }
+    );
+    expect(t.atDefault).toEqual(
+      expect.arrayContaining(['DBParameterGroupName', 'OptionGroupName'])
+    );
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('a CUSTOM parameter group (no default. prefix) still surfaces as undeclared', () => {
+    const t = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'aurora-mysql' },
+      { Engine: 'aurora-mysql', DBParameterGroupName: 'mystack-instancepg-abc123' }
+    );
+    expect(t.undeclared).toContain('DBParameterGroupName');
+    expect(t.atDefault).not.toContain('DBParameterGroupName');
+  });
+
+  it('CACertificateIdentifier default rds-ca-rsa2048-g1 folds (constant); a pinned CA surfaces', () => {
+    expect(
+      cls(
+        'AWS::RDS::DBInstance',
+        { Engine: 'aurora-mysql' },
+        { Engine: 'aurora-mysql', CACertificateIdentifier: 'rds-ca-rsa2048-g1' }
+      ).atDefault
+    ).toContain('CACertificateIdentifier');
+    expect(
+      cls(
+        'AWS::RDS::DBInstance',
+        { Engine: 'aurora-mysql' },
+        { Engine: 'aurora-mysql', CACertificateIdentifier: 'rds-ca-2019' }
+      ).undeclared
+    ).toContain('CACertificateIdentifier');
+  });
+
+  it('the engine fold is gated to RDS types — the same key on another type is undeclared', () => {
+    const t = cls(
+      'AWS::Other::Thing',
+      { Engine: 'aurora-mysql' },
+      { Engine: 'aurora-mysql', StorageType: 'aurora' }
+    );
+    expect(t.undeclared).toContain('StorageType');
+  });
+});
+
 describe('partial-unresolved declared compare (WAVE20 F1 — a sibling drift is not hidden)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
