@@ -4781,6 +4781,33 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
     expect(r.atDefault).not.toContain('PreferredMaintenanceWindow');
   });
 
+  it('EngineLifecycleSupport folds value-independent — BOTH the enabled and disabled defaults', () => {
+    // The default varies by creation date (RDS Extended Support opt-in changed 2024) — newer
+    // deploys read "…support", the older imported AuroraDB reads "…support-disabled". Both are
+    // AWS's choice, not user intent, so both fold.
+    for (const v of [
+      'open-source-rds-extended-support',
+      'open-source-rds-extended-support-disabled',
+    ]) {
+      expect(t('AWS::RDS::DBCluster', {}, { EngineLifecycleSupport: v }).atDefault).toContain(
+        'EngineLifecycleSupport'
+      );
+      expect(t('AWS::RDS::DBInstance', {}, { EngineLifecycleSupport: v }).atDefault).toContain(
+        'EngineLifecycleSupport'
+      );
+    }
+  });
+
+  it('a DECLARED EngineLifecycleSupport is user intent — still compared/detected', () => {
+    const r = t(
+      'AWS::RDS::DBCluster',
+      { EngineLifecycleSupport: 'open-source-rds-extended-support' },
+      { EngineLifecycleSupport: 'open-source-rds-extended-support-disabled' }
+    );
+    expect(r.declared).toEqual(['EngineLifecycleSupport']);
+    expect(r.atDefault).not.toContain('EngineLifecycleSupport');
+  });
+
   it('the value-independent fold is gated per-type — another type stays undeclared', () => {
     const r = t('AWS::Other::Thing', {}, { KmsKeyId: 'arn:aws:kms:x:1:key/abc' });
     expect(r.undeclared).toContain('KmsKeyId');
