@@ -451,6 +451,12 @@ info:
   `result:` points you at `cdkrd record` to accept them (or `revert` to remove).
   Once a resource is fully snapshotted, a value that _appears_ later is real drift
   (`appeared since record`).
+- **`↳` origin hint**: when a finding's live value has a recognizable external
+  source — e.g. the CloudWatch Application Signals / Lambda Insights
+  auto-instrumentation footprint (an added Insights layer + tracer execution
+  policy, typically enabled account-wide, not per-resource) — a dim `↳` line names
+  the likely source. It's an explanation only: the finding is still real drift and
+  still drives the exit, so an unexpected account-wide enablement is never hidden.
 - **`info:` footer** folds the informational tiers to per-reason counts
   (`--verbose` expands them):
 

@@ -98,7 +98,12 @@ NEW (cdkd does NOT have these):
   rules scoped on `{ path, stack?, account?, region? }` (declared, undeclared, OR
   an out-of-band `added` resource) that re-tag findings to `ignored` and STOP
   watching (the `.driftignore` / `ignore_changes` analogue)
-- **report** — tiered text + JSON
+- **report** — tiered text + JSON. A finding whose live value has a recognizable
+  external origin also carries a non-classifying `hint` (diff/hints.ts) — e.g. the
+  CloudWatch Application Signals / Lambda Insights auto-instrumentation footprint
+  (an added Insights layer + tracer execution policy). A hint NEVER folds or
+  re-tiers the finding (an unexpected account-wide enablement stays visible as
+  real drift); it only names the likely source in a dim trailing line.
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 
 ## Roadmap (private until Phase 4)
