@@ -182,7 +182,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Classic397C6F85",
       "resourceType": "AWS::DynamoDB::Table",
       "path": "WarmThroughput",
