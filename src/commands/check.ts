@@ -21,6 +21,7 @@ import {
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
+import { withinStackPath } from '../construct-path.js';
 import { report, stackSeparator } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
@@ -111,7 +112,9 @@ export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
 export function nestedStackWarning(resources: DesiredResource[], stackName: string): string | null {
   const nested = resources.filter((r) => r.resourceType === 'AWS::CloudFormation::Stack');
   if (nested.length === 0) return null;
-  const names = nested.map((r) => r.constructPath ?? r.logicalId).sort();
+  const names = nested
+    .map((r) => (r.constructPath ? withinStackPath(r.constructPath, stackName) : r.logicalId))
+    .sort();
   return `warning: ${stackName} has ${nested.length} nested CloudFormation stack(s) — cdkrd does not recurse into them, so the resources INSIDE them are NOT checked: ${names.join(', ')}`;
 }
 
@@ -126,7 +129,9 @@ export function nestedStackWarning(resources: DesiredResource[], stackName: stri
 export function coverageWarning(findings: Finding[], stackName: string): string | null {
   const skipped = findings.filter((f) => f.tier === 'skipped');
   if (skipped.length === 0) return null;
-  const names = skipped.map((f) => f.constructPath ?? f.logicalId).sort();
+  const names = skipped
+    .map((f) => (f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId))
+    .sort();
   const shown = names.slice(0, 10);
   const more = names.length > shown.length ? `, …(+${names.length - shown.length} more)` : '';
   return `warning: ${stackName}: ${skipped.length} resource(s) were NOT checked (coverage incomplete) — ${shown.join(', ')}${more}; see the skipped breakdown (--verbose)`;
