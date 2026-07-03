@@ -137,7 +137,11 @@ export function formatFinding(f: Finding): string {
     // whole array dump (the property stays recorded; this is the WHICH-element view).
     s += formatArrayDelta(f.arrayDelta);
   else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
-    s += ` = ${style.actual(j(f.actual))}`;
+    // Put the live value on its OWN indented line, aligned with declared's `actual =`
+    // column — a long ARN/JSON list crammed inline after the id was unreadable, and it read
+    // inconsistently next to a declared drift's stacked desired/actual. An undeclared value
+    // has only the live side, so it's a single `actual =` line (no desired to contrast).
+    s += `\n      actual =${style.actual(j(f.actual))}`;
   // A non-classifying origin hint (diff/hints.ts) — the finding is still real drift; this
   // just names where the live value likely came from. Readable (style.note) trailing line
   // below the values — it is meant to be read, so NOT dim.

@@ -24,7 +24,8 @@ explainable, so the same change shows up:
 $ npx cdkrd check
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
-  ApiStack/ApiRole.Policies (AWS::IAM::Role) — appeared since record = [{"PolicyName":"manual-debug-access", ...}]
+  ApiStack/ApiRole.Policies (AWS::IAM::Role) — appeared since record
+      actual =[{"PolicyName":"manual-debug-access", ...}]
 
 ─────────────────────────────────
 result: 1 drift(s) (undeclared=1)
@@ -70,8 +71,10 @@ No baseline yet — live-only values can't be confirmed as drift, but declared d
       actual ="test"
 
 [Potential Drift: 2] (live-only and not yet in your .cdkrd baseline, so cdkrd can't tell whether it's intended or an out-of-band change — Record to accept it, or Revert to remove it)
-  ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue) = {"maxReceiveCount":5}
-  ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
+  ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue)
+      actual ={"maxReceiveCount":5}
+  ApiStack/Role.Policies (AWS::IAM::Role)
+      actual =[{"PolicyName":"adhoc", ...}]
 
 ─────────────────────────────────────────────────────────────
 result: 3 findings — 1 drift (declared=1) + 2 potential drift
@@ -112,7 +115,8 @@ your CloudFormation template, the kind `cdk drift` can't see:
 ```console
 === cdkrd check: ApiStack (us-east-1) ===
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
-  ApiStack/Role.Policies (AWS::IAM::Role) — changed since record = [{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
+  ApiStack/Role.Policies (AWS::IAM::Role) — changed since record
+      actual =[{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
 
 ─────────────────────────────────
 result: 1 drift(s) (undeclared=1)
