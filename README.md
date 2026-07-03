@@ -6,6 +6,27 @@
 Drift detection for AWS CDK that sees what your template can't, including the
 **properties you never declared**. Detect it, record it, or revert it.
 
+**In a nutshell:**
+
+```text
+live AWS state  vs  ( CFn template + AWS defaults + .cdkrd baseline )
+```
+
+`cdkrd` compares your real deployed resources against your intent, which is three
+things combined:
+
+- **CFn template** — the properties you **declared**.
+- **AWS defaults** — undeclared properties still sitting at their AWS default,
+  subtracted automatically (you maintain nothing here).
+- **.cdkrd baseline** — a small committed file recording the **undeclared** values
+  that actually differ from the default and you've accepted.
+
+The baseline is **optional**: with just the first two, `cdkrd` already catches
+drift on your declared properties and undeclared properties that drift away from
+their AWS default (plus out-of-band deletes) — no setup required. The baseline
+only adds one more thing: confirming drift on undeclared values that were
+non-default from the start, which your template never mentions.
+
 ## Why
 
 Someone tweaks one of your resources from the console: an extra inline policy on a
