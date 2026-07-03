@@ -641,7 +641,7 @@ describe('noise suppressors', () => {
       AutoMinorVersionUpgrade: true,
       BackupTarget: 'region',
       DatabaseInsightsMode: 'standard',
-      EngineLifecycleSupport: 'open-source-rds-extended-support',
+      // EngineLifecycleSupport moved to VALUE_INDEPENDENT (default varies by creation date).
       MonitoringInterval: 0,
       NetworkType: 'IPV4',
       StorageThroughput: 0,

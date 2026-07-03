@@ -45,10 +45,11 @@ for prop in StorageEncrypted EngineVersion BackupRetentionPeriod DBSubnetGroupNa
   grep -qE "\.$prop \(AWS::RDS::DBInstance\)" "/tmp/cdkrd-$STACK-pre.out" \
     && fail "DBInstance echo of cluster $prop surfaced (CLUSTER_ECHO_CHILD strip regressed)"
 done
-# AWS-ASSIGNED values a user never declared — the AZ placement and the randomly-assigned
-# maintenance/backup windows AWS picks at creation — fold value-independent (not user intent).
-# A regression un-folds one. (KmsKeyId only appears when encrypted; grepped best-effort.)
-for prop in AvailabilityZone AvailabilityZones PreferredMaintenanceWindow PreferredBackupWindow KmsKeyId; do
+# AWS-ASSIGNED values a user never declared — the AZ placement, the randomly-assigned
+# maintenance/backup windows, and the RDS Extended Support enrollment (EngineLifecycleSupport,
+# whose default varies by creation date) — fold value-independent (not user intent). A
+# regression un-folds one. (KmsKeyId only appears when encrypted; grepped best-effort.)
+for prop in AvailabilityZone AvailabilityZones PreferredMaintenanceWindow PreferredBackupWindow KmsKeyId EngineLifecycleSupport; do
   grep -qE "\.$prop \(AWS::RDS::DB" "/tmp/cdkrd-$STACK-pre.out" \
     && fail "AWS-assigned $prop surfaced as potential drift (VALUE_INDEPENDENT fold regressed)"
 done

@@ -551,7 +551,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AutoMinorVersionUpgrade: true,
     BackupTarget: 'region',
     DatabaseInsightsMode: 'standard',
-    EngineLifecycleSupport: 'open-source-rds-extended-support',
+    // EngineLifecycleSupport is NOT a constant default — AWS changed the enrollment default over
+    // time (RDS Extended Support opt-in behavior changed 2024-02/03: newer resources default to
+    // `open-source-rds-extended-support` / auto-enroll, older ones read back
+    // `open-source-rds-extended-support-disabled`), so it varies by creation date. Folded
+    // value-independent via VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS instead (declared → detected).
     MonitoringInterval: 0,
     NetworkType: 'IPV4',
     StorageThroughput: 0,
@@ -576,7 +580,8 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::RDS::DBCluster': {
     AutoMinorVersionUpgrade: true,
     DatabaseInsightsMode: 'standard',
-    EngineLifecycleSupport: 'open-source-rds-extended-support',
+    // EngineLifecycleSupport folds value-independent (see the DBInstance note above) — its
+    // default varies by creation date, so it is not a constant KNOWN_DEFAULTS value.
     NetworkType: 'IPV4',
     EngineMode: 'provisioned', // default; serverless/parallelquery are explicit opt-ins
   },
@@ -1631,12 +1636,22 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   `PerformanceInsightsKmsKeyId` (cluster) / `PerformanceInsightsKMSKeyId` (instance — note
   //   the API's different casing) is the same shape as `KmsKeyId`: a Performance-Insights-
   //   enabled cluster/instance that pins no explicit PI key reads back the AWS-assigned key.
+  //   `EngineLifecycleSupport` — the RDS Extended Support enrollment default CHANGED over time
+  //   (opt-in behavior changed 2024-02/03: newer resources auto-enroll to
+  //   `open-source-rds-extended-support`, older ones read back
+  //   `open-source-rds-extended-support-disabled`). So the undeclared default varies by creation
+  //   date — AWS's choice, not user intent — and a constant KNOWN_DEFAULTS cannot fold both forms.
+  //   A user who cares about the enrollment (its billing / EOL implications) DECLARES it, and then
+  //   it is compared in the declared loop (detected). Observed live: fresh corpus deploys read
+  //   "open-source-rds-extended-support"; the older cdk-imported dev-main-AuroraDB reads
+  //   "open-source-rds-extended-support-disabled".
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
     'PerformanceInsightsKmsKeyId',
     'AvailabilityZones',
     'PreferredMaintenanceWindow',
     'PreferredBackupWindow',
+    'EngineLifecycleSupport',
   ]),
   'AWS::RDS::DBInstance': new Set([
     'KmsKeyId',
@@ -1644,6 +1659,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'AvailabilityZone',
     'PreferredMaintenanceWindow',
     'PreferredBackupWindow',
+    'EngineLifecycleSupport',
   ]),
 };
 
