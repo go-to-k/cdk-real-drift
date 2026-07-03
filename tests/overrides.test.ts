@@ -17,7 +17,20 @@ import {
   BatchGetReportGroupsCommand,
   CodeBuildClient,
 } from '@aws-sdk/client-codebuild';
-import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
+import {
+  DescribeClientVpnAuthorizationRulesCommand,
+  DescribeClientVpnEndpointsCommand,
+  DescribeClientVpnTargetNetworksCommand,
+  DescribeNetworkAclsCommand,
+  EC2Client,
+} from '@aws-sdk/client-ec2';
+import {
+  DAXClient,
+  DescribeClustersCommand,
+  DescribeParameterGroupsCommand,
+  DescribeParametersCommand as DescribeDaxParametersCommand,
+  DescribeSubnetGroupsCommand,
+} from '@aws-sdk/client-dax';
 import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
@@ -84,6 +97,7 @@ const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
 const mediaconvert = mockClient(MediaConvertClient);
+const dax = mockClient(DAXClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -116,6 +130,7 @@ beforeEach(() => {
     dlm,
     dms,
     mediaconvert,
+    dax,
   ])
     m.reset();
 });
@@ -2426,5 +2441,368 @@ describe('SES inbound receipt-rule family (Cloud Control read-gap: no handlers)'
 
   it('ReceiptFilter: undefined (skipped) when neither physical id nor declared name resolves', async () => {
     expect(await SDK_OVERRIDES['AWS::SES::ReceiptFilter'](ctx({}))).toBeUndefined();
+  });
+});
+
+describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
+  describe('ClientVpnEndpoint', () => {
+    it('projects the CFn-declarable props + derives SelfServicePortal from the URL', async () => {
+      ec2.on(DescribeClientVpnEndpointsCommand).resolves({
+        ClientVpnEndpoints: [
+          {
+            ClientVpnEndpointId: 'cvpn-endpoint-abc',
+            Description: 'my vpn',
+            ClientCidrBlock: '10.0.0.0/22',
+            DnsServers: ['8.8.8.8'],
+            SplitTunnel: true,
+            TransportProtocol: 'udp',
+            VpnPort: 443,
+            ServerCertificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/srv',
+            SecurityGroupIds: ['sg-123'],
+            VpcId: 'vpc-123',
+            SessionTimeoutHours: 12,
+            DisconnectOnSessionTimeout: false,
+            SelfServicePortalUrl: 'https://self-service.clientvpn.amazonaws.com/endpoints/cvpn',
+            ConnectionLogOptions: {
+              Enabled: true,
+              CloudwatchLogGroup: '/aws/vpn',
+              CloudwatchLogStream: 'conn',
+            },
+            AuthenticationOptions: [
+              {
+                Type: 'certificate-authentication',
+                MutualAuthentication: { ClientRootCertificateChain: 'arn:aws:acm:...:ca' },
+              },
+              {
+                Type: 'federated-authentication',
+                FederatedAuthentication: {
+                  SamlProviderArn: 'arn:aws:iam::123456789012:saml-provider/idp',
+                  SelfServiceSamlProviderArn: 'arn:aws:iam::123456789012:saml-provider/self',
+                },
+              },
+              {
+                Type: 'directory-service-authentication',
+                ActiveDirectory: { DirectoryId: 'd-123' },
+              },
+            ],
+            // computed/managed fields the projection must drop
+            Status: { Code: 'available' },
+            CreationTime: '2026-01-01',
+            DnsName: '*.cvpn.prod.clientvpn.us-east-1.amazonaws.com',
+            VpnProtocol: 'openvpn',
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnEndpoint'](ctx({}, 'cvpn-endpoint-abc'));
+      expect(out).toEqual({
+        Description: 'my vpn',
+        ClientCidrBlock: '10.0.0.0/22',
+        DnsServers: ['8.8.8.8'],
+        SplitTunnel: true,
+        TransportProtocol: 'udp',
+        VpnPort: 443,
+        ServerCertificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/srv',
+        SecurityGroupIds: ['sg-123'],
+        VpcId: 'vpc-123',
+        SessionTimeoutHours: 12,
+        DisconnectOnSessionTimeout: false,
+        SelfServicePortal: 'enabled',
+        ConnectionLogOptions: {
+          Enabled: true,
+          CloudwatchLogGroup: '/aws/vpn',
+          CloudwatchLogStream: 'conn',
+        },
+        AuthenticationOptions: [
+          {
+            Type: 'certificate-authentication',
+            MutualAuthentication: { ClientRootCertificateChainArn: 'arn:aws:acm:...:ca' },
+          },
+          {
+            Type: 'federated-authentication',
+            FederatedAuthentication: {
+              SAMLProviderArn: 'arn:aws:iam::123456789012:saml-provider/idp',
+              SelfServiceSAMLProviderArn: 'arn:aws:iam::123456789012:saml-provider/self',
+            },
+          },
+          {
+            Type: 'directory-service-authentication',
+            ActiveDirectory: { DirectoryId: 'd-123' },
+          },
+        ],
+      });
+      const call = ec2.commandCalls(DescribeClientVpnEndpointsCommand)[0]!;
+      expect(call.args[0].input).toEqual({ ClientVpnEndpointIds: ['cvpn-endpoint-abc'] });
+    });
+
+    it('SelfServicePortal is disabled when no SelfServicePortalUrl is returned', async () => {
+      ec2.on(DescribeClientVpnEndpointsCommand).resolves({
+        ClientVpnEndpoints: [{ ClientVpnEndpointId: 'cvpn-endpoint-abc', Description: 'x' }],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnEndpoint'](ctx({}, 'cvpn-endpoint-abc'));
+      expect(out).toEqual({ Description: 'x', SelfServicePortal: 'disabled' });
+    });
+
+    it('the endpoint is absent -> ResourceGoneError (deleted out of band)', async () => {
+      ec2.on(DescribeClientVpnEndpointsCommand).resolves({ ClientVpnEndpoints: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::EC2::ClientVpnEndpoint'](ctx({}, 'cvpn-endpoint-abc'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no physical id -> undefined (skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::EC2::ClientVpnEndpoint'](ctx({}, ''))).toBeUndefined();
+    });
+  });
+
+  describe('ClientVpnAuthorizationRule', () => {
+    it('matches the rule by TargetNetworkCidr + AccessGroupId and projects the CFn shape', async () => {
+      ec2.on(DescribeClientVpnAuthorizationRulesCommand).resolves({
+        AuthorizationRules: [
+          { DestinationCidr: '10.0.0.0/16', GroupId: 'other', AccessAll: false },
+          {
+            DestinationCidr: '192.168.0.0/16',
+            GroupId: 'grp-1',
+            Description: 'admins',
+            AccessAll: false,
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
+        ctx({
+          ClientVpnEndpointId: 'cvpn-endpoint-abc',
+          TargetNetworkCidr: '192.168.0.0/16',
+          AccessGroupId: 'grp-1',
+        })
+      );
+      expect(out).toEqual({
+        TargetNetworkCidr: '192.168.0.0/16',
+        AccessGroupId: 'grp-1',
+        Description: 'admins',
+        AuthorizeAllGroups: false,
+      });
+      const call = ec2.commandCalls(DescribeClientVpnAuthorizationRulesCommand)[0]!;
+      expect(call.args[0].input).toEqual({ ClientVpnEndpointId: 'cvpn-endpoint-abc' });
+    });
+
+    it('matches an all-groups rule when no AccessGroupId is declared', async () => {
+      ec2.on(DescribeClientVpnAuthorizationRulesCommand).resolves({
+        AuthorizationRules: [{ DestinationCidr: '0.0.0.0/0', AccessAll: true }],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
+        ctx({ ClientVpnEndpointId: 'cvpn-endpoint-abc', TargetNetworkCidr: '0.0.0.0/0' })
+      );
+      expect(out).toEqual({ TargetNetworkCidr: '0.0.0.0/0', AuthorizeAllGroups: true });
+    });
+
+    it('no matching rule -> ResourceGoneError (deleted out of band)', async () => {
+      ec2.on(DescribeClientVpnAuthorizationRulesCommand).resolves({
+        AuthorizationRules: [{ DestinationCidr: '10.0.0.0/16' }],
+      } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
+          ctx({ ClientVpnEndpointId: 'cvpn-endpoint-abc', TargetNetworkCidr: '192.168.0.0/16' })
+        )
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no declared parent endpoint -> undefined (skipped)', async () => {
+      expect(
+        await SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
+          ctx({ TargetNetworkCidr: '192.168.0.0/16' })
+        )
+      ).toBeUndefined();
+    });
+  });
+
+  describe('ClientVpnTargetNetworkAssociation', () => {
+    it('projects ClientVpnEndpointId + SubnetId (from TargetNetworkId)', async () => {
+      ec2.on(DescribeClientVpnTargetNetworksCommand).resolves({
+        ClientVpnTargetNetworks: [
+          {
+            AssociationId: 'cvpn-assoc-123',
+            ClientVpnEndpointId: 'cvpn-endpoint-abc',
+            TargetNetworkId: 'subnet-123',
+            Status: { Code: 'associated' },
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnTargetNetworkAssociation'](
+        ctx({ ClientVpnEndpointId: 'cvpn-endpoint-abc' }, 'cvpn-assoc-123')
+      );
+      expect(out).toEqual({
+        ClientVpnEndpointId: 'cvpn-endpoint-abc',
+        SubnetId: 'subnet-123',
+      });
+      const call = ec2.commandCalls(DescribeClientVpnTargetNetworksCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        ClientVpnEndpointId: 'cvpn-endpoint-abc',
+        AssociationIds: ['cvpn-assoc-123'],
+      });
+    });
+
+    it('the association is absent -> ResourceGoneError (deleted out of band)', async () => {
+      ec2
+        .on(DescribeClientVpnTargetNetworksCommand)
+        .resolves({ ClientVpnTargetNetworks: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::EC2::ClientVpnTargetNetworkAssociation'](
+          ctx({ ClientVpnEndpointId: 'cvpn-endpoint-abc' }, 'cvpn-assoc-123')
+        )
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no declared parent endpoint -> undefined (skipped)', async () => {
+      expect(
+        await SDK_OVERRIDES['AWS::EC2::ClientVpnTargetNetworkAssociation'](
+          ctx({}, 'cvpn-assoc-123')
+        )
+      ).toBeUndefined();
+    });
+  });
+});
+
+describe('DAX family (NON_PROVISIONABLE, issue #534)', () => {
+  describe('Cluster', () => {
+    it('projects the CFn-declarable props with correct casing + nested extractions', async () => {
+      dax.on(DescribeClustersCommand).resolves({
+        Clusters: [
+          {
+            ClusterName: 'my-dax',
+            Description: 'cache cluster',
+            NodeType: 'dax.r5.large',
+            IamRoleArn: 'arn:aws:iam::123456789012:role/dax',
+            PreferredMaintenanceWindow: 'sun:01:00-sun:09:00',
+            SubnetGroup: 'my-subnet-grp',
+            ClusterEndpointEncryptionType: 'TLS',
+            SecurityGroups: [
+              { SecurityGroupIdentifier: 'sg-aaa', Status: 'active' },
+              { SecurityGroupIdentifier: 'sg-bbb', Status: 'active' },
+            ],
+            ParameterGroup: { ParameterGroupName: 'my-pg', ParameterApplyStatus: 'in-sync' },
+            NotificationConfiguration: {
+              TopicArn: 'arn:aws:sns:us-east-1:123456789012:dax-events',
+              TopicStatus: 'active',
+            },
+            SSEDescription: { Status: 'ENABLED' },
+            // computed/managed fields the projection must drop
+            ClusterArn: 'arn:aws:dax:us-east-1:123456789012:cache/my-dax',
+            TotalNodes: 3,
+            ActiveNodes: 3,
+            Status: 'available',
+            NetworkType: 'ipv4',
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DAX::Cluster'](ctx({}, 'my-dax'));
+      expect(out).toEqual({
+        ClusterName: 'my-dax',
+        Description: 'cache cluster',
+        NodeType: 'dax.r5.large',
+        IAMRoleARN: 'arn:aws:iam::123456789012:role/dax',
+        PreferredMaintenanceWindow: 'sun:01:00-sun:09:00',
+        SubnetGroupName: 'my-subnet-grp',
+        ClusterEndpointEncryptionType: 'TLS',
+        SecurityGroupIds: ['sg-aaa', 'sg-bbb'],
+        ParameterGroupName: 'my-pg',
+        NotificationTopicARN: 'arn:aws:sns:us-east-1:123456789012:dax-events',
+        SSESpecification: { SSEEnabled: true },
+      });
+      const call = dax.commandCalls(DescribeClustersCommand)[0]!;
+      expect(call.args[0].input).toEqual({ ClusterNames: ['my-dax'] });
+    });
+
+    it('omits SSESpecification when SSE is not ENABLED', async () => {
+      dax.on(DescribeClustersCommand).resolves({
+        Clusters: [{ ClusterName: 'my-dax', SSEDescription: { Status: 'DISABLED' } }],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DAX::Cluster'](ctx({}, 'my-dax'));
+      expect(out).toEqual({ ClusterName: 'my-dax' });
+    });
+
+    it('the cluster is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dax.on(DescribeClustersCommand).resolves({ Clusters: [] } as never);
+      await expect(SDK_OVERRIDES['AWS::DAX::Cluster'](ctx({}, 'my-dax'))).rejects.toBeInstanceOf(
+        ResourceGoneError
+      );
+    });
+
+    it('no physical id -> undefined (skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DAX::Cluster'](ctx({}, ''))).toBeUndefined();
+    });
+  });
+
+  describe('ParameterGroup', () => {
+    it('projects name/description + user-settable ParameterNameValues (skips IsModifiable FALSE)', async () => {
+      dax.on(DescribeParameterGroupsCommand).resolves({
+        ParameterGroups: [{ ParameterGroupName: 'my-pg', Description: 'tuned' }],
+      } as never);
+      dax.on(DescribeDaxParametersCommand).resolves({
+        Parameters: [
+          { ParameterName: 'query-ttl-millis', ParameterValue: '60000', IsModifiable: 'TRUE' },
+          { ParameterName: 'record-ttl-millis', ParameterValue: '30000', IsModifiable: 'TRUE' },
+          // system-fixed parameter — must be skipped
+          { ParameterName: 'cluster-role', ParameterValue: 'replica', IsModifiable: 'FALSE' },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DAX::ParameterGroup'](ctx({}, 'my-pg'));
+      expect(out).toEqual({
+        ParameterGroupName: 'my-pg',
+        Description: 'tuned',
+        ParameterNameValues: {
+          'query-ttl-millis': '60000',
+          'record-ttl-millis': '30000',
+        },
+      });
+      const call = dax.commandCalls(DescribeDaxParametersCommand)[0]!;
+      expect(call.args[0].input).toEqual({ ParameterGroupName: 'my-pg' });
+    });
+
+    it('the parameter group is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dax.on(DescribeParameterGroupsCommand).resolves({ ParameterGroups: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DAX::ParameterGroup'](ctx({}, 'my-pg'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no physical id -> undefined (skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DAX::ParameterGroup'](ctx({}, ''))).toBeUndefined();
+    });
+  });
+
+  describe('SubnetGroup', () => {
+    it('projects name/description + flattens Subnets to a SubnetIds list', async () => {
+      dax.on(DescribeSubnetGroupsCommand).resolves({
+        SubnetGroups: [
+          {
+            SubnetGroupName: 'my-subnet-grp',
+            Description: 'dax subnets',
+            VpcId: 'vpc-123',
+            Subnets: [
+              { SubnetIdentifier: 'subnet-aaa', SubnetAvailabilityZone: 'us-east-1a' },
+              { SubnetIdentifier: 'subnet-bbb', SubnetAvailabilityZone: 'us-east-1b' },
+            ],
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DAX::SubnetGroup'](ctx({}, 'my-subnet-grp'));
+      expect(out).toEqual({
+        SubnetGroupName: 'my-subnet-grp',
+        Description: 'dax subnets',
+        SubnetIds: ['subnet-aaa', 'subnet-bbb'],
+      });
+      const call = dax.commandCalls(DescribeSubnetGroupsCommand)[0]!;
+      expect(call.args[0].input).toEqual({ SubnetGroupNames: ['my-subnet-grp'] });
+    });
+
+    it('the subnet group is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dax.on(DescribeSubnetGroupsCommand).resolves({ SubnetGroups: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DAX::SubnetGroup'](ctx({}, 'my-subnet-grp'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no physical id -> undefined (skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DAX::SubnetGroup'](ctx({}, ''))).toBeUndefined();
+    });
   });
 });
