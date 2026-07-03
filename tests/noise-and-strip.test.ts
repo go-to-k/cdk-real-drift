@@ -32,6 +32,8 @@ import {
   injectReaderGaps,
   SDK_READER_GAP_PATHS,
   OVERRIDE_READABLE_WRITEONLY,
+  SCHEMA_READONLY_SUPPLEMENTS,
+  supplementReadOnly,
   parseSchema,
 } from '../src/schema/schema-strip.js';
 
@@ -908,6 +910,41 @@ describe('parseSchema', () => {
     expect(injectReaderGaps(raw, 'AWS::S3::Bucket')).toBe(raw);
     expect(SDK_READER_GAP_PATHS['AWS::CloudWatch::AnomalyDetector']).toEqual([
       'MetricMathAnomalyDetector.MetricDataQueries.*.Label',
+    ]);
+  });
+
+  it('supplementReadOnly patches a schema-forgotten readOnly gap (NetworkManager GlobalNetwork State/CreatedAt)', () => {
+    // GlobalNetwork's registry schema marks only [Id, Arn] readOnly and forgets its lifecycle
+    // State (AVAILABLE/UPDATING/DELETING) + CreatedAt — provably an AWS oversight (the sibling
+    // Site marks the same pair readOnly, #495). The supplement folds them into readOnly so a
+    // live model carrying State: "AVAILABLE" is stripped for every tier.
+    const raw = parseSchema(
+      JSON.stringify({
+        readOnlyProperties: ['/properties/Id', '/properties/Arn'],
+        properties: {
+          State: { type: 'string' },
+          CreatedAt: { type: 'string' },
+          Description: { type: 'string' },
+        },
+      })
+    );
+    // Before the supplement: schema has only Id/Arn readOnly; State/CreatedAt leak.
+    expect([...raw.readOnly].sort()).toEqual(['Arn', 'Id']);
+    expect(raw.readOnly.has('State')).toBe(false);
+    expect(raw.readOnly.has('CreatedAt')).toBe(false);
+
+    const info = supplementReadOnly(raw, 'AWS::NetworkManager::GlobalNetwork');
+    // After: both lifecycle attrs are readOnly (top-level set) AND readOnlyPaths (nested strip).
+    expect([...info.readOnly].sort()).toEqual(['Arn', 'CreatedAt', 'Id', 'State']);
+    expect(info.readOnlyPaths).toContain('State');
+    expect(info.readOnlyPaths).toContain('CreatedAt');
+    // Idempotent-ish: does not duplicate a path already present.
+    expect(info.readOnlyPaths.filter((p) => p === 'State')).toHaveLength(1);
+    // A type with no supplement is returned untouched.
+    expect(supplementReadOnly(raw, 'AWS::S3::Bucket')).toBe(raw);
+    expect(SCHEMA_READONLY_SUPPLEMENTS['AWS::NetworkManager::GlobalNetwork']).toEqual([
+      '/properties/State',
+      '/properties/CreatedAt',
     ]);
   });
 
