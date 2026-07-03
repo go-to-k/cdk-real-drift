@@ -79,7 +79,7 @@
       "constructPath": "CdkRealDriftIntegCognito/Client"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Client4A7F64DF",
       "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "ClientName",

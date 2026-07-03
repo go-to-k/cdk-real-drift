@@ -535,6 +535,12 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)
+- Optional: `elasticloadbalancing:GetTrustStoreCaCertificatesBundle` records a
+  content hash of an `AWS::ElasticLoadBalancingV2::TrustStore`'s live mTLS CA
+  bundle (`CaCertificatesBundleSha256`) so an out-of-band CA-bundle swap
+  re-surfaces as drift — otherwise invisible (the bundle location is write-only).
+  It fetches the presigned S3 URL the API returns; without the permission (or on
+  any fetch failure) the signal is skipped, never false-flagged.
 - Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the

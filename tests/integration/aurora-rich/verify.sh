@@ -38,6 +38,13 @@ done
 # on read — the ON≡1 boolean-token fold must keep it from false-flagging declared drift.
 grep -qE "Parameters\.slow_query_log" "/tmp/cdkrd-$STACK-pre.out" \
   && fail "MySQL boolean param slow_query_log (ON vs live 1) surfaced as drift (ON≡1 fold regressed)"
+# The DBInstance's live model ECHOES the DBCluster's cluster-level config (encryption, engine
+# version, backup, security groups, subnet group). The CLUSTER_ECHO_CHILD strip must drop
+# those from the instance — a regression re-floods them. Asserted per DBInstance line.
+for prop in StorageEncrypted EngineVersion BackupRetentionPeriod DBSubnetGroupName VPCSecurityGroups; do
+  grep -qE "\.$prop \(AWS::RDS::DBInstance\)" "/tmp/cdkrd-$STACK-pre.out" \
+    && fail "DBInstance echo of cluster $prop surfaced (CLUSTER_ECHO_CHILD strip regressed)"
+done
 
 echo "=== [$STACK] record (write baseline) ==="
 $CLI record "$STACK" --region "$REGION" --yes || fail "record"

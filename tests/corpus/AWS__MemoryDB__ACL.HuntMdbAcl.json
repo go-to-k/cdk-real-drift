@@ -7,37 +7,23 @@
     "constructPath": "CdkRealDriftIntegCacheUsers/HuntMdbAcl",
     "declared": {
       "ACLName": "cdkrd-hunt-mdb-acl",
-      "UserNames": [
-        "cdkrd-hunt-mdb-user"
-      ]
+      "UserNames": ["cdkrd-hunt-mdb-user"]
     }
   },
   "liveRaw": {
     "Status": "active",
     "ACLName": "cdkrd-hunt-mdb-acl",
-    "UserNames": [
-      "cdkrd-hunt-mdb-user"
-    ],
+    "UserNames": ["cdkrd-hunt-mdb-user"],
     "Arn": "arn:aws:memorydb:us-east-1:111111111111:acl/cdkrd-hunt-mdb-acl",
     "Tags": []
   },
   "schema": {
-    "readOnly": [
-      "Arn",
-      "Status"
-    ],
+    "readOnly": ["Arn", "Status"],
     "writeOnly": [],
-    "createOnly": [
-      "ACLName"
-    ],
-    "readOnlyPaths": [
-      "Arn",
-      "Status"
-    ],
+    "createOnly": ["ACLName"],
+    "readOnlyPaths": ["Arn", "Status"],
     "writeOnlyPaths": [],
-    "createOnlyPaths": [
-      "ACLName"
-    ],
+    "createOnlyPaths": ["ACLName"],
     "defaults": {},
     "defaultPaths": {},
     "unorderedScalarPaths": [],

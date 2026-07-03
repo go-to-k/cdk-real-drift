@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CaDeployAwsCliLayer58606CDE",
+    "resourceType": "AWS::Lambda::LayerVersion",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1",
+    "constructPath": "CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer",
+    "declared": {
+      "Content": {
+        "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+        "S3Key": "a72522445441e9b66c2f16956c54d4786af8c61c156b80c48a6e7c32fcc49023.zip"
+      },
+      "Description": "/opt/awscli/aws"
+    }
+  },
+  "liveRaw": {
+    "CompatibleRuntimes": [],
+    "Description": "/opt/awscli/aws",
+    "LayerName": "CaDeployAwsCliLayer58606CDE",
+    "LayerVersionArn": "arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1",
+    "CompatibleArchitectures": []
+  },
+  "schema": {
+    "readOnly": ["LayerVersionArn"],
+    "writeOnly": ["Content"],
+    "createOnly": [
+      "CompatibleArchitectures",
+      "CompatibleRuntimes",
+      "Content",
+      "Description",
+      "LayerName",
+      "LicenseInfo"
+    ],
+    "readOnlyPaths": ["LayerVersionArn"],
+    "writeOnlyPaths": ["Content"],
+    "createOnlyPaths": [
+      "CompatibleArchitectures",
+      "CompatibleRuntimes",
+      "Content",
+      "Description",
+      "LayerName",
+      "LicenseInfo"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["CompatibleArchitectures", "CompatibleRuntimes"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "CaDeployAwsCliLayer58606CDE",
+      "resourceType": "AWS::Lambda::LayerVersion",
+      "path": "Content",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1",
+      "constructPath": "CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "CaDeployAwsCliLayer58606CDE",
+      "resourceType": "AWS::Lambda::LayerVersion",
+      "path": "LayerName",
+      "actual": "CaDeployAwsCliLayer58606CDE",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1",
+      "constructPath": "CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer"
+    }
+  ]
+}

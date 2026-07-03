@@ -80,6 +80,10 @@ import {
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
 import {
+  ElasticLoadBalancingV2Client,
+  GetTrustStoreCaCertificatesBundleCommand,
+} from '@aws-sdk/client-elastic-load-balancing-v2';
+import {
   DescribeConfigurationCommand,
   DescribeConfigurationRevisionCommand,
   KafkaClient,
@@ -103,6 +107,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { READ_RETRY } from './client-config.js';
+import { hashCaBundle } from './pem.js';
 
 export interface OverrideCtx {
   physicalId: string;
@@ -1958,8 +1963,38 @@ const supplementMskConfiguration: SupplementReader = async ({ physicalId, region
   return text.length > 0 ? { ServerProperties: text } : undefined;
 };
 
+// AWS::ElasticLoadBalancingV2::TrustStore — the mTLS CA bundle LOCATION
+// (CaCertificatesBundleS3Bucket/Key) is writeOnly AND unreadable by any Describe API, so an
+// out-of-band CA-bundle SWAP (the trust anchors — the most security-sensitive thing a
+// TrustStore has) was completely invisible: every `check` stayed CLEAN even after
+// modify-trust-store replaced the bundle (#505). The bundle LOCATION cannot be read, but its
+// CONTENT is reachable via elbv2:GetTrustStoreCaCertificatesBundle (a presigned S3 URL).
+// Project a stable, order/whitespace-insensitive SHA-256 of the live PEM set as the SYNTHETIC
+// field `CaCertificatesBundleSha256`. It is not a CFn property, so it surfaces as an
+// UNDECLARED integrity signal that `record` snapshots into the baseline; a later same-key (or
+// any) bundle swap changes the hash and re-surfaces as undeclared drift — the common rotation
+// pattern the writeOnly location can never catch. Non-fatal: any failure (GetBundle denied,
+// fetch failure, non-PEM body) skips the field (keep the CC model) rather than false-flag. A
+// computed digest has no write target, so revert reports it not-revertable (SYNTHETIC_READ_
+// SIGNAL_PATHS in plan.ts). Requires the extra `elbv2:GetTrustStoreCaCertificatesBundle`
+// permission plus an outbound fetch of the presigned URL — the only content read path AWS
+// offers.
+const supplementTrustStore: SupplementReader = async ({ physicalId, region }) => {
+  const arn = str(physicalId);
+  if (!arn || !arn.startsWith('arn:')) return undefined;
+  const c = new ElasticLoadBalancingV2Client({ region, ...READ_RETRY });
+  const r = await c.send(new GetTrustStoreCaCertificatesBundleCommand({ TrustStoreArn: arn }));
+  const url = str(r.Location);
+  if (!url) return undefined;
+  const resp = await fetch(url);
+  if (!resp.ok) return undefined;
+  const hash = hashCaBundle(await resp.text());
+  return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::MSK::Configuration': supplementMskConfiguration,
+  'AWS::ElasticLoadBalancingV2::TrustStore': supplementTrustStore,
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,

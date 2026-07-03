@@ -30,6 +30,7 @@ import {
   isEquivalentRateExpression,
   isJsonStringStructEqual,
   JSON_STRING_PROPS,
+  JSON_STRING_DEFAULT_FILLS,
   isPemEqual,
   isAccessStringEqual,
   isPropertiesFileEqual,
@@ -43,6 +44,7 @@ import {
   isGeneratedName,
   isPhysicalIdSegment,
   isTrailingDotEqual,
+  isTrailingSlashEqual,
   isTrivialEmpty,
   isVersionPrefixMatch,
   isLatestSentinelMatch,
@@ -50,6 +52,7 @@ import {
   INTELLIGENT_TIERING_PATHS,
   LATEST_SENTINEL_PATHS,
   TRAILING_DOT_PATHS,
+  TRAILING_SLASH_PATHS,
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
@@ -62,6 +65,7 @@ import {
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   READGAP_COLLECTION_PATHS,
+  SCALAR_RETURNED_WHEN_SET,
   READ_NORMALIZED_DECLARED_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
@@ -216,6 +220,23 @@ export const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
   // out-of-band caching change on a declared method surfaces. Proven live.
   'AWS::ApiGateway::Stage': { MethodSettings: 'HttpMethod' },
 };
+
+// Child resources whose live model ECHOES their parent's cluster-level configuration. An
+// Aurora DBInstance reports the DBCluster's encryption / engine version / backup / security
+// groups / subnet group / master user / log exports — settings the CDK `ClusterInstance`
+// never declares on the instance, so they flood a first run as undeclared inventory that
+// merely mirrors the cluster (which cdkrd classifies independently). classify drops an
+// UNDECLARED instance property whose value EQUALS the parent cluster's value for the same
+// key; `aliases` maps the few keys the two APIs spell differently. The parent's own property
+// still carries detection, so no out-of-band change is hidden — and an instance value that
+// DIVERGES from the cluster (its own maintenance window, its single AZ) still surfaces.
+const CLUSTER_ECHO_CHILD: Record<string, { parentIdKey: string; aliases: Record<string, string> }> =
+  {
+    'AWS::RDS::DBInstance': {
+      parentIdKey: 'DBClusterIdentifier',
+      aliases: { VPCSecurityGroups: 'VpcSecurityGroupIds' },
+    },
+  };
 
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&
@@ -455,6 +476,37 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 // untruncated form is the branch above) — a user-chosen name realistically never matches
 // all of that. Pure.
 const CFN_RANDOM_SUFFIX = /-[0-9A-Za-z]{12,}$/;
+
+// #503: return a copy of a parsed JSON-string LIVE value with service-injected default
+// members subtracted, so the JSON_STRING_PROPS structural compare does not false-flag them.
+// A key is dropped from a live object only when it is a listed default, the DECLARED side
+// omits it, AND the live value equals the default (equality-gated — a member the template
+// set to a non-default value is kept and still compares). Runs per element when the parsed
+// value is a top-level array, at the root when it is an object; leaves anything else as-is.
+function stripInjectedJsonStringDefaults(
+  declared: unknown,
+  live: unknown,
+  defaults: Record<string, unknown>
+): unknown {
+  const stripObject = (d: unknown, l: unknown): unknown => {
+    if (l === null || typeof l !== 'object' || Array.isArray(l)) return l;
+    const dObj =
+      d !== null && typeof d === 'object' && !Array.isArray(d)
+        ? (d as Record<string, unknown>)
+        : {};
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(l as Record<string, unknown>)) {
+      if (key in defaults && !(key in dObj) && deepEqual(val, defaults[key])) continue;
+      out[key] = val;
+    }
+    return out;
+  };
+  if (Array.isArray(live)) {
+    const dArr = Array.isArray(declared) ? declared : [];
+    return live.map((l, i) => stripObject(dArr[i], l));
+  }
+  return stripObject(declared, live);
+}
 function isCfnGeneratedName(
   value: unknown,
   constructPath: string | undefined,
@@ -465,6 +517,14 @@ function isCfnGeneratedName(
   // — never fold it into a `generated` finding here, or a resource whose physical id IS its
   // CFn-generated name gains a phantom finding.
   if (typeof value !== 'string' || !constructPath || value === physicalId) return false;
+  // A bare LOGICAL-ID echo: for some types CloudFormation mints an auto-generated physical
+  // name equal to the resource's LOGICAL ID verbatim — no `<stack>-` prefix, no extra random
+  // suffix beyond the CDK hash already baked into the logical id (a BucketDeployment's
+  // AwsCliLayer LayerName reads back "CaDeployAwsCliLayer58606CDE", its own logical id; #509).
+  // The strict `<stack>-…-<suffix>` shapes below never match that form. A CDK logical id
+  // already carries an 8-hex-char construct hash, so a user-chosen value coinciding is
+  // effectively impossible — fold it. (aws-s3-deployment is a very common construct.)
+  if (logicalId && value === logicalId) return true;
   const stackName = constructPath.split('/')[0];
   if (!stackName || !CFN_RANDOM_SUFFIX.test(value)) return false;
   if (value.startsWith(`${stackName}-`)) return true;
@@ -770,6 +830,14 @@ export function classifyResource(
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
     // from an AWS::EC2::SecurityGroup's reflected live rule arrays so they are not double-counted.
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+    // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
+    // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
+    // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
+    // rather than surfaced as false undeclared drift.
+    bucketNotificationManaged?: Set<string>;
+    // Per child physical id, the parent cluster's live model — for the CLUSTER_ECHO_CHILD
+    // strip (an Aurora DBInstance echoing its DBCluster's cluster-level config).
+    clusterEchoModel?: Record<string, Record<string, unknown>>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -827,6 +895,35 @@ export function classifyResource(
       for (const [prop, side] of Object.entries(SG_RULE_REFLECTION)) {
         subtractSiblingSgRules(live, prop, sib[side]);
       }
+    }
+  }
+  // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
+  // the CR-applied NotificationConfiguration it never declares itself (CDK renders
+  // addEventNotification/enableEventBridgeNotification as that CR, which cdkrd skips). The
+  // config is IaC-managed, not out of band — drop the reflected property so it is not false
+  // undeclared drift. Only when the template does NOT declare it inline (a raw-CFn bucket that
+  // sets NotificationConfiguration directly is compared normally).
+  if (
+    resourceType === 'AWS::S3::Bucket' &&
+    physicalId &&
+    opts.bucketNotificationManaged?.has(physicalId) &&
+    !('NotificationConfiguration' in declared)
+  ) {
+    delete live.NotificationConfiguration;
+  }
+  // Drop an UNDECLARED property whose value ECHOES the parent cluster's value (an Aurora
+  // DBInstance mirroring its DBCluster's cluster-level config — see CLUSTER_ECHO_CHILD).
+  // Equality-gated: a declared property compares normally, and an instance value that
+  // DIVERGES from the cluster still surfaces. The parent's own property carries detection.
+  const echoSpec = CLUSTER_ECHO_CHILD[resourceType];
+  const echoModel = echoSpec && physicalId ? opts.clusterEchoModel?.[physicalId] : undefined;
+  if (echoSpec && echoModel) {
+    for (const k of Object.keys(live)) {
+      if (k in declared) continue;
+      const parentKey = echoSpec.aliases[k] ?? k;
+      if (!(parentKey in echoModel)) continue;
+      const pv = echoModel[parentKey];
+      if (deepEqual(live[k], pv) || isStringlyEqualDeep(live[k], pv)) delete live[k];
     }
   }
   // ManagedPolicy attachment lists (Roles/Users/Groups). A DECLARED list is handled
@@ -919,7 +1016,21 @@ export function classifyResource(
       const isNonEmptyCollection =
         (Array.isArray(v) && v.length > 0) ||
         (v !== null && typeof v === 'object' && Object.keys(v as object).length > 0);
-      if (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) {
+      // #507: a declared SCALAR on a curated SCALAR_RETURNED_WHEN_SET path — proven to
+      // be echoed by the live read when set — that is absent from live was cleared out
+      // of band (replace-omit update semantics). Detect it like a removed collection
+      // (whole-property `add` on revert). A non-empty string / boolean / number counts
+      // as "set"; a declared empty string stays readGap (declared `""` vs absent is not
+      // drift).
+      const isClearedAllowlistedScalar =
+        SCALAR_RETURNED_WHEN_SET[resourceType]?.has(k) === true &&
+        ((typeof v === 'string' && v.length > 0) ||
+          typeof v === 'number' ||
+          typeof v === 'boolean');
+      if (
+        (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) ||
+        isClearedAllowlistedScalar
+      ) {
         findings.push({
           tier: 'declared',
           logicalId,
@@ -938,6 +1049,30 @@ export function classifyResource(
         });
       }
       continue;
+    }
+    // #503: a JSON-STRING property into which the service INJECTS a constant default member
+    // the template never sent (CE CostCategory `Rules` gets `"Type":"REGULAR"` per rule).
+    // Both sides arrive as canonicalized JSON strings, so the plain string compare below
+    // false-flags the injected member as permanent declared drift (and revert can never
+    // converge — the re-read re-injects it). This prop is NOT in JSON_STRING_PROPS (its
+    // revert works via a plain Cloud Control whole-prop replace), so fold it HERE: parse
+    // both sides, subtract the service-injected defaults from live where the declared side
+    // omits them and the value equals the default, and skip if the remainder matches. A
+    // genuine change (a member set to a non-default value) does NOT match and falls through
+    // to the normal compare below, reported with the full live state.
+    const jsonFills = JSON_STRING_DEFAULT_FILLS[resourceType]?.[k];
+    if (jsonFills !== undefined && typeof v === 'string' && typeof live[k] === 'string') {
+      try {
+        const dvParsed = JSON.parse(v) as unknown;
+        const lvStripped = stripInjectedJsonStringDefaults(
+          dvParsed,
+          JSON.parse(live[k] as string),
+          jsonFills
+        );
+        if (deepEqual(dvParsed, lvStripped) || isStringlyEqualDeep(dvParsed, lvStripped)) continue;
+      } catch {
+        /* not JSON on one side — fall through to the normal compare */
+      }
     }
     // A CloudFormation JSON-STRING property (AWS::Config::ConfigRule InputParameters):
     // the schema types it as a string holding JSON, but CDK declares it as an object and
@@ -1342,9 +1477,12 @@ export function classifyResource(
         continue;
       }
       // Per-type case-insensitive scalar paths (R75: Route53 AliasTarget.DNSName
-      // — the ALB's generated DNS name is mixed-case declared, lowercase live).
+      // — the ALB's generated DNS name is mixed-case declared, lowercase live). A `*`
+      // in a table entry matches an array index: numeric path segments are normalized to
+      // `*` before the lookup (e.g. `RedactedFields.0.SingleHeader.Name` -> `.*.`).
       if (
-        CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) &&
+        (CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path) ||
+          CASE_INSENSITIVE_PATHS[resourceType]?.has(d.path.replace(/\.\d+(?=\.|$)/g, '.*'))) &&
         isCaseInsensitiveScalarEqual(d.stateValue, d.awsValue)
       )
         continue;
@@ -1384,6 +1522,14 @@ export function classifyResource(
       if (
         TRAILING_DOT_PATHS[resourceType]?.has(d.path) &&
         isTrailingDotEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type paths whose trailing `/` is optional (ECR RepositoryCreationTemplate
+      // Prefix: declared `cdkrd-hunt/`, service stores `cdkrd-hunt`) — equal once
+      // stripped; a genuine prefix change still differs.
+      if (
+        TRAILING_SLASH_PATHS[resourceType]?.has(d.path) &&
+        isTrailingSlashEqual(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type version-track paths (R130: RDS DBInstance EngineVersion) — a declared
@@ -1623,7 +1769,21 @@ export function classifyResource(
   // R108: KNOWN_DEFAULT_PATHS is the hand-coded twin for the nested service defaults
   // the CFn schema does NOT annotate (the nested analogue of KNOWN_DEFAULTS) — read
   // through the SAME wildcard lookup, equality-gated identically.
-  const knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  let knownDefPaths = KNOWN_DEFAULT_PATHS[resourceType] ?? {};
+  // A Lambda DURABLE FUNCTION (declares DurableConfig — enabling durable execution) runs on
+  // AWS's durable/managed compute substrate, which emits structured JSON logs by default
+  // (the Durable Execution SDK's default logger always emits JSON), NOT the plain-Text
+  // default of a regular function. So a durable function that declares no explicit LogFormat
+  // reads back "JSON", which the base `LoggingConfig.LogFormat: 'Text'` default cannot fold
+  // and would surface as false undeclared drift. Override the LogFormat default to JSON when
+  // DurableConfig is present (the reliable in-template discriminator; the paired
+  // ApplicationLogLevel/SystemLogLevel INFO defaults already fold via the base table).
+  // Equality-gated + value-independent proof: observed live that DurableConfig <=> JSON on a
+  // 9-function stack (same nodejs24.x runtime) where only the durable function reads JSON. A
+  // durable function that pins Text explicitly declares it and is compared, never reaching here.
+  if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
+    knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
+  }
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
