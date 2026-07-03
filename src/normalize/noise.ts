@@ -695,8 +695,132 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // A Verified Permissions policy store is created without deletion protection by
   // default. Observed live on the misc-0cov-rich fixture. Equality-gated: enabling
   // protection out of band no longer matches and surfaces.
+  // Schema: a store created without a Cedar schema reads back the constant empty-schema
+  // husk `{"CedarJson":"{}"}` (an empty Cedar schema serialized as the string "{}" inside
+  // an object) — a JSON-string cousin of the #491 Workgroup husk, but the non-empty "{}"
+  // string defeats the trivially-empty drop, so it needs an explicit equality-gated
+  // default. A store that later declares a real Cedar schema reads a non-matching value
+  // and surfaces (undeclared). Observed live on hunt round B (#496 note 2 — a top-level
+  // undeclared key, so KNOWN_DEFAULTS not KNOWN_DEFAULT_PATHS is the fit).
   'AWS::VerifiedPermissions::PolicyStore': {
     DeletionProtection: { Mode: 'DISABLED' },
+    Schema: { CedarJson: '{}' },
+  },
+  // RedshiftServerless service defaults (observed live on hunt 2026-07-03, #492): a
+  // namespace reads back the "admin" default admin username and the AWS-owned KMS key
+  // sentinel; a workgroup reads back the Redshift default Port, the "current" release
+  // track, and price-performance auto-scaling DISABLED. All equality-gated — a namespace
+  // that sets its own admin/KMS, or a workgroup on a pinned track / non-default port, no
+  // longer matches and surfaces. The Workgroup echo attribute (a full self-echo of the
+  // model) is handled separately (see the ECHO_HUSK_DEFAULTS note / #491).
+  'AWS::RedshiftServerless::Namespace': {
+    AdminUsername: 'admin',
+    KmsKeyId: 'AWS_OWNED_KMS_KEY',
+  },
+  'AWS::RedshiftServerless::Workgroup': {
+    Port: 5439,
+    TrackName: 'current',
+    PricePerformanceTarget: { Status: 'DISABLED' },
+    // The Workgroup echo attribute is a full self-echo of the model; the schema marks only
+    // its LEAVES readOnly (WorkgroupId, NetworkInterfaceId, ...), so a strip residue "husk"
+    // survives: `{Endpoint:{VpcEndpoints:[{NetworkInterfaces:[{},{}]}]}, PricePerformanceTarget:
+    // {Status:"DISABLED"}}` (#491). matchesKnownDefault skips the trivially-empty `Endpoint`
+    // (the extended isTrivialEmpty folds the `[{},{}]` ENI husk regardless of per-deploy ENI
+    // count), so only the meaningful `PricePerformanceTarget` sub-key is matched here — a
+    // workgroup with price-performance ENABLED reads a non-matching value and surfaces.
+    Workgroup: { PricePerformanceTarget: { Status: 'DISABLED' } },
+  },
+  // Bedrock Agent service defaults (observed live on hunt 2026-07-03, #492): an agent
+  // reads back multi-agent collaboration DISABLED and the DEFAULT orchestration type when
+  // the template declares neither. Equality-gated — an agent that opts into collaboration
+  // or a custom orchestration no longer matches and surfaces. (AgentAlias
+  // RoutingConfiguration is per-resource state, NOT a default — deliberately not folded.)
+  'AWS::Bedrock::Agent': {
+    AgentCollaboration: 'DISABLED',
+    OrchestrationType: 'DEFAULT',
+  },
+  // A CodeStar notification rule / Recycle Bin rule read back the "on" default status when
+  // the template declares none (observed live on hunt 2026-07-03, #492). These ARE
+  // user-settable knobs (a user can pause a rule) — equality-gated, so a DISABLED rule no
+  // longer matches and surfaces as a real undeclared value.
+  'AWS::CodeStarNotifications::NotificationRule': {
+    Status: 'ENABLED',
+  },
+  'AWS::Rbin::Rule': {
+    Status: 'available',
+  },
+  // RolesAnywhere service-filled constant SETS on create (observed live on hunt
+  // 2026-07-03, #492): a trust anchor reads back the two-entry certificate-expiry
+  // notification set, and a profile reads back the default x509 attribute-mapping rules,
+  // when the template declares neither. Whole-value equality-gated — a trust anchor with
+  // custom notifications, or a profile with custom mappings, no longer matches and surfaces.
+  'AWS::RolesAnywhere::TrustAnchor': {
+    NotificationSettings: [
+      { Channel: 'ALL', Enabled: true, Event: 'CA_CERTIFICATE_EXPIRY', Threshold: 45 },
+      { Channel: 'ALL', Enabled: true, Event: 'END_ENTITY_CERTIFICATE_EXPIRY', Threshold: 45 },
+    ],
+  },
+  // Amazon Location deprecated `PricingPlan` parameter — the service echoes the constant
+  // "RequestBasedUsage" on every tracker / geofence collection even though the parameter
+  // is deprecated and un-settable (observed live on hunt 2026-07-03, #492). Equality-gated.
+  'AWS::Location::Tracker': {
+    PricingPlan: 'RequestBasedUsage',
+  },
+  'AWS::Location::GeofenceCollection': {
+    PricingPlan: 'RequestBasedUsage',
+  },
+  // hunt 2026-07-03 round B (#496): constant service defaults on zero-coverage type
+  // families (MediaTailor / IVS / Lightsail / Site-to-Site VPN / Transfer / DataSync /
+  // AppFlow / DataBrew). Values are exactly what Cloud Control returned on a fresh
+  // untouched deploy; none is a per-resource id/ARN/name, so the equality-gated fold can
+  // never hide a real change. Per-resource derived state is deliberately NOT folded (ELB
+  // AvailabilityZones mirrors declared Subnets — #496 note 1).
+  'AWS::MediaTailor::PlaybackConfiguration': {
+    InsertionMode: 'STITCHED_ONLY',
+    AdConditioningConfiguration: { StreamingMediaFileConditioning: 'TRANSCODE' },
+    AvailSuppression: { Mode: 'OFF' },
+  },
+  'AWS::IVS::Channel': {
+    MultitrackInputConfiguration: { Enabled: false, MaximumResolution: 'FULL_HD', Policy: 'ALLOW' },
+  },
+  'AWS::Lightsail::Instance': {
+    KeyPairName: 'LightsailDefaultKeyPair',
+  },
+  'AWS::Lightsail::Disk': {
+    AddOns: [{ AddOnType: 'AutoSnapshot', Status: 'Disabled' }],
+  },
+  'AWS::Lightsail::Bucket': {
+    AccessRules: { AllowPublicOverrides: false, GetObject: 'private' },
+  },
+  'AWS::Lightsail::Alarm': {
+    NotificationTriggers: ['ALARM'],
+  },
+  'AWS::EC2::VPNConnection': {
+    RemoteIpv4NetworkCidr: '0.0.0.0/0',
+    LocalIpv4NetworkCidr: '0.0.0.0/0',
+    OutsideIpAddressType: 'PublicIpv4',
+    TunnelInsideIpVersion: 'ipv4',
+  },
+  'AWS::Transfer::Server': {
+    IpAddressType: 'IPV4',
+    ProtocolDetails: {
+      PassiveIp: 'AUTO',
+      SetStatOption: 'DEFAULT',
+      TlsSessionResumptionMode: 'ENFORCED',
+    },
+  },
+  'AWS::DataSync::Task': {
+    TaskMode: 'BASIC',
+  },
+  // AppFlow FlowStatus is a user-settable knob (a user can suspend a flow), like the
+  // CodeStarNotifications Status above — equality-gated so a suspended flow surfaces.
+  'AWS::AppFlow::Flow': {
+    FlowStatus: 'Active',
+  },
+  // DataBrew Dataset Source is a per-input-kind constant ("S3" for an S3 dataset); the
+  // equality-gated fold is safe (a JDBC/Redshift dataset reads a non-matching value).
+  'AWS::DataBrew::Dataset': {
+    Source: 'S3',
   },
   // Amazon Keyspaces service defaults (observed live on the misc-0cov-rich
   // fixture): a keyspace with no ReplicationSpecification is single-region; a
@@ -1007,6 +1131,24 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'ContainerProperties.RuntimePlatform.CpuArchitecture': 'X86_64',
     'ContainerProperties.RuntimePlatform.OperatingSystemFamily': 'LINUX',
     'ContainerProperties.FargatePlatformConfiguration.PlatformVersion': 'LATEST',
+  },
+  // DataSync task nested service defaults (observed live on hunt 2026-07-03 round B,
+  // #496): a task whose declared `Options` block leaves these unset reads them back at
+  // the documented transfer defaults, and a declared `Schedule` reads back Status ENABLED
+  // (the schedule is active on create). Equality-gated per path — a task that pins any
+  // Option / disables its schedule out of band no longer matches and surfaces. Per-input
+  // BytesPerSecond -1 is the documented "unlimited" sentinel.
+  'AWS::DataSync::Task': {
+    'Options.Atime': 'BEST_EFFORT',
+    'Options.Mtime': 'PRESERVE',
+    'Options.Uid': 'NONE',
+    'Options.Gid': 'NONE',
+    'Options.PreserveDevices': 'NONE',
+    'Options.PosixPermissions': 'NONE',
+    'Options.ObjectTags': 'PRESERVE',
+    'Options.BytesPerSecond': -1,
+    'Options.SecurityDescriptorCopyFlags': 'NONE',
+    'Schedule.Status': 'ENABLED',
   },
 };
 
@@ -1686,6 +1828,64 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+}
+
+// Per-type property paths that hold a FREE-FORM MAP whose KEYS the Cloud Control read
+// handler re-cases (#494). The map-KEY analogue of CASE_INSENSITIVE_PATHS (which folds a
+// VALUE case difference). On DataBrew Recipe `Steps[].Action.Parameters` the template AND
+// the DataBrew service both carry camelCase keys (`sourceColumn`), but `cloudcontrol
+// get-resource` remaps recognized keys onto the PascalCase `RecipeParameters` model
+// (`SourceColumn`) — so a case-sensitive diff false-flags DECLARED key drift on every
+// check of a freshly deployed recipe and revert can never converge (the re-read gets
+// PascalCase again). The drift path is the dotted path from calculateResourceDrift with
+// array indices (`Steps.0.Action.Parameters`); the table keys it with `[]` for element
+// segments and the lookup normalizes indices before matching. Observed live on hunt
+// 2026-07-03 round B.
+export const CASE_INSENSITIVE_KEY_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::DataBrew::Recipe': new Set(['Steps[].Action.Parameters']),
+};
+// True when two objects are equal modulo the ASCII CASE of their keys — the same key set
+// case-folded, with EQUAL values per matched key-pair. Equality-gated per key-pair: a real
+// key change (an added/removed parameter) or a value change on a matched key still differs,
+// so only a pure PascalCase<->camelCase re-casing of an otherwise-identical map folds. Both
+// sides must be plain objects (not arrays); a duplicate case-folded key on either side
+// (`SourceColumn` + `sourcecolumn`) fails closed (the folded-key sets differ in size).
+export function isCaseInsensitiveKeyMapEqual(a: unknown, b: unknown): boolean {
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) return false;
+  const ao = a as Record<string, unknown>;
+  const bo = b as Record<string, unknown>;
+  const ak = Object.keys(ao);
+  const bk = Object.keys(bo);
+  if (ak.length !== bk.length) return false;
+  const bLower = new Map<string, unknown>();
+  for (const k of bk) bLower.set(k.toLowerCase(), bo[k]);
+  if (bLower.size !== bk.length) return false; // duplicate case-folded key on b -> fail closed
+  const aLowerSeen = new Set<string>();
+  for (const k of ak) {
+    const lk = k.toLowerCase();
+    if (aLowerSeen.has(lk)) return false; // duplicate case-folded key on a -> fail closed
+    aLowerSeen.add(lk);
+    if (!bLower.has(lk)) return false;
+    if (!deepEqualValue(bLower.get(lk), ao[k])) return false;
+  }
+  return true;
+}
+// Minimal structural deep-equal (noise.ts is dependency-free by design — no cross-module
+// import). Free-form map values are usually scalars, but a nested object/array value is
+// compared structurally so a real value change under a matched key still surfaces.
+function deepEqualValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => deepEqualValue(v, b[i]));
+  }
+  const ao = a as Record<string, unknown>;
+  const bo = b as Record<string, unknown>;
+  const ak = Object.keys(ao);
+  if (ak.length !== Object.keys(bo).length) return false;
+  return ak.every((k) => Object.hasOwn(bo, k) && deepEqualValue(ao[k], bo[k]));
 }
 
 // Per-type OpenSSH public-key paths (EC2 KeyPair `PublicKeyMaterial`). EC2 stores
@@ -2713,12 +2913,23 @@ export function isStringlyEqualDeep(a: unknown, b: unknown): boolean {
 // a struct whose EVERY value is itself trivially empty is a feature-off struct —
 // e.g. the empty VpcConfig ({Ipv6AllowedForDualStack:false, SecurityGroupIds:[],
 // SubnetIds:[]}) that Lambda materializes after a Cloud Control UpdateResource,
-// which otherwise phantom-drifts on every revert (R46). Arrays stay length-0-only
-// (no element recursion — [false] may be a meaningful list), same conservative
-// stance as the top-level scalars (0 stays meaningful, false does not).
+// which otherwise phantom-drifts on every revert (R46).
+//
+// Arrays: a length-0 array is trivially empty. A NON-empty array is trivially empty
+// ONLY when EVERY element is an OBJECT that is itself trivially empty — the signature
+// shape of schema-strip RESIDUE, where an echo attribute's leaves are readOnly-stripped
+// leaving `[{}, {}]` husks (RedshiftServerless Workgroup Endpoint
+// `VpcEndpoints[].NetworkInterfaces[{},{}]`, #491). This objects-ONLY recursion keeps the
+// conservative `[false]` stance for SCALAR arrays (a `[false]`/`[0]`/`[""]` list may be a
+// meaningful value, so a scalar-bearing array is never trivially empty), same as the
+// top-level scalars (0 stays meaningful, false does not).
 export function isTrivialEmpty(v: unknown): boolean {
   if (v === false || v === '') return true;
-  if (Array.isArray(v)) return v.length === 0;
+  if (Array.isArray(v)) {
+    if (v.length === 0) return true;
+    // Objects-only recursion: [{}, {}] husks fold, but any scalar element keeps the array.
+    return v.every((el) => el !== null && typeof el === 'object' && isTrivialEmpty(el));
+  }
   if (v && typeof v === 'object') return Object.values(v).every(isTrivialEmpty);
   return false;
 }

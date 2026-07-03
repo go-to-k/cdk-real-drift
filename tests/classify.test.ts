@@ -2128,6 +2128,110 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // Found live by the xfer-sync hunt fixture (#494): the Cloud Control read handler
+  // remaps DataBrew Recipe Steps[].Action.Parameters free-form map keys to PascalCase
+  // (SourceColumn) while the template AND the DataBrew service carry camelCase
+  // (sourceColumn) — a permanent declared-drift FP + an unrevertable revert loop. Folding
+  // the key-case in normalize makes check clean, so revert detects no drift (no revert-code
+  // change needed).
+  describe('case-insensitive free-form map KEY path (DataBrew Recipe Steps Action Parameters, #494)', () => {
+    const T = 'AWS::DataBrew::Recipe';
+    const steps = (params: Record<string, unknown>[]) => ({
+      Steps: params.map((p) => ({ Action: { Operation: 'RENAME', Parameters: p } })),
+    });
+
+    it('camelCase declared vs PascalCase live map keys (equal values) is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(
+            T,
+            steps([{ sourceColumn: 'field1' }, { sourceColumn: 'field1', targetColumn: 'field2' }])
+          ),
+          steps([{ SourceColumn: 'field1' }, { SourceColumn: 'field1', TargetColumn: 'field2' }]),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a real value change under a matched key still surfaces (equality-gated per key-pair)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, steps([{ sourceColumn: 'field1' }])),
+            steps([{ SourceColumn: 'CHANGED' }]),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Steps.0.Action.Parameters']);
+    });
+
+    it('a real key add still surfaces', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, steps([{ sourceColumn: 'field1' }])),
+            steps([{ SourceColumn: 'field1', Extra: 'x' }]),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Steps.0.Action.Parameters']);
+    });
+
+    it('the key-case rule is scoped per-type+path (other types stay strict)', () => {
+      // the same map shape on an UNLISTED type keeps case-sensitive semantics
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::Other::Thing', {
+              Steps: [{ Action: { Operation: 'X', Parameters: { sourceColumn: 'field1' } } }],
+            }),
+            { Steps: [{ Action: { Operation: 'X', Parameters: { SourceColumn: 'field1' } } }] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Steps.0.Action.Parameters']);
+    });
+  });
+
+  // #491: RedshiftServerless Workgroup's echo attribute is a full self-echo whose leaves
+  // are readOnly-stripped, leaving a `[{},{}]` husk (Endpoint) plus a constant default
+  // (PricePerformanceTarget). The extended isTrivialEmpty folds the ENI husk regardless of
+  // per-deploy count; matchesKnownDefault skips it and matches only the meaningful sub-key.
+  describe('RedshiftServerless Workgroup echo-attribute strip husk folds to atDefault (#491)', () => {
+    const T = 'AWS::RedshiftServerless::Workgroup';
+    const husk = (status: string, eniCount: number) => ({
+      Workgroup: {
+        Endpoint: {
+          VpcEndpoints: [{ NetworkInterfaces: Array.from({ length: eniCount }, () => ({})) }],
+        },
+        PricePerformanceTarget: { Status: status },
+      },
+    });
+
+    it('the [{},{}] husk + DISABLED price target folds (never drift, never recorded)', () => {
+      const t = tiers(
+        classifyResource(res(T, { WorkgroupName: 'wg' }), husk('DISABLED', 2), emptySchema)
+      );
+      expect(t.atDefault).toEqual(['Workgroup']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('the fold is resilient to a per-deploy ENI-count change (no latent FP)', () => {
+      // a 3-ENI shape (AZ rebalance / capacity change) still folds — the shape is not pinned.
+      expect(
+        tiers(classifyResource(res(T, { WorkgroupName: 'wg' }), husk('DISABLED', 3), emptySchema))
+          .atDefault
+      ).toEqual(['Workgroup']);
+    });
+
+    it('a price-performance target ENABLED out of band still surfaces (equality-gated)', () => {
+      expect(
+        tiers(classifyResource(res(T, { WorkgroupName: 'wg' }), husk('ENABLED', 2), emptySchema))
+          .undeclared
+      ).toEqual(['Workgroup']);
+    });
+  });
+
   // Found live by the apigwv2-http-rich bug-hunt fixture: AWS lowercases CORS
   // header names (case-insensitive per RFC 9110), so a declared
   // `AllowHeaders: ["Content-Type","Authorization"]` read back as
@@ -6279,6 +6383,19 @@ describe('API Gateway default-config first-run folds', () => {
     expect(matchesKnownDefault({ Types: ['EDGE'], Extra: 1 }, def)).toBe(false); // extra key not in default
     expect(matchesKnownDefault('HEADER', 'HEADER')).toBe(true); // scalar fallback
     expect(matchesKnownDefault('X', 'HEADER')).toBe(false);
+    // #491: a trivially-empty live key the default does NOT list is skipped as residue (a
+    // strip husk), so the object still folds against a default that lists only meaningful
+    // sub-keys — but a trivially-empty value that CONTRADICTS a non-empty default key
+    // ({enabled:false} vs {enabled:true}, #483) is compared, not skipped, so it never folds.
+    expect(
+      matchesKnownDefault(
+        { PricePerformanceTarget: { Status: 'DISABLED' }, Endpoint: [{}, {}] },
+        {
+          PricePerformanceTarget: { Status: 'DISABLED' },
+        }
+      )
+    ).toBe(true);
+    expect(matchesKnownDefault({ enabled: false }, { enabled: true })).toBe(false);
   });
 
   it('RestApi undeclared EndpointConfiguration folds to atDefault even when AWS omits IpAddressType', () => {
