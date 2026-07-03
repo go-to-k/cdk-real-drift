@@ -329,7 +329,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "KmsKeyId",
@@ -338,7 +338,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "AvailabilityZone",
@@ -374,7 +374,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredBackupWindow",
@@ -419,7 +419,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredMaintenanceWindow",

@@ -224,7 +224,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "PreferredBackupWindow",
@@ -260,7 +260,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "AvailabilityZones",
@@ -269,7 +269,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::RDS::DBCluster",
       "path": "PreferredMaintenanceWindow",

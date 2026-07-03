@@ -328,7 +328,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "AvailabilityZone",
@@ -364,7 +364,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredBackupWindow",
@@ -409,7 +409,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredMaintenanceWindow",

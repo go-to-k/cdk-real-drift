@@ -319,7 +319,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "AvailabilityZone",
@@ -382,7 +382,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredBackupWindow",
@@ -436,7 +436,7 @@
       "constructPath": "CdkRealDriftIntegAuroraRich/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PreferredMaintenanceWindow",
