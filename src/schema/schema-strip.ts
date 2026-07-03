@@ -71,6 +71,18 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // NoPasswordRequired stay writeOnly readGaps (read shape differs from CFn input).
   'AWS::ElastiCache::User': ['AccessString'],
   'AWS::MemoryDB::User': ['AccessString'],
+  // AWS::RedshiftServerless::Workgroup ConfigParameters / SecurityGroupIds / SubnetIds
+  // are writeOnly in the registry schema, so cdkrd filed them under the write-only readGap
+  // bucket and an out-of-band change was silently invisible (#490 — a security-relevant FN
+  // for an out-of-band SecurityGroupIds swap; live-proven on a ConfigParameters flip). But
+  // UNLIKE the entries above, no SDK override is needed: the Cloud Control read ALREADY
+  // returns all three at the TOP LEVEL of the same GetResource response cdkrd has (not just
+  // inside the read-only `Workgroup` echo attribute), so exempting the writeOnly strip makes
+  // cdkrd compare the value it already holds — no extra API call. ConfigParameters meets the
+  // default-fill shape (declared 1, live echoes the full ~9-element default set), so it is
+  // folded as a ParameterKey-keyed subset via NAME_VALUE_SUBSET_PATHS (noise.ts);
+  // SecurityGroupIds / SubnetIds are id-like sets folded for reorder by canonicalizeIdArraysDeep.
+  'AWS::RedshiftServerless::Workgroup': ['ConfigParameters', 'SecurityGroupIds', 'SubnetIds'],
 };
 
 // Curated readOnly SUPPLEMENTS: JSON-pointer property paths a type's CloudFormation

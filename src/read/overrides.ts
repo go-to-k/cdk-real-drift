@@ -79,6 +79,7 @@ import {
   GetQueueCommand,
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
+import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
   DescribeReceiptRuleCommand,
@@ -1891,10 +1892,45 @@ const supplementMemoryDbUser: SupplementReader = async ({ physicalId, declared, 
   return access !== undefined ? { AccessString: access } : undefined;
 };
 
+// AWS::RedshiftServerless::Workgroup — ConfigParameters / SecurityGroupIds / SubnetIds are
+// writeOnly in the registry schema and, unlike the hunt's harvested corpus suggested, the
+// Cloud Control GetResource does NOT return them at the top level (they live only inside the
+// read-only `Workgroup` echo attribute), so an out-of-band change to a declared value — e.g.
+// a SecurityGroupIds swap (security-relevant) or a ConfigParameters flip — was a silent FN
+// (#490). GetWorkgroup returns all three; project them (SDK camelCase -> CFn PascalCase) so
+// the classify pipeline compares them (schema-strip OVERRIDE_READABLE_WRITEONLY exempts the
+// same three from the writeOnly strip). ConfigParameters is the ~9-element resolved default
+// set, folded to a ParameterKey-keyed subset by NAME_VALUE_SUBSET_PATHS; SecurityGroupIds /
+// SubnetIds are id-like sets (reorder folded by canonicalizeIdArraysDeep). FP-safe: each key
+// is projected only when GetWorkgroup actually returns it.
+const supplementRedshiftServerlessWorkgroup: SupplementReader = async ({
+  physicalId,
+  declared,
+  region,
+}) => {
+  const workgroupName = str(declared.WorkgroupName) ?? str(physicalId);
+  if (!workgroupName) return undefined;
+  const c = new RedshiftServerlessClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetWorkgroupCommand({ workgroupName }));
+  const wg = r.workgroup;
+  if (!wg) return undefined;
+  const extra: Record<string, unknown> = {};
+  if (Array.isArray(wg.configParameters)) {
+    extra.ConfigParameters = wg.configParameters.map((p) => ({
+      ParameterKey: p.parameterKey,
+      ParameterValue: p.parameterValue,
+    }));
+  }
+  if (Array.isArray(wg.securityGroupIds)) extra.SecurityGroupIds = wg.securityGroupIds;
+  if (Array.isArray(wg.subnetIds)) extra.SubnetIds = wg.subnetIds;
+  return Object.keys(extra).length > 0 ? extra : undefined;
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,
   'AWS::ElastiCache::User': supplementElastiCacheUser,
   'AWS::MemoryDB::User': supplementMemoryDbUser,
+  'AWS::RedshiftServerless::Workgroup': supplementRedshiftServerlessWorkgroup,
 };

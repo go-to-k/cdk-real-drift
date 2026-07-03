@@ -1006,6 +1006,35 @@ describe('parseSchema', () => {
     expect(OVERRIDE_READABLE_WRITEONLY['AWS::EC2::LaunchTemplate']).toEqual(['LaunchTemplateData']);
   });
 
+  it('exemptOverrideReadable un-marks RedshiftServerless Workgroup CC-readable writeOnly props (#490)', () => {
+    // ConfigParameters / SecurityGroupIds / SubnetIds are writeOnly in the registry schema,
+    // but the Cloud Control read returns all three at the top level — so exempting them makes
+    // cdkrd compare (not readGap) the value it already holds, fixing the silent FN. The other
+    // writeOnly props (SnapshotArn/SnapshotName/RecoveryPointId) stay readGaps.
+    const raw = parseSchema(
+      JSON.stringify({
+        writeOnlyProperties: [
+          '/properties/ConfigParameters',
+          '/properties/SecurityGroupIds',
+          '/properties/SubnetIds',
+          '/properties/SnapshotArn',
+          '/properties/RecoveryPointId',
+        ],
+      })
+    );
+    const exempt = exemptOverrideReadable(raw, 'AWS::RedshiftServerless::Workgroup');
+    expect([...exempt.writeOnly].sort()).toEqual(['RecoveryPointId', 'SnapshotArn']);
+    for (const p of ['ConfigParameters', 'SecurityGroupIds', 'SubnetIds']) {
+      expect(exempt.writeOnly.has(p)).toBe(false);
+      expect(exempt.writeOnlyPaths).not.toContain(p);
+    }
+    expect(OVERRIDE_READABLE_WRITEONLY['AWS::RedshiftServerless::Workgroup']).toEqual([
+      'ConfigParameters',
+      'SecurityGroupIds',
+      'SubnetIds',
+    ]);
+  });
+
   it('exemptOverrideReadable un-marks Cognito IdentityPool CognitoEvents (PushSync/CognitoStreams stay readGaps)', () => {
     // All three are writeOnly in the registry schema, but readCognitoIdentityPool projects
     // only CognitoEvents (the Sync trigger) from cognito-sync; PushSync/CognitoStreams are
