@@ -886,11 +886,13 @@ const readEc2ClientVpnEndpoint: OverrideReader = async ({ physicalId, region }) 
   if (typeof e.SessionTimeoutHours === 'number') model.SessionTimeoutHours = e.SessionTimeoutHours;
   if (typeof e.DisconnectOnSessionTimeout === 'boolean')
     model.DisconnectOnSessionTimeout = e.DisconnectOnSessionTimeout;
-  // SelfServicePortal: the API returns SelfServicePortalUrl (a non-empty URL when the portal
-  // is enabled), NOT the CFn enabled/disabled enum. Derive the CFn value from presence of the
-  // URL. This derived mapping is validated live.
-  if (str(e.SelfServicePortalUrl) !== undefined) model.SelfServicePortal = 'enabled';
-  else model.SelfServicePortal = 'disabled';
+  // SelfServicePortal is NOT projected: the API returns a `SelfServicePortalUrl` for EVERY
+  // endpoint regardless of whether the CFn `SelfServicePortal` is enabled or disabled
+  // (live-verified: an endpoint that declares no SelfServicePortal — i.e. the "disabled"
+  // default — still returns a URL). So URL presence cannot distinguish enabled from disabled,
+  // and deriving "enabled" from it would false-drift against a declared "disabled". There is
+  // no reliable read-back signal, so the field is left unread (a declared value becomes a
+  // readGap — honest — rather than a false positive).
   // ConnectionLogOptions: API ConnectionLogResponseOptions carries the SAME CFn field names
   // (Enabled/CloudwatchLogGroup/CloudwatchLogStream). Project the sub-fields that are present.
   if (e.ConnectionLogOptions) {
@@ -957,6 +959,10 @@ const readEc2ClientVpnAuthorizationRule: OverrideReader = async ({ declared, reg
       `ClientVpnAuthorizationRule cidr=${cidr} group=${groupId} absent from endpoint ${endpointId}`
     );
   const model: Record<string, unknown> = {};
+  // Echo the parent endpoint id (the declared, resolved value) so a declared
+  // ClientVpnEndpointId compares rather than read-gapping (the describe call is scoped
+  // to it, so it is authoritative).
+  model.ClientVpnEndpointId = endpointId;
   if (str(rule.DestinationCidr)) model.TargetNetworkCidr = rule.DestinationCidr;
   if (str(rule.GroupId)) model.AccessGroupId = rule.GroupId;
   if (str(rule.Description)) model.Description = rule.Description;

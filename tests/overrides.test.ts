@@ -2446,7 +2446,7 @@ describe('SES inbound receipt-rule family (Cloud Control read-gap: no handlers)'
 
 describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
   describe('ClientVpnEndpoint', () => {
-    it('projects the CFn-declarable props + derives SelfServicePortal from the URL', async () => {
+    it('projects the CFn-declarable props (SelfServicePortal is NOT read — see below)', async () => {
       ec2.on(DescribeClientVpnEndpointsCommand).resolves({
         ClientVpnEndpoints: [
           {
@@ -2506,7 +2506,6 @@ describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
         VpcId: 'vpc-123',
         SessionTimeoutHours: 12,
         DisconnectOnSessionTimeout: false,
-        SelfServicePortal: 'enabled',
         ConnectionLogOptions: {
           Enabled: true,
           CloudwatchLogGroup: '/aws/vpn',
@@ -2534,12 +2533,20 @@ describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
       expect(call.args[0].input).toEqual({ ClientVpnEndpointIds: ['cvpn-endpoint-abc'] });
     });
 
-    it('SelfServicePortal is disabled when no SelfServicePortalUrl is returned', async () => {
+    it('SelfServicePortal is NOT projected even when a URL is returned (live: URL present when disabled too)', async () => {
       ec2.on(DescribeClientVpnEndpointsCommand).resolves({
-        ClientVpnEndpoints: [{ ClientVpnEndpointId: 'cvpn-endpoint-abc', Description: 'x' }],
+        ClientVpnEndpoints: [
+          {
+            ClientVpnEndpointId: 'cvpn-endpoint-abc',
+            Description: 'x',
+            // AWS returns a portal URL for EVERY endpoint, enabled or not — so it is unusable.
+            SelfServicePortalUrl: 'https://self-service.clientvpn.amazonaws.com/endpoints/cvpn',
+          },
+        ],
       } as never);
       const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnEndpoint'](ctx({}, 'cvpn-endpoint-abc'));
-      expect(out).toEqual({ Description: 'x', SelfServicePortal: 'disabled' });
+      expect(out).toEqual({ Description: 'x' });
+      expect(out).not.toHaveProperty('SelfServicePortal');
     });
 
     it('the endpoint is absent -> ResourceGoneError (deleted out of band)', async () => {
@@ -2575,6 +2582,7 @@ describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
         })
       );
       expect(out).toEqual({
+        ClientVpnEndpointId: 'cvpn-endpoint-abc',
         TargetNetworkCidr: '192.168.0.0/16',
         AccessGroupId: 'grp-1',
         Description: 'admins',
@@ -2591,7 +2599,11 @@ describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
       const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
         ctx({ ClientVpnEndpointId: 'cvpn-endpoint-abc', TargetNetworkCidr: '0.0.0.0/0' })
       );
-      expect(out).toEqual({ TargetNetworkCidr: '0.0.0.0/0', AuthorizeAllGroups: true });
+      expect(out).toEqual({
+        ClientVpnEndpointId: 'cvpn-endpoint-abc',
+        TargetNetworkCidr: '0.0.0.0/0',
+        AuthorizeAllGroups: true,
+      });
     });
 
     it('no matching rule -> ResourceGoneError (deleted out of band)', async () => {
