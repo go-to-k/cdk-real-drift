@@ -1,0 +1,205 @@
+{
+  "corpusVersion": 1,
+  "description": "#527/#564: a Lex V2 bot whose writeOnly BotLocales (two user intents + a custom slot type + the built-in FallbackIntent) is fully reconstructed by the lexv2-models tree walk must classify CLEAN against the declared template — a reader regression guard (id->name resolution, resolutionStrategy enum translation, FallbackIntent).",
+  "resource": {
+    "logicalId": "Bot",
+    "resourceType": "AWS::Lex::Bot",
+    "physicalId": "YVVVR3Y3FN",
+    "constructPath": "CdkRealDriftIntegLexStructural/Bot",
+    "declared": {
+      "AutoBuildBotLocales": true,
+      "BotLocales": [
+        {
+          "Intents": [
+            {
+              "Name": "OrderFlowers",
+              "SampleUtterances": [
+                {
+                  "Utterance": "I want to order flowers"
+                },
+                {
+                  "Utterance": "Order some flowers"
+                }
+              ]
+            },
+            {
+              "Name": "Greeting",
+              "SampleUtterances": [
+                {
+                  "Utterance": "hello"
+                },
+                {
+                  "Utterance": "hi there"
+                }
+              ]
+            },
+            {
+              "Name": "FallbackIntent",
+              "ParentIntentSignature": "AMAZON.FallbackIntent"
+            }
+          ],
+          "LocaleId": "en_US",
+          "NluConfidenceThreshold": 0.4,
+          "SlotTypes": [
+            {
+              "Name": "FlowerType",
+              "SlotTypeValues": [
+                {
+                  "SampleValue": {
+                    "Value": "roses"
+                  }
+                },
+                {
+                  "SampleValue": {
+                    "Value": "lilies"
+                  }
+                }
+              ],
+              "ValueSelectionSetting": {
+                "ResolutionStrategy": "ORIGINAL_VALUE"
+              }
+            }
+          ]
+        }
+      ],
+      "DataPrivacy": {
+        "ChildDirected": false
+      },
+      "IdleSessionTTLInSeconds": 300,
+      "Name": "cdkrd-integ-lex-structural",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLexStructural-BotRoleC29E333A-B9ebChScC5me"
+    }
+  },
+  "liveRaw": {
+    "ErrorLogSettings": {
+      "Enabled": false
+    },
+    "IdleSessionTTLInSeconds": 300,
+    "Id": "YVVVR3Y3FN",
+    "Arn": "arn:aws:lex:us-east-1:111111111111:bot/YVVVR3Y3FN",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLexStructural-BotRoleC29E333A-B9ebChScC5me",
+    "Name": "cdkrd-integ-lex-structural",
+    "DataPrivacy": {
+      "ChildDirected": false
+    },
+    "BotTags": [
+      {
+        "Value": "Bot",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLexStructural/473baf10-770d-11f1-8c6b-0e32f81bf1ef",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLexStructural",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "BotLocales": [
+      {
+        "LocaleId": "en_US",
+        "NluConfidenceThreshold": 0.4,
+        "SlotTypes": [
+          {
+            "Name": "FlowerType",
+            "SlotTypeValues": [
+              {
+                "SampleValue": {
+                  "Value": "roses"
+                }
+              },
+              {
+                "SampleValue": {
+                  "Value": "lilies"
+                }
+              }
+            ],
+            "ValueSelectionSetting": {
+              "ResolutionStrategy": "ORIGINAL_VALUE"
+            }
+          }
+        ],
+        "Intents": [
+          {
+            "Name": "Greeting",
+            "SampleUtterances": [
+              {
+                "Utterance": "hello"
+              },
+              {
+                "Utterance": "hi there"
+              }
+            ]
+          },
+          {
+            "Name": "OrderFlowers",
+            "SampleUtterances": [
+              {
+                "Utterance": "I want to order flowers"
+              },
+              {
+                "Utterance": "Order some flowers"
+              }
+            ]
+          },
+          {
+            "Name": "FallbackIntent",
+            "ParentIntentSignature": "AMAZON.FallbackIntent"
+          }
+        ]
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [
+      "AutoBuildBotLocales",
+      "BotFileS3Location",
+      "Replication",
+      "TestBotAliasSettings",
+      "TestBotAliasTags"
+    ],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [
+      "AutoBuildBotLocales",
+      "BotFileS3Location",
+      "Replication",
+      "TestBotAliasSettings",
+      "TestBotAliasTags"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["Replication.ReplicaRegions"],
+    "unorderedObjectArrayPaths": [
+      "BotLocales",
+      "TestBotAliasSettings.BotAliasLocaleSettings",
+      "TestBotAliasSettings.ConversationLogSettings.AudioLogSettings",
+      "TestBotAliasSettings.ConversationLogSettings.TextLogSettings"
+    ],
+    "freeFormMapPaths": [
+      "BotLocales.*.Intents.*.IntentConfirmationSetting.PromptSpecification.PromptAttemptsSpecification",
+      "BotLocales.*.Intents.*.Slots.*.SubSlotSetting.SlotSpecifications",
+      "BotLocales.*.Intents.*.Slots.*.ValueElicitationSetting.PromptSpecification.PromptAttemptsSpecification"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Bot",
+      "resourceType": "AWS::Lex::Bot",
+      "path": "AutoBuildBotLocales",
+      "note": "write-only — cannot be read back",
+      "physicalId": "YVVVR3Y3FN",
+      "constructPath": "CdkRealDriftIntegLexStructural/Bot"
+    }
+  ]
+}

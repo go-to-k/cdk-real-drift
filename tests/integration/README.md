@@ -86,6 +86,19 @@ These do NOT run in CI (they need credentials and mutate a real account):
   Distribution and asserts its schema-annotated nested defaults
   (`CustomOriginConfig.HTTPSPort`/`OriginReadTimeout`, `PriceClass`, …) fold as
   `atDefault` rather than `undeclared` (R103). CloudFront deploy/destroy are slow.
+- **After changing** the fully-undeclared-object descend
+  (`DESCEND_UNDECLARED_OBJECT_PATHS` in `src/normalize/noise.ts`, the descend branch
+  in `src/diff/classify.ts`): run `athena-descend` — it deploys a workgroup declaring
+  NO `WorkGroupConfiguration` (whole default folds `atDefault`), then sets ONE
+  non-default sub-key out of band and asserts cdkrd surfaces ONLY the descended
+  `WorkGroupConfiguration.BytesScannedCutoffPerQuery` (not the whole object), the
+  constants still folding (#565).
+- **After changing** the Lex BotLocales writer (`writeLexBotLocales` in
+  `src/revert/writers.ts`): run `lex-structural` — it deploys a Lex V2 bot (two user
+  intents + a custom slot type + the built-in FallbackIntent), then DELETES a whole
+  intent out of band and asserts `revert` RECREATES it (`CreateIntent`), and ADDS a
+  whole intent out of band and asserts `revert` DELETES it (`DeleteIntent`), never
+  touching the auto-managed FallbackIntent (#553 update + #564 structural).
 - Scripts that share a fixture/stack (`basic`'s four) must run sequentially,
   never concurrently.
 - **After changing exit-code or baseline semantics** (report-only/--fail, the
