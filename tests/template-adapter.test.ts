@@ -9,13 +9,14 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
   buildResolverContext,
-  collectRolesWithSiblingPolicies,
+  collectClustersWithSiblingCapacityProviders,
+  collectPrincipalsWithSiblingPolicies,
   loadDesired,
   parseTemplateBody,
 } from '../src/desired/template-adapter.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 
-describe('collectRolesWithSiblingPolicies', () => {
+describe('collectPrincipalsWithSiblingPolicies', () => {
   it('maps roles referenced by sibling AWS::IAM::Policy resources to the policy NAMES', () => {
     const resources = {
       MyRole: { Type: 'AWS::IAM::Role' },
@@ -29,7 +30,7 @@ describe('collectRolesWithSiblingPolicies', () => {
       },
       Other: { Type: 'AWS::S3::Bucket' },
     };
-    expect(collectRolesWithSiblingPolicies(resources)).toEqual(
+    expect(collectPrincipalsWithSiblingPolicies(resources)).toEqual(
       new Map([['MyRole', ['MyRoleDefaultPolicyABC', 'extra']]])
     );
   });
@@ -39,7 +40,7 @@ describe('collectRolesWithSiblingPolicies', () => {
       P: { Type: 'AWS::IAM::Policy', Properties: { PolicyName: 'p', Roles: ['literal-name'] } },
       Q: { Type: 'AWS::IAM::ManagedPolicy', Properties: { Roles: [{ Ref: 'R' }] } },
     };
-    expect(collectRolesWithSiblingPolicies(resources).size).toBe(0); // literal not a Ref; ManagedPolicy not Policy
+    expect(collectPrincipalsWithSiblingPolicies(resources).size).toBe(0); // literal not a Ref; ManagedPolicy not Policy
   });
 
   it("marks the role 'unresolved' when a sibling PolicyName cannot be resolved (sticky)", () => {
@@ -58,7 +59,7 @@ describe('collectRolesWithSiblingPolicies', () => {
       },
     };
     // no ctx -> the intrinsic cannot resolve; 'unresolved' wins and stays
-    expect(collectRolesWithSiblingPolicies(resources).get('MyRole')).toBe('unresolved');
+    expect(collectPrincipalsWithSiblingPolicies(resources).get('MyRole')).toBe('unresolved');
   });
 
   it('resolves an intrinsic PolicyName when a resolver ctx is provided', () => {
@@ -72,9 +73,57 @@ describe('collectRolesWithSiblingPolicies', () => {
       },
     };
     const ctx = buildResolverContext({}, {}, {}, 'us-east-1', '111122223333', 's', 'sid');
-    expect(collectRolesWithSiblingPolicies(resources, ctx).get('MyRole')).toEqual([
+    expect(collectPrincipalsWithSiblingPolicies(resources, ctx).get('MyRole')).toEqual([
       'pol-us-east-1',
     ]);
+  });
+
+  it('also maps Users and Groups a sibling policy attaches to (db2bq IAM User pattern)', () => {
+    const resources = {
+      MyUser: { Type: 'AWS::IAM::User' },
+      MyGroup: { Type: 'AWS::IAM::Group' },
+      UserPolicy: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'UserDefaultPolicyA55', Users: [{ Ref: 'MyUser' }] },
+      },
+      GroupPolicy: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'GroupDefaultPolicyB33', Groups: [{ Ref: 'MyGroup' }] },
+      },
+    };
+    const m = collectPrincipalsWithSiblingPolicies(resources);
+    expect(m.get('MyUser')).toEqual(['UserDefaultPolicyA55']);
+    expect(m.get('MyGroup')).toEqual(['GroupDefaultPolicyB33']);
+  });
+});
+
+describe('collectClustersWithSiblingCapacityProviders', () => {
+  it('collects ECS Cluster logicalIds referenced by a ClusterCapacityProviderAssociations sibling', () => {
+    const resources = {
+      MyCluster: { Type: 'AWS::ECS::Cluster' },
+      Assoc: {
+        Type: 'AWS::ECS::ClusterCapacityProviderAssociations',
+        Properties: {
+          Cluster: { Ref: 'MyCluster' },
+          CapacityProviders: ['FARGATE', 'FARGATE_SPOT'],
+          DefaultCapacityProviderStrategy: [{ CapacityProvider: 'FARGATE', Weight: 1 }],
+        },
+      },
+      Other: { Type: 'AWS::ECS::Cluster' }, // no association -> not collected
+    };
+    const s = collectClustersWithSiblingCapacityProviders(resources);
+    expect(s.has('MyCluster')).toBe(true);
+    expect(s.has('Other')).toBe(false);
+  });
+
+  it('ignores a non-Ref Cluster and non-association resources', () => {
+    const resources = {
+      A: {
+        Type: 'AWS::ECS::ClusterCapacityProviderAssociations',
+        Properties: { Cluster: 'literal-cluster-name' },
+      },
+    };
+    expect(collectClustersWithSiblingCapacityProviders(resources).size).toBe(0);
   });
 });
 

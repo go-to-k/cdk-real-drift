@@ -157,10 +157,15 @@ export interface DesiredResource {
   constructPath?: string | undefined; // CDK construct path from aws:cdk:path Metadata (display only)
   declared: Record<string, unknown>; // intrinsic-resolved + NoValue-pruned (may carry UNRESOLVED)
   declaredRaw?: Record<string, unknown>; // raw Properties, re-resolved by gather once liveAttrs are read
-  // inline Policies on an IAM Role owned by sibling AWS::IAM::Policy resources (the
-  // CDK pattern). classify drops ONLY the live entries whose PolicyName is listed
-  // here, so an out-of-band inline policy is still reported. 'unresolved' = a
-  // sibling PolicyName is not statically resolvable -> fall back to suppressing the
-  // whole live Policies property (no false positives).
+  // inline Policies on an IAM principal (Role / User / Group) owned by sibling
+  // AWS::IAM::Policy resources (the CDK pattern). classify drops ONLY the live entries
+  // whose PolicyName is listed here, so an out-of-band inline policy is still reported.
+  // 'unresolved' = a sibling PolicyName is not statically resolvable -> fall back to
+  // suppressing the whole live Policies property (no false positives).
   siblingPolicyNames?: string[] | 'unresolved' | undefined;
+  // true when an ECS Cluster's CapacityProviders / DefaultCapacityProviderStrategy are
+  // declared by a sibling AWS::ECS::ClusterCapacityProviderAssociations resource (which
+  // reflects them into the cluster's live model). classify drops the reflected props so
+  // they are not false undeclared drift — the association is tracked as its own resource.
+  hasSiblingCapacityProviders?: boolean | undefined;
 }
