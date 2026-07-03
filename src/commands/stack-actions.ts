@@ -24,6 +24,7 @@ import {
   type CdkrdConfig,
   ignoreRuleFor,
 } from '../config/config-file.js';
+import { withinStackPath } from '../construct-path.js';
 import { style } from '../report/style.js';
 import { bulkMultiselect } from './bulk-multiselect.js';
 import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
@@ -81,10 +82,12 @@ export function revertConfirmMessage(
  * "survives" — re-listing 100+ lines the user just saw in the report is noise.
  * Show up to `cap` entries, then a one-line fold. Pure + exported for tests.
  */
-export function formatSurvivingDrift(remaining: Finding[], cap = 10): string[] {
+export function formatSurvivingDrift(remaining: Finding[], stackName = '', cap = 10): string[] {
+  const idOf = (f: Finding): string =>
+    f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
   const lines = remaining
     .slice(0, cap)
-    .map((f) => `  - ${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''} (${f.tier})`);
+    .map((f) => `  - ${idOf(f)}${f.path ? `.${f.path}` : ''} (${f.tier})`);
   if (remaining.length > cap)
     lines.push(`  ... and ${remaining.length - cap} more — run \`cdkrd check\` for the full list`);
   return lines;
@@ -438,13 +441,17 @@ const ignoreFindingKey = (f: Finding): string => `${f.logicalId}::${f.path}`;
  * exported so the "starts unselected" invariant is unit-tested without a TTY.
  */
 export function ignoreSelectOptions(
-  ignorable: Finding[]
+  ignorable: Finding[],
+  stackName = ''
 ): { value: string; label: string; selected: boolean }[] {
-  return ignorable.map((f) => ({
-    value: ignoreFindingKey(f),
-    label: `${f.constructPath ?? f.logicalId}${f.path ? `.${f.path}` : ''} (${f.tier})`,
-    selected: false,
-  }));
+  return ignorable.map((f) => {
+    const id = f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
+    return {
+      value: ignoreFindingKey(f),
+      label: `${id}${f.path ? `.${f.path}` : ''} (${f.tier})`,
+      selected: false,
+    };
+  });
 }
 
 /**
@@ -479,7 +486,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
     }
     const picked = await bulkMultiselect(
       ignoreSelectMessage(stackName),
-      ignoreSelectOptions(ignorable)
+      ignoreSelectOptions(ignorable, stackName)
     );
     if (picked === undefined) {
       console.error(`note: ${stackName}: ignore cancelled — config unchanged`);
@@ -755,6 +762,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     removeUnrecorded: includeRemovals,
     schemas: gathered.schemas,
     siblingSgRules: buildSiblingSgRules(gathered.desired),
+    stackName,
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
@@ -1023,7 +1031,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // Say WHICH drift survived — without this the user must re-run `check` just to
   // learn what didn't converge (R46). A terse id-per-line pointer, not a report;
   // capped so a no-baseline partial revert doesn't re-list 100+ lines (R52).
-  for (const line of formatSurvivingDrift(remainingDrift)) console.log(line);
+  for (const line of formatSurvivingDrift(remainingDrift, stackName)) console.log(line);
   // remaining drift OR an unverifiable re-read both mean "not confirmed clean" → exit 1
   // (a failed delete already set 2). Never return 0 ("converged") when we could not check.
   if (remaining > 0 || unverified > 0) worst = Math.max(worst, 1);

@@ -158,11 +158,11 @@ writes one. It re-reads each touched resource afterward to verify it converged:
 ```console
 === cdkrd revert: ApiStack (us-east-1) ===
 
-  ApiStack/ApiRole (AWS::IAM::Role)
+  ApiRole (AWS::IAM::Role)
     - Policies -> remove (undeclared, not in baseline)
 
 Apply 1 revert op(s) to ApiStack? This WRITES to AWS. · yes
-  reverted: ApiStack/ApiRole
+  reverted: ApiRole
 
 verifying convergence (re-reading 1 resource(s))...
 ApiStack: CLEAN after revert.
