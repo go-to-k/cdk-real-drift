@@ -1871,19 +1871,28 @@ describe('rejectedEmptyStripOps — array-WILDCARD husk inside array elements (#
     })),
   });
 
-  it('appends a remove op for the empty TargetAccountIds husk in every distribution', () => {
+  it('appends a remove op for every empty husk (TargetAccountIds + sibling arrays) in every distribution', () => {
     const strip = rejectedEmptyStripOps(T, [descOp], live(2));
-    expect(strip.map((o) => ({ op: o.op, path: o.path }))).toEqual([
-      { op: 'remove', path: '/Distributions/0/AmiDistributionConfiguration/TargetAccountIds' },
-      { op: 'remove', path: '/Distributions/1/AmiDistributionConfiguration/TargetAccountIds' },
+    expect(strip.map((o) => `${o.op} ${o.path}`)).toEqual([
+      'remove /Distributions/0/AmiDistributionConfiguration/TargetAccountIds',
+      'remove /Distributions/1/AmiDistributionConfiguration/TargetAccountIds',
+      'remove /Distributions/0/FastLaunchConfigurations',
+      'remove /Distributions/1/FastLaunchConfigurations',
+      'remove /Distributions/0/LaunchTemplateConfigurations',
+      'remove /Distributions/1/LaunchTemplateConfigurations',
     ]);
   });
 
-  it('a POPULATED TargetAccountIds is real data — never stripped', () => {
+  it('a POPULATED array is real data — never stripped', () => {
     const l = live(1);
-    (
-      l.Distributions[0].AmiDistributionConfiguration as { TargetAccountIds: string[] }
-    ).TargetAccountIds = ['111111111111'];
+    const d = l.Distributions[0] as {
+      AmiDistributionConfiguration: { TargetAccountIds: string[] };
+      FastLaunchConfigurations: unknown[];
+      LaunchTemplateConfigurations: unknown[];
+    };
+    d.AmiDistributionConfiguration.TargetAccountIds = ['111111111111'];
+    d.FastLaunchConfigurations = [{ Enabled: true }];
+    d.LaunchTemplateConfigurations = [{ LaunchTemplateId: 'lt-1' }];
     expect(rejectedEmptyStripOps(T, [descOp], l)).toEqual([]);
   });
 

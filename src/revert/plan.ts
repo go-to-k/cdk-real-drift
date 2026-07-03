@@ -789,11 +789,18 @@ export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> =
   // with "The value supplied for parameter 'distributions[0].amiDistributionConfiguration.
   // targetAccountIds' is not valid" (reproduced live, 2026-07-03). Dropping the echoed
   // empty array lets the handler treat it as absent (no cross-account distribution), which
-  // is what the empty echo meant. (The sibling FastLaunchConfigurations /
-  // LaunchTemplateConfigurations husks may hit the same wall — add them here if a live
-  // revert surfaces them; only TargetAccountIds is live-proven.)
+  // is what the empty echo meant. The CC read echoes the sibling FastLaunchConfigurations /
+  // LaunchTemplateConfigurations arrays as `[]` too (corpus-observed), and they carry the
+  // same "must be non-empty when present" shape — so they are included pre-emptively.
+  // Stripping is a safe no-op regardless: the fail-safe gate only drops a live value that is
+  // ALREADY an empty array (a populated array is real data and never touched), and an absent
+  // array means "no config", exactly what the echoed `[]` meant. TargetAccountIds is the
+  // live-proven rejection; the siblings guard against the same wall on a distribution that
+  // sets one of them.
   'AWS::ImageBuilder::DistributionConfiguration': [
     '/Distributions/*/AmiDistributionConfiguration/TargetAccountIds',
+    '/Distributions/*/FastLaunchConfigurations',
+    '/Distributions/*/LaunchTemplateConfigurations',
   ],
 };
 // Expand a JSON pointer that MAY contain `*` array-wildcard segments into a {pointer, value}
