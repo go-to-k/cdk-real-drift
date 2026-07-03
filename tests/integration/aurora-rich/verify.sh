@@ -34,6 +34,10 @@ for prop in StorageType LicenseModel CACertificateIdentifier OptionGroupName; do
   grep -qE "\.$prop \(" "/tmp/cdkrd-$STACK-pre.out" \
     && fail "engine-derived default $prop surfaced as potential drift (ENGINE_DEFAULTS fold regressed)"
 done
+# The cluster parameter group declares `slow_query_log: "ON"`, which RDS canonicalizes to "1"
+# on read — the ON≡1 boolean-token fold must keep it from false-flagging declared drift.
+grep -qE "Parameters\.slow_query_log" "/tmp/cdkrd-$STACK-pre.out" \
+  && fail "MySQL boolean param slow_query_log (ON vs live 1) surfaced as drift (ON≡1 fold regressed)"
 
 echo "=== [$STACK] record (write baseline) ==="
 $CLI record "$STACK" --region "$REGION" --yes || fail "record"

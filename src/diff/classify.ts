@@ -23,6 +23,8 @@ import {
   isCaseInsensitiveEqualScalarSet,
   isCaseInsensitiveKeyMapEqual,
   isCaseInsensitiveScalarEqual,
+  BOOLEAN_PARAM_MAP_PATHS,
+  isBooleanTokenEquivalent,
   isCfnTemplateNonAsciiMask,
   isEqualUnorderedScalarSet,
   isEquivalentRateExpression,
@@ -1299,6 +1301,16 @@ export function classifyResource(
       if (
         ACCESS_STRING_PATHS[resourceType]?.has(d.path) &&
         isAccessStringEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // RDS parameter-group Parameters map: a MySQL boolean system variable declared as
+      // "ON"/"OFF" reads back as "1"/"0" (RDS canonicalizes on write). Fold only when both
+      // sides are boolean tokens of the SAME truthiness — a genuine flip (ON vs 0) and a
+      // non-boolean value still surface. Gated to the Parameters map's leaf paths.
+      if (
+        BOOLEAN_PARAM_MAP_PATHS[resourceType]?.has(d.path.split('.')[0] ?? '') &&
+        d.path.includes('.') &&
+        isBooleanTokenEquivalent(d.stateValue, d.awsValue)
       )
         continue;
       // CloudFormation's GetTemplate returns non-ASCII string literals with every

@@ -4330,6 +4330,79 @@ describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `genera
 // R130: RDS DBInstance fresh-deploy false positives observed in harvest13 — a declared
 // EngineVersion track resolved to its full patch, and a MasterUsername declared as a
 // secretsmanager dynamic reference resolved to the live username. Neither is drift.
+// RDS parameter-group Parameters map: MySQL boolean system variables accept ON/OFF, 1/0,
+// TRUE/FALSE interchangeably; RDS canonicalizes a declared "ON"/"OFF" to "1"/"0" on read, so a
+// case that declares "ON" false-flags declared drift against the live "1". Observed live on
+// dev-main-AuroraDB.
+describe('RDS parameter-group boolean tokens (ON≡1, OFF≡0)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const declaredPaths = (declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource(
+      {
+        logicalId: 'R',
+        resourceType: 'AWS::RDS::DBClusterParameterGroup',
+        physicalId: 'p',
+        declared,
+      },
+      live,
+      bare
+    )
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  it('declared "ON" vs live "1" (and "OFF" vs "0") is NOT drift', () => {
+    expect(
+      declaredPaths(
+        { Parameters: { slow_query_log: 'ON', general_log: 'OFF' } },
+        { Parameters: { slow_query_log: '1', general_log: '0' } }
+      )
+    ).toEqual([]);
+  });
+
+  it('a genuine flip (declared "ON" vs live "0") STILL surfaces as drift', () => {
+    expect(
+      declaredPaths(
+        { Parameters: { slow_query_log: 'ON' } },
+        { Parameters: { slow_query_log: '0' } }
+      )
+    ).toEqual(['Parameters.slow_query_log']);
+  });
+
+  it('a non-boolean param ("2" vs "1") still surfaces — the fold cannot mis-fire', () => {
+    expect(
+      declaredPaths(
+        { Parameters: { innodb_flush_log_at_trx_commit: '2' } },
+        { Parameters: { innodb_flush_log_at_trx_commit: '1' } }
+      )
+    ).toEqual(['Parameters.innodb_flush_log_at_trx_commit']);
+  });
+
+  it('the fold is gated to RDS param-group types — the same map shape elsewhere stays strict', () => {
+    const paths = classifyResource(
+      {
+        logicalId: 'R',
+        resourceType: 'AWS::Other::Thing',
+        physicalId: 'p',
+        declared: { Parameters: { flag: 'ON' } },
+      },
+      { Parameters: { flag: '1' } },
+      bare
+    )
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+    expect(paths).toEqual(['Parameters.flag']);
+  });
+});
+
 describe('classifyResource RDS version-track + dynamic-reference (R130)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
