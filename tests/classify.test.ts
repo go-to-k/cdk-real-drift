@@ -7983,15 +7983,32 @@ describe('Face-stack false-positive folds', () => {
     );
     expect(layer.generated).toEqual(['LayerName']);
     expect(layer.undeclared).toEqual([]);
+    // A UserPoolClient with no explicit ClientName reads back `<logicalId>-<random>` (no
+    // stack prefix); it folds via isCfnGeneratedName's `<logicalId>-<random>` branch — NOT a
+    // value-independent ClientName fold, which would also hide an undeclared user-set name.
+    const clientResource = {
+      logicalId: 'AuthUserPoolUserPoolClientBB863FCC',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      physicalId: '3n4b5c6d7e8f9g0h1i2j3k4l5m',
+      constructPath: 'Stack/Auth/UserPool/UserPoolClient',
+      declared: {},
+    };
     const client = tiers(
       classifyResource(
-        res('AWS::Cognito::UserPoolClient', {}),
+        clientResource,
         { ClientName: 'AuthUserPoolUserPoolClientBB863FCC-qWmhWWbfzd1Q' },
         emptySchema
       )
     );
     expect(client.generated).toEqual(['ClientName']);
     expect(client.undeclared).toEqual([]);
+    // A user-SET ClientName (no logical-id prefix) is NOT folded — it surfaces as real
+    // undeclared drift, the differentiator cdkrd exists to catch.
+    const userSet = tiers(
+      classifyResource(clientResource, { ClientName: 'my-app-web-client' }, emptySchema)
+    );
+    expect(userSet.undeclared).toEqual(['ClientName']);
+    expect(userSet.generated).toEqual([]);
   });
 
   it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {

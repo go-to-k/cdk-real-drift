@@ -57,8 +57,10 @@ import {
   CONTEXT_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
   ENGINE_DEFAULTS,
+  GENERATED_LOGICALID_PREFIX_PATHS,
   GENERATED_NESTED_PATHS,
   GENERATED_TOPLEVEL_PATHS,
+  isLogicalIdPrefixedGeneratedName,
   EPOCH_HOUR_PATHS,
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
   isEpochHourEqual,
@@ -1720,6 +1722,17 @@ export function classifyResource(
     // undeclared value (the differentiator): the value must start with THIS stack's name AND
     // end with CFn's random suffix — a user-chosen name realistically never matches both.
     if (isCfnGeneratedName(v, resource.constructPath, physicalId, logicalId)) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // A curated `<logicalId>-<random>` generated-name form (no `<stack>-` prefix) that the
+    // isCfnGeneratedName branches miss — scoped by type+path to avoid over-folding a short
+    // raw-CFn logical id's genuine undeclared names (GENERATED_LOGICALID_PREFIX_PATHS). Value-
+    // dependent: an undeclared user-SET name (no logical-id prefix) still surfaces as drift.
+    if (
+      GENERATED_LOGICALID_PREFIX_PATHS[resourceType]?.has(k) &&
+      isLogicalIdPrefixedGeneratedName(v, logicalId)
+    ) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }
