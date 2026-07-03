@@ -523,6 +523,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `AWS::ElastiCache::User` / `AWS::MemoryDB::User` with its writeOnly
   `AccessString` — the Redis/Valkey ACL; an out-of-band permission grant is
   otherwise invisible to the Cloud Control read),
+  `redshift-serverless:GetWorkgroup` (supplements an
+  `AWS::RedshiftServerless::Workgroup` with its writeOnly `ConfigParameters` /
+  `SecurityGroupIds` / `SubnetIds`, which the Cloud Control read returns only
+  inside its read-only echo attribute — an out-of-band security-group swap or
+  config-parameter change is otherwise invisible),
   `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)

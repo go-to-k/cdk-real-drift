@@ -1870,6 +1870,63 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  describe('RedshiftServerless Workgroup ConfigParameters subset + writeOnly exemption (#490)', () => {
+    const T = 'AWS::RedshiftServerless::Workgroup';
+    // Declared one ConfigParameter; the CC read returns it plus the ~8-element default set.
+    const declared = {
+      ConfigParameters: [
+        { ParameterKey: 'enable_case_sensitive_identifier', ParameterValue: 'true' },
+      ],
+    };
+    const liveDefaultFilled = (declaredValue: string) => ({
+      ConfigParameters: [
+        { ParameterKey: 'datestyle', ParameterValue: 'ISO, MDY' },
+        { ParameterKey: 'enable_user_activity_logging', ParameterValue: 'false' },
+        { ParameterKey: 'query_group', ParameterValue: 'default' },
+        { ParameterKey: 'require_ssl', ParameterValue: 'false' },
+        { ParameterKey: 'search_path', ParameterValue: '$user, public' },
+        { ParameterKey: 'auto_mv', ParameterValue: 'true' },
+        { ParameterKey: 'enable_case_sensitive_identifier', ParameterValue: declaredValue },
+      ],
+    });
+
+    it('a clean deploy folds the service default-fill: no declared drift (declared is a ParameterKey subset)', () => {
+      const findings = classifyResource(res(T, declared), liveDefaultFilled('true'), emptySchema);
+      expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+    });
+
+    it('an out-of-band flip of a DECLARED ConfigParameter surfaces as declared drift (#490 FN fixed)', () => {
+      // enable_case_sensitive_identifier declared "true", live "false" -> subset align returns
+      // null (a declared value differs), so the whole ConfigParameters array stays declared drift.
+      const declaredF = classifyResource(
+        res(T, declared),
+        liveDefaultFilled('false'),
+        emptySchema
+      ).filter((f) => f.tier === 'declared');
+      expect(declaredF).toHaveLength(1);
+      expect(declaredF[0]?.path).toBe('ConfigParameters');
+    });
+
+    it('SecurityGroupIds / SubnetIds reorder is folded (id-like sets), a genuine swap still surfaces', () => {
+      // Reorder only -> no drift (canonicalizeIdArraysDeep sorts id-like arrays both sides).
+      expect(
+        classifyResource(
+          res(T, { SecurityGroupIds: ['sg-0a1b2c3d4e', 'sg-1122334455'] }),
+          { SecurityGroupIds: ['sg-1122334455', 'sg-0a1b2c3d4e'] },
+          emptySchema
+        ).filter((f) => f.tier === 'declared')
+      ).toEqual([]);
+      // A real out-of-band SG swap still surfaces as declared drift (the security-relevant FN).
+      expect(
+        classifyResource(
+          res(T, { SecurityGroupIds: ['sg-0a1b2c3d4e'] }),
+          { SecurityGroupIds: ['sg-9988776655'] },
+          emptySchema
+        ).filter((f) => f.tier === 'declared')
+      ).toHaveLength(1);
+    });
+  });
+
   describe('ElasticBeanstalk ConfigurationTemplate OptionSettings subset (composite Namespace+OptionName key + live-only ResourceName, #493)', () => {
     const T = 'AWS::ElasticBeanstalk::ConfigurationTemplate';
     // The template declares a handful of settings; each is keyed by Namespace+OptionName.

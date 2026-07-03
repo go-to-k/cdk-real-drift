@@ -12,6 +12,7 @@ import {
   MemoryDBClient,
 } from '@aws-sdk/client-memorydb';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
+import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { readLive } from '../src/read/router.js';
@@ -23,6 +24,7 @@ const ssm = mockClient(SSMClient);
 const elasticache = mockClient(ElastiCacheClient);
 const ecs = mockClient(ECSClient);
 const memorydb = mockClient(MemoryDBClient);
+const redshiftServerless = mockClient(RedshiftServerlessClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -41,6 +43,7 @@ beforeEach(() => {
   elasticache.reset();
   ecs.reset();
   memorydb.reset();
+  redshiftServerless.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1135,5 +1138,54 @@ describe('readLive (SDK supplement path — cache user AccessString, #482)', () 
     elasticache.on(DescribeCacheUsersCommand).rejects(named('UserNotFoundFault'));
     const r = await readLive(cc as unknown as CloudControlClient, ecUser(), 'us-east-1', '1');
     expect(r.live).toEqual({ UserId: 'reader', Status: 'active' });
+  });
+});
+
+describe('readLive (SDK supplement path — RedshiftServerless Workgroup writeOnly props, #490)', () => {
+  const workgroup = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::RedshiftServerless::Workgroup',
+      physicalId: 'cdkrd-wg',
+      declared: { WorkgroupName: 'cdkrd-wg' },
+    });
+
+  it('merges GetWorkgroup ConfigParameters/SecurityGroupIds/SubnetIds (camelCase -> PascalCase)', async () => {
+    // The Cloud Control read returns these only inside the read-only Workgroup echo, not at the
+    // top level (#490 live finding) — so an out-of-band change was a silent FN. GetWorkgroup
+    // supplies them; project camelCase SDK -> PascalCase CFn so they compare against the template.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"WorkgroupName":"cdkrd-wg","BaseCapacity":8}',
+      },
+    });
+    redshiftServerless.on(GetWorkgroupCommand).resolves({
+      workgroup: {
+        configParameters: [
+          { parameterKey: 'enable_case_sensitive_identifier', parameterValue: 'true' },
+          { parameterKey: 'require_ssl', parameterValue: 'false' },
+        ],
+        securityGroupIds: ['sg-0a1b2c3d4e'],
+        subnetIds: ['subnet-1122334455', 'subnet-6677889900'],
+      },
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, workgroup(), 'us-east-1', '1');
+    expect(r.live?.ConfigParameters).toEqual([
+      { ParameterKey: 'enable_case_sensitive_identifier', ParameterValue: 'true' },
+      { ParameterKey: 'require_ssl', ParameterValue: 'false' },
+    ]);
+    expect(r.live?.SecurityGroupIds).toEqual(['sg-0a1b2c3d4e']);
+    expect(r.live?.SubnetIds).toEqual(['subnet-1122334455', 'subnet-6677889900']);
+    expect(redshiftServerless.commandCalls(GetWorkgroupCommand)[0]?.args[0].input).toEqual({
+      workgroupName: 'cdkrd-wg',
+    });
+  });
+
+  it('keeps the CC model when GetWorkgroup throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"WorkgroupName":"cdkrd-wg","BaseCapacity":8}' },
+    });
+    redshiftServerless.on(GetWorkgroupCommand).rejects(named('ResourceNotFoundException'));
+    const r = await readLive(cc as unknown as CloudControlClient, workgroup(), 'us-east-1', '1');
+    expect(r.live).toEqual({ WorkgroupName: 'cdkrd-wg', BaseCapacity: 8 });
   });
 });

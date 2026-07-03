@@ -2408,6 +2408,20 @@ export const NAME_VALUE_SUBSET_PATHS: Record<string, NameValueSubsetSpec> = {
     nameField: 'Name',
     valueField: 'Value',
   },
+  // RedshiftServerless Workgroup ConfigParameters (#490): once the writeOnly strip is
+  // exempted (schema-strip OVERRIDE_READABLE_WRITEONLY), the top-level ConfigParameters the
+  // CC read returns is the FULLY resolved default set (~9 entries: datestyle, query_group,
+  // max_query_execution_time, enable_user_activity_logging, search_path, require_ssl,
+  // use_fips_ssl, auto_mv, + any declared) vs the 1-2 the template declares — the RDS
+  // OptionGroup default-fill shape. Fold as a ParameterKey-keyed subset so the service-filled
+  // extras land in atDefault/undeclared-noise, while a declared entry that is MISSING live or
+  // whose ParameterValue DIFFERS (the #490 FN: enable_case_sensitive_identifier true->false)
+  // still surfaces as real declared drift.
+  'AWS::RedshiftServerless::Workgroup': {
+    re: /(^|\.)ConfigParameters$/,
+    nameField: 'ParameterKey',
+    valueField: 'ParameterValue',
+  },
 };
 // Align a declared `[{<name>,<value>}]` array to a live one BY the spec's name field.
 // Returns the live-only entries (server-injected / out-of-band entries the template
