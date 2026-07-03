@@ -1221,6 +1221,46 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['Triggers.0.GitConfiguration.Push.0.Branches.Includes']);
     });
 
+    // Live-observed (rds-sgset / redshift-probe fixtures): AWS returns a declared
+    // VPC-security-group ID SET in a DIFFERENT order than the template (RDS DBInstance
+    // declared [sg-0ffb…, sg-0fc3…, sg-02a7…] read back [sg-02a7…, sg-0ffb…, sg-0fc3…]).
+    // Unlike the CodePipeline glob sets above, the elements ARE resource ids, so the
+    // GENERIC content-based `isIdLike` canonicalizer folds them with NO per-type table —
+    // this pins that end-to-end for the whole SG/subnet/ARN-id-set class. A genuine SG
+    // add/remove still changes the multiset and reports.
+    it('id-array fold: RDS DBInstance VPCSecurityGroups reorder (real sg-ids) is NOT drift', () => {
+      const db = (sgs: string[]): DesiredResource => ({
+        logicalId: 'Db',
+        resourceType: 'AWS::RDS::DBInstance',
+        physicalId: 'cdkrd-rds-sgset',
+        declared: { VPCSecurityGroups: sgs },
+      });
+      // same SG set, AWS canonical order -> no drift (isIdLike sorts both sides)
+      expect(
+        classifyResource(
+          db(['sg-0ffb59706a86e4368', 'sg-0fc374f7174e89e17', 'sg-02a70a5865b6b0826']),
+          {
+            VPCSecurityGroups: [
+              'sg-02a70a5865b6b0826',
+              'sg-0ffb59706a86e4368',
+              'sg-0fc374f7174e89e17',
+            ],
+          },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine SG removal still changes the multiset -> reports
+      expect(
+        tiers(
+          classifyResource(
+            db(['sg-0ffb59706a86e4368', 'sg-0fc374f7174e89e17', 'sg-02a70a5865b6b0826']),
+            { VPCSecurityGroups: ['sg-02a70a5865b6b0826', 'sg-0ffb59706a86e4368'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['VPCSecurityGroups']);
+    });
+
     // Schema-driven fold (insertionOrder:false): ECS marks RequiresCompatibilities
     // insertionOrder:false, so the launch-type set AWS sorts alphabetically (declared
     // [FARGATE, EC2] read back [EC2, FARGATE]) folds from the schema — no per-type entry.
