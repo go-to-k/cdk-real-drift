@@ -10,7 +10,11 @@ import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
-import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
+import {
+  BatchGetProjectsCommand,
+  BatchGetReportGroupsCommand,
+  CodeBuildClient,
+} from '@aws-sdk/client-codebuild';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import {
   DescribeDBClustersCommand,
@@ -725,6 +729,46 @@ const readMediaConvertJobTemplate: OverrideReader = async ({ physicalId, region 
   // `Settings` object. Faithful passthrough so a console-side transcode-settings change is
   // detectable.
   if (t.Settings !== undefined) model.SettingsJson = t.Settings;
+  return model;
+};
+
+// AWS::CodeBuild::ReportGroup — NON_PROVISIONABLE (no Cloud Control read handler; issue #530).
+// Any CI stack that publishes test/coverage reports carries one, so an out-of-band ExportConfig
+// (S3 destination / packaging / encryption) or Tags change was silently invisible. The CFn
+// physical id (Ref) IS the report-group ARN, which codebuild:BatchGetReportGroups accepts
+// directly (single call). Project the CFn-declarable surface (Name/Type/ExportConfig/Tags),
+// camelCase→PascalCase; the SDK's read-only/computed fields (Arn/Created/LastModified/Status)
+// are dropped. Read-ONLY (UpdateReportGroup writer deferred). A deleted group returns an empty
+// list → ResourceGoneError → the router maps it to `deleted`.
+const readCodeBuildReportGroup: OverrideReader = async ({ physicalId, region }) => {
+  const arn = str(physicalId);
+  if (!arn) return undefined;
+  const c = new CodeBuildClient({ region, ...READ_RETRY });
+  const rg = (await c.send(new BatchGetReportGroupsCommand({ reportGroupArns: [arn] })))
+    .reportGroups?.[0];
+  if (!rg) throw new ResourceGoneError(`CodeBuild ReportGroup ${arn} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(rg.name)) model.Name = rg.name;
+  if (str(rg.type)) model.Type = rg.type;
+  const ec = rg.exportConfig;
+  if (ec) {
+    const exp: Record<string, unknown> = {};
+    if (str(ec.exportConfigType)) exp.ExportConfigType = ec.exportConfigType;
+    const s3 = ec.s3Destination;
+    if (s3) {
+      const dest: Record<string, unknown> = {};
+      if (str(s3.bucket)) dest.Bucket = s3.bucket;
+      if (str(s3.path)) dest.Path = s3.path;
+      if (str(s3.packaging)) dest.Packaging = s3.packaging;
+      if (str(s3.encryptionKey)) dest.EncryptionKey = s3.encryptionKey;
+      if (typeof s3.encryptionDisabled === 'boolean')
+        dest.EncryptionDisabled = s3.encryptionDisabled;
+      if (Object.keys(dest).length > 0) exp.S3Destination = dest;
+    }
+    if (Object.keys(exp).length > 0) model.ExportConfig = exp;
+  }
+  if (Array.isArray(rg.tags) && rg.tags.length > 0)
+    model.Tags = rg.tags.map((t) => ({ Key: t.key, Value: t.value }));
   return model;
 };
 
@@ -1685,6 +1729,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::LaunchTemplate': readEc2LaunchTemplate,
   'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
   'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
+  'AWS::CodeBuild::ReportGroup': readCodeBuildReportGroup,
   'AWS::DLM::LifecyclePolicy': readDlmLifecyclePolicy,
   'AWS::DMS::Endpoint': readDmsEndpoint,
   'AWS::DMS::ReplicationSubnetGroup': readDmsReplicationSubnetGroup,

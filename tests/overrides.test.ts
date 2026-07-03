@@ -12,7 +12,11 @@ import {
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
-import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
+import {
+  BatchGetProjectsCommand,
+  BatchGetReportGroupsCommand,
+  CodeBuildClient,
+} from '@aws-sdk/client-codebuild';
 import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
 import {
   DescribeDBClustersCommand,
@@ -1840,6 +1844,83 @@ describe('SDK overrides', () => {
 
     it('undefined when no name is resolvable', async () => {
       expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}))).toBeUndefined();
+    });
+  });
+
+  describe('CodeBuild ReportGroup (NON_PROVISIONABLE, issue #530)', () => {
+    const ARN = 'arn:aws:codebuild:us-east-1:123456789012:report-group/cdkrd-reports';
+
+    it('reads BatchGetReportGroups and projects Name/Type/ExportConfig/Tags (drops computed)', async () => {
+      codebuild.on(BatchGetReportGroupsCommand).resolves({
+        reportGroups: [
+          {
+            arn: ARN,
+            name: 'cdkrd-reports',
+            type: 'TEST',
+            exportConfig: {
+              exportConfigType: 'S3',
+              s3Destination: {
+                bucket: 'cdkrd-report-bucket',
+                path: 'reports',
+                packaging: 'ZIP',
+                encryptionKey: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+                encryptionDisabled: false,
+              },
+            },
+            tags: [{ key: 'team', value: 'ci' }],
+            // computed/managed fields the projection must drop
+            created: new Date(0),
+            lastModified: new Date(0),
+            status: 'ACTIVE',
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::CodeBuild::ReportGroup'](ctx({}, ARN));
+      expect(out).toEqual({
+        Name: 'cdkrd-reports',
+        Type: 'TEST',
+        ExportConfig: {
+          ExportConfigType: 'S3',
+          S3Destination: {
+            Bucket: 'cdkrd-report-bucket',
+            Path: 'reports',
+            Packaging: 'ZIP',
+            EncryptionKey: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+            EncryptionDisabled: false,
+          },
+        },
+        Tags: [{ Key: 'team', Value: 'ci' }],
+      });
+    });
+
+    it('NO_EXPORT report group: projects the ExportConfigType only, omits S3Destination/Tags', async () => {
+      codebuild.on(BatchGetReportGroupsCommand).resolves({
+        reportGroups: [
+          {
+            arn: ARN,
+            name: 'cov',
+            type: 'CODE_COVERAGE',
+            exportConfig: { exportConfigType: 'NO_EXPORT' },
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::CodeBuild::ReportGroup'](ctx({}, ARN));
+      expect(out).toEqual({
+        Name: 'cov',
+        Type: 'CODE_COVERAGE',
+        ExportConfig: { ExportConfigType: 'NO_EXPORT' },
+      });
+    });
+
+    it('a deleted report group (empty list) throws ResourceGoneError → router maps to deleted', async () => {
+      codebuild.on(BatchGetReportGroupsCommand).resolves({ reportGroups: [] });
+      await expect(
+        SDK_OVERRIDES['AWS::CodeBuild::ReportGroup'](ctx({}, ARN))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('undefined when no ARN is resolvable', async () => {
+      expect(await SDK_OVERRIDES['AWS::CodeBuild::ReportGroup'](ctx({}))).toBeUndefined();
     });
   });
 
