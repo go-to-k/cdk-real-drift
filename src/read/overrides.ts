@@ -69,6 +69,16 @@ import {
   DescribeAnomalyDetectorsCommand,
 } from '@aws-sdk/client-cloudwatch';
 import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
+import {
+  DatabaseMigrationServiceClient,
+  DescribeEndpointsCommand,
+  DescribeReplicationSubnetGroupsCommand,
+} from '@aws-sdk/client-database-migration-service';
+import {
+  GetJobTemplateCommand,
+  GetQueueCommand,
+  MediaConvertClient,
+} from '@aws-sdk/client-mediaconvert';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
   DescribeReceiptRuleCommand,
@@ -577,6 +587,133 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
   } else if (Object.keys(details).length > 0) {
     model.PolicyDetails = details;
   }
+  return model;
+};
+
+// AWS::DMS::Endpoint — NON_PROVISIONABLE in the registry (no Cloud Control read handler;
+// issue #497), so every DMS endpoint — 2 of which every migration/CDC pipeline declares —
+// was a silent `skipped` read-gap. Connection attributes people tweak in the console
+// (ExtraConnectionAttributes, ServerName, Port, engine settings) were invisible. The CFn
+// physical id (Ref → `Id`) IS the EndpointArn, which DMS DescribeEndpoints filters on via
+// `endpoint-arn`; a bare identifier (older stacks / imports) filters on `endpoint-id`. The
+// DMS API models the endpoint in the SAME PascalCase shape the CFn registry uses, so the
+// CFn-declarable scalars are projected 1:1. The per-engine *Settings blobs
+// (S3Settings/KinesisSettings/…) are NOT projected: the SDK returns them under DIFFERENT key
+// casing than the CFn schema (e.g. CFn MongoDbSettings vs API MongoDbSettings sub-field
+// drift) and AWS default-fills them, so a passthrough would false-flag; scalar coverage is
+// the deliverable. Read-ONLY: a ModifyEndpoint writer is deferred to a follow-up (revert of
+// connection settings needs per-engine care). A deleted endpoint surfaces as
+// ResourceNotFoundException → the router maps it to `deleted`.
+const readDmsEndpoint: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
+  const filterName = id.startsWith('arn:') ? 'endpoint-arn' : 'endpoint-id';
+  // ResourceNotFoundException propagates so a deleted endpoint maps to `deleted`.
+  const r = await c.send(
+    new DescribeEndpointsCommand({ Filters: [{ Name: filterName, Values: [id] }] })
+  );
+  const e = r.Endpoints?.[0];
+  if (!e) throw new ResourceGoneError(`DMS Endpoint ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(e.EndpointIdentifier)) model.EndpointIdentifier = e.EndpointIdentifier;
+  if (str(e.EndpointType)) model.EndpointType = e.EndpointType;
+  if (str(e.EngineName)) model.EngineName = e.EngineName;
+  if (str(e.Username)) model.Username = e.Username;
+  if (str(e.ServerName)) model.ServerName = e.ServerName;
+  if (typeof e.Port === 'number') model.Port = e.Port;
+  if (str(e.DatabaseName)) model.DatabaseName = e.DatabaseName;
+  if (str(e.ExtraConnectionAttributes))
+    model.ExtraConnectionAttributes = e.ExtraConnectionAttributes;
+  if (str(e.KmsKeyId)) model.KmsKeyId = e.KmsKeyId;
+  if (str(e.CertificateArn)) model.CertificateArn = e.CertificateArn;
+  if (str(e.SslMode)) model.SslMode = e.SslMode;
+  return model;
+};
+
+// AWS::DMS::ReplicationSubnetGroup — NON_PROVISIONABLE (no Cloud Control read handler; issue
+// #497), paired with the endpoints above in every migration pipeline. The CFn physical id
+// (Ref → `Id`) IS the ReplicationSubnetGroupIdentifier, which DMS
+// DescribeReplicationSubnetGroups filters on via `replication-subnet-group-id`. The API
+// returns Subnets as a list of `{SubnetIdentifier}` objects, while CFn declares a flat
+// `SubnetIds` string list — project the SubnetIdentifier values (SORTED, so a live-vs-declared
+// order difference is not false drift; DMS does not preserve the declared order). Read-ONLY
+// (ModifyReplicationSubnetGroup deferred). AWS lowercases the identifier, and CFn's Ref
+// resolves to that lowercased form, so the identity round-trips.
+const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeReplicationSubnetGroupsCommand({
+      Filters: [{ Name: 'replication-subnet-group-id', Values: [id] }],
+    })
+  );
+  const g = r.ReplicationSubnetGroups?.[0];
+  if (!g) throw new ResourceGoneError(`DMS ReplicationSubnetGroup ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(g.ReplicationSubnetGroupIdentifier))
+    model.ReplicationSubnetGroupIdentifier = g.ReplicationSubnetGroupIdentifier;
+  if (str(g.ReplicationSubnetGroupDescription))
+    model.ReplicationSubnetGroupDescription = g.ReplicationSubnetGroupDescription;
+  const subnetIds = (g.Subnets ?? [])
+    .map((s) => str(s.SubnetIdentifier))
+    .filter((v): v is string => v !== undefined)
+    .sort();
+  if (subnetIds.length > 0) model.SubnetIds = subnetIds;
+  return model;
+};
+
+// AWS::MediaConvert::Queue — NON_PROVISIONABLE (no Cloud Control read handler; issue #497), a
+// video-pipeline staple whose `Status` (ACTIVE/PAUSED) is a classic console-toggled prop that
+// was invisible. The CFn physical id (Ref → `Id`) IS the queue Name, which mc:GetQueue accepts
+// directly. Project the CFn-declarable scalars (Name/Description/PricingPlan/Status). The
+// computed/reserved fields (Arn/CreatedAt/LastUpdated/ConcurrentJobs/MaximumConcurrentFeeds/
+// ReservationPlan/*JobsCount/ServiceOverrides/Type) are dropped — not user-declarable scalars,
+// pure noise. Read-ONLY (UpdateQueue deferred). A deleted queue surfaces as
+// NotFoundException → the router maps it to `deleted`.
+const readMediaConvertQueue: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new MediaConvertClient({ region, ...READ_RETRY });
+  const q = (await c.send(new GetQueueCommand({ Name: name }))).Queue;
+  if (!q) throw new ResourceGoneError(`MediaConvert Queue ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(q.Name)) model.Name = q.Name;
+  if (str(q.Description)) model.Description = q.Description;
+  if (str(q.PricingPlan)) model.PricingPlan = q.PricingPlan;
+  if (str(q.Status)) model.Status = q.Status;
+  return model;
+};
+
+// AWS::MediaConvert::JobTemplate — NON_PROVISIONABLE (no Cloud Control read handler; issue
+// #497). The CFn physical id (Ref → `Id`) IS the template Name, which mc:GetJobTemplate accepts
+// directly. Project the CFn-declarable props; `SettingsJson` is a large free-form JSON blob
+// that CFn declares as an opaque object and the API returns as the structured `Settings` object
+// — read it back FAITHFULLY (verbatim passthrough) so an out-of-band settings change surfaces.
+// AccelerationSettings/HopDestinations/StatusUpdateInterval/Category/Queue/Priority mirror the
+// CFn shape 1:1. Computed/managed fields (Arn/CreatedAt/LastUpdated/Type) are dropped. Read-ONLY
+// (UpdateJobTemplate deferred). A deleted template surfaces as NotFoundException → `deleted`.
+const readMediaConvertJobTemplate: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new MediaConvertClient({ region, ...READ_RETRY });
+  const t = (await c.send(new GetJobTemplateCommand({ Name: name }))).JobTemplate;
+  if (!t) throw new ResourceGoneError(`MediaConvert JobTemplate ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(t.Name)) model.Name = t.Name;
+  if (str(t.Description)) model.Description = t.Description;
+  if (str(t.Category)) model.Category = t.Category;
+  if (str(t.Queue)) model.Queue = t.Queue;
+  if (typeof t.Priority === 'number') model.Priority = t.Priority;
+  if (str(t.StatusUpdateInterval)) model.StatusUpdateInterval = t.StatusUpdateInterval;
+  if (t.AccelerationSettings !== undefined) model.AccelerationSettings = t.AccelerationSettings;
+  if (Array.isArray(t.HopDestinations) && t.HopDestinations.length > 0)
+    model.HopDestinations = t.HopDestinations;
+  // SettingsJson: CFn declares it as an opaque JSON object; the API returns the structured
+  // `Settings` object. Faithful passthrough so a console-side transcode-settings change is
+  // detectable.
+  if (t.Settings !== undefined) model.SettingsJson = t.Settings;
   return model;
 };
 
@@ -1538,6 +1675,10 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::NetworkAclEntry': readEc2NetworkAclEntry,
   'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
   'AWS::DLM::LifecyclePolicy': readDlmLifecyclePolicy,
+  'AWS::DMS::Endpoint': readDmsEndpoint,
+  'AWS::DMS::ReplicationSubnetGroup': readDmsReplicationSubnetGroup,
+  'AWS::MediaConvert::Queue': readMediaConvertQueue,
+  'AWS::MediaConvert::JobTemplate': readMediaConvertJobTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,

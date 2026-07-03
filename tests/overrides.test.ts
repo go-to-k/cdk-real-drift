@@ -1,6 +1,16 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { CloudWatchClient, DescribeAnomalyDetectorsCommand } from '@aws-sdk/client-cloudwatch';
 import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
+import {
+  DatabaseMigrationServiceClient,
+  DescribeEndpointsCommand,
+  DescribeReplicationSubnetGroupsCommand,
+} from '@aws-sdk/client-database-migration-service';
+import {
+  GetJobTemplateCommand,
+  GetQueueCommand,
+  MediaConvertClient,
+} from '@aws-sdk/client-mediaconvert';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { BatchGetProjectsCommand, CodeBuildClient } from '@aws-sdk/client-codebuild';
 import { DescribeNetworkAclsCommand, EC2Client } from '@aws-sdk/client-ec2';
@@ -68,6 +78,8 @@ const ec2 = mockClient(EC2Client);
 const ses = mockClient(SESClient);
 const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
+const dms = mockClient(DatabaseMigrationServiceClient);
+const mediaconvert = mockClient(MediaConvertClient);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -98,6 +110,8 @@ beforeEach(() => {
     ses,
     cloudwatch,
     dlm,
+    dms,
+    mediaconvert,
   ])
     m.reset();
 });
@@ -1183,6 +1197,202 @@ describe('SDK overrides', () => {
       await expect(
         SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](ctx({ PolicyDetails: {} }, 'policy-0abc'))
       ).rejects.toThrow(/absent/);
+    });
+  });
+
+  describe('DMS Endpoint (NON_PROVISIONABLE, issue #497)', () => {
+    it('reads DescribeEndpoints by ARN and projects the CFn-declarable scalars', async () => {
+      dms.on(DescribeEndpointsCommand).resolves({
+        Endpoints: [
+          {
+            EndpointArn: 'arn:aws:dms:us-east-1:123456789012:endpoint:ABCDEF',
+            EndpointIdentifier: 'src-mysql',
+            EndpointType: 'source',
+            EngineName: 'mysql',
+            Username: 'admin',
+            ServerName: 'db.example.com',
+            Port: 3306,
+            DatabaseName: 'app',
+            ExtraConnectionAttributes: 'initstmt=SET FOREIGN_KEY_CHECKS=0',
+            KmsKeyId: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+            SslMode: 'require',
+            // computed/managed fields the projection must drop
+            Status: 'active',
+            EngineDisplayName: 'MySQL',
+            S3Settings: { BucketName: 'ignored' },
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DMS::Endpoint'](
+        ctx({ EngineName: 'mysql' }, 'arn:aws:dms:us-east-1:123456789012:endpoint:ABCDEF')
+      );
+      expect(out).toEqual({
+        EndpointIdentifier: 'src-mysql',
+        EndpointType: 'source',
+        EngineName: 'mysql',
+        Username: 'admin',
+        ServerName: 'db.example.com',
+        Port: 3306,
+        DatabaseName: 'app',
+        ExtraConnectionAttributes: 'initstmt=SET FOREIGN_KEY_CHECKS=0',
+        KmsKeyId: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+        SslMode: 'require',
+      });
+      const call = dms.commandCalls(DescribeEndpointsCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [
+          {
+            Name: 'endpoint-arn',
+            Values: ['arn:aws:dms:us-east-1:123456789012:endpoint:ABCDEF'],
+          },
+        ],
+      });
+    });
+
+    it('a bare (non-ARN) physical id filters on endpoint-id', async () => {
+      dms.on(DescribeEndpointsCommand).resolves({
+        Endpoints: [{ EndpointIdentifier: 'src-mysql', EngineName: 'mysql' }],
+      } as never);
+      await SDK_OVERRIDES['AWS::DMS::Endpoint'](ctx({}, 'src-mysql'));
+      const call = dms.commandCalls(DescribeEndpointsCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [{ Name: 'endpoint-id', Values: ['src-mysql'] }],
+      });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DMS::Endpoint'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('the endpoint is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dms.on(DescribeEndpointsCommand).resolves({ Endpoints: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DMS::Endpoint'](ctx({}, 'src-mysql'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('DMS ReplicationSubnetGroup (NON_PROVISIONABLE, issue #497)', () => {
+    it('projects the description + flattens Subnets to a sorted SubnetIds list', async () => {
+      dms.on(DescribeReplicationSubnetGroupsCommand).resolves({
+        ReplicationSubnetGroups: [
+          {
+            ReplicationSubnetGroupIdentifier: 'dms-subnet-grp',
+            ReplicationSubnetGroupDescription: 'dms subnets',
+            VpcId: 'vpc-123',
+            SubnetGroupStatus: 'Complete',
+            Subnets: [
+              { SubnetIdentifier: 'subnet-bbb', SubnetStatus: 'Active' },
+              { SubnetIdentifier: 'subnet-aaa', SubnetStatus: 'Active' },
+            ],
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DMS::ReplicationSubnetGroup'](
+        ctx({}, 'dms-subnet-grp')
+      );
+      expect(out).toEqual({
+        ReplicationSubnetGroupIdentifier: 'dms-subnet-grp',
+        ReplicationSubnetGroupDescription: 'dms subnets',
+        SubnetIds: ['subnet-aaa', 'subnet-bbb'],
+      });
+      const call = dms.commandCalls(DescribeReplicationSubnetGroupsCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [{ Name: 'replication-subnet-group-id', Values: ['dms-subnet-grp'] }],
+      });
+    });
+
+    it('the subnet group is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dms
+        .on(DescribeReplicationSubnetGroupsCommand)
+        .resolves({ ReplicationSubnetGroups: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DMS::ReplicationSubnetGroup'](ctx({}, 'dms-subnet-grp'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('MediaConvert Queue (NON_PROVISIONABLE, issue #497)', () => {
+    it('reads GetQueue and projects Name/Description/PricingPlan/Status (drops computed fields)', async () => {
+      mediaconvert.on(GetQueueCommand).resolves({
+        Queue: {
+          Name: 'my-queue',
+          Description: 'video pipeline',
+          PricingPlan: 'ON_DEMAND',
+          Status: 'PAUSED',
+          // computed/managed fields the projection must drop
+          Arn: 'arn:aws:mediaconvert:us-east-1:123456789012:queues/my-queue',
+          Type: 'CUSTOM',
+          SubmittedJobsCount: 3,
+          ProgressingJobsCount: 1,
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::MediaConvert::Queue'](ctx({}, 'my-queue'));
+      expect(out).toEqual({
+        Name: 'my-queue',
+        Description: 'video pipeline',
+        PricingPlan: 'ON_DEMAND',
+        Status: 'PAUSED',
+      });
+      const call = mediaconvert.commandCalls(GetQueueCommand)[0]!;
+      expect(call.args[0].input).toEqual({ Name: 'my-queue' });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::MediaConvert::Queue'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('the queue is absent -> ResourceGoneError (deleted out of band)', async () => {
+      mediaconvert.on(GetQueueCommand).resolves({} as never);
+      await expect(
+        SDK_OVERRIDES['AWS::MediaConvert::Queue'](ctx({}, 'my-queue'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('MediaConvert JobTemplate (NON_PROVISIONABLE, issue #497)', () => {
+    it('reads GetJobTemplate and passes Settings through faithfully as SettingsJson', async () => {
+      const settings = {
+        OutputGroups: [{ Name: 'File Group', Outputs: [{ VideoDescription: { Width: 1920 } }] }],
+        TimecodeConfig: { Source: 'ZEROBASED' },
+      };
+      mediaconvert.on(GetJobTemplateCommand).resolves({
+        JobTemplate: {
+          Name: 'my-template',
+          Description: 'std template',
+          Category: 'archive',
+          Queue: 'arn:aws:mediaconvert:us-east-1:123456789012:queues/Default',
+          Priority: 10,
+          StatusUpdateInterval: 'SECONDS_60',
+          AccelerationSettings: { Mode: 'DISABLED' },
+          HopDestinations: [{ Priority: 5, WaitMinutes: 10 }],
+          Settings: settings,
+          // computed/managed fields the projection must drop
+          Arn: 'arn:aws:mediaconvert:us-east-1:123456789012:jobTemplates/my-template',
+          Type: 'CUSTOM',
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::MediaConvert::JobTemplate'](ctx({}, 'my-template'));
+      expect(out).toEqual({
+        Name: 'my-template',
+        Description: 'std template',
+        Category: 'archive',
+        Queue: 'arn:aws:mediaconvert:us-east-1:123456789012:queues/Default',
+        Priority: 10,
+        StatusUpdateInterval: 'SECONDS_60',
+        AccelerationSettings: { Mode: 'DISABLED' },
+        HopDestinations: [{ Priority: 5, WaitMinutes: 10 }],
+        SettingsJson: settings,
+      });
+      const call = mediaconvert.commandCalls(GetJobTemplateCommand)[0]!;
+      expect(call.args[0].input).toEqual({ Name: 'my-template' });
+    });
+
+    it('the template is absent -> ResourceGoneError (deleted out of band)', async () => {
+      mediaconvert.on(GetJobTemplateCommand).resolves({} as never);
+      await expect(
+        SDK_OVERRIDES['AWS::MediaConvert::JobTemplate'](ctx({}, 'my-template'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
     });
   });
 
