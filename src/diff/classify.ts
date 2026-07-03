@@ -66,6 +66,7 @@ import {
   isEpochHourEqual,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
+  ORDER_SIGNIFICANT_ARRAY_KEYS,
   READGAP_COLLECTION_PATHS,
   SCALAR_RETURNED_WHEN_SET,
   READ_NORMALIZED_DECLARED_PATHS,
@@ -788,8 +789,12 @@ function sortUnorderedSetProps(
     ...(UNORDERED_OBJECT_ARRAY_PROPS[resourceType] ?? []),
     ...schemaObjectArrayKeys,
   ]);
+  // A key whose ORDER is semantically significant (a Logs Transformer processor pipeline)
+  // must NOT be sorted even when the schema marks it insertionOrder:false — sorting the live
+  // side alone would re-skew the finding index vs the raw model the revert patches (#529).
+  const orderSig = ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType];
   for (const k of objKeys)
-    if (Array.isArray(model[k])) model[k] = sortUnorderedObjectArray(model[k]);
+    if (!orderSig?.has(k) && Array.isArray(model[k])) model[k] = sortUnorderedObjectArray(model[k]);
   for (const k of UNORDERED_ARRAY_PROPS[resourceType] ?? []) {
     const v = model[k];
     if (
@@ -1248,11 +1253,16 @@ export function classifyResource(
     // rule objects with no single identity field that AWS returns reordered. Sort BOTH
     // sides by canonical JSON before the positional diff so a reorder is not false
     // drift; a genuine rule change still differs after the sort.
+    // An ORDER-significant key (a Logs Transformer processor pipeline) is never sorted, even
+    // when its schema marks it insertionOrder:false — the raw order must be preserved so the
+    // finding index aligns with the live model the Cloud Control revert patches (#529).
+    const orderSignificant = ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType]?.has(k) ?? false;
     const unorderedObjArray =
-      UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k) ||
-      // schema-driven twin (#459): the schema marks this OBJECT array insertionOrder:false
-      // (and its items carry no identity field), so a reorder is never drift.
-      (schema.unorderedObjectArrayPaths?.includes(k) ?? false);
+      !orderSignificant &&
+      (UNORDERED_OBJECT_ARRAY_PROPS[resourceType]?.has(k) ||
+        // schema-driven twin (#459): the schema marks this OBJECT array insertionOrder:false
+        // (and its items carry no identity field), so a reorder is never drift.
+        (schema.unorderedObjectArrayPaths?.includes(k) ?? false));
     // Per-type NESTED unordered object-array paths under this key (Bedrock Guardrail
     // ContentPolicyConfig.FiltersConfig etc.): sort the reordered set on both sides so
     // a positional diff doesn't false-flag it.
