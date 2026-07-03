@@ -462,6 +462,37 @@ describe('readLive (CC identifier adapters, R74)', () => {
   });
 
   for (const t of [
+    'AWS::SSM::MaintenanceWindowTarget',
+    'AWS::SSM::MaintenanceWindowTask',
+  ] as const) {
+    it(`${t}: builds the WindowId|<childId> composite — PARENT first (#528)`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({
+          resourceType: t,
+          physicalId: '2e28d55f-197f-458f-8cc5-1883bfb37fea',
+          declared: { WindowId: 'mw-084705ae45cc003ec' },
+        }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('mw-084705ae45cc003ec|2e28d55f-197f-458f-8cc5-1883bfb37fea');
+    });
+
+    it(`${t}: an unresolved WindowId falls back to the raw physical id`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({ resourceType: t, physicalId: 'child-uuid', declared: {} }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('child-uuid');
+    });
+  }
+
+  for (const t of [
     'AWS::Cognito::UserPoolDomain',
     'AWS::Cognito::UserPoolResourceServer',
     'AWS::Cognito::UserPoolIdentityProvider',
