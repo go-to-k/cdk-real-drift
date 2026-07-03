@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Transformer",
+    "resourceType": "AWS::Logs::Transformer",
+    "physicalId": "/cdkrd/opsmisc/app",
+    "constructPath": "CdkRealDriftIntegOpsMiscRich/Transformer",
+    "declared": {
+      "LogGroupIdentifier": "/cdkrd/opsmisc/app",
+      "TransformerConfig": [
+        {
+          "ParseJSON": {}
+        },
+        {
+          "AddKeys": {
+            "Entries": [
+              {
+                "Key": "app",
+                "OverwriteIfExists": true,
+                "Value": "cdkrd"
+              }
+            ]
+          }
+        },
+        {
+          "TrimString": {
+            "WithKeys": ["msg"]
+          }
+        },
+        {
+          "UpperCaseString": {
+            "WithKeys": ["level"]
+          }
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "TransformerConfig": [
+      {
+        "ParseJSON": {}
+      },
+      {
+        "AddKeys": {
+          "Entries": [
+            {
+              "OverwriteIfExists": true,
+              "Value": "cdkrd",
+              "Key": "app"
+            }
+          ]
+        }
+      },
+      {
+        "TrimString": {
+          "WithKeys": ["msg"]
+        }
+      },
+      {
+        "UpperCaseString": {
+          "WithKeys": ["level"]
+        }
+      }
+    ],
+    "LogGroupIdentifier": "/cdkrd/opsmisc/app"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["LogGroupIdentifier"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["TransformerConfig"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

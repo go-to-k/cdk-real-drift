@@ -8575,3 +8575,63 @@ describe('#535 AOSS / SAMLProvider / ENI first-run default folds', () => {
     ).not.toContain('SourceDestCheck');
   });
 });
+
+describe('#529 Logs Transformer order-significant pipeline (revert index skew)', () => {
+  // The Transformer schema marks TransformerConfig insertionOrder:false; the fix pins it
+  // order-significant so it is NOT sorted, keeping the finding index aligned with the raw
+  // live model the Cloud Control revert patches.
+  const schema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+    unorderedObjectArrayPaths: ['TransformerConfig'],
+  };
+  const declaredPipeline = [
+    { ParseJSON: {} },
+    { AddKeys: { Entries: [{ Key: 'app', OverwriteIfExists: true, Value: 'cdkrd' }] } },
+    { TrimString: { WithKeys: ['msg'] } },
+  ];
+  const res: DesiredResource = {
+    logicalId: 'Transformer',
+    resourceType: 'AWS::Logs::Transformer',
+    physicalId: '/cdkrd/opsmisc/app',
+    declared: { TransformerConfig: structuredClone(declaredPipeline) },
+  };
+
+  it('a clean pipeline (live == declared order, ParseJSON husk at index 0) is no drift', () => {
+    const t = tiers(
+      classifyResource(res, { TransformerConfig: structuredClone(declaredPipeline) }, schema)
+    );
+    expect(t.declared).toEqual([]);
+  });
+
+  it('an out-of-band AddKeys.Value edit reports the RAW index (1) and reverts to it', () => {
+    const live = structuredClone(declaredPipeline);
+    (live[1] as any).AddKeys.Entries[0].Value = 'cdkrd-MUTATED';
+    const findings = classifyResource(res, { TransformerConfig: live }, schema);
+    const declared = findings.filter((f) => f.tier === 'declared');
+    expect(declared).toHaveLength(1);
+    // index 1, NOT the sorted index 0 — the {ParseJSON:{}} husk stays at index 0.
+    expect(declared[0]?.path).toBe('TransformerConfig.1.AddKeys.Entries.0.Value');
+    const plan = buildRevertPlan(declared, undefined);
+    expect(plan.items[0]?.ops[0]?.path).toBe('/TransformerConfig/1/AddKeys/Entries/0/Value');
+    expect(plan.items[0]?.ops[0]?.value).toBe('cdkrd');
+    expect(plan.notRevertable).toEqual([]);
+  });
+
+  it('a genuine processor REORDER surfaces as drift (order is significant, not a set)', () => {
+    // Swap AddKeys and TrimString — a real semantic change to the pipeline.
+    const live = [declaredPipeline[0], declaredPipeline[2], declaredPipeline[1]];
+    const declared = classifyResource(
+      res,
+      { TransformerConfig: structuredClone(live) },
+      schema
+    ).filter((f) => f.tier === 'declared');
+    expect(declared.length).toBeGreaterThan(0);
+  });
+});

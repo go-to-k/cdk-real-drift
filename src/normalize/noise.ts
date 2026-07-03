@@ -1910,6 +1910,15 @@ export function stripAsymmetricIdentityFields(declared: unknown, live: unknown):
 // is given this resourceType), so a same-named array on an unrelated type is unaffected.
 export const ORDER_SIGNIFICANT_ARRAY_KEYS: Record<string, ReadonlySet<string>> = {
   'AWS::CodePipeline::Pipeline': new Set(['Stages', 'Actions']),
+  // A Logs Transformer's `TransformerConfig` is an EXECUTION PIPELINE: processors run
+  // top-to-bottom (a `parseJson` must precede an `addKeys` that reads the parsed fields),
+  // and CloudWatch Logs returns them in declared order. Its CFn schema nonetheless marks it
+  // `insertionOrder: false` (→ `schema.unorderedObjectArrayPaths`), which would sort it as an
+  // unordered set: masking a genuine reorder AND — the #529 bug — skewing a drift finding's
+  // array index into the SORTED model while the Cloud Control `UpdateResource` revert patch
+  // addresses the RAW live model, so `revert` failed with `noSuchPath //TransformerConfig/0/...`.
+  // Pinning it order-significant keeps both compare sides in raw order so the index aligns.
+  'AWS::Logs::Transformer': new Set(['TransformerConfig']),
 };
 export function canonicalizeTagListsDeep(v: unknown, orderSig?: ReadonlySet<string>): unknown {
   return canonicalizeTagLists(v, orderSig, undefined);
