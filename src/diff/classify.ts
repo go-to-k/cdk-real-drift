@@ -16,10 +16,12 @@ import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   CASE_INSENSITIVE_ARRAY_PATHS,
+  CASE_INSENSITIVE_KEY_PATHS,
   CASE_INSENSITIVE_PATHS,
   isAllAwsTags,
   identityField,
   isCaseInsensitiveEqualScalarSet,
+  isCaseInsensitiveKeyMapEqual,
   isCaseInsensitiveScalarEqual,
   isCfnTemplateNonAsciiMask,
   isEqualUnorderedScalarSet,
@@ -477,7 +479,17 @@ function isPolicySubsetOf(sub: Record<string, unknown>, sup: Record<string, unkn
 export function matchesKnownDefault(live: unknown, def: unknown): boolean {
   if (deepEqual(live, def)) return true;
   if (!isNestedObject(live) || !isNestedObject(def)) return false;
-  return Object.entries(live).every(([k, v]) => k in def && deepEqual(v, def[k]));
+  // Trivially-empty live sub-keys the default does NOT list carry no inventory value (a
+  // schema-strip residue husk — RedshiftServerless Workgroup's echo attribute reads back an
+  // `Endpoint` that is only `{VpcEndpoints:[{NetworkInterfaces:[{},{}]}]}` after leaf
+  // readOnly-stripping, #491). Skip only those, so the object still matches a default that
+  // lists only the meaningful sub-keys (its `PricePerformanceTarget`) without pinning the
+  // per-deploy ENI shape. A key the default DOES list must still deep-equal it — so a
+  // trivially-empty live value that is the OPPOSITE of a non-empty default (VpcLattice
+  // SharingConfig `{enabled:false}` vs default `{enabled:true}`, #483) never vacuously folds.
+  return Object.entries(live).every(([k, v]) =>
+    k in def ? deepEqual(v, def[k]) : isTrivialEmpty(v)
+  );
 }
 
 function collectNestedUndeclared(
@@ -1190,6 +1202,17 @@ export function classifyResource(
       if (
         CASE_INSENSITIVE_ARRAY_PATHS[resourceType]?.has(d.path) &&
         isCaseInsensitiveEqualScalarSet(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type free-form map paths whose KEYS the Cloud Control read handler re-cases
+      // (#494: DataBrew Recipe Steps[].Action.Parameters — the template + service carry
+      // camelCase keys, but CC read remaps them onto the PascalCase RecipeParameters model):
+      // the same map modulo key-case with equal values is not drift; a real key or value
+      // change still differs. The table keys element segments with `[]`, so normalize the
+      // drift path's numeric indices (`Steps.0.Action.Parameters`) to `[]` before the lookup.
+      if (
+        CASE_INSENSITIVE_KEY_PATHS[resourceType]?.has(d.path.replace(/\.\d+(?=\.)/g, '[]')) &&
+        isCaseInsensitiveKeyMapEqual(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type rate() schedule-expression paths (Synthetics canary Schedule.Expression

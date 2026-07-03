@@ -11,6 +11,8 @@ import {
   isSshPublicKeyEqual,
   SSH_PUBLIC_KEY_PATHS,
   CASE_INSENSITIVE_PATHS,
+  CASE_INSENSITIVE_KEY_PATHS,
+  isCaseInsensitiveKeyMapEqual,
   isPhysicalIdSegment,
   isTrivialEmpty,
   isVersionPrefixMatch,
@@ -56,9 +58,30 @@ describe('noise suppressors', () => {
     expect(isTrivialEmpty({ Status: 'Suspended' })).toBe(false);
     expect(isTrivialEmpty({ a: false, b: 'x' })).toBe(false);
     expect(isTrivialEmpty({ SubnetIds: ['subnet-0aaa111'] })).toBe(false);
-    // arrays do NOT recurse — only length 0 is empty ([false] may be a meaningful list)
+    // scalar arrays do NOT recurse — a scalar element keeps the array ([false]/[0]/[""]
+    // may be a meaningful list), same conservative stance as the top-level scalars.
     expect(isTrivialEmpty([false])).toBe(false);
+    expect(isTrivialEmpty([0])).toBe(false);
+    expect(isTrivialEmpty([''])).toBe(false);
+    expect(isTrivialEmpty(['x'])).toBe(false);
     expect(isTrivialEmpty({ L: [false] })).toBe(false);
+  });
+
+  // #491: a NON-empty array of recursively-empty OBJECTS is the signature shape of
+  // schema-strip residue (an echo attribute's leaves readOnly-stripped, leaving `[{},{}]`
+  // husks — RedshiftServerless Workgroup Endpoint VpcEndpoints[].NetworkInterfaces).
+  // Objects-ONLY recursion folds it while keeping the conservative scalar-array stance.
+  it('isTrivialEmpty: an array of recursively-empty objects folds ([{},{}] strip husk, #491)', () => {
+    expect(isTrivialEmpty([{}, {}])).toBe(true);
+    expect(isTrivialEmpty([{ a: false, b: [] }])).toBe(true);
+    // the exact RedshiftServerless Workgroup Endpoint husk
+    expect(isTrivialEmpty({ VpcEndpoints: [{ NetworkInterfaces: [{}, {}] }] })).toBe(true);
+    // per-deploy ENI count is irrelevant — 3 ENIs still folds
+    expect(isTrivialEmpty({ VpcEndpoints: [{ NetworkInterfaces: [{}, {}, {}] }] })).toBe(true);
+    // a MIXED array (an object husk plus a scalar) does NOT fold — the scalar keeps it
+    expect(isTrivialEmpty([{}, 'x'])).toBe(false);
+    // an object with real content inside the array element keeps the array
+    expect(isTrivialEmpty([{ NetworkInterfaceId: 'eni-1' }])).toBe(false);
   });
 
   it('canonicalizeTagListsDeep: sorts {Key,Value}[] by Key so reordering is not drift', () => {
@@ -778,6 +801,7 @@ describe('noise suppressors', () => {
     });
     expect(KNOWN_DEFAULTS['AWS::VerifiedPermissions::PolicyStore']).toEqual({
       DeletionProtection: { Mode: 'DISABLED' },
+      Schema: { CedarJson: '{}' },
     });
     expect(KNOWN_DEFAULTS['AWS::Cassandra::Keyspace']).toEqual({
       ReplicationSpecification: { ReplicationStrategy: 'SINGLE_REGION' },
@@ -1373,5 +1397,69 @@ describe('isAccessStringEqual — Redis/Valkey ACL canonicalization (#482)', () 
   it('non-strings never match', () => {
     expect(isAccessStringEqual(undefined, 'on ~* -@all')).toBe(false);
     expect(isAccessStringEqual('on ~* -@all', 42)).toBe(false);
+  });
+});
+
+describe('isCaseInsensitiveKeyMapEqual — free-form map key-case fold (#494)', () => {
+  it('a pure camelCase<->PascalCase key re-casing with equal values folds', () => {
+    // DataBrew Recipe: template + service carry camelCase, CC read remaps to PascalCase.
+    expect(
+      isCaseInsensitiveKeyMapEqual({ sourceColumn: 'field1' }, { SourceColumn: 'field1' })
+    ).toBe(true);
+    expect(
+      isCaseInsensitiveKeyMapEqual(
+        { sourceColumn: 'field1', targetColumn: 'field2' },
+        { SourceColumn: 'field1', TargetColumn: 'field2' }
+      )
+    ).toBe(true);
+    // key order is irrelevant (maps are unordered)
+    expect(
+      isCaseInsensitiveKeyMapEqual(
+        { targetColumn: 'field2', sourceColumn: 'field1' },
+        { SourceColumn: 'field1', TargetColumn: 'field2' }
+      )
+    ).toBe(true);
+  });
+
+  it('a real change still surfaces (equality-gated per key-pair, fail-closed)', () => {
+    // value change on a matched key
+    expect(isCaseInsensitiveKeyMapEqual({ sourceColumn: 'a' }, { SourceColumn: 'b' })).toBe(false);
+    // key add (extra key on one side)
+    expect(
+      isCaseInsensitiveKeyMapEqual(
+        { sourceColumn: 'field1' },
+        { SourceColumn: 'field1', TargetColumn: 'field2' }
+      )
+    ).toBe(false);
+    // a genuinely different key (not a case variant of any declared key)
+    expect(isCaseInsensitiveKeyMapEqual({ sourceColumn: 'field1' }, { DestColumn: 'field1' })).toBe(
+      false
+    );
+  });
+
+  it('a duplicate case-folded key on either side fails closed', () => {
+    expect(
+      isCaseInsensitiveKeyMapEqual(
+        { sourceColumn: 'x', SourceColumn: 'x' },
+        { SourceColumn: 'x', Sourcecolumn: 'x' }
+      )
+    ).toBe(false);
+  });
+
+  it('nested object/array values are compared structurally', () => {
+    expect(isCaseInsensitiveKeyMapEqual({ opts: { a: 1 } }, { Opts: { a: 1 } })).toBe(true);
+    expect(isCaseInsensitiveKeyMapEqual({ opts: { a: 1 } }, { Opts: { a: 2 } })).toBe(false);
+  });
+
+  it('non-object / array inputs never match', () => {
+    expect(isCaseInsensitiveKeyMapEqual('x', 'X')).toBe(false);
+    expect(isCaseInsensitiveKeyMapEqual([{ a: 1 }], [{ A: 1 }])).toBe(false);
+    expect(isCaseInsensitiveKeyMapEqual(null, {})).toBe(false);
+  });
+
+  it('the fold is scoped to the curated DataBrew Recipe Parameters path', () => {
+    expect(
+      CASE_INSENSITIVE_KEY_PATHS['AWS::DataBrew::Recipe']?.has('Steps[].Action.Parameters')
+    ).toBe(true);
   });
 });
