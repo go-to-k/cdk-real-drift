@@ -26,6 +26,7 @@ import {
   filterRevertPlan,
   formatPlan,
   formatSurvivingDrift,
+  ignoreSelectOptions,
   includeUnrecordedRemovals,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
@@ -1036,6 +1037,53 @@ describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () 
       },
     ]);
     expect(lines[0]).toBe('  - Stack/Bucket (deleted)');
+  });
+
+  it('strips the stack/Stage prefix off the construct path when given the stack name', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'PG',
+      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      resourceType: 'AWS::RDS::DBClusterParameterGroup',
+      path: 'Parameters.autocommit',
+    };
+    expect(formatSurvivingDrift([f], 'dev-main-AuroraDB')[0]).toBe(
+      '  - Database/ParameterGroup.Parameters.autocommit (undeclared)'
+    );
+    // no stackName -> full path (unchanged)
+    expect(formatSurvivingDrift([f])[0]).toBe(
+      '  - dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit (undeclared)'
+    );
+  });
+});
+
+describe('ignoreSelectOptions', () => {
+  const uf = (over: Partial<Finding>): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'R',
+    resourceType: 'AWS::X::Y',
+    path: 'P',
+    ...over,
+  });
+
+  it('starts every row UNSELECTED (a required decision, R137)', () => {
+    expect(ignoreSelectOptions([uf({}), uf({ logicalId: 'S' })]).every((o) => !o.selected)).toBe(
+      true
+    );
+  });
+
+  it('labels with the construct path WITHIN the stack when given the stack name', () => {
+    const f = uf({
+      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      path: 'Parameters.autocommit',
+    });
+    expect(ignoreSelectOptions([f], 'dev-main-AuroraDB')[0]!.label).toBe(
+      'Database/ParameterGroup.Parameters.autocommit (undeclared)'
+    );
+    // no stackName -> full construct path
+    expect(ignoreSelectOptions([f])[0]!.label).toBe(
+      'dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit (undeclared)'
+    );
   });
 });
 

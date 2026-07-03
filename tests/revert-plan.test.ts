@@ -64,6 +64,26 @@ const baseline = (recorded: BaselineFile['recorded']): BaselineFile => ({
 });
 
 describe('buildRevertPlan', () => {
+  it('displayId shows the construct path WITHIN the stack when opts.stackName is given', () => {
+    const f = F({
+      tier: 'declared',
+      logicalId: 'PG9AB',
+      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      resourceType: 'AWS::RDS::DBClusterParameterGroup',
+      path: 'Parameters.autocommit',
+      desired: '0',
+      actual: '1',
+    });
+    // a CDK Stage: aws:cdk:path is `dev-main/AuroraDB/...`, the CFn name is `dev-main-AuroraDB`
+    expect(
+      buildRevertPlan([f], undefined, { stackName: 'dev-main-AuroraDB' }).items[0]!.displayId
+    ).toBe('Database/ParameterGroup');
+    // no stackName (unit default): the full construct path is kept
+    expect(buildRevertPlan([f], undefined).items[0]!.displayId).toBe(
+      'dev-main/AuroraDB/Database/ParameterGroup'
+    );
+  });
+
   it('declared drift -> add op with the deployed-template (desired) value', () => {
     const plan = buildRevertPlan(
       [F({ tier: 'declared', desired: 'Enabled', actual: 'Suspended' })],

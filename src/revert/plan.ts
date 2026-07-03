@@ -10,6 +10,7 @@
 // Not revertable: readGap / unresolved / skipped, and (v1) the SDK-override
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
+import { withinStackPath } from '../construct-path.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   awsManagedTags,
@@ -212,6 +213,10 @@ export interface RevertOptions {
   // resourceType -> schema, so create-only property drift is reported as
   // notRevertable up front (an in-place patch would fail at apply time).
   schemas?: Map<string, SchemaInfo>;
+  // The stack name — used to strip the stack/Stage prefix off each finding's construct path
+  // for display (`withinStackPath`), matching what `cdkrd check` shows. Absent (unit calls) =
+  // no strip, the full construct path.
+  stackName?: string;
   // Rules declared by sibling standalone SecurityGroupIngress/Egress resources, keyed by the
   // SG's physical id. Reverting an AWS::EC2::SecurityGroup's SecurityGroupIngress/Egress is a
   // whole-array Cloud Control replacement; the live SG REFLECTS these sibling-declared rules,
@@ -274,7 +279,11 @@ export function buildRevertPlan(
   const recorded = baseline?.recorded ?? [];
 
   for (const f of findings) {
-    const displayId = f.constructPath ?? f.logicalId;
+    // Show the construct path WITHIN the stack (stack/Stage prefix stripped), the same as the
+    // check report — the revert banner already names the stack. Full path when unstripped.
+    const displayId = f.constructPath
+      ? withinStackPath(f.constructPath, opts.stackName ?? '')
+      : f.logicalId;
     if (f.tier === 'deleted') {
       // a resource deleted out of band cannot be patched back — it must be
       // recreated by re-deploying the stack.
