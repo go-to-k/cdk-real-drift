@@ -32,8 +32,10 @@ import {
   JSON_STRING_PROPS,
   isPemEqual,
   isAccessStringEqual,
+  isPropertiesFileEqual,
   isSshPublicKeyEqual,
   ACCESS_STRING_PATHS,
+  PROPERTIES_FILE_PATHS,
   SSH_PUBLIC_KEY_PATHS,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
@@ -1301,6 +1303,14 @@ export function classifyResource(
       if (
         ACCESS_STRING_PATHS[resourceType]?.has(d.path) &&
         isAccessStringEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type Java `.properties` file paths (MSK Configuration ServerProperties via
+      // SDK_SUPPLEMENTS — #508): line order / blank lines / comments / trailing newline are
+      // cosmetic, so the same key=value set is not drift; a genuine key/value change differs.
+      if (
+        PROPERTIES_FILE_PATHS[resourceType]?.has(d.path) &&
+        isPropertiesFileEqual(d.stateValue, d.awsValue)
       )
         continue;
       // RDS parameter-group Parameters map: a MySQL boolean system variable declared as

@@ -27,8 +27,15 @@ import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js'
 // writer covers yet. Findings under these paths are reported not-revertable instead of
 // emitting a CC patch that always fails. (ECS `ServiceConnectConfiguration` GRADUATED
 // out of this table — it now reverts via the `SDK_NESTED_WRITERS` UpdateService writer.
-// Empty for now; ECS `VolumeConfigurations` will populate it once that prop is projected.)
-const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {};
+// ECS `VolumeConfigurations` will populate it once that prop is projected.)
+//   AWS::MSK::Configuration `ServerProperties` — writeOnly, made COMPARABLE by the
+//   SDK_SUPPLEMENTS reader (#508) so a revision change is now DETECTED, but revert is
+//   append-only (a "revert" must create revision N+1 via kafka:UpdateConfiguration) and
+//   Cloud Control cannot write a writeOnly prop it can't read — so report it not-revertable
+//   until a type-specific SDK writer is added, rather than emit a CC patch that always fails.
+const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {
+  'AWS::MSK::Configuration': ['ServerProperties'],
+};
 
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC

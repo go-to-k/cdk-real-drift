@@ -79,6 +79,11 @@ import {
   GetQueueCommand,
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
+import {
+  DescribeConfigurationCommand,
+  DescribeConfigurationRevisionCommand,
+  KafkaClient,
+} from '@aws-sdk/client-kafka';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
@@ -1926,7 +1931,35 @@ const supplementRedshiftServerlessWorkgroup: SupplementReader = async ({
   return Object.keys(extra).length > 0 ? extra : undefined;
 };
 
+// AWS::MSK::Configuration — `ServerProperties` (the Kafka server.properties blob) is
+// writeOnly in the registry schema, so Cloud Control echoes only Arn/Name/Description/
+// LatestRevision and an out-of-band `kafka update-configuration` (a new revision flipping
+// e.g. auto.create.topics.enable or slashing log.retention.hours) was a silent FN (#508).
+// It IS SDK-readable: DescribeConfiguration returns LatestRevision.Revision and
+// DescribeConfigurationRevision returns the properties blob (the JS SDK decodes the base64
+// to bytes). Project the decoded text as `ServerProperties`; the compare goes through
+// isPropertiesFileEqual (PROPERTIES_FILE_PATHS in noise.ts — key=value equality, order /
+// comment / blank-line / trailing-newline insensitive) so formatting is not false drift.
+// KafkaVersionsList/Name are createOnly, so this supplement closes the type completely.
+const supplementMskConfiguration: SupplementReader = async ({ physicalId, region }) => {
+  const arn = str(physicalId);
+  if (!arn || !arn.startsWith('arn:')) return undefined;
+  const c = new KafkaClient({ region, ...READ_RETRY });
+  const cfg = await c.send(new DescribeConfigurationCommand({ Arn: arn }));
+  const revision = cfg.LatestRevision?.Revision;
+  if (revision === undefined) return undefined;
+  const rev = await c.send(
+    new DescribeConfigurationRevisionCommand({ Arn: arn, Revision: revision })
+  );
+  const props = rev.ServerProperties;
+  if (props === undefined) return undefined;
+  const text =
+    typeof props === 'string' ? props : Buffer.from(props as Uint8Array).toString('utf-8');
+  return text.length > 0 ? { ServerProperties: text } : undefined;
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
+  'AWS::MSK::Configuration': supplementMskConfiguration,
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,

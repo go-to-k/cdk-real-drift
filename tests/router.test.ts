@@ -12,6 +12,11 @@ import {
   MemoryDBClient,
 } from '@aws-sdk/client-memorydb';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
+import {
+  DescribeConfigurationCommand,
+  DescribeConfigurationRevisionCommand,
+  KafkaClient,
+} from '@aws-sdk/client-kafka';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -25,6 +30,7 @@ const elasticache = mockClient(ElastiCacheClient);
 const ecs = mockClient(ECSClient);
 const memorydb = mockClient(MemoryDBClient);
 const redshiftServerless = mockClient(RedshiftServerlessClient);
+const kafka = mockClient(KafkaClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -44,6 +50,7 @@ beforeEach(() => {
   ecs.reset();
   memorydb.reset();
   redshiftServerless.reset();
+  kafka.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1187,5 +1194,41 @@ describe('readLive (SDK supplement path — RedshiftServerless Workgroup writeOn
     redshiftServerless.on(GetWorkgroupCommand).rejects(named('ResourceNotFoundException'));
     const r = await readLive(cc as unknown as CloudControlClient, workgroup(), 'us-east-1', '1');
     expect(r.live).toEqual({ WorkgroupName: 'cdkrd-wg', BaseCapacity: 8 });
+  });
+});
+
+describe('readLive (SDK supplement path — MSK Configuration ServerProperties, #508)', () => {
+  const arn = 'arn:aws:kafka:us-east-1:111111111111:configuration/cdkrd-msk-config/abc-1';
+  const cfg = (): DesiredResource =>
+    res({ resourceType: 'AWS::MSK::Configuration', physicalId: arn, declared: { Name: 'c' } });
+
+  it('merges the latest revision decoded ServerProperties onto the CC model', async () => {
+    // ServerProperties is writeOnly, so the CC read never echoes it (#508 silent FN);
+    // DescribeConfiguration gives the latest revision and DescribeConfigurationRevision the
+    // decoded blob (the JS SDK returns a Uint8Array).
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: `{"Arn":"${arn}","Name":"c"}` },
+    });
+    kafka
+      .on(DescribeConfigurationCommand)
+      .resolves({ LatestRevision: { Revision: 2, CreationTime: new Date(0) } });
+    kafka.on(DescribeConfigurationRevisionCommand).resolves({
+      ServerProperties: new TextEncoder().encode('auto.create.topics.enable=true\n'),
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, cfg(), 'us-east-1', '1');
+    expect(r.live?.ServerProperties).toBe('auto.create.topics.enable=true\n');
+    expect(kafka.commandCalls(DescribeConfigurationRevisionCommand)[0]?.args[0].input).toEqual({
+      Arn: arn,
+      Revision: 2,
+    });
+  });
+
+  it('keeps the CC model when a kafka read throws (non-fatal)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: `{"Arn":"${arn}","Name":"c"}` },
+    });
+    kafka.on(DescribeConfigurationCommand).rejects(named('NotFoundException'));
+    const r = await readLive(cc as unknown as CloudControlClient, cfg(), 'us-east-1', '1');
+    expect(r.live).toEqual({ Arn: arn, Name: 'c' });
   });
 });

@@ -327,6 +327,23 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('MSK Configuration ServerProperties drift is notRevertable (writeOnly, append-only; needs an SDK writer) (#508)', () => {
+    // Detection works via the SDK_SUPPLEMENTS reader, but CC cannot write a writeOnly prop
+    // it can't read and a "revert" is append-only (a new revision) — so report it
+    // not-revertable rather than emit a CC patch that always fails.
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::MSK::Configuration',
+      path: 'ServerProperties',
+      desired: 'auto.create.topics.enable=false',
+      actual: 'auto.create.topics.enable=true',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('SDK writer');
+  });
+
   it('a declared drift under ECS ServiceConnectConfiguration routes to the nested SDK (UpdateService) writer', () => {
     // The whole writeOnly prop cannot be sub-path patched by CC, so any drift under it is
     // reverted via the SDK_NESTED_WRITERS UpdateService writer (re-supplies the declared

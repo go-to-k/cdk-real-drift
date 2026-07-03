@@ -7355,3 +7355,55 @@ describe('ElastiCache/MemoryDB User AccessString canonicalization (#482)', () =>
     ).toHaveLength(1);
   });
 });
+
+describe('MSK Configuration ServerProperties properties-file compare (#508)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(), // ServerProperties exempted (OVERRIDE_READABLE_WRITEONLY) -> compared
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'MskConfig',
+    resourceType: 'AWS::MSK::Configuration',
+    physicalId: 'arn:aws:kafka:us-east-1:111111111111:configuration/c/abc-1',
+    declared,
+  });
+  const declared = {
+    Name: 'c',
+    ServerProperties:
+      'auto.create.topics.enable=false\ndefault.replication.factor=3\nmin.insync.replicas=2\n',
+  };
+
+  it('a reformatted-but-equivalent supplemented blob is NOT declared drift', () => {
+    const findings = classifyResource(
+      res(declared),
+      {
+        Name: 'c',
+        // reordered + comment + blank line (the shape a supplement/echo returns)
+        ServerProperties:
+          '# stored\nmin.insync.replicas=2\n\ndefault.replication.factor=3\nauto.create.topics.enable=false',
+      },
+      emptySchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+  });
+
+  it('an out-of-band revision (auto.create.topics.enable flipped) surfaces as declared drift — #508 FN closed', () => {
+    const findings = classifyResource(
+      res(declared),
+      {
+        Name: 'c',
+        ServerProperties:
+          'auto.create.topics.enable=true\ndefault.replication.factor=3\nmin.insync.replicas=2\n',
+      },
+      emptySchema
+    ).filter((f) => f.tier === 'declared');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.path).toBe('ServerProperties');
+  });
+});
