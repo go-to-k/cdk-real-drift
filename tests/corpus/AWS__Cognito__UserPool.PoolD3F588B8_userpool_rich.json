@@ -797,7 +797,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[email].AttributeDataType",
@@ -807,7 +807,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[email].StringAttributeConstraints",
@@ -820,7 +820,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[name].AttributeDataType",
@@ -830,7 +830,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[name].StringAttributeConstraints",

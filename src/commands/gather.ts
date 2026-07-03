@@ -137,6 +137,7 @@ interface ClassifyOpts {
   kmsAliasTargets: Record<string, string>;
   oaiCanonicalIds: Record<string, string>;
   siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+  bucketNotificationManaged: Set<string>;
 }
 
 // Rules declared by standalone AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress
@@ -180,6 +181,36 @@ export function buildSiblingSgRules(
     (map[groupId] ??= { ingress: [], egress: [] })[side].push(rule);
   }
   return map;
+}
+
+// Bucket physical ids (== bucket names) whose S3 notifications are managed by a
+// Custom::S3BucketNotifications custom resource. CDK renders `bucket.addEventNotification()`
+// / `enableEventBridgeNotification()` as this CR (which cdkrd cannot read/verify, so it is
+// `skipped`), NOT as the bucket's own NotificationConfiguration property — so the live
+// bucket REFLECTS the CR-applied config while its template resource declares nothing,
+// surfacing the whole NotificationConfiguration as false undeclared drift on every such
+// bucket. The config is IaC-managed (by the CR), not out of band; classify drops the
+// reflected property for these buckets (see classifyResource). Fail-open: a CR whose
+// BucketName did not resolve to a concrete name is skipped (the bucket keeps the reflected
+// config -> a one-time visible FP, never a hidden change).
+const S3_NOTIFICATIONS_CR_TYPE = 'Custom::S3BucketNotifications';
+export function buildBucketNotificationManaged(desired: Desired): Set<string> {
+  const byLogicalId = new Map<string, string>();
+  for (const r of desired.resources) if (r.physicalId) byLogicalId.set(r.logicalId, r.physicalId);
+  const managed = new Set<string>();
+  for (const r of desired.resources) {
+    if (r.resourceType !== S3_NOTIFICATIONS_CR_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const bucketName = (decl as Record<string, unknown>).BucketName;
+    if (typeof bucketName === 'string' && bucketName) {
+      managed.add(bucketName); // already resolved to the concrete bucket name (== physical id)
+    } else if (bucketName && typeof bucketName === 'object' && 'Ref' in bucketName) {
+      const phys = byLogicalId.get((bucketName as { Ref: string }).Ref);
+      if (phys) managed.add(phys);
+    }
+  }
+  return managed;
 }
 
 // CloudFront legacy OAI id -> S3CanonicalUserId, harvested from the stack's own
@@ -390,6 +421,7 @@ export async function gatherFindings(
     kmsAliasTargets,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
+    bucketNotificationManaged: buildBucketNotificationManaged(desired),
   };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
@@ -473,6 +505,7 @@ export async function regatherTouched(
     kmsAliasTargets,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
+    bucketNotificationManaged: buildBucketNotificationManaged(desired),
   };
 
   const fresh: Finding[] = [];

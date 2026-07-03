@@ -14,6 +14,7 @@ import {
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  buildBucketNotificationManaged,
   buildSiblingSgRules,
   type GatherResult,
   gatherFindings,
@@ -682,5 +683,57 @@ describe('buildSiblingSgRules', () => {
       ])
     );
     expect(Object.keys(map)).toHaveLength(0);
+  });
+});
+
+describe('buildBucketNotificationManaged', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111122223333',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('collects bucket names for a CR with a resolved BucketName and a Ref BucketName', () => {
+    const managed = buildBucketNotificationManaged(
+      desiredWith([
+        {
+          logicalId: 'Bucket',
+          resourceType: 'AWS::S3::Bucket',
+          physicalId: 'my-bucket-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'NotifResolved',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr1',
+          declared: { BucketName: 'already-resolved-bucket' },
+        },
+        {
+          logicalId: 'NotifRef',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr2',
+          declared: { BucketName: { Ref: 'Bucket' } },
+        },
+      ])
+    );
+    expect([...managed].sort()).toEqual(['already-resolved-bucket', 'my-bucket-phys']);
+  });
+
+  it('skips a CR whose BucketName Ref does not resolve (fail-open)', () => {
+    const managed = buildBucketNotificationManaged(
+      desiredWith([
+        {
+          logicalId: 'Notif',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr',
+          declared: { BucketName: { Ref: 'MissingBucket' } },
+        },
+      ])
+    );
+    expect(managed.size).toBe(0);
   });
 });

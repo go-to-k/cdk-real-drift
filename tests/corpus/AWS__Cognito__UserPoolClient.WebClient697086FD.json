@@ -78,7 +78,7 @@
       "constructPath": "CdkrdIntegHarvest3/WebClient"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "WebClient697086FD",
       "resourceType": "AWS::Cognito::UserPoolClient",
       "path": "ClientName",
