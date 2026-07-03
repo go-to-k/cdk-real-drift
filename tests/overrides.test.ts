@@ -32,6 +32,17 @@ import {
   DescribeSubnetGroupsCommand,
 } from '@aws-sdk/client-dax';
 import {
+  DescribeBotLocaleCommand,
+  DescribeIntentCommand,
+  DescribeSlotCommand,
+  DescribeSlotTypeCommand,
+  LexModelsV2Client,
+  ListBotLocalesCommand,
+  ListIntentsCommand,
+  ListSlotsCommand,
+  ListSlotTypesCommand,
+} from '@aws-sdk/client-lex-models-v2';
+import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   DocDBClient,
@@ -73,7 +84,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
-import { SDK_OVERRIDES } from '../src/read/overrides.js';
+import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from '../src/read/overrides.js';
 import { ResourceGoneError } from '../src/aws-errors.js';
 import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 
@@ -98,6 +109,7 @@ const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
 const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
+const lex = mockClient(LexModelsV2Client);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
   physicalId,
@@ -131,6 +143,7 @@ beforeEach(() => {
     dms,
     mediaconvert,
     dax,
+    lex,
   ])
     m.reset();
 });
@@ -2816,5 +2829,166 @@ describe('DAX family (NON_PROVISIONABLE, issue #534)', () => {
     it('no physical id -> undefined (skipped)', async () => {
       expect(await SDK_OVERRIDES['AWS::DAX::SubnetGroup'](ctx({}, ''))).toBeUndefined();
     });
+  });
+});
+describe('SDK supplements', () => {
+  it('Lex::Bot: reconstructs BotLocales (locale + custom slot type + intent + slot) from the lexv2-models tree walk', async () => {
+    lex.on(ListBotLocalesCommand).resolves({ botLocaleSummaries: [{ localeId: 'en_US' }] });
+    lex.on(DescribeBotLocaleCommand).resolves({
+      localeId: 'en_US',
+      description: 'cdkrd english locale',
+      nluIntentConfidenceThreshold: 0.4,
+    });
+
+    // Slot types: one custom (CdkrdSize) — described fully.
+    lex.on(ListSlotTypesCommand).resolves({
+      slotTypeSummaries: [{ slotTypeId: 'ST_SIZE' }],
+    });
+    lex.on(DescribeSlotTypeCommand, { slotTypeId: 'ST_SIZE' }).resolves({
+      slotTypeId: 'ST_SIZE',
+      slotTypeName: 'CdkrdSize',
+      description: 'sizes',
+      slotTypeValues: [{ sampleValue: { value: 'small' } }, { sampleValue: { value: 'large' } }],
+      // API returns the PascalCase enum; the reader maps it to CFn's SCREAMING_SNAKE (asserted below).
+      valueSelectionSetting: { resolutionStrategy: 'OriginalValue' },
+    });
+
+    // Intents: one custom (CdkrdOrder) with a slot + priority.
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I_ORDER' }],
+    });
+    lex.on(DescribeIntentCommand, { intentId: 'I_ORDER' }).resolves({
+      intentId: 'I_ORDER',
+      intentName: 'CdkrdOrder',
+      description: 'order something',
+      sampleUtterances: [{ utterance: 'I want a {Size} thing' }, { utterance: 'order {Size}' }],
+      slotPriorities: [{ priority: 1, slotId: 'SL_SIZE' }],
+    });
+
+    lex.on(ListSlotsCommand, { intentId: 'I_ORDER' }).resolves({
+      slotSummaries: [{ slotId: 'SL_SIZE' }],
+    });
+    lex.on(DescribeSlotCommand, { slotId: 'SL_SIZE' }).resolves({
+      slotId: 'SL_SIZE',
+      slotName: 'Size',
+      slotTypeId: 'ST_SIZE',
+      valueElicitationSetting: {
+        slotConstraint: 'Required',
+        promptSpecification: {
+          maxRetries: 2,
+          messageGroups: [{ message: { plainTextMessage: { value: 'What size?' } } }],
+        },
+      },
+    });
+
+    const out = await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'));
+    expect(out).toEqual({
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Description: 'cdkrd english locale',
+          NluConfidenceThreshold: 0.4,
+          SlotTypes: [
+            {
+              Name: 'CdkrdSize',
+              Description: 'sizes',
+              SlotTypeValues: [
+                { SampleValue: { Value: 'small' } },
+                { SampleValue: { Value: 'large' } },
+              ],
+              ValueSelectionSetting: { ResolutionStrategy: 'ORIGINAL_VALUE' },
+            },
+          ],
+          Intents: [
+            {
+              Name: 'CdkrdOrder',
+              Description: 'order something',
+              SampleUtterances: [
+                { Utterance: 'I want a {Size} thing' },
+                { Utterance: 'order {Size}' },
+              ],
+              SlotPriorities: [{ Priority: 1, SlotName: 'Size' }],
+              Slots: [
+                {
+                  Name: 'Size',
+                  SlotTypeName: 'CdkrdSize',
+                  ValueElicitationSetting: {
+                    SlotConstraint: 'Required',
+                    PromptSpecification: {
+                      MaxRetries: 2,
+                      MessageGroupsList: [
+                        { Message: { PlainTextMessage: { Value: 'What size?' } } },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('Lex::Bot: skips built-in (AMAZON.*) slot types and maps a built-in slotTypeId to itself', async () => {
+    lex.on(ListBotLocalesCommand).resolves({ botLocaleSummaries: [{ localeId: 'en_US' }] });
+    lex.on(DescribeBotLocaleCommand).resolves({ localeId: 'en_US' });
+    // A built-in slot type appears in the summary — it must NOT be described nor emitted.
+    lex.on(ListSlotTypesCommand).resolves({
+      slotTypeSummaries: [{ slotTypeId: 'AMAZON.Number' }],
+    });
+    lex.on(ListIntentsCommand).resolves({ intentSummaries: [{ intentId: 'I_ORDER' }] });
+    lex.on(DescribeIntentCommand, { intentId: 'I_ORDER' }).resolves({
+      intentId: 'I_ORDER',
+      intentName: 'CdkrdOrder',
+    });
+    lex.on(ListSlotsCommand, { intentId: 'I_ORDER' }).resolves({
+      slotSummaries: [{ slotId: 'SL_QTY' }],
+    });
+    lex.on(DescribeSlotCommand, { slotId: 'SL_QTY' }).resolves({
+      slotId: 'SL_QTY',
+      slotName: 'Qty',
+      slotTypeId: 'AMAZON.Number',
+      valueElicitationSetting: { slotConstraint: 'Optional' },
+    });
+
+    const out = await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'));
+    expect(out).toEqual({
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Intents: [
+            {
+              Name: 'CdkrdOrder',
+              // Built-in slotTypeId resolves to itself as the SlotTypeName.
+              Slots: [
+                {
+                  Name: 'Qty',
+                  SlotTypeName: 'AMAZON.Number',
+                  ValueElicitationSetting: { SlotConstraint: 'Optional' },
+                },
+              ],
+            },
+          ],
+          // No SlotTypes key — the only summary was a built-in (never emitted).
+        },
+      ],
+    });
+    // The built-in slot type was never described.
+    expect(lex.commandCalls(DescribeSlotTypeCommand)).toHaveLength(0);
+  });
+
+  it('Lex::Bot: an empty botLocaleSummaries yields undefined (nothing to add)', async () => {
+    lex.on(ListBotLocalesCommand).resolves({ botLocaleSummaries: [] });
+    expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).toBeUndefined();
+  });
+
+  it('Lex::Bot: a reconstruction error (ListBotLocales rejects) is non-fatal → undefined', async () => {
+    lex.on(ListBotLocalesCommand).rejects(new Error('AccessDenied'));
+    expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).toBeUndefined();
+  });
+
+  it('Lex::Bot: undefined (skipped) when the physical id is empty', async () => {
+    expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}))).toBeUndefined();
   });
 });

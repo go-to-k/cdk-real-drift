@@ -88,6 +88,14 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // folded as a ParameterKey-keyed subset via NAME_VALUE_SUBSET_PATHS (noise.ts);
   // SecurityGroupIds / SubnetIds are id-like sets folded for reorder by canonicalizeIdArraysDeep.
   'AWS::RedshiftServerless::Workgroup': ['ConfigParameters', 'SecurityGroupIds', 'SubnetIds'],
+  // AWS::Lex::Bot `BotLocales` (the entire conversational model — intents, utterances,
+  // slots, slot types, prompts) is writeOnly in the registry schema, so Cloud Control
+  // never echoes it and an out-of-band console edit to the model was a silent FN (#527).
+  // The SDK_SUPPLEMENTS reader RECONSTRUCTS it from the lexv2-models API tree walk, so
+  // compare it, don't readGap. The other writeOnly Bot props (AutoBuildBotLocales,
+  // BotFileS3Location, Replication, TestBotAliasSettings, TestBotAliasTags) stay
+  // writeOnly readGaps — the supplement does not project them.
+  'AWS::Lex::Bot': ['BotLocales'],
 };
 
 // Curated readOnly SUPPLEMENTS: JSON-pointer property paths a type's CloudFormation
