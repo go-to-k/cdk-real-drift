@@ -6286,6 +6286,67 @@ describe('absent declared collection → declared drift by default (readGap only
     expect(findings.some((f) => f.tier === 'declared' && f.path === 'Port')).toBe(false);
   });
 
+  it('allowlist (#507): a cleared declared scalar on a SCALAR_RETURNED_WHEN_SET path -> whole-property declared drift', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'SuricataGroup',
+        resourceType: 'AWS::NetworkFirewall::RuleGroup',
+        physicalId: 'rg-1',
+        declared: { RuleGroupName: 'rg-1', Description: 'cdkrd suricata blob probe' },
+      },
+      { RuleGroupName: 'rg-1' }, // live omits Description (cleared out of band)
+      sgSchema
+    );
+    const decl = findings.filter((f) => f.tier === 'declared');
+    expect(decl.map((f) => f.path)).toEqual(['Description']);
+    expect(decl[0].desired).toBe('cdkrd suricata blob probe');
+    expect(decl[0].actual).toBeUndefined();
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'Description')).toBe(false);
+  });
+
+  it('allowlist (#507): scoped per-type+path — the same scalar path on an unlisted type stays readGap', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'T',
+        resourceType: 'AWS::SomeOther::Type',
+        physicalId: 'p',
+        declared: { Description: 'x' },
+      },
+      {},
+      sgSchema
+    );
+    expect(findings.some((f) => f.tier === 'readGap' && f.path === 'Description')).toBe(true);
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'Description')).toBe(false);
+  });
+
+  it('allowlist (#507): a still-set Description compares normally (no false drift)', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'SuricataGroup',
+        resourceType: 'AWS::NetworkFirewall::RuleGroup',
+        physicalId: 'rg-1',
+        declared: { RuleGroupName: 'rg-1', Description: 'same' },
+      },
+      { RuleGroupName: 'rg-1', Description: 'same' },
+      sgSchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toHaveLength(0);
+  });
+
+  it('allowlist (#507): an empty declared Description stays readGap (declared "" vs absent is not drift)', () => {
+    const findings = classifyResource(
+      {
+        logicalId: 'SuricataGroup',
+        resourceType: 'AWS::NetworkFirewall::RuleGroup',
+        physicalId: 'rg-1',
+        declared: { RuleGroupName: 'rg-1', Description: '' },
+      },
+      { RuleGroupName: 'rg-1' },
+      sgSchema
+    );
+    expect(findings.some((f) => f.tier === 'declared' && f.path === 'Description')).toBe(false);
+  });
+
   it('exception (empty collection): an absent EMPTY declared collection is not drift', () => {
     const findings = classifyResource(
       {

@@ -62,6 +62,7 @@ import {
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   READGAP_COLLECTION_PATHS,
+  SCALAR_RETURNED_WHEN_SET,
   READ_NORMALIZED_DECLARED_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
@@ -973,7 +974,21 @@ export function classifyResource(
       const isNonEmptyCollection =
         (Array.isArray(v) && v.length > 0) ||
         (v !== null && typeof v === 'object' && Object.keys(v as object).length > 0);
-      if (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) {
+      // #507: a declared SCALAR on a curated SCALAR_RETURNED_WHEN_SET path — proven to
+      // be echoed by the live read when set — that is absent from live was cleared out
+      // of band (replace-omit update semantics). Detect it like a removed collection
+      // (whole-property `add` on revert). A non-empty string / boolean / number counts
+      // as "set"; a declared empty string stays readGap (declared `""` vs absent is not
+      // drift).
+      const isClearedAllowlistedScalar =
+        SCALAR_RETURNED_WHEN_SET[resourceType]?.has(k) === true &&
+        ((typeof v === 'string' && v.length > 0) ||
+          typeof v === 'number' ||
+          typeof v === 'boolean');
+      if (
+        (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) ||
+        isClearedAllowlistedScalar
+      ) {
         findings.push({
           tier: 'declared',
           logicalId,
