@@ -104,6 +104,18 @@ import {
 } from '@aws-sdk/client-config-service';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import {
+  CodeBuildClient,
+  type ReportExportConfig,
+  type Tag as CodeBuildTag,
+  UpdateReportGroupCommand,
+} from '@aws-sdk/client-codebuild';
+import {
+  DAXClient,
+  UpdateClusterCommand,
+  UpdateParameterGroupCommand as UpdateDaxParameterGroupCommand,
+} from '@aws-sdk/client-dax';
+import { EC2Client, ModifyClientVpnEndpointCommand } from '@aws-sdk/client-ec2';
+import {
   DescribeEventBusCommand,
   EventBridgeClient,
   PutPermissionCommand,
@@ -1380,7 +1392,161 @@ const writeMskConfiguration: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::CodeBuild::ReportGroup — NON_PROVISIONABLE (read via BatchGetReportGroups; #530).
+// codebuild:UpdateReportGroup re-supplies the two mutable props (exportConfig / tags) WHOLESALE
+// — the reader's projected shape maps back 1:1 (PascalCase CFn → camelCase API). Always send both
+// desired sub-objects so reverting a Tags-only drift never wipes the ExportConfig and vice-versa;
+// they reflect the intended (declared-or-current) full state (desiredModel = live + revert ops).
+// Type is create-only (not modifiable), so it never reaches here. #552.
+const writeCodeBuildReportGroup: SdkWriter = async (ctx, ops) => {
+  const arn = str(ctx.physicalId);
+  if (!arn) throw new Error('cannot resolve CodeBuild ReportGroup ARN for revert');
+  const desired = await desiredModel('AWS::CodeBuild::ReportGroup', ctx, ops);
+  const input: { arn: string; exportConfig?: ReportExportConfig; tags?: CodeBuildTag[] } = { arn };
+  const ec = desired.ExportConfig as Record<string, unknown> | undefined;
+  if (ec) {
+    const s3 = ec.S3Destination as Record<string, unknown> | undefined;
+    input.exportConfig = {
+      exportConfigType: ec.ExportConfigType as ReportExportConfig['exportConfigType'],
+      ...(s3
+        ? {
+            s3Destination: {
+              bucket: str(s3.Bucket),
+              path: str(s3.Path),
+              packaging: str(s3.Packaging) as
+                | NonNullable<ReportExportConfig['s3Destination']>['packaging']
+                | undefined,
+              encryptionKey: str(s3.EncryptionKey),
+              encryptionDisabled:
+                typeof s3.EncryptionDisabled === 'boolean' ? s3.EncryptionDisabled : undefined,
+            },
+          }
+        : {}),
+    };
+  }
+  const tags = desired.Tags as { Key?: unknown; Value?: unknown }[] | undefined;
+  // Always send tags (empty list clears them) so a removed/edited tag reverts; omitting it would
+  // leave AWS's current tags untouched (UpdateReportGroup replaces the tag set wholesale).
+  input.tags = Array.isArray(tags)
+    ? tags.map((t) => ({ key: str(t.Key), value: str(t.Value) }))
+    : [];
+  await new CodeBuildClient({ region: ctx.region }).send(new UpdateReportGroupCommand(input));
+};
+
+// AWS::DAX::Cluster — NON_PROVISIONABLE (read via DescribeClusters; #534). dax:UpdateCluster is a
+// PARTIAL modify (like ModifyDBCluster): send ONLY the drifted top-level props in the mutable
+// allowlist, mapped CFn→API (NotificationTopicARN → NotificationTopicArn). NodeType/ClusterName/
+// SubnetGroupName/IAMRoleARN/ClusterEndpointEncryptionType are create-only → never in the
+// allowlist. #552.
+const DAX_CLUSTER_MODIFY_PARAMS: Record<string, string> = {
+  Description: 'Description',
+  PreferredMaintenanceWindow: 'PreferredMaintenanceWindow',
+  NotificationTopicARN: 'NotificationTopicArn',
+  ParameterGroupName: 'ParameterGroupName',
+  SecurityGroupIds: 'SecurityGroupIds',
+};
+const writeDaxCluster: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['ClusterName']);
+  if (!name) throw new Error('cannot resolve DAX cluster name for revert');
+  const desired = await desiredModel('AWS::DAX::Cluster', ctx, ops);
+  const input: { ClusterName: string; [k: string]: unknown } = { ClusterName: name };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0] ?? '';
+    const apiKey = DAX_CLUSTER_MODIFY_PARAMS[top];
+    if (!apiKey) continue;
+    // A revert that CLEARS a value (op removed it, e.g. NotificationTopicARN back to none) sends
+    // the empty string DAX accepts to detach the topic; otherwise send the desired value.
+    const val = desired[top] ?? (apiKey === 'NotificationTopicArn' ? '' : undefined);
+    if (val !== undefined) {
+      input[apiKey] = val;
+      any = true;
+    }
+  }
+  if (!any) return;
+  await new DAXClient({ region: ctx.region }).send(new UpdateClusterCommand(input));
+};
+
+// AWS::DAX::ParameterGroup — NON_PROVISIONABLE (read via DescribeParameters; #534).
+// dax:UpdateParameterGroup updates ONLY the parameters passed (others untouched), so re-assert
+// each DRIFTED parameter to its desired value. The CFn `ParameterNameValues` is a { name → value }
+// map; the API takes a [{ ParameterName, ParameterValue }] list. #552.
+const writeDaxParameterGroup: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['ParameterGroupName']);
+  if (!name) throw new Error('cannot resolve DAX parameter-group name for revert');
+  const desired = await desiredModel('AWS::DAX::ParameterGroup', ctx, ops);
+  const desiredValues = (desired.ParameterNameValues as Record<string, unknown> | undefined) ?? {};
+  // Collect the parameter keys the revert ops touch (path `/ParameterNameValues/<key>`), plus a
+  // whole-map op (`/ParameterNameValues`). Re-send each from the desired map.
+  const keys = new Set<string>();
+  for (const op of ops) {
+    const segs = op.path.replace(/^\//, '').split('/');
+    if (segs[0] !== 'ParameterNameValues') continue;
+    if (segs[1] !== undefined) keys.add(segs[1].replace(/~1/g, '/').replace(/~0/g, '~'));
+    else for (const k of Object.keys(desiredValues)) keys.add(k);
+  }
+  const values = [...keys]
+    .filter((k) => typeof desiredValues[k] === 'string')
+    .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
+  if (values.length === 0) return;
+  await new DAXClient({ region: ctx.region }).send(
+    new UpdateDaxParameterGroupCommand({ ParameterGroupName: name, ParameterNameValues: values })
+  );
+};
+
+// AWS::EC2::ClientVpnEndpoint — NON_PROVISIONABLE (read via DescribeClientVpnEndpoints; #534).
+// ec2:ModifyClientVpnEndpoint is a PARTIAL modify: send ONLY the drifted top-level props in the
+// mutable allowlist. Two props need reshaping vs the reader's projection: DnsServers (the read is
+// a plain string[]; modify takes a DnsServersOptionsModifyStructure { CustomDnsServers, Enabled }),
+// and SecurityGroupIds (the API requires VpcId alongside it). ServerCertificateArn/ClientCidrBlock/
+// TransportProtocol/VpcId are create-only → not in the allowlist. #552.
+const CLIENT_VPN_SCALAR_PARAMS = new Set([
+  'Description',
+  'SplitTunnel',
+  'VpnPort',
+  'SessionTimeoutHours',
+  'DisconnectOnSessionTimeout',
+]);
+const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId);
+  if (!id) throw new Error('cannot resolve Client VPN endpoint id for revert');
+  const desired = await desiredModel('AWS::EC2::ClientVpnEndpoint', ctx, ops);
+  const input: { ClientVpnEndpointId: string; [k: string]: unknown } = { ClientVpnEndpointId: id };
+  let any = false;
+  const tops = new Set(ops.map((op) => op.path.replace(/^\//, '').split('/')[0] ?? ''));
+  for (const top of tops) {
+    if (CLIENT_VPN_SCALAR_PARAMS.has(top) && desired[top] !== undefined) {
+      input[top] = desired[top];
+      any = true;
+    } else if (top === 'ConnectionLogOptions' && desired.ConnectionLogOptions !== undefined) {
+      input.ConnectionLogOptions = desired.ConnectionLogOptions;
+      any = true;
+    } else if (top === 'DnsServers') {
+      const list = desired.DnsServers as string[] | undefined;
+      input.DnsServers =
+        Array.isArray(list) && list.length > 0
+          ? { CustomDnsServers: list, Enabled: true }
+          : { Enabled: false };
+      any = true;
+    } else if (top === 'SecurityGroupIds') {
+      const list = desired.SecurityGroupIds as string[] | undefined;
+      const vpcId = str(desired.VpcId) ?? str(ctx.declared['VpcId']);
+      if (Array.isArray(list) && list.length > 0 && vpcId) {
+        input.SecurityGroupIds = list;
+        input.VpcId = vpcId;
+        any = true;
+      }
+    }
+  }
+  if (!any) return;
+  await new EC2Client({ region: ctx.region }).send(new ModifyClientVpnEndpointCommand(input));
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
+  'AWS::DAX::Cluster': writeDaxCluster,
+  'AWS::DAX::ParameterGroup': writeDaxParameterGroup,
+  'AWS::EC2::ClientVpnEndpoint': writeEc2ClientVpnEndpoint,
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
   'AWS::WAFv2::WebACL': writeWafv2WebAcl,

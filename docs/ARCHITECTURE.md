@@ -725,7 +725,15 @@ only when non-zero — unrecorded values are named as such, never folded into
     recurring shape: a CC type is READABLE but its full-model UpdateResource re-validation
     rejects a field AWS itself returns — the per-type SDK writer re-submits via the
     resource's own update API, omitting the offending field. Only a LIVE
-    detect→revert→CLEAN cycle catches these.
+    detect→revert→CLEAN cycle catches these. A SECOND family is the NON_PROVISIONABLE
+    types (no CC read handler at all, read via an `SDK_OVERRIDES` reader): each is
+    revertable only with a matching SDK writer that PARTIAL-modifies the drifted props —
+    `AWS::CodeBuild::ReportGroup` (`UpdateReportGroup`), `AWS::DAX::Cluster`
+    (`UpdateCluster`), `AWS::DAX::ParameterGroup` (`UpdateParameterGroup`), and
+    `AWS::EC2::ClientVpnEndpoint` (`ModifyClientVpnEndpoint`, reshaping the reader's
+    `DnsServers` list into the API's `{CustomDnsServers,Enabled}` and pairing
+    `SecurityGroupIds` with `VpcId`) — all four proven with a live detect→revert→CLEAN
+    cycle (#552).
   - **Property-scoped SDK writers** (`SDK_PROP_WRITERS`): a CC-writable type where
     ONE property must bypass Cloud Control. An IAM Role's top-level `Policies`
     finding reverts per entry (`DeleteRolePolicy` / `PutRolePolicy` by

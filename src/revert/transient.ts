@@ -49,20 +49,23 @@ const TRANSIENT_PATTERNS: readonly { pattern: RegExp; hint: string }[] = [
   },
   {
     pattern:
-      /another (operation|update|change|request)[^.]*in progress|operation[^.]*(already )?in progress|update[^.]*in progress|modification[^.]*in progress|currently being (created|updated|modified|deleted|provisioned)|is not in a stable state|resource is in use|please try again|try again (later|in a few)/i,
+      /another (operation|update|change|request)[^.]*in progress|operation[^.]*(already )?in progress|update[^.]*in progress|modification[^.]*in progress|(currently )?being (created|updated|modified|deleted|provisioned)|is not in a stable state|resource is in use|please try again|try again (later|in a few)/i,
     hint: RETRY_HINT,
   },
-  // Stateful resources (RDS / Aurora / DocDB / Neptune / ElastiCache / Redshift) reject
+  // Stateful resources (RDS / Aurora / DocDB / Neptune / ElastiCache / Redshift / DAX) reject
   // a modify while the resource is mid-change with an "invalid state" fault whose message
   // says it is "not in the available state". This is the SAME mid-update-retry-later class
   // as RSLVR-00705 for the DB reverts cdkrd already supports (RDS/DocDB BackupRetention,
   // DBInstanceClass, ElastiCache node type, …): an out-of-band `modify-*` leaves the
   // resource `modifying`/`rebooting` for minutes, so an immediate revert fails and only a
   // later retry succeeds. Matched by the service state-fault codes plus AWS's shared
-  // "not in the available state" / "not in available state" phrasing.
+  // "not in the available state" / "not in available state" phrasing. InvalidClusterStateFault
+  // / InvalidParameterGroupStateFault cover DAX (#552): a fresh dax:update-parameter-group leaves
+  // the group "applying" for a few seconds, so a same-run revert hits "the parameter <x> is being
+  // modified" (live-verified during the #552 detect→revert live-test).
   {
     pattern:
-      /InvalidDBInstanceState|InvalidDBClusterState|InvalidClusterState|InvalidReplicationGroupState|InvalidCacheClusterState|InvalidGlobalClusterState|is not (currently )?in (the |an? )?available state/i,
+      /InvalidDBInstanceState|InvalidDBClusterState|InvalidClusterState|InvalidParameterGroupState|InvalidReplicationGroupState|InvalidCacheClusterState|InvalidGlobalClusterState|is not (currently )?in (the |an? )?available state/i,
     hint: RETRY_HINT,
   },
   // Throttling / rate limiting — retryable, but a distinct hint.
