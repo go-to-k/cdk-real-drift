@@ -32,7 +32,10 @@ const engine = DatabaseClusterEngine.auroraMysql({
 
 const clusterPg = new ParameterGroup(stack, "ClusterPg", {
   engine,
-  parameters: { character_set_server: "utf8mb4" },
+  // `slow_query_log` is a MySQL boolean system variable declared "ON" — RDS canonicalizes it
+  // to "1" on read, so a case-sensitive compare false-flags declared drift. The verify.sh
+  // asserts it does NOT surface (the ON≡1 boolean-token fold).
+  parameters: { character_set_server: "utf8mb4", slow_query_log: "ON" },
 });
 const instancePg = new ParameterGroup(stack, "InstancePg", {
   engine,

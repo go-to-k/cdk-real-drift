@@ -1923,6 +1923,40 @@ export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 }
 
+// Per-type property paths that hold an RDS engine PARAMETER map (`Parameters`) whose MySQL
+// boolean system variables accept ON/OFF, 1/0, and TRUE/FALSE interchangeably. RDS
+// canonicalizes a declared "ON"/"OFF" to "1"/"0" on read, so a template that writes
+// `slow_query_log: "ON"` false-flags declared drift against the live "1" on every check of a
+// MySQL / Aurora-MySQL cluster (observed live on dev-main-AuroraDB). Matched on the map's TOP
+// path segment; the per-key leaf compare applies isBooleanTokenEquivalent below.
+export const BOOLEAN_PARAM_MAP_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::RDS::DBClusterParameterGroup': new Set(['Parameters']),
+  'AWS::RDS::DBParameterGroup': new Set(['Parameters']),
+};
+const BOOL_TRUE_TOKENS = new Set(['on', '1', 'true']);
+const BOOL_FALSE_TOKENS = new Set(['off', '0', 'false']);
+// True when both values are boolean tokens (on/off, 1/0, true/false — any case) mapping to
+// the SAME truthiness. Scoped by the caller to boolean-capable param maps. A non-boolean
+// value (a numeric enum "2", a size "128M") is not a token, so it never matches — and a real
+// flip (declared "ON" true vs live "0" false) maps to different truthiness, so it still
+// surfaces as drift.
+export function isBooleanTokenEquivalent(a: unknown, b: unknown): boolean {
+  const tok = (v: unknown): 'true' | 'false' | undefined => {
+    const s =
+      typeof v === 'string'
+        ? v.toLowerCase()
+        : typeof v === 'number' || typeof v === 'boolean'
+          ? String(v)
+          : undefined;
+    if (s === undefined) return undefined;
+    if (BOOL_TRUE_TOKENS.has(s)) return 'true';
+    if (BOOL_FALSE_TOKENS.has(s)) return 'false';
+    return undefined;
+  };
+  const ta = tok(a);
+  return ta !== undefined && ta === tok(b);
+}
+
 // Per-type property paths that hold a FREE-FORM MAP whose KEYS the Cloud Control read
 // handler re-cases (#494). The map-KEY analogue of CASE_INSENSITIVE_PATHS (which folds a
 // VALUE case difference). On DataBrew Recipe `Steps[].Action.Parameters` the template AND
