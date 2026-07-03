@@ -1,0 +1,177 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FlinkApp",
+    "resourceType": "AWS::KinesisAnalyticsV2::Application",
+    "physicalId": "cdkrd-flink-app",
+    "constructPath": "CdkRealDriftIntegStreamingRich/FlinkApp",
+    "declared": {
+      "ApplicationConfiguration": {
+        "ApplicationCodeConfiguration": {
+          "CodeContent": {
+            "S3ContentLocation": {
+              "BucketARN": "arn:aws:s3:::cdk-hnb659fds-assets-111111111111-us-east-1",
+              "FileKey": "f927eca46b25fa23904c3e9d8c30fbc94e121d5cc81370f4f18e6d8016a0a1ad.jar"
+            }
+          },
+          "CodeContentType": "ZIPFILE"
+        },
+        "ApplicationSnapshotConfiguration": {
+          "SnapshotsEnabled": false
+        },
+        "EnvironmentProperties": {
+          "PropertyGroups": [
+            {
+              "PropertyGroupId": "cdkrdGroup",
+              "PropertyMap": {
+                "alpha": "1",
+                "beta": "two",
+                "gamma": "3.0"
+              }
+            }
+          ]
+        },
+        "FlinkApplicationConfiguration": {
+          "CheckpointConfiguration": {
+            "CheckpointInterval": 60000,
+            "CheckpointingEnabled": true,
+            "ConfigurationType": "CUSTOM",
+            "MinPauseBetweenCheckpoints": 5000
+          },
+          "MonitoringConfiguration": {
+            "ConfigurationType": "CUSTOM",
+            "LogLevel": "INFO",
+            "MetricsLevel": "APPLICATION"
+          },
+          "ParallelismConfiguration": {
+            "AutoScalingEnabled": false,
+            "ConfigurationType": "CUSTOM",
+            "Parallelism": 1,
+            "ParallelismPerKPU": 1
+          }
+        }
+      },
+      "ApplicationDescription": "cdkrd probe app (never started)",
+      "ApplicationName": "cdkrd-flink-app",
+      "RuntimeEnvironment": "FLINK-1_19",
+      "ServiceExecutionRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegStreamingRich-FlinkRoleDDDF0AE3-qeQDm28BcTw3"
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "cdkrd-flink-app",
+    "RuntimeEnvironment": "FLINK-1_19",
+    "ApplicationMode": "STREAMING",
+    "ApplicationMaintenanceConfiguration": {
+      "ApplicationMaintenanceWindowStartTime": "03:00"
+    },
+    "ApplicationConfiguration": {
+      "ApplicationCodeConfiguration": {
+        "CodeContentType": "ZIPFILE",
+        "CodeContent": {
+          "S3ContentLocation": {
+            "BucketARN": "arn:aws:s3:::cdk-hnb659fds-assets-111111111111-us-east-1",
+            "FileKey": "f927eca46b25fa23904c3e9d8c30fbc94e121d5cc81370f4f18e6d8016a0a1ad.jar"
+          }
+        }
+      },
+      "ApplicationEncryptionConfiguration": {
+        "KeyType": "AWS_OWNED_KEY"
+      },
+      "FlinkApplicationConfiguration": {
+        "CheckpointConfiguration": {
+          "ConfigurationType": "CUSTOM",
+          "CheckpointInterval": 60000,
+          "MinPauseBetweenCheckpoints": 5000,
+          "CheckpointingEnabled": true
+        },
+        "ParallelismConfiguration": {
+          "ConfigurationType": "CUSTOM",
+          "ParallelismPerKPU": 1,
+          "AutoScalingEnabled": false,
+          "Parallelism": 1
+        },
+        "MonitoringConfiguration": {
+          "ConfigurationType": "CUSTOM",
+          "MetricsLevel": "APPLICATION",
+          "LogLevel": "INFO"
+        }
+      },
+      "ApplicationSnapshotConfiguration": {
+        "SnapshotsEnabled": false
+      },
+      "ApplicationSystemRollbackConfiguration": {
+        "RollbackEnabled": false
+      }
+    },
+    "ApplicationDescription": "cdkrd probe app (never started)",
+    "ServiceExecutionRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegStreamingRich-FlinkRoleDDDF0AE3-qeQDm28BcTw3"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["RunConfiguration"],
+    "createOnly": ["ApplicationMode", "ApplicationName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [
+      "ApplicationConfiguration.ApplicationCodeConfiguration.CodeContent.ZipFileContent",
+      "ApplicationConfiguration.EnvironmentProperties",
+      "RunConfiguration"
+    ],
+    "createOnlyPaths": ["ApplicationMode", "ApplicationName"],
+    "defaults": {
+      "ApplicationDescription": ""
+    },
+    "defaultPaths": {
+      "ApplicationDescription": ""
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "ApplicationConfiguration.EnvironmentProperties.PropertyGroups",
+      "ApplicationConfiguration.SqlApplicationConfiguration.Inputs",
+      "ApplicationConfiguration.VpcConfigurations",
+      "ApplicationConfiguration.ZeppelinApplicationConfiguration.CustomArtifactsConfiguration"
+    ],
+    "freeFormMapPaths": [
+      "ApplicationConfiguration.EnvironmentProperties.PropertyGroups.*.PropertyMap"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FlinkApp",
+      "resourceType": "AWS::KinesisAnalyticsV2::Application",
+      "path": "ApplicationMode",
+      "actual": "STREAMING",
+      "physicalId": "cdkrd-flink-app",
+      "constructPath": "CdkRealDriftIntegStreamingRich/FlinkApp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlinkApp",
+      "resourceType": "AWS::KinesisAnalyticsV2::Application",
+      "path": "ApplicationMaintenanceConfiguration",
+      "actual": {
+        "ApplicationMaintenanceWindowStartTime": "03:00"
+      },
+      "physicalId": "cdkrd-flink-app",
+      "constructPath": "CdkRealDriftIntegStreamingRich/FlinkApp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlinkApp",
+      "resourceType": "AWS::KinesisAnalyticsV2::Application",
+      "path": "ApplicationConfiguration.ApplicationEncryptionConfiguration",
+      "actual": {
+        "KeyType": "AWS_OWNED_KEY"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-flink-app",
+      "constructPath": "CdkRealDriftIntegStreamingRich/FlinkApp"
+    }
+  ]
+}

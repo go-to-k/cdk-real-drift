@@ -463,6 +463,14 @@ function isCfnGeneratedName(
   // — never fold it into a `generated` finding here, or a resource whose physical id IS its
   // CFn-generated name gains a phantom finding.
   if (typeof value !== 'string' || !constructPath || value === physicalId) return false;
+  // A bare LOGICAL-ID echo: for some types CloudFormation mints an auto-generated physical
+  // name equal to the resource's LOGICAL ID verbatim — no `<stack>-` prefix, no extra random
+  // suffix beyond the CDK hash already baked into the logical id (a BucketDeployment's
+  // AwsCliLayer LayerName reads back "CaDeployAwsCliLayer58606CDE", its own logical id; #509).
+  // The strict `<stack>-…-<suffix>` shapes below never match that form. A CDK logical id
+  // already carries an 8-hex-char construct hash, so a user-chosen value coinciding is
+  // effectively impossible — fold it. (aws-s3-deployment is a very common construct.)
+  if (logicalId && value === logicalId) return true;
   const stackName = constructPath.split('/')[0];
   if (!stackName || !CFN_RANDOM_SUFFIX.test(value)) return false;
   if (value.startsWith(`${stackName}-`)) return true;

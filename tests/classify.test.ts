@@ -6526,6 +6526,37 @@ describe('CFn auto-generated name folding (generated tier)', () => {
     );
     expect(f?.tier).toBe('undeclared');
   });
+
+  // #509: a BucketDeployment's AwsCliLayer LayerName reads back its bare LOGICAL ID
+  // ("CaDeployAwsCliLayer58606CDE") — no `<stack>-` prefix, no extra random suffix — so the
+  // strict/truncated shapes above don't match; the logical-id-echo branch folds it.
+  it('an undeclared value equal to the resource logical id (bare CFn-generated name) folds as generated', () => {
+    const layer: DesiredResource = {
+      logicalId: 'CaDeployAwsCliLayer58606CDE',
+      resourceType: 'AWS::Lambda::LayerVersion',
+      physicalId: 'arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1',
+      constructPath: 'CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer',
+      declared: {},
+    };
+    const f = classifyResource(layer, { LayerName: 'CaDeployAwsCliLayer58606CDE' }, bare).find(
+      (x) => x.path === 'LayerName'
+    );
+    expect(f?.tier).toBe('generated');
+  });
+
+  it('an undeclared value merely SIMILAR to the logical id (not exact) stays undeclared', () => {
+    const layer: DesiredResource = {
+      logicalId: 'CaDeployAwsCliLayer58606CDE',
+      resourceType: 'AWS::Lambda::LayerVersion',
+      physicalId: 'arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1',
+      constructPath: 'CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer',
+      declared: {},
+    };
+    const f = classifyResource(layer, { LayerName: 'my-custom-layer' }, bare).find(
+      (x) => x.path === 'LayerName'
+    );
+    expect(f?.tier).toBe('undeclared');
+  });
 });
 
 describe('Cloud Control field mis-echo / alternative-representation folds (VPC noise)', () => {
