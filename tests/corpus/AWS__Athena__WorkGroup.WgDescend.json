@@ -1,0 +1,127 @@
+{
+  "corpusVersion": 1,
+  "description": "#565: a workgroup declaring NO WorkGroupConfiguration with ONE non-default sub-key set out of band (BytesScannedCutoffPerQuery) DESCENDS leaf-by-leaf — only that sub-key surfaces undeclared while the constant defaults fold atDefault (DESCEND_UNDECLARED_OBJECT_PATHS), instead of the whole object surfacing.",
+  "resource": {
+    "logicalId": "WgDescend",
+    "resourceType": "AWS::Athena::WorkGroup",
+    "physicalId": "cdkrd-integ-athena-descend",
+    "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend",
+    "declared": {
+      "Description": "cdkrd athena-descend fixture",
+      "Name": "cdkrd-integ-athena-descend",
+      "RecursiveDeleteOption": true,
+      "State": "ENABLED"
+    }
+  },
+  "liveRaw": {
+    "WorkGroupConfiguration": {
+      "EnforceWorkGroupConfiguration": true,
+      "EngineVersion": {
+        "SelectedEngineVersion": "AUTO",
+        "EffectiveEngineVersion": "Athena engine version 3"
+      },
+      "PublishCloudWatchMetricsEnabled": true,
+      "BytesScannedCutoffPerQuery": 10000000,
+      "RequesterPaysEnabled": false
+    },
+    "Description": "cdkrd athena-descend fixture",
+    "State": "ENABLED",
+    "CreationTime": "1783103433",
+    "Tags": [],
+    "Name": "cdkrd-integ-athena-descend"
+  },
+  "schema": {
+    "readOnly": ["CreationTime"],
+    "writeOnly": ["RecursiveDeleteOption", "WorkGroupConfigurationUpdates"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "CreationTime",
+      "WorkGroupConfiguration.EngineVersion.EffectiveEngineVersion",
+      "WorkGroupConfigurationUpdates.EngineVersion.EffectiveEngineVersion"
+    ],
+    "writeOnlyPaths": [
+      "RecursiveDeleteOption",
+      "WorkGroupConfiguration.AdditionalConfiguration",
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.CoordinatorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.DefaultExecutorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.MaxConcurrentDpus",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfiguration.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "WgDescend",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "RecursiveDeleteOption",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-integ-athena-descend",
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WgDescend",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration.EnforceWorkGroupConfiguration",
+      "actual": true,
+      "nested": true,
+      "physicalId": "cdkrd-integ-athena-descend",
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WgDescend",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration.EngineVersion",
+      "actual": {
+        "SelectedEngineVersion": "AUTO"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-integ-athena-descend",
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WgDescend",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration.PublishCloudWatchMetricsEnabled",
+      "actual": true,
+      "nested": true,
+      "physicalId": "cdkrd-integ-athena-descend",
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "WgDescend",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration.BytesScannedCutoffPerQuery",
+      "actual": 10000000,
+      "nested": true,
+      "physicalId": "cdkrd-integ-athena-descend",
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+    }
+  ]
+}
