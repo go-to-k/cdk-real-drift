@@ -622,7 +622,7 @@ describe('report', () => {
     it('CLEAN with one informational tier is exactly 3 lines: header/result/info, no blanks', () => {
       const { text } = run([skipped]);
       expect(text.split('\n')).toEqual([
-        '=== cdkrd check: stack (us-east-1) ===',
+        '=== check: stack (us-east-1) ===',
         'result: CLEAN',
         'info: skipped=1 — NOT checked (coverage incomplete: custom resource 1) — run with --verbose for the list',
       ]);
@@ -630,7 +630,7 @@ describe('report', () => {
 
     it('drift: first section under the header; verdict FRAMED by a rule, blank before the frame (R48)', () => {
       const lines = run([F('declared')]).text.split('\n');
-      expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
+      expect(lines[0]).toBe('=== check: stack (us-east-1) ===');
       expect(lines[1]).toMatch(/^\[CFn-Declared Drift: 1\]/); // no stray blank after the header
       const resultIdx = lines.findIndex((l) => l.startsWith('result:'));
       expect(lines[resultIdx - 1]).toMatch(/^─+$/); // top rule directly above the verdict
@@ -642,12 +642,12 @@ describe('report', () => {
 
     it('CLEAN stack is NOT framed by rules — nothing above the verdict to get lost under', () => {
       const lines = run([]).text.split('\n');
-      expect(lines).toEqual(['=== cdkrd check: stack (us-east-1) ===', 'result: CLEAN']);
+      expect(lines).toEqual(['=== check: stack (us-east-1) ===', 'result: CLEAN']);
     });
 
     it('two drift sections: blank BETWEEN them, none after the header (R48)', () => {
       const lines = run([F('declared'), F('undeclared', 'Q')]).text.split('\n');
-      expect(lines[0]).toBe('=== cdkrd check: stack (us-east-1) ===');
+      expect(lines[0]).toBe('=== check: stack (us-east-1) ===');
       expect(lines[1]).toMatch(/^\[CFn-Declared Drift: 1\]/);
       const undeclaredIdx = lines.findIndex((l) => l.startsWith('[CFn-Undeclared'));
       expect(lines[undeclaredIdx - 1]).toBe(''); // grouping blank between sections
@@ -662,10 +662,10 @@ describe('report', () => {
       separate();
       report([], 'StackB (us-east-1)', { log });
       expect(out.join('\n').split('\n')).toEqual([
-        '=== cdkrd check: StackA (ap-northeast-1) ===',
+        '=== check: StackA (ap-northeast-1) ===',
         'result: CLEAN',
         '',
-        '=== cdkrd check: StackB (us-east-1) ===',
+        '=== check: StackB (us-east-1) ===',
         'result: CLEAN',
       ]);
     });
