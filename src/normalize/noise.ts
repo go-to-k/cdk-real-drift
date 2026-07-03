@@ -1756,6 +1756,29 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   when undeclared — a user who sets a custom Username declares it (compared in the declared
   //   loop). Fold value-independent. Observed live first-run (hunt 2026-07-03 round E).
   'AWS::EKS::AccessEntry': new Set(['Username']),
+  //   AWS::Glue::Job.MaxCapacity / .AllocatedCapacity — a job that sizes itself with the modern
+  //   `WorkerType` + `NumberOfWorkers` pair (a glueetl / gluestreaming job on Glue 2.0+) declares
+  //   NEITHER capacity field; AWS DERIVES both from the worker sizing and reads them back
+  //   (G.1X × 10 workers → MaxCapacity 10 / AllocatedCapacity 10; G.025X × 2 → MaxCapacity 0.5 /
+  //   AllocatedCapacity 0). The two are mutually exclusive with WorkerType/NumberOfWorkers, so
+  //   when undeclared they can only be an AWS reflection of the declared sizing, never user intent
+  //   — and a real change to the sizing surfaces on `WorkerType` / `NumberOfWorkers` in the
+  //   declared loop. `AllocatedCapacity` is additionally a legacy field AWS always echoes. Fold
+  //   value-independent so every DPU value folds without a table (a job that instead DECLARES
+  //   MaxCapacity — a Python-shell job — goes through the declared loop, compared). Observed live
+  //   first-run on dev-main-Db2Csv (five G.1X ETL jobs + one G.025X streaming job), no edit.
+  'AWS::Glue::Job': new Set(['MaxCapacity', 'AllocatedCapacity']),
+  //   AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress.SourceSecurityGroupName — a rule that
+  //   references its peer group by id (`SourceSecurityGroupId`, the CDK default) declares no
+  //   `SourceSecurityGroupName`; AWS DERIVES and reads back the referenced group's NAME
+  //   ("dev-main-Db2Csv-Glue-sg") from that id. It can never be a constant we pin (it embeds the
+  //   per-group name), and when undeclared it is a pure reflection of the declared
+  //   SourceSecurityGroupId, not user intent — a real change to the peer surfaces on
+  //   `SourceSecurityGroupId` in the declared loop. Fold value-independent. (A user who references
+  //   a peer by name — EC2-Classic style — DECLARES SourceSecurityGroupName, compared.) Observed
+  //   live first-run on dev-main-Db2Csv's self-referencing Glue SG ingress, no edit.
+  'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupName']),
+  'AWS::EC2::SecurityGroupEgress': new Set(['SourceSecurityGroupName']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
