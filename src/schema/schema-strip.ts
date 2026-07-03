@@ -39,6 +39,11 @@ export async function getSchemaInfo(
 // and the top-level TagSpecifications stay writeOnly — the override does not project them.)
 export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   'AWS::EC2::LaunchTemplate': ['LaunchTemplateData'],
+  // AWS::MSK::Configuration `ServerProperties` is writeOnly (CC never echoes the
+  // server.properties blob); the SDK_SUPPLEMENTS reader fetches the latest revision's
+  // decoded properties via kafka:DescribeConfigurationRevision, so compare it (through
+  // isPropertiesFileEqual — PROPERTIES_FILE_PATHS), not readGap.
+  'AWS::MSK::Configuration': ['ServerProperties'],
   // CognitoEvents is writeOnly in the registry schema (CC GetResource never returns it),
   // but readCognitoIdentityPool projects it from the cognito-sync API, so compare it.
   // PushSync / CognitoStreams stay writeOnly readGaps (the override does not project them).

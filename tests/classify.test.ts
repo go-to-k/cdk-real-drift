@@ -6819,16 +6819,20 @@ describe('CFn auto-generated name folding (generated tier)', () => {
     expect(f?.tier).toBe('generated');
   });
 
+  // The logical-id-echo rule is EXACT-match: a value that is not the logical id verbatim
+  // stays undeclared. Tested on a type WITHOUT a value-independent name fold (Lambda
+  // LayerVersion's LayerName is folded regardless of value by GENERATED_TOPLEVEL_PATHS, so it
+  // cannot isolate this boundary).
   it('an undeclared value merely SIMILAR to the logical id (not exact) stays undeclared', () => {
-    const layer: DesiredResource = {
+    const r: DesiredResource = {
       logicalId: 'CaDeployAwsCliLayer58606CDE',
-      resourceType: 'AWS::Lambda::LayerVersion',
-      physicalId: 'arn:aws:lambda:us-east-1:111111111111:layer:CaDeployAwsCliLayer58606CDE:1',
-      constructPath: 'CdkRealDriftIntegS3LensMiscRich/CaDeploy/AwsCliLayer',
+      resourceType: 'AWS::SomeOther::Type',
+      physicalId: 'some-physical-id',
+      constructPath: 'CdkRealDriftIntegS3LensMiscRich/Thing',
       declared: {},
     };
-    const f = classifyResource(layer, { LayerName: 'my-custom-layer' }, bare).find(
-      (x) => x.path === 'LayerName'
+    const f = classifyResource(r, { CustomName: 'my-custom-name' }, bare).find(
+      (x) => x.path === 'CustomName'
     );
     expect(f?.tier).toBe('undeclared');
   });
@@ -8069,5 +8073,57 @@ describe('ELBv2 TrustStore CA bundle content-hash integrity signal (#505)', () =
     expect(
       findings.some((f) => f.tier === 'readGap' && f.path === 'CaCertificatesBundleS3Bucket')
     ).toBe(true);
+  });
+});
+
+describe('MSK Configuration ServerProperties properties-file compare (#508)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(), // ServerProperties exempted (OVERRIDE_READABLE_WRITEONLY) -> compared
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'MskConfig',
+    resourceType: 'AWS::MSK::Configuration',
+    physicalId: 'arn:aws:kafka:us-east-1:111111111111:configuration/c/abc-1',
+    declared,
+  });
+  const declared = {
+    Name: 'c',
+    ServerProperties:
+      'auto.create.topics.enable=false\ndefault.replication.factor=3\nmin.insync.replicas=2\n',
+  };
+
+  it('a reformatted-but-equivalent supplemented blob is NOT declared drift', () => {
+    const findings = classifyResource(
+      res(declared),
+      {
+        Name: 'c',
+        // reordered + comment + blank line (the shape a supplement/echo returns)
+        ServerProperties:
+          '# stored\nmin.insync.replicas=2\n\ndefault.replication.factor=3\nauto.create.topics.enable=false',
+      },
+      emptySchema
+    );
+    expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+  });
+
+  it('an out-of-band revision (auto.create.topics.enable flipped) surfaces as declared drift — #508 FN closed', () => {
+    const findings = classifyResource(
+      res(declared),
+      {
+        Name: 'c',
+        ServerProperties:
+          'auto.create.topics.enable=true\ndefault.replication.factor=3\nmin.insync.replicas=2\n',
+      },
+      emptySchema
+    ).filter((f) => f.tier === 'declared');
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.path).toBe('ServerProperties');
   });
 });

@@ -8,6 +8,7 @@ import {
   isCfnTemplateNonAsciiMask,
   isPemEqual,
   isAccessStringEqual,
+  isPropertiesFileEqual,
   isSshPublicKeyEqual,
   SSH_PUBLIC_KEY_PATHS,
   CASE_INSENSITIVE_PATHS,
@@ -1038,6 +1039,18 @@ describe('parseSchema', () => {
     ]);
   });
 
+  it('exemptOverrideReadable un-marks MSK Configuration ServerProperties (#508)', () => {
+    // ServerProperties is writeOnly in the registry schema; the SDK_SUPPLEMENTS reader makes
+    // it readable via DescribeConfigurationRevision, so it must be compared, not readGap'd.
+    const raw = parseSchema(
+      JSON.stringify({ writeOnlyProperties: ['/properties/ServerProperties'] })
+    );
+    const exempt = exemptOverrideReadable(raw, 'AWS::MSK::Configuration');
+    expect(exempt.writeOnly.has('ServerProperties')).toBe(false);
+    expect(exempt.writeOnlyPaths).not.toContain('ServerProperties');
+    expect(OVERRIDE_READABLE_WRITEONLY['AWS::MSK::Configuration']).toEqual(['ServerProperties']);
+  });
+
   it('exemptOverrideReadable un-marks Cognito IdentityPool CognitoEvents (PushSync/CognitoStreams stay readGaps)', () => {
     // All three are writeOnly in the registry schema, but readCognitoIdentityPool projects
     // only CognitoEvents (the Sync trigger) from cognito-sync; PushSync/CognitoStreams are
@@ -1474,6 +1487,34 @@ describe('isAccessStringEqual — Redis/Valkey ACL canonicalization (#482)', () 
   it('non-strings never match', () => {
     expect(isAccessStringEqual(undefined, 'on ~* -@all')).toBe(false);
     expect(isAccessStringEqual('on ~* -@all', 42)).toBe(false);
+  });
+});
+
+describe('isPropertiesFileEqual — Java .properties blob (MSK ServerProperties, #508)', () => {
+  it('line order / blank lines / comments / trailing newline are cosmetic — not drift', () => {
+    const declared =
+      'auto.create.topics.enable=false\ndefault.replication.factor=3\nmin.insync.replicas=2\nlog.retention.hours=168\n';
+    const live =
+      '# managed by cdkrd\nlog.retention.hours=168\nmin.insync.replicas=2\n\ndefault.replication.factor=3\nauto.create.topics.enable=false';
+    expect(isPropertiesFileEqual(declared, live)).toBe(true);
+    // whitespace around `=` is trimmed
+    expect(isPropertiesFileEqual('a=1\nb=2', 'a = 1\nb= 2')).toBe(true);
+  });
+
+  it('a genuine key/value change still differs (fail-closed)', () => {
+    // the out-of-band flip the supplement exists to catch
+    expect(
+      isPropertiesFileEqual('auto.create.topics.enable=false', 'auto.create.topics.enable=true')
+    ).toBe(false);
+    // an added key
+    expect(isPropertiesFileEqual('a=1', 'a=1\nb=2')).toBe(false);
+    // a removed key
+    expect(isPropertiesFileEqual('a=1\nb=2', 'a=1')).toBe(false);
+  });
+
+  it('non-strings never match', () => {
+    expect(isPropertiesFileEqual(undefined, 'a=1')).toBe(false);
+    expect(isPropertiesFileEqual('a=1', 42)).toBe(false);
   });
 });
 

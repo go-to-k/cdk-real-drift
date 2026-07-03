@@ -92,6 +92,9 @@ importers:
       '@aws-sdk/client-iam':
         specifier: ^3.1065.0
         version: 3.1066.0
+      '@aws-sdk/client-kafka':
+        specifier: ^3.1079.0
+        version: 3.1079.0
       '@aws-sdk/client-kms':
         specifier: ^3.1066.0
         version: 3.1066.0
@@ -404,6 +407,10 @@ packages:
 
   '@aws-sdk/client-iam@3.1066.0':
     resolution: {integrity: sha512-RCeIceMX5EbrOBKAf8a1863EhJ82RHQ1VRhlNbjpOJL06LRK7RzNuBueJBHxEza05q594kQX7bx2yLpG4ue2Tg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-kafka@3.1079.0':
+    resolution: {integrity: sha512-jjl2t1GTmgJHMLuKuSpgk6h/9F8nX3nAZQxljxWBRWQq1448AzhgPiVEqx2n3Vp1TcwIOHaHFtH9mEwt9gi/4Q==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-kms@3.1066.0':
@@ -4102,6 +4109,17 @@ snapshots:
       '@smithy/core': 3.24.6
       '@smithy/fetch-http-handler': 5.4.6
       '@smithy/node-http-handler': 4.7.7
+      '@smithy/types': 4.15.0
+      tslib: 2.8.1
+
+  '@aws-sdk/client-kafka@3.1079.0':
+    dependencies:
+      '@aws-sdk/core': 3.974.27
+      '@aws-sdk/credential-provider-node': 3.972.62
+      '@aws-sdk/types': 3.973.15
+      '@smithy/core': 3.29.0
+      '@smithy/fetch-http-handler': 5.6.2
+      '@smithy/node-http-handler': 4.9.2
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 

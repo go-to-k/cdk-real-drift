@@ -116,6 +116,7 @@ import {
   GetResourceCommand,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
+import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
@@ -142,6 +143,7 @@ const ecs = mockClient(ECSClient);
 const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
 const cloudcontrol = mockClient(CloudControlClient);
+const kafka = mockClient(KafkaClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -185,6 +187,7 @@ beforeEach(() => {
   logs.reset();
   route53.reset();
   configService.reset();
+  kafka.reset();
   eventbridge.reset();
   apigw.reset();
   ecs.reset();
@@ -1986,6 +1989,32 @@ describe('writeConfigRuleInputParameters (AWS::Config::ConfigRule, JSON-string p
     await expect(writer(ctx({ physicalId: 'missing' }), [inputParamsOp({ a: 1 })])).rejects.toThrow(
       /Config rule not found/
     );
+  });
+});
+
+describe('writeMskConfiguration (AWS::MSK::Configuration ServerProperties, #508)', () => {
+  const arn = 'arn:aws:kafka:us-east-1:111111111111:configuration/c/abc-1';
+  const op = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/ServerProperties',
+    value,
+    human: 'ServerProperties -> deployed-template value',
+  });
+
+  it('creates the next revision via UpdateConfiguration with the desired properties as bytes', async () => {
+    kafka.on(UpdateConfigurationCommand).resolves({});
+    const desired = 'auto.create.topics.enable=false\nlog.retention.hours=168\n';
+    const writer = resolveSdkWriter('AWS::MSK::Configuration', [op(desired)])!;
+    await writer(ctx({ physicalId: arn }), [op(desired)]);
+    const input = kafka.commandCalls(UpdateConfigurationCommand)[0].args[0].input;
+    expect(input.Arn).toBe(arn);
+    expect(new TextDecoder().decode(input.ServerProperties as Uint8Array)).toBe(desired);
+  });
+
+  it('throws on an unexpected op (never a silent no-op)', async () => {
+    const removeOp: PatchOp = { op: 'remove', path: '/ServerProperties', human: 'x' };
+    const writer = resolveSdkWriter('AWS::MSK::Configuration', [removeOp])!;
+    await expect(writer(ctx({ physicalId: arn }), [removeOp])).rejects.toThrow(/unexpected op/);
   });
 });
 

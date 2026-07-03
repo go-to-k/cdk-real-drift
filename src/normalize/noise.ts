@@ -2252,6 +2252,36 @@ export function isAccessStringEqual(a: unknown, b: unknown): boolean {
   return na.length === nb.length && na.every((t, i) => t === nb[i]);
 }
 
+// Per-type property paths whose value is a Java `.properties` FILE (key=value lines) that
+// AWS accepts as plaintext but stores/echoes with its own formatting — line order, blank
+// lines, `#`/`!` comments and trailing newline are all cosmetic. Compared as parsed
+// key=value MAPS (order/comment/blank/trailing-newline insensitive) so a clean deploy is
+// not drift; a genuine key add/remove/value change still differs. AWS::MSK::Configuration
+// `ServerProperties` — the Kafka server.properties blob, supplemented via
+// DescribeConfigurationRevision (writeOnly, #508).
+export const PROPERTIES_FILE_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::MSK::Configuration': new Set(['ServerProperties']),
+};
+export function isPropertiesFileEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const parse = (s: string): Map<string, string> => {
+    const m = new Map<string, string>();
+    for (const raw of s.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (line.length === 0 || line.startsWith('#') || line.startsWith('!')) continue;
+      const eq = line.indexOf('=');
+      if (eq < 0) continue;
+      m.set(line.slice(0, eq).trim(), line.slice(eq + 1).trim());
+    }
+    return m;
+  };
+  const ma = parse(a);
+  const mb = parse(b);
+  if (ma.size !== mb.size) return false;
+  for (const [k, v] of ma) if (mb.get(k) !== v) return false;
+  return true;
+}
+
 // Per-type property paths whose value is a set of HTTP HEADER NAMES, which AWS
 // stores/echoes LOWERCASED (header names are case-insensitive per RFC 9110). The
 // template keeps the author's casing (CDK CORS `AllowHeaders:

@@ -528,6 +528,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `SecurityGroupIds` / `SubnetIds`, which the Cloud Control read returns only
   inside its read-only echo attribute — an out-of-band security-group swap or
   config-parameter change is otherwise invisible),
+  `kafka:DescribeConfiguration` + `kafka:DescribeConfigurationRevision`
+  (supplement an `AWS::MSK::Configuration` with its writeOnly `ServerProperties`
+  Kafka blob — an out-of-band `update-configuration` revision is otherwise
+  invisible),
   `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)

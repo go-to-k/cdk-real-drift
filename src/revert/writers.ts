@@ -102,6 +102,7 @@ import {
   DescribeConfigRulesCommand,
   PutConfigRuleCommand,
 } from '@aws-sdk/client-config-service';
+import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import {
   DescribeEventBusCommand,
   EventBridgeClient,
@@ -1359,6 +1360,26 @@ const writeEcsServiceWriteOnlyProps: SdkWriter = async (ctx, ops) => {
   await c.send(new UpdateServiceCommand(input));
 };
 
+// AWS::MSK::Configuration `ServerProperties` is writeOnly, so Cloud Control cannot patch it
+// (it can't read it); a "revert" is APPEND-ONLY — kafka:UpdateConfiguration creates the NEXT
+// revision carrying the desired properties (the only mechanism MSK offers), which becomes the
+// LatestRevision the SDK_SUPPLEMENTS reader then reads back. The op value is the desired
+// plaintext server.properties blob (CFn accepts plaintext; the API takes bytes). #508.
+const writeMskConfiguration: SdkWriter = async (ctx, ops) => {
+  const arn = str(ctx.physicalId);
+  if (!arn) throw new Error('cannot resolve MSK Configuration ARN for revert');
+  const op = ops.find((o) => o.path === '/ServerProperties');
+  if (op === undefined || op.op === 'remove' || typeof op.value !== 'string')
+    throw new Error('MSK Configuration ServerProperties revert: unexpected op');
+  const client = new KafkaClient({ region: ctx.region });
+  await client.send(
+    new UpdateConfigurationCommand({
+      Arn: arn,
+      ServerProperties: new TextEncoder().encode(op.value),
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,
@@ -1391,6 +1412,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   'AWS::Cognito::IdentityPool': { CognitoEvents: writeCognitoIdentityPoolEvents },
   'AWS::Config::ConfigRule': { InputParameters: writeConfigRuleInputParameters },
+  'AWS::MSK::Configuration': { ServerProperties: writeMskConfiguration },
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
   'AWS::Logs::LogGroup': { BearerTokenAuthenticationEnabled: writeLogGroupBearerTokenAuth },
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {

@@ -342,6 +342,24 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable).toHaveLength(0);
   });
 
+  it('MSK Configuration ServerProperties drift routes to the kafka:UpdateConfiguration SDK prop-writer (#508)', () => {
+    // ServerProperties is writeOnly (CC can't patch it), but the SDK_PROP_WRITERS writer
+    // reverts it append-only by creating the next configuration revision — a single 'sdk'
+    // item, NOT a not-revertable finding nor a CC patch.
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::MSK::Configuration',
+      path: 'ServerProperties',
+      physicalId: 'arn:aws:kafka:us-east-1:111111111111:configuration/c/abc-1',
+      desired: 'auto.create.topics.enable=false',
+      actual: 'auto.create.topics.enable=true',
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+  });
+
   it('a declared drift under ECS ServiceConnectConfiguration routes to the nested SDK (UpdateService) writer', () => {
     // The whole writeOnly prop cannot be sub-path patched by CC, so any drift under it is
     // reverted via the SDK_NESTED_WRITERS UpdateService writer (re-supplies the declared

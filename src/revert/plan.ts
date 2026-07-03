@@ -27,7 +27,10 @@ import { SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js'
 // writer covers yet. Findings under these paths are reported not-revertable instead of
 // emitting a CC patch that always fails. (ECS `ServiceConnectConfiguration` GRADUATED
 // out of this table — it now reverts via the `SDK_NESTED_WRITERS` UpdateService writer.
-// Empty for now; ECS `VolumeConfigurations` will populate it once that prop is projected.)
+// ECS `VolumeConfigurations` will populate it once that prop is projected.)
+// (AWS::MSK::Configuration `ServerProperties` GRADUATED out of this table — it now reverts
+// via the `SDK_PROP_WRITERS` kafka:UpdateConfiguration writer, which creates the next
+// revision carrying the desired properties.)
 const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {};
 
 // Per type, SYNTHETIC top-level fields an SDK_SUPPLEMENTS reader COMPUTES (not real AWS
