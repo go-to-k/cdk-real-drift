@@ -18,6 +18,7 @@
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
 import { deepEqual } from '../diff/drift-calculator.js';
+import { annotateHints } from '../diff/hints.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
@@ -131,6 +132,9 @@ export function formatFinding(f: Finding): string {
     s += formatArrayDelta(f.arrayDelta);
   else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     s += ` = ${style.actual(j(f.actual))}`;
+  // A non-classifying origin hint (diff/hints.ts) — the finding is still real drift; this
+  // just names where the live value likely came from. Dim trailing line, below the values.
+  if (f.hint) s += `\n      ${style.infoTier(`↳ ${f.hint}`)}`;
   return s;
 }
 
@@ -240,8 +244,12 @@ function groupReasons(items: Finding[]): string {
     .join(', ');
 }
 
-export function report(findings: Finding[], header: string, opts: ReportOptions = {}): number {
+export function report(rawFindings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
+  // Annotate origin hints (diff/hints.ts) here, at the single render chokepoint, so the
+  // text report, the --json payload, and the --pre-deploy report all carry them. A hint is
+  // display-only — it never changes a tier — so the `drifted` verdict below is unaffected.
+  const findings = annotateHints(rawFindings);
   // unrecorded findings (R60/R62): an inventory awaiting a baseline decision,
   // not drift — they never count toward the verdict or the exit.
   const isDriftHere = (f: Finding): boolean => DRIFT_TIERS.includes(f.tier) && !f.unrecorded;

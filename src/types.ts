@@ -22,6 +22,14 @@ export interface Finding {
   desired?: unknown;
   actual?: unknown;
   note?: string;
+  // A non-classifying, human-facing EXPLANATION for a finding whose live value has a
+  // recognizable external origin — e.g. the CloudWatch Application Signals / Lambda
+  // Insights auto-instrumentation footprint (see diff/hints.ts, annotateHints). Unlike a
+  // fold, it does NOT change the tier: the finding is still reported as real drift, the
+  // hint only tells the user WHERE it likely came from ("enabled at the account/region
+  // level, not per-resource"), so an unexpected account-wide enablement is never hidden.
+  // Rendered as a dim trailing line in the text report and carried through --json.
+  hint?: string;
   // undeclared tier only (R62): the value has NO baseline entry and its resource
   // was never snapshot-complete — the user has not decided on it yet, so it is an
   // UNRECORDED inventory item, not drift. Set by applyBaseline; excluded from the
