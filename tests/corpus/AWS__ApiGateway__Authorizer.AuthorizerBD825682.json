@@ -43,7 +43,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AuthorizerBD825682",
       "resourceType": "AWS::ApiGateway::Authorizer",
       "path": "AuthType",

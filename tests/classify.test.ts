@@ -871,13 +871,16 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(disabled.undeclared).toEqual([]);
     expect(disabled.atDefault).toEqual([]);
 
-    // Cognito-derived AuthType folds; a different (e.g. custom) AuthType surfaces.
+    // AuthType is a derived, non-declarable read-back of the declared Type, so BOTH the
+    // Cognito ("cognito_user_pools") and TOKEN/REQUEST ("custom", observed live on a
+    // dev-main AimAssociation TOKEN authorizer) forms fold value-independently.
     expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'cognito_user_pools' }).atDefault).toEqual([
       'AuthType',
     ]);
-    expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'custom' }).undeclared).toEqual([
+    expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'custom' }).atDefault).toEqual([
       'AuthType',
     ]);
+    expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'custom' }).undeclared).toEqual([]);
   });
 
   it('hunt-lowcov first-run folds: S3Express DirectoryBucket / S3Tables TableBucket / Logs Delivery family', () => {
