@@ -795,6 +795,11 @@ describe('noise suppressors', () => {
     expect(CASE_INSENSITIVE_PATHS['AWS::EMRServerless::Application']?.has('Type')).toBe(true);
   });
 
+  it('CASE_INSENSITIVE_PATHS: DMS Endpoint EndpointType is folded case-insensitively', () => {
+    // Observed live (#500 reader live-test): declared "source" reads back "SOURCE".
+    expect(CASE_INSENSITIVE_PATHS['AWS::DMS::Endpoint']?.has('EndpointType')).toBe(true);
+  });
+
   it('KNOWN_DEFAULTS: misc-0cov-rich first-run service defaults are registered', () => {
     // Observed live (misc-0cov-rich): constant service defaults a fresh resource
     // reads back without declaring them.

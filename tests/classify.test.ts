@@ -2166,6 +2166,35 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // Found live by the #500 SDK_OVERRIDES reader live-test: DMS DescribeEndpoints echoes
+  // EndpointType UPPERCASE (source -> SOURCE), which the reader surfaces verbatim — a
+  // case-echo declared-drift FP on every fresh endpoint. Folded via CASE_INSENSITIVE_PATHS.
+  describe('case-insensitive scalar path (DMS Endpoint EndpointType, #500 reader)', () => {
+    const T = 'AWS::DMS::Endpoint';
+
+    it('lowercase declared `source` vs uppercase live `SOURCE` is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(T, { EndpointType: 'source' }),
+          { EndpointType: 'SOURCE' },
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely different EndpointType (source vs target) is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, { EndpointType: 'source' }),
+            { EndpointType: 'TARGET' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['EndpointType']);
+    });
+  });
+
   // Found live by the xfer-sync hunt fixture (#494): the Cloud Control read handler
   // remaps DataBrew Recipe Steps[].Action.Parameters free-form map keys to PascalCase
   // (SourceColumn) while the template AND the DataBrew service carry camelCase

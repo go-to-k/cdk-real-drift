@@ -1910,6 +1910,14 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // Observed live on fresh (non-imported) Aurora stacks in ap-northeast-1.
   'AWS::RDS::DBInstance': new Set(['DBInstanceIdentifier']),
   'AWS::RDS::DBCluster': new Set(['DBClusterIdentifier']),
+  // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /
+  // `target`) but the DMS API echoes it UPPERCASE (`SOURCE` / `TARGET`) on the
+  // DescribeEndpoints read (the SDK_OVERRIDES reader), so a case-sensitive compare
+  // false-flags declared drift on every check of a freshly deployed endpoint.
+  // `EndpointType` is effectively immutable (source<->target can't be flipped out
+  // of band) and the two valid values differ beyond case, so case-insensitive
+  // equality hides no real drift. Observed live on a fresh DMS Endpoint deploy.
+  'AWS::DMS::Endpoint': new Set(['EndpointType']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
