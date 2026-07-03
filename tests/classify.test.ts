@@ -2128,6 +2128,44 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // Observed live on fresh (non-imported) Aurora stacks: RDS lowercases DB
+  // identifiers on creation, so a mixed-case declared identifier (CDK derives it
+  // from the construct id) reads back all-lowercase — a case-only, unenforceable
+  // difference.
+  describe('case-insensitive scalar path (RDS DB identifiers)', () => {
+    it('mixed-case declared DBInstanceIdentifier vs lowercase live is NOT drift', () => {
+      expect(
+        classifyResource(
+          res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'dev-main-DbUsers-DB-writer' }),
+          { DBInstanceIdentifier: 'dev-main-dbusers-db-writer' },
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('mixed-case declared DBClusterIdentifier vs lowercase live is NOT drift', () => {
+      expect(
+        classifyResource(
+          res('AWS::RDS::DBCluster', { DBClusterIdentifier: 'Dev-Main-Aurora' }),
+          { DBClusterIdentifier: 'dev-main-aurora' },
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely different DBInstanceIdentifier is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'dev-main-writer' }),
+            { DBInstanceIdentifier: 'dev-main-reader' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['DBInstanceIdentifier']);
+    });
+  });
+
   // Found live by the xfer-sync hunt fixture (#494): the Cloud Control read handler
   // remaps DataBrew Recipe Steps[].Action.Parameters free-form map keys to PascalCase
   // (SourceColumn) while the template AND the DataBrew service carry camelCase
