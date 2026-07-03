@@ -10,7 +10,12 @@ vi.mock('@clack/prompts', async (importOriginal) => {
   return { ...actual, spinner: () => ({ start, stop, error, message: vi.fn() }) };
 });
 
-import { gatherWithProgress, progressLabel } from '../src/commands/progress.js';
+import {
+  gatherWithProgress,
+  positionPrefix,
+  progressLabel,
+  stackCountAnnouncement,
+} from '../src/commands/progress.js';
 
 // gatherWithProgress is generic and only forwards its run() result — a sentinel object
 // is enough to assert pass-through.
@@ -63,5 +68,35 @@ describe('progressLabel', () => {
   it('prefixes a 1-based [idx/total] counter in a multi-stack run', () => {
     expect(progressLabel(0, 3, 'A', 'ap-northeast-1')).toBe('[1/3] A (ap-northeast-1)');
     expect(progressLabel(2, 3, 'C', 'ap-northeast-1')).toBe('[3/3] C (ap-northeast-1)');
+  });
+});
+
+describe('positionPrefix (issue #539 — the [i/N] cue shared by spinner/header/prompt)', () => {
+  it('is empty for a lone stack (a bare [1/1] is noise)', () => {
+    expect(positionPrefix(0, 1)).toBe('');
+  });
+
+  it('is a 1-based [idx/total] with a trailing space in a multi-stack run', () => {
+    expect(positionPrefix(0, 3)).toBe('[1/3] ');
+    expect(positionPrefix(1, 3)).toBe('[2/3] ');
+    expect(positionPrefix(2, 3)).toBe('[3/3] ');
+  });
+
+  it('agrees with the spinner label prefix (all three cues stay consistent)', () => {
+    expect(`${positionPrefix(1, 3)}S (r)`).toBe(progressLabel(1, 3, 'S', 'r'));
+  });
+});
+
+describe('stackCountAnnouncement (issue #539 — up-front total)', () => {
+  it('is null for a lone stack (nothing to announce)', () => {
+    expect(stackCountAnnouncement(['Only'])).toBeNull();
+  });
+
+  it('is null for zero stacks', () => {
+    expect(stackCountAnnouncement([])).toBeNull();
+  });
+
+  it('lists the count and names for a multi-stack run', () => {
+    expect(stackCountAnnouncement(['A', 'B', 'C'])).toBe('note: checking 3 stack(s): A, B, C');
   });
 });

@@ -31,15 +31,32 @@ export async function gatherWithProgress<T>(
   }
 }
 
+// The `[2/3] ` position cue shared by the spinner label, the report header, and the
+// interactive resolve prompt (issue #539) so all three agree on "which stack of how
+// many". Empty for a lone stack (a bare `[1/1]` is noise). `idx` is the 0-based
+// position, `total` the number of stacks being processed. Pure + exported for tests.
+export function positionPrefix(idx: number, total: number): string {
+  return total > 1 ? `[${idx + 1}/${total}] ` : '';
+}
+
 // The per-stack spinner label: `[2/3] Stack (region)` in a multi-stack run, or just
-// `Stack (region)` for a lone stack (a bare `[1/1]` is noise). `idx` is the 0-based
-// position, `total` the number of stacks being processed.
+// `Stack (region)` for a lone stack. `idx` is the 0-based position, `total` the number
+// of stacks being processed.
 export function progressLabel(
   idx: number,
   total: number,
   stackName: string,
   region: string
 ): string {
-  const prefix = total > 1 ? `[${idx + 1}/${total}] ` : '';
-  return `${prefix}${stackName} (${region})`;
+  return `${positionPrefix(idx, total)}${stackName} (${region})`;
+}
+
+// The up-front "checking N stacks" announcement (issue #539): emitted once before the
+// per-stack loop so the user knows the total (and which stacks) at the start, not only
+// embedded inside the scrolled-away `[i/N]` spinner line. Only meaningful with >1 stack
+// — a lone stack returns null (consistent with the `[1/1]`-is-noise rule). Pure +
+// exported for tests; the caller gates on `--json` (stderr must not pollute JSON stdout).
+export function stackCountAnnouncement(stackNames: string[]): string | null {
+  if (stackNames.length <= 1) return null;
+  return `note: checking ${stackNames.length} stack(s): ${stackNames.join(', ')}`;
 }

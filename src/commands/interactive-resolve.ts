@@ -53,6 +53,7 @@ export interface ResolveParams {
   yes: boolean;
   removeUnrecorded: boolean;
   verbose: boolean;
+  positionPrefix?: string; // `[2/3] ` in a multi-stack run, '' otherwise (issue #539)
 }
 
 /**
@@ -279,13 +280,19 @@ export function buildResolveOptions(
 }
 
 /** The top-menu prompt, worded by the remaining exit state (drift vs unrecorded-only vs
- *  R141 no-baseline establish). Pure + exported. */
-export function resolveMenuMessage(stackName: string, code: number, establishOnly = false): string {
+ *  R141 no-baseline establish). `prefix` carries the `[2/3] ` multi-stack position cue
+ *  (issue #539) — empty for a lone stack. Pure + exported. */
+export function resolveMenuMessage(
+  stackName: string,
+  code: number,
+  establishOnly = false,
+  prefix = ''
+): string {
   if (establishOnly)
-    return `${stackName}: no .cdkrd baseline yet — record the current state as your baseline?`;
+    return `${prefix}${stackName}: no .cdkrd baseline yet — record the current state as your baseline?`;
   return code === 1
-    ? `${stackName}: drift found — what do you want to do?`
-    : `${stackName}: potential drift found (live-only, no baseline yet) — what do you want to do?`;
+    ? `${prefix}${stackName}: drift found — what do you want to do?`
+    : `${prefix}${stackName}: potential drift found (live-only, no baseline yet) — what do you want to do?`;
 }
 
 export async function resolveInteractively(p: ResolveParams): Promise<number> {
@@ -331,7 +338,7 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     const options = buildResolveOptions(actions, decidable.length, recordLabel);
 
     const choice = await select({
-      message: resolveMenuMessage(p.stackName, code, establishOnly),
+      message: resolveMenuMessage(p.stackName, code, establishOnly, p.positionPrefix ?? ''),
       options,
       initialValue: 'nothing',
     });
