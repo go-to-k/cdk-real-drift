@@ -315,6 +315,91 @@ const IAM_ATTACHMENT_SUBSET: Record<string, ReadonlySet<string>> = {
   'AWS::IAM::ManagedPolicy': new Set(['Roles', 'Users', 'Groups']),
 };
 
+// #493: identity-keyed object-array SUBSET folds where the identity is a COMPOSITE of
+// several fields AND live entries carry extra service-injected fields the template never
+// declares. This is a stricter cousin of noise.ts NAME_VALUE_SUBSET_PATHS (RDS OptionGroup
+// #480/#485) — that helper folds only PURE `{name,value}` pairs keyed by a single field, so
+// it disqualifies (returns null) the moment an element carries any other key. Elastic
+// Beanstalk's ConfigurationTemplate `OptionSettings` needs the composite variant:
+//   - the template declares a SUBSET (~3 entries); once the composite-identifier adapter
+//     (router.ts) makes the template CC-readable, CC returns the FULLY RESOLVED set (~58
+//     entries) the service default-fills — a whole-array `declared` FP on every fresh deploy;
+//   - each entry's identity is `Namespace` + `OptionName` together (neither alone is unique);
+//   - live entries carry an extra `ResourceName` field the template never declares, which is
+//     STRIPPED before the value compare (it is not part of the declared intent).
+// When every declared entry is present in live with an equal value (declared ⊆ live), the
+// whole-array `declared` diff is suppressed and the live-only (service-filled) entries surface
+// as nested undeclared inventory (recorded; a later change still surfaces). A genuine declared
+// entry change (missing key or differing value) returns null and the finding is kept.
+interface CompositeSubsetSpec {
+  re: RegExp;
+  keyFields: string[];
+  ignoreFields: ReadonlySet<string>;
+}
+const COMPOSITE_KEY_SUBSET_PATHS: Record<string, CompositeSubsetSpec> = {
+  'AWS::ElasticBeanstalk::ConfigurationTemplate': {
+    re: /(^|\.)OptionSettings$/,
+    keyFields: ['Namespace', 'OptionName'],
+    ignoreFields: new Set(['ResourceName']),
+  },
+};
+
+// Align a declared object array to a live one BY a composite identity key, ignoring the
+// spec's live-only fields in the value compare. Returns the live-only entries (server-
+// injected / out-of-band entries the template never declared) when every DECLARED entry is
+// present in live and deep-equal on its declared (non-ignored) fields (declared ⊆ live,
+// reorder-insensitive). Returns null when a declared entry is MISSING from live or a declared
+// field differs (a genuine declared drift the caller must keep), or when either side is not a
+// pure object array or an element is missing a key field (disqualify rather than risk muting).
+function alignCompositeKeySubset(
+  declared: unknown,
+  live: unknown,
+  spec: CompositeSubsetSpec
+): unknown[] | null {
+  if (!Array.isArray(declared) || !Array.isArray(live)) return null;
+  const keyOf = (e: unknown): string | null => {
+    if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
+    const r = e as Record<string, unknown>;
+    const parts: string[] = [];
+    for (const f of spec.keyFields) {
+      if (typeof r[f] !== 'string') return null;
+      parts.push(r[f] as string);
+    }
+    return JSON.stringify(parts);
+  };
+  // A declared entry deep-equals a live entry once BOTH sides drop the ignored (live-only)
+  // fields — the declared side never carries them, but strip symmetrically to be safe.
+  const stripIgnored = (e: Record<string, unknown>): Record<string, unknown> => {
+    if (spec.ignoreFields.size === 0) return e;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(e)) if (!spec.ignoreFields.has(k)) out[k] = v;
+    return out;
+  };
+  const lm = new Map<string, unknown>();
+  for (const e of live) {
+    const k = keyOf(e);
+    if (k === null) return null;
+    lm.set(k, e);
+  }
+  const declaredKeys = new Set<string>();
+  for (const d of declared) {
+    const k = keyOf(d);
+    if (k === null || !lm.has(k)) return null;
+    if (
+      !deepEqual(
+        stripIgnored(d as Record<string, unknown>),
+        stripIgnored(lm.get(k) as Record<string, unknown>)
+      )
+    )
+      return null;
+    declaredKeys.add(k);
+  }
+  return live.filter((e) => {
+    const k = keyOf(e);
+    return k !== null && !declaredKeys.has(k);
+  });
+}
+
 // R96/R98: recurse the declared and live sides of a property and emit each LIVE-only
 // nested key — a sub-key present in live but never declared, at any depth.
 //   - Plain objects (R96): walk every live key; recurse where declared, emit otherwise.
@@ -1104,6 +1189,31 @@ export function classifyResource(
               logicalId,
               resourceType,
               path: `${d.path}[${String((lo as Record<string, unknown>)[nvSubsetSpec.nameField])}]`,
+              actual: lo,
+              nested: true,
+            });
+          }
+          continue;
+        }
+      }
+      // #493: composite-identity object-array subset (ElasticBeanstalk ConfigurationTemplate
+      // `OptionSettings`): the template declares ~3 entries but CC returns the fully resolved
+      // ~58, keyed by Namespace+OptionName with a live-only ResourceName field. Same fold as
+      // the name/value subset above but with a composite key + ignored live-only fields. When
+      // every declared entry is a subset of live, suppress the whole-array `declared` FP and
+      // surface the service-filled extras as nested undeclared inventory.
+      const ckSubsetSpec = COMPOSITE_KEY_SUBSET_PATHS[resourceType];
+      if (ckSubsetSpec?.re.test(d.path)) {
+        const liveOnly = alignCompositeKeySubset(d.stateValue, d.awsValue, ckSubsetSpec);
+        if (liveOnly) {
+          for (const lo of liveOnly) {
+            const r = lo as Record<string, unknown>;
+            const key = ckSubsetSpec.keyFields.map((f) => String(r[f])).join('|');
+            findings.push({
+              tier: 'undeclared',
+              logicalId,
+              resourceType,
+              path: `${d.path}[${key}]`,
               actual: lo,
               nested: true,
             });
