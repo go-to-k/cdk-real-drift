@@ -1179,6 +1179,48 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['AutoRollbackConfiguration.Events']);
     });
 
+    // Live-observed FP (codepipeline-triggers fixture): a V2 pipeline's Git trigger
+    // filter lists (Branches/FilePaths Includes/Excludes) are `uniqueItems: true` sets the
+    // CFn schema does NOT mark insertionOrder:false, so they need a per-type UNORDERED entry.
+    // The path is under TWO array indices (Triggers[] and Push[]), so this also pins the
+    // numeric-index -> `*` wildcard normalization in the classify lookup.
+    it('UNORDERED_ARRAY_PROPS: CodePipeline trigger Branches.Includes reorder (nested under array indices) is NOT drift', () => {
+      const pipe = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Pipeline',
+        resourceType: 'AWS::CodePipeline::Pipeline',
+        physicalId: 'cdkrd-triggers-pipeline',
+        declared,
+      });
+      const withBranches = (includes: string[]): Record<string, unknown> => ({
+        Triggers: [
+          {
+            GitConfiguration: {
+              SourceActionName: 'GitHubSource',
+              Push: [{ Branches: { Includes: includes, Excludes: ['hotfix/*'] } }],
+            },
+          },
+        ],
+      });
+      // same branch-glob set, reordered (CodePipeline stores it as a set) -> no drift
+      expect(
+        classifyResource(
+          pipe(withBranches(['release/*', 'main', 'develop'])),
+          withBranches(['develop', 'release/*', 'main']),
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine glob add/remove still changes the multiset -> reports the nested path
+      expect(
+        tiers(
+          classifyResource(
+            pipe(withBranches(['release/*', 'main', 'develop'])),
+            withBranches(['release/*', 'main']),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Triggers.0.GitConfiguration.Push.0.Branches.Includes']);
+    });
+
     // Schema-driven fold (insertionOrder:false): ECS marks RequiresCompatibilities
     // insertionOrder:false, so the launch-type set AWS sorts alphabetically (declared
     // [FARGATE, EC2] read back [EC2, FARGATE]) folds from the schema — no per-type entry.

@@ -1573,6 +1573,10 @@ export function classifyResource(
       // table needed, FN-safe).
       if (
         (UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path) ||
+          // A `*` in a table entry matches an array index: numeric path segments are
+          // normalized to `*` before the lookup (e.g. a CodePipeline trigger filter
+          // `Triggers.0.GitConfiguration.Push.0.Branches.Includes` -> `Triggers.*.…Push.*.…`).
+          UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path.replace(/\.\d+(?=\.|$)/g, '.*')) ||
           schema.unorderedScalarPaths?.includes(d.path)) &&
         isEqualUnorderedScalarSet(d.stateValue, d.awsValue)
       )
