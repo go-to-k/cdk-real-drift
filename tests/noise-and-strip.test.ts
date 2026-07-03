@@ -332,6 +332,40 @@ describe('noise suppressors', () => {
     expect(isStringlyEqualScalar(true, '1')).toBe(false);
   });
 
+  it('isJsonStringStructEqual: folds typed<->string leaves inside a JSON-string prop', async () => {
+    const { isJsonStringStructEqual } = await import('../src/normalize/noise.js');
+    // A declared structured object whose live counterpart is the same value serialized as
+    // a JSON string, but with the numeric/boolean leaves quoted (AWS stringifies everything
+    // inside a JSON-string prop). Strict `===` at the leaves would false-drift the whole prop.
+    expect(
+      isJsonStringStructEqual(
+        { Port: 443, Tls: true, Name: 'db' },
+        '{"Port":"443","Tls":"true","Name":"db"}'
+      )
+    ).toBe(true);
+    // order-insensitive on the object keys, same as the all-string case
+    expect(
+      isJsonStringStructEqual('{"Tls":"true","Port":"443","Name":"db"}', {
+        Port: 443,
+        Tls: true,
+        Name: 'db',
+      })
+    ).toBe(true);
+    // nested + array leaves fold too
+    expect(
+      isJsonStringStructEqual(
+        { Cfg: { Retries: 3, Ports: [80, 443] } },
+        '{"Cfg":{"Retries":"3","Ports":["80","443"]}}'
+      )
+    ).toBe(true);
+    // a GENUINE value change at a leaf still differs (443 vs 8080)
+    expect(isJsonStringStructEqual({ Port: 443 }, '{"Port":"8080"}')).toBe(false);
+    // a genuine boolean flip still differs
+    expect(isJsonStringStructEqual({ Tls: true }, '{"Tls":"false"}')).toBe(false);
+    // structural mismatch (missing key) still differs
+    expect(isJsonStringStructEqual({ Port: 443, Extra: 1 }, '{"Port":"443"}')).toBe(false);
+  });
+
   it('isStringlyEqualScalarArray: typed<->string element arrays fold, real drift kept (R23)', async () => {
     const { isStringlyEqualScalarArray } = await import('../src/normalize/noise.js');
     // declared typed ports vs AWS stringly form, same order
