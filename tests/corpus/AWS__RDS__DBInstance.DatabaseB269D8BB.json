@@ -293,7 +293,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "Port",
@@ -320,7 +320,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "DBParameterGroupName",
@@ -347,7 +347,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "OptionGroupName",
@@ -410,7 +410,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "LicenseModel",
@@ -437,7 +437,7 @@
       "constructPath": "CdkdriftIntegHarvest13/Database"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DatabaseB269D8BB",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "CACertificateIdentifier",

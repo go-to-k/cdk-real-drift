@@ -232,7 +232,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "Port",
@@ -259,7 +259,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "DBParameterGroupName",
@@ -286,7 +286,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "StorageType",
@@ -304,7 +304,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "OptionGroupName",
@@ -340,7 +340,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "AllocatedStorage",
@@ -403,7 +403,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "LicenseModel",
@@ -430,7 +430,7 @@
       "constructPath": "CdkRealDriftIntegAuroraSv2/Cluster/writer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Clusterwriter2D9E9F4C",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "CACertificateIdentifier",

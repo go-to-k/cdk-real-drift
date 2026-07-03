@@ -23,6 +23,18 @@ fail() { echo "INTEG FAIL ($STACK): $*"; exit 1; }
 echo "=== [$STACK] deploy fixture ==="
 npx cdk deploy -f "$STACK" --require-approval never || fail "deploy"
 
+echo "=== [$STACK] check (NO baseline): engine-derived RDS defaults must NOT surface as potential drift ==="
+# ENGINE_DEFAULTS / DEFAULT_MANAGED_NAME_PATHS / the CACertificateIdentifier constant fold the
+# values AWS fills in from the engine family (StorageType "aurora", LicenseModel, the default
+# option group, the default CA) to atDefault, so a clean Aurora first run is not flooded with
+# them. A regression un-folds one and it reappears here. (DBParameterGroupName is NOT asserted
+# — this fixture pins a CUSTOM cluster/instance group, which correctly surfaces.)
+$CLI check "$STACK" --region "$REGION" | tee "/tmp/cdkrd-$STACK-pre.out"
+for prop in StorageType LicenseModel CACertificateIdentifier OptionGroupName; do
+  grep -qE "\.$prop \(" "/tmp/cdkrd-$STACK-pre.out" \
+    && fail "engine-derived default $prop surfaced as potential drift (ENGINE_DEFAULTS fold regressed)"
+done
+
 echo "=== [$STACK] record (write baseline) ==="
 $CLI record "$STACK" --region "$REGION" --yes || fail "record"
 

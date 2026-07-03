@@ -524,8 +524,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     NetworkType: 'IPV4',
     StorageThroughput: 0,
     // Boolean feature flags off by default (observed unanimous across the corpus
-    // instances). NOT folded: per-resource/engine values (Port, EngineVersion,
-    // LicenseModel, MasterUsername, StorageType, *ParameterGroupName, CACertificateIdentifier).
+    // instances). Engine-DERIVED values (Port, LicenseModel, StorageType, AllocatedStorage)
+    // fold via ENGINE_DEFAULTS, and the default parameter/option groups via
+    // DEFAULT_MANAGED_NAME_PATHS; still NOT folded here: genuinely per-resource values
+    // (EngineVersion, MasterUsername).
     CopyTagsToSnapshot: false,
     DedicatedLogVolume: false,
     EnableIAMDatabaseAuthentication: false,
@@ -533,6 +535,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ManageMasterUserPassword: false,
     MultiAZ: false,
     StorageEncrypted: false,
+    // The current AWS default RDS server certificate authority — unanimous across every
+    // corpus DBInstance (aurora-mysql AND mysql) and both real Aurora dogfood stacks. A
+    // constant, not engine-derived. Equality-gated: AWS rotates the default CA over time, so
+    // a differing identifier (an older CA, or one the user pinned) still surfaces.
+    CACertificateIdentifier: 'rds-ca-rsa2048-g1',
   },
   'AWS::RDS::DBCluster': {
     AutoMinorVersionUpgrade: true,
@@ -1299,6 +1306,68 @@ export const GENERATED_PATHS: Record<string, string[]> = {
 // no SupportedRegions reads back `[<own region>]`.
 export const CONTEXT_DEFAULTS: Record<string, Record<string, 'region' | 'regionList'>> = {
   'AWS::EC2::VPCEndpointService': { SupportedRegions: 'regionList' },
+};
+
+// Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
+// live ENGINE (RDS) — the engine-conditional twin of CONTEXT_DEFAULTS (region-derived) and
+// KNOWN_DEFAULTS (constant). A single constant cannot express these because the default
+// differs per engine family (aurora-mysql `StorageType`="aurora" vs a provisioned MySQL's
+// "gp2", MySQL `Port`=3306 vs Postgres 5432), which is why the original KNOWN_DEFAULTS
+// comment left them unfolded — but that flooded every clean CDK Aurora first run with 4-7
+// potential-drift lines for values the user never set and (for the create-only ones) can
+// never change. Each entry maps the live `Engine` string to the default value, or `undefined`
+// when this engine has no single default (then the value stays `undeclared`, recordable).
+// Equality-gated with typed<->string coercion (a DBInstance echoes the port/storage as a
+// STRING "3306"/"1" while a DBCluster carries the NUMBER): a value that differs from the
+// engine default no longer matches and surfaces as real undeclared drift. Aurora is
+// create-only on StorageType, so its fold hides nothing revertable.
+export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => unknown>> = {
+  'AWS::RDS::DBInstance': {
+    StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
+    AllocatedStorage: (e) => (e.startsWith('aurora') ? 1 : undefined),
+    Port: rdsDefaultPort,
+    LicenseModel: rdsDefaultLicense,
+  },
+  'AWS::RDS::DBCluster': {
+    StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
+    AllocatedStorage: (e) => (e.startsWith('aurora') ? 1 : undefined),
+    Port: rdsDefaultPort,
+  },
+};
+
+// RDS engine-family default listener port. Only families with a single well-known default
+// are listed; an unknown engine returns undefined (no fold).
+function rdsDefaultPort(engine: string): number | undefined {
+  if (/mysql|maria/.test(engine)) return 3306;
+  if (/postgres/.test(engine)) return 5432;
+  if (/oracle/.test(engine)) return 1521;
+  if (/sqlserver/.test(engine)) return 1433;
+  return undefined;
+}
+
+// RDS engine-family default LicenseModel. MySQL/MariaDB/Aurora-MySQL read back
+// "general-public-license"; Postgres/Aurora-Postgres "postgresql-license". Oracle/SQLServer
+// carry BYOL/license-included with no single default, so they return undefined (no fold).
+function rdsDefaultLicense(engine: string): string | undefined {
+  if (/postgres/.test(engine)) return 'postgresql-license';
+  if (/mysql|maria/.test(engine)) return 'general-public-license';
+  return undefined;
+}
+
+// Top-level UNDECLARED keys whose value is an AWS-MANAGED default resource NAME, recognizable
+// by a `default`-family prefix rather than a constant. An RDS instance that pins no custom
+// parameter/option group reads back the engine's DEFAULT group — `DBParameterGroupName`
+// "default.aurora-mysql8.0" / "default.mysql8.0", `OptionGroupName` "default:aurora-mysql-8-0"
+// / "default:mysql-8-0". The `default.` / `default:` prefix is reserved by AWS for these
+// managed groups, so a CUSTOM group (whose name never starts with that prefix — observed in
+// the corpus, e.g. "cdkrealdriftintegaurorarich-instancepg…") still surfaces as real
+// undeclared inventory. Version-independent (matches any `default.<engine><ver>`), so it does
+// not go stale as KNOWN_DEFAULTS constants would.
+export const DEFAULT_MANAGED_NAME_PATHS: Record<string, Record<string, RegExp>> = {
+  'AWS::RDS::DBInstance': {
+    DBParameterGroupName: /^default\./,
+    OptionGroupName: /^default:/,
+  },
 };
 
 // Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated

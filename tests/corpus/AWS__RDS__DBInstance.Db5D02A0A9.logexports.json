@@ -292,7 +292,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "Port",
@@ -319,7 +319,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "DBParameterGroupName",
@@ -337,7 +337,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "OptionGroupName",
@@ -400,7 +400,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "LicenseModel",
@@ -427,7 +427,7 @@
       "constructPath": "CdkRealDriftIntegRdsLogexportsReorder/Db"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Db5D02A0A9",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "CACertificateIdentifier",
