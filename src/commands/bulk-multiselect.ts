@@ -32,7 +32,8 @@ export function bulkSelectValues(options: { value: string }[], action: 'all' | '
   return action === 'all' ? options.map((o) => o.value) : [];
 }
 
-/** The dim key-hint line shown under the message. Pure + exported for unit tests.
+/** The key-hint line shown under the message (readable — style.note, not dim: it is
+ *  meant to be read). Pure + exported for unit tests.
  *  `esc = cancel` is listed last (R130): Esc aborts the prompt — in check's interactive
  *  flow that returns to the action menu, in a standalone `record`/`ignore` it cancels
  *  the command; either way the selection is discarded, so `cancel` is accurate in both. */
@@ -74,7 +75,7 @@ export async function bulkMultiselect(
       if (this.state === 'submit' || this.state === 'cancel') {
         return `${S_BAR_START}  ${message}\n${S_BAR}  ${(this.value ?? []).length} selected`;
       }
-      const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.infoTier(bulkSelectHint())}`;
+      const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.note(bulkSelectHint())}`;
       const selected = new Set(this.value ?? []);
       const rows = this.options.map(
         (opt, i) =>

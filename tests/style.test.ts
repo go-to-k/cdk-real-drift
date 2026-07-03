@@ -21,6 +21,22 @@ describe('style (R43 — colors only on a TTY)', () => {
     expect(s.driftTier('x')).toContain(`${ESC}[31m`); // red
   });
 
+  it('note is the terminal DEFAULT foreground even with colors on — never dim, never a fixed color', () => {
+    // Explanatory prose (tier notes, ↳ origin hints, the info: footer) is meant to be
+    // READ. Dim (SGR 2) rendered it low-contrast / unreadable on dark terminals and wore
+    // the same "don't read me" style as the picker chrome. note() must add NO SGR at all
+    // so it inherits whatever the terminal theme uses for normal text.
+    const s = makeStyle(pc.createColors(true));
+    expect(s.note(SAMPLE)).toBe(SAMPLE); // identity — no ESC, no dim, no color
+    expect(s.infoTier(SAMPLE)).toContain(`${ESC}[2m`); // UI chrome stays dim (deliberate)
+  });
+
+  it('result: is bolded so the conclusion still anchors the eye once info is no longer dim', () => {
+    const s = makeStyle(pc.createColors(true));
+    expect(s.resultLabel('result:')).toContain(`${ESC}[1m`); // bold
+    expect(s.resultLabel('result:')).toContain('result:');
+  });
+
   it('the module-level style is the identity in a non-TTY environment (this test run)', () => {
     // vitest workers run with piped stdio, so this asserts the real default path
     expect(style.drift(SAMPLE)).toBe(SAMPLE);

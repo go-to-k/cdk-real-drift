@@ -103,7 +103,7 @@ NEW (cdkd does NOT have these):
   CloudWatch Application Signals / Lambda Insights auto-instrumentation footprint
   (an added Insights layer + tracer execution policy). A hint NEVER folds or
   re-tiers the finding (an unexpected account-wide enablement stays visible as
-  real drift); it only names the likely source in a dim trailing line.
+  real drift); it only names the likely source in a readable trailing line.
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 
 ## Roadmap (private until Phase 4)

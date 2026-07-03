@@ -624,7 +624,7 @@ eventual consistency (the slow full re-gather used to grant that propagation
 time by accident). When drift survives, each surviving finding is listed
 (id.path + tier) under the `N drift(s) remain.` line so the user doesn't have
 to re-run `check` to learn what failed to converge (R46); if unrecorded values
-remain after a clean revert, one dim pointer line names the count (they are not
+remain after a clean revert, one pointer line names the count (they are not
 drift, but silence would read as "all decided" — R62). Exit semantics: no
 drift at all → `no drift to revert.` + exit 0; findings exist but **nothing
 is revertable** →
@@ -995,9 +995,12 @@ tiers are never printed. Section headers carry the count INSIDE the brackets
 (`[CFn-Declared Drift: 3]`, the explanatory note outside) — a bare digit right of
 `]` read as noise (R48). No blank line precedes the header; the FIRST drift
 section follows the header directly, later sections get a grouping blank, and
-`result:` gets a blank line before it ONLY when a drift section was printed —
-the verdict must not read as a member of the section above it, while a CLEAN
-stack with one informational tier stays exactly 3 lines (R48 revising R37).
+when a drift section was printed `result:` is FRAMED by a horizontal rule above
+and below (preceded by a blank line) so the verdict stands out from the wall of
+findings — bold alone got lost. `result:` keeps column 0 (the `^result:` grep
+contract; the rules are their own lines) and the rule width tracks the verdict
+line. A CLEAN stack (no sections) skips the frame and stays exactly 3 lines
+(R48 revising R37).
 The check loop puts one blank line between consecutive stack reports in a
 multi-stack run. The `result:` line carries the
 verdict + non-zero drift counts only (the informational breakdown lives on `info:`,
@@ -1058,10 +1061,16 @@ values are tagged `unrecorded`(Potential Drift), not mislabeled confirmed drift:
 out first, so its removal pass would misread every recorded entry).
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
-yellow undeclared tier, dim informational footers — ONLY when stdout is a real
-TTY and`NO_COLOR`is unset. Piped / CI /`--json`output is byte-identical
-plain text (the helpers are the identity), so the greppable invariant holds;`FORCE_COLOR` is deliberately ignored. The pure formatters (`formatFinding`'s
-ids, `formatPlan`) stay plain; styling happens at the printing edge.
+yellow undeclared tier, a bold `result:` label framed by a horizontal rule —
+ONLY when stdout is a real TTY and`NO_COLOR`is unset. Explanatory prose that is
+MEANT TO BE READ (tier notes, the `↳`origin hint, the`info:`footer) uses the`note`helper = the terminal DEFAULT foreground, so it stays legible on any theme;`dim`(SGR 2) was removed there because on dark terminals it rendered unreadable
+and wore the same "don't read me" style as the picker chrome.`dim` (`infoTier`)
+is now reserved for genuinely secondary UI you are NOT meant to read closely — the
+non-focused / skip picker rows. Piped / CI /`--json`output is byte-identical plain
+text (the helpers are the identity — the rule lines print in both, only color
+differs), so the greppable invariant holds;`FORCE_COLOR` is deliberately ignored.
+The pure formatters (`formatFinding`'s ids, `formatPlan`) stay plain; styling
+happens at the printing edge.
 
 A declared **top-level write-only** property (e.g. an IAM Role's
 `AssumeRolePolicyDocument`) is surfaced as a `readGap` (note: `write-only — cannot

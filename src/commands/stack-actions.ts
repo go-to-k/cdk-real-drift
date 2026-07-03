@@ -498,7 +498,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
     console.log(style.ok(`ignore rule(s) added: ${path} (${added.length} new${dup})`));
   } else {
     console.log(
-      style.infoTier(
+      style.note(
         `${stackName}: all ${alreadyPresent.length} selected rule(s) already present — config unchanged`
       )
     );
@@ -806,12 +806,12 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         revertSelectOptions(plan)
       );
       if (picked === undefined) {
-        console.log(style.infoTier('aborted.'));
+        console.log(style.note('aborted.'));
         return { exit: 0, aborted: true };
       }
       plan = filterRevertPlan(plan, new Set(picked));
       if (plan.items.length === 0) {
-        console.log(style.infoTier('nothing selected — aborted.'));
+        console.log(style.note('nothing selected — aborted.'));
         return { exit: 0, aborted: true };
       }
     }
@@ -820,7 +820,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       message: revertConfirmMessage(stackName, opCount, plan.notRevertable.length),
     });
     if (isCancel(ok) || !ok) {
-      console.log(style.infoTier('aborted.'));
+      console.log(style.note('aborted.'));
       return { exit: 0, aborted: true };
     }
   }
@@ -852,7 +852,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       const reason = (hint ?? 'transient error').split(' — ')[0];
       const secs = Math.max(1, Math.round(delayMs / 1000));
       console.log(
-        style.infoTier(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`)
+        style.note(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`)
       );
     },
   });
@@ -944,7 +944,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       if (s.hint) {
         const suffix =
           waitMs === undefined ? ' (or re-run with --wait to block until it settles)' : '';
-        console.log(style.infoTier(`    ↳ ${s.hint}${suffix}`));
+        console.log(style.note(`    ↳ ${s.hint}${suffix}`));
       }
     }
   }
@@ -955,7 +955,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // plan.items and carries every other finding forward from the original gather.
   const touched = new Set(plan.items.map((i) => i.logicalId));
   console.log(
-    '\n' + style.infoTier(`verifying convergence (re-reading ${touched.size} resource(s))...`)
+    '\n' + style.note(`verifying convergence (re-reading ${touched.size} resource(s))...`)
   );
   const reconcile = (findings: Finding[]): Finding[] =>
     applyIgnores(
@@ -1005,7 +1005,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const unrecordedLeft = unrecordedCount(post);
   if (unrecordedLeft > 0)
     console.log(
-      style.infoTier(
+      style.note(
         `  (${unrecordedLeft} unrecorded value(s) still await a baseline — run cdkrd record)`
       )
     );
@@ -1014,7 +1014,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // own `FAILED:` line above and bumped the exit to 2 in the apply loop.)
   if (unverified > 0)
     console.log(
-      style.infoTier(
+      style.note(
         `  (${unverified} resource(s) could not be re-read to verify — re-run cdkrd check to confirm)`
       )
     );

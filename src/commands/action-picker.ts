@@ -113,9 +113,9 @@ export function actionChip(action: FindingAction): string {
   return `[ ${center(action, CHIP_WIDTH)} ]`;
 }
 
-/** The dim key-hint line shown under the message. Pure + exported for unit tests.
- *  The action picker only runs inside check's interactive flow, where Esc returns to
- *  the action menu — so `esc = back` (R130). */
+/** The key-hint line shown under the message (readable — it is meant to be read, so
+ *  style.note not dim). Pure + exported for unit tests. The action picker only runs inside
+ *  check's interactive flow, where Esc returns to the action menu — so `esc = back` (R130). */
 export function actionPickerHint(): string {
   return 'type = filter · ↑↓ = move · space = cycle · → = all (filtered) · ⌫ = clear · enter = apply · esc = back';
 }
@@ -182,17 +182,17 @@ export function renderPickerFrame(
 ): string {
   if (done) return `${S_BAR_START}  ${message}\n${S_BAR}  ${summarizeChoices(actions)}`;
   const vis = visible ?? rows.map((_, i) => i);
-  const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.infoTier(actionPickerHint())}`;
+  const header = `${S_BAR_START}  ${message}\n${S_BAR}  ${style.note(actionPickerHint())}`;
   // Show the active filter (and a match count) so the narrowing is visible; the row body is
   // the visible subset, with the cursor an index INTO that subset (vi), pointing at the
   // original row visible[vi].
   const filterLine =
     filter.trim().length > 0
-      ? `${S_BAR}  ${style.cursor(`filter: ${filter}`)}${style.infoTier(` (${vis.length} match${vis.length === 1 ? '' : 'es'})`)}`
+      ? `${S_BAR}  ${style.cursor(`filter: ${filter}`)}${style.note(` (${vis.length} match${vis.length === 1 ? '' : 'es'})`)}`
       : undefined;
   const body =
     vis.length === 0
-      ? `${S_BAR}  ${style.infoTier(`(no rows match "${filter.trim()}" — ⌫ to clear)`)}`
+      ? `${S_BAR}  ${style.note(`(no rows match "${filter.trim()}" — ⌫ to clear)`)}`
       : vis
           .map(
             (origIdx, vi) =>

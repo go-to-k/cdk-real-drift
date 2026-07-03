@@ -26,7 +26,9 @@ $ npx cdkrd check
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
   ApiStack/ApiRole.Policies (AWS::IAM::Role) — appeared since record = [{"PolicyName":"manual-debug-access", ...}]
 
+─────────────────────────────────
 result: 1 drift(s) (undeclared=1)
+─────────────────────────────────
 ```
 
 ![cdkrd finds an out-of-band inline policy that `cdk drift` reports as zero](demo/demo.gif)
@@ -71,7 +73,9 @@ No baseline yet — live-only values can't be confirmed as drift, but declared d
   ApiStack/Queue.RedrivePolicy (AWS::SQS::Queue) = {"maxReceiveCount":5}
   ApiStack/Role.Policies (AWS::IAM::Role) = [{"PolicyName":"adhoc", ...}]
 
+─────────────────────────────────────────────────────────────
 result: 3 findings — 1 drift (declared=1) + 2 potential drift
+─────────────────────────────────────────────────────────────
 
 ApiStack: drift found — what do you want to do?
   ❯ Nothing (decide later)
@@ -110,7 +114,9 @@ your CloudFormation template, the kind `cdk drift` can't see:
 [CFn-Undeclared Drift: 1] (live-only (not in your CloudFormation template), changed from your .cdkrd baseline — the differentiator)
   ApiStack/Role.Policies (AWS::IAM::Role) — changed since record = [{"PolicyName":"adhoc", ...}, {"PolicyName":"manual-debug-access", ...}]
 
+─────────────────────────────────
 result: 1 drift(s) (undeclared=1)
+─────────────────────────────────
 ```
 
 `record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
@@ -366,7 +372,9 @@ $ npx cdkrd check --pre-deploy
       desired=1024
       actual =2048
 
+───────────────────────────────
 result: 1 drift(s) (declared=1)
+───────────────────────────────
 ```
 
 `desired` is what your local code is about to set; `actual` is live now: someone
@@ -436,7 +444,9 @@ that folds everything informational.
       desired="Enabled"
       actual ="Suspended"
 
+───────────────────────────────
 result: 1 drift(s) (declared=1)
+───────────────────────────────
 info:
   - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)
   - skipped=2 (custom resource 2)
@@ -454,7 +464,7 @@ info:
 - **`↳` origin hint**: when a finding's live value has a recognizable external
   source — e.g. the CloudWatch Application Signals / Lambda Insights
   auto-instrumentation footprint (an added Insights layer + tracer execution
-  policy, typically enabled account-wide, not per-resource) — a dim `↳` line names
+  policy, typically enabled account-wide, not per-resource) — a `↳` line names
   the likely source. It's an explanation only: the finding is still real drift and
   still drives the exit, so an unexpected account-wide enablement is never hidden.
 - **`info:` footer** folds the informational tiers to per-reason counts
@@ -467,8 +477,12 @@ info:
 | `nested`                                         | an undeclared sub-key inside a property you _did_ declare (e.g. a CloudFront origin gaining `ConnectionTimeout`, or an API Gateway method's `Integration.PassthroughBehavior`). Surfaced in full like a top-level undeclared value — a non-default nested value is a real out-of-band setting — and recordable. (Catalogued AWS defaults are folded upstream as `atDefault`/`generated`, so only genuine settings remain.) |
 | `readGap` / `unresolved` / `skipped` / `ignored` | values cdkrd can't confidently compare, reported honestly rather than guessed (never false drift).                                                                                                                                                                                                                                                                                                                         |
 
-`^result:` is the greppable verdict. Colorized on a TTY (`NO_COLOR` respected);
-piped / CI / `--json` output is plain text.
+`^result:` is the greppable verdict, framed by a horizontal rule when there is
+drift so it stands out from the findings above (a CLEAN stack stays compact).
+Colorized on a TTY (`NO_COLOR` respected): red/yellow/green for the verdicts and
+tiers, while explanatory prose (tier notes, the `↳` hint, the `info:` footer) uses
+your terminal's default foreground so it stays legible on any theme — dim/gray is
+reserved for picker rows you aren't on. Piped / CI / `--json` output is plain text.
 
 ### JSON output contract
 
