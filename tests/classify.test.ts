@@ -2165,6 +2165,38 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // #502: ECR RepositoryCreationTemplate declares `Prefix: "cdkrd-hunt/"` (S3-prefix
+  // habit) but the service stores `"cdkrd-hunt"` — after the CC_IDENTIFIER_ADAPTERS
+  // read succeeds, the residual Prefix diff is pure trailing-slash noise.
+  describe('trailing-slash scalar path (ECR RepositoryCreationTemplate Prefix, #502)', () => {
+    const T = 'AWS::ECR::RepositoryCreationTemplate';
+
+    it('declared `cdkrd-hunt/` vs live `cdkrd-hunt` is NOT drift', () => {
+      expect(
+        classifyResource(res(T, { Prefix: 'cdkrd-hunt/' }), { Prefix: 'cdkrd-hunt' }, emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuinely different prefix is still drift', () => {
+      expect(
+        tiers(classifyResource(res(T, { Prefix: 'cdkrd-hunt/' }), { Prefix: 'other' }, emptySchema))
+          .declared
+      ).toEqual(['Prefix']);
+    });
+
+    it('the rule is scoped per-type+path (other types stay strict)', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res('AWS::ECR::Repository', { RepositoryName: 'x/' }),
+            { RepositoryName: 'x' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['RepositoryName']);
+    });
+  });
+
   // Found live by the batch-rich bug-hunt fixture: CDK's FargateComputeEnvironment
   // emits `Type: "managed"` (lowercase) but the Batch live read canonicalizes it to
   // `"MANAGED"` (uppercase), a case-only difference on a create-only enum.

@@ -2190,6 +2190,23 @@ export function isTrailingDotEqual(a: unknown, b: unknown): boolean {
   return strip(a) === strip(b);
 }
 
+// Per-type property paths whose trailing `/` is optional because the service
+// NORMALIZES it away on store while the declared/template form keeps it. Sibling of
+// TRAILING_DOT_PATHS (Route53 FQDN dots). Live-proven for ECR
+// RepositoryCreationTemplate `Prefix`: a template declares `Prefix: "cdkrd-hunt/"`
+// (S3-prefix habit — the trailing delimiter is conventional) but the service stores
+// `"cdkrd-hunt"`, so after the CC_IDENTIFIER_ADAPTERS read succeeds the residual
+// `Prefix` diff is pure trailing-delimiter noise, not drift. A genuine prefix change
+// still differs once both sides are stripped.
+export const TRAILING_SLASH_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::ECR::RepositoryCreationTemplate': new Set(['Prefix']),
+};
+export function isTrailingSlashEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const strip = (s: string): string => (s.endsWith('/') ? s.slice(0, -1) : s);
+  return strip(a) === strip(b);
+}
+
 // Per-type property paths where the declared `EngineVersion`/version track and the
 // live value differ only in PRECISION — one is a major/minor track, the other the
 // concrete patch version — so they name the same version and the difference is not

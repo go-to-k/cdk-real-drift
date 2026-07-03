@@ -41,6 +41,7 @@ import {
   isGeneratedName,
   isPhysicalIdSegment,
   isTrailingDotEqual,
+  isTrailingSlashEqual,
   isTrivialEmpty,
   isVersionPrefixMatch,
   isLatestSentinelMatch,
@@ -48,6 +49,7 @@ import {
   INTELLIGENT_TIERING_PATHS,
   LATEST_SENTINEL_PATHS,
   TRAILING_DOT_PATHS,
+  TRAILING_SLASH_PATHS,
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
@@ -1374,6 +1376,14 @@ export function classifyResource(
       if (
         TRAILING_DOT_PATHS[resourceType]?.has(d.path) &&
         isTrailingDotEqual(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type paths whose trailing `/` is optional (ECR RepositoryCreationTemplate
+      // Prefix: declared `cdkrd-hunt/`, service stores `cdkrd-hunt`) — equal once
+      // stripped; a genuine prefix change still differs.
+      if (
+        TRAILING_SLASH_PATHS[resourceType]?.has(d.path) &&
+        isTrailingSlashEqual(d.stateValue, d.awsValue)
       )
         continue;
       // Per-type version-track paths (R130: RDS DBInstance EngineVersion) — a declared
