@@ -152,35 +152,6 @@
   },
   "expected": [
     {
-      "tier": "atDefault",
-      "logicalId": "Broker",
-      "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "AuthenticationStrategy",
-      "actual": "SIMPLE",
-      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
-      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Broker",
-      "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "DataReplicationMode",
-      "actual": "NONE",
-      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
-      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Broker",
-      "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "EncryptionOptions",
-      "actual": {
-        "UseAwsOwnedKey": true
-      },
-      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
-      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
-    },
-    {
       "tier": "readGap",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
@@ -202,12 +173,17 @@
       "tier": "undeclared",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "MaintenanceWindowStartTime",
-      "actual": {
-        "DayOfWeek": "FRIDAY",
-        "TimeOfDay": "20:00",
-        "TimeZone": "UTC"
-      },
+      "path": "SecurityGroups",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "AuthenticationStrategy",
+      "actual": "SIMPLE",
       "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
@@ -215,8 +191,19 @@
       "tier": "undeclared",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "SecurityGroups",
-      "actual": ["sg-0a26e23e2310ee0c9"],
+      "path": "SubnetIds",
+      "actual": ["subnet-0ddbb00e7c1d5b679"],
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "EncryptionOptions",
+      "actual": {
+        "UseAwsOwnedKey": true
+      },
       "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
@@ -230,11 +217,24 @@
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
-      "path": "SubnetIds",
-      "actual": ["subnet-0ddbb00e7c1d5b679"],
+      "path": "MaintenanceWindowStartTime",
+      "actual": {
+        "DayOfWeek": "FRIDAY",
+        "TimeOfDay": "20:00",
+        "TimeZone": "UTC"
+      },
+      "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "DataReplicationMode",
+      "actual": "NONE",
       "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     }

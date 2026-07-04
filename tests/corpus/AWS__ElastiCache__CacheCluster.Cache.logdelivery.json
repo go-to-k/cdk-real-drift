@@ -166,7 +166,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheLogDelivery/Cache"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cache",
       "resourceType": "AWS::ElastiCache::CacheCluster",
       "path": "PreferredMaintenanceWindow",
@@ -184,7 +184,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheLogDelivery/Cache"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cache",
       "resourceType": "AWS::ElastiCache::CacheCluster",
       "path": "SnapshotWindow",

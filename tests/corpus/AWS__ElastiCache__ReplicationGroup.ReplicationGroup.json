@@ -226,7 +226,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ReplicationGroup",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "SnapshotWindow",
