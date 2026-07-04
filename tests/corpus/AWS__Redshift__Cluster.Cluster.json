@@ -3,18 +3,17 @@
   "resource": {
     "logicalId": "Cluster",
     "resourceType": "AWS::Redshift::Cluster",
-    "physicalId": "cluster-htpccw5gbpx7",
-    "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster",
+    "physicalId": "cluster-v8dz6fiuvmd4",
+    "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster",
     "declared": {
-      "ClusterSubnetGroupName": "subnetgroup-zmqkahqqya4b",
+      "ClusterSubnetGroupName": "subnetgroup-qzf7qdhzf8wr",
       "ClusterType": "single-node",
-      "ClusterVersion": "1.0",
       "DBName": "probe",
       "MasterUserPassword": "Cdkrd-Probe-123",
       "MasterUsername": "admin",
       "NodeType": "ra3.large",
       "PubliclyAccessible": false,
-      "VpcSecurityGroupIds": ["sg-0cc77d6b500db3d5a", "sg-067f8171539f6773b"]
+      "VpcSecurityGroupIds": ["sg-0f37569c9ef5a1288"]
     }
   },
   "liveRaw": {
@@ -28,23 +27,23 @@
     "ClusterParameterGroupName": "default.redshift-2.0",
     "AllowVersionUpgrade": true,
     "Endpoint": {
-      "Address": "cluster-htpccw5gbpx7.c5qzh3zoxdm2.us-east-1.redshift.amazonaws.com",
+      "Address": "cluster-v8dz6fiuvmd4.c5qzh3zoxdm2.us-east-1.redshift.amazonaws.com",
       "Port": "5439"
     },
-    "VpcSecurityGroupIds": ["sg-067f8171539f6773b", "sg-0cc77d6b500db3d5a"],
+    "VpcSecurityGroupIds": ["sg-0f37569c9ef5a1288"],
     "MaintenanceTrackName": "current",
-    "ClusterNamespaceArn": "arn:aws:redshift:us-east-1:111111111111:namespace:5cf1a143-b7b1-4b0f-a225-6291197b377b",
+    "ClusterNamespaceArn": "arn:aws:redshift:us-east-1:111111111111:namespace:078d9e64-8c3e-46f0-b46c-391f609729f4",
     "MultiAZ": false,
     "Tags": [],
     "IamRoles": [],
     "ClusterVersion": "1.0",
     "KmsKeyId": "AWS_OWNED_KMS_KEY",
     "AvailabilityZone": "us-east-1a",
-    "PreferredMaintenanceWindow": "sat:04:30-sat:05:00",
+    "PreferredMaintenanceWindow": "wed:10:00-wed:10:30",
     "ClusterType": "single-node",
     "ClusterSecurityGroups": [],
-    "ClusterIdentifier": "cluster-htpccw5gbpx7",
-    "ClusterSubnetGroupName": "subnetgroup-zmqkahqqya4b",
+    "ClusterIdentifier": "cluster-v8dz6fiuvmd4",
+    "ClusterSubnetGroupName": "subnetgroup-qzf7qdhzf8wr",
     "LoggingProperties": {
       "LogExports": []
     },
@@ -121,8 +120,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -130,8 +129,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AutomatedSnapshotRetentionPeriod",
       "actual": 1,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -139,8 +138,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AvailabilityZoneRelocationStatus",
       "actual": "enabled",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -148,8 +147,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AquaConfigurationStatus",
       "actual": "auto",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -157,8 +156,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "Encrypted",
       "actual": true,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -166,8 +165,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "Port",
       "actual": 5439,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -175,8 +174,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "NumberOfNodes",
       "actual": 1,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -184,8 +183,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "ClusterParameterGroupName",
       "actual": "default.redshift-2.0",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -193,8 +192,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AllowVersionUpgrade",
       "actual": true,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -202,8 +201,17 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "MaintenanceTrackName",
       "actual": "current",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "ClusterVersion",
+      "actual": "1.0",
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -211,8 +219,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "KmsKeyId",
       "actual": "AWS_OWNED_KMS_KEY",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -220,17 +228,17 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AvailabilityZone",
       "actual": "us-east-1a",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "PreferredMaintenanceWindow",
-      "actual": "sat:04:30-sat:05:00",
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "actual": "wed:10:00-wed:10:30",
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     },
     {
       "tier": "atDefault",
@@ -238,8 +246,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "ManualSnapshotRetentionPeriod",
       "actual": -1,
-      "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "physicalId": "cluster-v8dz6fiuvmd4",
+      "constructPath": "CdkRealDriftIntegRedshiftRich/Cluster"
     }
   ]
 }
