@@ -37,7 +37,21 @@ non-negotiable", which is enforced by a gate, not by trust.
      means cdkrd's declared template value normalizes differently from the live
      value (a normalization / default-folding bug). `record` snapshots only the
      UNDECLARED dimension, so a surviving post-record drift is necessarily a
-     declared-dimension FP — exactly the class worth catching.
+     declared-dimension FP — exactly the class worth catching. **The invariant
+     (see CLAUDE.md / DESIGN.md): a clean, un-mutated deploy must show ZERO
+     `[Potential Drift]` on a `check` BEFORE `record`, too.** Every value AWS
+     assigns at creation that the template never declared is an initial/default,
+     not a divergence — so it MUST fold to `atDefault`. `[Potential Drift]` is only
+     ever a REAL divergence (a user change, or an AWS out-of-band change AFTER
+     creation like Application Signals adding IAM perms). So `check`-before-`record`
+     on a fresh fixture and read the `[Potential Drift]` list: **every entry there
+     is a fold gap = a bug** (the FP the check-output note + issue link ask users to
+     report). When a candidate default's status is uncertain, **RESOLVE it by
+     verifying** what AWS assigns to a fresh minimal config — never leave it
+     surfaced as "conservative", that just ships the bug. Fold via equality-gated
+     `KNOWN_DEFAULTS` (folds the default, surfaces a change away — detection kept)
+     for mutable meaningful props; value-independent only for create-only /
+     AWS-assigned identifiers / cosmetic values.
    - **False negative (FN) / missed detection** — `record`→`check`→CLEAN does NOT
      exercise detection. So ALSO mutate a **declared, MUTABLE** property out of band
      (the "someone changed it in the console" scenario — Lambda `MemorySize`/

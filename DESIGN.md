@@ -74,6 +74,23 @@ PoC-confirmed (CDKToolkit S3 + IAM, us-east-1): biggest noise (readOnly/writeOnl
 attrs) is auto-strippable from the resource schema; residual undeclared signal was
 tiny + meaningful (S3 `AbacStatus`, `OwnershipControls`).
 
+### Invariant: a clean deploy → zero potential drift
+
+A freshly deployed, un-mutated stack must show **zero** `[Potential Drift]` on a
+first `check` (before `record`). Every value AWS materialized at creation — an
+initial/default the template never declared — is not a divergence and must fold to
+`atDefault`. `[Potential Drift]` is only ever a **real** divergence: a value the
+user changed, or one AWS changed out of band _after_ creation (e.g. enabling
+Application Signals adding IAM permissions later). Anything else surfacing there is
+a fold gap = a bug (the false positive the check-output note + issue link ask users
+to report). An uncertain default is resolved by **verifying** what AWS assigns to a
+fresh minimal config — never left surfaced as "conservative". Fold via equality-
+gated `KNOWN_DEFAULTS` (folds the default, surfaces a change away — detection kept)
+for mutable meaningful props; value-independent only for create-only / AWS-assigned
+identifiers / cosmetic values. This is why every `*-rich` fixture doubles as an FP
+oracle: a `record`→`check` CLEAN proves the DECLARED dimension, and a
+`check`-before-`record` with zero potential drift proves the UNDECLARED one.
+
 ## Reuse from cdkd
 
 COPY (low coupling, verified):
