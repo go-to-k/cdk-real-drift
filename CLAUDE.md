@@ -23,6 +23,25 @@ reimplement `cdk diff`. The full design, rationale, and pipeline are in
 terse companion and [docs/redesign-notes.md](docs/redesign-notes.md) for
 pre-publication decisions).
 
+### Core invariant: a clean deploy has ZERO potential drift
+
+A freshly deployed, **un-mutated** stack must produce **zero** `[Potential Drift]`
+on a first `check` (before `record`). Every value AWS assigns at creation — an
+initial/default it materialized that the template never declared — is NOT a
+divergence, so it must fold to `atDefault`, never surface. `[Potential Drift]`
+is reserved for a **real divergence**: a value the USER changed, or one AWS
+changed OUT OF BAND _after_ creation (e.g. enabling Application Signals adding IAM
+permissions later). Anything else appearing there is a **fold gap (a bug)** — this
+is exactly the false positive the `check`-output note + issue link (#581) ask users
+to report. When a candidate default's status is uncertain, **RESOLVE the
+uncertainty by investigation / live verification** (deploy a fresh minimal config,
+observe what AWS assigns undeclared) — never leave a value surfaced as
+"conservative"; that just ships the bug. The fold must PRESERVE out-of-band
+detection: prefer equality-gated `KNOWN_DEFAULTS` (folds the default value,
+surfaces a change away from it) for mutable meaningful props; use
+`VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS` (folds any value) only for create-only /
+AWS-assigned identifiers / cosmetic values where change-detection is not meaningful.
+
 ## The 4-Verb Model
 
 ```bash
