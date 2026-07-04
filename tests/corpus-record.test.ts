@@ -91,4 +91,106 @@ describe('corpus recording (R63)', () => {
     // JSON-safe end to end
     expect(() => JSON.stringify(c)).not.toThrow();
   });
+
+  const baseSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('buildCorpusCase persists ONLY this instance clusterEchoModel entry, sanitized', () => {
+    // The key is the instance physical id, which for RDS never embeds the account id (same
+    // assumption siblingSgRules relies on — sanitizeAccountId walks values, not keys); the echo
+    // model VALUES can carry account-scoped ARNs and must sanitize consistently with liveRaw.
+    const resource: DesiredResource = {
+      logicalId: 'Reader',
+      resourceType: 'AWS::RDS::DBInstance',
+      physicalId: 'db-reader-abc',
+      declared: {},
+    };
+    const c = buildCorpusCase(
+      resource,
+      { Engine: 'aurora-mysql' },
+      baseSchema,
+      {
+        accountId: '123456789012',
+        region: 'us-east-1',
+        kmsAliasTargets: {},
+        oaiCanonicalIds: {},
+        // stack-wide map with TWO instances — only this one's entry must be carried
+        clusterEchoModel: {
+          'db-reader-abc': {
+            MasterUsername: 'admin',
+            KmsKeyId: 'arn:aws:kms:us-east-1:123456789012:key/k',
+          },
+          'db-other-xyz': { MasterUsername: 'other' },
+        },
+      },
+      []
+    );
+    expect(Object.keys(c.opts.clusterEchoModel ?? {})).toEqual(['db-reader-abc']);
+    // account id sanitized inside the carried echo model, consistently with liveRaw
+    expect(c.opts.clusterEchoModel?.['db-reader-abc']).toEqual({
+      MasterUsername: 'admin',
+      KmsKeyId: 'arn:aws:kms:us-east-1:111111111111:key/k',
+    });
+    // a resource with no echo entry gets no clusterEchoModel key
+    const noEcho = buildCorpusCase(
+      { ...resource, physicalId: 'db-x' },
+      {},
+      baseSchema,
+      {
+        accountId: '',
+        region: 'us-east-1',
+        kmsAliasTargets: {},
+        oaiCanonicalIds: {},
+        clusterEchoModel: { 'db-reader-abc': {} },
+      },
+      []
+    );
+    expect(noEcho.opts.clusterEchoModel).toBeUndefined();
+  });
+
+  it('buildCorpusCase persists bucketNotificationManaged as this bucket own id (array)', () => {
+    const bucket: DesiredResource = {
+      logicalId: 'B',
+      resourceType: 'AWS::S3::Bucket',
+      physicalId: 'my-bucket',
+      declared: {},
+    };
+    const managed = buildCorpusCase(
+      bucket,
+      {},
+      baseSchema,
+      {
+        accountId: '',
+        region: 'us-east-1',
+        kmsAliasTargets: {},
+        oaiCanonicalIds: {},
+        bucketNotificationManaged: new Set(['my-bucket', 'other-bucket']),
+      },
+      []
+    );
+    expect(managed.opts.bucketNotificationManaged).toEqual(['my-bucket']);
+    // a bucket NOT in the managed set gets no key
+    const plain = buildCorpusCase(
+      bucket,
+      {},
+      baseSchema,
+      {
+        accountId: '',
+        region: 'us-east-1',
+        kmsAliasTargets: {},
+        oaiCanonicalIds: {},
+        bucketNotificationManaged: new Set(['other-bucket']),
+      },
+      []
+    );
+    expect(plain.opts.bucketNotificationManaged).toBeUndefined();
+  });
 });

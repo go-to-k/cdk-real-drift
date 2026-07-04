@@ -9,7 +9,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
-import { type CorpusCase, decodeUnresolved, reviveSchema } from '../src/corpus/record.js';
+import {
+  type CorpusCase,
+  decodeUnresolved,
+  reviveOpts,
+  reviveSchema,
+} from '../src/corpus/record.js';
 import { classifyResource } from '../src/diff/classify.js';
 import type { DesiredResource, Finding } from '../src/types.js';
 
@@ -37,13 +42,14 @@ describe('golden corpus replay (R63)', () => {
         ...c.resource,
         declared: decodeUnresolved(c.resource.declared),
       } as DesiredResource;
-      // classify strips/mutates its inputs' copies — pass fresh clones so a
-      // case file is never the thing being mutated.
+      // classify strips/mutates its inputs' copies — pass fresh clones so a case file is
+      // never the thing being mutated. reviveOpts turns the stored bucketNotificationManaged
+      // array back into the Set classify expects (clusterEchoModel passes through as-is).
       const got = classifyResource(
         resource,
         structuredClone(c.liveRaw),
         reviveSchema(c.schema),
-        c.opts
+        reviveOpts(c.opts)
       );
       expect([...got].sort(byTierPath)).toEqual([...c.expected].sort(byTierPath));
     });
