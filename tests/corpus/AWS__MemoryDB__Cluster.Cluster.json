@@ -126,7 +126,7 @@
       "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MemoryDB::Cluster",
       "path": "SnapshotWindow",
@@ -162,7 +162,7 @@
       "constructPath": "CdkRealDriftIntegMemoryDb/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MemoryDB::Cluster",
       "path": "MaintenanceWindow",

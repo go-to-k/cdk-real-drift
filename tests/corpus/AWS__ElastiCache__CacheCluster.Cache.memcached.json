@@ -111,7 +111,7 @@
       "constructPath": "CdkRealDriftIntegElasticacheMemcached/Cache"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cache",
       "resourceType": "AWS::ElastiCache::CacheCluster",
       "path": "PreferredMaintenanceWindow",

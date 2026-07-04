@@ -224,7 +224,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "PreferredMaintenanceWindow",

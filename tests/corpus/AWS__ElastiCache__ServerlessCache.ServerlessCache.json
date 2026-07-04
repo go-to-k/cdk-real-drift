@@ -64,7 +64,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ServerlessCache",
       "resourceType": "AWS::ElastiCache::ServerlessCache",
       "path": "DailySnapshotTime",

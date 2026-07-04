@@ -1805,6 +1805,28 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   live first-run on dev-main-Db2Csv's self-referencing Glue SG ingress, no edit.
   'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupName']),
   'AWS::EC2::SecurityGroupEgress': new Set(['SourceSecurityGroupName']),
+  //   The RDS-family + cache engines all mirror the RDS precedent above: a cluster/instance
+  //   that declares no maintenance / backup / snapshot window reads back a window AWS
+  //   RANDOMLY ASSIGNED at creation (e.g. "sat:03:00-sat:04:00", "03:10-03:40"). It is not a
+  //   constant we can pin (AWS picks it per resource/region) and never user intent when
+  //   undeclared — a user who cares DECLARES it and is then compared in the declared loop.
+  //   Fold value-independent, exactly like AWS::RDS::* above. Found by the offline first-run-
+  //   noise sweep across the DocDB / Neptune / ElastiCache / MemoryDB / Redshift corpus cases
+  //   (undeclared on every one, no out-of-band edit). Equality is irrelevant — any window folds.
+  'AWS::DocDB::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
+  'AWS::DocDB::DBInstance': new Set(['PreferredMaintenanceWindow']),
+  'AWS::Neptune::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
+  'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow']),
+  'AWS::ElastiCache::CacheCluster': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
+  'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
+  'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
+  'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow']),
+  'AWS::Redshift::Cluster': new Set(['PreferredMaintenanceWindow']),
+  //   AWS::AmazonMQ::Broker.MaintenanceWindowStartTime — a broker that declares no window reads
+  //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
+  //   folds the whole top-level property whatever its shape, so the assigned window is not first-
+  //   run noise (a DECLARED window is compared in the declared loop).
+  'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

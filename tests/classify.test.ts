@@ -5164,6 +5164,79 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
     const r = t('AWS::Other::Thing', {}, { KmsKeyId: 'arn:aws:kms:x:1:key/abc' });
     expect(r.undeclared).toContain('KmsKeyId');
   });
+
+  // The RDS-family + cache engines mirror the RDS window precedent: an AWS-assigned
+  // maintenance / backup / snapshot window read back on an undeclared property is AWS's
+  // random choice, not user intent, so it folds value-independent (found by the offline
+  // first-run-noise sweep across the DocDB/Neptune/ElastiCache/MemoryDB/Redshift corpus).
+  it('DocDB / Neptune / ElastiCache / MemoryDB / Redshift AWS-assigned windows fold value-independent', () => {
+    const cases: [string, Record<string, unknown>, string[]][] = [
+      [
+        'AWS::DocDB::DBCluster',
+        { PreferredMaintenanceWindow: 'thu:04:03-thu:04:33', PreferredBackupWindow: '03:10-03:40' },
+        ['PreferredMaintenanceWindow', 'PreferredBackupWindow'],
+      ],
+      [
+        'AWS::DocDB::DBInstance',
+        { PreferredMaintenanceWindow: 'fri:03:49-fri:04:19' },
+        ['PreferredMaintenanceWindow'],
+      ],
+      [
+        'AWS::Neptune::DBCluster',
+        { PreferredMaintenanceWindow: 'sat:14:01-sat:14:31', PreferredBackupWindow: '21:15-21:45' },
+        ['PreferredMaintenanceWindow', 'PreferredBackupWindow'],
+      ],
+      [
+        'AWS::Neptune::DBInstance',
+        { PreferredMaintenanceWindow: 'tue:20:02-tue:20:32' },
+        ['PreferredMaintenanceWindow'],
+      ],
+      [
+        'AWS::ElastiCache::CacheCluster',
+        { PreferredMaintenanceWindow: 'sat:03:00-sat:04:00', SnapshotWindow: '07:30-08:30' },
+        ['PreferredMaintenanceWindow', 'SnapshotWindow'],
+      ],
+      [
+        'AWS::ElastiCache::ReplicationGroup',
+        { PreferredMaintenanceWindow: 'mon:05:00-mon:06:00', SnapshotWindow: '05:00-06:00' },
+        ['PreferredMaintenanceWindow', 'SnapshotWindow'],
+      ],
+      ['AWS::ElastiCache::ServerlessCache', { DailySnapshotTime: '05:30' }, ['DailySnapshotTime']],
+      [
+        'AWS::MemoryDB::Cluster',
+        { MaintenanceWindow: 'fri:07:00-fri:08:00', SnapshotWindow: '09:30-10:30' },
+        ['MaintenanceWindow', 'SnapshotWindow'],
+      ],
+      [
+        'AWS::Redshift::Cluster',
+        { PreferredMaintenanceWindow: 'sat:04:30-sat:05:00' },
+        ['PreferredMaintenanceWindow'],
+      ],
+      // an AWS-assigned window returned as an OBJECT (AmazonMQ) folds whole, value-independent
+      [
+        'AWS::AmazonMQ::Broker',
+        {
+          MaintenanceWindowStartTime: { DayOfWeek: 'FRIDAY', TimeOfDay: '20:00', TimeZone: 'UTC' },
+        },
+        ['MaintenanceWindowStartTime'],
+      ],
+    ];
+    for (const [type, live, props] of cases) {
+      const r = t(type, {}, live);
+      expect(r.undeclared).toEqual([]);
+      expect(r.atDefault).toEqual(expect.arrayContaining(props));
+    }
+  });
+
+  it('a DECLARED cache/DB window is user intent — compared in the declared loop, still detected', () => {
+    const r = t(
+      'AWS::ElastiCache::CacheCluster',
+      { PreferredMaintenanceWindow: 'mon:00:00-mon:01:00' },
+      { PreferredMaintenanceWindow: 'sat:03:00-sat:04:00' }
+    );
+    expect(r.declared).toEqual(['PreferredMaintenanceWindow']);
+    expect(r.atDefault).not.toContain('PreferredMaintenanceWindow');
+  });
 });
 
 describe('RDS engine-derived defaults fold to atDefault', () => {
