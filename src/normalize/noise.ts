@@ -654,6 +654,34 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::OpenSearchService::Domain': {
     IPAddressType: 'ipv4',
+    // AWS-materialized defaults a domain reads back on every first run (found by the offline
+    // noise sweep, unanimous across the corpus domains): the automated-snapshot hour AWS assigns
+    // (0 = midnight UTC) and the two default AdvancedOptions the service always returns. Equality-
+    // gated: a domain that sets a non-default snapshot hour / advanced option no longer matches
+    // and surfaces. (OffPeakWindowOptions — an AWS-ASSIGNED window object — folds value-
+    // independent below, not here, since its start time is AWS's per-domain choice, not a constant.)
+    SnapshotOptions: { AutomatedSnapshotStartHour: 0 },
+    AdvancedOptions: {
+      override_main_response_version: 'false',
+      'rest.action.multi.allow_explicit_index': 'true',
+    },
+  },
+  // A Redshift cluster reads back a raft of AWS-assigned constant defaults the template never
+  // declares (found by the offline noise sweep). Only the CLEARLY-documented constants are folded
+  // — the AWS-owned-key placeholder, the default ports/retention/track, and the auto/version-
+  // upgrade toggles. Deliberately NOT folded (genuine per-resource state a user should see):
+  // `Encrypted` (security-relevant), `NumberOfNodes` (cluster topology), `AvailabilityZone`
+  // (folded value-independent below like RDS), `AvailabilityZoneRelocationStatus` (default
+  // uncertain), `ClusterParameterGroupName` (DEFAULT_MANAGED_NAME_PATHS). Equality-gated: any
+  // value moved off the default surfaces.
+  'AWS::Redshift::Cluster': {
+    Port: 5439,
+    AutomatedSnapshotRetentionPeriod: 1,
+    ManualSnapshotRetentionPeriod: -1,
+    AllowVersionUpgrade: true,
+    AquaConfigurationStatus: 'auto',
+    MaintenanceTrackName: 'current',
+    KmsKeyId: 'AWS_OWNED_KMS_KEY',
   },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
@@ -1537,6 +1565,19 @@ export const DEFAULT_MANAGED_NAME_PATHS: Record<string, Record<string, RegExp>> 
     DBParameterGroupName: /^default\./,
     OptionGroupName: /^default:/,
   },
+  // The RDS-family + cache engines mirror the RDS `default.<engine><version>` precedent: a
+  // cluster/instance/cache that declares no explicit parameter group reads back the AWS-managed
+  // default group name (`default.redis7`, `default.docdb5.0`, `default.neptune1.3`,
+  // `default.redshift-2.0`, `default.memorydb-redis7`). The name is version-derived (not a
+  // pinnable constant), so it is regex-matched — a CUSTOM group name a user attached does not
+  // start with `default.` and still surfaces. Undeclared-only, like the RDS precedent. Found by
+  // the offline first-run-noise sweep across the corpus.
+  'AWS::ElastiCache::CacheCluster': { CacheParameterGroupName: /^default\./ },
+  'AWS::DocDB::DBCluster': { DBClusterParameterGroupName: /^default\./ },
+  'AWS::Neptune::DBCluster': { DBClusterParameterGroupName: /^default\./ },
+  'AWS::Neptune::DBInstance': { DBParameterGroupName: /^default\./ },
+  'AWS::Redshift::Cluster': { ClusterParameterGroupName: /^default\./ },
+  'AWS::MemoryDB::Cluster': { ParameterGroupName: /^default\./ },
 };
 
 // Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated
@@ -1821,7 +1862,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
   'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow']),
-  'AWS::Redshift::Cluster': new Set(['PreferredMaintenanceWindow']),
+  //   AWS::Redshift::Cluster.AvailabilityZone — AWS places an undeclared cluster in an AZ it picks
+  //   (create-only, never user intent when undeclared), exactly like RDS AvailabilityZone above.
+  //   OffPeakWindowOptions on an OpenSearch domain is the AWS-ASSIGNED off-peak maintenance window
+  //   (an object {OffPeakWindow:{WindowStartTime:{Hours,Minutes}},Enabled}); AWS enables it and
+  //   assigns the start time per domain, so fold the whole property value-independent (a domain
+  //   that DECLARES an off-peak window is compared in the declared loop).
+  'AWS::Redshift::Cluster': new Set(['PreferredMaintenanceWindow', 'AvailabilityZone']),
+  'AWS::OpenSearchService::Domain': new Set(['OffPeakWindowOptions']),
   //   AWS::AmazonMQ::Broker.MaintenanceWindowStartTime — a broker that declares no window reads
   //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-

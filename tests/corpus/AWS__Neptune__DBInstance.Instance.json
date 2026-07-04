@@ -73,7 +73,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Instance",
       "resourceType": "AWS::Neptune::DBInstance",
       "path": "DBParameterGroupName",

@@ -125,7 +125,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AutomatedSnapshotRetentionPeriod",
@@ -143,7 +143,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AquaConfigurationStatus",
@@ -161,7 +161,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "Port",
@@ -179,7 +179,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "ClusterParameterGroupName",
@@ -188,7 +188,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AllowVersionUpgrade",
@@ -197,7 +197,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "MaintenanceTrackName",
@@ -206,7 +206,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "KmsKeyId",
@@ -215,7 +215,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "AvailabilityZone",
@@ -233,7 +233,7 @@
       "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Redshift::Cluster",
       "path": "ManualSnapshotRetentionPeriod",
