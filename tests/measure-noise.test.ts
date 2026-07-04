@@ -23,7 +23,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
-import { type CorpusCase, decodeUnresolved, reviveSchema } from '../src/corpus/record.js';
+import {
+  type CorpusCase,
+  decodeUnresolved,
+  reviveOpts,
+  reviveSchema,
+} from '../src/corpus/record.js';
 import { classifyResource } from '../src/diff/classify.js';
 import type { DesiredResource } from '../src/types.js';
 
@@ -73,7 +78,7 @@ function mineUndeclared(): Bucket[] {
         resource,
         structuredClone(c.liveRaw),
         reviveSchema(c.schema),
-        c.opts
+        reviveOpts(c.opts)
       );
     } catch {
       continue; // a malformed case never blocks the sweep

@@ -77,6 +77,15 @@ export interface CorpusCase {
     // the SG's physical id. Only present (and only its own entry) on an AWS::EC2::SecurityGroup
     // case, so replay reproduces the sibling-rule subtraction; optional for back-compat.
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+    // This bucket's own physical id, present only when its S3 notifications are managed by a
+    // Custom::S3BucketNotifications CR, so replay reproduces the NotificationConfiguration drop.
+    // Stored as an array (JSON has no Set); replay revives it to a Set. Optional for back-compat.
+    bucketNotificationManaged?: string[];
+    // The parent DBCluster's live model keyed by THIS instance's physical id — present only on a
+    // CLUSTER_ECHO_CHILD case (an Aurora DBInstance echoing its cluster), so replay reproduces the
+    // cluster-echo strip. Without it a fresh-harvested reader/writer replays the un-folded echo
+    // props as false undeclared drift. Optional for back-compat (pre-clusterEcho cases lack it).
+    clusterEchoModel?: Record<string, Record<string, unknown>>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -108,6 +117,8 @@ export function buildCorpusCase(
     kmsAliasTargets: Record<string, string>;
     oaiCanonicalIds: Record<string, string>;
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+    bucketNotificationManaged?: Set<string>;
+    clusterEchoModel?: Record<string, Record<string, unknown>>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -116,6 +127,16 @@ export function buildCorpusCase(
   const sgSibling =
     resource.resourceType === 'AWS::EC2::SecurityGroup' && resource.physicalId
       ? opts.siblingSgRules?.[resource.physicalId]
+      : undefined;
+  // Same shape as sgSibling: carry ONLY this resource's own entry from the stack-wide maps, so a
+  // cluster-echo / bucket-notification case replays its strip without bloating every case.
+  const bucketNotif =
+    resource.physicalId && opts.bucketNotificationManaged?.has(resource.physicalId)
+      ? [resource.physicalId]
+      : undefined;
+  const echoModel =
+    resource.physicalId && opts.clusterEchoModel?.[resource.physicalId]
+      ? opts.clusterEchoModel[resource.physicalId]
       : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
@@ -151,6 +172,10 @@ export function buildCorpusCase(
       ...(sgSibling && resource.physicalId
         ? { siblingSgRules: { [resource.physicalId]: sgSibling } }
         : {}),
+      ...(bucketNotif ? { bucketNotificationManaged: bucketNotif } : {}),
+      ...(echoModel && resource.physicalId
+        ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
+        : {}),
     },
     expected: findings,
   };
@@ -171,6 +196,25 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
     unorderedScalarPaths: s.unorderedScalarPaths ?? [],
     unorderedObjectArrayPaths: s.unorderedObjectArrayPaths ?? [],
     freeFormMapPaths: s.freeFormMapPaths ?? [],
+  };
+}
+
+/** Revive a case's stored opts into the shape classifyResource expects: the JSON case
+ *  stores `bucketNotificationManaged` as an array (JSON has no Set) but classify wants a
+ *  Set, so convert it; every other opts field passes through unchanged. Both replay call
+ *  sites (corpus-replay + measure-noise) go through here so they stay in lockstep. */
+export function reviveOpts(o: CorpusCase['opts']): Omit<
+  CorpusCase['opts'],
+  'bucketNotificationManaged'
+> & {
+  bucketNotificationManaged?: Set<string>;
+} {
+  const { bucketNotificationManaged, ...rest } = o;
+  return {
+    ...rest,
+    ...(bucketNotificationManaged
+      ? { bucketNotificationManaged: new Set(bucketNotificationManaged) }
+      : {}),
   };
 }
 
