@@ -99,7 +99,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MemoryDB::Cluster",
       "path": "ParameterGroupName",

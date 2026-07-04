@@ -5239,6 +5239,124 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
   });
 });
 
+// Second offline noise-sweep batch: AWS-managed parameter-group names, Redshift constant
+// defaults, and OpenSearch domain defaults — all undeclared AWS-assigned values a first run
+// would otherwise flag as [Potential Drift].
+describe('managed param-group names + Redshift/OpenSearch defaults fold', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    tiers(
+      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+    );
+
+  it('the AWS-managed default.* parameter-group name folds (regex), a custom one still surfaces', () => {
+    const cases: [string, string, string][] = [
+      ['AWS::ElastiCache::CacheCluster', 'CacheParameterGroupName', 'default.redis7'],
+      ['AWS::DocDB::DBCluster', 'DBClusterParameterGroupName', 'default.docdb5.0'],
+      ['AWS::Neptune::DBCluster', 'DBClusterParameterGroupName', 'default.neptune1.3'],
+      ['AWS::Neptune::DBInstance', 'DBParameterGroupName', 'default.neptune1.3'],
+      ['AWS::Redshift::Cluster', 'ClusterParameterGroupName', 'default.redshift-2.0'],
+      ['AWS::MemoryDB::Cluster', 'ParameterGroupName', 'default.memorydb-redis7'],
+    ];
+    for (const [type, prop, val] of cases) {
+      expect(t(type, {}, { [prop]: val }).atDefault).toContain(prop);
+      // a custom (non-default.*) group name is real undeclared inventory
+      expect(t(type, {}, { [prop]: 'my-custom-group' }).undeclared).toContain(prop);
+    }
+  });
+
+  it('Redshift constant defaults fold; security/topology values stay undeclared', () => {
+    const r = t(
+      'AWS::Redshift::Cluster',
+      {},
+      {
+        Port: 5439,
+        AutomatedSnapshotRetentionPeriod: 1,
+        ManualSnapshotRetentionPeriod: -1,
+        AllowVersionUpgrade: true,
+        AquaConfigurationStatus: 'auto',
+        MaintenanceTrackName: 'current',
+        KmsKeyId: 'AWS_OWNED_KMS_KEY',
+        AvailabilityZone: 'us-east-1a',
+        Encrypted: true,
+        NumberOfNodes: 1,
+      }
+    );
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining([
+        'Port',
+        'AutomatedSnapshotRetentionPeriod',
+        'ManualSnapshotRetentionPeriod',
+        'AllowVersionUpgrade',
+        'AquaConfigurationStatus',
+        'MaintenanceTrackName',
+        'KmsKeyId',
+        'AvailabilityZone',
+      ])
+    );
+    // deliberately NOT folded — a user should see these
+    expect(r.undeclared).toEqual(expect.arrayContaining(['Encrypted', 'NumberOfNodes']));
+    // a non-default port surfaces (equality-gated)
+    expect(t('AWS::Redshift::Cluster', {}, { Port: 5555 }).undeclared).toContain('Port');
+  });
+
+  it('OpenSearch domain defaults fold; the AWS-assigned off-peak window folds value-independent', () => {
+    const r = t(
+      'AWS::OpenSearchService::Domain',
+      {},
+      {
+        SnapshotOptions: { AutomatedSnapshotStartHour: 0 },
+        AdvancedOptions: {
+          override_main_response_version: 'false',
+          'rest.action.multi.allow_explicit_index': 'true',
+        },
+        OffPeakWindowOptions: {
+          OffPeakWindow: { WindowStartTime: { Hours: 2, Minutes: 0 } },
+          Enabled: true,
+        },
+      }
+    );
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining(['SnapshotOptions', 'AdvancedOptions', 'OffPeakWindowOptions'])
+    );
+    // a non-default snapshot hour surfaces (equality-gated)
+    expect(
+      t(
+        'AWS::OpenSearchService::Domain',
+        {},
+        { SnapshotOptions: { AutomatedSnapshotStartHour: 3 } }
+      ).undeclared
+    ).toContain('SnapshotOptions');
+    // a DECLARED off-peak window is user intent — compared (descended), NOT value-independent
+    // folded; a divergent start hour surfaces as declared drift on the nested path.
+    const declared = t(
+      'AWS::OpenSearchService::Domain',
+      { OffPeakWindowOptions: { OffPeakWindow: { WindowStartTime: { Hours: 5, Minutes: 0 } } } },
+      {
+        OffPeakWindowOptions: {
+          OffPeakWindow: { WindowStartTime: { Hours: 2, Minutes: 0 } },
+          Enabled: true,
+        },
+      }
+    );
+    expect(declared.declared.some((p) => p.startsWith('OffPeakWindowOptions'))).toBe(true);
+    expect(declared.atDefault).not.toContain('OffPeakWindowOptions');
+  });
+});
+
 describe('RDS engine-derived defaults fold to atDefault', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),

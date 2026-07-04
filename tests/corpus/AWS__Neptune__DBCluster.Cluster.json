@@ -164,7 +164,7 @@
       "constructPath": "CdkRealDriftIntegNeptuneRich/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::Neptune::DBCluster",
       "path": "DBClusterParameterGroupName",

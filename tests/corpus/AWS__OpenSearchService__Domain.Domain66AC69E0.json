@@ -170,7 +170,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "SnapshotOptions",
@@ -181,7 +181,7 @@
       "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "AdvancedOptions",
@@ -213,7 +213,7 @@
       "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "OffPeakWindowOptions",
