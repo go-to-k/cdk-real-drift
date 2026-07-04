@@ -1014,7 +1014,21 @@ export function classifyResource(
   // NOTE: no `schema.writeOnly.has(k)` guard here — a top-level write-only key was
   // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
   // so it cannot reach this loop (the old guard was dead code for top-level keys).
-  const knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
+  let knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
+  // A Redshift RA3 cluster is ALWAYS encrypted (RA3 mandates encryption — it can never be false)
+  // and AWS enables AvailabilityZoneRelocation for it by default, so an RA3 cluster that declares
+  // neither reads back Encrypted=true / AvailabilityZoneRelocationStatus="enabled" — AWS-forced
+  // initial values, not user intent. Fold them via a NodeType conditional (the reliable in-
+  // template discriminator; a DC2 cluster keeps the false/absent default and is unaffected).
+  // Equality-gated + live-verified on a fresh RA3 single-node deploy. A cluster that declares
+  // either value explicitly is compared in the declared loop, never reaching here.
+  if (
+    resourceType === 'AWS::Redshift::Cluster' &&
+    typeof declaredIn?.['NodeType'] === 'string' &&
+    (declaredIn['NodeType'] as string).startsWith('ra3')
+  ) {
+    knownDef = { ...knownDef, Encrypted: true, AvailabilityZoneRelocationStatus: 'enabled' };
+  }
   // AWS/CDK-generated values for THIS resource (its minted name, a default log group
   // derived from the physical id), with the live physical id substituted in — keyed
   // by property, consulted by the undeclared loop below. Empty when the type has no

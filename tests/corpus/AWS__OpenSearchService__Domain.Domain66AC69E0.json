@@ -202,7 +202,7 @@
       "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "DeploymentStrategyOptions",
@@ -250,7 +250,7 @@
       "constructPath": "CdkRealDriftIntegOpensearchRich/Domain"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Domain66AC69E0",
       "resourceType": "AWS::OpenSearchService::Domain",
       "path": "EncryptionAtRestOptions.KmsKeyId",

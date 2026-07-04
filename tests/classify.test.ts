@@ -5305,10 +5305,13 @@ describe('managed param-group names + Redshift/OpenSearch defaults fold', () => 
         'MaintenanceTrackName',
         'KmsKeyId',
         'AvailabilityZone',
+        'NumberOfNodes', // single-node default, KNOWN_DEFAULTS 1
       ])
     );
-    // deliberately NOT folded — a user should see these
-    expect(r.undeclared).toEqual(expect.arrayContaining(['Encrypted', 'NumberOfNodes']));
+    // Encrypted stays undeclared WITHOUT a declared NodeType: the RA3 always-encrypted conditional
+    // needs the NodeType discriminator, so absent it a true is treated as a real (DC2-style) enable
+    // and surfaces. (A declared RA3 NodeType folds it — see the clean-deploy invariant describe.)
+    expect(r.undeclared).toContain('Encrypted');
     // a non-default port surfaces (equality-gated)
     expect(t('AWS::Redshift::Cluster', {}, { Port: 5555 }).undeclared).toContain('Port');
   });
@@ -5354,6 +5357,89 @@ describe('managed param-group names + Redshift/OpenSearch defaults fold', () => 
     );
     expect(declared.declared.some((p) => p.startsWith('OffPeakWindowOptions'))).toBe(true);
     expect(declared.atDefault).not.toContain('OffPeakWindowOptions');
+  });
+});
+
+// The clean-deploy -> zero-potential-drift invariant, live-verified on a fresh redshift-rich
+// (RA3 single-node) + opensearch-rich deploy: EVERY undeclared value AWS returned must fold.
+describe('Redshift/OpenSearch clean-deploy invariant (all AWS-initial values fold)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    tiers(
+      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+    );
+
+  it('a fresh RA3 single-node Redshift cluster has ZERO undeclared (every AWS-initial value folds)', () => {
+    // exactly what a fresh redshift-rich deploy returns undeclared (live-verified)
+    const r = t(
+      'AWS::Redshift::Cluster',
+      { NodeType: 'ra3.large', ClusterType: 'single-node' },
+      {
+        AvailabilityZoneRelocationStatus: 'enabled', // RA3 conditional
+        Encrypted: true, // RA3 always encrypted (conditional)
+        NumberOfNodes: 1, // single-node KNOWN_DEFAULT
+        ClusterVersion: '1.0', // AWS-assigned version, value-independent
+      }
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining([
+        'AvailabilityZoneRelocationStatus',
+        'Encrypted',
+        'NumberOfNodes',
+        'ClusterVersion',
+      ])
+    );
+  });
+
+  it('the RA3 conditional is NodeType-gated — a DC2 cluster does NOT fold Encrypted=true, and a resize surfaces', () => {
+    // DC2 (not always-encrypted): an undeclared Encrypted=true is a REAL enable → must surface
+    const dc2 = t('AWS::Redshift::Cluster', { NodeType: 'dc2.large' }, { Encrypted: true });
+    expect(dc2.undeclared).toContain('Encrypted');
+    // detection preserved on RA3 too: NumberOfNodes off the single-node default surfaces
+    const resized = t('AWS::Redshift::Cluster', { NodeType: 'ra3.large' }, { NumberOfNodes: 4 });
+    expect(resized.undeclared).toContain('NumberOfNodes');
+  });
+
+  it('a fresh OpenSearch domain folds the AWS-assigned deployment strategy + encryption key', () => {
+    // mirrors the real live shape: EncryptionAtRestOptions is partially declared ({Enabled:true}),
+    // so classify descends and the AWS-added KmsKeyId sub-key folds value-independent (nested).
+    const r = t(
+      'AWS::OpenSearchService::Domain',
+      { EncryptionAtRestOptions: { Enabled: true } },
+      {
+        DeploymentStrategyOptions: { DeploymentStrategy: 'CapacityOptimized' },
+        EncryptionAtRestOptions: {
+          KmsKeyId: 'db99576a-7bcf-4386-a93e-0334efbed006',
+          Enabled: true,
+        },
+      }
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toContain('DeploymentStrategyOptions');
+    // the nested AWS-assigned key folds value-independent (generated tier), whatever its GUID
+    expect(r.generated).toContain('EncryptionAtRestOptions.KmsKeyId');
+    // a non-default deployment strategy surfaces (equality-gated)
+    expect(
+      t(
+        'AWS::OpenSearchService::Domain',
+        {},
+        { DeploymentStrategyOptions: { DeploymentStrategy: 'Custom' } }
+      ).undeclared
+    ).toContain('DeploymentStrategyOptions');
   });
 });
 

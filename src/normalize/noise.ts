@@ -665,15 +665,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       override_main_response_version: 'false',
       'rest.action.multi.allow_explicit_index': 'true',
     },
+    // A domain that declares no deployment strategy reads back the AWS default
+    // "CapacityOptimized" (live-verified on a fresh opensearch-rich deploy, undeclared).
+    // Equality-gated: a different strategy surfaces. (EncryptionAtRestOptions.KmsKeyId — the
+    // AWS-assigned encryption key — folds value-independent via GENERATED_NESTED_PATHS below.)
+    DeploymentStrategyOptions: { DeploymentStrategy: 'CapacityOptimized' },
   },
   // A Redshift cluster reads back a raft of AWS-assigned constant defaults the template never
-  // declares (found by the offline noise sweep). Only the CLEARLY-documented constants are folded
-  // — the AWS-owned-key placeholder, the default ports/retention/track, and the auto/version-
-  // upgrade toggles. Deliberately NOT folded (genuine per-resource state a user should see):
-  // `Encrypted` (security-relevant), `NumberOfNodes` (cluster topology), `AvailabilityZone`
-  // (folded value-independent below like RDS), `AvailabilityZoneRelocationStatus` (default
-  // uncertain), `ClusterParameterGroupName` (DEFAULT_MANAGED_NAME_PATHS). Equality-gated: any
-  // value moved off the default surfaces.
+  // declares (found by the offline noise sweep, live-verified on a fresh redshift-rich RA3
+  // single-node deploy — the clean-deploy=zero-potential-drift invariant). Equality-gated: any
+  // value moved off the default surfaces. `NumberOfNodes` folds at 1 (the single-node default; a
+  // resize to a multi-node cluster surfaces). `Encrypted` and `AvailabilityZoneRelocationStatus`
+  // are NodeType-DERIVED (RA3 is always encrypted + AWS enables AZ relocation) so they fold via a
+  // classify conditional keyed on the declared NodeType, not here. `ClusterVersion` is the AWS-
+  // assigned engine version → value-independent below; `AvailabilityZone` likewise.
   'AWS::Redshift::Cluster': {
     Port: 5439,
     AutomatedSnapshotRetentionPeriod: 1,
@@ -682,6 +687,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AquaConfigurationStatus: 'auto',
     MaintenanceTrackName: 'current',
     KmsKeyId: 'AWS_OWNED_KMS_KEY',
+    NumberOfNodes: 1,
   },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
@@ -1745,6 +1751,10 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // fold the LogGroup path itself, value-independently — a CUSTOM log group is DECLARED and
   // compared in the declared loop, never reaching here.
   'AWS::Lambda::Function': new Set(['LoggingConfig.LogGroup']),
+  // An OpenSearch domain that declares no explicit KMS key reads back the AWS-assigned key id
+  // (a GUID) inside EncryptionAtRestOptions — never a constant, never user intent when undeclared
+  // (like RDS KmsKeyId). Live-verified undeclared on a fresh opensearch-rich deploy.
+  'AWS::OpenSearchService::Domain': new Set(['EncryptionAtRestOptions.KmsKeyId']),
 };
 
 // Undeclared TOP-LEVEL keys whose AWS-chosen default is NON-DETERMINISTIC — the value
@@ -1868,7 +1878,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   (an object {OffPeakWindow:{WindowStartTime:{Hours,Minutes}},Enabled}); AWS enables it and
   //   assigns the start time per domain, so fold the whole property value-independent (a domain
   //   that DECLARES an off-peak window is compared in the declared loop).
-  'AWS::Redshift::Cluster': new Set(['PreferredMaintenanceWindow', 'AvailabilityZone']),
+  //   AWS::Redshift::Cluster.ClusterVersion — a cluster that pins no explicit version reads back
+  //   the concrete engine version AWS provisioned ("1.0" today). "use the current default" is
+  //   satisfied by whatever version is current, so it is not user intent when undeclared (a user
+  //   who cares DECLARES ClusterVersion → compared). Live-verified undeclared on a fresh deploy.
+  'AWS::Redshift::Cluster': new Set([
+    'PreferredMaintenanceWindow',
+    'AvailabilityZone',
+    'ClusterVersion',
+  ]),
   'AWS::OpenSearchService::Domain': new Set(['OffPeakWindowOptions']),
   //   AWS::AmazonMQ::Broker.MaintenanceWindowStartTime — a broker that declares no window reads
   //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
