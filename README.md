@@ -67,10 +67,24 @@ result: 1 drift(s) (undeclared=1)
 
 ## Quick start
 
+Install it in your CDK project, then the `cdkrd` bin is on your `PATH` (via
+`npx`):
+
 ```bash
 npm install -D cdk-real-drift   # in your CDK project
 npx cdkrd check                 # checks every stack your app defines
 ```
+
+Or run it without installing:
+
+```bash
+npx cdk-real-drift check             # zero-install (resolves the cdkrd bin)
+npx -p cdk-real-drift cdkrd check    # same, naming the bin explicitly
+```
+
+The package is `cdk-real-drift` and its bin is `cdkrd`; a bare
+`npx cdk-real-drift check` resolves the single bin, and `-p cdk-real-drift cdkrd`
+names it explicitly.
 
 `check` is the only command you run by hand, with nothing to set up first: it
 finds drift and offers **Record**, **Revert**, and **Ignore** inline on what it
