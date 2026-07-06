@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.0...v0.1.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **synth:** stop red-wrapping the construct-annotation validation report ([#590](https://github.com/go-to-k/cdk-real-drift/issues/590)) ([95a371c](https://github.com/go-to-k/cdk-real-drift/commit/95a371c052ade89dcdd9468999eb053e93b6c0bf))
+
 # [0.1.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.0.0...v0.1.0) (2026-07-06)
 
 
