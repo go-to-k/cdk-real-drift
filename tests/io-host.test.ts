@@ -18,6 +18,17 @@ describe('planIoMessage (QuietIoHost routing)', () => {
     });
   });
 
+  it('re-tags the construct-annotation validation report (E9600, error) to info so it is not red', () => {
+    // toolkit-lib registers the Construct Annotations validation report at ERROR level
+    // even when it only carries WARNINGS; its formatter already colors each line per
+    // severity, so we downgrade to info to avoid the whole block being wrapped in red
+    // (which would bleed red over the description + construct path).
+    expect(planIoMessage({ code: 'CDK_TOOLKIT_E9600', level: 'error' })).toEqual({
+      action: 'emit',
+      level: 'info',
+    });
+  });
+
   it('still surfaces a REAL toolkit error unchanged (stays red)', () => {
     // a genuine synth failure (not the app-stderr passthrough) keeps its error level
     expect(planIoMessage({ code: 'CDK_ASSEMBLY_E1111', level: 'error' })).toEqual({
