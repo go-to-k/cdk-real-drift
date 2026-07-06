@@ -18,14 +18,14 @@ describe('planIoMessage (QuietIoHost routing)', () => {
     });
   });
 
-  it('re-tags the construct-annotation validation report (E9600, error) to info so it is not red', () => {
+  it('re-tags the construct-annotation validation report (E9600, error) to warn so the whole block is yellow, not red', () => {
     // toolkit-lib registers the Construct Annotations validation report at ERROR level
-    // even when it only carries WARNINGS; its formatter already colors each line per
-    // severity, so we downgrade to info to avoid the whole block being wrapped in red
-    // (which would bleed red over the description + construct path).
+    // even when it only carries WARNINGS; the default IoHost would then wrap it in red.
+    // We re-tag to warn so the block is yellow to match its own WARNING label (and like
+    // every other cdkrd synth warning), rather than the misleading error red.
     expect(planIoMessage({ code: 'CDK_TOOLKIT_E9600', level: 'error' })).toEqual({
       action: 'emit',
-      level: 'info',
+      level: 'warn',
     });
   });
 
