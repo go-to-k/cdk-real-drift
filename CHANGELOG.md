@@ -1,3 +1,10 @@
+## [0.1.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.1...v0.1.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* **synth:** color the construct-annotation report yellow, not red ([#591](https://github.com/go-to-k/cdk-real-drift/issues/591)) ([020b5fc](https://github.com/go-to-k/cdk-real-drift/commit/020b5fc63398513ac1f27e4deb464da4b9bdd9c0))
+
 ## [0.1.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.0...v0.1.1) (2026-07-06)
 
 
