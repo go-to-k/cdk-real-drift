@@ -3526,6 +3526,23 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       };
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
+
+    it('editing a scope DESCRIPTION reports exactly ONE aligned drift, not a misaligned smear (identity-first sort)', () => {
+      // ScopeDescription sorts BEFORE ScopeName in canonical JSON (D < N), so a plain
+      // canonical-JSON sort would move the edited element and MISALIGN the positional diff —
+      // false-flagging the UNCHANGED ScopeNames of other scopes too. Keying the sort on the
+      // ScopeName identity keeps every element aligned; only zeta.write's description differs.
+      const live = {
+        Scopes: [
+          { ScopeName: 'alpha.read', ScopeDescription: 'alpha scope' },
+          { ScopeName: 'mike.admin', ScopeDescription: 'mike scope' },
+          { ScopeName: 'zeta.write', ScopeDescription: 'HACKED zeta' }, // description only
+        ],
+      };
+      // exactly one drift, on the TEMPLATE index 0 (zeta.write is declared first), the
+      // description — the ScopeName is NOT falsely reported.
+      expect(declaredTiers(T, declared, live)).toEqual(['Scopes.0.ScopeDescription']);
+    });
   });
 
   // An Access Analyzer's `ArchiveRules` is a SET of {RuleName, Filter} AWS echoes
@@ -3725,6 +3742,32 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
         ],
       };
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+
+    it('reports the drift at the TEMPLATE index even when the drifted element has its OWN reordered nested set (remap via nested-sorted source)', () => {
+      // path-pattern is declared FIRST (template index 0) with its Values in NON-sorted
+      // order, but sorts AFTER host-header (canonical "host-header" < "path-pattern") to
+      // sorted index 1 — AND its Values sub-set is itself re-sorted. A plain deep-equal vs
+      // the raw declared array would then fail to locate the element (the sorted element's
+      // Values no longer match the raw element's order) and fall back to the sorted index.
+      // remapSortedIndexToDeclared must match against the nested-sorted-but-raw-top-order
+      // source and report `Conditions.0.…` (the user's template position).
+      const declaredUnsorted = {
+        Conditions: [
+          { Field: 'path-pattern', PathPatternConfig: { Values: ['/v2/*', '/api/*'] } },
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+        ],
+      };
+      const live = {
+        Conditions: [
+          { Field: 'host-header', HostHeaderConfig: { Values: ['example.com'] } },
+          { Field: 'path-pattern', PathPatternConfig: { Values: ['/CHANGED/*', '/api/*'] } },
+        ],
+      };
+      const paths = declaredTiers(T, declaredUnsorted, live);
+      expect(paths.length).toBeGreaterThan(0);
+      // every reported path uses the TEMPLATE index (0 = path-pattern), not the sorted index (1)
+      expect(paths.every((p) => p.startsWith('Conditions.0.'))).toBe(true);
     });
   });
 

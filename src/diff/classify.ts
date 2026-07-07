@@ -84,6 +84,7 @@ import {
   stripAwsTagsDeep,
   UNORDERED_ARRAY_PROPS,
   UNORDERED_NESTED_OBJECT_ARRAY_PATHS,
+  UNORDERED_OBJECT_ARRAY_IDENTITY,
   UNORDERED_OBJECT_ARRAY_PROPS,
   VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   VERSION_PREFIX_PATHS,
@@ -1432,6 +1433,11 @@ export function classifyResource(
     ];
     let declaredVal: unknown = v;
     let liveVal: unknown = live[k];
+    // For an UNORDERED_OBJECT_ARRAY, the source whose TOP-LEVEL order still matches the
+    // raw template (so a sorted-index finding can be re-mapped back to the template index)
+    // — nested sub-arrays already sorted (so its elements deep-equal the sorted declaredVal's)
+    // but the element ORDER not yet sorted. Set only in the unorderedObjArray branch below.
+    let declaredRemapSource: unknown[] | undefined;
     if (subsetSpec && Array.isArray(v) && Array.isArray(live[k])) {
       const { idField, normalizeId } = subsetSpec;
       const idOf = (e: unknown): string | undefined => {
@@ -1492,12 +1498,21 @@ export function classifyResource(
       // array itself. Without the inner sort, the outer canonical-JSON sort sees a
       // reordered-but-equal nested set as a different element and the positional diff
       // still false-flags it.
-      declaredVal = sortUnorderedObjectArray(
-        nestedSubPaths.length > 0 ? sortNestedObjectArrays(v, nestedSubPaths) : v
-      );
+      // The nested-sorted (but NOT yet top-level-sorted) declared source keeps the raw
+      // template order, so its elements deep-equal the sorted declaredVal's elements AND
+      // its index is the template index — exactly what remapSortedIndexToDeclared needs.
+      const declaredNestedSorted =
+        nestedSubPaths.length > 0 ? sortNestedObjectArrays(v, nestedSubPaths) : v;
+      // Key the sort on the element's IDENTITY field (when the type has one) so a change to a
+      // NON-identity sibling keeps the element aligned on both sides (else a mutable field that
+      // sorts before the identity — Cognito ScopeDescription, Secret KmsKeyId — misaligns).
+      const idField = UNORDERED_OBJECT_ARRAY_IDENTITY[resourceType]?.[k];
+      declaredVal = sortUnorderedObjectArray(declaredNestedSorted, idField);
       liveVal = sortUnorderedObjectArray(
-        nestedSubPaths.length > 0 ? sortNestedObjectArrays(live[k], nestedSubPaths) : live[k]
+        nestedSubPaths.length > 0 ? sortNestedObjectArrays(live[k], nestedSubPaths) : live[k],
+        idField
       );
+      if (Array.isArray(declaredNestedSorted)) declaredRemapSource = declaredNestedSorted;
     } else if (nestedSubPaths.length > 0) {
       declaredVal = sortNestedObjectArrays(v, nestedSubPaths);
       liveVal = sortNestedObjectArrays(live[k], nestedSubPaths);
@@ -1777,9 +1792,13 @@ export function classifyResource(
       // template-order) declared array so the revert plan collapses these into one whole-array
       // replacement (revert reads wholeArrayRevert, never the index).
       const unorderedExtra =
-        unorderedObjArray && Array.isArray(declaredVal) && Array.isArray(v)
+        unorderedObjArray && Array.isArray(declaredVal) && declaredRemapSource
           ? {
-              path: remapSortedIndexToDeclared(d.path, k, declaredVal, v),
+              // Re-map against the nested-sorted-but-raw-top-order source so a type whose
+              // ELEMENTS carry their OWN unordered sub-arrays (ELBv2 ListenerRule Conditions)
+              // still locates the element — a plain-`v` deep-equal would miss it because the
+              // sorted declaredVal element's nested set no longer matches the raw element's.
+              path: remapSortedIndexToDeclared(d.path, k, declaredVal, declaredRemapSource),
               wholeArrayRevert: { path: k, value: v },
             }
           : {};

@@ -3694,6 +3694,32 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   'AWS::EC2::PrefixList': new Set(['Entries']),
 };
 
+// The IDENTITY field of an UNORDERED_OBJECT_ARRAY_PROPS element, when it HAS one (the
+// discriminated-union sets — WAFv2 RedactedFields, ApplicationSignals BurnRateConfigurations
+// — do NOT, so they are absent). sortUnorderedObjectArray keys on this field FIRST, so a
+// change to a NON-identity sibling field keeps the element in the SAME aligned slot on both
+// sides. WITHOUT it, a plain canonical-JSON sort misaligns whenever the changed field sorts
+// alphabetically BEFORE the identity in the element's keys — Cognito Scope `ScopeDescription`
+// < `ScopeName`, Secret replica `KmsKeyId` < `Region`, ElastiCache `LogFormat`/`LogType`, ASG
+// hook `DefaultResult` < `LifecycleHookName` — so editing that field false-flags the UNCHANGED
+// identity as drift too (a positional-diff FP, live-observed reverting a Cognito Scope's
+// description). Types whose identity ALREADY sorts first (PrefixList `Cidr`, Redshift
+// `ParameterName`, ELBv2 ListenerRule `Field`, IAM `PolicyName`) are listed too for robustness
+// — keying on the identity is correct regardless of alphabetical luck.
+export const UNORDERED_OBJECT_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
+  'AWS::Cognito::UserPoolResourceServer': { Scopes: 'ScopeName' },
+  'AWS::SecretsManager::Secret': { ReplicaRegions: 'Region' },
+  'AWS::ElastiCache::CacheCluster': { LogDeliveryConfigurations: 'LogType' },
+  'AWS::ElastiCache::ReplicationGroup': { LogDeliveryConfigurations: 'LogType' },
+  'AWS::AutoScaling::AutoScalingGroup': { LifecycleHookSpecificationList: 'LifecycleHookName' },
+  'AWS::Redshift::ClusterParameterGroup': { Parameters: 'ParameterName' },
+  'AWS::ElasticLoadBalancingV2::ListenerRule': { Conditions: 'Field' },
+  'AWS::EC2::PrefixList': { Entries: 'Cidr' },
+  'AWS::IAM::Role': { Policies: 'PolicyName' },
+  'AWS::IAM::User': { Policies: 'PolicyName' },
+  'AWS::IAM::Group': { Policies: 'PolicyName' },
+};
+
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource
 // root, e.g. `ContentPolicyConfig.FiltersConfig`). This is the nested twin of
 // UNORDERED_OBJECT_ARRAY_PROPS, which only reaches TOP-LEVEL array keys. Mostly
@@ -3916,11 +3942,28 @@ function canonicalJson(v: unknown): string {
 // reordered-but-equal rule set aligns positionally; equal elements (modulo key order)
 // land in the same slot, so the subsequent element-wise diff sees no drift, while a
 // genuinely changed rule still differs.
-export function sortUnorderedObjectArray(v: unknown): unknown {
+export function sortUnorderedObjectArray(v: unknown, identityField?: string): unknown {
   if (!Array.isArray(v)) return v;
+  // Sort key = the element's IDENTITY field (when the type declares one via
+  // UNORDERED_OBJECT_ARRAY_IDENTITY) FOLLOWED BY the full canonical JSON. Keying on the
+  // identity FIRST keeps an element in the SAME aligned slot on both sides when only a
+  // NON-identity field changes — otherwise, if that mutable field sorts alphabetically
+  // BEFORE the identity in the element's keys (Cognito Scope `ScopeDescription` < `ScopeName`,
+  // Secret replica `KmsKeyId` < `Region`, ElastiCache `LogFormat` < `LogType`, ASG hook
+  // `DefaultResult` < `LifecycleHookName`), a plain canonical-JSON sort moves the changed
+  // element to a different position and the positional diff MISALIGNS, false-flagging the
+  // unchanged identity as drift too. The canonical JSON stays as the tiebreaker so equal
+  // identities (and identity-less elements) keep the previous deterministic order.
+  const keyOf = (e: unknown): string => {
+    const id =
+      identityField && e !== null && typeof e === 'object' && !Array.isArray(e)
+        ? (e as Record<string, unknown>)[identityField]
+        : undefined;
+    return `${id === undefined ? '' : `${String(id)} `}${canonicalJson(e)}`;
+  };
   return [...v].sort((a, b) => {
-    const ka = canonicalJson(a);
-    const kb = canonicalJson(b);
+    const ka = keyOf(a);
+    const kb = keyOf(b);
     return ka < kb ? -1 : ka > kb ? 1 : 0;
   });
 }
