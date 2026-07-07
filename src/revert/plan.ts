@@ -94,6 +94,15 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // value persists), so write the default policy (TransferSecurityPolicy-2018-11) back
   // explicitly. The value comes from KNOWN_DEFAULTS.
   'AWS::Transfer::Server\0SecurityPolicyName',
+  // App Runner UpdateService IGNORES an omitted top-level config object (live-observed:
+  // a `remove` revert of an out-of-band HealthCheckConfiguration reports SUCCESS yet the
+  // live value persists — mutated Interval 5->10 survived the revert). Write the whole
+  // KNOWN_DEFAULTS default object back explicitly so revert converges. NetworkConfiguration
+  // is the same provider behavior (top-level object AWS materializes; UpdateService keeps
+  // the existing value on omit) and writing its default public-IPV4 config back is safe /
+  // idempotent whether or not the omit no-ops.
+  'AWS::AppRunner::Service\0HealthCheckConfiguration',
+  'AWS::AppRunner::Service\0NetworkConfiguration',
 ]);
 
 /**
