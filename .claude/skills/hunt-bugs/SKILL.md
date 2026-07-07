@@ -48,10 +48,22 @@ non-negotiable", which is enforced by a gate, not by trust.
      is a fold gap = a bug** (the FP the check-output note + issue link ask users to
      report). When a candidate default's status is uncertain, **RESOLVE it by
      verifying** what AWS assigns to a fresh minimal config — never leave it
-     surfaced as "conservative", that just ships the bug. Fold via equality-gated
-     `KNOWN_DEFAULTS` (folds the default, surfaces a change away — detection kept)
-     for mutable meaningful props; value-independent only for create-only /
-     AWS-assigned identifiers / cosmetic values.
+     surfaced as "conservative", that just ships the bug. A value the user never
+     changed showing on a first `check` is the bug, not an acceptable state:
+     **do NOT rationalize leaving it `undeclared` as "honest", and shrinking the
+     count from N to "a few" is not a fix — the target is zero.** Fold by escalating
+     through the CLAUDE.md **fold-strategy decision order**, stopping at the first
+     that applies: (1) equality-gated constant (`KNOWN_DEFAULTS` /
+     `KNOWN_DEFAULT_PATHS`) — folds the default, surfaces a change away (detection
+     kept); (2) **derived** default (`CONTEXT_DEFAULTS` = f(region), `ENGINE_DEFAULTS`
+     = f(engine), or a value computed from a sibling / declared prop — e.g. an EB
+     `MaxSize` default derivable from its `EnvironmentType`) when the default is a
+     deterministic function of the declared inputs rather than a constant (detection
+     still kept) — **before calling a default "context-dependent, can't fold", ask
+     "can I DERIVE it?"**; (3) value-independent ONLY as a last resort, for a default
+     AWS moves (platform AMI, versioned URL, GA version) or a per-resource
+     identifier / cosmetic value that cannot be pinned or derived (loses detection —
+     acceptable only because it is undeclared, so a user who cares declares it).
    - **False negative (FN) / missed detection** — `record`→`check`→CLEAN does NOT
      exercise detection. So ALSO mutate a **declared, MUTABLE** property out of band
      (the "someone changed it in the console" scenario — Lambda `MemorySize`/
