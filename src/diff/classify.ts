@@ -863,6 +863,32 @@ export function normalizeLiveModel(
   return live;
 }
 
+// A per-element drift inside an UNORDERED_OBJECT_ARRAY is computed on arrays SORTED by
+// canonical JSON on both sides, so the drift path's leading array index is the SORTED
+// position — which need not match the user's TEMPLATE order (declared [require_ssl,
+// enable_user_activity_logging, …] sorts to [enable_user_activity_logging, …], so a
+// change to the 2nd declared entry reports as index 0). Re-map that index back to the
+// element's position in the raw (template-order) declared array so the reported path
+// matches what the user actually wrote. Display-only: revert reads Finding.wholeArrayRevert
+// (a whole-array replace), never this index. Falls back to the sorted path if the element
+// can't be located (e.g. a type whose nested sub-arrays were also re-sorted, so the sorted
+// element no longer deep-equals its raw form).
+function remapSortedIndexToDeclared(
+  path: string,
+  arrayKey: string,
+  sortedDeclared: unknown[],
+  rawDeclared: unknown[]
+): string {
+  const prefix = `${arrayKey}.`;
+  if (!path.startsWith(prefix)) return path;
+  const m = /^(\d+)(\..*|)$/.exec(path.slice(prefix.length));
+  if (!m) return path;
+  const el = sortedDeclared[Number(m[1])];
+  if (el === undefined) return path;
+  const rawIdx = rawDeclared.findIndex((e) => deepEqual(e, el));
+  return rawIdx < 0 ? path : `${arrayKey}.${rawIdx}${m[2]}`;
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -1743,6 +1769,20 @@ export function classifyResource(
         deepEqual(d.awsValue, knownDef[d.path])
       )
         continue;
+      // An UNORDERED_OBJECT_ARRAY element drift: the array was sorted on BOTH sides before
+      // this per-element diff, so `d.path`'s index is the SORTED position — which does not
+      // map to the live array's raw index (a Cloud Control sub-path patch would hit the wrong
+      // live element) NOR to the user's template order. Re-map the reported index to the raw
+      // TEMPLATE position so the path matches what the user wrote, and carry the WHOLE (raw,
+      // template-order) declared array so the revert plan collapses these into one whole-array
+      // replacement (revert reads wholeArrayRevert, never the index).
+      const unorderedExtra =
+        unorderedObjArray && Array.isArray(declaredVal) && Array.isArray(v)
+          ? {
+              path: remapSortedIndexToDeclared(d.path, k, declaredVal, v),
+              wholeArrayRevert: { path: k, value: v },
+            }
+          : {};
       findings.push({
         tier: 'declared',
         logicalId,
@@ -1750,13 +1790,7 @@ export function classifyResource(
         path: d.path,
         desired: d.stateValue,
         actual: d.awsValue,
-        // An UNORDERED_OBJECT_ARRAY element drift: the array was sorted on BOTH sides
-        // before this per-element diff, so `d.path`'s index is the SORTED position, which
-        // does NOT map to the live array's raw index — a Cloud Control sub-path patch would
-        // hit the wrong live element. Carry the WHOLE (raw, template-order) declared array so
-        // the revert plan collapses these into one whole-array replacement. The REPORT still
-        // shows this precise per-element line; only revert reads `wholeArrayRevert`.
-        ...(unorderedObjArray ? { wholeArrayRevert: { path: k, value: v } } : {}),
+        ...unorderedExtra,
       });
     }
   }

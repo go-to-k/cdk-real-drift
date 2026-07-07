@@ -4023,6 +4023,28 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       };
       expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
     });
+
+    it('reports the drift at the TEMPLATE index, not the sorted index (remapSortedIndexToDeclared)', () => {
+      // Template order is deliberately NON-sorted: 192.168.0.0/24 is declared FIRST
+      // (index 0) but sorts LAST (canonical JSON "10.0…" < "10.1…" < "192…"). Editing
+      // its Description must report `Entries.0.…` (the user's template position), not the
+      // sorted `Entries.2.…` — otherwise the index points at a different declared entry.
+      const declaredUnsorted = {
+        Entries: [
+          { Cidr: '192.168.0.0/24', Description: 'branch' },
+          { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+          { Cidr: '10.1.0.0/16', Description: 'corp-b' },
+        ],
+      };
+      const live = {
+        Entries: [
+          { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+          { Cidr: '10.1.0.0/16', Description: 'corp-b' },
+          { Cidr: '192.168.0.0/24', Description: 'CHANGED' },
+        ],
+      };
+      expect(declaredTiers(T, declaredUnsorted, live)).toEqual(['Entries.0.Description']);
+    });
   });
 
   describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
