@@ -1,3 +1,10 @@
+## [0.1.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.2...v0.1.3) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold DocDB + VolumeAttachment first-run default noise ([#594](https://github.com/go-to-k/cdk-real-drift/issues/594)) ([d299f47](https://github.com/go-to-k/cdk-real-drift/commit/d299f479932488f6365e61943218f3d1683767dd))
+
 ## [0.1.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.1...v0.1.2) (2026-07-06)
 
 
