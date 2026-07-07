@@ -601,11 +601,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AutoMinorVersionUpgrade: true,
     BackupTarget: 'region',
     DatabaseInsightsMode: 'standard',
-    // EngineLifecycleSupport is NOT a constant default — AWS changed the enrollment default over
-    // time (RDS Extended Support opt-in behavior changed 2024-02/03: newer resources default to
-    // `open-source-rds-extended-support` / auto-enroll, older ones read back
-    // `open-source-rds-extended-support-disabled`), so it varies by creation date. Folded
-    // value-independent via VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS instead (declared → detected).
+    // EngineLifecycleSupport is NOT a constant default. Its value is set by the resource's
+    // ORIGINAL creation era (a pre-RDS-Extended-Support lineage reads `-disabled`, a newer one
+    // the `-extended-support` default), but a RESTORE resets the readable `ClusterCreateTime`
+    // to the restore date — so an untouched, undeclared cluster can read `-disabled` under a
+    // recent timestamp, and the live model exposes no signal that reconstructs it. Folded
+    // value-independent via VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS (see the full note there);
+    // a DECLARED value is compared in the declared loop (detected).
     MonitoringInterval: 0,
     NetworkType: 'IPV4',
     StorageThroughput: 0,
@@ -630,8 +632,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::RDS::DBCluster': {
     AutoMinorVersionUpgrade: true,
     DatabaseInsightsMode: 'standard',
-    // EngineLifecycleSupport folds value-independent (see the DBInstance note above) — its
-    // default varies by creation date, so it is not a constant KNOWN_DEFAULTS value.
+    // EngineLifecycleSupport folds value-independent (see the DBInstance note above) — a
+    // pre-Extended-Support lineage reads `-disabled` and a restore hides the original creation
+    // era behind the restore-date ClusterCreateTime, so it is not a constant KNOWN_DEFAULTS value.
     NetworkType: 'IPV4',
     EngineMode: 'provisioned', // default; serverless/parallelquery are explicit opt-ins
   },
@@ -1801,15 +1804,21 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   `PerformanceInsightsKmsKeyId` (cluster) / `PerformanceInsightsKMSKeyId` (instance — note
   //   the API's different casing) is the same shape as `KmsKeyId`: a Performance-Insights-
   //   enabled cluster/instance that pins no explicit PI key reads back the AWS-assigned key.
-  //   `EngineLifecycleSupport` — the RDS Extended Support enrollment default CHANGED over time
-  //   (opt-in behavior changed 2024-02/03: newer resources auto-enroll to
-  //   `open-source-rds-extended-support`, older ones read back
-  //   `open-source-rds-extended-support-disabled`). So the undeclared default varies by creation
-  //   date — AWS's choice, not user intent — and a constant KNOWN_DEFAULTS cannot fold both forms.
-  //   A user who cares about the enrollment (its billing / EOL implications) DECLARES it, and then
-  //   it is compared in the declared loop (detected). Observed live: fresh corpus deploys read
-  //   "open-source-rds-extended-support"; the older cdk-imported my-app-Rds reads
-  //   "open-source-rds-extended-support-disabled".
+  //   `EngineLifecycleSupport` — the RDS Extended Support enrollment. The value is set by the
+  //   resource's ORIGINAL creation era: a lineage first created BEFORE RDS Extended Support
+  //   existed (roughly early 2024) reads `open-source-rds-extended-support-disabled` (never
+  //   enrolled), while one created after reads the `open-source-rds-extended-support` default.
+  //   cdkrd CANNOT reconstruct this from the live model, because a RESTORE (from snapshot / PITR)
+  //   resets the readable `ClusterCreateTime` to the restore date while the cluster still carries
+  //   its pre-feature lineage's `-disabled`. So an untouched, undeclared cluster can read
+  //   `-disabled` under a RECENT creation timestamp — reading `ClusterCreateTime` would
+  //   mis-classify it. Live-verified: a 2025-08 restore of a legacy cluster reads `-disabled`
+  //   while a 2024-11 fresh create reads `-extended-support` (the date the live model exposes is
+  //   uncorrelated with the value). Both forms are AWS's choice, not user intent, so a constant
+  //   KNOWN_DEFAULTS cannot fold both without a false positive on one (surfacing an untouched
+  //   restored cluster's `-disabled` would be exactly that). Fold value-independent; a user who
+  //   cares about the enrollment (its billing / EOL implications) DECLARES it, and it is then
+  //   compared in the declared loop (detected).
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
     'PerformanceInsightsKmsKeyId',

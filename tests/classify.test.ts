@@ -5133,10 +5133,13 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
     expect(r.atDefault).not.toContain('PreferredMaintenanceWindow');
   });
 
-  it('EngineLifecycleSupport folds value-independent — BOTH the enabled and disabled defaults', () => {
-    // The default varies by creation date (RDS Extended Support opt-in changed 2024) — newer
-    // deploys read "…support", the older imported AuroraDB reads "…support-disabled". Both are
-    // AWS's choice, not user intent, so both fold.
+  it('EngineLifecycleSupport folds value-independent — BOTH the enabled and disabled forms', () => {
+    // The value is set by the resource's ORIGINAL creation era: a pre-RDS-Extended-Support
+    // lineage reads "…support-disabled", a newer one the "…support" default. A RESTORE resets
+    // the readable ClusterCreateTime to the restore date, so an untouched, undeclared cluster
+    // can read "-disabled" under a recent timestamp (live-verified) — the live model exposes no
+    // signal that reconstructs it. Both must fold; surfacing an untouched restored cluster's
+    // "-disabled" would be a false positive.
     for (const v of [
       'open-source-rds-extended-support',
       'open-source-rds-extended-support-disabled',
