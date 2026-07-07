@@ -1,0 +1,60 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Map",
+    "resourceType": "AWS::Location::Map",
+    "physicalId": "cdkrd-map-rich",
+    "constructPath": "CdkRealDriftIntegLocationRich/Map",
+    "declared": {
+      "Configuration": {
+        "Style": "VectorEsriNavigation"
+      },
+      "Description": "cdkrd location map rich",
+      "MapName": "cdkrd-map-rich"
+    }
+  },
+  "liveRaw": {
+    "MapName": "cdkrd-map-rich",
+    "Description": "cdkrd location map rich",
+    "Configuration": {
+      "Style": "VectorEsriNavigation",
+      "CustomLayers": []
+    },
+    "CreateTime": "2026-07-07T14:46:07.502Z",
+    "UpdateTime": "2026-07-07T14:46:07.502Z",
+    "PricingPlan": "RequestBasedUsage",
+    "Arn": "arn:aws:geo:us-east-1:111111111111:map/cdkrd-map-rich",
+    "MapArn": "arn:aws:geo:us-east-1:111111111111:map/cdkrd-map-rich",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreateTime", "MapArn", "UpdateTime"],
+    "writeOnly": [],
+    "createOnly": ["Configuration", "MapName"],
+    "readOnlyPaths": ["Arn", "CreateTime", "MapArn", "UpdateTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Configuration", "MapName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Map",
+      "resourceType": "AWS::Location::Map",
+      "path": "PricingPlan",
+      "actual": "RequestBasedUsage",
+      "physicalId": "cdkrd-map-rich",
+      "constructPath": "CdkRealDriftIntegLocationRich/Map"
+    }
+  ]
+}

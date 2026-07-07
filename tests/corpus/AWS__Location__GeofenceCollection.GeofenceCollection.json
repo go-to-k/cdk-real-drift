@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GeofenceCollection",
+    "resourceType": "AWS::Location::GeofenceCollection",
+    "physicalId": "cdkrd-geofence-rich",
+    "constructPath": "CdkRealDriftIntegLocationRich/GeofenceCollection",
+    "declared": {
+      "CollectionName": "cdkrd-geofence-rich",
+      "Description": "cdkrd location geofence collection rich"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd location geofence collection rich",
+    "CollectionArn": "arn:aws:geo:us-east-1:111111111111:geofence-collection/cdkrd-geofence-rich",
+    "CollectionName": "cdkrd-geofence-rich",
+    "CreateTime": "2026-07-07T14:46:07.390Z",
+    "UpdateTime": "2026-07-07T14:46:07.390Z",
+    "PricingPlan": "RequestBasedUsage",
+    "Arn": "arn:aws:geo:us-east-1:111111111111:geofence-collection/cdkrd-geofence-rich",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "CollectionArn", "CreateTime", "UpdateTime"],
+    "writeOnly": [],
+    "createOnly": ["CollectionName", "KmsKeyId"],
+    "readOnlyPaths": ["Arn", "CollectionArn", "CreateTime", "UpdateTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CollectionName", "KmsKeyId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "GeofenceCollection",
+      "resourceType": "AWS::Location::GeofenceCollection",
+      "path": "PricingPlan",
+      "actual": "RequestBasedUsage",
+      "physicalId": "cdkrd-geofence-rich",
+      "constructPath": "CdkRealDriftIntegLocationRich/GeofenceCollection"
+    }
+  ]
+}
