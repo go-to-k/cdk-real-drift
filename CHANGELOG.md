@@ -1,3 +1,10 @@
+## [0.2.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.10...v0.2.11) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Batch JobDefinition auto-generated JobDefinitionName (bug hunt follow-up) ([#617](https://github.com/go-to-k/cdk-real-drift/issues/617)) ([a10707c](https://github.com/go-to-k/cdk-real-drift/commit/a10707c358ea1101d18434789d9e2be007eedb37))
+
 ## [0.2.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.9...v0.2.10) (2026-07-07)
 
 
