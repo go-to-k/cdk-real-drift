@@ -34,7 +34,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FsEfsMountTarget11EC3BF7C",
       "resourceType": "AWS::EFS::MountTarget",
       "path": "IpAddress",

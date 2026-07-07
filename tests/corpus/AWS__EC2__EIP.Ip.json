@@ -60,7 +60,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Ip",
       "resourceType": "AWS::EC2::EIP",
       "path": "NetworkBorderGroup",

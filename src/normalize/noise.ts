@@ -1891,7 +1891,11 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::DocDB::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
   'AWS::DocDB::DBInstance': new Set(['PreferredMaintenanceWindow']),
   'AWS::Neptune::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
-  'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow']),
+  //   AWS::Neptune::DBInstance.AvailabilityZone — AWS places an undeclared instance in an AZ it
+  //   picks (create-only, so it can never drift; never user intent when undeclared), exactly like
+  //   AWS::RDS::DBInstance.AvailabilityZone above. A user who pins a placement DECLARES it and is
+  //   then compared in the declared loop.
+  'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow', 'AvailabilityZone']),
   'AWS::ElastiCache::CacheCluster': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
@@ -1917,6 +1921,28 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-
   //   run noise (a DECLARED window is compared in the declared loop).
   'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime']),
+  //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
+  //   read back on every first run. Each is a per-resource value AWS picks at creation from the
+  //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
+  //   undeclared. All are create-only (schema `createOnly`), so a value-independent fold can never
+  //   hide a real out-of-band change: the value physically cannot move without replacing the
+  //   resource, which is itself a template change surfaced elsewhere. A user who pins a specific
+  //   value DECLARES it and is then compared in the declared loop. Found by the offline first-run-
+  //   noise sweep across the VPC-common / EC2-instance / EFS / peering corpus cases (undeclared on
+  //   every one, no out-of-band edit), each confirmed create-only from its live CFn schema:
+  //     * EC2 Instance / NetworkInterface / NatGateway `PrivateIpAddress` — the primary private IP
+  //       AWS allocates from the subnet CIDR (e.g. "10.0.0.216"); immutable after launch.
+  //     * EFS MountTarget `IpAddress` — the mount-target IP AWS allocates from the subnet.
+  //     * EC2 EIP `NetworkBorderGroup` — the address's border group, defaulting to the region.
+  //     * EC2 VPCEndpoint `ServiceRegion` — defaults to the endpoint's own region.
+  //     * EC2 VPCPeeringConnection `PeerRegion` — defaults to the requester's region.
+  'AWS::EC2::Instance': new Set(['PrivateIpAddress']),
+  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress']),
+  'AWS::EC2::NatGateway': new Set(['PrivateIpAddress']),
+  'AWS::EFS::MountTarget': new Set(['IpAddress']),
+  'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
+  'AWS::EC2::VPCEndpoint': new Set(['ServiceRegion']),
+  'AWS::EC2::VPCPeeringConnection': new Set(['PeerRegion']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
