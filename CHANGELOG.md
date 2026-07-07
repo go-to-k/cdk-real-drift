@@ -1,3 +1,10 @@
+## [0.1.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.10...v0.1.11) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold classic ELB first-run defaults + case-insensitive listener protocol (zero first-run drift) ([#604](https://github.com/go-to-k/cdk-real-drift/issues/604)) ([7c8e444](https://github.com/go-to-k/cdk-real-drift/commit/7c8e44418a88a61799f7cb99169a2504fd3bd917))
+
 ## [0.1.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.9...v0.1.10) (2026-07-07)
 
 
