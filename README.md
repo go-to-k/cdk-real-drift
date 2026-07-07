@@ -583,7 +583,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
   (supplement an `AWS::ElastiCache::ReplicationGroup` with its writeOnly
   `PreferredMaintenanceWindow` / `NotificationTopicArn` / `EngineVersion`, read
-  from the member cache cluster), `ecs:DescribeServices` (supplements an
+  from the member cache cluster),
+  `elasticache:DescribeCacheParameterGroups` + `elasticache:DescribeCacheParameters`
+  (read an `AWS::ElastiCache::ParameterGroup`'s `Properties` as the `Source=user`
+  MODIFIED set only — the Cloud Control read returns the full effective set, so the
+  ~60 inherited engine defaults would otherwise surface as first-run drift; an
+  out-of-band parameter change is `Source=user` and still detected),
+  `ecs:DescribeServices` (supplements an
   `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration` /
   `VolumeConfigurations`, read from the PRIMARY deployment),
   `elasticache:DescribeUsers` + `memorydb:DescribeUsers` (supplement an
@@ -633,6 +639,10 @@ permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
 the whole `ConnectionInput` is re-supplied; a connection with an inline password
 is refused, never overwritten, so the un-read credential is never cleared),
 `logs:PutMetricFilter`, `route53:ChangeResourceRecordSets`,
+`elasticache:ModifyCacheParameterGroup` / `ResetCacheParameterGroup` (revert an
+`AWS::ElastiCache::ParameterGroup` — a changed declared parameter is modified back
+to its desired value; an out-of-band-added undeclared parameter is reset to the
+family default),
 `ses:UpdateReceiptRule` (reverts an `AWS::SES::ReceiptRule` — the whole rule is
 re-supplied in place, since Cloud Control has no handler for the type),
 `cloudwatch:PutAnomalyDetector` (reverts an `AWS::CloudWatch::AnomalyDetector`

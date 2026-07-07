@@ -32,6 +32,11 @@ import {
   DescribeSubnetGroupsCommand,
 } from '@aws-sdk/client-dax';
 import {
+  DescribeCacheParameterGroupsCommand,
+  DescribeCacheParametersCommand,
+  ElastiCacheClient,
+} from '@aws-sdk/client-elasticache';
+import {
   DescribeBotLocaleCommand,
   DescribeIntentCommand,
   DescribeSlotCommand,
@@ -113,6 +118,7 @@ const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
 const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
+const elasticache = mockClient(ElastiCacheClient);
 const eb = mockClient(ElasticBeanstalkClient);
 const lex = mockClient(LexModelsV2Client);
 
@@ -148,6 +154,7 @@ beforeEach(() => {
     dms,
     mediaconvert,
     dax,
+    elasticache,
     lex,
     eb,
   ])
@@ -2797,6 +2804,88 @@ describe('DAX family (NON_PROVISIONABLE, issue #534)', () => {
 
     it('no physical id -> undefined (skipped)', async () => {
       expect(await SDK_OVERRIDES['AWS::DAX::ParameterGroup'](ctx({}, ''))).toBeUndefined();
+    });
+  });
+
+  describe('ElastiCache ParameterGroup', () => {
+    it('projects name/family/description + only the source=user (modified) Properties', async () => {
+      // The CC-native read returns the FULL effective set (~60 inherited engine defaults +
+      // the modified ones); the SDK reader must request Source=user so only the modified
+      // parameters project, matching the modified-only shape RDS returns natively.
+      elasticache.on(DescribeCacheParameterGroupsCommand).resolves({
+        CacheParameterGroups: [
+          {
+            CacheParameterGroupName: 'my-pg',
+            CacheParameterGroupFamily: 'redis7',
+            Description: 'tuned',
+          },
+        ],
+      } as never);
+      elasticache.on(DescribeCacheParametersCommand).resolves({
+        Parameters: [
+          { ParameterName: 'maxmemory-policy', ParameterValue: 'allkeys-lru', Source: 'user' },
+          { ParameterName: 'timeout', ParameterValue: '300', Source: 'user' },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::ElastiCache::ParameterGroup'](ctx({}, 'my-pg'));
+      expect(out).toEqual({
+        CacheParameterGroupName: 'my-pg',
+        CacheParameterGroupFamily: 'redis7',
+        Description: 'tuned',
+        Properties: { 'maxmemory-policy': 'allkeys-lru', timeout: '300' },
+      });
+      const call = elasticache.commandCalls(DescribeCacheParametersCommand)[0]!;
+      expect(call.args[0].input).toMatchObject({
+        CacheParameterGroupName: 'my-pg',
+        Source: 'user',
+      });
+    });
+
+    it('a group with no modified parameters projects no Properties key (all defaults fold)', async () => {
+      elasticache.on(DescribeCacheParameterGroupsCommand).resolves({
+        CacheParameterGroups: [
+          { CacheParameterGroupName: 'my-pg', CacheParameterGroupFamily: 'redis7' },
+        ],
+      } as never);
+      elasticache.on(DescribeCacheParametersCommand).resolves({ Parameters: [] } as never);
+      const out = await SDK_OVERRIDES['AWS::ElastiCache::ParameterGroup'](ctx({}, 'my-pg'));
+      expect(out).toEqual({
+        CacheParameterGroupName: 'my-pg',
+        CacheParameterGroupFamily: 'redis7',
+      });
+    });
+
+    it('paginates DescribeCacheParameters via Marker', async () => {
+      elasticache.on(DescribeCacheParameterGroupsCommand).resolves({
+        CacheParameterGroups: [{ CacheParameterGroupName: 'my-pg' }],
+      } as never);
+      elasticache
+        .on(DescribeCacheParametersCommand)
+        .resolvesOnce({
+          Parameters: [{ ParameterName: 'timeout', ParameterValue: '300', Source: 'user' }],
+          Marker: 'next',
+        } as never)
+        .resolvesOnce({
+          Parameters: [{ ParameterName: 'databases', ParameterValue: '32', Source: 'user' }],
+        } as never);
+      const out = await SDK_OVERRIDES['AWS::ElastiCache::ParameterGroup'](ctx({}, 'my-pg'));
+      expect((out as { Properties: Record<string, string> }).Properties).toEqual({
+        timeout: '300',
+        databases: '32',
+      });
+    });
+
+    it('the parameter group is absent -> ResourceGoneError (deleted out of band)', async () => {
+      elasticache
+        .on(DescribeCacheParameterGroupsCommand)
+        .resolves({ CacheParameterGroups: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::ElastiCache::ParameterGroup'](ctx({}, 'my-pg'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('no physical id -> undefined (skipped)', async () => {
+      expect(await SDK_OVERRIDES['AWS::ElastiCache::ParameterGroup'](ctx({}, ''))).toBeUndefined();
     });
   });
 

@@ -119,6 +119,11 @@ import {
   UpdateClusterCommand,
   UpdateParameterGroupCommand as UpdateDaxParameterGroupCommand,
 } from '@aws-sdk/client-dax';
+import {
+  ElastiCacheClient,
+  ModifyCacheParameterGroupCommand,
+  ResetCacheParameterGroupCommand,
+} from '@aws-sdk/client-elasticache';
 import { EC2Client, ModifyClientVpnEndpointCommand } from '@aws-sdk/client-ec2';
 import {
   DescribeEventBusCommand,
@@ -1527,6 +1532,58 @@ const writeDaxParameterGroup: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::ElastiCache::ParameterGroup — read via an SDK override (describe-cache-parameters
+// --source user), so revert needs a matching SDK writer. The CFn `Properties` is a { name →
+// value } map. An `add` op reverts a DECLARED parameter that was changed out of band back to
+// its desired value via ModifyCacheParameterGroup. A `remove` op reverts an out-of-band-ADDED
+// parameter (one the template never declared) back to the family default via
+// ResetCacheParameterGroup. Keyed on the `/Properties/<key>` path (or a whole-map `/Properties`
+// op → every desired key).
+const writeElastiCacheParameterGroup: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['CacheParameterGroupName']);
+  if (!name) throw new Error('cannot resolve ElastiCache parameter-group name for revert');
+  const desired = await desiredModel('AWS::ElastiCache::ParameterGroup', ctx, ops);
+  const desiredValues = (desired.Properties as Record<string, unknown> | undefined) ?? {};
+  const modifyKeys = new Set<string>();
+  const resetKeys = new Set<string>();
+  for (const op of ops) {
+    const segs = op.path.replace(/^\//, '').split('/');
+    if (segs[0] !== 'Properties') continue;
+    const key = segs[1]?.replace(/~1/g, '/').replace(/~0/g, '~');
+    if (op.op === 'remove') {
+      // A whole-map remove is not meaningful here (the group always has the family defaults);
+      // only a specific added key is reset.
+      if (key !== undefined) resetKeys.add(key);
+    } else if (key !== undefined) {
+      modifyKeys.add(key);
+    } else {
+      for (const k of Object.keys(desiredValues)) modifyKeys.add(k);
+    }
+  }
+  const c = new ElastiCacheClient({ region: ctx.region });
+  const modify = [...modifyKeys]
+    .filter((k) => typeof desiredValues[k] === 'string')
+    .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
+  if (modify.length > 0) {
+    await c.send(
+      new ModifyCacheParameterGroupCommand({
+        CacheParameterGroupName: name,
+        ParameterNameValues: modify,
+      })
+    );
+  }
+  const reset = [...resetKeys].map((k) => ({ ParameterName: k }));
+  if (reset.length > 0) {
+    await c.send(
+      new ResetCacheParameterGroupCommand({
+        CacheParameterGroupName: name,
+        ResetAllParameters: false,
+        ParameterNameValues: reset,
+      })
+    );
+  }
+};
+
 // AWS::EC2::ClientVpnEndpoint — NON_PROVISIONABLE (read via DescribeClientVpnEndpoints; #534).
 // ec2:ModifyClientVpnEndpoint is a PARTIAL modify: send ONLY the drifted top-level props in the
 // mutable allowlist. Two props need reshaping vs the reader's projection: DnsServers (the read is
@@ -2019,6 +2076,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
   'AWS::DAX::Cluster': writeDaxCluster,
   'AWS::DAX::ParameterGroup': writeDaxParameterGroup,
+  'AWS::ElastiCache::ParameterGroup': writeElastiCacheParameterGroup,
   'AWS::EC2::ClientVpnEndpoint': writeEc2ClientVpnEndpoint,
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,

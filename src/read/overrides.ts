@@ -73,6 +73,8 @@ import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-s
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   DescribeCacheClustersCommand,
+  DescribeCacheParameterGroupsCommand,
+  DescribeCacheParametersCommand,
   DescribeReplicationGroupsCommand,
   DescribeUsersCommand as DescribeCacheUsersCommand,
   ElastiCacheClient,
@@ -1078,6 +1080,52 @@ const readDaxParameterGroup: OverrideReader = async ({ physicalId, region }) => 
   return model;
 };
 
+// AWS::ElastiCache::ParameterGroup — the CC-native read returns the FULL EFFECTIVE
+// parameter set: all ~60 engine defaults inherited from the family PLUS the handful the
+// template declared, so every inherited default surfaces as an `undeclared` [Not Recorded]
+// first-run FP (60 lines for a template that declared two parameters). The sibling
+// RDS/Redshift/Neptune parameter groups are already CLEAN because their read returns only
+// the user-MODIFIED parameters. Align ElastiCache to the same modified-only shape by reading
+// `Properties` from `describe-cache-parameters --source user` (the parameters whose Source is
+// `user`, i.e. explicitly set away from the family default). This preserves out-of-band
+// detection: a parameter changed in the console becomes Source=user and reappears, so a real
+// divergence still surfaces — only the untouched inherited defaults fold away. The CFn
+// physical id (Ref) IS the CacheParameterGroupName. Read-ONLY. Empty group -> ResourceGoneError
+// so the router maps it to `deleted`.
+const readElastiCacheParameterGroup: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new ElastiCacheClient({ region, ...READ_RETRY });
+  const g = (
+    await c.send(new DescribeCacheParameterGroupsCommand({ CacheParameterGroupName: name }))
+  ).CacheParameterGroups?.[0];
+  if (!g) throw new ResourceGoneError(`ElastiCache ParameterGroup ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(g.CacheParameterGroupName)) model.CacheParameterGroupName = g.CacheParameterGroupName;
+  if (str(g.CacheParameterGroupFamily))
+    model.CacheParameterGroupFamily = g.CacheParameterGroupFamily;
+  if (str(g.Description)) model.Description = g.Description;
+  const values: Record<string, string> = {};
+  let marker: string | undefined;
+  do {
+    const p = await c.send(
+      new DescribeCacheParametersCommand({
+        CacheParameterGroupName: name,
+        Source: 'user',
+        Marker: marker,
+      })
+    );
+    for (const param of p.Parameters ?? []) {
+      const pName = str(param.ParameterName);
+      const pValue = param.ParameterValue;
+      if (pName !== undefined && typeof pValue === 'string') values[pName] = pValue;
+    }
+    marker = str(p.Marker);
+  } while (marker !== undefined);
+  if (Object.keys(values).length > 0) model.Properties = values;
+  return model;
+};
+
 // AWS::DAX::SubnetGroup — NON_PROVISIONABLE (issue #534). The CFn physical id (Ref) IS the
 // SubnetGroupName. Project SubnetGroupName/Description and flatten Subnets[].SubnetIdentifier to
 // the CFn SubnetIds list. Drop the computed/managed fields (VpcId/SupportedNetworkTypes).
@@ -1987,6 +2035,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::EC2::ClientVpnTargetNetworkAssociation': readEc2ClientVpnTargetNetworkAssociation,
   'AWS::DAX::Cluster': readDaxCluster,
   'AWS::DAX::ParameterGroup': readDaxParameterGroup,
+  'AWS::ElastiCache::ParameterGroup': readElastiCacheParameterGroup,
   'AWS::DAX::SubnetGroup': readDaxSubnetGroup,
   'AWS::CloudWatch::AnomalyDetector': readCloudWatchAnomalyDetector,
   'AWS::CodeBuild::ReportGroup': readCodeBuildReportGroup,
