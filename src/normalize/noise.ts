@@ -300,6 +300,21 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       },
     ],
   },
+  // An ApplicationSignals ServiceLevelObjective that omits `Goal` reads it back
+  // fully materialized with AWS's constant default: a rolling 7-day interval,
+  // AttainmentGoal 99, WarningThreshold 50 (the schema documents "a rolling
+  // interval of 7 days" / "99 is used" but does NOT annotate a `default`, so the
+  // schema-driven fold can't reach it). Equality-gated whole-object, so a user who
+  // declares Goal is compared in the declared loop, and any out-of-band change to a
+  // sub-field (a different AttainmentGoal, a calendar interval) no longer matches
+  // and re-surfaces. Observed live on a fresh period-based SLO (slo-notif-rich).
+  'AWS::ApplicationSignals::ServiceLevelObjective': {
+    Goal: {
+      WarningThreshold: 50,
+      AttainmentGoal: 99,
+      Interval: { RollingInterval: { DurationUnit: 'DAY', Duration: 7 } },
+    },
+  },
   // R104 (dogfood noise audit across the harvest fixtures): top-level service
   // defaults AWS materializes that the CFn schema does NOT annotate as `default`
   // (so the schema-driven R103 fold can't reach them). All OBSERVED on real
