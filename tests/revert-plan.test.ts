@@ -457,6 +457,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Events ApiDestination InvocationRateLimitPerSecond (SET-DEFAULT) -> add op writing 300, not a no-op remove', () => {
+    // AWS::Events::ApiDestination InvocationRateLimitPerSecond is in REVERT_SET_DEFAULT_PATHS:
+    // UpdateApiDestination leaves the value UNCHANGED when it is OMITTED, so a bare `remove` of
+    // an out-of-band 50 is a silent no-op (Cloud Control reports SUCCESS yet the live 50
+    // persists — "1 drift remain"; proven live on events-apidest-rich 2026-07-08). Revert must
+    // write the 300 default (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Events::ApiDestination',
+      path: 'InvocationRateLimitPerSecond',
+      actual: 50,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/InvocationRateLimitPerSecond',
+      value: 300,
+      prior: 50,
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.

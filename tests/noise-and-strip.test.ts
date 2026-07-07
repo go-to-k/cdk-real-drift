@@ -706,6 +706,18 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('EventBridge ApiDestination undeclared InvocationRateLimitPerSecond folds to the 300 default (bug-hunt: events-apidest-rich)', () => {
+    // An ApiDestination that declares no InvocationRateLimitPerSecond reads back AWS's
+    // constant default of 300 req/s (the documented default + maximum when omitted). It
+    // surfaced as a first-run [Potential Drift] FP on a clean deploy until folded. Equality-
+    // gated, so a user-set throttle or out-of-band change no longer matches 300 and re-
+    // surfaces (proven live 2026-07-08; exercised end-to-end by the AWS__Events__
+    // ApiDestination.ApiDestination corpus-replay case).
+    expect(KNOWN_DEFAULTS['AWS::Events::ApiDestination']).toEqual({
+      InvocationRateLimitPerSecond: 300,
+    });
+  });
+
   it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {
     // Constant, documented service defaults common stateful/streaming types report as
     // first-run undeclared noise. Verified against the golden corpus (RDS DBInstance

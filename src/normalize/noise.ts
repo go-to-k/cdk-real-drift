@@ -37,6 +37,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // config; ApplicationMode is createOnly so it cannot drift). Equality-gated. Observed
   // live on a fresh READY Flink app (streaming-rich fixture, 2026-07-03; #509).
   'AWS::KinesisAnalyticsV2::Application': { ApplicationMode: 'STREAMING' },
+  // An EventBridge API destination that declares no InvocationRateLimitPerSecond reads
+  // back AWS's constant default of 300 requests/second (the documented default + maximum
+  // when the property is omitted). Equality-gated: a user who sets a throttle (e.g. 10)
+  // or an out-of-band console change no longer matches 300 and re-surfaces as real
+  // undeclared drift. Observed live on a fresh events-apidest-rich ApiDestination
+  // (2026-07-08).
+  'AWS::Events::ApiDestination': { InvocationRateLimitPerSecond: 300 },
   // An Elastic Beanstalk Application that declares no ResourceLifecycleConfig reads back
   // the constant service default: a version-lifecycle policy carrying both rules present
   // but DISABLED (Enabled:false, MaxCount 200 / MaxAgeInDays 180, DeleteSourceFromS3:false).
