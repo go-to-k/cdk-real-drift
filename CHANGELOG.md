@@ -1,3 +1,10 @@
+## [0.2.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.6...v0.2.7) (2026-07-07)
+
+
+### Bug Fixes
+
+* **revert:** converge Location PlaceIndex DataSourceConfiguration revert (avoid silent no-op) ([#611](https://github.com/go-to-k/cdk-real-drift/issues/611)) ([519e837](https://github.com/go-to-k/cdk-real-drift/commit/519e837f143255a14e631a3af66fc6c307ca8590))
+
 ## [0.2.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.5...v0.2.6) (2026-07-07)
 
 
