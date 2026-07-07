@@ -1,3 +1,10 @@
+## [0.2.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.8...v0.2.9) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Events ApiDestination InvocationRateLimitPerSecond default (bug hunt: events-apidest-rich) ([#615](https://github.com/go-to-k/cdk-real-drift/issues/615)) ([66321d9](https://github.com/go-to-k/cdk-real-drift/commit/66321d916664e53d7576cf75e3ebaa171b30167a))
+
 ## [0.2.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.7...v0.2.8) (2026-07-07)
 
 
