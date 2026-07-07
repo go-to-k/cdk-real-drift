@@ -1,3 +1,10 @@
+## [0.1.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.6...v0.1.7) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Elastic Beanstalk first-run defaults (Application/Template/Environment) ([#598](https://github.com/go-to-k/cdk-real-drift/issues/598)) ([d50d79a](https://github.com/go-to-k/cdk-real-drift/commit/d50d79a7c57181424564976253f39958fe05fa2f))
+
 ## [0.1.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.5...v0.1.6) (2026-07-07)
 
 
