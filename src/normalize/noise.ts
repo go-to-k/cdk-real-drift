@@ -37,6 +37,27 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // config; ApplicationMode is createOnly so it cannot drift). Equality-gated. Observed
   // live on a fresh READY Flink app (streaming-rich fixture, 2026-07-03; #509).
   'AWS::KinesisAnalyticsV2::Application': { ApplicationMode: 'STREAMING' },
+  // An Elastic Beanstalk Application that declares no ResourceLifecycleConfig reads back
+  // the constant service default: a version-lifecycle policy carrying both rules present
+  // but DISABLED (Enabled:false, MaxCount 200 / MaxAgeInDays 180, DeleteSourceFromS3:false).
+  // Equality-gated: enable a lifecycle rule out of band and the object no longer matches,
+  // so it re-surfaces as real undeclared drift. Observed live on a fresh elasticbeanstalk-
+  // rich Application (2026-07-07).
+  'AWS::ElasticBeanstalk::Application': {
+    ResourceLifecycleConfig: {
+      VersionLifecycleConfig: {
+        MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+        MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+      },
+    },
+  },
+  // An Elastic Beanstalk Environment that declares no Tier reads back the constant default
+  // WebServer/Standard/1.0 tier. Equality-gated: a Worker-tier environment
+  // ({Name:"Worker",Type:"SQS/HTTP"}) no longer matches, so it surfaces. Observed live on
+  // a fresh elasticbeanstalk-rich Environment (2026-07-07).
+  'AWS::ElasticBeanstalk::Environment': {
+    Tier: { Type: 'Standard', Version: '1.0', Name: 'WebServer' },
+  },
   // S3 versioning can never return to the never-enabled state — a revert "remove"
   // lands on Suspended, which IS the off state. Without this entry an undeclared
   // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
@@ -1856,6 +1877,17 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   value-independent: undeclared, so whatever window AWS chose is its default, not user
   //   intent. A DECLARED window goes through the declared loop (compared), unaffected.
   'AWS::KinesisAnalyticsV2::Application': new Set(['ApplicationMaintenanceConfiguration']),
+  //   AWS::ElasticBeanstalk::ConfigurationTemplate / ::Environment.PlatformArn — a template
+  //   or environment that declares a SolutionStackName (not a PlatformArn) reads back the
+  //   platform ARN AWS DERIVED from it ("arn:aws:elasticbeanstalk:<region>::platform/<name>/
+  //   <version>"). The two are alternative ways to name the same platform, so the derived
+  //   ARN is a pure reflection of the declared SolutionStackName — its value carries the
+  //   region and a platform VERSION that moves as AWS republishes, so it is not a constant we
+  //   can pin. Fold value-independent: undeclared, so whatever ARN AWS returns is not user
+  //   intent (a DECLARED PlatformArn goes through the declared loop, compared). Observed live
+  //   on a fresh elasticbeanstalk-rich template + environment (2026-07-07).
+  'AWS::ElasticBeanstalk::ConfigurationTemplate': new Set(['PlatformArn']),
+  'AWS::ElasticBeanstalk::Environment': new Set(['PlatformArn']),
   //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
   //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
   //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for

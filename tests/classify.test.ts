@@ -2428,13 +2428,11 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
       const undeclared = findings.filter((f) => f.tier === 'undeclared');
-      // the three service-filled extras surface (composite-key path), plus the top-level
-      // PlatformArn echo (undeclared inventory, recordable — NOT a declared drift).
+      // the three service-filled extras surface (composite-key path). NOT a declared drift.
       expect(undeclared.map((f) => f.path).sort()).toEqual([
         'OptionSettings[aws:autoscaling:asg|Availability Zones]',
         'OptionSettings[aws:autoscaling:asg|Cooldown]',
         'OptionSettings[aws:elb:healthcheck|HealthyThreshold]',
-        'PlatformArn',
       ]);
       // the OptionSettings extras are nested inventory
       expect(
@@ -2442,6 +2440,11 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
           .filter((f) => f.path.startsWith('OptionSettings'))
           .every((f) => f.nested === true)
       ).toBe(true);
+      // the top-level PlatformArn echo (AWS-derived from the declared SolutionStackName)
+      // folds value-independent to atDefault, not surfaced as first-run drift (2026-07-07).
+      expect(findings.filter((f) => f.tier === 'atDefault').map((f) => f.path)).toEqual([
+        'PlatformArn',
+      ]);
     });
 
     it('a genuine change to a DECLARED setting value still surfaces as declared drift (fail-closed)', () => {
@@ -2467,6 +2470,87 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         emptySchema
       ).filter((f) => f.tier === 'declared');
       expect(declaredF).toHaveLength(1);
+    });
+  });
+
+  describe('ElasticBeanstalk Application/Environment top-level first-run defaults (2026-07-07)', () => {
+    it('an Application that declares no ResourceLifecycleConfig folds the disabled default to atDefault', () => {
+      const T = 'AWS::ElasticBeanstalk::Application';
+      const dflt = {
+        VersionLifecycleConfig: {
+          MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+          MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+        },
+      };
+      const t = tiers(
+        classifyResource(
+          res(T, { ApplicationName: 'app', Description: 'x' }),
+          { ApplicationName: 'app', Description: 'x', ResourceLifecycleConfig: dflt },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual(['ResourceLifecycleConfig']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('fail-closed: an ENABLED version-lifecycle rule out of band never folds to atDefault', () => {
+      const T = 'AWS::ElasticBeanstalk::Application';
+      const enabled = {
+        VersionLifecycleConfig: {
+          MaxCountRule: { DeleteSourceFromS3: true, Enabled: true, MaxCount: 200 },
+          MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+        },
+      };
+      const t = tiers(
+        classifyResource(
+          res(T, { ApplicationName: 'app' }),
+          { ApplicationName: 'app', ResourceLifecycleConfig: enabled },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual([]);
+      expect(t.undeclared).toEqual(['ResourceLifecycleConfig']);
+    });
+
+    it('an Environment folds the default WebServer/Standard/1.0 Tier and the derived PlatformArn', () => {
+      const T = 'AWS::ElasticBeanstalk::Environment';
+      const t = tiers(
+        classifyResource(
+          res(T, {
+            ApplicationName: 'app',
+            EnvironmentName: 'env',
+            SolutionStackName: '64bit Amazon Linux 2023 v4.13.3 running Docker',
+          }),
+          {
+            ApplicationName: 'app',
+            EnvironmentName: 'env',
+            SolutionStackName: '64bit Amazon Linux 2023 v4.13.3 running Docker',
+            Tier: { Type: 'Standard', Version: '1.0', Name: 'WebServer' },
+            PlatformArn:
+              'arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.3',
+          },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual(['PlatformArn', 'Tier']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('fail-closed: a Worker-tier Environment out of band never folds to atDefault', () => {
+      const T = 'AWS::ElasticBeanstalk::Environment';
+      const t = tiers(
+        classifyResource(
+          res(T, { ApplicationName: 'app', EnvironmentName: 'env' }),
+          {
+            ApplicationName: 'app',
+            EnvironmentName: 'env',
+            Tier: { Type: 'SQS/HTTP', Version: '1.0', Name: 'Worker' },
+          },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual([]);
+      expect(t.undeclared).toEqual(['Tier']);
     });
   });
 
