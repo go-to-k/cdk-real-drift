@@ -1869,10 +1869,15 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
 //   AWS::Cognito::UserPool.UserPoolName — reads back `<logicalId>-<random>` when the template
 //   declares no UserPoolName (observed live across corpus: "Pool88FC4FF9F-jVGU9rNojAd7",
 //   "Users0A0EEA89-RYUoEBfJwQHo"). Same class as the sibling ClientName — audited in.
+//   AWS::Batch::JobDefinition.JobDefinitionName — reads back `<logicalId>-<random>` when the
+//   template declares no JobDefinitionName (observed live across corpus:
+//   "JobDef97B0969F-HFfibEW0TJakGN1M"). The logical id carries a CDK construct hash, so the
+//   `<logicalId>-<random>` gate cannot coincide with a genuine user-set name.
 export const GENERATED_LOGICALID_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Cognito::UserPoolClient': new Set(['ClientName']),
   'AWS::Cognito::IdentityPool': new Set(['IdentityPoolName']),
   'AWS::Cognito::UserPool': new Set(['UserPoolName']),
+  'AWS::Batch::JobDefinition': new Set(['JobDefinitionName']),
 };
 
 // True when `value` is the `<logicalId><sep><random>` CFn auto-generated-name form: the logical

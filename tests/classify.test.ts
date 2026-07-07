@@ -9427,6 +9427,36 @@ describe('Face-stack false-positive folds', () => {
     expect(userSetPool.generated).toEqual([]);
   });
 
+  it('Batch JobDefinition undeclared JobDefinitionName (<logicalId>-<random>) folds to generated', () => {
+    // A JobDefinition with no explicit JobDefinitionName reads back `<logicalId>-<random>` — the
+    // same CFn auto-generated-name class as Cognito ClientName. The logical id carries a CDK
+    // construct hash, so the fold cannot coincide with a user-set name. Observed live across
+    // corpus: "JobDef97B0969F-HFfibEW0TJakGN1M".
+    const jobResource = {
+      logicalId: 'JobDef97B0969F',
+      resourceType: 'AWS::Batch::JobDefinition',
+      physicalId:
+        'arn:aws:batch:us-east-1:111111111111:job-definition/JobDef97B0969F-HFfibEW0TJakGN1M:1',
+      constructPath: 'Stack/JobDef',
+      declared: {},
+    };
+    const job = tiers(
+      classifyResource(
+        jobResource,
+        { JobDefinitionName: 'JobDef97B0969F-HFfibEW0TJakGN1M' },
+        emptySchema
+      )
+    );
+    expect(job.generated).toEqual(['JobDefinitionName']);
+    expect(job.undeclared).toEqual([]);
+    // A user-SET JobDefinitionName (no logical-id prefix) still surfaces as real undeclared drift.
+    const userSetJob = tiers(
+      classifyResource(jobResource, { JobDefinitionName: 'my-batch-job' }, emptySchema)
+    );
+    expect(userSetJob.undeclared).toEqual(['JobDefinitionName']);
+    expect(userSetJob.generated).toEqual([]);
+  });
+
   it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {
     const declared = {
       Rules: [

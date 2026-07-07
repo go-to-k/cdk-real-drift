@@ -111,7 +111,7 @@
       "constructPath": "CdkRealDriftIntegBatchRich/JobDef"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "JobDef97B0969F",
       "resourceType": "AWS::Batch::JobDefinition",
       "path": "JobDefinitionName",
