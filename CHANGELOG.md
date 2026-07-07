@@ -1,3 +1,10 @@
+## [0.2.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.9...v0.2.10) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Cognito IdentityPool/UserPool auto-generated names (bug hunt: identity-obs) ([#616](https://github.com/go-to-k/cdk-real-drift/issues/616)) ([9c21e8e](https://github.com/go-to-k/cdk-real-drift/commit/9c21e8ea1b21be22b3f49515cc3aade2b28c6281))
+
 ## [0.2.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.8...v0.2.9) (2026-07-07)
 
 
