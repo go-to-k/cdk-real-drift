@@ -2620,6 +2620,106 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  describe('classic ELB (ElasticLoadBalancing::LoadBalancer) first-run defaults (2026-07-07)', () => {
+    const T = 'AWS::ElasticLoadBalancing::LoadBalancer';
+
+    it('undeclared ConnectionSettings/ConnectionDrainingPolicy/AvailabilityZones fold to atDefault', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { Scheme: 'internal', CrossZone: true }),
+          {
+            Scheme: 'internal',
+            CrossZone: true,
+            ConnectionSettings: { IdleTimeout: 60 },
+            ConnectionDrainingPolicy: { Enabled: false, Timeout: 300 },
+            AvailabilityZones: ['us-east-1a', 'us-east-1b'],
+          },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual([
+        'AvailabilityZones',
+        'ConnectionDrainingPolicy',
+        'ConnectionSettings',
+      ]);
+      expect(t.undeclared).toEqual([]);
+      expect(t.declared).toEqual([]);
+    });
+
+    it('fail-closed: a raised idle timeout / enabled draining out of band never folds', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { Scheme: 'internal' }),
+          {
+            Scheme: 'internal',
+            ConnectionSettings: { IdleTimeout: 120 },
+            ConnectionDrainingPolicy: { Enabled: true, Timeout: 300 },
+          },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual([]);
+      expect(t.undeclared).toEqual(['ConnectionDrainingPolicy', 'ConnectionSettings']);
+    });
+
+    it('value-independent: AvailabilityZones folds at any AZ placement (subnet-derived echo)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { Scheme: 'internal' }),
+          { Scheme: 'internal', AvailabilityZones: ['eu-west-1b', 'eu-west-1c'] },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual(['AvailabilityZones']);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('declared listener Protocol/InstanceProtocol are compared case-insensitively (no FP)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, {
+            Listeners: [
+              {
+                LoadBalancerPort: '80',
+                InstancePort: '80',
+                Protocol: 'http',
+                InstanceProtocol: 'http',
+              },
+            ],
+          }),
+          {
+            Listeners: [
+              {
+                LoadBalancerPort: '80',
+                InstancePort: '80',
+                Protocol: 'HTTP',
+                InstanceProtocol: 'HTTP',
+                PolicyNames: [],
+              },
+            ],
+          },
+          emptySchema
+        )
+      );
+      expect(t.declared).toEqual([]);
+    });
+
+    it('fail-closed: a genuinely changed listener protocol (HTTP->TCP) still surfaces as declared drift', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, {
+            Listeners: [{ LoadBalancerPort: '80', InstancePort: '80', Protocol: 'http' }],
+          }),
+          {
+            Listeners: [{ LoadBalancerPort: '80', InstancePort: '80', Protocol: 'TCP' }],
+          },
+          emptySchema
+        )
+      );
+      expect(t.declared).toEqual(['Listeners.0.Protocol']);
+    });
+  });
+
   describe('VpcLattice ServiceNetwork SharingConfig service default (#483)', () => {
     const T = 'AWS::VpcLattice::ServiceNetwork';
 
