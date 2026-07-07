@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "IdPool",
+    "resourceType": "AWS::Cognito::IdentityPool",
+    "physicalId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+    "constructPath": "CdkRealDriftIntegCognitoIdPoolRich/IdPool",
+    "declared": {
+      "AllowUnauthenticatedIdentities": true
+    }
+  },
+  "liveRaw": {
+    "CognitoIdentityProviders": [],
+    "Id": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+    "IdentityPoolName": "IdPool_r5WzZ9554da2",
+    "SupportedLoginProviders": {},
+    "AllowUnauthenticatedIdentities": true,
+    "Name": "IdPool_r5WzZ9554da2",
+    "SamlProviderARNs": [],
+    "OpenIdConnectProviderARNs": [],
+    "AllowClassicFlow": false,
+    "IdentityPoolTags": [
+      {
+        "Value": "CdkRealDriftIntegCognitoIdPoolRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCognitoIdPoolRich/56fcf3c0-7a26-11f1-9625-0e573fd48a13",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "IdPool",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id", "Name"],
+    "writeOnly": ["CognitoStreams", "PushSync"],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "Name"],
+    "writeOnlyPaths": ["CognitoStreams", "PushSync"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "OpenIdConnectProviderARNs",
+      "PushSync.ApplicationArns",
+      "SamlProviderARNs"
+    ],
+    "unorderedObjectArrayPaths": ["CognitoIdentityProviders"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "IdPool",
+      "resourceType": "AWS::Cognito::IdentityPool",
+      "path": "IdentityPoolName",
+      "actual": "IdPool_r5WzZ9554da2",
+      "physicalId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+      "constructPath": "CdkRealDriftIntegCognitoIdPoolRich/IdPool"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "IdPool",
+      "resourceType": "AWS::Cognito::IdentityPool",
+      "path": "AllowClassicFlow",
+      "actual": false,
+      "physicalId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+      "constructPath": "CdkRealDriftIntegCognitoIdPoolRich/IdPool"
+    }
+  ]
+}
