@@ -1,3 +1,10 @@
+## [0.2.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.2...v0.2.3) (2026-07-07)
+
+
+### Bug Fixes
+
+* **report:** show unordered-object-array drift at the TEMPLATE index, not the sorted index ([#608](https://github.com/go-to-k/cdk-real-drift/issues/608)) ([ad76f62](https://github.com/go-to-k/cdk-real-drift/commit/ad76f629709623a2f2f4253647844d58a0fa0734))
+
 ## [0.2.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.1...v0.2.2) (2026-07-07)
 
 
