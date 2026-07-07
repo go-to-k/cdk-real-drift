@@ -1,3 +1,10 @@
+## [0.2.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.4...v0.2.5) (2026-07-07)
+
+
+### Bug Fixes
+
+* **diff:** align unordered-object-array by identity + remap nested-sorted types to the template index ([#610](https://github.com/go-to-k/cdk-real-drift/issues/610)) ([31227a6](https://github.com/go-to-k/cdk-real-drift/commit/31227a62c7a895f80c9268d57d38b307c56116bc))
+
 ## [0.2.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.3...v0.2.4) (2026-07-07)
 
 
