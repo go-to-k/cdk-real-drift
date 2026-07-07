@@ -36,11 +36,36 @@ is exactly the false positive the `check`-output note + issue link (#581) ask us
 to report. When a candidate default's status is uncertain, **RESOLVE the
 uncertainty by investigation / live verification** (deploy a fresh minimal config,
 observe what AWS assigns undeclared) — never leave a value surfaced as
-"conservative"; that just ships the bug. The fold must PRESERVE out-of-band
-detection: prefer equality-gated `KNOWN_DEFAULTS` (folds the default value,
-surfaces a change away from it) for mutable meaningful props; use
-`VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS` (folds any value) only for create-only /
-AWS-assigned identifiers / cosmetic values where change-detection is not meaningful.
+"conservative"; that just ships the bug. A value the user never changed appearing on
+a first `check` IS the bug, not an acceptable state — **do NOT rationalize leaving it
+`undeclared` as "honest".** Shrinking a fixture's first-`check` noise from 51 lines to
+"a few" is not a fix; **the target is zero.**
+
+**Fold-strategy decision order** — the fold must PRESERVE out-of-band detection where
+the value is meaningful, so escalate through these in order and stop at the first that
+applies; reach for the next tier only because the prior one genuinely cannot express
+the default:
+
+1. **Equality-gated constant** (`KNOWN_DEFAULTS` top-level / `KNOWN_DEFAULT_PATHS`
+   nested) — folds the exact default value and still surfaces any change away from it.
+   The DEFAULT choice for any default that is a stable constant.
+2. **Derived default** (`CONTEXT_DEFAULTS` = f(region), `ENGINE_DEFAULTS` = f(engine),
+   or a value computed from a sibling / declared property — e.g. an EB Environment's
+   `MaxSize` default is derivable from its `EnvironmentType` option: SingleInstance→1,
+   LoadBalanced→4). When the default is not a single constant but a DETERMINISTIC
+   FUNCTION of the declared inputs, COMPUTE it and equality-gate against the computed
+   value — detection is still preserved. **Before labelling a default
+   "context-dependent, can't fold", ask "can I DERIVE it from the declared inputs?" —
+   usually you can.** Do not skip to tier 3 just because a constant does not fit.
+3. **Value-independent** (`VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS` & nested kin) —
+   LAST resort, and it LOSES change-detection (folds any value). Use ONLY when the
+   default genuinely cannot be pinned OR derived: AWS moves it over time (a platform
+   AMI id, a versioned asset URL, a GA engine version), or it is a per-resource
+   AWS-assigned identifier / cosmetic value. Acceptable only because the value is
+   UNDECLARED — the user delegated it to AWS, so whatever AWS assigns is not user
+   intent; a user who cares about it DECLARES it, which is then detected in the
+   declared dimension. Never value-independent a value the user can meaningfully set
+   and would want to catch drifting when a constant or a derivation could fold it.
 
 ## The 4-Verb Model
 
