@@ -136,6 +136,13 @@ import {
   UpdateParameterGroupCommand as UpdateDaxParameterGroupCommand,
 } from '@aws-sdk/client-dax';
 import {
+  DescribeCacheParameterGroupsCommand,
+  DescribeCacheParametersCommand,
+  ElastiCacheClient,
+  ModifyCacheParameterGroupCommand,
+  ResetCacheParameterGroupCommand,
+} from '@aws-sdk/client-elasticache';
+import {
   DescribeClientVpnEndpointsCommand,
   EC2Client,
   ModifyClientVpnEndpointCommand,
@@ -191,6 +198,7 @@ const cloudcontrol = mockClient(CloudControlClient);
 const kafka = mockClient(KafkaClient);
 const codebuild = mockClient(CodeBuildClient);
 const dax = mockClient(DAXClient);
+const elasticache = mockClient(ElastiCacheClient);
 const ec2 = mockClient(EC2Client);
 const lex = mockClient(LexModelsV2Client);
 
@@ -227,6 +235,7 @@ beforeEach(() => {
   sns.reset();
   sqs.reset();
   serviceDiscovery.reset();
+  elasticache.reset();
   docdb.reset();
   eb.reset();
   cloudfront.reset();
@@ -1699,6 +1708,74 @@ describe('DAX ParameterGroup writer (NON_PROVISIONABLE; UpdateParameterGroup, is
       { op: 'add', path: '/Description', value: 'x', human: 'x' },
     ]);
     expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
+  });
+});
+
+describe('ElastiCache ParameterGroup writer (source=user reader; Modify/Reset)', () => {
+  const PGN = 'cdkrd-redis-params';
+  const stubRead = (values: Record<string, string>): void => {
+    elasticache.on(DescribeCacheParameterGroupsCommand).resolves({
+      CacheParameterGroups: [
+        { CacheParameterGroupName: PGN, CacheParameterGroupFamily: 'redis7', Description: 'd' },
+      ],
+    } as never);
+    elasticache.on(DescribeCacheParametersCommand).resolves({
+      Parameters: Object.entries(values).map(([ParameterName, ParameterValue]) => ({
+        ParameterName,
+        ParameterValue,
+        Source: 'user',
+      })),
+    } as never);
+  };
+
+  it('a declared param drift -> ModifyCacheParameterGroup with the desired value only', async () => {
+    // Current live reads timeout=500; the add op reverts it to the desired 300.
+    stubRead({ timeout: '500', 'maxmemory-policy': 'allkeys-lru' });
+    elasticache.on(ModifyCacheParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::ElastiCache::ParameterGroup'](ctx({ physicalId: PGN }), [
+      {
+        op: 'add',
+        path: '/Properties/timeout',
+        value: '300',
+        human: 'Properties.timeout -> deployed-template value',
+      },
+    ]);
+    const modify = elasticache.commandCalls(ModifyCacheParameterGroupCommand);
+    expect(modify).toHaveLength(1);
+    expect(modify[0]!.args[0].input).toEqual({
+      CacheParameterGroupName: PGN,
+      ParameterNameValues: [{ ParameterName: 'timeout', ParameterValue: '300' }],
+    });
+    expect(elasticache.commandCalls(ResetCacheParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('an undeclared added param -> ResetCacheParameterGroup for that key (no modify)', async () => {
+    stubRead({ 'maxmemory-policy': 'allkeys-lru', activedefrag: 'yes' });
+    elasticache.on(ResetCacheParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::ElastiCache::ParameterGroup'](ctx({ physicalId: PGN }), [
+      {
+        op: 'remove',
+        path: '/Properties/activedefrag',
+        human: 'Properties.activedefrag -> remove (undeclared, not in baseline)',
+      },
+    ]);
+    const reset = elasticache.commandCalls(ResetCacheParameterGroupCommand);
+    expect(reset).toHaveLength(1);
+    expect(reset[0]!.args[0].input).toEqual({
+      CacheParameterGroupName: PGN,
+      ResetAllParameters: false,
+      ParameterNameValues: [{ ParameterName: 'activedefrag' }],
+    });
+    expect(elasticache.commandCalls(ModifyCacheParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('sends nothing when no Properties op is present', async () => {
+    stubRead({ timeout: '300' });
+    await SDK_WRITERS['AWS::ElastiCache::ParameterGroup'](ctx({ physicalId: PGN }), [
+      { op: 'add', path: '/Description', value: 'x', human: 'x' },
+    ]);
+    expect(elasticache.commandCalls(ModifyCacheParameterGroupCommand)).toHaveLength(0);
+    expect(elasticache.commandCalls(ResetCacheParameterGroupCommand)).toHaveLength(0);
   });
 });
 

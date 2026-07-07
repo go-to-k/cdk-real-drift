@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Pg",
+    "resourceType": "AWS::ElastiCache::ParameterGroup",
+    "physicalId": "cdkrea-cache-hhjjd2z6yw8m",
+    "constructPath": "CdkRealDriftIntegElasticacheParamGroup/Pg",
+    "declared": {
+      "CacheParameterGroupFamily": "redis7",
+      "Description": "cdkrd integ redis7 parameter group",
+      "Properties": {
+        "maxmemory-policy": "allkeys-lru",
+        "timeout": "300"
+      }
+    }
+  },
+  "liveRaw": {
+    "CacheParameterGroupName": "cdkrea-cache-hhjjd2z6yw8m",
+    "CacheParameterGroupFamily": "redis7",
+    "Description": "cdkrd integ redis7 parameter group",
+    "Properties": {
+      "maxmemory-policy": "allkeys-lru",
+      "timeout": "300"
+    }
+  },
+  "schema": {
+    "readOnly": ["CacheParameterGroupName"],
+    "writeOnly": [],
+    "createOnly": ["CacheParameterGroupFamily"],
+    "readOnlyPaths": ["CacheParameterGroupName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CacheParameterGroupFamily"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Properties"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
