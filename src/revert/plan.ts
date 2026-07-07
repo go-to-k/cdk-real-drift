@@ -114,6 +114,11 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // {IntendedUse:"SingleUse"} default object back explicitly (2nd object-valued entry after
   // AppRunner) so revert converges.
   'AWS::Location::PlaceIndex\0DataSourceConfiguration',
+  // EventBridge UpdateApiDestination IGNORES an omitted InvocationRateLimitPerSecond
+  // (live-observed on events-apidest-rich 2026-07-08: a `remove` revert of an out-of-band
+  // 50 reported SUCCESS yet the live value stayed 50 — "1 drift remain"). Write the 300
+  // default (from KNOWN_DEFAULTS) back explicitly so revert converges.
+  'AWS::Events::ApiDestination\0InvocationRateLimitPerSecond',
 ]);
 
 /**

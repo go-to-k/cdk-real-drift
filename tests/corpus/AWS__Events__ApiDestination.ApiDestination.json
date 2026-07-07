@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiDestination",
+    "resourceType": "AWS::Events::ApiDestination",
+    "physicalId": "cdkrd-apidest-rich",
+    "constructPath": "CdkRealDriftIntegEventsApiDestRich/ApiDestination",
+    "declared": {
+      "ConnectionArn": "arn:aws:events:us-east-1:111111111111:connection/cdkrd-apidest-connection/e3a665cf-85d3-4365-bf01-f5a0dd2ffc1f",
+      "Description": "cdkrd api destination",
+      "HttpMethod": "POST",
+      "InvocationEndpoint": "https://example.com/webhook",
+      "Name": "cdkrd-apidest-rich"
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd api destination",
+    "ConnectionArn": "arn:aws:events:us-east-1:111111111111:connection/cdkrd-apidest-connection/e3a665cf-85d3-4365-bf01-f5a0dd2ffc1f",
+    "InvocationEndpoint": "https://example.com/webhook",
+    "Arn": "arn:aws:events:us-east-1:111111111111:api-destination/cdkrd-apidest-rich/b13b4ef9-ab7a-4217-8710-8d9e7a0384a4",
+    "ArnForPolicy": "arn:aws:events:us-east-1:111111111111:api-destination/cdkrd-apidest-rich",
+    "HttpMethod": "POST",
+    "Name": "cdkrd-apidest-rich",
+    "InvocationRateLimitPerSecond": 300
+  },
+  "schema": {
+    "readOnly": ["Arn", "ArnForPolicy"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "ArnForPolicy"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiDestination",
+      "resourceType": "AWS::Events::ApiDestination",
+      "path": "InvocationRateLimitPerSecond",
+      "actual": 300,
+      "physicalId": "cdkrd-apidest-rich",
+      "constructPath": "CdkRealDriftIntegEventsApiDestRich/ApiDestination"
+    }
+  ]
+}
