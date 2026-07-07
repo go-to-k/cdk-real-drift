@@ -57,6 +57,7 @@ import {
   CONTEXT_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
   DESCEND_UNDECLARED_OBJECT_PATHS,
+  ebOptionSettingTier,
   ENGINE_DEFAULTS,
   GENERATED_LOGICALID_PREFIX_PATHS,
   GENERATED_NESTED_PATHS,
@@ -401,12 +402,26 @@ interface CompositeSubsetSpec {
   re: RegExp;
   keyFields: string[];
   ignoreFields: ReadonlySet<string>;
+  // Optional per-entry tier for the live-only (service-filled) extras. Given the entry and the
+  // full live array, return 'atDefault' when the entry is at its AWS first-run default (folds,
+  // invariant) or 'undeclared' otherwise (surfaces — a change away from the default). Absent →
+  // every live-only entry is 'undeclared' (recorded inventory; a later change still surfaces).
+  entryTier?: (entry: Record<string, unknown>, liveArray: unknown) => 'atDefault' | 'undeclared';
 }
 const COMPOSITE_KEY_SUBSET_PATHS: Record<string, CompositeSubsetSpec> = {
   'AWS::ElasticBeanstalk::ConfigurationTemplate': {
     re: /(^|\.)OptionSettings$/,
     keyFields: ['Namespace', 'OptionName'],
     ignoreFields: new Set(['ResourceName']),
+    // AWS materializes the FULL option set from the declared subset; fold each service-filled
+    // extra to its first-run default (equality-gate / derive-from-EnvironmentType / value-
+    // independent — see ebOptionSettingTier), so a clean template shows zero potential drift.
+    entryTier: (entry, liveArray) => {
+      const arr = Array.isArray(liveArray) ? (liveArray as Record<string, unknown>[]) : [];
+      const envEntry = arr.find((e) => e && e.OptionName === 'EnvironmentType');
+      const envType = typeof envEntry?.Value === 'string' ? envEntry.Value : 'LoadBalanced';
+      return ebOptionSettingTier(entry.Namespace, entry.OptionName, entry.Value, envType);
+    },
   },
 };
 
@@ -1516,7 +1531,7 @@ export function classifyResource(
             const r = lo as Record<string, unknown>;
             const key = ckSubsetSpec.keyFields.map((f) => String(r[f])).join('|');
             findings.push({
-              tier: 'undeclared',
+              tier: ckSubsetSpec.entryTier?.(r, d.awsValue) ?? 'undeclared',
               logicalId,
               resourceType,
               path: `${d.path}[${key}]`,
