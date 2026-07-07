@@ -1,3 +1,10 @@
+## [0.1.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.8...v0.1.9) (2026-07-07)
+
+
+### Bug Fixes
+
+* **revert:** set-default AppRunner HealthCheck/Network on revert (avoid silent no-op) ([#602](https://github.com/go-to-k/cdk-real-drift/issues/602)) ([0a23ebf](https://github.com/go-to-k/cdk-real-drift/commit/0a23ebf1c69f4fb77d77e5cdc26fafccda3f6a9d))
+
 ## [0.1.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.7...v0.1.8) (2026-07-07)
 
 
