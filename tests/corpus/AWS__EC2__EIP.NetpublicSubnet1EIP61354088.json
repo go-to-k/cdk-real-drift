@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NetpublicSubnet1EIP61354088",
+    "resourceType": "AWS::EC2::EIP",
+    "physicalId": "98.88.222.18",
+    "constructPath": "CdkRealDriftIntegVpcCommon/Net/publicSubnet1/EIP",
+    "declared": {
+      "Domain": "vpc",
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "CdkRealDriftIntegVpcCommon/Net/publicSubnet1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Domain": "vpc",
+    "NetworkBorderGroup": "us-east-1",
+    "PublicIp": "98.88.222.18",
+    "PublicIpv4Pool": "amazon",
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "CdkRealDriftIntegVpcCommon/Net/publicSubnet1"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcCommon/b4cbc4f0-79e9-11f1-af73-12a5760669cb"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "NetpublicSubnet1EIP61354088"
+      },
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkRealDriftIntegVpcCommon"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AllocationId", "PublicIp"],
+    "writeOnly": ["Address", "IpamPoolId", "TransferAddress"],
+    "createOnly": ["Address", "IpamPoolId", "NetworkBorderGroup", "TransferAddress"],
+    "readOnlyPaths": ["AllocationId", "PublicIp"],
+    "writeOnlyPaths": ["Address", "IpamPoolId", "TransferAddress"],
+    "createOnlyPaths": ["Address", "IpamPoolId", "NetworkBorderGroup", "TransferAddress"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "NetpublicSubnet1EIP61354088",
+      "resourceType": "AWS::EC2::EIP",
+      "path": "NetworkBorderGroup",
+      "actual": "us-east-1",
+      "physicalId": "98.88.222.18",
+      "constructPath": "CdkRealDriftIntegVpcCommon/Net/publicSubnet1/EIP"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NetpublicSubnet1EIP61354088",
+      "resourceType": "AWS::EC2::EIP",
+      "path": "PublicIpv4Pool",
+      "actual": "amazon",
+      "physicalId": "98.88.222.18",
+      "constructPath": "CdkRealDriftIntegVpcCommon/Net/publicSubnet1/EIP"
+    }
+  ]
+}

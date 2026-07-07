@@ -120,7 +120,7 @@
       "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "VpcS3Endpoint4A3DE4B5",
       "resourceType": "AWS::EC2::VPCEndpoint",
       "path": "DnsOptions",
@@ -134,7 +134,7 @@
       "constructPath": "CdkdriftIntegHarvest9/Vpc/S3Endpoint"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "VpcS3Endpoint4A3DE4B5",
       "resourceType": "AWS::EC2::VPCEndpoint",
       "path": "PolicyDocument",
