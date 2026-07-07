@@ -808,7 +808,7 @@ describe('sibling-managed inline Policies (IAM Role)', () => {
 
 // The sibling-managed inline Policies mechanism is NOT Role-only: an AWS::IAM::Policy also
 // attaches to Users and Groups (via its Users / Groups ref lists), the same CDK
-// `<Principal>DefaultPolicy` shape. Observed live on dev-main-db2bq: a data-transfer IAM
+// `<Principal>DefaultPolicy` shape. Observed live on my-app-Pipeline: a data-transfer IAM
 // User read back Path:'/' + an inline Policies entry owned by its sibling DefaultPolicy →
 // two false undeclared drifts. Path is the IAM default (KNOWN_DEFAULTS); the Policies entry
 // is dropped by the sibling filter now that siblingPolicyNames is plumbed for Users/Groups.
@@ -897,9 +897,9 @@ describe('sibling-managed inline Policies (IAM User / Group)', () => {
 // An ECS Cluster reflects the CapacityProviders / DefaultCapacityProviderStrategy declared by
 // its sibling AWS::ECS::ClusterCapacityProviderAssociations resource (the only CFn way to set
 // them), plus ClusterSettings:[{containerInsights,disabled}] (the AWS default). Observed live on
-// dev-main-db2bq: 3 false undeclared drifts on every Fargate cluster. ClusterSettings folds as a
+// my-app-Pipeline: 3 false undeclared drifts on every Fargate cluster. ClusterSettings folds as a
 // KNOWN_DEFAULT; the two reflected props are dropped when a sibling association is present.
-describe('ECS Cluster sibling capacity providers + ClusterSettings default (dev-main-db2bq)', () => {
+describe('ECS Cluster sibling capacity providers + ClusterSettings default (my-app-Pipeline)', () => {
   const noSchema: SchemaInfo = {
     readOnly: new Set(),
     writeOnly: new Set(),
@@ -1097,7 +1097,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
 
     // AuthType is a derived, non-declarable read-back of the declared Type, so BOTH the
     // Cognito ("cognito_user_pools") and TOKEN/REQUEST ("custom", observed live on a
-    // dev-main AimAssociation TOKEN authorizer) forms fold value-independently.
+    // my-app AimAssociation TOKEN authorizer) forms fold value-independently.
     expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'cognito_user_pools' }).atDefault).toEqual([
       'AuthType',
     ]);
@@ -1107,8 +1107,8 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'custom' }).undeclared).toEqual([]);
   });
 
-  it('dev-main-Db2Csv first-run folds: Glue::Job derived capacity / SG rule peer-name echo', () => {
-    // Undeclared values a fresh dev-main-Db2Csv stack reported with NO out-of-band edit.
+  it('my-app-Exporter first-run folds: Glue::Job derived capacity / SG rule peer-name echo', () => {
+    // Undeclared values a fresh my-app-Exporter stack reported with NO out-of-band edit.
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));
 
@@ -1128,7 +1128,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     // A rule referencing its peer by id (SourceSecurityGroupId) reads back the peer group's
     // NAME — an AWS reflection of the declared id, never user intent when undeclared.
     expect(
-      t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'dev-main-Db2Csv-Glue-sg' })
+      t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'my-app-Exporter-Glue-sg' })
         .atDefault
     ).toEqual(['SourceSecurityGroupName']);
     expect(
@@ -2641,8 +2641,8 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     it('mixed-case declared DBInstanceIdentifier vs lowercase live is NOT drift', () => {
       expect(
         classifyResource(
-          res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'dev-main-DbUsers-DB-writer' }),
-          { DBInstanceIdentifier: 'dev-main-dbusers-db-writer' },
+          res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'my-app-UserStore-DB-writer' }),
+          { DBInstanceIdentifier: 'my-app-userstore-db-writer' },
           emptySchema
         )
       ).toEqual([]);
@@ -2651,8 +2651,8 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     it('mixed-case declared DBClusterIdentifier vs lowercase live is NOT drift', () => {
       expect(
         classifyResource(
-          res('AWS::RDS::DBCluster', { DBClusterIdentifier: 'Dev-Main-Aurora' }),
-          { DBClusterIdentifier: 'dev-main-aurora' },
+          res('AWS::RDS::DBCluster', { DBClusterIdentifier: 'My-App-Database' }),
+          { DBClusterIdentifier: 'my-app-database' },
           emptySchema
         )
       ).toEqual([]);
@@ -2662,8 +2662,8 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(
         tiers(
           classifyResource(
-            res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'dev-main-writer' }),
-            { DBInstanceIdentifier: 'dev-main-reader' },
+            res('AWS::RDS::DBInstance', { DBInstanceIdentifier: 'my-app-primary' }),
+            { DBInstanceIdentifier: 'my-app-replica' },
             emptySchema
           )
         ).declared
@@ -4781,7 +4781,7 @@ describe('GENERATED_DEFAULTS — physical-id-derived auto values fold to `genera
 // RDS parameter-group Parameters map: MySQL boolean system variables accept ON/OFF, 1/0,
 // TRUE/FALSE interchangeably; RDS canonicalizes a declared "ON"/"OFF" to "1"/"0" on read, so a
 // case that declares "ON" false-flags declared drift against the live "1". Observed live on
-// dev-main-AuroraDB.
+// my-app-Rds.
 // An Aurora DBInstance's live model echoes its parent DBCluster's cluster-level config
 // (encryption, engine version, backup, security groups, subnet group, …) — undeclared on the
 // instance, mirroring the cluster (which cdkrd classifies independently). classify drops the
@@ -5064,11 +5064,11 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
 // Engine-derived RDS defaults (ENGINE_DEFAULTS + DEFAULT_MANAGED_NAME_PATHS + the
 // CACertificateIdentifier constant): values the user never set that AWS fills in from the
 // engine family, folded to atDefault so a clean CDK Aurora first run is not flooded with
-// potential-drift noise. Observed live on dev-main-AuroraDB / dev-main-DbUsers-DB.
+// potential-drift noise. Observed live on my-app-Rds / my-app-UserStore-DB.
 // AWS-ASSIGNED RDS values a user never declared: the KMS key, AZ placement, and randomly-
 // assigned maintenance/backup windows AWS picks at creation. Undeclared → AWS's choice, not
 // user intent → folded value-independent (atDefault). A DECLARED value is user intent →
-// compared in the declared loop (detected). Observed live on dev-main-AuroraDB / DbUsers-DB.
+// compared in the declared loop (detected). Observed live on my-app-Rds / DbUsers-DB.
 describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
@@ -7723,7 +7723,7 @@ describe('SecurityGroup sibling-rule reflection (subtraction)', () => {
   // ingress whose FromPort/ToPort are `Fn::GetAtt <Cluster>.Endpoint.Port`. That GetAtt
   // resolves against the DBCluster's live model, where Endpoint.Port is a STRING ("3306"),
   // while the SG reflects the merged rule with a NUMBER port (3306) — a typed<->string
-  // mismatch that must NOT block the sibling subtraction. Observed live on dev-main-DbUsers-DB.
+  // mismatch that must NOT block the sibling subtraction. Observed live on my-app-UserStore-DB.
   it('subtracts a sibling rule whose port is a STRING against a live NUMBER port (GetAtt Endpoint.Port)', () => {
     const sgAurora: DesiredResource = {
       logicalId: 'Sg',
@@ -8398,7 +8398,7 @@ describe('ElastiCache/MemoryDB User AccessString canonicalization (#482)', () =>
   });
 });
 
-// Real-stack (dev-main-Face) false-positive batch: AWS-materialized defaults + derived
+// Real-stack (my-app-Web) false-positive batch: AWS-materialized defaults + derived
 // echoes that flooded a clean first check. Each fold is equality-gated, so a genuine
 // out-of-band change still surfaces.
 describe('Face-stack false-positive folds', () => {

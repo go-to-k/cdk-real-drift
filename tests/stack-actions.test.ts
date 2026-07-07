@@ -1043,16 +1043,16 @@ describe('formatSurvivingDrift (R52 — cap the post-revert survivor list)', () 
     const f: Finding = {
       tier: 'undeclared',
       logicalId: 'PG',
-      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      constructPath: 'my-app/Rds/Database/ParameterGroup',
       resourceType: 'AWS::RDS::DBClusterParameterGroup',
       path: 'Parameters.autocommit',
     };
-    expect(formatSurvivingDrift([f], 'dev-main-AuroraDB')[0]).toBe(
+    expect(formatSurvivingDrift([f], 'my-app-Rds')[0]).toBe(
       '  - Database/ParameterGroup.Parameters.autocommit (undeclared)'
     );
     // no stackName -> full path (unchanged)
     expect(formatSurvivingDrift([f])[0]).toBe(
-      '  - dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit (undeclared)'
+      '  - my-app/Rds/Database/ParameterGroup.Parameters.autocommit (undeclared)'
     );
   });
 });
@@ -1074,15 +1074,15 @@ describe('ignoreSelectOptions', () => {
 
   it('labels with the construct path WITHIN the stack when given the stack name', () => {
     const f = uf({
-      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      constructPath: 'my-app/Rds/Database/ParameterGroup',
       path: 'Parameters.autocommit',
     });
-    expect(ignoreSelectOptions([f], 'dev-main-AuroraDB')[0]!.label).toBe(
+    expect(ignoreSelectOptions([f], 'my-app-Rds')[0]!.label).toBe(
       'Database/ParameterGroup.Parameters.autocommit (undeclared)'
     );
     // no stackName -> full construct path
     expect(ignoreSelectOptions([f])[0]!.label).toBe(
-      'dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit (undeclared)'
+      'my-app/Rds/Database/ParameterGroup.Parameters.autocommit (undeclared)'
     );
   });
 });

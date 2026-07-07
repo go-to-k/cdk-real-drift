@@ -287,11 +287,11 @@ describe('nestedStackWarning (loud coverage gap for nested stacks)', () => {
 
   it('strips the stack/Stage prefix off the construct path (matches the report)', () => {
     const w = nestedStackWarning(
-      [r('AWS::CloudFormation::Stack', { logicalId: 'A', constructPath: 'dev-main/App/Nested' })],
-      'dev-main-App' // a CDK Stage: path is dev-main/App/..., name is dev-main-App
+      [r('AWS::CloudFormation::Stack', { logicalId: 'A', constructPath: 'my-app/Api/Nested' })],
+      'my-app-Api' // a CDK Stage: path is my-app/Api/..., name is my-app-Api
     );
     expect(w).toContain('Nested');
-    expect(w).not.toContain('dev-main/App/Nested');
+    expect(w).not.toContain('my-app/Api/Nested');
   });
 });
 
@@ -335,11 +335,11 @@ describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () =
 
   it('strips the stack/Stage prefix off the construct path (matches the report)', () => {
     const w = coverageWarning(
-      [skipped('A', { constructPath: 'dev-main/App/Custom' })],
-      'dev-main-App'
+      [skipped('A', { constructPath: 'my-app/Api/Custom' })],
+      'my-app-Api'
     )!;
     expect(w).toContain('Custom');
-    expect(w).not.toContain('dev-main/App/Custom');
+    expect(w).not.toContain('my-app/Api/Custom');
   });
 
   it('hasCoverageGap is true on a skipped resource', () => {

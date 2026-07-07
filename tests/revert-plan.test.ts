@@ -68,19 +68,19 @@ describe('buildRevertPlan', () => {
     const f = F({
       tier: 'declared',
       logicalId: 'PG9AB',
-      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      constructPath: 'my-app/Rds/Database/ParameterGroup',
       resourceType: 'AWS::RDS::DBClusterParameterGroup',
       path: 'Parameters.autocommit',
       desired: '0',
       actual: '1',
     });
-    // a CDK Stage: aws:cdk:path is `dev-main/AuroraDB/...`, the CFn name is `dev-main-AuroraDB`
-    expect(
-      buildRevertPlan([f], undefined, { stackName: 'dev-main-AuroraDB' }).items[0]!.displayId
-    ).toBe('Database/ParameterGroup');
+    // a CDK Stage: aws:cdk:path is `my-app/Rds/...`, the CFn name is `my-app-Rds`
+    expect(buildRevertPlan([f], undefined, { stackName: 'my-app-Rds' }).items[0]!.displayId).toBe(
+      'Database/ParameterGroup'
+    );
     // no stackName (unit default): the full construct path is kept
     expect(buildRevertPlan([f], undefined).items[0]!.displayId).toBe(
-      'dev-main/AuroraDB/Database/ParameterGroup'
+      'my-app/Rds/Database/ParameterGroup'
     );
   });
 

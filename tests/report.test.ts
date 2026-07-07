@@ -158,28 +158,23 @@ describe('report unrecorded findings (R60/R62 — per finding: never decided is 
     const f: Finding = {
       tier: 'declared',
       logicalId: 'ParameterGroup9AB',
-      constructPath: 'dev-main-AuroraDB/Database/ParameterGroup',
+      constructPath: 'my-app-Rds/Database/ParameterGroup',
       resourceType: 'AWS::RDS::DBClusterParameterGroup',
       path: 'Parameters.autocommit',
       desired: '0',
       actual: '1',
     };
     // plain / stage-composed stack id: the leading stack segment is dropped
-    expect(formatFinding(f, 'dev-main-AuroraDB')).toContain(
+    expect(formatFinding(f, 'my-app-Rds')).toContain(
       'Database/ParameterGroup.Parameters.autocommit (AWS::RDS::DBClusterParameterGroup)'
     );
-    // a CDK Stage: aws:cdk:path is `dev-main/AuroraDB/...` while the name is `dev-main-AuroraDB`
+    // a CDK Stage: aws:cdk:path is `my-app/Rds/...` while the name is `my-app-Rds`
     expect(
-      formatFinding(
-        { ...f, constructPath: 'dev-main/AuroraDB/Database/ParameterGroup' },
-        'dev-main-AuroraDB'
-      )
+      formatFinding({ ...f, constructPath: 'my-app/Rds/Database/ParameterGroup' }, 'my-app-Rds')
     ).toContain('Database/ParameterGroup.Parameters.autocommit (');
     // no stackName (direct call) or a non-matching (overridden) name: path stays full
-    expect(formatFinding(f)).toContain('dev-main-AuroraDB/Database/ParameterGroup.Parameters');
-    expect(formatFinding(f, 'prod-db')).toContain(
-      'dev-main-AuroraDB/Database/ParameterGroup.Parameters'
-    );
+    expect(formatFinding(f)).toContain('my-app-Rds/Database/ParameterGroup.Parameters');
+    expect(formatFinding(f, 'prod-db')).toContain('my-app-Rds/Database/ParameterGroup.Parameters');
   });
 
   it('report() strips the stack prefix using the stack name parsed from the header', () => {
