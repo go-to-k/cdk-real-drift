@@ -599,6 +599,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   (supplement an `AWS::MSK::Configuration` with its writeOnly `ServerProperties`
   Kafka blob — an out-of-band `update-configuration` revision is otherwise
   invisible),
+  `elasticbeanstalk:DescribeConfigurationSettings` (supplements an
+  `AWS::ElasticBeanstalk::Environment` with its writeOnly `OptionSettings` — the
+  full resolved option set; an out-of-band console edit to any environment option
+  is otherwise invisible, and the service-filled default options fold to
+  `atDefault`),
   `servicediscovery:GetNamespace` (reads a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against)

@@ -408,21 +408,29 @@ interface CompositeSubsetSpec {
   // every live-only entry is 'undeclared' (recorded inventory; a later change still surfaces).
   entryTier?: (entry: Record<string, unknown>, liveArray: unknown) => 'atDefault' | 'undeclared';
 }
+// AWS (both an EB ConfigurationTemplate and an Environment) materializes the FULL option set
+// from the declared subset; fold each service-filled extra to its first-run default (equality-
+// gate / derive-from-EnvironmentType / value-independent — see ebOptionSettingTier), so a clean
+// template / environment shows zero potential drift. The Environment reads its OptionSettings
+// back via the SDK_SUPPLEMENTS DescribeConfigurationSettings reader (writeOnly-but-readable).
+const ebOptionSettingsEntryTier: NonNullable<CompositeSubsetSpec['entryTier']> = (
+  entry,
+  liveArray
+) => {
+  const arr = Array.isArray(liveArray) ? (liveArray as Record<string, unknown>[]) : [];
+  const envEntry = arr.find((e) => e && e.OptionName === 'EnvironmentType');
+  const envType = typeof envEntry?.Value === 'string' ? envEntry.Value : 'LoadBalanced';
+  return ebOptionSettingTier(entry.Namespace, entry.OptionName, entry.Value, envType);
+};
+const ebOptionSettingsSubsetSpec: CompositeSubsetSpec = {
+  re: /(^|\.)OptionSettings$/,
+  keyFields: ['Namespace', 'OptionName'],
+  ignoreFields: new Set(['ResourceName']),
+  entryTier: ebOptionSettingsEntryTier,
+};
 const COMPOSITE_KEY_SUBSET_PATHS: Record<string, CompositeSubsetSpec> = {
-  'AWS::ElasticBeanstalk::ConfigurationTemplate': {
-    re: /(^|\.)OptionSettings$/,
-    keyFields: ['Namespace', 'OptionName'],
-    ignoreFields: new Set(['ResourceName']),
-    // AWS materializes the FULL option set from the declared subset; fold each service-filled
-    // extra to its first-run default (equality-gate / derive-from-EnvironmentType / value-
-    // independent — see ebOptionSettingTier), so a clean template shows zero potential drift.
-    entryTier: (entry, liveArray) => {
-      const arr = Array.isArray(liveArray) ? (liveArray as Record<string, unknown>[]) : [];
-      const envEntry = arr.find((e) => e && e.OptionName === 'EnvironmentType');
-      const envType = typeof envEntry?.Value === 'string' ? envEntry.Value : 'LoadBalanced';
-      return ebOptionSettingTier(entry.Namespace, entry.OptionName, entry.Value, envType);
-    },
-  },
+  'AWS::ElasticBeanstalk::ConfigurationTemplate': ebOptionSettingsSubsetSpec,
+  'AWS::ElasticBeanstalk::Environment': ebOptionSettingsSubsetSpec,
 };
 
 // Align a declared object array to a live one BY a composite identity key, ignoring the

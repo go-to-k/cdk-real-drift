@@ -2537,6 +2537,51 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     it('an unknown option is undeclared (surfaces)', () => {
       expect(ebOptionSettingTier('aws:x', 'Novel', 'v', 'LoadBalanced')).toBe('undeclared');
     });
+
+    it('an unset option (null or empty Value) folds — DescribeConfigurationSettings returns many', () => {
+      expect(ebOptionSettingTier('aws:ec2:vpc', 'VPCId', null, 'LoadBalanced')).toBe('atDefault');
+      expect(
+        ebOptionSettingTier('aws:autoscaling:asg', 'Custom Availability Zones', '', 'LoadBalanced')
+      ).toBe('atDefault');
+      // a novel option that is SET (non-empty) still surfaces
+      expect(ebOptionSettingTier('aws:x', 'Novel', 'set', 'LoadBalanced')).toBe('undeclared');
+    });
+
+    it('EnhancedHealthAuthEnabled folds value-independent (template reads false, environment true)', () => {
+      const k = [
+        'aws:elasticbeanstalk:healthreporting:system',
+        'EnhancedHealthAuthEnabled',
+      ] as const;
+      expect(ebOptionSettingTier(k[0], k[1], 'false', 'LoadBalanced')).toBe('atDefault');
+      expect(ebOptionSettingTier(k[0], k[1], 'true', 'SingleInstance')).toBe('atDefault');
+    });
+
+    it('platform-specific constants fold (PHP memory_limit, Python WSGIPath) and surface when changed', () => {
+      expect(
+        ebOptionSettingTier(
+          'aws:elasticbeanstalk:container:php:phpini',
+          'memory_limit',
+          '256M',
+          'LoadBalanced'
+        )
+      ).toBe('atDefault');
+      expect(
+        ebOptionSettingTier(
+          'aws:elasticbeanstalk:container:php:phpini',
+          'memory_limit',
+          '512M',
+          'LoadBalanced'
+        )
+      ).toBe('undeclared');
+      expect(
+        ebOptionSettingTier(
+          'aws:elasticbeanstalk:container:python',
+          'WSGIPath',
+          'application',
+          'LoadBalanced'
+        )
+      ).toBe('atDefault');
+    });
   });
 
   describe('ElasticBeanstalk Application/Environment top-level first-run defaults (2026-07-07)', () => {

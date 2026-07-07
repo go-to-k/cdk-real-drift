@@ -1,0 +1,1789 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EbTemplatePhp",
+    "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+    "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+    "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp",
+    "declared": {
+      "ApplicationName": "cdkrd-hunt-ebpf-app",
+      "OptionSettings": [
+        {
+          "Namespace": "aws:elasticbeanstalk:environment",
+          "OptionName": "EnvironmentType",
+          "Value": "LoadBalanced"
+        }
+      ],
+      "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running PHP 8.3"
+    }
+  },
+  "liveRaw": {
+    "PlatformArn": "arn:aws:elasticbeanstalk:us-east-1::platform/PHP 8.3 running on 64bit Amazon Linux 2023/4.13.3",
+    "ApplicationName": "cdkrd-hunt-ebpf-app",
+    "OptionSettings": [
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "Any",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Availability Zones"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "360",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Cooldown"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "false",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "EnableCapacityRebalancing"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "4",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MaxSize"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MinSize"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableDefaultEC2SecurityGroup"
+      },
+      {
+        "Value": "true",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableIMDSv1"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingLaunchConfiguration",
+        "Value": "ami-031ae9d63a2e599f9",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "ImageId"
+      },
+      {
+        "Value": "t3.micro",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingLaunchConfiguration",
+        "Value": "5 minute",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "MonitoringInterval"
+      },
+      {
+        "Value": "tcp,22,22,0.0.0.0/0",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SSHSourceRestriction"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "5",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "BreachDuration"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "EvaluationPeriods"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingScaleDownPolicy",
+        "Value": "-1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "LowerBreachScaleIncrement"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "2000000",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "LowerThreshold"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "NetworkOut",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "MeasureName"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "5",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Period"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "Average",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Statistic"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "Bytes",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Unit"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingScaleUpPolicy",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "UpperBreachScaleIncrement"
+      },
+      {
+        "ResourceName": "AWSEBCloudwatchAlarmHigh",
+        "Value": "6000000",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "UpperThreshold"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "false",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateEnabled"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "Time",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateType"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "PT30M",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "Timeout"
+      },
+      {
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_php83_amazon_linux_2023_1.0.2939.0_20260625064821/sampleapp/EBSampleApp-PHP.zip",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "AppSource"
+      },
+      {
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_php83_amazon_linux_2023_1.0.2939.0_20260625064821/lib/hooks.tar.gz",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "HooksPkgUrl"
+      },
+      {
+        "Value": "80",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstancePort"
+      },
+      {
+        "Value": "t3",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstanceTypeFamily"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "EnableSpot"
+      },
+      {
+        "Value": "t3.micro, t3.small",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "InstanceTypes"
+      },
+      {
+        "Value": "capacity-optimized",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotAllocationStrategy"
+      },
+      {
+        "Value": "70",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandAboveBasePercentage"
+      },
+      {
+        "Value": "0",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandBase"
+      },
+      {
+        "Value": "x86_64",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SupportedArchitectures"
+      },
+      {
+        "Value": "public",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBScheme"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "DeleteOnTerminate"
+      },
+      {
+        "Value": "7",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "RetentionInDays"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "StreamLogs"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "DeleteOnTerminate"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "HealthStreamingEnabled"
+      },
+      {
+        "Value": "7",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "RetentionInDays"
+      },
+      {
+        "Value": "100",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSize"
+      },
+      {
+        "Value": "Percentage",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSizeType"
+      },
+      {
+        "Value": "AllAtOnce",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "DeploymentPolicy"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "IgnoreHealthCheck"
+      },
+      {
+        "Value": "600",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "Timeout"
+      },
+      {
+        "Value": "On",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "allow_url_fopen"
+      },
+      {
+        "Value": "Off",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "display_errors"
+      },
+      {
+        "Value": "60",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "max_execution_time"
+      },
+      {
+        "Value": "256M",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "memory_limit"
+      },
+      {
+        "Value": "Off",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "zlib.output_compression"
+      },
+      {
+        "Value": "22",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "DefaultSSHPort"
+      },
+      {
+        "Value": "0",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchTimeout"
+      },
+      {
+        "Value": "Migration",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchType"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "RollbackLaunchOnFailure"
+      },
+      {
+        "Value": "LoadBalanced",
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "EnvironmentType"
+      },
+      {
+        "Value": "classic",
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "LoadBalancerType"
+      },
+      {
+        "Value": "nginx",
+        "Namespace": "aws:elasticbeanstalk:environment:proxy",
+        "OptionName": "ProxyServer"
+      },
+      {
+        "Value": "{\"Version\":1,\"CloudWatchMetrics\":{\"Instance\":{\"CPUIrq\":null,\"LoadAverage5min\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequests4xx\":null,\"CPUUser\":null,\"LoadAverage1min\":null,\"ApplicationLatencyP50\":null,\"CPUIdle\":null,\"InstanceHealth\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP85\":null,\"RootFilesystemUtil\":null,\"ApplicationLatencyP90\":null,\"CPUSystem\":null,\"ApplicationLatencyP75\":null,\"CPUSoftirq\":null,\"ApplicationLatencyP10\":null,\"ApplicationLatencyP99\":null,\"ApplicationRequestsTotal\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests2xx\":null,\"CPUIowait\":null,\"CPUNice\":null},\"Environment\":{\"InstancesSevere\":null,\"InstancesDegraded\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP85\":null,\"InstancesUnknown\":null,\"ApplicationLatencyP90\":null,\"InstancesInfo\":null,\"InstancesPending\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP10\":null,\"ApplicationLatencyP99\":null,\"ApplicationRequestsTotal\":null,\"InstancesNoData\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests2xx\":null,\"InstancesOk\":null,\"InstancesWarning\":null}}}",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "ConfigDocument"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "EnhancedHealthAuthEnabled"
+      },
+      {
+        "Value": "Ok",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "HealthCheckSuccessThreshold"
+      },
+      {
+        "Value": "enhanced",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "SystemType"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:hostmanager",
+        "OptionName": "LogPublicationControl"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ManagedActionsEnabled"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "InstanceRefreshEnabled"
+      },
+      {
+        "Value": "true",
+        "Namespace": "aws:elasticbeanstalk:monitoring",
+        "OptionName": "Automatically Terminate Unhealthy Instances"
+      },
+      {
+        "Value": "email",
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Protocol"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:xray",
+        "OptionName": "XRayEnabled"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "3",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "HealthyThreshold"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "10",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Interval"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "TCP:80",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Target"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "5",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Timeout"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "5",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "UnhealthyThreshold"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "80",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "InstancePort"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "InstanceProtocol"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "true",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "ListenerEnabled"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "ListenerProtocol"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "false",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "CrossZone"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "80",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerHTTPPort"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "OFF",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerHTTPSPort"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerPortProtocol"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTPS",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerSSLPortProtocol"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "{\"Ref\":\"AWSEBLoadBalancerSecurityGroup\"}",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "SecurityGroups"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "false",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionDrainingEnabled"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "20",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionDrainingTimeout"
+      },
+      {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "60",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionSettingIdleTimeout"
+      },
+      {
+        "Value": "false",
+        "Namespace": "aws:rds:dbinstance",
+        "OptionName": "HasCoupledDatabase"
+      }
+    ],
+    "TemplateName": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running PHP 8.3"
+  },
+  "schema": {
+    "readOnly": ["TemplateName"],
+    "writeOnly": ["EnvironmentId"],
+    "createOnly": [
+      "ApplicationName",
+      "EnvironmentId",
+      "PlatformArn",
+      "SolutionStackName",
+      "SourceConfiguration"
+    ],
+    "readOnlyPaths": ["TemplateName"],
+    "writeOnlyPaths": [
+      "EnvironmentId",
+      "SourceConfiguration.ApplicationName",
+      "SourceConfiguration.TemplateName"
+    ],
+    "createOnlyPaths": [
+      "ApplicationName",
+      "EnvironmentId",
+      "PlatformArn",
+      "SolutionStackName",
+      "SourceConfiguration"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionSettings"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:asg|Availability Zones]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "Any",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Availability Zones"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:asg|Cooldown]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "360",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Cooldown"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:asg|EnableCapacityRebalancing]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "false",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "EnableCapacityRebalancing"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:asg|MaxSize]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "4",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MaxSize"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:asg|MinSize]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MinSize"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableDefaultEC2SecurityGroup]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableDefaultEC2SecurityGroup"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableIMDSv1]",
+      "actual": {
+        "Value": "true",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableIMDSv1"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|ImageId]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingLaunchConfiguration",
+        "Value": "ami-031ae9d63a2e599f9",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "ImageId"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|InstanceType]",
+      "actual": {
+        "Value": "t3.micro",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|MonitoringInterval]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingLaunchConfiguration",
+        "Value": "5 minute",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "MonitoringInterval"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|SSHSourceRestriction]",
+      "actual": {
+        "Value": "tcp,22,22,0.0.0.0/0",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SSHSourceRestriction"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|BreachDuration]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "5",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "BreachDuration"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|EvaluationPeriods]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "EvaluationPeriods"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|LowerBreachScaleIncrement]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingScaleDownPolicy",
+        "Value": "-1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "LowerBreachScaleIncrement"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|LowerThreshold]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "2000000",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "LowerThreshold"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|MeasureName]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "NetworkOut",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "MeasureName"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|Period]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "5",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Period"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|Statistic]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "Average",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Statistic"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|Unit]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmLow",
+        "Value": "Bytes",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "Unit"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|UpperBreachScaleIncrement]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingScaleUpPolicy",
+        "Value": "1",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "UpperBreachScaleIncrement"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:trigger|UpperThreshold]",
+      "actual": {
+        "ResourceName": "AWSEBCloudwatchAlarmHigh",
+        "Value": "6000000",
+        "Namespace": "aws:autoscaling:trigger",
+        "OptionName": "UpperThreshold"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateEnabled]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "false",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateType]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "Time",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|Timeout]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Value": "PT30M",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "Timeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|AppSource]",
+      "actual": {
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_php83_amazon_linux_2023_1.0.2939.0_20260625064821/sampleapp/EBSampleApp-PHP.zip",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "AppSource"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|HooksPkgUrl]",
+      "actual": {
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_php83_amazon_linux_2023_1.0.2939.0_20260625064821/lib/hooks.tar.gz",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "HooksPkgUrl"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|InstancePort]",
+      "actual": {
+        "Value": "80",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstancePort"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|InstanceTypeFamily]",
+      "actual": {
+        "Value": "t3",
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstanceTypeFamily"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|EnableSpot]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "EnableSpot"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|InstanceTypes]",
+      "actual": {
+        "Value": "t3.micro, t3.small",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "InstanceTypes"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|SpotAllocationStrategy]",
+      "actual": {
+        "Value": "capacity-optimized",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotAllocationStrategy"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandAboveBasePercentage]",
+      "actual": {
+        "Value": "70",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandAboveBasePercentage"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandBase]",
+      "actual": {
+        "Value": "0",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandBase"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:instances|SupportedArchitectures]",
+      "actual": {
+        "Value": "x86_64",
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SupportedArchitectures"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:ec2:vpc|ELBScheme]",
+      "actual": {
+        "Value": "public",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBScheme"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|DeleteOnTerminate]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "DeleteOnTerminate"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays]",
+      "actual": {
+        "Value": "7",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "RetentionInDays"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|StreamLogs]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "StreamLogs"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|DeleteOnTerminate]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "DeleteOnTerminate"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|HealthStreamingEnabled]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "HealthStreamingEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|RetentionInDays]",
+      "actual": {
+        "Value": "7",
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "RetentionInDays"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSize]",
+      "actual": {
+        "Value": "100",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSize"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSizeType]",
+      "actual": {
+        "Value": "Percentage",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSizeType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|DeploymentPolicy]",
+      "actual": {
+        "Value": "AllAtOnce",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "DeploymentPolicy"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|IgnoreHealthCheck]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "IgnoreHealthCheck"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|Timeout]",
+      "actual": {
+        "Value": "600",
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "Timeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:container:php:phpini|allow_url_fopen]",
+      "actual": {
+        "Value": "On",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "allow_url_fopen"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:container:php:phpini|display_errors]",
+      "actual": {
+        "Value": "Off",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "display_errors"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:container:php:phpini|max_execution_time]",
+      "actual": {
+        "Value": "60",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "max_execution_time"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:container:php:phpini|memory_limit]",
+      "actual": {
+        "Value": "256M",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "memory_limit"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:container:php:phpini|zlib.output_compression]",
+      "actual": {
+        "Value": "Off",
+        "Namespace": "aws:elasticbeanstalk:container:php:phpini",
+        "OptionName": "zlib.output_compression"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|DefaultSSHPort]",
+      "actual": {
+        "Value": "22",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "DefaultSSHPort"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchTimeout]",
+      "actual": {
+        "Value": "0",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchTimeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchType]",
+      "actual": {
+        "Value": "Migration",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|RollbackLaunchOnFailure]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "RollbackLaunchOnFailure"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment|LoadBalancerType]",
+      "actual": {
+        "Value": "classic",
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "LoadBalancerType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment:proxy|ProxyServer]",
+      "actual": {
+        "Value": "nginx",
+        "Namespace": "aws:elasticbeanstalk:environment:proxy",
+        "OptionName": "ProxyServer"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|ConfigDocument]",
+      "actual": {
+        "Value": "{\"CloudWatchMetrics\":{\"Environment\":{\"ApplicationLatencyP10\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP85\":null,\"ApplicationLatencyP90\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP99\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests2xx\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequestsTotal\":null,\"InstancesDegraded\":null,\"InstancesInfo\":null,\"InstancesNoData\":null,\"InstancesOk\":null,\"InstancesPending\":null,\"InstancesSevere\":null,\"InstancesUnknown\":null,\"InstancesWarning\":null},\"Instance\":{\"ApplicationLatencyP10\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP85\":null,\"ApplicationLatencyP90\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP99\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests2xx\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequestsTotal\":null,\"CPUIdle\":null,\"CPUIowait\":null,\"CPUIrq\":null,\"CPUNice\":null,\"CPUSoftirq\":null,\"CPUSystem\":null,\"CPUUser\":null,\"InstanceHealth\":null,\"LoadAverage1min\":null,\"LoadAverage5min\":null,\"RootFilesystemUtil\":null}},\"Version\":1}",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "ConfigDocument"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "EnhancedHealthAuthEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|HealthCheckSuccessThreshold]",
+      "actual": {
+        "Value": "Ok",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "HealthCheckSuccessThreshold"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|SystemType]",
+      "actual": {
+        "Value": "enhanced",
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "SystemType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:hostmanager|LogPublicationControl]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:hostmanager",
+        "OptionName": "LogPublicationControl"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions|ManagedActionsEnabled]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ManagedActionsEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions:platformupdate|InstanceRefreshEnabled]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "InstanceRefreshEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:monitoring|Automatically Terminate Unhealthy Instances]",
+      "actual": {
+        "Value": "true",
+        "Namespace": "aws:elasticbeanstalk:monitoring",
+        "OptionName": "Automatically Terminate Unhealthy Instances"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Protocol]",
+      "actual": {
+        "Value": "email",
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Protocol"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elasticbeanstalk:xray|XRayEnabled]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:elasticbeanstalk:xray",
+        "OptionName": "XRayEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:healthcheck|HealthyThreshold]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "3",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "HealthyThreshold"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:healthcheck|Interval]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "10",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Interval"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:healthcheck|Target]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "TCP:80",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Target"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:healthcheck|Timeout]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "5",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "Timeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:healthcheck|UnhealthyThreshold]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "5",
+        "Namespace": "aws:elb:healthcheck",
+        "OptionName": "UnhealthyThreshold"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:listener:80|InstancePort]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "80",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "InstancePort"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:listener:80|InstanceProtocol]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "InstanceProtocol"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:listener:80|ListenerEnabled]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "true",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "ListenerEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:listener:80|ListenerProtocol]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:listener:80",
+        "OptionName": "ListenerProtocol"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|CrossZone]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "false",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "CrossZone"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|LoadBalancerHTTPPort]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "80",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerHTTPPort"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|LoadBalancerHTTPSPort]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "OFF",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerHTTPSPort"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|LoadBalancerPortProtocol]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTP",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerPortProtocol"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|LoadBalancerSSLPortProtocol]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "HTTPS",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "LoadBalancerSSLPortProtocol"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:loadbalancer|SecurityGroups]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "{\"Ref\":\"AWSEBLoadBalancerSecurityGroup\"}",
+        "Namespace": "aws:elb:loadbalancer",
+        "OptionName": "SecurityGroups"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:policies|ConnectionDrainingEnabled]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "false",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionDrainingEnabled"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:policies|ConnectionDrainingTimeout]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "20",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionDrainingTimeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:elb:policies|ConnectionSettingIdleTimeout]",
+      "actual": {
+        "ResourceName": "AWSEBLoadBalancer",
+        "Value": "60",
+        "Namespace": "aws:elb:policies",
+        "OptionName": "ConnectionSettingIdleTimeout"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:rds:dbinstance|HasCoupledDatabase]",
+      "actual": {
+        "Value": "false",
+        "Namespace": "aws:rds:dbinstance",
+        "OptionName": "HasCoupledDatabase"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplatePhp",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "PlatformArn",
+      "actual": "arn:aws:elasticbeanstalk:us-east-1::platform/PHP 8.3 running on 64bit Amazon Linux 2023/4.13.3",
+      "physicalId": "CdkRealDriftIntegEbPlatforms-EbTemplatePhp-yi28P4tKKFqn",
+      "constructPath": "CdkRealDriftIntegEbPlatforms/EbTemplatePhp"
+    }
+  ]
+}
