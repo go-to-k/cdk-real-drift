@@ -1,0 +1,43 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RoleAttachment",
+    "resourceType": "AWS::Cognito::IdentityPoolRoleAttachment",
+    "physicalId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+    "constructPath": "CdkRealDriftIntegCognitoIdPoolRich/RoleAttachment",
+    "declared": {
+      "IdentityPoolId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+      "Roles": {
+        "unauthenticated": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCognitoIdPoolRi-UnauthRole74358E81-E6KC6lALv81k"
+      }
+    }
+  },
+  "liveRaw": {
+    "RoleMappings": {},
+    "IdentityPoolId": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792",
+    "Roles": {
+      "unauthenticated": "arn:aws:iam::111111111111:role/CdkRealDriftIntegCognitoIdPoolRi-UnauthRole74358E81-E6KC6lALv81k"
+    },
+    "Id": "us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["IdentityPoolId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["IdentityPoolId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

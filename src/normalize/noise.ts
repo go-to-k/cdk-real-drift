@@ -1851,9 +1851,9 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value
-// to `generated` ONLY when it is the `<logicalId>-<random>` CFn auto-generated form — the
-// resource's logical id, a `-`, then CFn's 12+ char random suffix — for a type whose
-// no-explicit-name physical name takes that shape WITHOUT a `<stack>-` prefix (so the
+// to `generated` ONLY when it is the `<logicalId><sep><random>` CFn auto-generated form — the
+// resource's logical id, a `-` or `_` separator, then CFn's 12+ char random suffix — for a type
+// whose no-explicit-name physical name takes that shape WITHOUT a `<stack>-` prefix (so the
 // isCfnGeneratedName stack-prefix branches miss it). UNLIKE the value-independent
 // GENERATED_TOPLEVEL_PATHS, an undeclared user-SET name (no logical-id prefix) does NOT match
 // and still surfaces as real drift. Deliberately NOT applied generically in
@@ -1862,18 +1862,27 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
 // names and over-fold — this table gates it to the specific types/paths observed to need it.
 //   AWS::Cognito::UserPoolClient.ClientName — reads back `<logicalId>-<random>` when the
 //   template declares no ClientName (observed live).
+//   AWS::Cognito::IdentityPool.IdentityPoolName — reads back `<logicalId>_<random>` when the
+//   template declares no IdentityPoolName (observed live: logical id "IdPool" →
+//   "IdPool_r5WzZ9554da2"). The separator is an underscore, not a hyphen — identity-pool
+//   names use a different generated form — so isLogicalIdPrefixedGeneratedName accepts both.
+//   AWS::Cognito::UserPool.UserPoolName — reads back `<logicalId>-<random>` when the template
+//   declares no UserPoolName (observed live across corpus: "Pool88FC4FF9F-jVGU9rNojAd7",
+//   "Users0A0EEA89-RYUoEBfJwQHo"). Same class as the sibling ClientName — audited in.
 export const GENERATED_LOGICALID_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Cognito::UserPoolClient': new Set(['ClientName']),
+  'AWS::Cognito::IdentityPool': new Set(['IdentityPoolName']),
+  'AWS::Cognito::UserPool': new Set(['UserPoolName']),
 };
 
-// True when `value` is the `<logicalId>-<random>` CFn auto-generated-name form: the logical
-// id, a `-`, then CFn's random suffix. Consulted only for GENERATED_LOGICALID_PREFIX_PATHS
-// entries. Pure + exported for unit tests.
-const CFN_LOGICALID_RANDOM = /-[0-9A-Za-z]{12,}$/;
+// True when `value` is the `<logicalId><sep><random>` CFn auto-generated-name form: the logical
+// id, a `-` OR `_` separator, then CFn's random suffix. Consulted only for
+// GENERATED_LOGICALID_PREFIX_PATHS entries. Pure + exported for unit tests.
+const CFN_LOGICALID_RANDOM = /[-_][0-9A-Za-z]{12,}$/;
 export function isLogicalIdPrefixedGeneratedName(value: unknown, logicalId: string): boolean {
   return (
     typeof value === 'string' &&
-    value.startsWith(`${logicalId}-`) &&
+    (value.startsWith(`${logicalId}-`) || value.startsWith(`${logicalId}_`)) &&
     CFN_LOGICALID_RANDOM.test(value)
   );
 }

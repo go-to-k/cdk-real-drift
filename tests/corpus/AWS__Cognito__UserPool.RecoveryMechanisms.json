@@ -611,7 +611,7 @@
       "constructPath": "CdkRealDriftIntegCognitoRecoverySubset/Pool"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "PoolD3F588B8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolName",

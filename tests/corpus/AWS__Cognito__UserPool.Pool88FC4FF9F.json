@@ -609,7 +609,7 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolName",

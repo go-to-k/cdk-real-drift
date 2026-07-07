@@ -9377,6 +9377,56 @@ describe('Face-stack false-positive folds', () => {
     expect(userSet.generated).toEqual([]);
   });
 
+  it('Cognito IdentityPool undeclared IdentityPoolName (<logicalId>_<random>) folds to generated', () => {
+    // An IdentityPool with no explicit IdentityPoolName reads back `<logicalId>_<random>` —
+    // note the UNDERSCORE separator, unlike UserPoolClient's `<logicalId>-<random>`. It folds
+    // via GENERATED_LOGICALID_PREFIX_PATHS, NOT a value-independent fold that would also hide a
+    // user-set name. Observed live: logical id "IdPool" → "IdPool_r5WzZ9554da2".
+    const poolResource = {
+      logicalId: 'IdPool',
+      resourceType: 'AWS::Cognito::IdentityPool',
+      physicalId: 'us-east-1:e04800fe-e59f-4a8a-adba-6d2b1bf9f792',
+      constructPath: 'Stack/IdPool',
+      declared: {},
+    };
+    const pool = tiers(
+      classifyResource(poolResource, { IdentityPoolName: 'IdPool_r5WzZ9554da2' }, emptySchema)
+    );
+    expect(pool.generated).toEqual(['IdentityPoolName']);
+    expect(pool.undeclared).toEqual([]);
+    // A user-SET IdentityPoolName (no logical-id prefix) is NOT folded — it surfaces as real
+    // undeclared drift.
+    const userSetPool = tiers(
+      classifyResource(poolResource, { IdentityPoolName: 'my-app-identities' }, emptySchema)
+    );
+    expect(userSetPool.undeclared).toEqual(['IdentityPoolName']);
+    expect(userSetPool.generated).toEqual([]);
+  });
+
+  it('Cognito UserPool undeclared UserPoolName (<logicalId>-<random>) folds to generated', () => {
+    // A UserPool with no explicit UserPoolName reads back `<logicalId>-<random>` (the same
+    // sibling class as UserPoolClient.ClientName). It folds via GENERATED_LOGICALID_PREFIX_PATHS,
+    // NOT a value-independent fold. Observed live across corpus: "Pool88FC4FF9F-jVGU9rNojAd7".
+    const poolResource = {
+      logicalId: 'Pool88FC4FF9F',
+      resourceType: 'AWS::Cognito::UserPool',
+      physicalId: 'us-east-1_BUaNF3GfH',
+      constructPath: 'Stack/Pool8',
+      declared: {},
+    };
+    const pool = tiers(
+      classifyResource(poolResource, { UserPoolName: 'Pool88FC4FF9F-jVGU9rNojAd7' }, emptySchema)
+    );
+    expect(pool.generated).toEqual(['UserPoolName']);
+    expect(pool.undeclared).toEqual([]);
+    // A user-SET UserPoolName (no logical-id prefix) still surfaces as real undeclared drift.
+    const userSetPool = tiers(
+      classifyResource(poolResource, { UserPoolName: 'my-production-pool' }, emptySchema)
+    );
+    expect(userSetPool.undeclared).toEqual(['UserPoolName']);
+    expect(userSetPool.generated).toEqual([]);
+  });
+
   it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {
     const declared = {
       Rules: [
