@@ -5242,6 +5242,128 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
   });
 });
 
+// Core VPC-networking types read back an AWS-ASSIGNED, CREATE-ONLY placement identifier on
+// every first run (the primary private IP AWS allocates from the subnet, the mount-target IP,
+// the EIP border group, an endpoint's / peering's region). Each is AWS's per-resource choice,
+// never user intent when undeclared, and — being create-only — can never move out of band, so
+// it folds value-independent. A user who pins a value DECLARES it (compared in the declared
+// loop). Found by the offline first-run-noise sweep over the VPC-common corpus cases.
+describe('VPC-networking AWS-assigned create-only identifiers fold value-independent', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    tiers(
+      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+    );
+
+  it('undeclared assigned identifiers fold to atDefault (not undeclared drift)', () => {
+    const cases: [string, Record<string, unknown>, string[]][] = [
+      ['AWS::EC2::Instance', { PrivateIpAddress: '10.0.0.216' }, ['PrivateIpAddress']],
+      ['AWS::EC2::NetworkInterface', { PrivateIpAddress: '10.0.0.221' }, ['PrivateIpAddress']],
+      // NatGateway also reads back the VPC id AWS derives from the declared SubnetId.
+      [
+        'AWS::EC2::NatGateway',
+        { PrivateIpAddress: '10.0.0.62', VpcId: 'vpc-04afc4de702561220' },
+        ['PrivateIpAddress', 'VpcId'],
+      ],
+      ['AWS::EFS::MountTarget', { IpAddress: '10.0.88.116' }, ['IpAddress']],
+      ['AWS::EC2::EIP', { NetworkBorderGroup: 'us-east-1' }, ['NetworkBorderGroup']],
+      ['AWS::EC2::VPCEndpoint', { ServiceRegion: 'us-east-1' }, ['ServiceRegion']],
+      ['AWS::EC2::VPCPeeringConnection', { PeerRegion: 'us-east-1' }, ['PeerRegion']],
+      ['AWS::Neptune::DBInstance', { AvailabilityZone: 'ap-northeast-1c' }, ['AvailabilityZone']],
+    ];
+    for (const [type, live, props] of cases) {
+      const r = t(type, {}, live);
+      expect(r.undeclared).toEqual([]);
+      expect(r.atDefault).toEqual(expect.arrayContaining(props));
+    }
+  });
+
+  it('a DECLARED PrivateIpAddress is user intent — compared in the declared loop, still detected', () => {
+    const r = t(
+      'AWS::EC2::Instance',
+      { PrivateIpAddress: '10.0.0.5' },
+      { PrivateIpAddress: '10.0.0.216' }
+    );
+    expect(r.declared).toEqual(['PrivateIpAddress']);
+    expect(r.atDefault).not.toContain('PrivateIpAddress');
+  });
+
+  it('the fold is gated per-type — a different type keeps PrivateIpAddress undeclared', () => {
+    const r = t('AWS::Other::Thing', {}, { PrivateIpAddress: '10.0.0.9' });
+    expect(r.undeclared).toContain('PrivateIpAddress');
+  });
+
+  // The EIP PublicIpv4Pool "amazon" default and the VPCEndpoint default full-access
+  // PolicyDocument / service-defined DnsOptions are equality-gated KNOWN_DEFAULTS — they fold
+  // the AWS default but SURFACE a value changed out of band (the FN half proven live: a
+  // tightened endpoint policy re-surfaces). Live-observed on a fresh vpc-common deploy.
+  const DEFAULT_ENDPOINT_POLICY = {
+    Version: '2008-10-17',
+    Statement: [{ Effect: 'Allow', Principal: '*', Action: ['*'], Resource: ['*'] }],
+  };
+  const DEFAULT_DNS_OPTIONS = {
+    PrivateDnsOnlyForInboundResolverEndpoint: 'NotSpecified',
+    PrivateDnsSpecifiedDomains: ['*'],
+    DnsRecordIpType: 'service-defined',
+    PrivateDnsPreference: 'VERIFIED_DOMAINS_ONLY',
+  };
+
+  it('EIP PublicIpv4Pool "amazon" + VPCEndpoint default policy fold (equality-gated)', () => {
+    expect(t('AWS::EC2::EIP', {}, { PublicIpv4Pool: 'amazon' }).atDefault).toContain(
+      'PublicIpv4Pool'
+    );
+    const ep = t(
+      'AWS::EC2::VPCEndpoint',
+      {},
+      { PolicyDocument: DEFAULT_ENDPOINT_POLICY, DnsOptions: DEFAULT_DNS_OPTIONS }
+    );
+    expect(ep.undeclared).toEqual([]);
+    expect(ep.atDefault).toEqual(expect.arrayContaining(['PolicyDocument', 'DnsOptions']));
+  });
+
+  it('VPCEndpoint DnsOptions folds value-independent — both the gateway and interface defaults', () => {
+    // DnsRecordIpType is "service-defined" for a gateway endpoint, "ipv4" for an interface one;
+    // both AWS defaults fold whole (a user who configures DNS DECLARES DnsOptions).
+    for (const ipType of ['service-defined', 'ipv4', 'dualstack']) {
+      const r = t(
+        'AWS::EC2::VPCEndpoint',
+        {},
+        { DnsOptions: { ...DEFAULT_DNS_OPTIONS, DnsRecordIpType: ipType } }
+      );
+      expect(r.atDefault).toContain('DnsOptions');
+      expect(r.undeclared).not.toContain('DnsOptions');
+    }
+  });
+
+  it('a value changed away from the default still surfaces (equality-gate preserves detection)', () => {
+    // a BYOIP pool is not "amazon"
+    expect(t('AWS::EC2::EIP', {}, { PublicIpv4Pool: 'ipv4pool-ec2-abc' }).undeclared).toContain(
+      'PublicIpv4Pool'
+    );
+    // a tightened endpoint policy no longer matches the full-access default
+    const tightened = {
+      Version: '2008-10-17',
+      Statement: [{ Effect: 'Allow', Principal: '*', Action: ['s3:GetObject'], Resource: ['*'] }],
+    };
+    expect(t('AWS::EC2::VPCEndpoint', {}, { PolicyDocument: tightened }).undeclared).toContain(
+      'PolicyDocument'
+    );
+  });
+});
+
 // Second offline noise-sweep batch: AWS-managed parameter-group names, Redshift constant
 // defaults, and OpenSearch domain defaults — all undeclared AWS-assigned values a first run
 // would otherwise flag as [Potential Drift].

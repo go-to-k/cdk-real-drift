@@ -112,7 +112,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddress",

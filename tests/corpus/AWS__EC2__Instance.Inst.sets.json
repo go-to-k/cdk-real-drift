@@ -339,7 +339,7 @@
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
       "path": "PrivateIpAddress",

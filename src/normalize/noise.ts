@@ -694,6 +694,26 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
+    // An endpoint that declares no `PolicyDocument` reads back the AWS-attached DEFAULT policy:
+    // full access ("allow every principal every action on every resource"). It is the standard
+    // default, not user intent — a user who tightens access DECLARES a policy, which no longer
+    // matches this default and surfaces WHOLE (equality-gated, so out-of-band tightening is
+    // still detected). Observed live on a fresh S3 gateway endpoint (vpc-common). Stored in the
+    // canonical shape the compare pipeline (normalizePoliciesDeep) produces for the live value.
+    PolicyDocument: {
+      Version: '2008-10-17',
+      Statement: [{ Effect: 'Allow', Principal: '*', Action: ['*'], Resource: ['*'] }],
+    },
+    // (DnsOptions is AWS-service-assigned whole and folds value-independent — its default varies
+    // by endpoint type, so it cannot be one equality-gated constant. See
+    // VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS below.)
+  },
+  // An Elastic IP that brings no BYOIP pool reads back the standard Amazon-provided pool
+  // ("amazon"). Create-only and the constant default, not user intent — a BYOIP address
+  // DECLARES its own PublicIpv4Pool, which no longer matches and surfaces. Equality-gated.
+  // Observed live on a fresh EIP (vpc-common NAT gateway).
+  'AWS::EC2::EIP': {
+    PublicIpv4Pool: 'amazon',
   },
   'AWS::EC2::TransitGateway': {
     SecurityGroupReferencingSupport: 'disable',
@@ -1891,7 +1911,11 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::DocDB::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
   'AWS::DocDB::DBInstance': new Set(['PreferredMaintenanceWindow']),
   'AWS::Neptune::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
-  'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow']),
+  //   AWS::Neptune::DBInstance.AvailabilityZone — AWS places an undeclared instance in an AZ it
+  //   picks (create-only, so it can never drift; never user intent when undeclared), exactly like
+  //   AWS::RDS::DBInstance.AvailabilityZone above. A user who pins a placement DECLARES it and is
+  //   then compared in the declared loop.
+  'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow', 'AvailabilityZone']),
   'AWS::ElastiCache::CacheCluster': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
@@ -1917,6 +1941,37 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-
   //   run noise (a DECLARED window is compared in the declared loop).
   'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime']),
+  //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
+  //   read back on every first run. Each is a per-resource value AWS picks at creation from the
+  //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
+  //   undeclared. All are create-only (schema `createOnly`), so a value-independent fold can never
+  //   hide a real out-of-band change: the value physically cannot move without replacing the
+  //   resource, which is itself a template change surfaced elsewhere. A user who pins a specific
+  //   value DECLARES it and is then compared in the declared loop. Found by the offline first-run-
+  //   noise sweep across the VPC-common / EC2-instance / EFS / peering corpus cases (undeclared on
+  //   every one, no out-of-band edit), each confirmed create-only from its live CFn schema:
+  //     * EC2 Instance / NetworkInterface / NatGateway `PrivateIpAddress` — the primary private IP
+  //       AWS allocates from the subnet CIDR (e.g. "10.0.0.216"); immutable after launch.
+  //     * EFS MountTarget `IpAddress` — the mount-target IP AWS allocates from the subnet.
+  //     * EC2 EIP `NetworkBorderGroup` — the address's border group, defaulting to the region.
+  //     * EC2 VPCEndpoint `ServiceRegion` — defaults to the endpoint's own region.
+  //     * EC2 VPCPeeringConnection `PeerRegion` — defaults to the requester's region.
+  //   VPCEndpoint `DnsOptions` is folded here too, but as an AWS-service-assigned whole config
+  //   OBJECT (not a create-only identifier): an endpoint that declares no DnsOptions reads back a
+  //   default object whose `DnsRecordIpType` VARIES by endpoint type ("service-defined" for a
+  //   gateway endpoint, "ipv4" for an interface one), so it cannot be pinned as one equality-
+  //   gated constant. When undeclared every sub-key is an AWS service default, never user intent;
+  //   a user who configures DNS DECLARES DnsOptions (compared in the declared loop). Mirrors the
+  //   OpenSearch `OffPeakWindowOptions` / AmazonMQ `MaintenanceWindowStartTime` object precedents.
+  //     * EC2 NatGateway `VpcId` — AWS DERIVES the VPC id from the declared SubnetId and reads
+  //       it back (create-only, embeds the per-resource `vpc-…` id, never declared by CDK).
+  'AWS::EC2::Instance': new Set(['PrivateIpAddress']),
+  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress']),
+  'AWS::EC2::NatGateway': new Set(['PrivateIpAddress', 'VpcId']),
+  'AWS::EFS::MountTarget': new Set(['IpAddress']),
+  'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
+  'AWS::EC2::VPCEndpoint': new Set(['ServiceRegion', 'DnsOptions']),
+  'AWS::EC2::VPCPeeringConnection': new Set(['PeerRegion']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

@@ -104,7 +104,7 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet2/NATGateway"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPublicSubnet2NATGateway841E7FC0",
       "resourceType": "AWS::EC2::NatGateway",
       "path": "PrivateIpAddress",
@@ -122,7 +122,7 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet2/NATGateway"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPublicSubnet2NATGateway841E7FC0",
       "resourceType": "AWS::EC2::NatGateway",
       "path": "VpcId",
