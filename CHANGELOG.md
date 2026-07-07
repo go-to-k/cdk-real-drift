@@ -1,3 +1,10 @@
+## [0.2.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.5...v0.2.6) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** read ElastiCache ParameterGroup Properties as the source=user modified set (zero first-run drift) ([#612](https://github.com/go-to-k/cdk-real-drift/issues/612)) ([537b53f](https://github.com/go-to-k/cdk-real-drift/commit/537b53f477124359afa08da2487f8aa8b85bd347))
+
 ## [0.2.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.4...v0.2.5) (2026-07-07)
 
 
