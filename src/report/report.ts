@@ -115,7 +115,7 @@ export function formatFinding(f: Finding, stackName = ''): string {
   // and style.* is the identity when stdout is not a TTY, so piped output and
   // unit-test assertions see plain text). The construct path is shown WITHIN its stack
   // (the stack/Stage prefix stripped — the header already names the stack), so a Stage's
-  // `dev-main/AuroraDB/...` no longer sits beside the `dev-main-AuroraDB` header looking
+  // `my-app/Rds/...` no longer sits beside the `my-app-Rds` header looking
   // like a different id. `stackName` defaults to '' (no strip) for direct unit calls; the
   // report passes the real name. The displayed id stays byte-identical to the ignore-rule
   // path token (both are `withinStackPath(...).<path>`), so what you see IS what an

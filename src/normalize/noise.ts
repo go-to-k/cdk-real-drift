@@ -1786,7 +1786,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   never be declared, any value AWS returns is a pure reflection of the declared Type,
   //   not user intent — and a real change to Type surfaces in the declared loop on `Type`
   //   itself. Fold value-independent so both derived forms (and any future enum) fold
-  //   without enumerating each. Both observed live first-run (LineLink cognito, dev-main
+  //   without enumerating each. Both observed live first-run (LineLink cognito, my-app
   //   AimAssociation TOKEN "custom") with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
   //   AWS::RDS::DBCluster / ::DBInstance — an Aurora cluster/instance that declares no explicit
@@ -1797,7 +1797,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   constant we can pin, and none is user intent — a user who cares DECLARES it, and then it
   //   is compared in the declared loop (detected) and never reaches here. Fold value-independent
   //   (mirrors the KinesisAnalytics maintenance-window precedent above). Observed live first-run
-  //   on dev-main-AuroraDB / dev-main-DbUsers-DB with no out-of-band edit.
+  //   on my-app-Rds / my-app-UserStore-DB with no out-of-band edit.
   //   `PerformanceInsightsKmsKeyId` (cluster) / `PerformanceInsightsKMSKeyId` (instance — note
   //   the API's different casing) is the same shape as `KmsKeyId`: a Performance-Insights-
   //   enabled cluster/instance that pins no explicit PI key reads back the AWS-assigned key.
@@ -1808,7 +1808,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   date — AWS's choice, not user intent — and a constant KNOWN_DEFAULTS cannot fold both forms.
   //   A user who cares about the enrollment (its billing / EOL implications) DECLARES it, and then
   //   it is compared in the declared loop (detected). Observed live: fresh corpus deploys read
-  //   "open-source-rds-extended-support"; the older cdk-imported dev-main-AuroraDB reads
+  //   "open-source-rds-extended-support"; the older cdk-imported my-app-Rds reads
   //   "open-source-rds-extended-support-disabled".
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
@@ -1843,17 +1843,17 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   declared loop. `AllocatedCapacity` is additionally a legacy field AWS always echoes. Fold
   //   value-independent so every DPU value folds without a table (a job that instead DECLARES
   //   MaxCapacity — a Python-shell job — goes through the declared loop, compared). Observed live
-  //   first-run on dev-main-Db2Csv (five G.1X ETL jobs + one G.025X streaming job), no edit.
+  //   first-run on my-app-Exporter (five G.1X ETL jobs + one G.025X streaming job), no edit.
   'AWS::Glue::Job': new Set(['MaxCapacity', 'AllocatedCapacity']),
   //   AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress.SourceSecurityGroupName — a rule that
   //   references its peer group by id (`SourceSecurityGroupId`, the CDK default) declares no
   //   `SourceSecurityGroupName`; AWS DERIVES and reads back the referenced group's NAME
-  //   ("dev-main-Db2Csv-Glue-sg") from that id. It can never be a constant we pin (it embeds the
+  //   ("my-app-Exporter-Glue-sg") from that id. It can never be a constant we pin (it embeds the
   //   per-group name), and when undeclared it is a pure reflection of the declared
   //   SourceSecurityGroupId, not user intent — a real change to the peer surfaces on
   //   `SourceSecurityGroupId` in the declared loop. Fold value-independent. (A user who references
   //   a peer by name — EC2-Classic style — DECLARES SourceSecurityGroupName, compared.) Observed
-  //   live first-run on dev-main-Db2Csv's self-referencing Glue SG ingress, no edit.
+  //   live first-run on my-app-Exporter's self-referencing Glue SG ingress, no edit.
   'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupName']),
   'AWS::EC2::SecurityGroupEgress': new Set(['SourceSecurityGroupName']),
   //   The RDS-family + cache engines all mirror the RDS precedent above: a cluster/instance
@@ -2341,8 +2341,8 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::EMRServerless::Application': new Set(['Type']),
   // RDS lowercases DB instance / cluster identifiers on creation, so a template
   // that declares a mixed-case `DBInstanceIdentifier` (e.g. CDK derives it from the
-  // construct id `dev-main-DbUsers-DB-writer`) reads back all-lowercase
-  // (`dev-main-dbusers-db-writer`) and a case-sensitive compare false-flags declared
+  // construct id `my-app-UserStore-DB-writer`) reads back all-lowercase
+  // (`my-app-userstore-db-writer`) and a case-sensitive compare false-flags declared
   // drift on every check. The lowercasing is unconditional and unenforceable — you
   // can never actually have an uppercase identifier live — so case-insensitive
   // equality hides no revertable drift; a genuine rename still differs beyond case.
@@ -2374,7 +2374,7 @@ export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
 // boolean system variables accept ON/OFF, 1/0, and TRUE/FALSE interchangeably. RDS
 // canonicalizes a declared "ON"/"OFF" to "1"/"0" on read, so a template that writes
 // `slow_query_log: "ON"` false-flags declared drift against the live "1" on every check of a
-// MySQL / Aurora-MySQL cluster (observed live on dev-main-AuroraDB). Matched on the map's TOP
+// MySQL / Aurora-MySQL cluster (observed live on my-app-Rds). Matched on the map's TOP
 // path segment; the per-key leaf compare applies isBooleanTokenEquivalent below.
 export const BOOLEAN_PARAM_MAP_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::RDS::DBClusterParameterGroup': new Set(['Parameters']),

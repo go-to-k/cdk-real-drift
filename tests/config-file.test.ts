@@ -246,26 +246,26 @@ describe('applyIgnores', () => {
     const f: Finding = {
       tier: 'declared',
       logicalId: 'ParameterGroup9AB12C',
-      constructPath: 'dev-main/AuroraDB/Database/ParameterGroup',
+      constructPath: 'my-app/Rds/Database/ParameterGroup',
       resourceType: 'AWS::RDS::DBClusterParameterGroup',
       path: 'Parameters.autocommit',
       physicalId: 'pg-phys',
       desired: '0',
       actual: '1',
     };
-    // the CFn stack name is stage-qualified (dev-main-AuroraDB); rules are matched under it
+    // the CFn stack name is stage-qualified (my-app-Rds); rules are matched under it
     const atStack = (config: CdkrdConfig): Finding[] =>
-      applyIgnores([f], sc('dev-main-AuroraDB', ACCT, 'us-east-1'), config);
+      applyIgnores([f], sc('my-app-Rds', ACCT, 'us-east-1'), config);
     // (1) the full construct-path rule the `ignore` verb writes — literal exact match
     expect(
-      atStack(cfg([p('dev-main/AuroraDB/Database/ParameterGroup.Parameters.autocommit')]))[0]?.tier
+      atStack(cfg([p('my-app/Rds/Database/ParameterGroup.Parameters.autocommit')]))[0]?.tier
     ).toBe('ignored');
     // (2) a `*.prop` glob whose leading `*` spans the whole stage/stack construct-path prefix
     expect(atStack(cfg([p('*.Parameters.autocommit')]))[0]?.tier).toBe('ignored');
     // (3) a `*/`-anchored glob crossing the multi-slash prefix
     expect(atStack(cfg([p('*/ParameterGroup.Parameters.autocommit')]))[0]?.tier).toBe('ignored');
     // (4) a PARENT rule ignores the subtree leaf via the ancestor walk
-    expect(atStack(cfg([p('dev-main/AuroraDB/Database/ParameterGroup.Parameters')]))[0]?.tier).toBe(
+    expect(atStack(cfg([p('my-app/Rds/Database/ParameterGroup.Parameters')]))[0]?.tier).toBe(
       'ignored'
     );
     // (5) the logicalId target still works regardless of the construct path
@@ -510,15 +510,15 @@ describe('ignoreRuleFor', () => {
     };
     // plain stack + a CDK Stage both collapse to the same within-stack rule
     expect(ignoreRuleFor(f, 'MyStack')).toEqual({ path: 'ApiRole.Policies' });
-    expect(
-      ignoreRuleFor({ ...f, constructPath: 'dev-main/AuroraDB/ApiRole' }, 'dev-main-AuroraDB')
-    ).toEqual({ path: 'ApiRole.Policies' });
+    expect(ignoreRuleFor({ ...f, constructPath: 'my-app/Rds/ApiRole' }, 'my-app-Rds')).toEqual({
+      path: 'ApiRole.Policies',
+    });
     // round-trip: the within-stack rule the verb now writes matches the finding it came from
     expect(ign([f], 'MyStack', cfg([ignoreRuleFor(f, 'MyStack')]))[0]?.tier).toBe('ignored');
-    const staged: Finding = { ...f, constructPath: 'dev-main/AuroraDB/ApiRole' };
-    expect(
-      ign([staged], 'dev-main-AuroraDB', cfg([ignoreRuleFor(staged, 'dev-main-AuroraDB')]))[0]?.tier
-    ).toBe('ignored');
+    const staged: Finding = { ...f, constructPath: 'my-app/Rds/ApiRole' };
+    expect(ign([staged], 'my-app-Rds', cfg([ignoreRuleFor(staged, 'my-app-Rds')]))[0]?.tier).toBe(
+      'ignored'
+    );
     // and an OLDER full-path rule (pre-strip) still matches (back-compat)
     expect(ign([f], 'MyStack', cfg([p('MyStack/ApiRole.Policies')]))[0]?.tier).toBe('ignored');
   });

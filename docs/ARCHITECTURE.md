@@ -985,7 +985,7 @@ WITHIN-stack `<constructPath>.<path>` (the stack/Stage prefix stripped via
 `withinStackPath`, e.g. `ApiRole.Policies`) — byte-identical to what the report prints
 and what `ignoreRuleFor` now writes, so a rule is "copy what you see"; and the FULL
 `<stack>/<constructPath>.<path>` (`MyStack/ApiRole.Policies`, or a Stage's
-`dev-main/AuroraDB/...`) — kept so rules authored before the strip still match. The
+`my-app/Rds/...`) — kept so rules authored before the strip still match. The
 constructPath forms come from optional `aws:cdk:path` Metadata (absent on non-CDK
 stacks), so logicalId is the always-present fallback. A parent-segment rule
 (`X.Policies`) covers child paths (`X.Policies.0.PolicyName`).

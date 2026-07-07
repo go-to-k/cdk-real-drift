@@ -372,7 +372,7 @@ export function applyIgnores(
     if (f.constructPath) {
       // The within-stack path is what the report shows and what `ignoreRuleFor` now writes;
       // the FULL construct path is kept too so rules authored before the strip (or a
-      // Stage's full `dev-main/AuroraDB/...` form) still match. When there is no stack
+      // Stage's full `my-app/Rds/...` form) still match. When there is no stack
       // prefix to strip, both are identical — a harmless duplicate (`some` short-circuits).
       targets.push(`${withinStackPath(f.constructPath, stackName)}${suffix}`);
       targets.push(`${f.constructPath}${suffix}`);

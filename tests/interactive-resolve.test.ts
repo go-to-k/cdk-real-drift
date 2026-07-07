@@ -206,12 +206,12 @@ describe('pickerLabel — the per-finding "decide per finding" row (mirrors the 
   });
 
   it('shows the construct path WITHIN the stack when given the stack name', () => {
-    const f = uf({ constructPath: 'dev-main/App/ApiRole' });
-    // a CDK Stage: aws:cdk:path is dev-main/App/..., the CFn name is dev-main-App
-    expect(pickerLabel(f, 'dev-main-App')).toContain('ApiRole.Policies  (');
-    expect(pickerLabel(f, 'dev-main-App')).not.toContain('dev-main/App/ApiRole');
+    const f = uf({ constructPath: 'my-app/Api/ApiRole' });
+    // a CDK Stage: aws:cdk:path is my-app/Api/..., the CFn name is my-app-Api
+    expect(pickerLabel(f, 'my-app-Api')).toContain('ApiRole.Policies  (');
+    expect(pickerLabel(f, 'my-app-Api')).not.toContain('my-app/Api/ApiRole');
     // no stackName -> full construct path (unit default)
-    expect(pickerLabel(f)).toContain('dev-main/App/ApiRole.Policies  (');
+    expect(pickerLabel(f)).toContain('my-app/Api/ApiRole.Policies  (');
   });
 
   it('keeps the attributeKey suffix after the stripped id', () => {

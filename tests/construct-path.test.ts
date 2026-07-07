@@ -9,15 +9,15 @@ describe('withinStackPath (strip the stack/Stage prefix off a construct path)', 
   it('a stack id composed with the stage (e.g. `${stage}-Name`) strips as ONE segment', () => {
     // the common manual pattern: `new Stack(app, `${stage}-AuroraDB`)` — the whole first
     // segment IS the stack name, so it strips even though it contains a hyphen.
-    expect(withinStackPath('dev-main-AuroraDB/Database/ParameterGroup', 'dev-main-AuroraDB')).toBe(
+    expect(withinStackPath('my-app-Rds/Database/ParameterGroup', 'my-app-Rds')).toBe(
       'Database/ParameterGroup'
     );
   });
 
   it('CDK Stage: strips BOTH the stage and stack segments (path is /-joined, name is -joined)', () => {
-    // aws:cdk:path = `dev-main/AuroraDB/Database/ParameterGroup`, CFn stackName =
-    // `dev-main-AuroraDB` — the two leading segments `-`-join to the stack name.
-    expect(withinStackPath('dev-main/AuroraDB/Database/ParameterGroup', 'dev-main-AuroraDB')).toBe(
+    // aws:cdk:path = `my-app/Rds/Database/ParameterGroup`, CFn stackName =
+    // `my-app-Rds` — the two leading segments `-`-join to the stack name.
+    expect(withinStackPath('my-app/Rds/Database/ParameterGroup', 'my-app-Rds')).toBe(
       'Database/ParameterGroup'
     );
   });
@@ -27,7 +27,7 @@ describe('withinStackPath (strip the stack/Stage prefix off a construct path)', 
   });
 
   it('a stage/stack id that itself contains a hyphen still matches (whole segments joined)', () => {
-    expect(withinStackPath('dev-main/aurora-db/Res', 'dev-main-aurora-db')).toBe('Res');
+    expect(withinStackPath('my-app/user-db/Res', 'my-app-user-db')).toBe('Res');
   });
 
   it('overridden stackName that no longer mirrors the construct ids: returns UNCHANGED (safe)', () => {

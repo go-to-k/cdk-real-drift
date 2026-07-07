@@ -4,7 +4,7 @@
 // path (`aws:cdk:path`) `/`-joins the same segments:
 //
 //   plain stack   MyStack/Api/Handler       stackName = MyStack      -> Api/Handler
-//   CDK Stage     dev-main/AuroraDB/Db/PG    stackName = dev-main-AuroraDB -> Db/PG
+//   CDK Stage     my-app/Rds/Db/PG    stackName = my-app-Rds -> Db/PG
 //
 // So strip the leading run of `/`-segments whose `-`-join equals the stack name. The
 // report header already states the stack name, so repeating it on every finding line is
@@ -13,7 +13,7 @@
 //
 // Robust to the naming variants: a hyphen INSIDE a stack/stage id is fine (the whole
 // segments are joined and compared to the actual stackName, never split); a stack whose id
-// already bakes in the stage (`dev-main-AuroraDB/...`) strips as one segment; a nested
+// already bakes in the stage (`my-app-Rds/...`) strips as one segment; a nested
 // Stage (`a/b/Stack/...` -> `a-b-Stack`) strips all of them. When nothing matches — e.g. an
 // explicitly overridden `stackName` that no longer mirrors the construct ids — the path is
 // returned UNCHANGED (a safe, self-contained fallback, never a wrong strip).
