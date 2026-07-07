@@ -2719,6 +2719,27 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(t.undeclared).toEqual([]);
     });
 
+    it('value-independent: an AWS-assigned SSL negotiation Policies bag folds (HTTPS listener)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { Scheme: 'internet-facing' }),
+          {
+            Scheme: 'internet-facing',
+            Policies: [
+              {
+                PolicyType: 'SSLNegotiationPolicyType',
+                PolicyName: 'ELBSecurityPolicy-2016-08',
+                Attributes: [{ Name: 'Protocol-TLSv1.2', Value: 'true' }],
+              },
+            ],
+          },
+          emptySchema
+        )
+      );
+      expect(t.atDefault).toEqual(['Policies']);
+      expect(t.undeclared).toEqual([]);
+    });
+
     it('declared listener Protocol/InstanceProtocol are compared case-insensitively (no FP)', () => {
       const t = tiers(
         classifyResource(

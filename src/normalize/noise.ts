@@ -2062,7 +2062,17 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   user intent; a user who wants specific AZs declares AvailabilityZones instead of
   //   Subnets, which is then compared in the declared loop. Observed live on a fresh
   //   internal CLB (elb-classic-rich, 2026-07-07).
-  'AWS::ElasticLoadBalancing::LoadBalancer': new Set(['AvailabilityZones']),
+  //   AWS::ElasticLoadBalancing::LoadBalancer.Policies — a CLB with an HTTPS/SSL listener
+  //   that declares only a SSLCertificateId (no explicit SSL policy) reads back an
+  //   AWS-assigned SSL negotiation policy: `[{PolicyType:"SSLNegotiationPolicyType",
+  //   PolicyName:"ELBSecurityPolicy-2016-08", Attributes:[~100 cipher on/off flags]}]`. The
+  //   default predefined policy NAME AWS assigns moves over time as AWS publishes newer
+  //   security policies, and the huge cipher `Attributes` list is a derived function of the
+  //   name that cannot be practically pinned. Undeclared → whatever policy AWS assigned is
+  //   its default, not user intent; a user who wants a specific SSL policy declares
+  //   `Policies`, which is then compared in the declared loop. Observed live on a fresh
+  //   internet-facing CLB with an HTTPS listener (elb-classic-https, 2026-07-07).
+  'AWS::ElasticLoadBalancing::LoadBalancer': new Set(['AvailabilityZones', 'Policies']),
   //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
   //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
   //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for
