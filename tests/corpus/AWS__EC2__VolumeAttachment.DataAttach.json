@@ -35,7 +35,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DataAttach",
       "resourceType": "AWS::EC2::VolumeAttachment",
       "path": "EbsCardIndex",

@@ -773,6 +773,21 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::DocDB::DBCluster': {
     Port: 27017, // DocDB's fixed default port
+    // DocumentDB's documented default backup retention (1 day) — surfaced as undeclared
+    // first-run noise whenever a template omits it. Equality-gated: a longer retention the
+    // user sets (or later changes out of band) is not 1, so it still surfaces.
+    BackupRetentionPeriod: 1,
+  },
+  'AWS::DocDB::DBInstance': {
+    // The current AWS default server certificate authority a DocDB instance reads back on a
+    // fresh deploy — the same constant CA folded for RDS::DBInstance above. Equality-gated:
+    // AWS rotates the default CA over time, so an older/pinned identifier still surfaces.
+    CACertificateIdentifier: 'rds-ca-rsa2048-g1',
+  },
+  'AWS::EC2::VolumeAttachment': {
+    // A standard single-card EBS attachment always reports card index 0; a nonzero index
+    // (a multi-card Nitro instance) is meaningful and still surfaces under the equality gate.
+    EbsCardIndex: 0,
   },
   'AWS::SSM::Association': {
     DocumentVersion: '$DEFAULT', // default when no explicit version is pinned

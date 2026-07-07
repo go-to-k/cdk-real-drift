@@ -570,6 +570,23 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('DocDB + VolumeAttachment constant defaults (offline measure-noise sweep)', () => {
+    // Each value was OBSERVED as undeclared first-run noise in the golden corpus and is a
+    // genuine constant service default; equality-gated, so a non-default still surfaces.
+    // DocumentDB's documented 1-day default backup retention (the DBCluster block also
+    // carries the fixed Port 27017 asserted above).
+    expect(KNOWN_DEFAULTS['AWS::DocDB::DBCluster'].BackupRetentionPeriod).toBe(1);
+    // A DocDB instance reads back the same current default server CA as RDS::DBInstance.
+    expect(KNOWN_DEFAULTS['AWS::DocDB::DBInstance']).toEqual({
+      CACertificateIdentifier: 'rds-ca-rsa2048-g1',
+    });
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBInstance'].CACertificateIdentifier).toBe(
+      'rds-ca-rsa2048-g1'
+    );
+    // A standard single-card EBS attachment always reports card index 0.
+    expect(KNOWN_DEFAULTS['AWS::EC2::VolumeAttachment']).toEqual({ EbsCardIndex: 0 });
+  });
+
   it('Lambda EventSourceMapping stream retry/age + Enabled defaults (found by esm-sourceaccess-rich)', () => {
     // -1 is the documented "infinite" default for stream / Kafka event sources (retry
     // forever / no record-age cap); Enabled=true is the first-run default an omitting
