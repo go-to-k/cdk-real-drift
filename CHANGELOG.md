@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.0...v0.2.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **revert:** whole-array replace for unordered-object-array drift + fold PrefixList Entries reorder ([#605](https://github.com/go-to-k/cdk-real-drift/issues/605)) ([589583a](https://github.com/go-to-k/cdk-real-drift/commit/589583a4fc42cb9a31ba6e2805dab3e5cd38bd3d))
+
 # [0.2.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.11...v0.2.0) (2026-07-07)
 
 
