@@ -108,6 +108,12 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // SUCCESS yet the live value stayed AccuracyBased — "1 drift remain"). Write the
   // "TimeBased" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::Location::Tracker\0PositionFiltering',
+  // Amazon Location UpdatePlaceIndex likewise IGNORES an omitted DataSourceConfiguration
+  // (live-observed 2026-07-07: a `remove` revert of an out-of-band IntendedUse=Storage
+  // reported SUCCESS yet the live value stayed Storage — "1 drift remain"). Write the whole
+  // {IntendedUse:"SingleUse"} default object back explicitly (2nd object-valued entry after
+  // AppRunner) so revert converges.
+  'AWS::Location::PlaceIndex\0DataSourceConfiguration',
 ]);
 
 /**

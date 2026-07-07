@@ -415,6 +415,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Location PlaceIndex DataSourceConfiguration (SET-DEFAULT) -> add op writing the default object, not a no-op remove', () => {
+    // AWS::Location::PlaceIndex DataSourceConfiguration is in REVERT_SET_DEFAULT_PATHS:
+    // UpdatePlaceIndex leaves the config UNCHANGED when it is OMITTED, so a bare `remove` of
+    // an out-of-band IntendedUse=Storage is a silent no-op (Cloud Control reports SUCCESS yet
+    // the live Storage persists — "1 drift remain"; proven live 2026-07-07). Revert must write
+    // the whole {IntendedUse:"SingleUse"} default object back (2nd object-valued entry).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Location::PlaceIndex',
+      path: 'DataSourceConfiguration',
+      actual: { IntendedUse: 'Storage' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DataSourceConfiguration',
+      value: { IntendedUse: 'SingleUse' },
+      prior: { IntendedUse: 'Storage' },
+    });
+  });
+
   it('Location Tracker PositionFiltering (SET-DEFAULT) -> add op writing TimeBased, not a no-op remove', () => {
     // AWS::Location::Tracker PositionFiltering is in REVERT_SET_DEFAULT_PATHS: UpdateTracker
     // leaves the value UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
