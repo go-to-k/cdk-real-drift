@@ -52,6 +52,10 @@ import {
   DescribeMetricFiltersCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
+  DescribeConfigurationSettingsCommand,
+  ElasticBeanstalkClient,
+} from '@aws-sdk/client-elastic-beanstalk';
+import {
   GetClassifierCommand,
   GetConnectionCommand,
   GetTableCommand,
@@ -109,6 +113,7 @@ const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
 const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
+const eb = mockClient(ElasticBeanstalkClient);
 const lex = mockClient(LexModelsV2Client);
 
 const ctx = (declared: Record<string, unknown>, physicalId = '', accountId = '123456789012') => ({
@@ -144,6 +149,7 @@ beforeEach(() => {
     mediaconvert,
     dax,
     lex,
+    eb,
   ])
     m.reset();
 });
@@ -2832,6 +2838,52 @@ describe('DAX family (NON_PROVISIONABLE, issue #534)', () => {
   });
 });
 describe('SDK supplements', () => {
+  it('ElasticBeanstalk::Environment: projects OptionSettings from DescribeConfigurationSettings', async () => {
+    eb.on(DescribeConfigurationSettingsCommand).resolves({
+      ConfigurationSettings: [
+        {
+          OptionSettings: [
+            {
+              Namespace: 'aws:elasticbeanstalk:cloudwatch:logs',
+              OptionName: 'StreamLogs',
+              Value: 'true',
+            },
+            { Namespace: 'aws:ec2:vpc', OptionName: 'VPCId', Value: null as unknown as string },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_SUPPLEMENTS['AWS::ElasticBeanstalk::Environment'](
+      ctx({ ApplicationName: 'my-app' }, 'my-env')
+    );
+    expect(out).toEqual({
+      OptionSettings: [
+        {
+          Namespace: 'aws:elasticbeanstalk:cloudwatch:logs',
+          OptionName: 'StreamLogs',
+          Value: 'true',
+        },
+        { Namespace: 'aws:ec2:vpc', OptionName: 'VPCId', Value: null },
+      ],
+    });
+    const call = eb.commandCalls(DescribeConfigurationSettingsCommand)[0]!.args[0].input;
+    expect(call).toEqual({ ApplicationName: 'my-app', EnvironmentName: 'my-env' });
+  });
+
+  it('ElasticBeanstalk::Environment: no ApplicationName or empty read → undefined (keep CC model)', async () => {
+    expect(
+      await SDK_SUPPLEMENTS['AWS::ElasticBeanstalk::Environment'](ctx({}, 'my-env'))
+    ).toBeUndefined();
+    eb.on(DescribeConfigurationSettingsCommand).resolves({
+      ConfigurationSettings: [{ OptionSettings: [] }],
+    });
+    expect(
+      await SDK_SUPPLEMENTS['AWS::ElasticBeanstalk::Environment'](
+        ctx({ ApplicationName: 'a' }, 'e')
+      )
+    ).toBeUndefined();
+  });
+
   it('Lex::Bot: reconstructs BotLocales (locale + custom slot type + intent + slot) from the lexv2-models tree walk', async () => {
     lex.on(ListBotLocalesCommand).resolves({ botLocaleSummaries: [{ localeId: 'en_US' }] });
     lex.on(DescribeBotLocaleCommand).resolves({

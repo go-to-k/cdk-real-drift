@@ -39,6 +39,11 @@ export async function getSchemaInfo(
 // and the top-level TagSpecifications stay writeOnly — the override does not project them.)
 export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   'AWS::EC2::LaunchTemplate': ['LaunchTemplateData'],
+  // AWS::ElasticBeanstalk::Environment `OptionSettings` is writeOnly (CC never echoes the
+  // environment configuration), but the SDK_SUPPLEMENTS reader fetches the full resolved set
+  // via elasticbeanstalk:DescribeConfigurationSettings — so compare it (the composite-key
+  // subset folds the service-filled extras), not readGap.
+  'AWS::ElasticBeanstalk::Environment': ['OptionSettings'],
   // AWS::MSK::Configuration `ServerProperties` is writeOnly (CC never echoes the
   // server.properties blob); the SDK_SUPPLEMENTS reader fetches the latest revision's
   // decoded properties via kafka:DescribeConfigurationRevision, so compare it (through

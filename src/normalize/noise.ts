@@ -1928,7 +1928,7 @@ export const EB_OPTION_DEFAULTS: Record<string, string> = {
   'aws:elasticbeanstalk:control|RollbackLaunchOnFailure': 'false',
   'aws:elasticbeanstalk:environment:proxy|ProxyServer': 'nginx',
   'aws:elasticbeanstalk:environment|LoadBalancerType': 'classic',
-  'aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled': 'false',
+  'aws:elasticbeanstalk:environment|ServiceRole': 'AWSServiceRoleForElasticBeanstalk',
   'aws:elasticbeanstalk:healthreporting:system|HealthCheckSuccessThreshold': 'Ok',
   'aws:elasticbeanstalk:healthreporting:system|SystemType': 'enhanced',
   'aws:elasticbeanstalk:hostmanager|LogPublicationControl': 'false',
@@ -1955,6 +1955,20 @@ export const EB_OPTION_DEFAULTS: Record<string, string> = {
   'aws:elb:policies|ConnectionDrainingTimeout': '20',
   'aws:elb:policies|ConnectionSettingIdleTimeout': '60',
   'aws:rds:dbinstance|HasCoupledDatabase': 'false',
+  // Platform-specific option defaults (observed on non-Docker ConfigurationTemplates). The
+  // per-language container namespaces + the Corretto build-tool env vars are stable platform
+  // defaults; a change away still surfaces.
+  'aws:elasticbeanstalk:container:python|NumProcesses': '1',
+  'aws:elasticbeanstalk:container:python|NumThreads': '15',
+  'aws:elasticbeanstalk:container:python|WSGIPath': 'application',
+  'aws:elasticbeanstalk:application:environment|GRADLE_HOME': '/usr/local/gradle',
+  'aws:elasticbeanstalk:application:environment|M2': '/usr/local/apache-maven/bin',
+  'aws:elasticbeanstalk:application:environment|M2_HOME': '/usr/local/apache-maven',
+  'aws:elasticbeanstalk:container:php:phpini|allow_url_fopen': 'On',
+  'aws:elasticbeanstalk:container:php:phpini|display_errors': 'Off',
+  'aws:elasticbeanstalk:container:php:phpini|max_execution_time': '60',
+  'aws:elasticbeanstalk:container:php:phpini|memory_limit': '256M',
+  'aws:elasticbeanstalk:container:php:phpini|zlib.output_compression': 'Off',
 };
 export const EB_OPTION_DERIVED: Record<string, Record<string, string>> = {
   'aws:autoscaling:asg|MaxSize': { SingleInstance: '1', LoadBalanced: '4' },
@@ -1966,13 +1980,23 @@ export const EB_OPTION_DERIVED: Record<string, Record<string, string>> = {
 export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
   'aws:autoscaling:launchconfiguration|ImageId',
   'aws:autoscaling:launchconfiguration|InstanceType',
+  // the environment's own EC2 security group (an awseb-e-… generated name) + the ELB's
+  'aws:autoscaling:launchconfiguration|SecurityGroups',
+  'aws:elb:loadbalancer|SecurityGroups',
   'aws:cloudformation:template:parameter|AppSource',
   'aws:cloudformation:template:parameter|HooksPkgUrl',
   'aws:cloudformation:template:parameter|InstanceTypeFamily',
+  // an aggregate echo of the app EnvironmentVariables (includes per-deploy paths like the
+  // Python venv staging dir), so any value is a reflection of the declared env vars, not intent
+  'aws:cloudformation:template:parameter|EnvironmentVariables',
   'aws:ec2:instances|InstanceTypes',
   'aws:ec2:instances|SupportedArchitectures',
+  // the platform-injected Python venv path carries a random per-deploy staging id
+  'aws:elasticbeanstalk:application:environment|PYTHONPATH',
   'aws:elasticbeanstalk:healthreporting:system|ConfigDocument',
-  'aws:elb:loadbalancer|SecurityGroups',
+  // AWS materializes EnhancedHealthAuthEnabled false on a bare template but true on a live
+  // environment — differs by resource kind, so fold value-independent rather than FP one side
+  'aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled',
 ]);
 // Classify one live-only EB OptionSettings entry: 'atDefault' when it is at its AWS first-run
 // default (value-independent, derived-from-EnvironmentType, or equality-gated constant), else
@@ -1984,6 +2008,10 @@ export function ebOptionSettingTier(
   value: unknown,
   envType: string
 ): 'atDefault' | 'undeclared' {
+  // An unset option: DescribeConfigurationSettings returns many option keys with a null or
+  // empty Value (BlockDeviceMappings, VPCId, Notification*, RootVolume*, …). Unset is not
+  // drift → fold. A change TO a non-empty value is not '' so it still runs the tables below.
+  if (value == null || value === '') return 'atDefault';
   const key = `${String(namespace)}|${String(optionName)}`;
   if (EB_OPTION_VALUE_INDEPENDENT.has(key)) return 'atDefault';
   const derived = EB_OPTION_DERIVED[key];

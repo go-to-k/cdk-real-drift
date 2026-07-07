@@ -9,6 +9,10 @@
 import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
+import {
+  DescribeConfigurationSettingsCommand,
+  ElasticBeanstalkClient,
+} from '@aws-sdk/client-elastic-beanstalk';
 import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
 import {
   BatchGetProjectsCommand,
@@ -2503,7 +2507,35 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
   }
 };
 
+// AWS::ElasticBeanstalk::Environment — OptionSettings is writeOnly in the registry schema, so
+// Cloud Control never echoes the environment's configuration and a console edit to any option
+// (RetentionInDays, an app EnvironmentVariable, health config, ...) was invisible. The full
+// resolved option set IS readable via elasticbeanstalk:DescribeConfigurationSettings. Project
+// it as OptionSettings (exempted from the writeOnly strip via OVERRIDE_READABLE_WRITEONLY) so
+// the composite-key subset compares the declared options and folds the service-filled extras
+// (ebOptionSettingTier). ApplicationName comes from the declared model; EnvironmentName is the
+// physical id. FP-safe: any failure or empty read skips the field (keep the CC model).
+const supplementElasticBeanstalkEnvironment: SupplementReader = async ({
+  physicalId,
+  declared,
+  region,
+}) => {
+  const envName = str(physicalId);
+  const appName = str(declared.ApplicationName);
+  if (!envName || !appName) return undefined;
+  const c = new ElasticBeanstalkClient({ region, ...READ_RETRY });
+  const r = await c.send(
+    new DescribeConfigurationSettingsCommand({
+      ApplicationName: appName,
+      EnvironmentName: envName,
+    })
+  );
+  const opts = r.ConfigurationSettings?.[0]?.OptionSettings;
+  return Array.isArray(opts) && opts.length > 0 ? { OptionSettings: opts } : undefined;
+};
+
 export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
+  'AWS::ElasticBeanstalk::Environment': supplementElasticBeanstalkEnvironment,
   'AWS::Lex::Bot': supplementLexBot,
   'AWS::MSK::Configuration': supplementMskConfiguration,
   'AWS::ElasticLoadBalancingV2::TrustStore': supplementTrustStore,
