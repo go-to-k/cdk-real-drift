@@ -176,6 +176,19 @@ For at least one common type, mutate a declared MUTABLE property out of band and
 assert `check` detects → `revert` → `check` CLEAN → live value restored
 (`lambda-rich/verify-detect.sh` is the reference).
 
+**When your FP fix ADDS a `KNOWN_DEFAULTS` fold for a MUTABLE prop AWS assigns,
+live-test the REVERT of that value too — not just detection.** Mutate the folded
+prop to a NON-default (it must re-surface, proving the equality-gate still detects an
+out-of-band change), then `revert` and confirm the live value actually returns to the
+default. Some providers IGNORE an omitted property on update, so the default `remove`
+revert is a SILENT no-op — Cloud Control reports SUCCESS yet the live value persists
+(observed on Transfer `UpdateServer` / `SecurityPolicyName` #597, IAM
+`MaxSessionDuration`, Lambda Alias `Description`, Cognito `AllowClassicFlow`). The fix
+is to add `${resourceType}\0${path}` to `REVERT_SET_DEFAULT_PATHS`
+(`src/revert/plan.ts`) so revert writes the `KNOWN_DEFAULTS` default EXPLICITLY and
+converges — otherwise you ship a revert that claims success but leaves the value
+unchanged.
+
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
 This is the asset a hunt leaves behind even when it finds no bug. Every live read
