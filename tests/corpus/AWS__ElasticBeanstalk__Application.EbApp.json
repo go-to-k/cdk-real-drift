@@ -1,0 +1,74 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EbApp",
+    "resourceType": "AWS::ElasticBeanstalk::Application",
+    "physicalId": "cdkrd-hunt-eb-app",
+    "constructPath": "CdkRealDriftIntegEbRich/EbApp",
+    "declared": {
+      "ApplicationName": "cdkrd-hunt-eb-app",
+      "Description": "cdkrd bug-hunt Elastic Beanstalk application"
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "cdkrd-hunt-eb-app",
+    "Description": "cdkrd bug-hunt Elastic Beanstalk application",
+    "ResourceLifecycleConfig": {
+      "VersionLifecycleConfig": {
+        "MaxCountRule": {
+          "DeleteSourceFromS3": false,
+          "Enabled": false,
+          "MaxCount": 200
+        },
+        "MaxAgeRule": {
+          "DeleteSourceFromS3": false,
+          "MaxAgeInDays": 180,
+          "Enabled": false
+        }
+      }
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApplicationName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApplicationName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EbApp",
+      "resourceType": "AWS::ElasticBeanstalk::Application",
+      "path": "ResourceLifecycleConfig",
+      "actual": {
+        "VersionLifecycleConfig": {
+          "MaxCountRule": {
+            "DeleteSourceFromS3": false,
+            "Enabled": false,
+            "MaxCount": 200
+          },
+          "MaxAgeRule": {
+            "DeleteSourceFromS3": false,
+            "MaxAgeInDays": 180,
+            "Enabled": false
+          }
+        }
+      },
+      "physicalId": "cdkrd-hunt-eb-app",
+      "constructPath": "CdkRealDriftIntegEbRich/EbApp"
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EbEnv",
+    "resourceType": "AWS::ElasticBeanstalk::Environment",
+    "physicalId": "cdkrd-hunt-eb-env",
+    "constructPath": "CdkRealDriftIntegEbRich/EbEnv",
+    "declared": {
+      "ApplicationName": "cdkrd-hunt-eb-app",
+      "Description": "cdkrd bug-hunt environment",
+      "EnvironmentName": "cdkrd-hunt-eb-env",
+      "OptionSettings": [
+        {
+          "Namespace": "aws:elasticbeanstalk:environment",
+          "OptionName": "EnvironmentType",
+          "Value": "SingleInstance"
+        },
+        {
+          "Namespace": "aws:autoscaling:launchconfiguration",
+          "OptionName": "IamInstanceProfile",
+          "Value": "CdkRealDriftIntegEbRich-EbInstanceProfile-Z84zCb1AVfNF"
+        },
+        {
+          "Namespace": "aws:autoscaling:launchconfiguration",
+          "OptionName": "InstanceType",
+          "Value": "t3.micro"
+        },
+        {
+          "Namespace": "aws:elasticbeanstalk:application:environment",
+          "OptionName": "GREETING",
+          "Value": "hello-from-cdkrd"
+        }
+      ],
+      "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running Docker"
+    }
+  },
+  "liveRaw": {
+    "PlatformArn": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.3",
+    "ApplicationName": "cdkrd-hunt-eb-app",
+    "Description": "cdkrd bug-hunt environment",
+    "EnvironmentName": "cdkrd-hunt-eb-env",
+    "Tier": {
+      "Type": "Standard",
+      "Version": "1.0",
+      "Name": "WebServer"
+    },
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running Docker",
+    "EndpointURL": "100.56.81.152",
+    "CNAMEPrefix": "cdkrd-hunt-eb-env",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["EndpointURL"],
+    "writeOnly": ["OptionSettings", "TemplateName"],
+    "createOnly": ["ApplicationName", "CNAMEPrefix", "EnvironmentName", "SolutionStackName"],
+    "readOnlyPaths": ["EndpointURL"],
+    "writeOnlyPaths": [
+      "OptionSettings",
+      "OptionSettings.*.Namespace",
+      "OptionSettings.*.OptionName",
+      "OptionSettings.*.ResourceName",
+      "OptionSettings.*.Value",
+      "TemplateName"
+    ],
+    "createOnlyPaths": [
+      "ApplicationName",
+      "CNAMEPrefix",
+      "EnvironmentName",
+      "SolutionStackName",
+      "Tier.Name",
+      "Tier.Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionSettings"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrd-hunt-eb-env",
+      "constructPath": "CdkRealDriftIntegEbRich/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "PlatformArn",
+      "actual": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.3",
+      "physicalId": "cdkrd-hunt-eb-env",
+      "constructPath": "CdkRealDriftIntegEbRich/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "Tier",
+      "actual": {
+        "Type": "Standard",
+        "Version": "1.0",
+        "Name": "WebServer"
+      },
+      "physicalId": "cdkrd-hunt-eb-env",
+      "constructPath": "CdkRealDriftIntegEbRich/EbEnv"
+    }
+  ]
+}
