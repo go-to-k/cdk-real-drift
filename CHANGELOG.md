@@ -1,3 +1,10 @@
+## [0.1.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.9...v0.1.10) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Elastic Beanstalk ConfigurationTemplate OptionSettings to atDefault (zero first-run drift) ([#603](https://github.com/go-to-k/cdk-real-drift/issues/603)) ([ff34f6c](https://github.com/go-to-k/cdk-real-drift/commit/ff34f6c0277870513b4f9a84fa42ece810e569b6))
+
 ## [0.1.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.8...v0.1.9) (2026-07-07)
 
 
