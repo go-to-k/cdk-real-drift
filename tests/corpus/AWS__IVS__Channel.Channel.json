@@ -1,0 +1,149 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Channel",
+    "resourceType": "AWS::IVS::Channel",
+    "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+    "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel",
+    "declared": {
+      "Name": "cdkrd-ivs-channel-rich"
+    }
+  },
+  "liveRaw": {
+    "RecordingConfigurationArn": "",
+    "Authorized": false,
+    "Preset": "",
+    "PlaybackUrl": "https://c7ae1403e483.us-east-1.playback.live-video.net/api/video/v1/us-east-1.111111111111.channel.VjBPdUX54INC.m3u8",
+    "ContainerFormat": "TS",
+    "InsecureIngest": false,
+    "Name": "cdkrd-ivs-channel-rich",
+    "Type": "STANDARD",
+    "MultitrackInputConfiguration": {
+      "MaximumResolution": "FULL_HD",
+      "Policy": "ALLOW",
+      "Enabled": false
+    },
+    "IngestEndpoint": "c7ae1403e483.global-contribute.live-video.net",
+    "Arn": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+    "LatencyMode": "LOW",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegIvsChannelRich/cd7feb80-7a24-11f1-8a62-0affe156e7c1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegIvsChannelRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Channel",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "IngestEndpoint", "PlaybackUrl"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "IngestEndpoint", "PlaybackUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {
+      "Name": "-",
+      "Authorized": false,
+      "InsecureIngest": false,
+      "LatencyMode": "LOW",
+      "Type": "STANDARD",
+      "RecordingConfigurationArn": "",
+      "ContainerFormat": "TS"
+    },
+    "defaultPaths": {
+      "Name": "-",
+      "Authorized": false,
+      "InsecureIngest": false,
+      "LatencyMode": "LOW",
+      "Type": "STANDARD",
+      "RecordingConfigurationArn": "",
+      "MultitrackInputConfiguration.Enabled": false,
+      "ContainerFormat": "TS"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "RecordingConfigurationArn",
+      "actual": "",
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "Authorized",
+      "actual": false,
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "ContainerFormat",
+      "actual": "TS",
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "InsecureIngest",
+      "actual": false,
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "Type",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "MultitrackInputConfiguration",
+      "actual": {
+        "MaximumResolution": "FULL_HD",
+        "Policy": "ALLOW",
+        "Enabled": false
+      },
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Channel",
+      "resourceType": "AWS::IVS::Channel",
+      "path": "LatencyMode",
+      "actual": "LOW",
+      "physicalId": "arn:aws:ivs:us-east-1:111111111111:channel/VjBPdUX54INC",
+      "constructPath": "CdkRealDriftIntegIvsChannelRich/Channel"
+    }
+  ]
+}
