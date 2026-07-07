@@ -63,6 +63,11 @@ import {
   ModifyDBInstanceCommand,
 } from '@aws-sdk/client-docdb';
 import {
+  ElasticBeanstalkClient,
+  UpdateApplicationCommand,
+  UpdateEnvironmentCommand,
+} from '@aws-sdk/client-elastic-beanstalk';
+import {
   GetClassifierCommand,
   GetConnectionCommand,
   GetJobCommand,
@@ -168,6 +173,7 @@ const sns = mockClient(SNSClient);
 const sqs = mockClient(SQSClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
+const eb = mockClient(ElasticBeanstalkClient);
 const cloudfront = mockClient(CloudFrontClient);
 const wafv2 = mockClient(WAFV2Client);
 const opensearch = mockClient(OpenSearchClient);
@@ -222,6 +228,7 @@ beforeEach(() => {
   sqs.reset();
   serviceDiscovery.reset();
   docdb.reset();
+  eb.reset();
   cloudfront.reset();
   wafv2.reset();
   opensearch.reset();
@@ -1463,6 +1470,72 @@ describe('DocDB DBInstance writer (CC read+write gap; mirror of the cluster writ
         windowOp('sun:05:00-sun:06:00'),
       ])
     ).rejects.toThrow(/instance identifier/);
+  });
+});
+
+describe('ElasticBeanstalk Application/Environment writers (CC UpdateResource ServiceRole FP)', () => {
+  const descOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/Description',
+    value,
+    human: 'Description -> deployed-template value',
+  });
+
+  it('reverts an Application Description via UpdateApplication (declared value, only the drifted prop)', async () => {
+    eb.on(UpdateApplicationCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({
+        physicalId: 'my-app',
+        declared: { ApplicationName: 'my-app', Description: 'declared' },
+      }),
+      [descOp('declared')]
+    );
+    const calls = eb.commandCalls(UpdateApplicationCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({ ApplicationName: 'my-app', Description: 'declared' });
+  });
+
+  it('a remove op clears the Application Description (empty string)', async () => {
+    eb.on(UpdateApplicationCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({ physicalId: 'my-app', declared: { ApplicationName: 'my-app' } }),
+      [{ op: 'remove', path: '/Description', human: 'clear Description' }]
+    );
+    expect(eb.commandCalls(UpdateApplicationCommand)[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      Description: '',
+    });
+  });
+
+  it('reverts an Environment Description via UpdateEnvironment', async () => {
+    eb.on(UpdateEnvironmentCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Environment'](
+      ctx({
+        physicalId: 'my-env',
+        declared: { EnvironmentName: 'my-env', Description: 'declared' },
+      }),
+      [descOp('declared')]
+    );
+    const calls = eb.commandCalls(UpdateEnvironmentCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({ EnvironmentName: 'my-env', Description: 'declared' });
+  });
+
+  it('an off-allowlist prop (create-only Tier) sends NO update — never accidentally mutated', async () => {
+    eb.on(UpdateEnvironmentCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Environment'](
+      ctx({ physicalId: 'my-env', declared: { EnvironmentName: 'my-env' } }),
+      [{ op: 'add', path: '/Tier', value: { Name: 'Worker' }, human: 'x' }]
+    );
+    expect(eb.commandCalls(UpdateEnvironmentCommand)).toHaveLength(0);
+  });
+
+  it('throws when the Application name is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::ElasticBeanstalk::Application'](ctx({ physicalId: '', declared: {} }), [
+        descOp('x'),
+      ])
+    ).rejects.toThrow(/ApplicationName/);
   });
 });
 

@@ -51,6 +51,11 @@ import {
   PutMetricFilterCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
+  ElasticBeanstalkClient,
+  UpdateApplicationCommand,
+  UpdateEnvironmentCommand,
+} from '@aws-sdk/client-elastic-beanstalk';
+import {
   DocDBClient,
   ModifyDBClusterCommand,
   ModifyDBInstanceCommand,
@@ -1954,7 +1959,63 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
   }
 };
 
+// AWS::ElasticBeanstalk::Application / ::Environment — Cloud Control CAN read these, but
+// its UpdateResource echoes a spurious "Parameter ServiceRole is invalid. Must be a valid
+// IAM Role ARN" GeneralServiceException (the CC handler injects a ServiceRole it cannot
+// resolve) even though the patch itself is applicable — the revert prints a FAILED line
+// but happens to converge. Route revert through EB's own UpdateApplication /
+// UpdateEnvironment (PARTIAL updates) so ONLY the drifted, mutable top-level props are sent
+// and no spurious ServiceRole validation is triggered. The declared model IS the revert
+// target; an op that REMOVES a prop clears it (EB treats an empty Description as cleared).
+//
+// The revertable declared surface is thin: ApplicationName / EnvironmentName are create-only
+// identities, the Environment's Tier is create-only, and its OptionSettings is write-only
+// (read gap) — so a DECLARED drift only ever lands on Description. ResourceLifecycleConfig
+// (Application) needs a separate UpdateApplicationResourceLifecycle call and is left to CC
+// (it folds atDefault when undeclared, so a declared drift on it is rare); a future writer
+// can extend the allowlist.
+const EB_APPLICATION_MODIFY_PARAMS = new Set(['Description']);
+const writeElasticBeanstalkApplication: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['ApplicationName']);
+  if (!name) throw new Error('cannot resolve Elastic Beanstalk ApplicationName for revert');
+  const input: { ApplicationName: string; Description?: string } = { ApplicationName: name };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0];
+    if (top && EB_APPLICATION_MODIFY_PARAMS.has(top)) {
+      // add -> declared value; remove -> clear (empty string, which EB reads as unset)
+      input[top as 'Description'] = op.op === 'remove' ? '' : (str(ctx.declared[top]) ?? '');
+      any = true;
+    }
+  }
+  if (!any) return;
+  await new ElasticBeanstalkClient({ region: ctx.region }).send(
+    new UpdateApplicationCommand(input)
+  );
+};
+
+const EB_ENVIRONMENT_MODIFY_PARAMS = new Set(['Description']);
+const writeElasticBeanstalkEnvironment: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['EnvironmentName']);
+  if (!name) throw new Error('cannot resolve Elastic Beanstalk EnvironmentName for revert');
+  const input: { EnvironmentName: string; Description?: string } = { EnvironmentName: name };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0];
+    if (top && EB_ENVIRONMENT_MODIFY_PARAMS.has(top)) {
+      input[top as 'Description'] = op.op === 'remove' ? '' : (str(ctx.declared[top]) ?? '');
+      any = true;
+    }
+  }
+  if (!any) return;
+  await new ElasticBeanstalkClient({ region: ctx.region }).send(
+    new UpdateEnvironmentCommand(input)
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
+  'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
   'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
   'AWS::DAX::Cluster': writeDaxCluster,
   'AWS::DAX::ParameterGroup': writeDaxParameterGroup,
