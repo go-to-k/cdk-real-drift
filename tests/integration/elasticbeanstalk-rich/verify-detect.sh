@@ -5,10 +5,9 @@
 # (exit 1) -> `revert --yes` MUST restore the declared Description -> `check --fail`
 # MUST be CLEAN again. Run while the stack is still up; does NOT deploy or clean up.
 #
-# Note: Cloud Control's UpdateResource on an EB Application echoes a spurious
-# "Parameter ServiceRole is invalid" error even though the Description patch applies,
-# so the revert prints a FAILED line but converges (the post-revert re-read confirms
-# CLEAN). The assertion below is on the converged live value, not the revert message.
+# Revert goes through the EB SDK writer (UpdateApplication), NOT Cloud Control — CC's
+# UpdateResource echoes a spurious "Parameter ServiceRole is invalid" error, so the
+# writer avoids it and the revert reports a clean "reverted" (no FAILED line).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
@@ -30,8 +29,8 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift detection (exit 1), got $rc"
 grep -q "Description" "/tmp/cdkrd-$STACK-detect.out" || fail "drift output does not mention Description"
 
-echo "=== [$STACK] revert (converges despite the CC ServiceRole message) ==="
-$CLI revert "$STACK" --region "$REGION" --yes || true
+echo "=== [$STACK] revert MUST restore the declared Description (EB SDK writer) ==="
+$CLI revert "$STACK" --region "$REGION" --yes || fail "revert"
 
 echo "=== [$STACK] check MUST be CLEAN after revert ==="
 $CLI check "$STACK" --region "$REGION" --fail || fail "expected CLEAN after revert"

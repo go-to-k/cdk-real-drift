@@ -527,6 +527,20 @@ describe('buildRevertPlan', () => {
     }
   });
 
+  it('ElasticBeanstalk Application/Environment Description -> sdk item (CC UpdateResource FPs on ServiceRole)', () => {
+    // EB is CC-READABLE, but its CC UpdateResource echoes a spurious "ServiceRole is invalid"
+    // GeneralServiceException, so a declared Description drift must route to the EB SDK writer
+    // (UpdateApplication / UpdateEnvironment), not a Cloud Control patch.
+    for (const rt of ['AWS::ElasticBeanstalk::Application', 'AWS::ElasticBeanstalk::Environment']) {
+      const plan = buildRevertPlan(
+        [F({ tier: 'declared', resourceType: rt, path: 'Description', desired: 'a', actual: 'b' })],
+        undefined
+      );
+      expect(plan.notRevertable, rt).toHaveLength(0);
+      expect(plan.items[0], rt).toMatchObject({ kind: 'sdk', resourceType: rt });
+    }
+  });
+
   it('Cognito IdentityPool: CognitoEvents -> prop-scoped sdk item, a base prop -> cc item', () => {
     // The IdentityPool SDK override only ENRICHES the CC read with the writeOnly
     // CognitoEvents, so it is CC_REVERTABLE_DESPITE_READ_OVERRIDE: base-property reverts
