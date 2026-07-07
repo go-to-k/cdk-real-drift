@@ -5485,6 +5485,155 @@ describe('managed param-group names + Redshift/OpenSearch defaults fold', () => 
   });
 });
 
+// AWS DataSync Task: a task whose declared Options block leaves the transfer knobs unset reads
+// them all back at the documented service defaults. The round-B entry (#496) covered most but
+// missed Options.TaskQueueing (ENABLED) + Options.PreserveDeletedFiles (PRESERVE); both surfaced
+// as potential drift on a fresh datasync-rich deploy (hunt 2026-07-07). Equality-gated, so a
+// changed value still surfaces.
+describe('DataSync Task Options first-run defaults fold', () => {
+  const bareD: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const liveOptions = {
+    Atime: 'BEST_EFFORT',
+    Mtime: 'PRESERVE',
+    Uid: 'NONE',
+    Gid: 'NONE',
+    PreserveDevices: 'NONE',
+    PosixPermissions: 'NONE',
+    ObjectTags: 'PRESERVE',
+    BytesPerSecond: -1,
+    SecurityDescriptorCopyFlags: 'NONE',
+    TaskQueueing: 'ENABLED',
+    PreserveDeletedFiles: 'PRESERVE',
+  };
+
+  it('a task with a partial declared Options block folds every AWS-default sub-key (incl. TaskQueueing + PreserveDeletedFiles)', () => {
+    const r = tiers(
+      classifyResource(
+        {
+          logicalId: 'Task',
+          resourceType: 'AWS::DataSync::Task',
+          physicalId: 'arn:aws:datasync:us-east-1:1:task/task-0',
+          // a real task declares a couple of Options and leaves the rest to AWS
+          declared: { Options: { VerifyMode: 'ONLY_FILES_TRANSFERRED', LogLevel: 'OFF' } },
+        },
+        { Options: { VerifyMode: 'ONLY_FILES_TRANSFERRED', LogLevel: 'OFF', ...liveOptions } },
+        bareD
+      )
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toEqual(
+      expect.arrayContaining(['Options.TaskQueueing', 'Options.PreserveDeletedFiles'])
+    );
+  });
+
+  it('equality-gated: a task that disables queueing / removes deleted files surfaces (detection preserved)', () => {
+    const r = tiers(
+      classifyResource(
+        {
+          logicalId: 'Task',
+          resourceType: 'AWS::DataSync::Task',
+          physicalId: 'arn:aws:datasync:us-east-1:1:task/task-0',
+          declared: { Options: { VerifyMode: 'ONLY_FILES_TRANSFERRED' } },
+        },
+        {
+          Options: {
+            VerifyMode: 'ONLY_FILES_TRANSFERRED',
+            TaskQueueing: 'DISABLED',
+            PreserveDeletedFiles: 'REMOVE',
+          },
+        },
+        bareD
+      )
+    );
+    expect(r.undeclared).toEqual(
+      expect.arrayContaining(['Options.TaskQueueing', 'Options.PreserveDeletedFiles'])
+    );
+  });
+});
+
+// Amazon Managed Grafana: a workspace that declares no GrafanaVersion reads back the concrete
+// GA version AWS provisioned at creation ("10.4" today) — an AWS-assigned value that moves over
+// time, so it folds value-independent (undeclared only). Live-verified on a fresh grafana-rich
+// deploy (hunt 2026-07-07).
+describe('Grafana Workspace GrafanaVersion fold (AWS-assigned version)', () => {
+  const bareG: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const decl = {
+    Name: 'cdkrd-grafana-rich',
+    AccountAccessType: 'CURRENT_ACCOUNT',
+    AuthenticationProviders: ['SAML'],
+    PermissionType: 'SERVICE_MANAGED',
+  };
+
+  it('an undeclared AWS-assigned GrafanaVersion folds to atDefault (zero potential drift)', () => {
+    const r = tiers(
+      classifyResource(
+        {
+          logicalId: 'Workspace',
+          resourceType: 'AWS::Grafana::Workspace',
+          physicalId: 'g-f76beca787',
+          declared: decl,
+        },
+        { ...decl, GrafanaVersion: '10.4' },
+        bareG
+      )
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toContain('GrafanaVersion');
+  });
+
+  it('value-independent: a future default version also folds when undeclared', () => {
+    const r = tiers(
+      classifyResource(
+        {
+          logicalId: 'Workspace',
+          resourceType: 'AWS::Grafana::Workspace',
+          physicalId: 'g-abc',
+          declared: decl,
+        },
+        { ...decl, GrafanaVersion: '11.2' },
+        bareG
+      )
+    );
+    expect(r.atDefault).toContain('GrafanaVersion');
+  });
+
+  it('a DECLARED GrafanaVersion is still compared (out-of-band upgrade surfaces as declared drift)', () => {
+    const declared = { ...decl, GrafanaVersion: '9.4' };
+    const r = tiers(
+      classifyResource(
+        {
+          logicalId: 'Workspace',
+          resourceType: 'AWS::Grafana::Workspace',
+          physicalId: 'g-abc',
+          declared,
+        },
+        { ...declared, GrafanaVersion: '10.4' },
+        bareG
+      )
+    );
+    expect(r.declared).toContain('GrafanaVersion');
+    expect(r.atDefault).not.toContain('GrafanaVersion');
+  });
+});
+
 // The clean-deploy -> zero-potential-drift invariant, live-verified on a fresh redshift-rich
 // (RA3 single-node) + opensearch-rich deploy: EVERY undeclared value AWS returned must fold.
 describe('Redshift/OpenSearch clean-deploy invariant (all AWS-initial values fold)', () => {

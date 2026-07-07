@@ -1381,11 +1381,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'ContainerProperties.FargatePlatformConfiguration.PlatformVersion': 'LATEST',
   },
   // DataSync task nested service defaults (observed live on hunt 2026-07-03 round B,
-  // #496): a task whose declared `Options` block leaves these unset reads them back at
-  // the documented transfer defaults, and a declared `Schedule` reads back Status ENABLED
-  // (the schedule is active on create). Equality-gated per path — a task that pins any
-  // Option / disables its schedule out of band no longer matches and surfaces. Per-input
-  // BytesPerSecond -1 is the documented "unlimited" sentinel.
+  // #496; TaskQueueing + PreserveDeletedFiles added on hunt 2026-07-07): a task whose
+  // declared `Options` block leaves these unset reads them back at the documented
+  // transfer defaults, and a declared `Schedule` reads back Status ENABLED (the schedule
+  // is active on create). Equality-gated per path — a task that pins any Option / disables
+  // its schedule out of band no longer matches and surfaces. Per-input BytesPerSecond -1
+  // is the documented "unlimited" sentinel. TaskQueueing defaults ENABLED and
+  // PreserveDeletedFiles defaults PRESERVE (both live-verified undeclared on the
+  // datasync-rich fixture — the two the round-B entry missed).
   'AWS::DataSync::Task': {
     'Options.Atime': 'BEST_EFFORT',
     'Options.Mtime': 'PRESERVE',
@@ -1396,6 +1399,8 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'Options.ObjectTags': 'PRESERVE',
     'Options.BytesPerSecond': -1,
     'Options.SecurityDescriptorCopyFlags': 'NONE',
+    'Options.TaskQueueing': 'ENABLED',
+    'Options.PreserveDeletedFiles': 'PRESERVE',
     'Schedule.Status': 'ENABLED',
   },
 };
@@ -1972,6 +1977,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
   'AWS::EC2::VPCEndpoint': new Set(['ServiceRegion', 'DnsOptions']),
   'AWS::EC2::VPCPeeringConnection': new Set(['PeerRegion']),
+  //   AWS::Grafana::Workspace.GrafanaVersion — a workspace that pins no explicit version reads
+  //   back the concrete Grafana version AWS provisioned ("10.4" today). AWS assigns the current
+  //   GA default at creation, and that default moves over time (a fresh deploy next year reads a
+  //   newer version), so it is not a constant we can pin and is never user intent when undeclared
+  //   — a user who cares about the version DECLARES GrafanaVersion → compared in the declared loop.
+  //   Same shape as AWS::Redshift::Cluster.ClusterVersion / AWS::ECS::Service.PlatformVersion
+  //   above. Live-verified undeclared on a fresh grafana-rich deploy ("10.4"), no out-of-band edit.
+  'AWS::Grafana::Workspace': new Set(['GrafanaVersion']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

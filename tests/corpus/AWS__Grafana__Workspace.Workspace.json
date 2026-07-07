@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Workspace",
+    "resourceType": "AWS::Grafana::Workspace",
+    "physicalId": "g-f76beca787",
+    "constructPath": "CdkRealDriftIntegGrafanaRich/Workspace",
+    "declared": {
+      "AccountAccessType": "CURRENT_ACCOUNT",
+      "AuthenticationProviders": ["SAML"],
+      "DataSources": ["CLOUDWATCH", "PROMETHEUS"],
+      "Description": "cdkrd grafana rich",
+      "Name": "cdkrd-grafana-rich",
+      "NotificationDestinations": ["SNS"],
+      "PermissionType": "SERVICE_MANAGED",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegGrafanaRich-GrafanaRole3A2DB257-NppwcJCDUEsq"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "NotificationDestinations": ["SNS"],
+    "Description": "cdkrd grafana rich",
+    "CreationTimestamp": "2026-07-07T10:03:22.593Z",
+    "PermissionType": "SERVICE_MANAGED",
+    "SamlConfigurationStatus": "NOT_CONFIGURED",
+    "AccountAccessType": "CURRENT_ACCOUNT",
+    "OrganizationalUnits": [],
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegGrafanaRich-GrafanaRole3A2DB257-NppwcJCDUEsq",
+    "Name": "cdkrd-grafana-rich",
+    "GrafanaVersion": "10.4",
+    "DataSources": ["CLOUDWATCH", "PROMETHEUS"],
+    "Endpoint": "g-f76beca787.grafana-workspace.us-east-1.amazonaws.com",
+    "AuthenticationProviders": ["SAML"],
+    "Id": "g-f76beca787",
+    "ModificationTimestamp": "2026-07-07T10:03:22.593Z"
+  },
+  "schema": {
+    "readOnly": [
+      "CreationTimestamp",
+      "Endpoint",
+      "Id",
+      "ModificationTimestamp",
+      "SamlConfigurationStatus",
+      "SsoClientId",
+      "Status"
+    ],
+    "writeOnly": ["ClientToken"],
+    "createOnly": ["ClientToken"],
+    "readOnlyPaths": [
+      "CreationTimestamp",
+      "Endpoint",
+      "Id",
+      "ModificationTimestamp",
+      "SamlConfigurationStatus",
+      "SsoClientId",
+      "Status"
+    ],
+    "writeOnlyPaths": ["ClientToken"],
+    "createOnlyPaths": ["ClientToken"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AuthenticationProviders",
+      "DataSources",
+      "NetworkAccessControl.PrefixListIds",
+      "NetworkAccessControl.VpceIds",
+      "NotificationDestinations",
+      "OrganizationalUnits",
+      "SamlConfiguration.AllowedOrganizations",
+      "SamlConfiguration.RoleValues.Admin",
+      "SamlConfiguration.RoleValues.Editor",
+      "VpcConfiguration.SecurityGroupIds",
+      "VpcConfiguration.SubnetIds"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Workspace",
+      "resourceType": "AWS::Grafana::Workspace",
+      "path": "GrafanaVersion",
+      "actual": "10.4",
+      "physicalId": "g-f76beca787",
+      "constructPath": "CdkRealDriftIntegGrafanaRich/Workspace"
+    }
+  ]
+}
