@@ -1,3 +1,10 @@
+## [0.1.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.3...v0.1.4) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold VPC-networking first-run defaults (offline sweep + live vpc-common deploy) ([#595](https://github.com/go-to-k/cdk-real-drift/issues/595)) ([572f47e](https://github.com/go-to-k/cdk-real-drift/commit/572f47e855721f146a4ce9edd3f93257527c5807))
+
 ## [0.1.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.2...v0.1.3) (2026-07-07)
 
 
