@@ -1,3 +1,10 @@
+## [0.2.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.7...v0.2.8) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold ApplicationSignals SLO default Goal (bug hunt: slo-notif-rich) ([#613](https://github.com/go-to-k/cdk-real-drift/issues/613)) ([d75abc5](https://github.com/go-to-k/cdk-real-drift/commit/d75abc58be6738722ee3a1501eb7ade005e84c38))
+
 ## [0.2.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.6...v0.2.7) (2026-07-07)
 
 
