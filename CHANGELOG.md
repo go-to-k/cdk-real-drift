@@ -1,3 +1,10 @@
+## [0.2.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.3...v0.2.4) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Amazon Location first-run defaults (all 5 types) + converge Tracker PositionFiltering revert ([#609](https://github.com/go-to-k/cdk-real-drift/issues/609)) ([36f6ffb](https://github.com/go-to-k/cdk-real-drift/commit/36f6ffb53f04b2f9cc30e8bb5857a048225cd51a))
+
 ## [0.2.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.2...v0.2.3) (2026-07-07)
 
 
