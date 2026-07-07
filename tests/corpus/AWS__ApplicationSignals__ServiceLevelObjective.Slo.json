@@ -1,0 +1,177 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Slo",
+    "resourceType": "AWS::ApplicationSignals::ServiceLevelObjective",
+    "physicalId": "arn:aws:application-signals:us-east-1:111111111111:slo/cdkrd-slo-lambda-errors",
+    "constructPath": "CdkRealDriftIntegSloNotif/Slo",
+    "declared": {
+      "Name": "cdkrd-slo-lambda-errors",
+      "Sli": {
+        "ComparisonOperator": "LessThanOrEqualTo",
+        "MetricThreshold": 5,
+        "SliMetric": {
+          "MetricDataQueries": [
+            {
+              "Id": "m1",
+              "MetricStat": {
+                "Metric": {
+                  "Dimensions": [
+                    {
+                      "Name": "FunctionName",
+                      "Value": "cdkrd-slo-fn"
+                    },
+                    {
+                      "Name": "Resource",
+                      "Value": "cdkrd-slo-fn:live"
+                    }
+                  ],
+                  "MetricName": "Errors",
+                  "Namespace": "AWS/Lambda"
+                },
+                "Period": 60,
+                "Stat": "Sum"
+              },
+              "ReturnData": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "Sli": {
+      "ComparisonOperator": "LessThanOrEqualTo",
+      "SliMetric": {
+        "MetricDataQueries": [
+          {
+            "ReturnData": true,
+            "MetricStat": {
+              "Stat": "Sum",
+              "Period": 60,
+              "Metric": {
+                "MetricName": "Errors",
+                "Dimensions": [
+                  {
+                    "Value": "cdkrd-slo-fn",
+                    "Name": "FunctionName"
+                  },
+                  {
+                    "Value": "cdkrd-slo-fn:live",
+                    "Name": "Resource"
+                  }
+                ],
+                "Namespace": "AWS/Lambda"
+              }
+            },
+            "Id": "m1"
+          }
+        ]
+      },
+      "MetricThreshold": 5
+    },
+    "Goal": {
+      "WarningThreshold": 50,
+      "AttainmentGoal": 99,
+      "Interval": {
+        "RollingInterval": {
+          "DurationUnit": "DAY",
+          "Duration": 7
+        }
+      }
+    },
+    "Description": "No description",
+    "CreatedTime": 1783440095,
+    "LastUpdatedTime": 1783441161,
+    "EvaluationType": "PeriodBased",
+    "Arn": "arn:aws:application-signals:us-east-1:111111111111:slo/cdkrd-slo-lambda-errors",
+    "Tags": [
+      {
+        "Value": "Slo",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSloNotif/1a5b0910-7a1d-11f1-9763-0affdc4e9a3f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegSloNotif",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Name": "cdkrd-slo-lambda-errors"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedTime", "EvaluationType", "LastUpdatedTime"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "CreatedTime", "EvaluationType", "LastUpdatedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "Description": "No description"
+    },
+    "defaultPaths": {
+      "Description": "No description",
+      "ExclusionWindows.*.Reason": "No reason"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["BurnRateConfigurations", "ExclusionWindows"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Slo",
+      "resourceType": "AWS::ApplicationSignals::ServiceLevelObjective",
+      "path": "Goal",
+      "actual": {
+        "WarningThreshold": 50,
+        "AttainmentGoal": 99,
+        "Interval": {
+          "RollingInterval": {
+            "DurationUnit": "DAY",
+            "Duration": 7
+          }
+        }
+      },
+      "physicalId": "arn:aws:application-signals:us-east-1:111111111111:slo/cdkrd-slo-lambda-errors",
+      "constructPath": "CdkRealDriftIntegSloNotif/Slo"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Slo",
+      "resourceType": "AWS::ApplicationSignals::ServiceLevelObjective",
+      "path": "Description",
+      "actual": "No description",
+      "physicalId": "arn:aws:application-signals:us-east-1:111111111111:slo/cdkrd-slo-lambda-errors",
+      "constructPath": "CdkRealDriftIntegSloNotif/Slo"
+    }
+  ]
+}

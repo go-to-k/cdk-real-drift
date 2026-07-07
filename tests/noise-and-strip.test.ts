@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { matchesKnownDefault } from '../src/diff/classify.js';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
 import {
   awsManagedTags,
@@ -955,6 +956,57 @@ describe('noise suppressors', () => {
       Domain: 'S3',
       S3StorageOptions: { DirectoryListingOptimization: 'DISABLED' },
     });
+  });
+
+  it('ApplicationSignals SLO Goal first-run default (bug-hunt: slo-notif-rich)', () => {
+    // A period-based SLO that omits `Goal` reads it back fully materialized with
+    // AWS's constant default (rolling 7-day interval, AttainmentGoal 99,
+    // WarningThreshold 50) — a whole nested object the CFn schema does NOT annotate
+    // as `default`. Equality-gated whole-object, so an out-of-band change to any
+    // sub-field (a different AttainmentGoal, a calendar interval) no longer matches
+    // and re-surfaces. Exercised live and by the
+    // AWS__ApplicationSignals__ServiceLevelObjective corpus case.
+    expect(KNOWN_DEFAULTS['AWS::ApplicationSignals::ServiceLevelObjective']).toEqual({
+      Goal: {
+        WarningThreshold: 50,
+        AttainmentGoal: 99,
+        Interval: { RollingInterval: { DurationUnit: 'DAY', Duration: 7 } },
+      },
+    });
+    const goalDef = KNOWN_DEFAULTS['AWS::ApplicationSignals::ServiceLevelObjective']!.Goal;
+    // Folds the exact default...
+    expect(
+      matchesKnownDefault(
+        {
+          WarningThreshold: 50,
+          AttainmentGoal: 99,
+          Interval: { RollingInterval: { DurationUnit: 'DAY', Duration: 7 } },
+        },
+        goalDef
+      )
+    ).toBe(true);
+    // ...but an out-of-band change to AttainmentGoal still surfaces (detection kept).
+    expect(
+      matchesKnownDefault(
+        {
+          WarningThreshold: 50,
+          AttainmentGoal: 95,
+          Interval: { RollingInterval: { DurationUnit: 'DAY', Duration: 7 } },
+        },
+        goalDef
+      )
+    ).toBe(false);
+    // ...and a calendar interval (a real, user-meaningful choice) surfaces too.
+    expect(
+      matchesKnownDefault(
+        {
+          WarningThreshold: 50,
+          AttainmentGoal: 99,
+          Interval: { CalendarInterval: { DurationUnit: 'MONTH', Duration: 1 } },
+        },
+        goalDef
+      )
+    ).toBe(false);
   });
 
   it('isCfnTemplateNonAsciiMask: GetTemplate `?`-masked non-ASCII declared value is not drift', () => {
