@@ -1,3 +1,10 @@
+## [0.1.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.4...v0.1.5) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold Grafana + DataSync first-run default noise ([#596](https://github.com/go-to-k/cdk-real-drift/issues/596)) ([e2b1d6c](https://github.com/go-to-k/cdk-real-drift/commit/e2b1d6c95b4686ebe5f1e96c1c7099134b01143b))
+
 ## [0.1.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.3...v0.1.4) (2026-07-07)
 
 
