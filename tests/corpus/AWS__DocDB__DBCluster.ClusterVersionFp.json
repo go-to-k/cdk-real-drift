@@ -79,7 +79,7 @@
       "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::DocDB::DBCluster",
       "path": "BackupRetentionPeriod",
