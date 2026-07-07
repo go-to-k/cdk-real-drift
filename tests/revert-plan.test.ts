@@ -415,6 +415,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Location Tracker PositionFiltering (SET-DEFAULT) -> add op writing TimeBased, not a no-op remove', () => {
+    // AWS::Location::Tracker PositionFiltering is in REVERT_SET_DEFAULT_PATHS: UpdateTracker
+    // leaves the value UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
+    // AccuracyBased is a silent no-op (Cloud Control reports SUCCESS yet the live
+    // AccuracyBased persists — "1 drift remain"; proven live on location-rich 2026-07-07).
+    // Revert must write the "TimeBased" default (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Location::Tracker',
+      path: 'PositionFiltering',
+      actual: 'AccuracyBased',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/PositionFiltering',
+      value: 'TimeBased',
+      prior: 'AccuracyBased',
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.

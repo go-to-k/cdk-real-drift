@@ -1,0 +1,69 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PlaceIndex",
+    "resourceType": "AWS::Location::PlaceIndex",
+    "physicalId": "cdkrd-place-index-rich",
+    "constructPath": "CdkRealDriftIntegLocationRich/PlaceIndex",
+    "declared": {
+      "DataSource": "Esri",
+      "Description": "cdkrd location place index rich",
+      "IndexName": "cdkrd-place-index-rich"
+    }
+  },
+  "liveRaw": {
+    "IndexName": "cdkrd-place-index-rich",
+    "Description": "cdkrd location place index rich",
+    "IndexArn": "arn:aws:geo:us-east-1:111111111111:place-index/cdkrd-place-index-rich",
+    "CreateTime": "2026-07-07T14:46:07.517Z",
+    "UpdateTime": "2026-07-07T14:46:07.517Z",
+    "PricingPlan": "RequestBasedUsage",
+    "DataSourceConfiguration": {
+      "IntendedUse": "SingleUse"
+    },
+    "Arn": "arn:aws:geo:us-east-1:111111111111:place-index/cdkrd-place-index-rich",
+    "Tags": [],
+    "DataSource": "Esri"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreateTime", "IndexArn", "UpdateTime"],
+    "writeOnly": [],
+    "createOnly": ["DataSource", "IndexName"],
+    "readOnlyPaths": ["Arn", "CreateTime", "IndexArn", "UpdateTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DataSource", "IndexName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "PlaceIndex",
+      "resourceType": "AWS::Location::PlaceIndex",
+      "path": "PricingPlan",
+      "actual": "RequestBasedUsage",
+      "physicalId": "cdkrd-place-index-rich",
+      "constructPath": "CdkRealDriftIntegLocationRich/PlaceIndex"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlaceIndex",
+      "resourceType": "AWS::Location::PlaceIndex",
+      "path": "DataSourceConfiguration",
+      "actual": {
+        "IntendedUse": "SingleUse"
+      },
+      "physicalId": "cdkrd-place-index-rich",
+      "constructPath": "CdkRealDriftIntegLocationRich/PlaceIndex"
+    }
+  ]
+}

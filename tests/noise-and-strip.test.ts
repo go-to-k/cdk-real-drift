@@ -683,6 +683,28 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('Amazon Location first-run defaults fold on ALL five resource types', () => {
+    // The deprecated `PricingPlan` parameter is echoed as the constant
+    // "RequestBasedUsage" on EVERY Location resource, not just Tracker/GeofenceCollection
+    // (the original #492 entries) — PlaceIndex/Map/RouteCalculator were an unguarded
+    // allowlist gap surfaced live on location-rich (2026-07-07). A Tracker with no
+    // PositionFiltering reads back "TimeBased", and a PlaceIndex with no
+    // DataSourceConfiguration reads back {IntendedUse:"SingleUse"}. All equality-gated.
+    for (const t of [
+      'AWS::Location::Tracker',
+      'AWS::Location::GeofenceCollection',
+      'AWS::Location::PlaceIndex',
+      'AWS::Location::Map',
+      'AWS::Location::RouteCalculator',
+    ]) {
+      expect(KNOWN_DEFAULTS[t].PricingPlan).toBe('RequestBasedUsage');
+    }
+    expect(KNOWN_DEFAULTS['AWS::Location::Tracker'].PositionFiltering).toBe('TimeBased');
+    expect(KNOWN_DEFAULTS['AWS::Location::PlaceIndex'].DataSourceConfiguration).toEqual({
+      IntendedUse: 'SingleUse',
+    });
+  });
+
   it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {
     // Constant, documented service defaults common stateful/streaming types report as
     // first-run undeclared noise. Verified against the golden corpus (RDS DBInstance

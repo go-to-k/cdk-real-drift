@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RouteCalculator",
+    "resourceType": "AWS::Location::RouteCalculator",
+    "physicalId": "cdkrd-route-calculator-rich",
+    "constructPath": "CdkRealDriftIntegLocationRich/RouteCalculator",
+    "declared": {
+      "CalculatorName": "cdkrd-route-calculator-rich",
+      "DataSource": "Esri",
+      "Description": "cdkrd location route calculator rich"
+    }
+  },
+  "liveRaw": {
+    "CalculatorName": "cdkrd-route-calculator-rich",
+    "Description": "cdkrd location route calculator rich",
+    "CreateTime": "2026-07-07T14:46:07.469Z",
+    "UpdateTime": "2026-07-07T14:46:07.469Z",
+    "PricingPlan": "RequestBasedUsage",
+    "CalculatorArn": "arn:aws:geo:us-east-1:111111111111:route-calculator/cdkrd-route-calculator-rich",
+    "Arn": "arn:aws:geo:us-east-1:111111111111:route-calculator/cdkrd-route-calculator-rich",
+    "Tags": [],
+    "DataSource": "Esri"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CalculatorArn", "CreateTime", "UpdateTime"],
+    "writeOnly": [],
+    "createOnly": ["CalculatorName", "DataSource"],
+    "readOnlyPaths": ["Arn", "CalculatorArn", "CreateTime", "UpdateTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CalculatorName", "DataSource"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RouteCalculator",
+      "resourceType": "AWS::Location::RouteCalculator",
+      "path": "PricingPlan",
+      "actual": "RequestBasedUsage",
+      "physicalId": "cdkrd-route-calculator-rich",
+      "constructPath": "CdkRealDriftIntegLocationRich/RouteCalculator"
+    }
+  ]
+}

@@ -998,12 +998,30 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ],
   },
   // Amazon Location deprecated `PricingPlan` parameter — the service echoes the constant
-  // "RequestBasedUsage" on every tracker / geofence collection even though the parameter
-  // is deprecated and un-settable (observed live on hunt 2026-07-03, #492). Equality-gated.
+  // "RequestBasedUsage" on EVERY Location resource (tracker / geofence collection / place
+  // index / map / route calculator) even though the parameter is deprecated and
+  // un-settable (observed live on hunt 2026-07-03 #492, then on all five types
+  // location-rich 2026-07-07). Equality-gated. Also folds each type's other constant
+  // first-run defaults the template never declares: a Tracker with no PositionFiltering
+  // reads back "TimeBased" (the service default; AccuracyBased/DistanceBased are the other
+  // settable values, so a change re-surfaces), and a PlaceIndex with no
+  // DataSourceConfiguration reads back {IntendedUse:"SingleUse"} (the default; "Storage"
+  // is the other value). Both observed live on a fresh location-rich stack (2026-07-07).
   'AWS::Location::Tracker': {
     PricingPlan: 'RequestBasedUsage',
+    PositionFiltering: 'TimeBased',
   },
   'AWS::Location::GeofenceCollection': {
+    PricingPlan: 'RequestBasedUsage',
+  },
+  'AWS::Location::PlaceIndex': {
+    PricingPlan: 'RequestBasedUsage',
+    DataSourceConfiguration: { IntendedUse: 'SingleUse' },
+  },
+  'AWS::Location::Map': {
+    PricingPlan: 'RequestBasedUsage',
+  },
+  'AWS::Location::RouteCalculator': {
     PricingPlan: 'RequestBasedUsage',
   },
   // hunt 2026-07-03 round B (#496): constant service defaults on zero-coverage type

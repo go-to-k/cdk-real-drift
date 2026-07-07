@@ -103,6 +103,11 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // idempotent whether or not the omit no-ops.
   'AWS::AppRunner::Service\0HealthCheckConfiguration',
   'AWS::AppRunner::Service\0NetworkConfiguration',
+  // Amazon Location UpdateTracker IGNORES an omitted PositionFiltering (live-observed on
+  // location-rich 2026-07-07: a `remove` revert of an out-of-band AccuracyBased reported
+  // SUCCESS yet the live value stayed AccuracyBased — "1 drift remain"). Write the
+  // "TimeBased" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
+  'AWS::Location::Tracker\0PositionFiltering',
 ]);
 
 /**
