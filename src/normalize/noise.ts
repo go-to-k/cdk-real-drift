@@ -58,6 +58,17 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ElasticBeanstalk::Environment': {
     Tier: { Type: 'Standard', Version: '1.0', Name: 'WebServer' },
   },
+  // A classic ElasticLoadBalancing::LoadBalancer (CLB) that declares neither
+  // ConnectionSettings nor ConnectionDrainingPolicy reads both back fully materialized
+  // with AWS's constant first-run defaults: a 60-second idle timeout, and connection
+  // draining DISABLED with a 300-second timeout. Neither is user intent — the template
+  // never declared them. Equality-gated: raise the idle timeout out of band, or enable
+  // draining, and the object no longer matches so it re-surfaces as real undeclared drift.
+  // Observed live on a fresh internal CLB (elb-classic-rich, 2026-07-07).
+  'AWS::ElasticLoadBalancing::LoadBalancer': {
+    ConnectionSettings: { IdleTimeout: 60 },
+    ConnectionDrainingPolicy: { Enabled: false, Timeout: 300 },
+  },
   // S3 versioning can never return to the never-enabled state — a revert "remove"
   // lands on Suspended, which IS the off state. Without this entry an undeclared
   // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
@@ -2014,6 +2025,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   on a fresh elasticbeanstalk-rich template + environment (2026-07-07).
   'AWS::ElasticBeanstalk::ConfigurationTemplate': new Set(['PlatformArn']),
   'AWS::ElasticBeanstalk::Environment': new Set(['PlatformArn']),
+  //   AWS::ElasticLoadBalancing::LoadBalancer.AvailabilityZones — a VPC classic ELB
+  //   declares `Subnets` (AvailabilityZones and Subnets are mutually exclusive), and AWS
+  //   reads back the AvailabilityZones it PLACED the ELB in — the AZs of those subnets
+  //   (["us-east-1a","us-east-1b"]). The value is a pure reflection of where the declared
+  //   subnets live, which is itself an unresolved Fn::Select(Fn::GetAZs), so it cannot be
+  //   pinned to a constant nor derived offline. Undeclared → whatever AZs AWS chose are not
+  //   user intent; a user who wants specific AZs declares AvailabilityZones instead of
+  //   Subnets, which is then compared in the declared loop. Observed live on a fresh
+  //   internal CLB (elb-classic-rich, 2026-07-07).
+  'AWS::ElasticLoadBalancing::LoadBalancer': new Set(['AvailabilityZones']),
   //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
   //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
   //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for
@@ -2649,6 +2670,17 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // indices to `*`. Two header names that differ beyond case are a genuine change and
   // still surface. Observed live on a fresh WAF logging deploy.
   'AWS::WAFv2::LoggingConfiguration': new Set(['RedactedFields.*.SingleHeader.Name']),
+  // A classic ELB listener's Protocol / InstanceProtocol — CDK emits the value LOWERCASE
+  // (`http` / `tcp`) in the template, but the ElasticLoadBalancing API canonicalizes it
+  // UPPERCASE (`HTTP` / `TCP`) on the live read, so a case-sensitive compare false-flags
+  // DECLARED drift on the whole declared Listeners array of every fresh CLB. The `*`
+  // matches the array index (the path arrives as `Listeners.0.Protocol`). The valid
+  // protocols differ beyond case (HTTP/HTTPS/TCP/SSL), so case-insensitive equality hides
+  // no real change. Observed live on a fresh internal CLB (elb-classic-rich, 2026-07-07).
+  'AWS::ElasticLoadBalancing::LoadBalancer': new Set([
+    'Listeners.*.Protocol',
+    'Listeners.*.InstanceProtocol',
+  ]),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();

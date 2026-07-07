@@ -1,0 +1,149 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Clb487D7D46",
+    "resourceType": "AWS::ElasticLoadBalancing::LoadBalancer",
+    "physicalId": "CdkRealDr-Clb487D7-1SB68UAD4G0DU",
+    "constructPath": "CdkRealDriftIntegElbClassicRich/Clb",
+    "declared": {
+      "CrossZone": true,
+      "HealthCheck": {
+        "HealthyThreshold": "2",
+        "Interval": "30",
+        "Target": "HTTP:80/",
+        "Timeout": "5",
+        "UnhealthyThreshold": "5"
+      },
+      "Listeners": [
+        {
+          "InstancePort": "80",
+          "InstanceProtocol": "http",
+          "LoadBalancerPort": "80",
+          "Protocol": "http"
+        }
+      ],
+      "Scheme": "internal",
+      "SecurityGroups": ["sg-0cb73956afc8276be"],
+      "Subnets": ["subnet-0450ec64327b46376", "subnet-0da3a00a8c0763133"]
+    }
+  },
+  "liveRaw": {
+    "SecurityGroups": ["sg-0cb73956afc8276be"],
+    "ConnectionDrainingPolicy": {
+      "Timeout": 300,
+      "Enabled": false
+    },
+    "Scheme": "internal",
+    "AvailabilityZones": ["us-east-1a", "us-east-1b"],
+    "SourceSecurityGroup": {
+      "GroupName": "CdkRealDriftIntegElbClassicRich-ClbSecurityGroup02737D77-fNfqqUjX1tMc",
+      "OwnerAlias": "111111111111"
+    },
+    "HealthCheck": {
+      "Target": "HTTP:80/",
+      "UnhealthyThreshold": "5",
+      "Timeout": "5",
+      "HealthyThreshold": "2",
+      "Interval": "30"
+    },
+    "CanonicalHostedZoneNameID": "Z35SXDOTRQ7X7K",
+    "CanonicalHostedZoneName": "",
+    "DNSName": "internal-CdkRealDr-Clb487D7-1SB68UAD4G0DU-912641998.us-east-1.elb.amazonaws.com",
+    "LoadBalancerName": "CdkRealDr-Clb487D7-1SB68UAD4G0DU",
+    "Listeners": [
+      {
+        "PolicyNames": [],
+        "InstancePort": "80",
+        "LoadBalancerPort": "80",
+        "Protocol": "HTTP",
+        "InstanceProtocol": "HTTP"
+      }
+    ],
+    "Subnets": ["subnet-0450ec64327b46376", "subnet-0da3a00a8c0763133"],
+    "CrossZone": true,
+    "AppCookieStickinessPolicy": [],
+    "LBCookieStickinessPolicy": [],
+    "ConnectionSettings": {
+      "IdleTimeout": 60
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegElbClassicRich/fe131820-7a07-11f1-bc4c-0affd6b97895",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegElbClassicRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Clb487D7D46",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CanonicalHostedZoneName",
+      "CanonicalHostedZoneNameID",
+      "DNSName",
+      "SourceSecurityGroup"
+    ],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerName", "Scheme"],
+    "readOnlyPaths": [
+      "CanonicalHostedZoneName",
+      "CanonicalHostedZoneNameID",
+      "DNSName",
+      "SourceSecurityGroup",
+      "SourceSecurityGroup.GroupName",
+      "SourceSecurityGroup.OwnerAlias"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LoadBalancerName", "Scheme"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Clb487D7D46",
+      "resourceType": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "path": "ConnectionDrainingPolicy",
+      "actual": {
+        "Timeout": 300,
+        "Enabled": false
+      },
+      "physicalId": "CdkRealDr-Clb487D7-1SB68UAD4G0DU",
+      "constructPath": "CdkRealDriftIntegElbClassicRich/Clb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clb487D7D46",
+      "resourceType": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a", "us-east-1b"],
+      "physicalId": "CdkRealDr-Clb487D7-1SB68UAD4G0DU",
+      "constructPath": "CdkRealDriftIntegElbClassicRich/Clb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Clb487D7D46",
+      "resourceType": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "path": "ConnectionSettings",
+      "actual": {
+        "IdleTimeout": 60
+      },
+      "physicalId": "CdkRealDr-Clb487D7-1SB68UAD4G0DU",
+      "constructPath": "CdkRealDriftIntegElbClassicRich/Clb"
+    }
+  ]
+}
