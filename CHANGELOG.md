@@ -1,3 +1,10 @@
+# [0.2.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.11...v0.2.0) (2026-07-07)
+
+
+### Features
+
+* **read:** read EB Environment OptionSettings + fold multi-platform + null/empty option defaults ([#606](https://github.com/go-to-k/cdk-real-drift/issues/606)) ([628538a](https://github.com/go-to-k/cdk-real-drift/commit/628538ad0155762534f130bf05cc3217f67f3c1a))
+
 ## [0.1.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.10...v0.1.11) (2026-07-07)
 
 
