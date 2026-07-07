@@ -1,3 +1,10 @@
+## [0.1.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.5...v0.1.6) (2026-07-07)
+
+
+### Bug Fixes
+
+* **noise:** fold App Runner + Transfer Family first-run defaults ([#597](https://github.com/go-to-k/cdk-real-drift/issues/597)) ([04372d0](https://github.com/go-to-k/cdk-real-drift/commit/04372d0e87d31169692f0ef97d24af003e549f96))
+
 ## [0.1.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.4...v0.1.5) (2026-07-07)
 
 
