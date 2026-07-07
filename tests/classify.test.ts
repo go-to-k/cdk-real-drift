@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource, matchesKnownDefault, normalizeLiveModel } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
-import { KNOWN_DEFAULT_PATHS, KNOWN_DEFAULTS } from '../src/normalize/noise.js';
+import {
+  ebOptionSettingTier,
+  KNOWN_DEFAULT_PATHS,
+  KNOWN_DEFAULTS,
+} from '../src/normalize/noise.js';
 import { buildRevertPlan } from '../src/revert/plan.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
@@ -2420,31 +2424,32 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       },
     ];
 
-    it('a reordered + default-filled OptionSettings (with live-only ResourceName) is NOT declared drift; live-only settings surface as undeclared', () => {
+    it('a reordered + default-filled OptionSettings is NOT declared drift; each service-filled extra folds to its first-run default (atDefault) or surfaces if off-default', () => {
       const findings = classifyResource(
         res(T, declared),
         liveModel(liveDefaultFilled),
         emptySchema
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
+      // `Availability Zones` = "Any" is at its AWS default → folds to atDefault (invariant),
+      // as does the top-level PlatformArn echo. `Cooldown` = "30" (default 360) and
+      // `HealthyThreshold` = "tcp" (default 3) are OFF their defaults → still surface as
+      // undeclared, so an out-of-band change to a service-filled option is not hidden.
+      expect(
+        findings
+          .filter((f) => f.tier === 'atDefault')
+          .map((f) => f.path)
+          .sort()
+      ).toEqual(['OptionSettings[aws:autoscaling:asg|Availability Zones]', 'PlatformArn']);
       const undeclared = findings.filter((f) => f.tier === 'undeclared');
-      // the three service-filled extras surface (composite-key path). NOT a declared drift.
       expect(undeclared.map((f) => f.path).sort()).toEqual([
-        'OptionSettings[aws:autoscaling:asg|Availability Zones]',
         'OptionSettings[aws:autoscaling:asg|Cooldown]',
         'OptionSettings[aws:elb:healthcheck|HealthyThreshold]',
       ]);
-      // the OptionSettings extras are nested inventory
+      // the OptionSettings extras (folded or surfaced) are nested inventory
       expect(
-        undeclared
-          .filter((f) => f.path.startsWith('OptionSettings'))
-          .every((f) => f.nested === true)
+        findings.filter((f) => f.path.startsWith('OptionSettings')).every((f) => f.nested === true)
       ).toBe(true);
-      // the top-level PlatformArn echo (AWS-derived from the declared SolutionStackName)
-      // folds value-independent to atDefault, not surfaced as first-run drift (2026-07-07).
-      expect(findings.filter((f) => f.tier === 'atDefault').map((f) => f.path)).toEqual([
-        'PlatformArn',
-      ]);
     });
 
     it('a genuine change to a DECLARED setting value still surfaces as declared drift (fail-closed)', () => {
@@ -2470,6 +2475,67 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         emptySchema
       ).filter((f) => f.tier === 'declared');
       expect(declaredF).toHaveLength(1);
+    });
+
+    // OptionSettings fold tiers surfaced through classify (equality-gate + value-independent +
+    // unknown). envType comes from the sibling EnvironmentType option (declared LoadBalanced).
+    const opt = (namespace: string, optionName: string, value: string) => ({
+      Namespace: namespace,
+      OptionName: optionName,
+      Value: value,
+    });
+    const tiersOf = (extra: object) =>
+      tiers(
+        classifyResource(res(T, declared), liveModel([...liveDefaultFilled, extra]), emptySchema)
+      );
+
+    it('an equality-gated constant folds at its default and surfaces when changed away', () => {
+      const at = tiersOf(opt('aws:elasticbeanstalk:cloudwatch:logs', 'RetentionInDays', '7'));
+      expect(at.atDefault).toContain(
+        'OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays]'
+      );
+      const off = tiersOf(opt('aws:elasticbeanstalk:cloudwatch:logs', 'RetentionInDays', '30'));
+      expect(off.undeclared).toContain(
+        'OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays]'
+      );
+    });
+
+    it('a value-independent option (the platform ImageId AMI) folds regardless of value', () => {
+      const at = tiersOf(opt('aws:autoscaling:launchconfiguration', 'ImageId', 'ami-0deadbeef'));
+      expect(at.atDefault).toContain('OptionSettings[aws:autoscaling:launchconfiguration|ImageId]');
+    });
+
+    it('an UNKNOWN option (not in any table) still surfaces as undeclared (fail-open to visibility)', () => {
+      const t = tiersOf(opt('aws:elasticbeanstalk:customns', 'SomeNovelOption', 'x'));
+      expect(t.undeclared).toContain(
+        'OptionSettings[aws:elasticbeanstalk:customns|SomeNovelOption]'
+      );
+    });
+  });
+
+  describe('ebOptionSettingTier (EB OptionSettings first-run default classifier)', () => {
+    it('equality-gated constant: at default → atDefault, changed away → undeclared', () => {
+      const k = ['aws:elasticbeanstalk:cloudwatch:logs', 'RetentionInDays'] as const;
+      expect(ebOptionSettingTier(k[0], k[1], '7', 'LoadBalanced')).toBe('atDefault');
+      expect(ebOptionSettingTier(k[0], k[1], '30', 'LoadBalanced')).toBe('undeclared');
+    });
+
+    it('derived-from-EnvironmentType: MaxSize default is 1 (SingleInstance) / 4 (LoadBalanced)', () => {
+      const k = ['aws:autoscaling:asg', 'MaxSize'] as const;
+      expect(ebOptionSettingTier(k[0], k[1], '1', 'SingleInstance')).toBe('atDefault');
+      expect(ebOptionSettingTier(k[0], k[1], '4', 'SingleInstance')).toBe('undeclared'); // 4 is the LB default, not SingleInstance's
+      expect(ebOptionSettingTier(k[0], k[1], '4', 'LoadBalanced')).toBe('atDefault');
+      expect(ebOptionSettingTier(k[0], k[1], '8', 'LoadBalanced')).toBe('undeclared');
+    });
+
+    it('value-independent: the platform AMI id folds at any value', () => {
+      const k = ['aws:autoscaling:launchconfiguration', 'ImageId'] as const;
+      expect(ebOptionSettingTier(k[0], k[1], 'ami-000', 'LoadBalanced')).toBe('atDefault');
+      expect(ebOptionSettingTier(k[0], k[1], 'ami-fff', 'LoadBalanced')).toBe('atDefault');
+    });
+
+    it('an unknown option is undeclared (surfaces)', () => {
+      expect(ebOptionSettingTier('aws:x', 'Novel', 'v', 'LoadBalanced')).toBe('undeclared');
     });
   });
 

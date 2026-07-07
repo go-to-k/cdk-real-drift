@@ -1855,6 +1855,132 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::OpenSearchService::Domain': new Set(['EncryptionAtRestOptions.KmsKeyId']),
 };
 
+// Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
+// declares a handful of option settings; AWS materializes the FULL resolved set (~50 for a
+// SingleInstance env, ~80 for LoadBalanced) keyed by `Namespace|OptionName`. Every extra the
+// template never declared is an AWS default and must fold to atDefault (the zero-potential-
+// drift invariant), while a change AWAY from the default must still surface. The composite-key
+// subset surfacing (classify.ts) consults `ebOptionSettingTier` per live-only entry.
+//
+// Three tiers per the CLAUDE.md fold-strategy order:
+//  - EB_OPTION_DEFAULTS — equality-gated constants: fold when the live value equals the pinned
+//    default; a change away surfaces (detection kept). The default choice.
+//  - EB_OPTION_DERIVED — the default is a deterministic function of the sibling `EnvironmentType`
+//    option (SingleInstance vs LoadBalanced), so compute it and equality-gate the computed value
+//    (detection kept). MaxSize (1 vs 4) and the spot on-demand-above-base % (0 vs 70) observed live.
+//  - EB_OPTION_VALUE_INDEPENDENT — last resort: AWS-assigned values that MOVE (the platform AMI id,
+//    the versioned sample-app / hooks S3 URLs, the health ConfigDocument blob, the derived instance
+//    type family) or a per-resource `{Ref}` (the ELB security group). Folds any value → loses
+//    change-detection; acceptable only because it is undeclared (declare the option to detect it).
+// Values pinned from a live SingleInstance + LoadBalanced ConfigurationTemplate pair (2026-07-07).
+export const EB_OPTION_DEFAULTS: Record<string, string> = {
+  'aws:autoscaling:asg|Availability Zones': 'Any',
+  'aws:autoscaling:asg|Cooldown': '360',
+  'aws:autoscaling:asg|EnableCapacityRebalancing': 'false',
+  'aws:autoscaling:asg|MinSize': '1',
+  'aws:autoscaling:launchconfiguration|DisableDefaultEC2SecurityGroup': 'false',
+  'aws:autoscaling:launchconfiguration|DisableIMDSv1': 'true',
+  'aws:autoscaling:launchconfiguration|MonitoringInterval': '5 minute',
+  'aws:autoscaling:launchconfiguration|SSHSourceRestriction': 'tcp,22,22,0.0.0.0/0',
+  'aws:autoscaling:trigger|BreachDuration': '5',
+  'aws:autoscaling:trigger|EvaluationPeriods': '1',
+  'aws:autoscaling:trigger|LowerBreachScaleIncrement': '-1',
+  'aws:autoscaling:trigger|LowerThreshold': '2000000',
+  'aws:autoscaling:trigger|MeasureName': 'NetworkOut',
+  'aws:autoscaling:trigger|Period': '5',
+  'aws:autoscaling:trigger|Statistic': 'Average',
+  'aws:autoscaling:trigger|Unit': 'Bytes',
+  'aws:autoscaling:trigger|UpperBreachScaleIncrement': '1',
+  'aws:autoscaling:trigger|UpperThreshold': '6000000',
+  'aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateEnabled': 'false',
+  'aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateType': 'Time',
+  'aws:autoscaling:updatepolicy:rollingupdate|Timeout': 'PT30M',
+  'aws:cloudformation:template:parameter|InstancePort': '80',
+  'aws:ec2:instances|EnableSpot': 'false',
+  'aws:ec2:instances|SpotAllocationStrategy': 'capacity-optimized',
+  'aws:ec2:instances|SpotFleetOnDemandBase': '0',
+  'aws:ec2:vpc|ELBScheme': 'public',
+  'aws:elasticbeanstalk:cloudwatch:logs:health|DeleteOnTerminate': 'false',
+  'aws:elasticbeanstalk:cloudwatch:logs:health|HealthStreamingEnabled': 'false',
+  'aws:elasticbeanstalk:cloudwatch:logs:health|RetentionInDays': '7',
+  'aws:elasticbeanstalk:cloudwatch:logs|DeleteOnTerminate': 'false',
+  'aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays': '7',
+  'aws:elasticbeanstalk:cloudwatch:logs|StreamLogs': 'false',
+  'aws:elasticbeanstalk:command|BatchSize': '100',
+  'aws:elasticbeanstalk:command|BatchSizeType': 'Percentage',
+  'aws:elasticbeanstalk:command|DeploymentPolicy': 'AllAtOnce',
+  'aws:elasticbeanstalk:command|IgnoreHealthCheck': 'false',
+  'aws:elasticbeanstalk:command|Timeout': '600',
+  'aws:elasticbeanstalk:control|DefaultSSHPort': '22',
+  'aws:elasticbeanstalk:control|LaunchTimeout': '0',
+  'aws:elasticbeanstalk:control|LaunchType': 'Migration',
+  'aws:elasticbeanstalk:control|RollbackLaunchOnFailure': 'false',
+  'aws:elasticbeanstalk:environment:proxy|ProxyServer': 'nginx',
+  'aws:elasticbeanstalk:environment|LoadBalancerType': 'classic',
+  'aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled': 'false',
+  'aws:elasticbeanstalk:healthreporting:system|HealthCheckSuccessThreshold': 'Ok',
+  'aws:elasticbeanstalk:healthreporting:system|SystemType': 'enhanced',
+  'aws:elasticbeanstalk:hostmanager|LogPublicationControl': 'false',
+  'aws:elasticbeanstalk:managedactions:platformupdate|InstanceRefreshEnabled': 'false',
+  'aws:elasticbeanstalk:managedactions|ManagedActionsEnabled': 'false',
+  'aws:elasticbeanstalk:monitoring|Automatically Terminate Unhealthy Instances': 'true',
+  'aws:elasticbeanstalk:sns:topics|Notification Protocol': 'email',
+  'aws:elasticbeanstalk:xray|XRayEnabled': 'false',
+  'aws:elb:healthcheck|HealthyThreshold': '3',
+  'aws:elb:healthcheck|Interval': '10',
+  'aws:elb:healthcheck|Target': 'TCP:80',
+  'aws:elb:healthcheck|Timeout': '5',
+  'aws:elb:healthcheck|UnhealthyThreshold': '5',
+  'aws:elb:listener:80|InstancePort': '80',
+  'aws:elb:listener:80|InstanceProtocol': 'HTTP',
+  'aws:elb:listener:80|ListenerEnabled': 'true',
+  'aws:elb:listener:80|ListenerProtocol': 'HTTP',
+  'aws:elb:loadbalancer|CrossZone': 'false',
+  'aws:elb:loadbalancer|LoadBalancerHTTPPort': '80',
+  'aws:elb:loadbalancer|LoadBalancerHTTPSPort': 'OFF',
+  'aws:elb:loadbalancer|LoadBalancerPortProtocol': 'HTTP',
+  'aws:elb:loadbalancer|LoadBalancerSSLPortProtocol': 'HTTPS',
+  'aws:elb:policies|ConnectionDrainingEnabled': 'false',
+  'aws:elb:policies|ConnectionDrainingTimeout': '20',
+  'aws:elb:policies|ConnectionSettingIdleTimeout': '60',
+  'aws:rds:dbinstance|HasCoupledDatabase': 'false',
+};
+export const EB_OPTION_DERIVED: Record<string, Record<string, string>> = {
+  'aws:autoscaling:asg|MaxSize': { SingleInstance: '1', LoadBalanced: '4' },
+  'aws:ec2:instances|SpotFleetOnDemandAboveBasePercentage': {
+    SingleInstance: '0',
+    LoadBalanced: '70',
+  },
+};
+export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
+  'aws:autoscaling:launchconfiguration|ImageId',
+  'aws:autoscaling:launchconfiguration|InstanceType',
+  'aws:cloudformation:template:parameter|AppSource',
+  'aws:cloudformation:template:parameter|HooksPkgUrl',
+  'aws:cloudformation:template:parameter|InstanceTypeFamily',
+  'aws:ec2:instances|InstanceTypes',
+  'aws:ec2:instances|SupportedArchitectures',
+  'aws:elasticbeanstalk:healthreporting:system|ConfigDocument',
+  'aws:elb:loadbalancer|SecurityGroups',
+]);
+// Classify one live-only EB OptionSettings entry: 'atDefault' when it is at its AWS first-run
+// default (value-independent, derived-from-EnvironmentType, or equality-gated constant), else
+// 'undeclared' so a change away from the default still surfaces. `envType` is the sibling
+// `EnvironmentType` option's value (defaults to LoadBalanced, AWS's default when unset).
+export function ebOptionSettingTier(
+  namespace: unknown,
+  optionName: unknown,
+  value: unknown,
+  envType: string
+): 'atDefault' | 'undeclared' {
+  const key = `${String(namespace)}|${String(optionName)}`;
+  if (EB_OPTION_VALUE_INDEPENDENT.has(key)) return 'atDefault';
+  const derived = EB_OPTION_DERIVED[key];
+  if (derived) return derived[envType] === value ? 'atDefault' : 'undeclared';
+  if (key in EB_OPTION_DEFAULTS && EB_OPTION_DEFAULTS[key] === value) return 'atDefault';
+  return 'undeclared';
+}
+
 // Undeclared TOP-LEVEL keys whose AWS-chosen default is NON-DETERMINISTIC — the value
 // varies by account / CDK feature-flag / creation date, so a single KNOWN_DEFAULTS value
 // cannot fold every valid form (folding one leaves the other as false undeclared drift).

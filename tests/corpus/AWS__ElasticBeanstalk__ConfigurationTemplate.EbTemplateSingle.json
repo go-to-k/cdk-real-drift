@@ -1,23 +1,17 @@
 {
   "corpusVersion": 1,
   "resource": {
-    "logicalId": "EbTemplate",
+    "logicalId": "EbTemplateSingle",
     "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
-    "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-    "constructPath": "CdkRealDriftIntegEbRich/EbTemplate",
+    "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+    "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle",
     "declared": {
-      "ApplicationName": "cdkrd-hunt-eb-app",
-      "Description": "cdkrd bug-hunt configuration template",
+      "ApplicationName": "cdkrd-hunt-ebct-app",
       "OptionSettings": [
         {
           "Namespace": "aws:elasticbeanstalk:environment",
           "OptionName": "EnvironmentType",
           "Value": "SingleInstance"
-        },
-        {
-          "Namespace": "aws:autoscaling:launchconfiguration",
-          "OptionName": "InstanceType",
-          "Value": "t3.micro"
         }
       ],
       "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running Docker"
@@ -25,8 +19,7 @@
   },
   "liveRaw": {
     "PlatformArn": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.3",
-    "ApplicationName": "cdkrd-hunt-eb-app",
-    "Description": "cdkrd bug-hunt configuration template",
+    "ApplicationName": "cdkrd-hunt-ebct-app",
     "OptionSettings": [
       {
         "ResourceName": "AWSEBAutoScalingGroup",
@@ -134,7 +127,7 @@
         "OptionName": "EnableSpot"
       },
       {
-        "Value": "t3.micro",
+        "Value": "t3.micro, t3.small",
         "Namespace": "aws:ec2:instances",
         "OptionName": "InstanceTypes"
       },
@@ -304,7 +297,7 @@
         "OptionName": "HasCoupledDatabase"
       }
     ],
-    "TemplateName": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
+    "TemplateName": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
     "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running Docker"
   },
   "schema": {
@@ -345,7 +338,7 @@
   "expected": [
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:asg|Availability Zones]",
       "actual": {
@@ -355,12 +348,12 @@
         "OptionName": "Availability Zones"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:asg|Cooldown]",
       "actual": {
@@ -370,12 +363,12 @@
         "OptionName": "Cooldown"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:asg|EnableCapacityRebalancing]",
       "actual": {
@@ -385,12 +378,12 @@
         "OptionName": "EnableCapacityRebalancing"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:asg|MaxSize]",
       "actual": {
@@ -400,12 +393,12 @@
         "OptionName": "MaxSize"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:asg|MinSize]",
       "actual": {
@@ -415,12 +408,12 @@
         "OptionName": "MinSize"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableDefaultEC2SecurityGroup]",
       "actual": {
@@ -429,12 +422,12 @@
         "OptionName": "DisableDefaultEC2SecurityGroup"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableIMDSv1]",
       "actual": {
@@ -443,12 +436,12 @@
         "OptionName": "DisableIMDSv1"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:launchconfiguration|ImageId]",
       "actual": {
@@ -458,12 +451,26 @@
         "OptionName": "ImageId"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
+      "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|InstanceType]",
+      "actual": {
+        "Value": "t3.micro",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType"
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:launchconfiguration|MonitoringInterval]",
       "actual": {
@@ -473,12 +480,12 @@
         "OptionName": "MonitoringInterval"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:launchconfiguration|SSHSourceRestriction]",
       "actual": {
@@ -487,12 +494,12 @@
         "OptionName": "SSHSourceRestriction"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateEnabled]",
       "actual": {
@@ -502,12 +509,12 @@
         "OptionName": "RollingUpdateEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateType]",
       "actual": {
@@ -517,12 +524,12 @@
         "OptionName": "RollingUpdateType"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|Timeout]",
       "actual": {
@@ -532,12 +539,12 @@
         "OptionName": "Timeout"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:cloudformation:template:parameter|AppSource]",
       "actual": {
@@ -546,12 +553,12 @@
         "OptionName": "AppSource"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:cloudformation:template:parameter|HooksPkgUrl]",
       "actual": {
@@ -560,12 +567,12 @@
         "OptionName": "HooksPkgUrl"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:cloudformation:template:parameter|InstancePort]",
       "actual": {
@@ -574,12 +581,12 @@
         "OptionName": "InstancePort"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:cloudformation:template:parameter|InstanceTypeFamily]",
       "actual": {
@@ -588,12 +595,12 @@
         "OptionName": "InstanceTypeFamily"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|EnableSpot]",
       "actual": {
@@ -602,26 +609,26 @@
         "OptionName": "EnableSpot"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|InstanceTypes]",
       "actual": {
-        "Value": "t3.micro",
+        "Value": "t3.micro, t3.small",
         "Namespace": "aws:ec2:instances",
         "OptionName": "InstanceTypes"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|SpotAllocationStrategy]",
       "actual": {
@@ -630,12 +637,12 @@
         "OptionName": "SpotAllocationStrategy"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandAboveBasePercentage]",
       "actual": {
@@ -644,12 +651,12 @@
         "OptionName": "SpotFleetOnDemandAboveBasePercentage"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandBase]",
       "actual": {
@@ -658,12 +665,12 @@
         "OptionName": "SpotFleetOnDemandBase"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:instances|SupportedArchitectures]",
       "actual": {
@@ -672,12 +679,12 @@
         "OptionName": "SupportedArchitectures"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:ec2:vpc|ELBScheme]",
       "actual": {
@@ -686,12 +693,12 @@
         "OptionName": "ELBScheme"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|DeleteOnTerminate]",
       "actual": {
@@ -700,12 +707,12 @@
         "OptionName": "DeleteOnTerminate"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays]",
       "actual": {
@@ -714,12 +721,12 @@
         "OptionName": "RetentionInDays"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|StreamLogs]",
       "actual": {
@@ -728,12 +735,12 @@
         "OptionName": "StreamLogs"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|DeleteOnTerminate]",
       "actual": {
@@ -742,12 +749,12 @@
         "OptionName": "DeleteOnTerminate"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|HealthStreamingEnabled]",
       "actual": {
@@ -756,12 +763,12 @@
         "OptionName": "HealthStreamingEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|RetentionInDays]",
       "actual": {
@@ -770,12 +777,12 @@
         "OptionName": "RetentionInDays"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSize]",
       "actual": {
@@ -784,12 +791,12 @@
         "OptionName": "BatchSize"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSizeType]",
       "actual": {
@@ -798,12 +805,12 @@
         "OptionName": "BatchSizeType"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:command|DeploymentPolicy]",
       "actual": {
@@ -812,12 +819,12 @@
         "OptionName": "DeploymentPolicy"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:command|IgnoreHealthCheck]",
       "actual": {
@@ -826,12 +833,12 @@
         "OptionName": "IgnoreHealthCheck"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:command|Timeout]",
       "actual": {
@@ -840,12 +847,12 @@
         "OptionName": "Timeout"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:control|DefaultSSHPort]",
       "actual": {
@@ -854,12 +861,12 @@
         "OptionName": "DefaultSSHPort"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchTimeout]",
       "actual": {
@@ -868,12 +875,12 @@
         "OptionName": "LaunchTimeout"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchType]",
       "actual": {
@@ -882,12 +889,12 @@
         "OptionName": "LaunchType"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:control|RollbackLaunchOnFailure]",
       "actual": {
@@ -896,12 +903,12 @@
         "OptionName": "RollbackLaunchOnFailure"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:environment:proxy|ProxyServer]",
       "actual": {
@@ -910,12 +917,12 @@
         "OptionName": "ProxyServer"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|ConfigDocument]",
       "actual": {
@@ -924,12 +931,12 @@
         "OptionName": "ConfigDocument"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled]",
       "actual": {
@@ -938,12 +945,12 @@
         "OptionName": "EnhancedHealthAuthEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|HealthCheckSuccessThreshold]",
       "actual": {
@@ -952,12 +959,12 @@
         "OptionName": "HealthCheckSuccessThreshold"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|SystemType]",
       "actual": {
@@ -966,12 +973,12 @@
         "OptionName": "SystemType"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:hostmanager|LogPublicationControl]",
       "actual": {
@@ -980,12 +987,12 @@
         "OptionName": "LogPublicationControl"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:managedactions|ManagedActionsEnabled]",
       "actual": {
@@ -994,12 +1001,12 @@
         "OptionName": "ManagedActionsEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:managedactions:platformupdate|InstanceRefreshEnabled]",
       "actual": {
@@ -1008,12 +1015,12 @@
         "OptionName": "InstanceRefreshEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:monitoring|Automatically Terminate Unhealthy Instances]",
       "actual": {
@@ -1022,12 +1029,12 @@
         "OptionName": "Automatically Terminate Unhealthy Instances"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Protocol]",
       "actual": {
@@ -1036,12 +1043,12 @@
         "OptionName": "Notification Protocol"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:elasticbeanstalk:xray|XRayEnabled]",
       "actual": {
@@ -1050,12 +1057,12 @@
         "OptionName": "XRayEnabled"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "OptionSettings[aws:rds:dbinstance|HasCoupledDatabase]",
       "actual": {
@@ -1064,17 +1071,17 @@
         "OptionName": "HasCoupledDatabase"
       },
       "nested": true,
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     },
     {
       "tier": "atDefault",
-      "logicalId": "EbTemplate",
+      "logicalId": "EbTemplateSingle",
       "resourceType": "AWS::ElasticBeanstalk::ConfigurationTemplate",
       "path": "PlatformArn",
       "actual": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.3",
-      "physicalId": "CdkRealDriftIntegEbRich-EbTemplate-wwcSqIxxE8f2",
-      "constructPath": "CdkRealDriftIntegEbRich/EbTemplate"
+      "physicalId": "CdkRealDriftIntegEbConfigTemplate-EbTemplateSingle-mlOVtc6QJDoe",
+      "constructPath": "CdkRealDriftIntegEbConfigTemplate/EbTemplateSingle"
     }
   ]
 }
