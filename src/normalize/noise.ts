@@ -3667,6 +3667,21 @@ export const UNORDERED_OBJECT_ARRAY_PROPS: Record<string, ReadonlySet<string>> =
   // set was tested in the SAME deploy with two conditions and WAF PRESERVED their order,
   // so it is NOT folded — observed-only.)
   'AWS::WAFv2::LoggingConfiguration': new Set(['RedactedFields']),
+  // An EC2 managed prefix list's `Entries` is a SET of {Cidr, Description} route
+  // entries. AWS stores them as a set, not an ordered list: after any out-of-band
+  // `ModifyManagedPrefixList` (the console/API "someone edited it" path this tool
+  // exists to catch) the live entries come back REORDERED relative to the template
+  // (declared [10.0.0.0/16, 10.1.0.0/16, 192.168.0.0/24] read back
+  // [192.168.0.0/24, 10.1.0.0/16, 10.0.0.0/16]), so a positional compare
+  // false-flags every shifted entry's Cidr AND Description as declared drift and
+  // MISATTRIBUTES a single real change (one entry's Description edited) as several
+  // positional diffs. The element key `Cidr` is NOT one of canonicalizeTagListsDeep's
+  // IDENTITY_FIELDS (Key/Id/AttributeName/IndexName/Name), so that keyed canonicalizer
+  // can't align it — hence the per-type opt-in. Sorting both sides by canonical JSON
+  // aligns equal entries by Cidr (the first sorted key); a genuine entry
+  // add/remove/description-change still differs. Observed live on a fresh
+  // ec2-prefixlist-rich deploy whose entries were reordered by an out-of-band modify.
+  'AWS::EC2::PrefixList': new Set(['Entries']),
 };
 
 // Per-type NESTED array paths AWS returns reordered (dotted from the resource

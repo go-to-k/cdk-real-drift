@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PLD5425AEA",
+    "resourceType": "AWS::EC2::PrefixList",
+    "physicalId": "pl-008cfc131622cb678",
+    "constructPath": "CdkRealDriftIntegEc2PrefixListRich/PL",
+    "declared": {
+      "AddressFamily": "IPv4",
+      "Entries": [
+        {
+          "Cidr": "10.0.0.0/16",
+          "Description": "corp-a"
+        },
+        {
+          "Cidr": "10.1.0.0/16",
+          "Description": "corp-b"
+        },
+        {
+          "Cidr": "192.168.0.0/24",
+          "Description": "branch"
+        }
+      ],
+      "MaxEntries": 10,
+      "PrefixListName": "cdkrd-prefixlist-rich"
+    }
+  },
+  "liveRaw": {
+    "MaxEntries": 10,
+    "OwnerId": "111111111111",
+    "PrefixListId": "pl-008cfc131622cb678",
+    "Version": 6,
+    "PrefixListName": "cdkrd-prefixlist-rich",
+    "Entries": [
+      {
+        "Description": "branch",
+        "Cidr": "192.168.0.0/24"
+      },
+      {
+        "Description": "corp-b",
+        "Cidr": "10.1.0.0/16"
+      },
+      {
+        "Description": "corp-a",
+        "Cidr": "10.0.0.0/16"
+      }
+    ],
+    "AddressFamily": "IPv4",
+    "Arn": "arn:aws:ec2:us-east-1:111111111111:prefix-list/pl-008cfc131622cb678",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegEc2PrefixListRich/0f398c00-7a09-11f1-a445-0ef7e0e36b7f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegEc2PrefixListRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "PLD5425AEA",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "OwnerId", "PrefixListId", "Version"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "OwnerId", "PrefixListId", "Version"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

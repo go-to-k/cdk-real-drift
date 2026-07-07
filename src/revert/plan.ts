@@ -291,13 +291,30 @@ export function buildRevertPlan(
   const itemsByLogical = new Map<string, RevertItem>();
   const notRevertable: NotRevertable[] = [];
   const recorded = baseline?.recorded ?? [];
+  // Collapse the per-element findings of an UNORDERED_OBJECT_ARRAY into ONE whole-array
+  // replacement (see Finding.wholeArrayRevert): classify sorted both sides before the diff,
+  // so each finding's array index is a SORTED position that does NOT map to the live raw
+  // index — a Cloud Control sub-path patch would corrupt the wrong live element. Reverting
+  // the WHOLE declared array converges deterministically regardless of live order. Track the
+  // (logicalId, arrayPath) pairs already emitted so N element findings yield ONE op.
+  const wholeArrayEmitted = new Set<string>();
 
-  for (const f of findings) {
+  for (let f of findings) {
     // Show the construct path WITHIN the stack (stack/Stage prefix stripped), the same as the
     // check report — the revert banner already names the stack. Full path when unstripped.
     const displayId = f.constructPath
       ? withinStackPath(f.constructPath, opts.stackName ?? '')
       : f.logicalId;
+    // Rewrite a per-element unordered-object-array finding to its whole-array path+value, and
+    // drop the duplicates (one op per array). A finding whose path is ALREADY the whole array
+    // (a length-mismatch drift, e.g. an SG whose live rules reflect sibling resources) is left
+    // untouched — its revert is already a whole-array replace.
+    if (f.tier === 'declared' && f.wholeArrayRevert && f.path !== f.wholeArrayRevert.path) {
+      const waKey = `${f.logicalId}\0${f.wholeArrayRevert.path}`;
+      if (wholeArrayEmitted.has(waKey)) continue;
+      wholeArrayEmitted.add(waKey);
+      f = { ...f, path: f.wholeArrayRevert.path, desired: f.wholeArrayRevert.value };
+    }
     if (f.tier === 'deleted') {
       // a resource deleted out of band cannot be patched back — it must be
       // recreated by re-deploying the stack.

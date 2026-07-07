@@ -149,6 +149,61 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('unordered-object-array: per-element findings collapse to ONE whole-array replace (Finding.wholeArrayRevert)', () => {
+    // classify sorts an UNORDERED_OBJECT_ARRAY (EC2 PrefixList Entries) on BOTH sides
+    // before the per-element diff, so a finding's index is a SORTED position that does
+    // NOT map to the live array's raw index — a Cloud Control sub-path patch
+    // (`add /Entries/2/Description`) would corrupt the wrong live element (proven live).
+    // The whole (raw, template-order) declared array on wholeArrayRevert must collapse
+    // every element finding of the same array into ONE whole-array `add /Entries`.
+    const wholeEntries = [
+      { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+      { Cidr: '10.1.0.0/16', Description: 'corp-b' },
+      { Cidr: '192.168.0.0/24', Description: 'branch' },
+    ];
+    // two per-element findings for the same array (e.g. two shifted entries)
+    const f1 = F({
+      resourceType: 'AWS::EC2::PrefixList',
+      path: 'Entries.1.Description',
+      desired: 'corp-b',
+      actual: 'HACKED',
+      wholeArrayRevert: { path: 'Entries', value: wholeEntries },
+    });
+    const f2 = F({
+      resourceType: 'AWS::EC2::PrefixList',
+      path: 'Entries.2.Cidr',
+      desired: '192.168.0.0/24',
+      actual: '10.0.0.0/16',
+      wholeArrayRevert: { path: 'Entries', value: wholeEntries },
+    });
+    const plan = buildRevertPlan([f1, f2], undefined);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('cc');
+    expect(plan.items[0]!.ops).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Entries',
+      value: wholeEntries,
+    });
+  });
+
+  it('unordered-object-array already at whole-array path (length-mismatch drift) is NOT rewritten', () => {
+    // A finding whose path is ALREADY the whole array — e.g. an SG whose live rules
+    // reflect sibling resources so the array LENGTHS differ — keeps its own path/value;
+    // the collapse only fires for per-element (sub-path) findings.
+    const declaredRules = [{ CidrIp: '10.0.0.0/8', IpProtocol: 'tcp', FromPort: 443, ToPort: 443 }];
+    const f = F({
+      resourceType: 'AWS::EC2::SecurityGroup',
+      path: 'SecurityGroupIngress',
+      desired: declaredRules,
+      actual: [...declaredRules, { CidrIp: '0.0.0.0/0', IpProtocol: '-1' }],
+      wholeArrayRevert: { path: 'SecurityGroupIngress', value: declaredRules },
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'add', path: '/SecurityGroupIngress' });
+  });
+
   it('ManagedPolicy attachment detach -> SDK item, op carries the member on attributeKey', () => {
     // a declared-but-detached Role finding (path Roles, attributeKey = role name) must
     // route to the SDK writer (ManagedPolicy is a whole-type writer) and carry the

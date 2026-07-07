@@ -1750,6 +1750,13 @@ export function classifyResource(
         path: d.path,
         desired: d.stateValue,
         actual: d.awsValue,
+        // An UNORDERED_OBJECT_ARRAY element drift: the array was sorted on BOTH sides
+        // before this per-element diff, so `d.path`'s index is the SORTED position, which
+        // does NOT map to the live array's raw index — a Cloud Control sub-path patch would
+        // hit the wrong live element. Carry the WHOLE (raw, template-order) declared array so
+        // the revert plan collapses these into one whole-array replacement. The REPORT still
+        // shows this precise per-element line; only revert reads `wholeArrayRevert`.
+        ...(unorderedObjArray ? { wholeArrayRevert: { path: k, value: v } } : {}),
       });
     }
   }
