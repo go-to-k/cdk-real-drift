@@ -1,3 +1,10 @@
+## [0.1.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.7...v0.1.8) (2026-07-07)
+
+
+### Bug Fixes
+
+* **revert:** add Elastic Beanstalk SDK writers (avoid spurious CC ServiceRole error) ([#600](https://github.com/go-to-k/cdk-real-drift/issues/600)) ([4e788db](https://github.com/go-to-k/cdk-real-drift/commit/4e788db9ce4f71fac7127339be23798e1658bcd7))
+
 ## [0.1.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.1.6...v0.1.7) (2026-07-07)
 
 
