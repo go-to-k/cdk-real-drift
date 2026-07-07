@@ -1,0 +1,123 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Service",
+    "resourceType": "AWS::AppRunner::Service",
+    "physicalId": "arn:aws:apprunner:us-east-1:111111111111:service/cdkrd-apprunner-rich/d4f0d555eb3b41078880b7626c6ab1d9",
+    "constructPath": "CdkRealDriftIntegAppRunnerServiceRich/Service",
+    "declared": {
+      "InstanceConfiguration": {
+        "Cpu": "1024",
+        "Memory": "2048"
+      },
+      "ServiceName": "cdkrd-apprunner-rich",
+      "SourceConfiguration": {
+        "AutoDeploymentsEnabled": false,
+        "ImageRepository": {
+          "ImageConfiguration": {
+            "Port": "8000"
+          },
+          "ImageIdentifier": "public.ecr.aws/aws-containers/hello-app-runner:latest",
+          "ImageRepositoryType": "ECR_PUBLIC"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "Status": "RUNNING",
+    "HealthCheckConfiguration": {
+      "Path": "/",
+      "UnhealthyThreshold": 5,
+      "Timeout": 2,
+      "HealthyThreshold": 1,
+      "Protocol": "TCP",
+      "Interval": 5
+    },
+    "ServiceName": "cdkrd-apprunner-rich",
+    "InstanceConfiguration": {
+      "Memory": "2048",
+      "Cpu": "1024"
+    },
+    "ObservabilityConfiguration": {
+      "ObservabilityEnabled": false
+    },
+    "SourceConfiguration": {
+      "ImageRepository": {
+        "ImageIdentifier": "public.ecr.aws/aws-containers/hello-app-runner:latest",
+        "ImageConfiguration": {
+          "RuntimeEnvironmentSecrets": [],
+          "RuntimeEnvironmentVariables": [],
+          "Port": "8000"
+        },
+        "ImageRepositoryType": "ECR_PUBLIC"
+      },
+      "AutoDeploymentsEnabled": false
+    },
+    "ServiceUrl": "qnmmvkvtyr.us-east-1.awsapprunner.com",
+    "NetworkConfiguration": {
+      "IpAddressType": "IPV4",
+      "EgressConfiguration": {
+        "EgressType": "DEFAULT"
+      },
+      "IngressConfiguration": {
+        "IsPubliclyAccessible": true
+      }
+    },
+    "ServiceArn": "arn:aws:apprunner:us-east-1:111111111111:service/cdkrd-apprunner-rich/d4f0d555eb3b41078880b7626c6ab1d9",
+    "ServiceId": "d4f0d555eb3b41078880b7626c6ab1d9"
+  },
+  "schema": {
+    "readOnly": ["ServiceArn", "ServiceId", "ServiceUrl", "Status"],
+    "writeOnly": ["AutoScalingConfigurationArn", "Tags"],
+    "createOnly": ["EncryptionConfiguration", "ServiceName", "Tags"],
+    "readOnlyPaths": ["ServiceArn", "ServiceId", "ServiceUrl", "Status"],
+    "writeOnlyPaths": ["AutoScalingConfigurationArn", "Tags"],
+    "createOnlyPaths": ["EncryptionConfiguration", "ServiceName", "Tags"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::AppRunner::Service",
+      "path": "HealthCheckConfiguration",
+      "actual": {
+        "Path": "/",
+        "UnhealthyThreshold": 5,
+        "Timeout": 2,
+        "HealthyThreshold": 1,
+        "Protocol": "TCP",
+        "Interval": 5
+      },
+      "physicalId": "arn:aws:apprunner:us-east-1:111111111111:service/cdkrd-apprunner-rich/d4f0d555eb3b41078880b7626c6ab1d9",
+      "constructPath": "CdkRealDriftIntegAppRunnerServiceRich/Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Service",
+      "resourceType": "AWS::AppRunner::Service",
+      "path": "NetworkConfiguration",
+      "actual": {
+        "IpAddressType": "IPV4",
+        "EgressConfiguration": {
+          "EgressType": "DEFAULT"
+        },
+        "IngressConfiguration": {
+          "IsPubliclyAccessible": true
+        }
+      },
+      "physicalId": "arn:aws:apprunner:us-east-1:111111111111:service/cdkrd-apprunner-rich/d4f0d555eb3b41078880b7626c6ab1d9",
+      "constructPath": "CdkRealDriftIntegAppRunnerServiceRich/Service"
+    }
+  ]
+}

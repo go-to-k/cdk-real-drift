@@ -8139,6 +8139,25 @@ describe('API Gateway default-config first-run folds', () => {
       )
     ).toBe(true);
     expect(matchesKnownDefault({ enabled: false }, { enabled: true })).toBe(false);
+    // AppRunner NetworkConfiguration (bug-hunt apprunner-service-rich): the whole
+    // undeclared default folds, but flipping the nested IngressConfiguration to private
+    // (IsPubliclyAccessible:false) is a real out-of-band change and must NOT fold.
+    const netDef = {
+      IpAddressType: 'IPV4',
+      EgressConfiguration: { EgressType: 'DEFAULT' },
+      IngressConfiguration: { IsPubliclyAccessible: true },
+    };
+    expect(matchesKnownDefault(netDef, netDef)).toBe(true);
+    expect(
+      matchesKnownDefault(
+        {
+          IpAddressType: 'IPV4',
+          EgressConfiguration: { EgressType: 'DEFAULT' },
+          IngressConfiguration: { IsPubliclyAccessible: false },
+        },
+        netDef
+      )
+    ).toBe(false);
   });
 
   it('RestApi undeclared EndpointConfiguration folds to atDefault even when AWS omits IpAddressType', () => {

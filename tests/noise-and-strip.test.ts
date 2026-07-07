@@ -898,6 +898,43 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('AppRunner + Transfer first-run defaults (bug-hunt: apprunner-service-rich / transfer-server-rich)', () => {
+    // Constant AWS-assigned first-run defaults a fresh service/server reads back
+    // without declaring them; equality-gated (subset-tolerant for the objects), so a
+    // value set away from the default still surfaces. Exercised live and by the
+    // AWS__AppRunner__Service / AWS__Transfer__Server corpus cases.
+    // An App Runner service that declares neither knob reads back the TCP health check
+    // and the public IPV4 DEFAULT-egress network.
+    expect(KNOWN_DEFAULTS['AWS::AppRunner::Service']).toEqual({
+      HealthCheckConfiguration: {
+        Protocol: 'TCP',
+        Path: '/',
+        Interval: 5,
+        Timeout: 2,
+        HealthyThreshold: 1,
+        UnhealthyThreshold: 5,
+      },
+      NetworkConfiguration: {
+        IpAddressType: 'IPV4',
+        EgressConfiguration: { EgressType: 'DEFAULT' },
+        IngressConfiguration: { IsPubliclyAccessible: true },
+      },
+    });
+    // A Transfer server assigns the stable default security policy, an S3 domain, and
+    // directory-listing optimization DISABLED when those are omitted.
+    expect(KNOWN_DEFAULTS['AWS::Transfer::Server']).toEqual({
+      IpAddressType: 'IPV4',
+      ProtocolDetails: {
+        PassiveIp: 'AUTO',
+        SetStatOption: 'DEFAULT',
+        TlsSessionResumptionMode: 'ENFORCED',
+      },
+      SecurityPolicyName: 'TransferSecurityPolicy-2018-11',
+      Domain: 'S3',
+      S3StorageOptions: { DirectoryListingOptimization: 'DISABLED' },
+    });
+  });
+
   it('isCfnTemplateNonAsciiMask: GetTemplate `?`-masked non-ASCII declared value is not drift', () => {
     // GetTemplate returns the deployed template with every non-ASCII char as `?`
     // (one per codepoint). The declared side is corrupted; the live side is intact.
