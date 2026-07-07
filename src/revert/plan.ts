@@ -89,6 +89,11 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // `remove` revert of an out-of-band `true` is a silent no-op), so write the `false`
   // default explicitly.
   'AWS::Cognito::IdentityPool\0AllowClassicFlow',
+  // Transfer UpdateServer ignores an omitted SecurityPolicyName (live-observed: a
+  // `remove` revert of an out-of-band non-default policy reports SUCCESS yet the live
+  // value persists), so write the default policy (TransferSecurityPolicy-2018-11) back
+  // explicitly. The value comes from KNOWN_DEFAULTS.
+  'AWS::Transfer::Server\0SecurityPolicyName',
 ]);
 
 /**

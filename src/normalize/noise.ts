@@ -9,6 +9,28 @@
 // entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // An App Runner service that declares neither HealthCheckConfiguration nor
+  // NetworkConfiguration reads both back fully materialized with AWS's constant
+  // first-run defaults — a TCP health check and a public IPV4 DEFAULT-egress network.
+  // Equality-gated (subset-tolerant), so a user who declares any of these knobs pushes
+  // the property out of the undeclared tier, and an out-of-band change to any sub-field
+  // (e.g. IsPubliclyAccessible=false, Interval=10) no longer matches and re-surfaces.
+  // Observed live on a fresh RUNNING service (apprunner-service-rich, 2026-07-07).
+  'AWS::AppRunner::Service': {
+    HealthCheckConfiguration: {
+      Protocol: 'TCP',
+      Path: '/',
+      Interval: 5,
+      Timeout: 2,
+      HealthyThreshold: 1,
+      UnhealthyThreshold: 5,
+    },
+    NetworkConfiguration: {
+      IpAddressType: 'IPV4',
+      EgressConfiguration: { EgressType: 'DEFAULT' },
+      IngressConfiguration: { IsPubliclyAccessible: true },
+    },
+  },
   // A Managed Service for Apache Flink application that declares no ApplicationMode
   // reads back STREAMING — the constant service default for Flink runtimes (the only
   // other value, INTERACTIVE, requires a Zeppelin/Studio runtime, a different declared
@@ -990,6 +1012,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       PassiveIp: 'AUTO',
       SetStatOption: 'DEFAULT',
       TlsSessionResumptionMode: 'ENFORCED',
+    },
+    // A server created without SecurityPolicyName is assigned AWS's stable default
+    // policy (TransferSecurityPolicy-2018-11 — kept as the default-for-new-servers for
+    // backward compatibility even as AWS ships newer named policies). Equality-gated so
+    // a user picking a different policy (a meaningful security change) still surfaces.
+    SecurityPolicyName: 'TransferSecurityPolicy-2018-11',
+    // Domain is create-only and defaults to S3 when omitted; equality-gated so an
+    // EFS-domain server that declared it is unaffected (it never reaches undeclared).
+    Domain: 'S3',
+    // S3StorageOptions defaults to directory-listing optimization DISABLED.
+    S3StorageOptions: {
+      DirectoryListingOptimization: 'DISABLED',
     },
   },
   'AWS::DataSync::Task': {

@@ -1,0 +1,129 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Server",
+    "resourceType": "AWS::Transfer::Server",
+    "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+    "constructPath": "CdkRealDriftIntegTransferServerRich/Server",
+    "declared": {
+      "EndpointType": "PUBLIC",
+      "IdentityProviderType": "SERVICE_MANAGED",
+      "LoggingRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegTransferServer-LoggingRole0BCFB29B-sEXvbYZR3jtI",
+      "Protocols": ["SFTP"]
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "IPV4",
+    "LoggingRole": "arn:aws:iam::111111111111:role/CdkRealDriftIntegTransferServer-LoggingRole0BCFB29B-sEXvbYZR3jtI",
+    "Protocols": ["SFTP"],
+    "StructuredLogDestinations": [],
+    "ServerId": "s-754a229b4fca4b2b9",
+    "As2ServiceManagedEgressIpAddresses": [],
+    "State": "ONLINE",
+    "EndpointType": "PUBLIC",
+    "SecurityPolicyName": "TransferSecurityPolicy-2018-11",
+    "ProtocolDetails": {
+      "PassiveIp": "AUTO",
+      "SetStatOption": "DEFAULT",
+      "TlsSessionResumptionMode": "ENFORCED"
+    },
+    "S3StorageOptions": {
+      "DirectoryListingOptimization": "DISABLED"
+    },
+    "Arn": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+    "Domain": "S3",
+    "IdentityProviderType": "SERVICE_MANAGED",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegTransferServerRich/f0383580-79f5-11f1-9f12-0e7e4208b1b1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegTransferServerRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Server",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "As2ServiceManagedEgressIpAddresses", "ServerId", "State"],
+    "writeOnly": [],
+    "createOnly": ["Domain"],
+    "readOnlyPaths": ["Arn", "As2ServiceManagedEgressIpAddresses", "ServerId", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Domain"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "As2ServiceManagedEgressIpAddresses",
+      "EndpointDetails.SecurityGroupIds",
+      "ProtocolDetails.As2Transports",
+      "Protocols",
+      "StructuredLogDestinations"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Server",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "IpAddressType",
+      "actual": "IPV4",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+      "constructPath": "CdkRealDriftIntegTransferServerRich/Server"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Server",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "SecurityPolicyName",
+      "actual": "TransferSecurityPolicy-2018-11",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+      "constructPath": "CdkRealDriftIntegTransferServerRich/Server"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Server",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "ProtocolDetails",
+      "actual": {
+        "PassiveIp": "AUTO",
+        "SetStatOption": "DEFAULT",
+        "TlsSessionResumptionMode": "ENFORCED"
+      },
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+      "constructPath": "CdkRealDriftIntegTransferServerRich/Server"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Server",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "S3StorageOptions",
+      "actual": {
+        "DirectoryListingOptimization": "DISABLED"
+      },
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+      "constructPath": "CdkRealDriftIntegTransferServerRich/Server"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Server",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "Domain",
+      "actual": "S3",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-754a229b4fca4b2b9",
+      "constructPath": "CdkRealDriftIntegTransferServerRich/Server"
+    }
+  ]
+}

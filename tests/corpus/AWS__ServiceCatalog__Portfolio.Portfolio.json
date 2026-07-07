@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Portfolio",
+    "resourceType": "AWS::ServiceCatalog::Portfolio",
+    "physicalId": "port-bfvh35v5xa6ee",
+    "constructPath": "CdkRealDriftIntegServiceCatalogPortfolioRich/Portfolio",
+    "declared": {
+      "Description": "cdkrd service catalog portfolio rich",
+      "DisplayName": "cdkrd-portfolio-rich",
+      "ProviderName": "cdkrd"
+    }
+  },
+  "liveRaw": {
+    "ProviderName": "cdkrd",
+    "Description": "cdkrd service catalog portfolio rich",
+    "DisplayName": "cdkrd-portfolio-rich",
+    "Id": "port-bfvh35v5xa6ee",
+    "PortfolioName": "cdkrd-portfolio-rich",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Id", "PortfolioName"],
+    "writeOnly": ["AcceptLanguage"],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "PortfolioName"],
+    "writeOnlyPaths": ["AcceptLanguage"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -305,6 +305,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Transfer Server SecurityPolicyName (SET-DEFAULT) -> add op writing the default policy, not a no-op remove', () => {
+    // AWS::Transfer::Server SecurityPolicyName is in REVERT_SET_DEFAULT_PATHS: UpdateServer
+    // leaves the policy UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
+    // non-default policy is a silent no-op (Cloud Control reports SUCCESS yet the live
+    // TransferSecurityPolicy-2020-06 persists; proven live). Revert must write the stable
+    // default (TransferSecurityPolicy-2018-11) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Transfer::Server',
+      path: 'SecurityPolicyName',
+      actual: 'TransferSecurityPolicy-2020-06',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SecurityPolicyName',
+      value: 'TransferSecurityPolicy-2018-11',
+      prior: 'TransferSecurityPolicy-2020-06',
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
