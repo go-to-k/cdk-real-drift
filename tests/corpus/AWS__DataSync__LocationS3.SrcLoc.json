@@ -1,0 +1,90 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SrcLoc",
+    "resourceType": "AWS::DataSync::LocationS3",
+    "physicalId": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+    "constructPath": "CdkRealDriftIntegDataSyncRich/SrcLoc",
+    "declared": {
+      "S3BucketArn": "arn:aws:s3:::cdkrd-ds-src-111111111111",
+      "S3Config": {
+        "BucketAccessRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDataSyncRich-DsRole9B0CCAF1-cVz0MmYK0xqy"
+      },
+      "Subdirectory": "/in"
+    }
+  },
+  "liveRaw": {
+    "S3StorageClass": "STANDARD",
+    "S3Config": {
+      "BucketAccessRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegDataSyncRich-DsRole9B0CCAF1-cVz0MmYK0xqy"
+    },
+    "LocationUri": "s3://cdkrd-ds-src-111111111111/in/",
+    "LocationArn": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegDataSyncRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SrcLoc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegDataSyncRich/0169a6e0-79ec-11f1-a04f-0e62a9b969df",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["LocationArn", "LocationUri"],
+    "writeOnly": ["S3BucketArn", "Subdirectory"],
+    "createOnly": ["S3BucketArn"],
+    "readOnlyPaths": ["LocationArn", "LocationUri"],
+    "writeOnlyPaths": ["S3BucketArn", "Subdirectory"],
+    "createOnlyPaths": ["S3BucketArn"],
+    "defaults": {
+      "S3StorageClass": "STANDARD"
+    },
+    "defaultPaths": {
+      "S3StorageClass": "STANDARD"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "SrcLoc",
+      "resourceType": "AWS::DataSync::LocationS3",
+      "path": "S3BucketArn",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/SrcLoc"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "SrcLoc",
+      "resourceType": "AWS::DataSync::LocationS3",
+      "path": "Subdirectory",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/SrcLoc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SrcLoc",
+      "resourceType": "AWS::DataSync::LocationS3",
+      "path": "S3StorageClass",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/SrcLoc"
+    }
+  ]
+}

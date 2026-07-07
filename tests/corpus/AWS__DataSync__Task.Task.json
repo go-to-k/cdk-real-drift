@@ -1,0 +1,214 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Task",
+    "resourceType": "AWS::DataSync::Task",
+    "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+    "constructPath": "CdkRealDriftIntegDataSyncRich/Task",
+    "declared": {
+      "DestinationLocationArn": "arn:aws:datasync:us-east-1:111111111111:location/loc-04cf76201d4fbe02b",
+      "Name": "cdkrd-ds-task",
+      "Options": {
+        "LogLevel": "OFF",
+        "OverwriteMode": "ALWAYS",
+        "TransferMode": "CHANGED",
+        "VerifyMode": "ONLY_FILES_TRANSFERRED"
+      },
+      "SourceLocationArn": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded"
+    }
+  },
+  "liveRaw": {
+    "Status": "AVAILABLE",
+    "SourceNetworkInterfaceArns": [],
+    "DestinationLocationArn": "arn:aws:datasync:us-east-1:111111111111:location/loc-04cf76201d4fbe02b",
+    "Options": {
+      "VerifyMode": "ONLY_FILES_TRANSFERRED",
+      "Gid": "NONE",
+      "Atime": "BEST_EFFORT",
+      "OverwriteMode": "ALWAYS",
+      "PreserveDevices": "NONE",
+      "Mtime": "PRESERVE",
+      "TaskQueueing": "ENABLED",
+      "TransferMode": "CHANGED",
+      "LogLevel": "OFF",
+      "ObjectTags": "PRESERVE",
+      "Uid": "NONE",
+      "BytesPerSecond": -1,
+      "PosixPermissions": "NONE",
+      "PreserveDeletedFiles": "PRESERVE",
+      "SecurityDescriptorCopyFlags": "NONE"
+    },
+    "Excludes": [],
+    "TaskMode": "BASIC",
+    "Name": "cdkrd-ds-task",
+    "TaskArn": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+    "Includes": [],
+    "DestinationNetworkInterfaceArns": [],
+    "Schedule": {},
+    "SourceLocationArn": "arn:aws:datasync:us-east-1:111111111111:location/loc-0f0c8cdfe1bd8cded",
+    "Tags": [
+      {
+        "Value": "Task",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegDataSyncRich",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegDataSyncRich/0169a6e0-79ec-11f1-a04f-0e62a9b969df",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "DestinationNetworkInterfaceArns",
+      "SourceNetworkInterfaceArns",
+      "Status",
+      "TaskArn"
+    ],
+    "writeOnly": [],
+    "createOnly": ["DestinationLocationArn", "SourceLocationArn", "TaskMode"],
+    "readOnlyPaths": [
+      "DestinationNetworkInterfaceArns",
+      "SourceNetworkInterfaceArns",
+      "Status",
+      "TaskArn"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DestinationLocationArn", "SourceLocationArn", "TaskMode"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["DestinationNetworkInterfaceArns", "SourceNetworkInterfaceArns"],
+    "unorderedObjectArrayPaths": ["Excludes", "Includes"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "TaskMode",
+      "actual": "BASIC",
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.Gid",
+      "actual": "NONE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.Atime",
+      "actual": "BEST_EFFORT",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.PreserveDevices",
+      "actual": "NONE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.Mtime",
+      "actual": "PRESERVE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.TaskQueueing",
+      "actual": "ENABLED",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.ObjectTags",
+      "actual": "PRESERVE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.Uid",
+      "actual": "NONE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.BytesPerSecond",
+      "actual": -1,
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.PosixPermissions",
+      "actual": "NONE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.PreserveDeletedFiles",
+      "actual": "PRESERVE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::DataSync::Task",
+      "path": "Options.SecurityDescriptorCopyFlags",
+      "actual": "NONE",
+      "nested": true,
+      "physicalId": "arn:aws:datasync:us-east-1:111111111111:task/task-01953111e9a9cd335",
+      "constructPath": "CdkRealDriftIntegDataSyncRich/Task"
+    }
+  ]
+}
