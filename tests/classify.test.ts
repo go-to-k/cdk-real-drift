@@ -3844,6 +3844,42 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  describe('EC2 PrefixList Entries reordered (object set keyed by Cidr ∉ IDENTITY_FIELDS, found by ec2-prefixlist-rich)', () => {
+    const T = 'AWS::EC2::PrefixList';
+    const declared = {
+      Entries: [
+        { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+        { Cidr: '10.1.0.0/16', Description: 'corp-b' },
+        { Cidr: '192.168.0.0/24', Description: 'branch' },
+      ],
+    };
+
+    it('AWS returning Entries reordered by an out-of-band modify is NOT drift', () => {
+      // A ModifyManagedPrefixList reorders the set; the same entries in a different
+      // order must not false-flag every shifted entry's Cidr/Description.
+      const live = {
+        Entries: [
+          { Cidr: '192.168.0.0/24', Description: 'branch' },
+          { Cidr: '10.1.0.0/16', Description: 'corp-b' },
+          { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live)).toEqual([]);
+    });
+
+    it('a genuine entry description change still surfaces (no over-fold), even when reordered', () => {
+      // 10.1.0.0/16 description edited AND the set reordered — exactly one real drift.
+      const live = {
+        Entries: [
+          { Cidr: '192.168.0.0/24', Description: 'branch' },
+          { Cidr: '10.1.0.0/16', Description: 'HACKED' },
+          { Cidr: '10.0.0.0/16', Description: 'corp-a' },
+        ],
+      };
+      expect(declaredTiers(T, declared, live).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('AutoScaling group MetricsCollection.Metrics / NotificationConfigurations.NotificationTypes reordered (nested scalar sets, found by asg-notification-metrics)', () => {
     const T = 'AWS::AutoScaling::AutoScalingGroup';
 

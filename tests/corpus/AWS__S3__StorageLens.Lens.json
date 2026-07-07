@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Lens",
+    "resourceType": "AWS::S3::StorageLens",
+    "physicalId": "cdkrd-storagelens-rich",
+    "constructPath": "CdkRealDriftIntegS3StorageLensRich/Lens",
+    "declared": {
+      "StorageLensConfiguration": {
+        "AccountLevel": {
+          "ActivityMetrics": {
+            "IsEnabled": true
+          },
+          "BucketLevel": {
+            "ActivityMetrics": {
+              "IsEnabled": true
+            }
+          }
+        },
+        "Id": "cdkrd-storagelens-rich",
+        "IsEnabled": true
+      }
+    }
+  },
+  "liveRaw": {
+    "StorageLensConfiguration": {
+      "AccountLevel": {
+        "ActivityMetrics": {
+          "IsEnabled": true
+        },
+        "BucketLevel": {
+          "ActivityMetrics": {
+            "IsEnabled": true
+          }
+        }
+      },
+      "IsEnabled": true,
+      "Id": "cdkrd-storagelens-rich",
+      "StorageLensArn": "arn:aws:s3:us-east-1:111111111111:storage-lens/cdkrd-storagelens-rich"
+    },
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["StorageLensConfiguration.StorageLensArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["StorageLensConfiguration.Id"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "StorageLensConfiguration.AccountLevel.StorageLensGroupLevel.StorageLensGroupSelectionCriteria.Exclude",
+      "StorageLensConfiguration.AccountLevel.StorageLensGroupLevel.StorageLensGroupSelectionCriteria.Include",
+      "StorageLensConfiguration.Exclude.Buckets",
+      "StorageLensConfiguration.Exclude.Regions",
+      "StorageLensConfiguration.Include.Buckets",
+      "StorageLensConfiguration.Include.Regions"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

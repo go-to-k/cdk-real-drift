@@ -79,6 +79,17 @@ export interface Finding {
   // policy (real IAM grants). Mirrors DesiredResource.siblingPolicyNames; only the
   // 'unresolved' sentinel is propagated (the resolved case is already filtered out).
   siblingPolicyNames?: 'unresolved' | undefined;
+  // declared tier only: this per-element finding lives inside an UNORDERED_OBJECT_ARRAY
+  // (a SET the service returns REORDERED — SecurityGroup rules, PrefixList Entries, …).
+  // classify sorts BOTH sides by canonical JSON before the positional subset diff, so the
+  // finding's array-index segment is the SORTED position, which does NOT map to the live
+  // array's raw index. A Cloud Control index patch (`add /Entries/2/Description`) would then
+  // hit the WRONG live element and corrupt it (proven live on a reordered PrefixList). So
+  // revert must NOT sub-path patch such a finding: it carries the WHOLE declared array here
+  // and the revert plan collapses every per-element finding of the same array into ONE
+  // whole-array `add /<path>` replacement (converges deterministically regardless of live
+  // order). The per-element REPORT is unaffected — this is revert-only metadata.
+  wholeArrayRevert?: { path: string; value: unknown } | undefined;
 }
 
 // Element-level delta of a recorded-but-changed undeclared identity-keyed object
