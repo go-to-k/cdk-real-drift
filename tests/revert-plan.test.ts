@@ -326,6 +326,40 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('App Runner HealthCheckConfiguration (SET-DEFAULT) -> add op writing the whole default object, not a no-op remove', () => {
+    // AWS::AppRunner::Service HealthCheckConfiguration is in REVERT_SET_DEFAULT_PATHS:
+    // UpdateService leaves the config UNCHANGED when it is OMITTED, so a bare `remove` of an
+    // out-of-band health check is a silent no-op (Cloud Control reports SUCCESS yet the live
+    // Interval:10 persists; proven live). Revert must write the whole default object back —
+    // the first OBJECT-valued SET-DEFAULT entry.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::AppRunner::Service',
+      path: 'HealthCheckConfiguration',
+      actual: {
+        Protocol: 'TCP',
+        Path: '/',
+        Interval: 10,
+        Timeout: 2,
+        HealthyThreshold: 1,
+        UnhealthyThreshold: 5,
+      },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/HealthCheckConfiguration',
+      value: {
+        Protocol: 'TCP',
+        Path: '/',
+        Interval: 5,
+        Timeout: 2,
+        HealthyThreshold: 1,
+        UnhealthyThreshold: 5,
+      },
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
