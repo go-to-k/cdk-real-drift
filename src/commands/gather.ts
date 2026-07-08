@@ -1,7 +1,10 @@
 // Shared read+classify pipeline used by both `check` and `record`.
 
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
-import { CloudFormationClient } from '@aws-sdk/client-cloudformation';
+import {
+  CloudFormationClient,
+  DescribeStackResourcesCommand,
+} from '@aws-sdk/client-cloudformation';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { classifyResource, normalizeLiveModel } from '../diff/classify.js';
@@ -129,6 +132,58 @@ async function readAddedModel(
   } catch {
     return { model: c.live, ok: false };
   }
+}
+
+// A child enumerated off a declared parent but ABSENT from that parent's own template
+// is only "out of band" if NO CloudFormation stack manages it. The common false
+// positive is a cross-stack reference: a child resource CDK places in a SIBLING stack
+// of the same app (e.g. `topic.addSubscription(new SqsSubscription(queue))` puts the
+// `AWS::SNS::Subscription` in the QUEUE's stack to avoid a dependency cycle, so checking
+// the TOPIC's stack finds a live subscription not in that template) — it is fully
+// CFn-managed, just by a sibling (#666). DescribeStackResources resolves the owning stack
+// account-wide from the physical id alone, so this fixes both single-stack and multi-stack
+// (`--all`) runs. Only the child types whose CC primaryIdentifier IS the CFn physical id
+// (a bare ARN / UUID — the cross-stack class: SNS Subscription, ELBv2 Listener/Rule,
+// EventBus Rule, Lambda ESM/Alias/Version, AppSync …) are resolvable; the composite-id
+// children (`RestApiId|…`, `UserPoolId|…`) are within-stack API Gateway / Cognito
+// sub-resources that this class never covers, so they are left alone (skipped by the `|`
+// guard). Fails OPEN: any error (denied, throttled, or a physical id CFn does not accept)
+// keeps the current behavior — the child is still reported as `added` rather than silently
+// dropped. Results are memoized per physical id (added candidates are rare, but a shared
+// parent can enumerate the same live child under multiple declared parents).
+export async function isManagedBySiblingStack(
+  cfn: CloudFormationClient,
+  c: AddedChild,
+  cache: Map<string, boolean>
+): Promise<boolean> {
+  const physicalId = c.identifier;
+  // Pipe-composite CC identifiers (`RestApiId|…`, `UserPoolId|…`) are not CloudFormation
+  // physical resource ids — they belong to within-stack API Gateway / Cognito sub-resources
+  // outside this cross-stack class, so never spend a call on them. Bare ids that are ARNs
+  // (SNS Subscription, ELBv2 Listener/Rule, EventBus Rule, Lambda Alias/Version) contain
+  // `:` and ARE the class, so `:` is NOT a composite marker here; the lone `:`-joined
+  // composite (API Gateway GatewayResponse `RestApiId:ResponseType`) simply fails the
+  // DescribeStackResources lookup and falls through to "report as added" (fail open).
+  if (physicalId.includes('|')) return false;
+  const cached = cache.get(physicalId);
+  if (cached !== undefined) return cached;
+  let managed = false;
+  try {
+    const res = await cfn.send(
+      new DescribeStackResourcesCommand({ PhysicalResourceId: physicalId })
+    );
+    // DescribeStackResources(PhysicalResourceId) returns every resource of the OWNING
+    // stack; confirm the one matching this child's id + type is present (a stack owns it).
+    managed = (res.StackResources ?? []).some(
+      (r) => r.PhysicalResourceId === physicalId && r.ResourceType === c.resourceType
+    );
+  } catch {
+    // No stack owns this physical id (ValidationError "does not exist") -> genuinely out of
+    // band; or a permission/throttle error -> fail open to the current "report as added".
+    managed = false;
+  }
+  cache.set(physicalId, managed);
+  return managed;
 }
 
 interface ClassifyOpts {
@@ -397,6 +452,7 @@ export async function gatherFindings(
   // GetResource) and normalized so `record` can snapshot it and a later change surfaces
   // as drift (PR4). An enumeration failure is a coverage gap, not drift — surfaced as a
   // `skipped` finding on the parent so it is never silently lost.
+  const siblingStackCache = new Map<string, boolean>();
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
@@ -413,6 +469,10 @@ export async function gatherFindings(
     try {
       const children = await enumerate({ parent: r, desired, region });
       for (const c of children) {
+        // A child CDK placed in a SIBLING stack of the same app (cross-stack refs, #666)
+        // is fully CloudFormation-managed — not out of band. Skip it rather than false-flag
+        // it as `added` (fails open on any resolve error -> still reported).
+        if (await isManagedBySiblingStack(cfn, c, siblingStackCache)) continue;
         const read = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
         findings.push(addedFinding(r, c, read));
       }
