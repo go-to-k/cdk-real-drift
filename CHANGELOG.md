@@ -1,3 +1,11 @@
+## [0.2.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.34...v0.2.35) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** first-run fold gaps on 13+ covered types ([#653](https://github.com/go-to-k/cdk-real-drift/issues/653) corpus-mining batch) ([#706](https://github.com/go-to-k/cdk-real-drift/issues/706)) ([541d7df](https://github.com/go-to-k/cdk-real-drift/commit/541d7df48bccac09436c27940faa2eb33f2bfc7a))
+* **revert:** strip bare-null array husks from a CC revert patch ([#641](https://github.com/go-to-k/cdk-real-drift/issues/641) symptom 2) ([#696](https://github.com/go-to-k/cdk-real-drift/issues/696)) ([11daa22](https://github.com/go-to-k/cdk-real-drift/commit/11daa221ab1bc09d0a843b8603a29c890a72ac64))
+
 ## [0.2.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.33...v0.2.34) (2026-07-08)
 
 
