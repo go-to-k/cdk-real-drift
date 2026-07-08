@@ -100,10 +100,23 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   const known = (): string => discovered.map((s) => s.stackName).join(', ') || 'none';
   for (const name of a.stackNames) {
     if (isGlob(name)) {
+      // Count MATCHES (matchesGlob true), NOT net add() calls: `add` dedups via
+      // `seen`, so a glob hitting an already-added stack is still a match and must
+      // NOT error. A glob that matches ZERO discovered stacks is a hard error,
+      // mirroring the exact-name-typo throw — otherwise `check 'Pord-*' Dev --fail`
+      // (a typo'd prod glob) silently checks nothing for the glob and exits 0, so
+      // CI believes prod was covered.
+      let matched = 0;
       for (const s of discovered) {
-        if (matchesGlob(name, s.stackName))
+        if (matchesGlob(name, s.stackName)) {
+          matched++;
           add(s.stackName, s.region ?? fallbackRegion, s.template);
+        }
       }
+      if (matched === 0)
+        throw new Error(
+          `glob "${name}" matched no stacks defined by the CDK app (found: ${known()})`
+        );
     } else {
       const hit = discovered.find((s) => s.stackName === name);
       if (!hit)
