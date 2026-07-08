@@ -246,6 +246,25 @@ describe('buildResolverContext', () => {
     const ctx = buildResolverContext(template, { L: '' }, {}, 'us-east-1', '999', 'S', 'arn');
     expect(ctx.params.L).toEqual([]);
   });
+
+  it('derives AWS::Partition / AWS::URLSuffix from the region (#730)', () => {
+    // CDK env-agnostic stacks emit ${AWS::Partition} inside nearly every ARN; hard-coding
+    // `aws`/`amazonaws.com` FPs every declared ARN in GovCloud/China/ISO partitions.
+    const partOf = (region: string) => {
+      const ctx = buildResolverContext({}, {}, {}, region, '999', 'S', 'arn');
+      return { p: ctx.pseudo['AWS::Partition'], u: ctx.pseudo['AWS::URLSuffix'] };
+    };
+    expect(partOf('us-east-1')).toEqual({ p: 'aws', u: 'amazonaws.com' });
+    expect(partOf('eu-west-3')).toEqual({ p: 'aws', u: 'amazonaws.com' });
+    expect(partOf('us-gov-west-1')).toEqual({ p: 'aws-us-gov', u: 'amazonaws.com' });
+    expect(partOf('cn-north-1')).toEqual({ p: 'aws-cn', u: 'amazonaws.com.cn' });
+    expect(partOf('cn-northwest-1')).toEqual({ p: 'aws-cn', u: 'amazonaws.com.cn' });
+    expect(partOf('us-iso-east-1')).toEqual({ p: 'aws-iso', u: 'c2s.ic.gov' });
+    // us-isob-/us-isof- must NOT be swallowed by the us-iso- prefix test.
+    expect(partOf('us-isob-east-1')).toEqual({ p: 'aws-iso-b', u: 'sc2s.sgov.gov' });
+    expect(partOf('us-isof-south-1')).toEqual({ p: 'aws-iso-f', u: 'csp.hci.ic.gov' });
+    expect(partOf('eu-isoe-west-1')).toEqual({ p: 'aws-iso-e', u: 'cloud.adc-e.uk' });
+  });
 });
 
 describe('parseTemplateBody', () => {
