@@ -1299,6 +1299,52 @@ export function classifyResource(
   if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
     knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
   }
+  // #678: a PRIVATE RestApi (declared EndpointConfiguration.Types includes 'PRIVATE') gets
+  // DIFFERENT AWS defaults than an EDGE/REGIONAL api — SecurityPolicy TLS_1_2 (not TLS_1_0)
+  // and EndpointConfiguration.IpAddressType 'dualstack' (not 'ipv4'), both live-verified.
+  // Derive the expected default from the declared endpoint type and equality-gate it (fold
+  // tier 2): an out-of-band flip of either value away from the PRIVATE default still
+  // surfaces. The base EDGE/REGIONAL constants stay for the other endpoint types.
+  if (resourceType === 'AWS::ApiGateway::RestApi') {
+    const types = (declared['EndpointConfiguration'] as Record<string, unknown> | undefined)?.[
+      'Types'
+    ];
+    if (Array.isArray(types) && types.includes('PRIVATE')) {
+      knownDef = { ...knownDef, SecurityPolicy: 'TLS_1_2' };
+      knownDefPaths = { ...knownDefPaths, 'EndpointConfiguration.IpAddressType': 'dualstack' };
+    }
+  }
+  // #642: a UserPool's undeclared AdminCreateUserConfig.UnusedAccountValidityDays is
+  // Cognito's legacy alias that always MIRRORS the declared
+  // Policies.PasswordPolicy.TemporaryPasswordValidityDays (7 when that too is unset). The
+  // base KNOWN_DEFAULT_PATHS pins the constant 7, so a pool declaring a non-7 temp-password
+  // lifetime false-drifts. Derive the expected value from the declared sibling and
+  // equality-gate it (fold tier 2): an out-of-band change still surfaces.
+  if (resourceType === 'AWS::Cognito::UserPool') {
+    const tpvd = (
+      (declared['Policies'] as Record<string, unknown> | undefined)?.['PasswordPolicy'] as
+        | Record<string, unknown>
+        | undefined
+    )?.['TemporaryPasswordValidityDays'];
+    knownDefPaths = {
+      ...knownDefPaths,
+      'AdminCreateUserConfig.UnusedAccountValidityDays': tpvd ?? 7,
+    };
+  }
+  // #643: a ResourceDataSync declares its destination NESTED (S3Destination.*), but the live
+  // read ALSO echoes BucketName / BucketRegion / SyncFormat as TOP-LEVEL twins (the schema's
+  // legacy flat shape). Fold each undeclared top-level twin against the declared S3Destination
+  // sibling (fold tier 2, equality-gated): a genuinely retargeted destination still surfaces.
+  if (resourceType === 'AWS::SSM::ResourceDataSync') {
+    const s3 = declared['S3Destination'] as Record<string, unknown> | undefined;
+    if (s3 && typeof s3 === 'object') {
+      const twins: Record<string, unknown> = {};
+      for (const key of ['BucketName', 'BucketRegion', 'SyncFormat'] as const) {
+        if (key in s3) twins[key] = s3[key];
+      }
+      knownDef = { ...knownDef, ...twins };
+    }
+  }
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];

@@ -52,7 +52,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Queue4A7E3555",
       "resourceType": "AWS::Batch::JobQueue",
       "path": "JobQueueType",

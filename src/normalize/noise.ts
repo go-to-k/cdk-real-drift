@@ -397,6 +397,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGateway::DomainName': {
     SecurityPolicy: 'TLS_1_2',
   },
+  // A GatewayResponse that declares only its ResponseType (+ RestApiId, StatusCode)
+  // reads back AWS's stable default body template for that response type — the
+  // {"message":$context.error.messageString} passthrough (observed live on a fresh
+  // DEFAULT_4XX response). Users add gateway responses for CORS-on-4XX/5XX routinely,
+  // so this is everyday first-run noise. Equality-gated: a customized ResponseTemplates
+  // no longer matches and surfaces. (ResponseParameters:{} folds as trivial-empty.)
+  'AWS::ApiGateway::GatewayResponse': {
+    ResponseTemplates: { 'application/json': '{"message":$context.error.messageString}' },
+  },
   // NOTE: AWS::ApiGateway::Authorizer.AuthType is NOT a KNOWN_DEFAULTS entry — it is
   // folded value-independently via VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS below
   // (AuthType is a derived, non-declarable read-back of the declared Type).
@@ -501,6 +510,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     EncryptionConfiguration: { EncryptionType: 'AES256' },
     ImageTagMutability: 'MUTABLE', // R-noise-sweep: default; switching to IMMUTABLE no longer matches and surfaces
   },
+  // Same default family as AWS::ECR::Repository (above) — the template type was missed.
+  // A creation template that declares only {Prefix, AppliedFor, Description} reads back
+  // AES256 encryption + MUTABLE image tags (observed live). Equality-gated: a template
+  // switching to KMS encryption or IMMUTABLE tags no longer matches and surfaces.
+  'AWS::ECR::RepositoryCreationTemplate': {
+    EncryptionConfiguration: { EncryptionType: 'AES256' },
+    ImageTagMutability: 'MUTABLE',
+  },
   'AWS::Kinesis::Stream': {
     MaxRecordSizeInKiB: 1024,
   },
@@ -510,6 +527,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // projects it); folds an undeclared Standard so it is not noise. A real Advanced /
     // Intelligent-Tiering value still surfaces (undeclared) or compares (declared).
     Tier: 'Standard',
+  },
+  // A ResourceDataSync that declares only its nested S3Destination reads back the
+  // constant SyncType default "SyncToDestination" (observed live). The declared
+  // S3Destination.{BucketName,BucketRegion,SyncFormat} are ALSO echoed as top-level
+  // twins (the schema's legacy flat shape) — those are folded as declared-sibling
+  // echoes in classify.ts (equality-gated against the declared value). Equality-gated:
+  // a sync retargeted to SyncFromSource no longer matches SyncToDestination and surfaces.
+  'AWS::SSM::ResourceDataSync': {
+    SyncType: 'SyncToDestination',
   },
   'AWS::StepFunctions::Activity': {
     EncryptionConfiguration: { Type: 'AWS_OWNED_KEY' },
@@ -556,6 +582,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // longer matches and surfaces. Observed live.
     KeyConfiguration: { KeyType: 'AWS_OWNED_KEY' },
     IssuerConfiguration: { Type: 'ORIGINAL' },
+    // A pool that never configures WebAuthn reads back the constant default
+    // WebAuthnFactorConfiguration "SINGLE_FACTOR" (observed live). Equality-gated: a
+    // pool that enables MULTI_FACTOR WebAuthn no longer matches and surfaces.
+    WebAuthnFactorConfiguration: 'SINGLE_FACTOR',
   },
   // An identity pool that declares no allowClassicFlow reads back AllowClassicFlow=false
   // (the documented default). Equality-gated: switch it on out of band and the value no
@@ -2330,6 +2360,14 @@ export function ebOptionSettingTier(
 //   and "DISABLED" on others (both observed live), depending on how/when the service was
 //   created; neither is "the" default.
 export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
+  //   AWS::Batch::JobQueue.JobQueueType — a queue that declares no JobQueueType reads back
+  //   the type AWS DERIVES from its attached compute environment (ECS_FARGATE for a Fargate
+  //   CE, ECS for EC2, EKS for EKS). The value lives on a DIFFERENT resource (the CE), not in
+  //   the queue's own declared inputs, so it cannot be derived here; and JobQueueType is
+  //   createOnly (immutable — it can never drift out of band). Fold value-independent:
+  //   undeclared + immutable, so whatever type AWS derived is its default, never user intent
+  //   (a user who cares DECLARES it, and it is then compared in the declared loop).
+  'AWS::Batch::JobQueue': new Set(['JobQueueType']),
   //   AWS::ECS::Service.PlatformVersion — a service that declares no platform version reads
   //   back the concrete version AWS provisioned ("1.4.0" today); "use the default/latest" is
   //   satisfied by whatever concrete version is current, so any value is not user intent. (A
@@ -3745,6 +3783,18 @@ export function alignNameValueSubset(
 }
 
 export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
+  // Live-observed on a fresh cloudfront-georestriction deploy: a Distribution's
+  // GeoRestriction.Locations (ISO-3166 country codes for a geo allow/deny list) is
+  // semantically a SET — CloudFront renders it as a country set and does not guarantee
+  // echo order while the distribution propagates, so declared ["US","JP"] can read back
+  // ["JP","US"] on the first check right after deploy (an INTERMITTENT declared-tier FP
+  // that vanishes on re-check). The schema marks Locations uniqueItems:false with no
+  // insertionOrder, so neither the schema fold nor the uniqueItems heuristic catches it.
+  // A positional compare false-drifts the identical country set; a genuine membership
+  // change still changes the multiset. (Same set-reorder class as WAF IPSet / RecordSet.)
+  'AWS::CloudFront::Distribution': new Set([
+    'DistributionConfig.Restrictions.GeoRestriction.Locations',
+  ]),
   'AWS::Cognito::UserPoolClient': new Set([
     'AllowedOAuthFlows',
     'AllowedOAuthScopes',
