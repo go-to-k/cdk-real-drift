@@ -81,17 +81,17 @@
       "tier": "atDefault",
       "logicalId": "Gp2Vol0A540FFC",
       "resourceType": "AWS::EC2::Volume",
-      "path": "KmsKeyId",
-      "actual": "arn:aws:kms:us-east-1:111111111111:key/76039e55-2469-4c94-95ab-e12d8615bb98",
+      "path": "Iops",
+      "actual": 100,
       "physicalId": "vol-035b5abfc83c3e495",
       "constructPath": "CdkRealDriftIntegVpcEpRich/Gp2Vol"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Gp2Vol0A540FFC",
       "resourceType": "AWS::EC2::Volume",
-      "path": "Iops",
-      "actual": 100,
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/76039e55-2469-4c94-95ab-e12d8615bb98",
       "physicalId": "vol-035b5abfc83c3e495",
       "constructPath": "CdkRealDriftIntegVpcEpRich/Gp2Vol"
     },
