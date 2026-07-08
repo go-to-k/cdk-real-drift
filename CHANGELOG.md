@@ -1,3 +1,10 @@
+## [0.2.58](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.57...v0.2.58) (2026-07-08)
+
+
+### Bug Fixes
+
+* **check:** --pre-deploy --strict no longer false-fails on a locally-added resource ([#727](https://github.com/go-to-k/cdk-real-drift/issues/727)) ([#843](https://github.com/go-to-k/cdk-real-drift/issues/843)) ([563ed6d](https://github.com/go-to-k/cdk-real-drift/commit/563ed6df53d7dcce973daa8f969ea02e47f9a2b5))
+
 ## [0.2.57](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.56...v0.2.57) (2026-07-08)
 
 
