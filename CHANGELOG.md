@@ -1,3 +1,11 @@
+## [0.2.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.27...v0.2.28) (2026-07-08)
+
+
+### Bug Fixes
+
+* **baseline:** fold stale recorded entries on resource replacement + template removal ([#674](https://github.com/go-to-k/cdk-real-drift/issues/674), [#675](https://github.com/go-to-k/cdk-real-drift/issues/675)) ([#681](https://github.com/go-to-k/cdk-real-drift/issues/681)) ([ba73c43](https://github.com/go-to-k/cdk-real-drift/commit/ba73c43e9c7e02f3552dbaf28fea19e502a54a01))
+* **revert:** converge revert for ApiGatewayV2 Stage autoDeploy + RestApi Policy JSON-string ([#667](https://github.com/go-to-k/cdk-real-drift/issues/667), [#677](https://github.com/go-to-k/cdk-real-drift/issues/677)) ([#680](https://github.com/go-to-k/cdk-real-drift/issues/680)) ([b424752](https://github.com/go-to-k/cdk-real-drift/commit/b424752a2b8558a85a86011ff7e44d0c5fe1bd10))
+
 ## [0.2.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.26...v0.2.27) (2026-07-08)
 
 
