@@ -1,3 +1,11 @@
+## [0.2.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.24...v0.2.25) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold Firehose declared S3DestinationConfiguration echoed as undeclared ExtendedS3 twin ([#652](https://github.com/go-to-k/cdk-real-drift/issues/652)) ([#670](https://github.com/go-to-k/cdk-real-drift/issues/670)) ([6b31532](https://github.com/go-to-k/cdk-real-drift/commit/6b315326e418ab29dc550df8324086cbc31e4a56))
+* **revert:** Subnet EnableDns64 set-default + Lambda EventInvokeConfig husk strip ([#651](https://github.com/go-to-k/cdk-real-drift/issues/651), [#650](https://github.com/go-to-k/cdk-real-drift/issues/650)) ([#669](https://github.com/go-to-k/cdk-real-drift/issues/669)) ([9967d5d](https://github.com/go-to-k/cdk-real-drift/commit/9967d5dafc45d9633bb4b07676798fbf161f098a))
+
 ## [0.2.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.23...v0.2.24) (2026-07-08)
 
 
