@@ -1,3 +1,10 @@
+## [0.2.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.33...v0.2.34) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** first-run fold gaps on ApiGateway/Cognito/Batch/ECR/SSM/CloudFront ([#642](https://github.com/go-to-k/cdk-real-drift/issues/642), [#643](https://github.com/go-to-k/cdk-real-drift/issues/643), [#668](https://github.com/go-to-k/cdk-real-drift/issues/668), [#678](https://github.com/go-to-k/cdk-real-drift/issues/678)) ([#694](https://github.com/go-to-k/cdk-real-drift/issues/694)) ([125addf](https://github.com/go-to-k/cdk-real-drift/commit/125addfda9dd7e5854b18df8ec3fc521ebd3b2bc))
+
 ## [0.2.33](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.32...v0.2.33) (2026-07-08)
 
 
