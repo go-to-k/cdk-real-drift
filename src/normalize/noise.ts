@@ -3938,6 +3938,19 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // reads back [wildcard, apex]), so a positional compare false-flags the identical
   // alias set as declared drift. Same nested-scalar-set treatment as CachePolicy Headers.
   'AWS::CloudFront::Distribution': new Set(['DistributionConfig.Aliases']),
+  // An IoT ThingType's `ThingTypeProperties.SearchableAttributes` is a nested SCALAR set
+  // (attribute names) that IoT stores as a set and returns in its OWN sorted order —
+  // declared ["serial","model"] reads back ["model","serial"], so a positional compare
+  // false-flags the identical set as a DECLARED drift on a freshly deployed stack. Because
+  // it is declared-tier it SURVIVES `record` (record snapshots only the undeclared
+  // dimension) and makes `revert` loop forever (the service re-sorts after every write), so
+  // `check --fail` stays red on a clean stack (#623). NOTE the CFn resource schema annotates
+  // this array `insertionOrder: true` (+ `uniqueItems: true`), so the schema-driven fold
+  // deliberately does NOT engage — but the live service reorders anyway: the classic
+  // "schema claims ordered, service re-sorts" case this curated allowlist exists for.
+  // sortNestedObjectArrays sorts scalar arrays by canonical JSON, so equal sets align and a
+  // genuine attribute add/remove still differs. Live-proven (hunt 2026-07-08 round E).
+  'AWS::IoT::ThingType': new Set(['ThingTypeProperties.SearchableAttributes']),
   // RULE-OUT (observed-only, NOT folded): a WAFv2 RuleGroup/WebACL rate-based rule's
   // `Rules[].Statement.RateBasedStatement.CustomKeys` is a SET of discriminated-union
   // aggregate-key objects ({UriPath:{}}, {Header:{Name,…}}, {HTTPMethod:{}}, …) with
