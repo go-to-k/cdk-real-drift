@@ -774,6 +774,55 @@ describe('readLive (CC identifier adapters, R74)', () => {
     }
   });
 
+  // #665: ApiGatewayV2 RouteResponse is a 3-SEGMENT composite [ApiId, RouteId,
+  // RouteResponseId] — parent-first, the CFn physical id is only the child
+  // RouteResponseId. Both parents come from the declared Refs (ApiId → Api,
+  // RouteId → Route).
+  it('ApiGatewayV2 RouteResponse: builds the ApiId|RouteId|RouteResponseId 3-seg composite', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::RouteResponse',
+        physicalId: 'pzrk3r',
+        declared: { ApiId: 'hlc1jtf6ml', RouteId: 'r7d6lvr' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('hlc1jtf6ml|r7d6lvr|pzrk3r');
+  });
+
+  it('ApiGatewayV2 RouteResponse: an already-composite physical id is not double-prefixed', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::RouteResponse',
+        physicalId: 'hlc1jtf6ml|r7d6lvr|pzrk3r',
+        declared: { ApiId: 'hlc1jtf6ml', RouteId: 'r7d6lvr' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('hlc1jtf6ml|r7d6lvr|pzrk3r');
+  });
+
+  it('ApiGatewayV2 RouteResponse: an unresolved parent (missing RouteId) falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::RouteResponse',
+        physicalId: 'pzrk3r',
+        declared: { ApiId: 'hlc1jtf6ml' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('pzrk3r');
+  });
+
   // R79: ApplicationAutoScaling ScalingPolicy [Arn, ScalableDimension] — the
   // dimension is parsed from the resolved ScalingTargetId (the ScalableTarget
   // physical id `resourceId|scalableDimension|serviceNamespace`).

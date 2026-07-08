@@ -442,10 +442,38 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     RouteSelectionExpression: '$request.method $request.path',
     IpAddressType: 'ipv4', // R-noise-sweep: default; flipping to dualstack no longer matches and surfaces
     DisableExecuteApiEndpoint: false,
+    // A WebSocket (and HTTP) API that declares no ApiKeySelectionExpression reads back the
+    // documented service default `$request.header.x-api-key`. Equality-gated so a declared /
+    // other selection expression still surfaces — this type covers HTTP APIs too, but the
+    // gate means only an UNDECLARED value exactly equal to this constant folds; any custom
+    // value (or an out-of-band change) no longer matches and re-surfaces as real undeclared
+    // drift. WebSocket API, live-proven 2026-07-08 #664.
+    ApiKeySelectionExpression: '$request.header.x-api-key',
   },
   'AWS::ApiGatewayV2::Integration': {
     ConnectionType: 'INTERNET',
+    // The WebSocket default (29000) is protocol-derived, NOT a single constant: an HTTP-API
+    // integration reads 30000, a WebSocket one reads 29000 (per the CFn schema description).
+    // This pin folds the HTTP 30000; the WebSocket 29000 cannot be equality-gated by a single
+    // constant here without breaking the HTTP fold, and the discriminator (the parent Api's
+    // ProtocolType) is not on the Integration model — folding it needs a tier-2 derivation in
+    // classify.ts, DEFERRED to a follow-up (#664). Until then a WebSocket integration's
+    // undeclared TimeoutInMillis=29000 still surfaces (the residual first-run FP tracked below).
     TimeoutInMillis: 30000,
+    // WebSocket integration constant service defaults, materialized on every route created
+    // with CDK's WebSocketLambdaIntegration when the template declares none of them. All are
+    // equality-gated so a declared / out-of-band-changed value still surfaces. This type ALSO
+    // covers HTTP-API integrations, but the gate makes the fold HTTP-safe:
+    //   - PayloadFormatVersion "1.0" — HTTP-API CDK L2 ALWAYS declares "2.0" (a declared value
+    //     is never folded), and HTTP_PROXY declares "1.0" explicitly (also declared), so an
+    //     equality-gated "1.0" fold can only match an UNDECLARED WebSocket integration.
+    //   - IntegrationMethod "POST" — the AWS_PROXY default method for both protocols; a custom
+    //     declared method (e.g. HTTP_PROXY "ANY") is compared in the declared dimension.
+    //   - PassthroughBehavior "WHEN_NO_MATCH" — the documented default; any other value surfaces.
+    // WebSocket API, live-proven 2026-07-08 #664.
+    PayloadFormatVersion: '1.0',
+    IntegrationMethod: 'POST',
+    PassthroughBehavior: 'WHEN_NO_MATCH',
   },
   'AWS::CodeBuild::Project': {
     TimeoutInMinutes: 60,
@@ -1246,6 +1274,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A WebSocket API Stage whose DefaultRouteSettings declares only throttling (CDK's
+  // WebSocketStage renders just ThrottlingRateLimit / ThrottlingBurstLimit) reads back the
+  // sibling `LoggingLevel: "OFF"` — the documented service default AWS fills into
+  // DefaultRouteSettings. Equality-gated so turning logging on out of band (INFO/ERROR) no
+  // longer matches and re-surfaces as real undeclared drift. (The `DataTraceEnabled` /
+  // `DetailedMetricsEnabled` false siblings fold via isTrivialEmpty and do not surface.)
+  // WebSocket API, live-proven 2026-07-08 #664.
+  'AWS::ApiGatewayV2::Stage': {
+    'DefaultRouteSettings.LoggingLevel': 'OFF',
+  },
   // A Service Catalog product's provisioning artifact that declares no Type reads back the
   // constant "CLOUD_FORMATION_TEMPLATE" (observed live, hunt 2026-07-08, #625) — the nested
   // twin of the top-level ProductType fold above. Equality-gated, so an artifact created as a
