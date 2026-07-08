@@ -181,10 +181,15 @@ describe('baseline', () => {
   });
 
   describe('atDefault reconciliation (R86 — folded inventory, never drift, never a false removal)', () => {
-    const atDefault = (logicalId: string, path: string, value: unknown): Finding => ({
+    const atDefault = (
+      logicalId: string,
+      path: string,
+      value: unknown,
+      resourceType = 'AWS::Lambda::Function'
+    ): Finding => ({
       tier: 'atDefault',
       logicalId,
-      resourceType: 'AWS::Lambda::Function',
+      resourceType,
       path,
       actual: value,
     });
@@ -217,7 +222,10 @@ describe('baseline', () => {
           value: { alg: 'AES256' },
         },
       ]);
-      const out = applyBaseline([atDefault('Bkt', 'Encryption', { alg: 'AES256' })], b);
+      const out = applyBaseline(
+        [atDefault('Bkt', 'Encryption', { alg: 'AES256' }, 'AWS::S3::Bucket')],
+        b
+      );
       expect(out).toEqual([]);
     });
 
@@ -229,7 +237,7 @@ describe('baseline', () => {
       const b = baseline([
         { logicalId: 'A', resourceType: 'AWS::IAM::Role', path: 'MaxSessionDuration', value: 7200 },
       ]);
-      const out = applyBaseline([atDefault('A', 'MaxSessionDuration', 3600)], b);
+      const out = applyBaseline([atDefault('A', 'MaxSessionDuration', 3600, 'AWS::IAM::Role')], b);
       expect(out).toHaveLength(1);
       expect(out[0]).toMatchObject({
         tier: 'undeclared',
@@ -358,7 +366,7 @@ describe('baseline', () => {
 
     it('applyBaseline attaches arrayDelta to a changed recorded array (display-only, path stays whole)', () => {
       const b = baseline([
-        { logicalId: 'A', resourceType: 'AWS::IAM::Role', path: 'Policies', value: [p('a', 1)] },
+        { logicalId: 'A', resourceType: 'AWS::X::Y', path: 'Policies', value: [p('a', 1)] },
       ]);
       const out = applyBaseline([undeclared('A', 'Policies', [p('a', 1), p('aaa', 2)])], b);
       expect(out).toHaveLength(1);

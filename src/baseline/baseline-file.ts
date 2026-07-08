@@ -108,7 +108,67 @@ export async function loadBaseline(
     );
   if (!Array.isArray(parsed.recorded))
     throw new Error(`baseline file ${path} is malformed: \`recorded\` is missing or not an array`);
+  // Element-level validation (#794): the container shape passing is not enough — a
+  // baseline is git-committed, hand-editable, and merge-conflictable, so a malformed
+  // ELEMENT (a `null` entry from a bad merge, a scalar where an array/map is expected)
+  // must fail LOUDLY here (naming the file + the offending index/key) rather than crash
+  // opaquely deep in applyBaseline (`recorded.find` on a null → "Cannot read properties
+  // of null") or silently misbehave (`new Set("MyRes")` iterating string CHARACTERS,
+  // turning completeness quietly off). Same loud-vs-silent principle the ignore.yaml
+  // validation applies (config-file.ts validateIgnoreEntry).
+  parsed.recorded.forEach((entry, i) => validateRecordedEntry(entry, i, path));
+  validateCompleteResources(parsed.completeResources, path);
+  validateRecordedPhysicalIds(parsed.recordedPhysicalIds, path);
   return parsed;
+}
+
+/**
+ * #794: validate one `recorded` array element. Each must be a non-null object with a
+ * string `logicalId` and a string `path` (the two fields the match logic reads —
+ * `recorded.find(a => a.logicalId === … && a.path === …)`), plus a string `resourceType`
+ * (used for the #793 type-mismatch guard and stamped onto the synthetic removed-since-record
+ * finding). `value` is intentionally unconstrained (any JSON is a valid recorded value,
+ * including `null`). Errors name the file + the offending index/key, mirroring the
+ * ignore.yaml validation style.
+ */
+function validateRecordedEntry(entry: unknown, index: number, path: string): void {
+  const at = `baseline file ${path}: \`recorded\`[${index}]`;
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+    throw new Error(`${at} must be an object { logicalId, resourceType, path, value }`);
+  const obj = entry as Record<string, unknown>;
+  for (const k of ['logicalId', 'resourceType', 'path'] as const)
+    if (typeof obj[k] !== 'string')
+      throw new Error(`${at}: "${k}" is required and must be a string`);
+}
+
+/**
+ * #794: validate `completeResources` (optional; absent on v1 files). When present it must
+ * be an array of strings — a bare string would have `new Set(...)` iterate its CHARACTERS
+ * (silently mis-scoping completeness), and a number would crash with an opaque
+ * "not iterable" later. Reject both loudly, naming the file + index.
+ */
+function validateCompleteResources(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const at = `baseline file ${path}: \`completeResources\``;
+  if (!Array.isArray(value)) throw new Error(`${at} must be an array of strings`);
+  value.forEach((v, i) => {
+    if (typeof v !== 'string') throw new Error(`${at}[${i}] must be a string`);
+  });
+}
+
+/**
+ * #794: validate `recordedPhysicalIds` (optional; #674). When present it must be a plain
+ * object mapping string logicalId -> string physical id — `Object.entries` on a non-object
+ * or a non-string value would otherwise mis-drive the #674 replacement check silently.
+ * Reject non-object shapes and non-string values loudly, naming the file + key.
+ */
+function validateRecordedPhysicalIds(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const at = `baseline file ${path}: \`recordedPhysicalIds\``;
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new Error(`${at} must be an object mapping logicalId to physical id`);
+  for (const [key, v] of Object.entries(value as Record<string, unknown>))
+    if (typeof v !== 'string') throw new Error(`${at}: "${key}" must map to a string`);
 }
 
 /** Deterministic order for `recorded` entries: lexicographic by (logicalId, path).
@@ -455,8 +515,13 @@ export function splitRecordedByBaseline(
   const unchanged: RecordedEntry[] = [];
   const changed: RecordedEntry[] = [];
   for (const entry of recorded) {
+    // #793: match on resourceType too — a logicalId reused for a different type must not
+    // match the old-type baseline entry (which would falsely read as "unchanged").
     const baselineEntry = baseline.recorded.find(
-      (a) => a.logicalId === entry.logicalId && a.path === entry.path
+      (a) =>
+        a.logicalId === entry.logicalId &&
+        a.path === entry.path &&
+        a.resourceType === entry.resourceType
     );
     if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value))
       unchanged.push(entry);
@@ -563,6 +628,28 @@ export function applyBaseline(
     const liveId = opts.physicalIdByLogical?.get(logicalId);
     if (liveId !== undefined && liveId !== recordedId) replacedLogical.add(logicalId);
   }
+  // #793: a logicalId's CURRENT resource type (from the live findings). A recorded entry
+  // whose `resourceType` differs from the live type belongs to an OLD resource that was
+  // deleted and re-added under the SAME logicalId as a DIFFERENT type (a template refactor
+  // that recycled the id). Its recorded values are meaningless against the new type — worse,
+  // the synthetic "removed since record" finding would pair the entry's OLD resourceType
+  // with the new resource's LIVE physical id, so a revert would issue an op with the wrong
+  // TypeName against the new resource. Treat such an entry as VOID, exactly like the #674
+  // physical-id-mismatch path. Only voids when a live type is KNOWN and DIFFERS (an unread
+  // logicalId has no finding here → no known live type → today's behavior, no void).
+  const liveTypeByLogical = new Map<string, string>();
+  for (const f of findings) if (f.resourceType) liveTypeByLogical.set(f.logicalId, f.resourceType);
+  // #793: an entry is type-VOID when a live type is known for its logicalId and disagrees
+  // with the entry's recorded type. Used both at the match sites (so it never suppresses /
+  // surfaces against the wrong type) and in the removed-since-record loop below.
+  const isTypeVoid = (e: { logicalId: string; resourceType: string }): boolean => {
+    const liveType = liveTypeByLogical.get(e.logicalId);
+    return liveType !== undefined && liveType !== e.resourceType;
+  };
+  // #793: match a recorded entry to a finding on logicalId + path AND resource type, so a
+  // logicalId reused for a different type never matches old-type entries.
+  const entryMatches = (a: RecordedEntry, f: Finding): boolean =>
+    a.logicalId === f.logicalId && a.path === f.path && a.resourceType === f.resourceType;
   for (const f of findings) {
     // PR4: reconcile `added` against the baseline as a full mirror of undeclared — but on
     // the WHOLE resource (path ''), not a property. A matching entry whose value is equal
@@ -573,7 +660,7 @@ export function applyBaseline(
     // resource, and an added child has a synthesized id that never enters allLogicalIds),
     // so a newly-appeared added resource is simply unrecorded until the user records it.
     if (f.tier === 'added') {
-      const entry = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+      const entry = recorded.find((a) => entryMatches(a, f));
       // PR4: the full model could not be read this run — `actual` is only the identity
       // snippet, so we CANNOT decide changed-vs-unchanged. Never false-flag "changed": a
       // recorded resource is suppressed (it was verified before; re-checked next clean
@@ -612,7 +699,7 @@ export function applyBaseline(
     // value on the new resource is unrecorded, not drift — the user never recorded IT).
     const entry = replacedLogical.has(f.logicalId)
       ? undefined
-      : recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+      : recorded.find((a) => entryMatches(a, f));
     // re-canonicalize the baseline value through the CURRENT pipeline before comparing
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
@@ -713,12 +800,21 @@ export function applyBaseline(
   const promotedStale: string[] = [];
   const removedFromTemplate: string[] = []; // #675
   const replacedStale: string[] = []; // #674
+  const typeMismatchStale: string[] = []; // #793
   for (const a of recorded) {
     // PR4: an `added`-resource entry has an empty path (the whole resource is the value)
     // and is reconciled in the loop above, never here. If its live resource is gone the
     // out-of-band addition was simply removed — nothing to "restore", so skip it (a
     // property-removal note against a synthesized child id would be meaningless).
     if (a.path === '') continue;
+    // #793: the logicalId now hosts a DIFFERENT resource type (id reused across a refactor),
+    // so this entry belongs to the old type. Void it: without this the synthetic "removed
+    // since record" finding below would pair the entry's OLD resourceType with the new
+    // resource's LIVE physical id, so a revert would issue an op with the wrong TypeName.
+    if (isTypeVoid(a)) {
+      typeMismatchStale.push(`${a.logicalId}.${a.path}`);
+      continue;
+    }
     // #674: the resource was REPLACED by a deploy — this entry belongs to the old,
     // deleted physical resource, so it is void, not "removed since record". Fold it.
     if (replacedLogical.has(a.logicalId)) {
@@ -773,6 +869,7 @@ export function applyBaseline(
   if (removedFromTemplate.length > 0)
     opts.warn?.(formatRemovedFromTemplateNote(removedFromTemplate));
   if (replacedStale.length > 0) opts.warn?.(formatReplacedStaleNote(replacedStale));
+  if (typeMismatchStale.length > 0) opts.warn?.(formatTypeMismatchStaleNote(typeMismatchStale));
   return kept;
 }
 
@@ -808,6 +905,18 @@ export function formatReplacedStaleNote(paths: string[]): string {
   const n = paths.length;
   const subject = n === 1 ? `baseline entry (${paths[0]}) was` : `${n} baseline entries were`;
   return `note: ${subject} recorded against a resource since REPLACED by a deploy — re-run \`cdkrd record\`.`;
+}
+
+/**
+ * #793: the folded one-line note for baseline entries whose logicalId now hosts a resource
+ * of a DIFFERENT type (the id was recycled across a template refactor). The old-type entries
+ * are void against the new resource. Mirror of formatReplacedStaleNote. Pure + exported for
+ * unit tests.
+ */
+export function formatTypeMismatchStaleNote(paths: string[]): string {
+  const n = paths.length;
+  const subject = n === 1 ? `baseline entry (${paths[0]}) was` : `${n} baseline entries were`;
+  return `note: ${subject} recorded against a resource whose logicalId now has a DIFFERENT type — re-run \`cdkrd record\`.`;
 }
 
 /** logicalId -> set of declared top-level keys, for applyBaseline's promotion check. */
