@@ -1,3 +1,10 @@
+## [0.2.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.28...v0.2.29) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** fold VPCCidrBlock AmazonProvided ipv6 block + border group value-independent ([#684](https://github.com/go-to-k/cdk-real-drift/issues/684)) ([#686](https://github.com/go-to-k/cdk-real-drift/issues/686)) ([9c3f661](https://github.com/go-to-k/cdk-real-drift/commit/9c3f6619fad7b4d8d7cb7628ed7bba5a600472cb))
+
 ## [0.2.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.27...v0.2.28) (2026-07-08)
 
 
