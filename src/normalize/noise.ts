@@ -442,10 +442,36 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     RouteSelectionExpression: '$request.method $request.path',
     IpAddressType: 'ipv4', // R-noise-sweep: default; flipping to dualstack no longer matches and surfaces
     DisableExecuteApiEndpoint: false,
+    // A WebSocket (and HTTP) API that declares no ApiKeySelectionExpression reads back the
+    // documented service default `$request.header.x-api-key`. Equality-gated so a declared /
+    // other selection expression still surfaces — this type covers HTTP APIs too, but the
+    // gate means only an UNDECLARED value exactly equal to this constant folds; any custom
+    // value (or an out-of-band change) no longer matches and re-surfaces as real undeclared
+    // drift. WebSocket API, live-proven 2026-07-08 #664.
+    ApiKeySelectionExpression: '$request.header.x-api-key',
   },
   'AWS::ApiGatewayV2::Integration': {
     ConnectionType: 'INTERNET',
-    TimeoutInMillis: 30000,
+    // TimeoutInMillis is NOT a single constant on this shared type — its undeclared default is
+    // protocol-specific: a WebSocket-API integration reads back 29000, an HTTP-API one reads
+    // 30000 (per the CFn schema description). Both are stable constants, so both fold as tier-1
+    // equality-gated defaults — but a single KNOWN_DEFAULTS key holds only one value, so the
+    // pair lives in KNOWN_DEFAULT_ONE_OF below (a live value equal to EITHER folds; any other
+    // value, or a declared timeout, still surfaces). See that entry for the full reasoning.
+    // WebSocket integration constant service defaults, materialized on every route created
+    // with CDK's WebSocketLambdaIntegration when the template declares none of them. All are
+    // equality-gated so a declared / out-of-band-changed value still surfaces. This type ALSO
+    // covers HTTP-API integrations, but the gate makes the fold HTTP-safe:
+    //   - PayloadFormatVersion "1.0" — HTTP-API CDK L2 ALWAYS declares "2.0" (a declared value
+    //     is never folded), and HTTP_PROXY declares "1.0" explicitly (also declared), so an
+    //     equality-gated "1.0" fold can only match an UNDECLARED WebSocket integration.
+    //   - IntegrationMethod "POST" — the AWS_PROXY default method for both protocols; a custom
+    //     declared method (e.g. HTTP_PROXY "ANY") is compared in the declared dimension.
+    //   - PassthroughBehavior "WHEN_NO_MATCH" — the documented default; any other value surfaces.
+    // WebSocket API, live-proven 2026-07-08 #664.
+    PayloadFormatVersion: '1.0',
+    IntegrationMethod: 'POST',
+    PassthroughBehavior: 'WHEN_NO_MATCH',
   },
   'AWS::CodeBuild::Project': {
     TimeoutInMinutes: 60,
@@ -1213,6 +1239,30 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
 };
 
+// A top-level twin of KNOWN_DEFAULTS for the rare property whose undeclared AWS default is a
+// stable constant but takes ONE OF SEVERAL values depending on a sibling the value itself does
+// not carry. Each entry lists the full SET of accepted defaults; a live value that deep-equals
+// ANY member folds to `atDefault`, and anything else — including a declared value — still
+// surfaces. This is still tier-1 (equality-gated constants), just against a small closed set
+// rather than a single value; it is NOT a tier-2 derivation (no value is computed from the
+// declared inputs). Reach for it ONLY when the two-plus defaults are genuine, stable constants
+// and the discriminator (e.g. the parent's protocol) is off the resource's own model.
+export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknown[]>> = {
+  // AWS::ApiGatewayV2::Integration is shared by HTTP and WebSocket APIs, and its undeclared
+  // TimeoutInMillis default is protocol-specific: a WebSocket integration reads back 29000, an
+  // HTTP integration reads back 30000 (per the CFn schema description). Both are stable
+  // constants, but the discriminator — the parent Api's ProtocolType — is not on the Integration
+  // model, so a single KNOWN_DEFAULTS constant cannot cover both without breaking the other.
+  // Folding the SET {29000, 30000} keeps a clean deploy of EITHER protocol at zero first-run
+  // drift, while equality-gating preserves detection: a user who DECLARES a timeout is compared
+  // in the declared dimension (never folded), and an out-of-band change to any value outside the
+  // set (e.g. 10000) re-surfaces as real undeclared drift. HTTP's 30000 and WebSocket's 29000
+  // are folded as PEERS here — neither masks the other, and neither masks a custom value.
+  'AWS::ApiGatewayV2::Integration': {
+    TimeoutInMillis: [29000, 30000],
+  },
+};
+
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
 // Cloud Control read returns the full live model, so a config-dense type's
 // DECLARED parent property (CloudFront DistributionConfig, ApiGateway Method
@@ -1246,6 +1296,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A WebSocket API Stage whose DefaultRouteSettings declares only throttling (CDK's
+  // WebSocketStage renders just ThrottlingRateLimit / ThrottlingBurstLimit) reads back the
+  // sibling `LoggingLevel: "OFF"` — the documented service default AWS fills into
+  // DefaultRouteSettings. Equality-gated so turning logging on out of band (INFO/ERROR) no
+  // longer matches and re-surfaces as real undeclared drift. (The `DataTraceEnabled` /
+  // `DetailedMetricsEnabled` false siblings fold via isTrivialEmpty and do not surface.)
+  // WebSocket API, live-proven 2026-07-08 #664.
+  'AWS::ApiGatewayV2::Stage': {
+    'DefaultRouteSettings.LoggingLevel': 'OFF',
+  },
   // A Service Catalog product's provisioning artifact that declares no Type reads back the
   // constant "CLOUD_FORMATION_TEMPLATE" (observed live, hunt 2026-07-08, #625) — the nested
   // twin of the top-level ProductType fold above. Equality-gated, so an artifact created as a

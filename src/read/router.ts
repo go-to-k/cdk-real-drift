@@ -279,6 +279,30 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     const vpcId = declared.VpcId;
     return typeof vpcId === 'string' && vpcId.length > 0 ? `${pid}|${vpcId}` : undefined;
   },
+  // ApiGatewayV2 RouteResponse primaryIdentifier is the 3-SEGMENT composite
+  // [ApiId, RouteId, RouteResponseId] — parent-first (Api, then Route, then the child
+  // RouteResponse), like the AppConfig HostedConfigurationVersion/Deployment 3-segment
+  // adapters above. The CFn physical id is only the LAST segment (RouteResponseId), so a
+  // bare-id CC GetResource ValidationException-skips it (read-gap) on every WebSocket route
+  // created with CDK's `returnResponse: true` — the RouteResponse goes entirely unwatched
+  // (surfaced only as `skipped=1` in the info footer). BOTH parent segments are resolvable
+  // from the declared model: `ApiId` is a Ref to the Api, and `RouteId` is a Ref to the
+  // Route (the Route's own physical id IS the RouteId). Verified live (#665, us-east-1):
+  // `ApiId|RouteId|RouteResponseId` reads; the reversed order returns NotFound ("Invalid
+  // API identifier") and the bare id ValidationExceptions. An unresolved parent → fall back
+  // to the bare physical id (honest skip). Not `compositeWith` (which is a single-parent
+  // helper); this is a two-parent, parent-first composite.
+  'AWS::ApiGatewayV2::RouteResponse': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const apiId = declared.ApiId;
+    const routeId = declared.RouteId;
+    return typeof apiId === 'string' &&
+      apiId.length > 0 &&
+      typeof routeId === 'string' &&
+      routeId.length > 0
+      ? `${apiId}|${routeId}|${pid}`
+      : undefined;
+  },
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the

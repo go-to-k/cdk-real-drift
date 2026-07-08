@@ -22,6 +22,7 @@ import {
   isIntelligentTieringMatch,
   INTELLIGENT_TIERING_PATHS,
   KNOWN_DEFAULTS,
+  KNOWN_DEFAULT_ONE_OF,
   KNOWN_DEFAULT_PATHS,
   GENERATED_NESTED_PATHS,
   DESCEND_UNDECLARED_OBJECT_PATHS,
@@ -2005,5 +2006,198 @@ describe('isCaseInsensitiveKeyMapEqual — free-form map key-case fold (#494)', 
     expect(
       CASE_INSENSITIVE_KEY_PATHS['AWS::DataBrew::Recipe']?.has('Steps[].Action.Parameters')
     ).toBe(true);
+  });
+});
+
+describe('#664 ApiGatewayV2 WebSocket first-run undeclared folds', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const bare = (resourceType: string, declared: Record<string, unknown> = {}): DesiredResource => ({
+    logicalId: 'WsApi',
+    resourceType,
+    physicalId: 'ws-phys',
+    declared,
+  });
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ): { atDefault: string[]; undeclared: string[] } => {
+    const findings: Finding[] = classifyResource(bare(resourceType, declared), live, emptySchema);
+    const by = (tier: string) =>
+      findings
+        .filter((f) => f.tier === tier)
+        .map((f) => f.path)
+        .sort();
+    return { atDefault: by('atDefault'), undeclared: by('undeclared') };
+  };
+
+  it('the WebSocket defaults are registered in the fold tables', () => {
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Api'].ApiKeySelectionExpression).toBe(
+      '$request.header.x-api-key'
+    );
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Integration'].PayloadFormatVersion).toBe('1.0');
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Integration'].IntegrationMethod).toBe('POST');
+    expect(KNOWN_DEFAULTS['AWS::ApiGatewayV2::Integration'].PassthroughBehavior).toBe(
+      'WHEN_NO_MATCH'
+    );
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::ApiGatewayV2::Stage']['DefaultRouteSettings.LoggingLevel']
+    ).toBe('OFF');
+  });
+
+  it('Api: an undeclared ApiKeySelectionExpression at the default folds to atDefault', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Api',
+      { RouteSelectionExpression: '$request.body.action' },
+      {
+        RouteSelectionExpression: '$request.body.action',
+        ApiKeySelectionExpression: '$request.header.x-api-key',
+      }
+    );
+    expect(r.atDefault).toContain('ApiKeySelectionExpression');
+    expect(r.undeclared).not.toContain('ApiKeySelectionExpression');
+  });
+
+  it('Api: a CHANGED ApiKeySelectionExpression still surfaces (equality-gated)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Api',
+      {},
+      { ApiKeySelectionExpression: '$request.querystring.api_key' }
+    );
+    expect(r.undeclared).toContain('ApiKeySelectionExpression');
+    expect(r.atDefault).not.toContain('ApiKeySelectionExpression');
+  });
+
+  it('Integration: undeclared WebSocket defaults (PayloadFormatVersion/IntegrationMethod/PassthroughBehavior) fold to atDefault', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', IntegrationUri: 'arn:aws:lambda:...' },
+      {
+        ApiId: 'api1',
+        IntegrationType: 'AWS_PROXY',
+        IntegrationUri: 'arn:aws:lambda:...',
+        PayloadFormatVersion: '1.0',
+        IntegrationMethod: 'POST',
+        PassthroughBehavior: 'WHEN_NO_MATCH',
+      }
+    );
+    expect(r.atDefault).toContain('PayloadFormatVersion');
+    expect(r.atDefault).toContain('IntegrationMethod');
+    expect(r.atDefault).toContain('PassthroughBehavior');
+    expect(r.undeclared).toEqual([]);
+  });
+
+  it('Integration: a DECLARED PayloadFormatVersion is never folded (HTTP-API 2.0 safety)', () => {
+    // An HTTP-API L2 always DECLARES PayloadFormatVersion "2.0"; a declared value is compared
+    // in the declared dimension, never folded by the equality-gated "1.0" KNOWN_DEFAULTS entry.
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', PayloadFormatVersion: '2.0' },
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', PayloadFormatVersion: '2.0' }
+    );
+    // PayloadFormatVersion is declared+equal → no undeclared/atDefault finding for it at all.
+    expect(r.atDefault).not.toContain('PayloadFormatVersion');
+    expect(r.undeclared).not.toContain('PayloadFormatVersion');
+  });
+
+  it('Integration: a CHANGED PassthroughBehavior still surfaces (equality-gated)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY' },
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', PassthroughBehavior: 'WHEN_NO_TEMPLATES' }
+    );
+    expect(r.undeclared).toContain('PassthroughBehavior');
+    expect(r.atDefault).not.toContain('PassthroughBehavior');
+  });
+
+  it('Integration: TimeoutInMillis one-of defaults {29000, 30000} are registered', () => {
+    expect(KNOWN_DEFAULT_ONE_OF['AWS::ApiGatewayV2::Integration'].TimeoutInMillis).toEqual([
+      29000, 30000,
+    ]);
+  });
+
+  it('Integration: an undeclared WebSocket TimeoutInMillis=29000 folds to atDefault', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', IntegrationUri: 'arn:aws:lambda:...' },
+      {
+        ApiId: 'api1',
+        IntegrationType: 'AWS_PROXY',
+        IntegrationUri: 'arn:aws:lambda:...',
+        TimeoutInMillis: 29000,
+      }
+    );
+    expect(r.atDefault).toContain('TimeoutInMillis');
+    expect(r.undeclared).not.toContain('TimeoutInMillis');
+  });
+
+  it('Integration: an undeclared HTTP TimeoutInMillis=30000 also folds to atDefault (the peer default)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'HTTP_PROXY' },
+      { ApiId: 'api1', IntegrationType: 'HTTP_PROXY', TimeoutInMillis: 30000 }
+    );
+    expect(r.atDefault).toContain('TimeoutInMillis');
+    expect(r.undeclared).not.toContain('TimeoutInMillis');
+  });
+
+  it('Integration: an undeclared TimeoutInMillis OUTSIDE the set (10000) still surfaces (equality-gated)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY' },
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', TimeoutInMillis: 10000 }
+    );
+    expect(r.undeclared).toContain('TimeoutInMillis');
+    expect(r.atDefault).not.toContain('TimeoutInMillis');
+  });
+
+  it('Stage: an undeclared DefaultRouteSettings.LoggingLevel at the default folds to atDefault', () => {
+    // CDK renders only the throttling knobs inside DefaultRouteSettings; AWS fills LoggingLevel "OFF".
+    const r = t(
+      'AWS::ApiGatewayV2::Stage',
+      {
+        ApiId: 'api1',
+        StageName: 'dev',
+        DefaultRouteSettings: { ThrottlingRateLimit: 100, ThrottlingBurstLimit: 50 },
+      },
+      {
+        ApiId: 'api1',
+        StageName: 'dev',
+        DefaultRouteSettings: {
+          ThrottlingRateLimit: 100,
+          ThrottlingBurstLimit: 50,
+          LoggingLevel: 'OFF',
+        },
+      }
+    );
+    expect(r.atDefault).toContain('DefaultRouteSettings.LoggingLevel');
+    expect(r.undeclared).not.toContain('DefaultRouteSettings.LoggingLevel');
+  });
+
+  it('Stage: LoggingLevel turned on out of band still surfaces (equality-gated)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Stage',
+      {
+        ApiId: 'api1',
+        StageName: 'dev',
+        DefaultRouteSettings: { ThrottlingRateLimit: 100 },
+      },
+      {
+        ApiId: 'api1',
+        StageName: 'dev',
+        DefaultRouteSettings: { ThrottlingRateLimit: 100, LoggingLevel: 'INFO' },
+      }
+    );
+    expect(r.undeclared).toContain('DefaultRouteSettings.LoggingLevel');
+    expect(r.atDefault).not.toContain('DefaultRouteSettings.LoggingLevel');
   });
 });
