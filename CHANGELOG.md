@@ -1,3 +1,10 @@
+## [0.2.48](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.47...v0.2.48) (2026-07-08)
+
+
+### Bug Fixes
+
+* **read:** paginate unpaginated SDK override list readers ([#729](https://github.com/go-to-k/cdk-real-drift/issues/729)) ([#774](https://github.com/go-to-k/cdk-real-drift/issues/774)) ([3fc7ff3](https://github.com/go-to-k/cdk-real-drift/commit/3fc7ff3efdc58bdc323501e0fbd43e2ea5e3ff16))
+
 ## [0.2.47](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.46...v0.2.47) (2026-07-08)
 
 
