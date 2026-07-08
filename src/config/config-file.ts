@@ -145,9 +145,16 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
     // and the ancestor walk never reaches empty) — a silent no-op rule the user believes
     // is suppressing a property. Reject it loudly so the no-op can't masquerade as active.
     throw new Error(`${at}: "path" must not be empty`);
-  for (const k of ['stack', 'account', 'region'] as const)
+  for (const k of ['stack', 'account', 'region'] as const) {
     if (obj[k] !== undefined && typeof obj[k] !== 'string')
       throw new Error(`${at}: "${k}" must be a string`);
+    if (obj[k] === '')
+      // a present-but-empty scope axis matches NOTHING (the glob `^$` never matches a
+      // real stack/account/region), so the whole rule silently suppresses nothing — the
+      // same silent no-op trap as an empty `path`. Reject it loudly; omit the key to
+      // leave the axis unscoped (match-all).
+      throw new Error(`${at}: "${k}" must not be empty (omit it to leave the axis unscoped)`);
+  }
 }
 
 /**
