@@ -1,3 +1,12 @@
+## [0.2.51](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.50...v0.2.51) (2026-07-08)
+
+
+### Bug Fixes
+
+* **baseline:** surface out-of-band removal of NESTED recorded values ([#749](https://github.com/go-to-k/cdk-real-drift/issues/749)) ([#809](https://github.com/go-to-k/cdk-real-drift/issues/809)) ([64c3bb3](https://github.com/go-to-k/cdk-real-drift/commit/64c3bb32f6079de0b9b08c539835654c1c3d2b44))
+* **ignore:** stamp stack/account/region scope onto written ignore rules ([#757](https://github.com/go-to-k/cdk-real-drift/issues/757)) ([#810](https://github.com/go-to-k/cdk-real-drift/issues/810)) ([399b39e](https://github.com/go-to-k/cdk-real-drift/commit/399b39ef030b9046ff772c5c2db654fd8a8634ea))
+* **report:** emit multi-stack --json as one valid JSON array; document the full contract ([#755](https://github.com/go-to-k/cdk-real-drift/issues/755)) ([#811](https://github.com/go-to-k/cdk-real-drift/issues/811)) ([618944c](https://github.com/go-to-k/cdk-real-drift/commit/618944c822dc6a43a286e817b72d82cfde1288ba))
+
 ## [0.2.50](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.49...v0.2.50) (2026-07-08)
 
 
