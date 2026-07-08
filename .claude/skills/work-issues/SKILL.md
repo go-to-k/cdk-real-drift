@@ -263,6 +263,22 @@ anything non-obvious you learned in memory.
   a real deploy account may hold PROD stacks — unique names only.
 - **`vp pack` / `vp test run` DIRECTLY**, not `vp run build` / `vp run test`, when
   the result feeds a live-test — the run-task cache can replay a stale `dist/`.
+- **Earn the `verify-pr` marker via `/verify-pr`, never hand-set it.** A `src/**` PR
+  merge needs a fresh `verify-pr` marker, but `mise exec -- markgate set verify-pr`
+  from a shell is rejected by BOTH the `verify-pr-gate` PreToolUse hook AND the
+  auto-mode Bash classifier (which flags "self-merging a src PR on a hand-set marker
+  that skipped the live-test"). Run `/verify-pr <PR#>` — it does the checklist and is
+  the ONLY legitimate setter. If the classifier still blocks the self-merge, that is
+  the reviewer guardrail: get the maintainer's explicit authorization (or let them
+  merge) rather than working around it.
+- **`gh pr merge --delete-branch` from a worktree errors yet still merges.** Run from
+  a worktree while `main` is checked out in the main tree, it exits 1 with
+  `fatal: 'main' is already used by worktree …` — but the REMOTE merge AND remote
+  branch delete already SUCCEEDED (gh only failed the post-merge local `checkout main`
+  + local branch delete). Confirm with `gh pr view <n> --json state,mergedAt`
+  (`MERGED`), then do the local cleanup yourself: `git checkout main && git pull`,
+  `git worktree remove …`, `git branch -D wt-…` (the `git push origin --delete` will
+  report "remote ref does not exist" — benign, gh already removed it).
 
 ## Important existing rules this skill leans on
 
