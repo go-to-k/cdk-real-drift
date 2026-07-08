@@ -625,7 +625,19 @@ time by accident). When drift survives, each surviving finding is listed
 (id.path + tier) under the `N drift(s) remain.` line so the user doesn't have
 to re-run `check` to learn what failed to converge (R46); if unrecorded values
 remain after a clean revert, one pointer line names the count (they are not
-drift, but silence would read as "all decided" — R62). Exit semantics: no
+drift, but silence would read as "all decided" — R62). **Two verdict escapes
+are closed (#631):** a FAILED update/sdk op (not just a failed delete) now
+counts as UNCONFIRMED — so a `remove` the provider hard-rejects (SNS
+`FilterPolicyScope` InvalidRequest[null]) can never ride under a `CLEAN`
+summary; and a `remove`-style revert the provider SILENTLY IGNORED (the #597
+class — an omitted property left unchanged, e.g. Cognito UserPool
+`DeletionProtection`) on an UNRECORDED undeclared value is detected as a
+**no-op removal** (the exact path re-reads a non-drift finding carrying the
+SAME value) and reported `NOT reverted:` — before, that value re-read as
+"awaiting a baseline" (not drift) and the stack was falsely called CLEAN.
+Comparing the persisted VALUE (not mere presence) keeps a removal that
+converged by AWS re-materializing the default (#613 SLO `Goal`) correctly
+clean. Exit semantics: no
 drift at all → `no drift to revert.` + exit 0; findings exist but **nothing
 is revertable** →
 `nothing revertable — N drift(s) + M unrecorded value(s) remain.` (each part

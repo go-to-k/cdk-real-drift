@@ -39,6 +39,7 @@ import {
 } from '../revert/plan.js';
 import { errorText, type RetryOptions, retryTransient } from '../revert/transient.js';
 import { resolveSdkWriter } from '../revert/writers.js';
+import { deepEqual } from '../diff/drift-calculator.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
 import { buildSiblingSgRules, type GatherResult, regatherTouched } from './gather.js';
@@ -842,6 +843,11 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // correctly vanishes from `post`, but a FAILED one would vanish too (reading as CLEAN).
   // Track the failed ones and re-add their findings so they still count as drift.
   const failedDeleteIds = new Set<string>();
+  // #631: a FAILED update/sdk op (the SNS FilterPolicyScope `remove` that hard-fails
+  // InvalidRequest[null]) must count as UNCONFIRMED — the same "never claim convergence we
+  // could not verify" principle that already covers failed deletes. Without this a FAILED op
+  // printed alongside a `CLEAN after revert.` verdict (live-observed 2026-07-08).
+  const failedUpdateIds = new Set<string>();
   const applied: {
     logicalId: string;
     displayId: string;
@@ -940,6 +946,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       ...(r.hint !== undefined && { hint: r.hint }),
     });
     if (!r.ok) worst = Math.max(worst, 2);
+    // A failed NON-delete op (delete failures already tracked above) — feed the convergence
+    // verdict so a FAILED update never rides under a CLEAN summary.
+    if (!r.ok && item.kind !== 'delete') failedUpdateIds.add(item.logicalId);
   }
   // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
   // produced two results) so a fully reverted resource never prints `reverted:` twice.
@@ -991,6 +1000,39 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
   const remainingDrift = post.filter(isDrift);
   const remaining = remainingDrift.length;
+  // #631: a `remove`-style revert the provider SILENTLY IGNORED (the #597 class — an
+  // omitted property not applied on UpdateResource; Cognito UserPool DeletionProtection,
+  // InternetMonitor Status, …) reports `reverted:` (ok) yet the value PERSISTS. When that
+  // value is UNRECORDED undeclared it re-reads as "awaiting a baseline" (not `isDrift`), so
+  // it escapes both `remaining` and the verdict, and the stack is falsely called CLEAN. A
+  // no-op removal = a `remove` op on a SUCCESSFULLY-applied item whose exact path still
+  // re-reads a NON-drift finding carrying the SAME value we tried to remove. Comparing the
+  // value (not just presence) is essential: a removal that CONVERGED by AWS re-materializing
+  // the DEFAULT (#613 SLO Goal) re-reads a DIFFERENT value / tier and is correctly NOT
+  // flagged. (Array-element removes, whose finding path is `[id]`-keyed, are not matched here
+  // — the reported cases are all top-level/nested scalar paths.)
+  const okIds = new Set(applied.filter((a) => a.ok).map((a) => a.logicalId));
+  const preActual = new Map<string, unknown>();
+  for (const f of gathered.findings) preActual.set(`${f.logicalId}\0${f.path}`, f.actual);
+  const noOpRemovals: { displayId: string; path: string }[] = [];
+  for (const item of plan.items) {
+    if (item.kind === 'delete' || !okIds.has(item.logicalId)) continue;
+    for (const op of item.ops) {
+      if (op.op !== 'remove') continue;
+      const dotted = op.path.replace(/^\//, '').replace(/\//g, '.');
+      const key = `${item.logicalId}\0${dotted}`;
+      if (!preActual.has(key)) continue;
+      const pre = preActual.get(key);
+      const persisted = post.some(
+        (f) =>
+          f.logicalId === item.logicalId &&
+          f.path === dotted &&
+          !isDrift(f) &&
+          deepEqual(f.actual, pre)
+      );
+      if (persisted) noOpRemovals.push({ displayId: item.displayId, path: dotted });
+    }
+  }
   // A touched resource whose verification RE-READ failed (skipped tier — a throttle /
   // transient CC or SDK-override read error) is NOT proof the write landed: a write CC
   // accepted (200) but silently rejected, followed by an unreadable re-read, would
@@ -999,15 +1041,24 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // (unrecorded), so it too would read as CLEAN though the resource still lives. Treat
   // both as UNCONFIRMED — never claim convergence we could not verify.
   const unverified = post.filter((f) => touched.has(f.logicalId) && f.tier === 'skipped').length;
-  const unconfirmed = unverified + failedDeleteIds.size;
-  const converged = remaining === 0 && unconfirmed === 0;
+  const unconfirmed = unverified + failedDeleteIds.size + failedUpdateIds.size;
+  const converged = remaining === 0 && unconfirmed === 0 && noOpRemovals.length === 0;
+  // Print the no-op removals FIRST so the "did not converge" verdict below has visible
+  // evidence above it, mirroring the FAILED: lines' relationship to the unconfirmed count.
+  for (const n of noOpRemovals)
+    console.log(
+      style.fail(
+        `  NOT reverted: ${n.displayId}.${n.path} — removal was a no-op (the provider ignored the omitted property; it needs an explicit default write — see #597 / REVERT_SET_DEFAULT_PATHS)`
+      )
+    );
+  const notConverged = unconfirmed + noOpRemovals.length;
   console.log(
     converged
       ? style.clean(`${stackName}: CLEAN after revert.`)
       : remaining > 0
         ? style.drift(`${stackName}: ${remaining} drift(s) remain.`)
         : style.drift(
-            `${stackName}: revert applied, but ${unconfirmed} resource(s) could not be confirmed converged (see above).`
+            `${stackName}: revert applied, but ${notConverged} value(s) could not be confirmed converged (see above).`
           )
   );
   // unrecorded values are not drift, but silently dropping them here would read
@@ -1032,9 +1083,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // learn what didn't converge (R46). A terse id-per-line pointer, not a report;
   // capped so a no-baseline partial revert doesn't re-list 100+ lines (R52).
   for (const line of formatSurvivingDrift(remainingDrift, stackName)) console.log(line);
-  // remaining drift OR an unverifiable re-read both mean "not confirmed clean" → exit 1
-  // (a failed delete already set 2). Never return 0 ("converged") when we could not check.
-  if (remaining > 0 || unverified > 0) worst = Math.max(worst, 1);
+  // remaining drift, an unverifiable re-read, OR a no-op removal all mean "not confirmed
+  // clean" → exit 1 (a failed delete/update already set 2). Never return 0 ("converged")
+  // when we could not verify convergence.
+  if (remaining > 0 || unverified > 0 || noOpRemovals.length > 0) worst = Math.max(worst, 1);
   return { exit: worst, aborted: false };
 }
 
