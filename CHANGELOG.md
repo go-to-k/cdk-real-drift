@@ -1,3 +1,10 @@
+## [0.2.54](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.53...v0.2.54) (2026-07-08)
+
+
+### Bug Fixes
+
+* **baseline:** validate baseline elements + guard reused-logicalId type mismatch ([#794](https://github.com/go-to-k/cdk-real-drift/issues/794), [#793](https://github.com/go-to-k/cdk-real-drift/issues/793)) ([#819](https://github.com/go-to-k/cdk-real-drift/issues/819)) ([6899829](https://github.com/go-to-k/cdk-real-drift/commit/68998290680d2b1505f78c35e3f545f9a28abc7f))
+
 ## [0.2.53](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.52...v0.2.53) (2026-07-08)
 
 
