@@ -1,3 +1,10 @@
+## [0.2.52](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.51...v0.2.52) (2026-07-08)
+
+
+### Bug Fixes
+
+* **check:** ROLLBACK_COMPLETE is not-checkable, not ok ([#787](https://github.com/go-to-k/cdk-real-drift/issues/787)) ([#816](https://github.com/go-to-k/cdk-real-drift/issues/816)) ([36e6509](https://github.com/go-to-k/cdk-real-drift/commit/36e65097f9aa30092ba1a33aa6c34a14aee47b34))
+
 ## [0.2.51](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.50...v0.2.51) (2026-07-08)
 
 
