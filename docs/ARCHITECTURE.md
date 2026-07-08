@@ -363,8 +363,13 @@ at that attribute's current value.
 fetched mid-resolve. `loadDesired` prefetches them — but ONLY when the template body
 references `Fn::ImportValue` (a substring check), so a normal single-stack run pays
 nothing — via paginated CFn `ListExports`, account+region-scoped, cached in a
-module-level per-region Map. `Fn::ImportValue` then resolves a known export name to
-its value, else `UNRESOLVED`.
+module-level Map keyed by `${accountId}:${region}` (BOTH axes: exports are
+scoped to an account AND a region, so a region-only key would serve account A's
+exports to account B's same-region stack). `Fn::ImportValue` then resolves a
+known export name to its value, else `UNRESOLVED`. A `ListExports` failure (e.g.
+a principal without `cloudformation:ListExports`) DEGRADES to empty exports — the
+consuming properties resolve `UNRESOLVED`, with a one-line warning — rather than
+hard-failing the whole stack check.
 
 > Trade-off to review: cdkd has a fuller `IntrinsicFunctionResolver`. We
 > deliberately wrote a focused, fail-closed one. The remaining `unresolved`
