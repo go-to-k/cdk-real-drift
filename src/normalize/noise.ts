@@ -1425,6 +1425,40 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
   'AWS::DynamoDB::Table': {
     'PointInTimeRecoverySpecification.RecoveryPeriodInDays': 35,
+    // A table that declares only `ContributorInsightsSpecification.Enabled: true` reads back
+    // the service-default Mode `ACCESSED_AND_THROTTLED_KEYS` (the mode AWS applies when
+    // Contributor Insights is enabled without an explicit Mode) — the template never carries
+    // it, so it floods the first check as an undeclared sibling of the declared `Enabled`.
+    // Equality-gated: a table that pins the other mode (`THROTTLED_KEYS`) or one AWS changes
+    // out of band no longer matches and re-surfaces. The same spec can also sit on each GSI
+    // (`GlobalSecondaryIndexes.*.ContributorInsightsSpecification`), so fold the Mode there
+    // too. Live-proven 2026-07-08 #649.
+    'ContributorInsightsSpecification.Mode': 'ACCESSED_AND_THROTTLED_KEYS',
+    'GlobalSecondaryIndexes.*.ContributorInsightsSpecification.Mode': 'ACCESSED_AND_THROTTLED_KEYS',
+    // A table with `SSESpecification.SSEEnabled: true` and no explicit `SSEType` reads back
+    // `SSEType: 'KMS'` — the only value AWS assigns when server-side encryption is enabled
+    // without a type (the AWS-managed / customer-managed KMS path). The template omits it, so
+    // it is undeclared first-run noise. Equality-gated so a future/other SSEType still
+    // surfaces. Live-proven 2026-07-08 #649.
+    'SSESpecification.SSEType': 'KMS',
+  },
+  // AWS::DynamoDB::GlobalTable shares the SSE/ContributorInsights shapes with the classic
+  // ::Table (#523 twin-type), but with GlobalTable's own nesting: SSESpecification (the
+  // SSEEnabled/SSEType pair) is top-level, while ContributorInsightsSpecification lives per
+  // replica (`Replicas.*.ContributorInsightsSpecification`) and per replica GSI
+  // (`Replicas.*.GlobalSecondaryIndexes.*.ContributorInsightsSpecification`). Register the
+  // same equality-gated Mode/SSEType folds at those paths so a GlobalTable deployed with the
+  // same common flags is CLEAN first-run too. The top-level SSEType fold is reachable today;
+  // the per-replica Mode/KMSMasterKeyId folds additionally need the `Replicas` array keyed by
+  // `Region` in NESTED_ARRAY_IDENTITY (classify.ts) for the undeclared descent to align each
+  // replica — the entries here are the noise-side twin, forward-compatible and equality-gated.
+  // (GlobalTable's KMSMasterKeyId lives per replica under `Replicas.*.SSESpecification` and is
+  // folded value-independently via GENERATED_NESTED_PATHS below.) Mirrors #649.
+  'AWS::DynamoDB::GlobalTable': {
+    'SSESpecification.SSEType': 'KMS',
+    'Replicas.*.ContributorInsightsSpecification.Mode': 'ACCESSED_AND_THROTTLED_KEYS',
+    'Replicas.*.GlobalSecondaryIndexes.*.ContributorInsightsSpecification.Mode':
+      'ACCESSED_AND_THROTTLED_KEYS',
   },
   'AWS::ECS::TaskDefinition': {
     // A container that does not reserve CPU reads back Cpu: 0 (the documented "no
@@ -2019,6 +2053,18 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // twin of the stage's own top-level DeploymentId, which already folds `generated`), so fold it
   // value-independently. Live, hunt 2026-07-08 round G (#633).
   'AWS::ApiGateway::Stage': new Set(['CanarySetting.DeploymentId']),
+  // A DynamoDB table with `SSESpecification.SSEEnabled: true` and no explicit KMS key reads
+  // back `SSESpecification.KMSMasterKeyId` = the account's AWS-managed `alias/aws/dynamodb`
+  // key ARN (a per-account, AWS-assigned GUID — the account-default-KMS echo class, exactly
+  // like the RDS/OpenSearch `KmsKeyId` folds above). It is never a constant we can pin (it
+  // embeds the per-account key id) and never user intent when undeclared: the CFn schema note
+  // says to set KMSMasterKeyId "only if the key is different from the default DynamoDB key
+  // alias/aws/dynamodb". Fold value-independent — a user who wants a customer-managed key
+  // DECLARES KMSMasterKeyId, which is then compared in the declared loop (detected) and never
+  // reaches here. For GlobalTable the key sits per replica under
+  // `Replicas.*.SSESpecification.KMSMasterKeyId`. Live-proven 2026-07-08 #649.
+  'AWS::DynamoDB::Table': new Set(['SSESpecification.KMSMasterKeyId']),
+  'AWS::DynamoDB::GlobalTable': new Set(['Replicas.*.SSESpecification.KMSMasterKeyId']),
 };
 
 // Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
