@@ -1,3 +1,11 @@
+## [0.2.47](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.46...v0.2.47) (2026-07-08)
+
+
+### Bug Fixes
+
+* **desired:** parameter-resolution batch — NoEcho default / SSM list param / NotificationARNs ([#744](https://github.com/go-to-k/cdk-real-drift/issues/744), [#745](https://github.com/go-to-k/cdk-real-drift/issues/745), [#746](https://github.com/go-to-k/cdk-real-drift/issues/746)) ([#773](https://github.com/go-to-k/cdk-real-drift/issues/773)) ([18726dd](https://github.com/go-to-k/cdk-real-drift/commit/18726dd02793ca68dd0718ca0f7260a6f53fb386))
+* **read:** recognize service-specific not-found codes so deleted resources aren't downgraded to skipped ([#743](https://github.com/go-to-k/cdk-real-drift/issues/743)) ([#772](https://github.com/go-to-k/cdk-real-drift/issues/772)) ([5219620](https://github.com/go-to-k/cdk-real-drift/commit/52196208e10e23fdaf15206ba407e53afb4dacdd))
+
 ## [0.2.46](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.45...v0.2.46) (2026-07-08)
 
 
