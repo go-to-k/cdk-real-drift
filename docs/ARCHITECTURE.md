@@ -231,9 +231,15 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
                  Permission.FunctionName = GetAtt[fn, Arn]) — concurrent, once
    --- PASS 1.6: added-resource enumeration — for each declared PARENT type with a
                  CHILD_ENUMERATORS entry (read/child-enumerators.ts), list its LIVE
-                 child resources via the service SDK and emit an `added` finding for
-                 any not in the template (e.g. an API Gateway Method on `/`). Each
-                 added child is then read in FULL (CC GetResource) + normalized
+                 child resources via the service SDK and emit an `added` finding
+                 for any not in the template (e.g. an API Gateway Method on `/`)
+                 — EXCEPT a child CDK placed in a SIBLING stack of the app (a
+                 cross-stack ref, e.g. `topic.addSubscription(SqsSubscription)`
+                 puts the `AWS::SNS::Subscription` in the queue's stack), which
+                 `isManagedBySiblingStack` folds out by resolving its physical id
+                 via `DescribeStackResources` (owned by any CFn stack ⇒ managed,
+                 not out of band; #666). Each added child is then read in FULL
+                 (CC GetResource) + normalized
                  (normalizeLiveModel) so `record` can snapshot it and a later change
                  surfaces as drift. An enumeration failure is surfaced as a `skipped`
                  finding on the parent

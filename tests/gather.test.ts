@@ -1,6 +1,7 @@
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import {
   CloudFormationClient,
+  DescribeStackResourcesCommand,
   DescribeStacksCommand,
   DescribeTypeCommand,
   GetTemplateCommand,
@@ -18,8 +19,10 @@ import {
   buildSiblingSgRules,
   type GatherResult,
   gatherFindings,
+  isManagedBySiblingStack,
   regatherTouched,
 } from '../src/commands/gather.js';
+import type { AddedChild } from '../src/read/child-enumerators.js';
 import type { Desired } from '../src/desired/template-adapter.js';
 import type { DesiredResource, Finding, ResolverContext, SchemaInfo } from '../src/types.js';
 
@@ -735,5 +738,104 @@ describe('buildBucketNotificationManaged', () => {
       ])
     );
     expect(managed.size).toBe(0);
+  });
+});
+
+describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
+  const child = (identifier: string, resourceType = 'AWS::SNS::Subscription'): AddedChild => ({
+    resourceType,
+    identifier,
+    label: identifier,
+    live: {},
+  });
+  const subArn = 'arn:aws:sns:us-east-1:111122223333:NotifTopic:0000-1111-2222';
+
+  it('folds a subscription CDK placed in a SIBLING stack (DescribeStackResources resolves it)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          StackName: 'Producer',
+          LogicalResourceId: 'NotifTopicSub',
+          PhysicalResourceId: subArn,
+          ResourceType: 'AWS::SNS::Subscription',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      new Map()
+    );
+    expect(managed).toBe(true);
+  });
+
+  it('does NOT fold a genuinely out-of-band subscription (no owning stack -> API throws)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const notFound = new Error(`Stack for ${subArn} does not exist`);
+    notFound.name = 'ValidationError';
+    cfn.on(DescribeStackResourcesCommand).rejects(notFound);
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      new Map()
+    );
+    expect(managed).toBe(false);
+  });
+
+  it('does NOT fold when the owning-stack resource type differs (id reuse guard)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          StackName: 'Other',
+          LogicalResourceId: 'SomethingElse',
+          PhysicalResourceId: subArn,
+          ResourceType: 'AWS::SNS::Topic',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      new Map()
+    );
+    expect(managed).toBe(false);
+  });
+
+  it('skips the API call for a pipe-composite CC identifier (within-stack sub-resource)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child('api123|res456|GET', 'AWS::ApiGateway::Method'),
+      new Map()
+    );
+    expect(managed).toBe(false);
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(0);
+  });
+
+  it('memoizes the resolution per physical id (one API call for a repeated child)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          StackName: 'Producer',
+          LogicalResourceId: 'Sub',
+          PhysicalResourceId: subArn,
+          ResourceType: 'AWS::SNS::Subscription',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    const cache = new Map<string, boolean>();
+    await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
+    await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
+    expect(cache.get(subArn)).toBe(true);
   });
 });
