@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
 import { type CorpusCase, reviveSchema } from '../src/corpus/record.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
+import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import {
   buildRevertPlan,
   type PatchOp,
@@ -622,6 +623,45 @@ describe('buildRevertPlan', () => {
     const t = plan.items.find((i) => i.ops.some((o) => o.path === '/MessageTtlSeconds'))!;
     expect(r.kind).toBe('sdk');
     expect(t.kind).toBe('sdk');
+  });
+
+  it('RolesAnywhere Profile AttributeMappings (SET-DEFAULT) -> add op writing the whole default array, not a no-op remove', () => {
+    // Follow-up 2: the whole-array twin of DurationSeconds — the provider ignores an omitted
+    // AttributeMappings, so a bare `remove` was a live-proven no-op (an out-of-band
+    // put-attribute-mapping x509Subject *->CN survived it). Revert writes the whole default
+    // array (from KNOWN_DEFAULTS) explicitly; live-proven to converge (x509Subject back to *).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RolesAnywhere::Profile',
+      path: 'AttributeMappings',
+      actual: [{ CertificateField: 'x509Subject', MappingRules: [{ Specifier: 'CN' }] }],
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AttributeMappings',
+      value: KNOWN_DEFAULTS['AWS::RolesAnywhere::Profile']!.AttributeMappings,
+    });
+  });
+
+  it('KinesisVideo Stream StreamStorageConfiguration nested tier -> nested SDK item (CC Tags-min-items reject; UpdateStreamStorageConfiguration)', () => {
+    // Follow-up 2: StreamStorageConfiguration is descended, so an out-of-band DefaultStorageTier
+    // change surfaces at the nested path — unrevertable via CC (Tags validation), routed to the
+    // dedicated UpdateStreamStorageConfiguration API (SDK_NESTED_WRITERS). Live-proven WARM->HOT.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::KinesisVideo::Stream',
+      path: 'StreamStorageConfiguration.DefaultStorageTier',
+      actual: 'WARM',
+      nested: true,
+      physicalId: 'my-stream',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.notRevertable).toHaveLength(0);
+    const item = plan.items.find((i) =>
+      i.ops.some((o) => o.path === '/StreamStorageConfiguration/DefaultStorageTier')
+    )!;
+    expect(item.kind).toBe('sdk');
   });
 
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
