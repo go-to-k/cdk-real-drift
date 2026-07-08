@@ -135,6 +135,19 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // MessageAttributes"). SNS refuses to clear the attribute, so revert can only converge by
   // SETTING the "MessageAttributes" default (from KNOWN_DEFAULTS) explicitly.
   'AWS::SNS::Subscription\0FilterPolicyScope',
+  // InternetMonitor UpdateMonitor IGNORES an omitted Status (live-proven follow-up to the
+  // #626 fold: a monitor paused out of band to INACTIVE, then `revert --remove-unrecorded`
+  // planned a `remove`, reported CLEAN, yet live `get-monitor` stayed INACTIVE). Write the
+  // "ACTIVE" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
+  'AWS::InternetMonitor::Monitor\0Status',
+  // RolesAnywhere UpdateProfile IGNORES an omitted DurationSeconds (live-proven follow-up to
+  // the #619 fold: a profile's session duration changed out of band to 7200, then
+  // `revert --remove-unrecorded` planned a `remove`, reported reverted, yet live `get-profile`
+  // stayed 7200). Write the 3600 default (from KNOWN_DEFAULTS) back explicitly so revert
+  // converges. (Contrast AWS::Bedrock::Agent IdleSessionTTLInSeconds, verified same session to
+  // CONVERGE via a plain `remove` — UpdateAgent re-materializes the 600 default on omit — so it
+  // needs NO entry here.)
+  'AWS::RolesAnywhere::Profile\0DurationSeconds',
 ]);
 
 /**
