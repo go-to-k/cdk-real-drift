@@ -135,16 +135,21 @@ export function buildResolverContext(
   };
 }
 
-// Per-region cache of CFn exports (Name -> Value). Listing exports is account+region
-// scoped, so a single fetch serves every ImportValue in the stack; cache so repeated
-// gather runs in the same process don't re-page.
+// Per-account+region cache of CFn exports (Name -> Value). CFn exports are scoped to
+// an account AND a region, so the cache key MUST carry BOTH axes: keying on region
+// alone would serve account A's exports to account B's same-region stack (a multi-account
+// run) — a wrong-value resolution surfacing as a declared false positive / a wrong revert
+// value. A single fetch serves every ImportValue in the stack; cache so repeated gather
+// runs in the same process don't re-page.
 const exportsCache = new Map<string, Record<string, string>>();
 
-async function listExports(
+export async function listExports(
   client: CloudFormationClient,
+  accountId: string,
   region: string
 ): Promise<Record<string, string>> {
-  const cached = exportsCache.get(region);
+  const cacheKey = `${accountId}:${region}`;
+  const cached = exportsCache.get(cacheKey);
   if (cached) return cached;
   const exports: Record<string, string> = {};
   let next: string | undefined;
@@ -153,7 +158,7 @@ async function listExports(
     for (const e of res.Exports ?? []) if (e.Name) exports[e.Name] = e.Value ?? '';
     next = res.NextToken;
   } while (next);
-  exportsCache.set(region, exports);
+  exportsCache.set(cacheKey, exports);
   return exports;
 }
 
@@ -269,7 +274,21 @@ export async function loadDesired(
   // UNRESOLVED and its declared property is silently skipped (missed drift).
   // parseTemplateBody has already normalized short-form tags to long-form `Fn::ImportValue`.
   if (JSON.stringify(template).includes('Fn::ImportValue')) {
-    ctx.exports = await listExports(client, region);
+    // DEGRADE, don't die: a principal with cloudformation:GetTemplate + DescribeStacks but
+    // NO cloudformation:ListExports would otherwise hard-fail the ENTIRE stack check (exit 2)
+    // over a permission gap that affects only one resolution axis. A read-only check should
+    // leave ctx.exports empty on failure — the ImportValue-consuming properties then resolve
+    // to `unresolved` (visible, and blocks --strict) instead of taking down the whole stack.
+    try {
+      ctx.exports = await listExports(client, accountId, region);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `warning: ${stackName}: cloudformation:ListExports failed — Fn::ImportValue references ` +
+          `will resolve UNRESOLVED (their declared properties are skipped, not compared). ` +
+          `Grant cloudformation:ListExports for full coverage. (${msg})`
+      );
+    }
   }
 
   const resources: DesiredResource[] = [];
