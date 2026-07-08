@@ -997,6 +997,52 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Bedrock::Agent': {
     AgentCollaboration: 'DISABLED',
     OrchestrationType: 'DEFAULT',
+    // An agent that declares no idle-session TTL reads back AWS's 600-second default
+    // (observed live, hunt 2026-07-08, #619). A user-settable knob — equality-gated, so an
+    // agent that raises/lowers it surfaces as real undeclared drift. (Live: an out-of-band
+    // 600->1200 re-surfaced correctly after record.)
+    IdleSessionTTLInSeconds: 600,
+  },
+  // A Site-to-Site VPN gateway that declares no ASN reads back AWS's 64512 default private
+  // ASN (observed live, hunt 2026-07-08, #619). createOnly, so it never drifts; equality-
+  // gated all the same (a gateway created with a custom ASN declares it, compared).
+  'AWS::EC2::VPNGateway': {
+    AmazonSideAsn: 64512,
+  },
+  // A CodeGuru Profiler group that declares no compute platform reads back the constant
+  // "Default" (enum Default|AWSLambda; the CFn schema annotates no default). createOnly.
+  // Equality-gated (an AWSLambda group is declared, compared). Live, hunt 2026-07-08 (#622).
+  'AWS::CodeGuruProfiler::ProfilingGroup': {
+    ComputePlatform: 'Default',
+  },
+  // A Service Catalog product that declares no product type reads back the constant
+  // "CLOUD_FORMATION_TEMPLATE" AWS materializes (observed live, hunt 2026-07-08, #625).
+  // Equality-gated, so a MARKETPLACE/EXTERNAL product (declared) still surfaces. The nested
+  // per-artifact Type echo folds via KNOWN_DEFAULT_PATHS below.
+  'AWS::ServiceCatalog::CloudFormationProduct': {
+    ProductType: 'CLOUD_FORMATION_TEMPLATE',
+  },
+  // An Internet Monitor that declares no Status reads back "ACTIVE" (observed live, hunt
+  // 2026-07-08 round F, #626). A user-settable knob (a user pausing a monitor sets INACTIVE)
+  // — equality-gated, so a paused monitor surfaces as real undeclared drift.
+  'AWS::InternetMonitor::Monitor': {
+    Status: 'ACTIVE',
+  },
+  // A Roles Anywhere profile that declares neither a session duration nor attribute mappings
+  // reads back AWS's 3600-second default and the constant default attribute-mapping set
+  // (observed live, hunt 2026-07-08, #619). DurationSeconds is a user-settable knob (equality-
+  // gated, a custom TTL surfaces); AttributeMappings is the whole-array constant AWS seeds
+  // (same shape family as the TrustAnchor NotificationSettings whole-array default).
+  'AWS::RolesAnywhere::Profile': {
+    DurationSeconds: 3600,
+    AttributeMappings: [
+      { CertificateField: 'x509Issuer', MappingRules: [{ Specifier: '*' }] },
+      {
+        CertificateField: 'x509SAN',
+        MappingRules: [{ Specifier: 'DNS' }, { Specifier: 'URI' }, { Specifier: 'Name/*' }],
+      },
+      { CertificateField: 'x509Subject', MappingRules: [{ Specifier: '*' }] },
+    ],
   },
   // A CodeStar notification rule / Recycle Bin rule read back the "on" default status when
   // the template declares none (observed live on hunt 2026-07-03, #492). These ARE
@@ -1187,6 +1233,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A Service Catalog product's provisioning artifact that declares no Type reads back the
+  // constant "CLOUD_FORMATION_TEMPLATE" (observed live, hunt 2026-07-08, #625) — the nested
+  // twin of the top-level ProductType fold above. Equality-gated, so an artifact created as a
+  // different type still surfaces.
+  'AWS::ServiceCatalog::CloudFormationProduct': {
+    'ProvisioningArtifactParameters.*.Type': 'CLOUD_FORMATION_TEMPLATE',
+  },
   // A Managed Service for Apache Flink application that declares no encryption config
   // reads back the AWS-owned-key default. Constant (a customer CMK is set explicitly).
   // Equality-gated: an out-of-band switch to a customer key no longer matches. Observed
@@ -1660,6 +1713,21 @@ export const CONTEXT_DEFAULTS: Record<string, Record<string, 'region' | 'regionL
   'AWS::EC2::VPCEndpointService': { SupportedRegions: 'regionList' },
 };
 
+// Top-level UNDECLARED keys whose default VALUE is an ARN derived from the resource's own
+// deploy context — partition, region, account id — which neither a constant KNOWN_DEFAULTS
+// entry nor the region-only CONTEXT_DEFAULTS above can express. The template uses the
+// placeholders {partition}/{region}/{accountId}, substituted from the read opts and equality-
+// gated against the live value: a resource that points the property at a DIFFERENT scope / key
+// still surfaces as real undeclared drift (detection preserved, unlike a value-independent
+// fold). With no resolved account/region the substitution is skipped and the value stays
+// `undeclared` (recordable), never a wrong fold.
+export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
+  // A ResourceExplorer2 View that declares no Scope reads back the account-root ARN — the
+  // whole-account default scope. createOnly (never drifts), but derived rather than value-
+  // independent per the fold-strategy order. Live, hunt 2026-07-08 round F (#626).
+  'AWS::ResourceExplorer2::View': { Scope: 'arn:{partition}:iam::{accountId}:root' },
+};
+
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
 // live ENGINE (RDS) — the engine-conditional twin of CONTEXT_DEFAULTS (region-derived) and
 // KNOWN_DEFAULTS (constant). A single constant cannot express these because the default
@@ -1918,6 +1986,12 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // (a GUID) inside EncryptionAtRestOptions — never a constant, never user intent when undeclared
   // (like RDS KmsKeyId). Live-verified undeclared on a fresh opensearch-rich deploy.
   'AWS::OpenSearchService::Domain': new Set(['EncryptionAtRestOptions.KmsKeyId']),
+  // A stage with a declared canary reads back a CanarySetting.DeploymentId AWS materializes at
+  // creation — the canary starts pointed at the stage's current deployment, so AWS fills the id
+  // the template's CanarySetting omits. Per-resource AWS-assigned identifier (the canary-nested
+  // twin of the stage's own top-level DeploymentId, which already folds `generated`), so fold it
+  // value-independently. Live, hunt 2026-07-08 round G (#633).
+  'AWS::ApiGateway::Stage': new Set(['CanarySetting.DeploymentId']),
 };
 
 // Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
@@ -2290,6 +2364,38 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   Same shape as AWS::Redshift::Cluster.ClusterVersion / AWS::ECS::Service.PlatformVersion
   //   above. Live-verified undeclared on a fresh grafana-rich deploy ("10.4"), no out-of-band edit.
   'AWS::Grafana::Workspace': new Set(['GrafanaVersion']),
+  //   AWS::Bedrock::AgentAlias.RoutingConfiguration — an alias that declares no routing reads
+  //   back an AWS-assigned pointer to the auto-created agent version ([{"AgentVersion":"1"}]).
+  //   The version number moves as the agent is updated/re-prepared, so it is not a constant we
+  //   can pin and is not user intent when undeclared (a user who pins a version DECLARES
+  //   routingConfiguration → compared in the declared loop). Live, hunt 2026-07-08 (#619).
+  'AWS::Bedrock::AgentAlias': new Set(['RoutingConfiguration']),
+  //   AWS::AppSync::ApiKey.Expires (UNDECLARED) — a key that declares no expiry reads back
+  //   AWS's creation-time + 7 days (rounded down to the hour): creation-time-relative, not a
+  //   constant and not derivable from any declared prop. A DECLARED Expires goes through the
+  //   declared loop with EPOCH_HOUR_PATHS rounding (unaffected). The existing corpus ApiKey
+  //   case DECLARES Expires, which is why this undeclared scenario stayed latent (#615 lesson).
+  //   Live, hunt 2026-07-08 (#619).
+  'AWS::AppSync::ApiKey': new Set(['Expires']),
+  //   AWS::AppConfig::ExtensionAssociation.ExtensionVersionNumber — an association reads back
+  //   the bound extension's current version at creation (1 here). Not declared, not a stable
+  //   constant (it equals whatever version the referenced extension is at), and not derivable
+  //   from the association's own declared props (ExtensionIdentifier is write-only and carries
+  //   no version). A per-association AWS-assigned pointer; a user who pins the version DECLARES
+  //   it → compared in the declared loop. Live, hunt 2026-07-08 round D (#622).
+  'AWS::AppConfig::ExtensionAssociation': new Set(['ExtensionVersionNumber']),
+  //   AWS::StepFunctions::StateMachineVersion.StateMachineRevisionId — a version reads back the
+  //   AWS-assigned revision pointer ("INITIAL" for a never-updated machine's first version; a
+  //   UUID for a version cut from a later revision). It is a per-resource AWS-assigned identifier
+  //   the user cannot meaningfully set, and the value legitimately varies (INITIAL vs a UUID), so
+  //   neither a constant nor a derivation fits — value-independent. Live, hunt 2026-07-08 (#628).
+  'AWS::StepFunctions::StateMachineVersion': new Set(['StateMachineRevisionId']),
+  //   AWS::StepFunctions::StateMachineAlias.StateMachineArn — an alias reads back the ARN of the
+  //   state machine it belongs to (an AWS-assigned echo derivable from the declared
+  //   RoutingConfiguration's version ARN, but an alias is bound to exactly one state machine and
+  //   the ARN carries the machine's generated name segment). Not user intent when undeclared —
+  //   fold value-independent. Live, hunt 2026-07-08 (#628).
+  'AWS::StepFunctions::StateMachineAlias': new Set(['StateMachineArn']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

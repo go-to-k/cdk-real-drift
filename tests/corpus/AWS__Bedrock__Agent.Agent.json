@@ -1,0 +1,141 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Agent",
+    "resourceType": "AWS::Bedrock::Agent",
+    "physicalId": "9W8IFJ9ZK0",
+    "constructPath": "CdkRealDriftHunt0708Bedrock/Agent",
+    "declared": {
+      "AgentName": "cdkrd-hunt0708-agent",
+      "AgentResourceRoleArn": "arn:aws:iam::111111111111:role/cdkrd-hunt0708-bedrock-agent-role",
+      "AutoPrepare": true,
+      "Description": "cdkrd bug-hunt agent",
+      "FoundationModel": "anthropic.claude-3-haiku-20240307-v1:0",
+      "Instruction": "You are a placeholder integration-test agent for cdk-real-drift. Reply politely."
+    }
+  },
+  "liveRaw": {
+    "AgentCollaborators": [],
+    "Description": "cdkrd bug-hunt agent",
+    "AgentVersion": "DRAFT",
+    "PromptOverrideConfiguration": {
+      "PromptConfigurations": []
+    },
+    "CreatedAt": "2026-07-08T01:28:05.585469689Z",
+    "AgentCollaboration": "DISABLED",
+    "PreparedAt": "2026-07-08T01:28:21.106919716Z",
+    "Instruction": "You are a placeholder integration-test agent for cdk-real-drift. Reply politely.",
+    "FailureReasons": [],
+    "UpdatedAt": "2026-07-08T01:28:24.079611921Z",
+    "TestAliasTags": {},
+    "AgentResourceRoleArn": "arn:aws:iam::111111111111:role/cdkrd-hunt0708-bedrock-agent-role",
+    "AgentArn": "arn:aws:bedrock:us-east-1:111111111111:agent/9W8IFJ9ZK0",
+    "AgentStatus": "PREPARED",
+    "OrchestrationType": "DEFAULT",
+    "FoundationModel": "anthropic.claude-3-haiku-20240307-v1:0",
+    "IdleSessionTTLInSeconds": 600,
+    "AgentId": "9W8IFJ9ZK0",
+    "AgentName": "cdkrd-hunt0708-agent",
+    "KnowledgeBases": [],
+    "ActionGroups": [],
+    "RecommendedActions": [],
+    "Tags": {}
+  },
+  "schema": {
+    "readOnly": [
+      "AgentArn",
+      "AgentId",
+      "AgentStatus",
+      "AgentVersion",
+      "CreatedAt",
+      "FailureReasons",
+      "PreparedAt",
+      "RecommendedActions",
+      "UpdatedAt"
+    ],
+    "writeOnly": ["AutoPrepare", "SkipResourceInUseCheckOnDelete"],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "AgentArn",
+      "AgentId",
+      "AgentStatus",
+      "AgentVersion",
+      "CreatedAt",
+      "FailureReasons",
+      "PreparedAt",
+      "RecommendedActions",
+      "UpdatedAt"
+    ],
+    "writeOnlyPaths": [
+      "ActionGroups.*.SkipResourceInUseCheckOnDelete",
+      "AutoPrepare",
+      "SkipResourceInUseCheckOnDelete"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {
+      "AutoPrepare": false,
+      "SkipResourceInUseCheckOnDelete": false
+    },
+    "defaultPaths": {
+      "ActionGroups.*.SkipResourceInUseCheckOnDelete": false,
+      "AutoPrepare": false,
+      "SkipResourceInUseCheckOnDelete": false
+    },
+    "unorderedScalarPaths": [
+      "FailureReasons",
+      "MemoryConfiguration.EnabledMemoryTypes",
+      "RecommendedActions"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ActionGroups",
+      "AgentCollaborators",
+      "KnowledgeBases",
+      "PromptOverrideConfiguration.PromptConfigurations"
+    ],
+    "freeFormMapPaths": ["ActionGroups.*.FunctionSchema.Functions.*.Parameters", "TestAliasTags"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Agent",
+      "resourceType": "AWS::Bedrock::Agent",
+      "path": "AutoPrepare",
+      "note": "write-only — cannot be read back",
+      "physicalId": "9W8IFJ9ZK0",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Agent",
+      "resourceType": "AWS::Bedrock::Agent",
+      "path": "AgentCollaboration",
+      "actual": "DISABLED",
+      "physicalId": "9W8IFJ9ZK0",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Agent",
+      "resourceType": "AWS::Bedrock::Agent",
+      "path": "OrchestrationType",
+      "actual": "DEFAULT",
+      "physicalId": "9W8IFJ9ZK0",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Agent",
+      "resourceType": "AWS::Bedrock::Agent",
+      "path": "IdleSessionTTLInSeconds",
+      "actual": 600,
+      "physicalId": "9W8IFJ9ZK0",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent"
+    }
+  ]
+}

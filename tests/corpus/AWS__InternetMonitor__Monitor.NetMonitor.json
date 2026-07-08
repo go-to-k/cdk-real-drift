@@ -1,0 +1,90 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NetMonitor",
+    "resourceType": "AWS::InternetMonitor::Monitor",
+    "physicalId": "cdkrd-hunt-0708f-monitor",
+    "constructPath": "CdkRealDriftHunt0708FMisc/NetMonitor",
+    "declared": {
+      "MaxCityNetworksToMonitor": 1,
+      "MonitorName": "cdkrd-hunt-0708f-monitor"
+    }
+  },
+  "liveRaw": {
+    "ModifiedAt": "2026-07-08T03:29:49Z",
+    "Status": "ACTIVE",
+    "MonitorArn": "arn:aws:internetmonitor:us-east-1:111111111111:monitor/cdkrd-hunt-0708f-monitor",
+    "CreatedAt": "2026-07-08T03:29:49Z",
+    "MonitorName": "cdkrd-hunt-0708f-monitor",
+    "Resources": [],
+    "ProcessingStatusInfo": "The monitor is OK and is collecting data-points to produce insights",
+    "MaxCityNetworksToMonitor": 1,
+    "ProcessingStatus": "COLLECTING_DATA",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708FMisc/3f8c8370-7a7d-11f1-9dca-0ef759634907",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708FMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "NetMonitor",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CreatedAt",
+      "ModifiedAt",
+      "MonitorArn",
+      "ProcessingStatus",
+      "ProcessingStatusInfo"
+    ],
+    "writeOnly": [
+      "IncludeLinkedAccounts",
+      "LinkedAccountId",
+      "ResourcesToAdd",
+      "ResourcesToRemove"
+    ],
+    "createOnly": ["MonitorName"],
+    "readOnlyPaths": [
+      "CreatedAt",
+      "ModifiedAt",
+      "MonitorArn",
+      "ProcessingStatus",
+      "ProcessingStatusInfo"
+    ],
+    "writeOnlyPaths": [
+      "IncludeLinkedAccounts",
+      "LinkedAccountId",
+      "ResourcesToAdd",
+      "ResourcesToRemove"
+    ],
+    "createOnlyPaths": ["MonitorName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["Resources", "ResourcesToAdd", "ResourcesToRemove"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "NetMonitor",
+      "resourceType": "AWS::InternetMonitor::Monitor",
+      "path": "Status",
+      "actual": "ACTIVE",
+      "physicalId": "cdkrd-hunt-0708f-monitor",
+      "constructPath": "CdkRealDriftHunt0708FMisc/NetMonitor"
+    }
+  ]
+}

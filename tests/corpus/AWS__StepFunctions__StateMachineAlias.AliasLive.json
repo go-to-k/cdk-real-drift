@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AliasLive",
+    "resourceType": "AWS::StepFunctions::StateMachineAlias",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:hunt0708g-live",
+    "constructPath": "CdkRealDriftHunt0708gSfn/AliasLive",
+    "declared": {
+      "Description": "hunt alias",
+      "Name": "hunt0708g-live",
+      "RoutingConfiguration": [
+        {
+          "StateMachineVersionArn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:1",
+          "Weight": 100
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "hunt alias",
+    "RoutingConfiguration": [
+      {
+        "StateMachineVersionArn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:1",
+        "Weight": 100
+      }
+    ],
+    "StateMachineArn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:hunt0708g-live",
+    "Name": "hunt0708g-live"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["DeploymentPreference"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["DeploymentPreference"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["DeploymentPreference.Alarms"],
+    "unorderedObjectArrayPaths": ["RoutingConfiguration"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AliasLive",
+      "resourceType": "AWS::StepFunctions::StateMachineAlias",
+      "path": "StateMachineArn",
+      "actual": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:hunt0708g-live",
+      "constructPath": "CdkRealDriftHunt0708gSfn/AliasLive"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SmCEE63372",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+    "constructPath": "CdkRealDriftHunt0708gSfn/Sm",
+    "declared": {
+      "DefinitionString": "{\"StartAt\":\"P\",\"States\":{\"P\":{\"Type\":\"Pass\",\"End\":true}}}",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708gSfn-SmRole9B0BB922-My6Pbo9sFDA4"
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\"StartAt\":\"P\",\"States\":{\"P\":{\"Type\":\"Pass\",\"End\":true}}}",
+    "EncryptionConfiguration": {
+      "Type": "AWS_OWNED_KEY"
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": false,
+      "Level": "OFF"
+    },
+    "StateMachineRevisionId": "INITIAL",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+    "StateMachineName": "SmCEE63372-Km6uaQv7cFLv",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708gSfn-SmRole9B0BB922-My6Pbo9sFDA4",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708gSfn/585cd470-7a7f-11f1-b37a-124616eb4d5f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708gSfn",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SmCEE63372",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "SmCEE63372-Km6uaQv7cFLv",
+    "StateMachineType": "STANDARD",
+    "TracingConfiguration": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["LoggingConfiguration.Destinations"],
+    "freeFormMapPaths": ["DefinitionSubstitutions"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SmCEE63372",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "Type": "AWS_OWNED_KEY"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+      "constructPath": "CdkRealDriftHunt0708gSfn/Sm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SmCEE63372",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": {
+        "IncludeExecutionData": false,
+        "Level": "OFF"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+      "constructPath": "CdkRealDriftHunt0708gSfn/Sm"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "SmCEE63372",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineName",
+      "actual": "SmCEE63372-Km6uaQv7cFLv",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+      "constructPath": "CdkRealDriftHunt0708gSfn/Sm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SmCEE63372",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineType",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+      "constructPath": "CdkRealDriftHunt0708gSfn/Sm"
+    }
+  ]
+}

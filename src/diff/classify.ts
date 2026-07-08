@@ -55,6 +55,7 @@ import {
   TRAILING_SLASH_PATHS,
   GENERATED_PATHS,
   CONTEXT_DEFAULTS,
+  CONTEXT_ARN_DEFAULTS,
   DEFAULT_MANAGED_NAME_PATHS,
   DESCEND_UNDECLARED_OBJECT_PATHS,
   ebOptionSettingTier,
@@ -1911,6 +1912,32 @@ export function classifyResource(
     if (ctxKind !== undefined && opts.region !== undefined) {
       const ctxDefault = ctxKind === 'region' ? opts.region : [opts.region];
       if (deepEqual(v, ctxDefault)) {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+    }
+    // A live value EQUAL to its CONTEXT-DERIVED ARN default — an ARN whose VALUE is built from
+    // this resource's own account/region/partition (a ResourceExplorer2 View's account-root
+    // Scope), which neither a constant nor the region-only CONTEXT_DEFAULTS can express.
+    // Equality-gated (a view scoped elsewhere still surfaces); with no resolved account/region
+    // it falls through to plain `undeclared` (recordable), never a wrong fold.
+    const ctxArnTemplate = CONTEXT_ARN_DEFAULTS[resourceType]?.[k];
+    if (
+      ctxArnTemplate !== undefined &&
+      opts.region !== undefined &&
+      opts.accountId !== undefined &&
+      typeof v === 'string'
+    ) {
+      const partition = opts.region.startsWith('cn-')
+        ? 'aws-cn'
+        : opts.region.startsWith('us-gov-')
+          ? 'aws-us-gov'
+          : 'aws';
+      const ctxArnDefault = ctxArnTemplate
+        .replace('{partition}', partition)
+        .replace('{region}', opts.region)
+        .replace('{accountId}', opts.accountId);
+      if (v === ctxArnDefault) {
         findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
         continue;
       }

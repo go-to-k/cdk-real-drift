@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPgRich",
+    "resourceType": "AWS::CodeGuruProfiler::ProfilingGroup",
+    "physicalId": "cdkrd-hunt-0708d-pg-rich",
+    "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntPgRich",
+    "declared": {
+      "AgentPermissions": {
+        "Principals": [
+          "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708DVpMisc-HuntAgentRole32F54652-JiH9SVu0cEMp"
+        ]
+      },
+      "ComputePlatform": "Default",
+      "ProfilingGroupName": "cdkrd-hunt-0708d-pg-rich"
+    }
+  },
+  "liveRaw": {
+    "AnomalyDetectionNotificationConfiguration": [],
+    "AgentPermissions": {
+      "Principals": [
+        "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708DVpMisc-HuntAgentRole32F54652-JiH9SVu0cEMp"
+      ]
+    },
+    "ComputePlatform": "Default",
+    "ProfilingGroupName": "cdkrd-hunt-0708d-pg-rich",
+    "Arn": "arn:aws:codeguru-profiler:us-east-1:111111111111:profilingGroup/cdkrd-hunt-0708d-pg-rich",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ComputePlatform", "ProfilingGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ComputePlatform", "ProfilingGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

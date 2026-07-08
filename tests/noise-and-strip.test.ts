@@ -22,6 +22,8 @@ import {
   INTELLIGENT_TIERING_PATHS,
   KNOWN_DEFAULTS,
   KNOWN_DEFAULT_PATHS,
+  GENERATED_NESTED_PATHS,
+  CONTEXT_ARN_DEFAULTS,
   VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   stripAwsTagsDeep,
   VERSION_PREFIX_PATHS,
@@ -715,6 +717,62 @@ describe('noise suppressors', () => {
     // ApiDestination.ApiDestination corpus-replay case).
     expect(KNOWN_DEFAULTS['AWS::Events::ApiDestination']).toEqual({
       InvocationRateLimitPerSecond: 300,
+    });
+  });
+
+  it('bug-hunt 2026-07-08 first-run constant/derived/value-independent folds (#619/#622/#625/#626/#628/#633)', () => {
+    // Tier-1 equality-gated constants: undeclared values AWS materializes at creation that
+    // surfaced as first-run [Potential Drift] FPs until folded (exercised end-to-end by the
+    // matching corpus-replay cases). Equality-gated, so an out-of-band change re-surfaces.
+    expect(KNOWN_DEFAULTS['AWS::EC2::VPNGateway']).toEqual({ AmazonSideAsn: 64512 }); // #619
+    expect(KNOWN_DEFAULTS['AWS::Bedrock::Agent']?.IdleSessionTTLInSeconds).toBe(600); // #619
+    expect(KNOWN_DEFAULTS['AWS::CodeGuruProfiler::ProfilingGroup']).toEqual({
+      ComputePlatform: 'Default',
+    }); // #622
+    expect(KNOWN_DEFAULTS['AWS::ServiceCatalog::CloudFormationProduct']).toEqual({
+      ProductType: 'CLOUD_FORMATION_TEMPLATE',
+    }); // #625
+    expect(KNOWN_DEFAULTS['AWS::InternetMonitor::Monitor']).toEqual({ Status: 'ACTIVE' }); // #626
+    expect(KNOWN_DEFAULTS['AWS::RolesAnywhere::Profile']?.DurationSeconds).toBe(3600); // #619
+    expect(KNOWN_DEFAULTS['AWS::RolesAnywhere::Profile']?.AttributeMappings).toEqual([
+      { CertificateField: 'x509Issuer', MappingRules: [{ Specifier: '*' }] },
+      {
+        CertificateField: 'x509SAN',
+        MappingRules: [{ Specifier: 'DNS' }, { Specifier: 'URI' }, { Specifier: 'Name/*' }],
+      },
+      { CertificateField: 'x509Subject', MappingRules: [{ Specifier: '*' }] },
+    ]); // #619
+    // Nested constant: a product's per-artifact Type echo.
+    expect(KNOWN_DEFAULT_PATHS['AWS::ServiceCatalog::CloudFormationProduct']).toEqual({
+      'ProvisioningArtifactParameters.*.Type': 'CLOUD_FORMATION_TEMPLATE',
+    }); // #625
+    // Tier-3 value-independent: per-resource AWS-assigned pointers/echoes the user cannot
+    // meaningfully pin, folded only when UNDECLARED (a DECLARED value is compared).
+    expect(VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::Bedrock::AgentAlias']).toContain(
+      'RoutingConfiguration'
+    ); // #619
+    expect(VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::AppSync::ApiKey']).toContain('Expires'); // #619
+    expect(
+      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::AppConfig::ExtensionAssociation']
+    ).toContain('ExtensionVersionNumber'); // #622
+    expect(
+      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::StepFunctions::StateMachineVersion']
+    ).toContain('StateMachineRevisionId'); // #628
+    expect(
+      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::StepFunctions::StateMachineAlias']
+    ).toContain('StateMachineArn'); // #628
+    // Value-independent nested generated id: the canary's AWS-assigned DeploymentId.
+    expect(GENERATED_NESTED_PATHS['AWS::ApiGateway::Stage']).toContain(
+      'CanarySetting.DeploymentId'
+    ); // #633
+  });
+
+  it('ResourceExplorer2 View undeclared Scope folds via the context-ARN default (#626)', () => {
+    // The account-root Scope is a tier-2 DERIVED default (arn:<partition>:iam::<account>:root),
+    // built from the read context and equality-gated so a view scoped elsewhere still surfaces.
+    // Exercised end-to-end by the AWS__ResourceExplorer2__View.RexView corpus-replay case.
+    expect(CONTEXT_ARN_DEFAULTS['AWS::ResourceExplorer2::View']).toEqual({
+      Scope: 'arn:{partition}:iam::{accountId}:root',
     });
   });
 

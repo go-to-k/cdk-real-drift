@@ -1,0 +1,93 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AgentAlias",
+    "resourceType": "AWS::Bedrock::AgentAlias",
+    "physicalId": "9W8IFJ9ZK0|RNIIBZI1I2",
+    "constructPath": "CdkRealDriftHunt0708Bedrock/AgentAlias",
+    "declared": {
+      "AgentAliasName": "live",
+      "AgentId": "9W8IFJ9ZK0",
+      "Description": "cdkrd bug-hunt agent alias"
+    }
+  },
+  "liveRaw": {
+    "AgentAliasStatus": "PREPARED",
+    "AgentAliasName": "live",
+    "AgentAliasArn": "arn:aws:bedrock:us-east-1:111111111111:agent-alias/9W8IFJ9ZK0/RNIIBZI1I2",
+    "Description": "cdkrd bug-hunt agent alias",
+    "RoutingConfiguration": [
+      {
+        "AgentVersion": "1"
+      }
+    ],
+    "AgentAliasHistoryEvents": [
+      {
+        "StartDate": "2026-07-08T01:28:25.754226239Z",
+        "RoutingConfiguration": [
+          {
+            "AgentVersion": "1"
+          }
+        ],
+        "EndDate": ""
+      }
+    ],
+    "CreatedAt": "2026-07-08T01:28:22.433897279Z",
+    "AgentAliasId": "RNIIBZI1I2",
+    "AgentId": "9W8IFJ9ZK0",
+    "UpdatedAt": "2026-07-08T01:28:22.433897279Z",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftHunt0708Bedrock",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708Bedrock/327a79a0-7a6c-11f1-b5f6-0e169744b13b",
+      "aws:cloudformation:logical-id": "AgentAlias"
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "AgentAliasArn",
+      "AgentAliasHistoryEvents",
+      "AgentAliasId",
+      "AgentAliasStatus",
+      "CreatedAt",
+      "UpdatedAt"
+    ],
+    "writeOnly": [],
+    "createOnly": ["AgentId"],
+    "readOnlyPaths": [
+      "AgentAliasArn",
+      "AgentAliasHistoryEvents",
+      "AgentAliasId",
+      "AgentAliasStatus",
+      "CreatedAt",
+      "UpdatedAt"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AgentId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["AgentAliasHistoryEvents", "RoutingConfiguration"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AgentAlias",
+      "resourceType": "AWS::Bedrock::AgentAlias",
+      "path": "RoutingConfiguration",
+      "actual": [
+        {
+          "AgentVersion": "1"
+        }
+      ],
+      "physicalId": "9W8IFJ9ZK0|RNIIBZI1I2",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/AgentAlias"
+    }
+  ]
+}

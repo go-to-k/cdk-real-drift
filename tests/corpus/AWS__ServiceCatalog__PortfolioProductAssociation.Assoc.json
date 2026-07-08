@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Assoc",
+    "resourceType": "AWS::ServiceCatalog::PortfolioProductAssociation",
+    "physicalId": "port-l27sc3bcj4xe6|prod-bme7axqm2leri",
+    "constructPath": "CdkRealDriftHunt0708ESvcCat/Assoc",
+    "declared": {
+      "PortfolioId": "port-l27sc3bcj4xe6",
+      "ProductId": "prod-bme7axqm2leri"
+    }
+  },
+  "liveRaw": {
+    "PortfolioId": "port-l27sc3bcj4xe6",
+    "ProductId": "prod-bme7axqm2leri"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["AcceptLanguage", "SourcePortfolioId"],
+    "createOnly": ["AcceptLanguage", "PortfolioId", "ProductId", "SourcePortfolioId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["AcceptLanguage", "SourcePortfolioId"],
+    "createOnlyPaths": ["AcceptLanguage", "PortfolioId", "ProductId", "SourcePortfolioId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

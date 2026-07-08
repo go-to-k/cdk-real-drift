@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EventsApi",
+    "resourceType": "AWS::AppSync::Api",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky",
+    "constructPath": "CdkRealDriftHunt0708AppSyncEvents/EventsApi",
+    "declared": {
+      "EventConfig": {
+        "AuthProviders": [
+          {
+            "AuthType": "API_KEY"
+          }
+        ],
+        "ConnectionAuthModes": [
+          {
+            "AuthType": "API_KEY"
+          }
+        ],
+        "DefaultPublishAuthModes": [
+          {
+            "AuthType": "API_KEY"
+          }
+        ],
+        "DefaultSubscribeAuthModes": [
+          {
+            "AuthType": "API_KEY"
+          }
+        ]
+      },
+      "Name": "cdkrd-hunt0708-events-api"
+    }
+  },
+  "liveRaw": {
+    "ApiArn": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky",
+    "Dns": {
+      "Http": "ff75znegl5fsje723tgmqp2j7m.appsync-api.us-east-1.amazonaws.com",
+      "Realtime": "ff75znegl5fsje723tgmqp2j7m.appsync-realtime-api.us-east-1.amazonaws.com"
+    },
+    "EventConfig": {
+      "AuthProviders": [
+        {
+          "AuthType": "API_KEY"
+        }
+      ],
+      "ConnectionAuthModes": [
+        {
+          "AuthType": "API_KEY"
+        }
+      ],
+      "DefaultPublishAuthModes": [
+        {
+          "AuthType": "API_KEY"
+        }
+      ],
+      "DefaultSubscribeAuthModes": [
+        {
+          "AuthType": "API_KEY"
+        }
+      ]
+    },
+    "ApiId": "q6ihygkfmzfwjimciq5wgoeuky",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftHunt0708AppSyncEvents",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708AppSyncEvents/32739bd0-7a6c-11f1-964a-12bd8434d3df",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "EventsApi",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt0708-events-api"
+  },
+  "schema": {
+    "readOnly": ["ApiArn", "ApiId", "Dns"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["ApiArn", "ApiId", "Dns", "Dns.Http", "Dns.Realtime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "EventConfig.AuthProviders",
+      "EventConfig.ConnectionAuthModes",
+      "EventConfig.DefaultPublishAuthModes",
+      "EventConfig.DefaultSubscribeAuthModes"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

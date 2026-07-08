@@ -1,0 +1,102 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TrustAnchor",
+    "resourceType": "AWS::RolesAnywhere::TrustAnchor",
+    "physicalId": "400fbb64-0009-4231-a9f5-02553e62c6c8",
+    "constructPath": "CdkRealDriftHunt0708RolesAnywhere/TrustAnchor",
+    "declared": {
+      "Enabled": true,
+      "Name": "cdkrd-hunt0708-anchor",
+      "Source": {
+        "SourceData": {
+          "X509CertificateData": "-----BEGIN CERTIFICATE-----\nMIIBnTCCAUOgAwIBAgIUB6w5GVsiPA98IQknPXbDCfBYuvYwCgYIKoZIzj0EAwIw\nHDEaMBgGA1UEAwwRY2RrcmQtaHVudDA3MDgtY2EwHhcNMjYwNzA4MDEyODMyWhcN\nMjYwODA3MDEyODMyWjAcMRowGAYDVQQDDBFjZGtyZC1odW50MDcwOC1jYTBZMBMG\nByqGSM49AgEGCCqGSM49AwEHA0IABKWZ40lCqvvvGgZy+bvbEEmDRZCh5C4mcI9k\nIUGlPgfeZfSgtTzoF3lVKt4feJr80ZoqF7j28pX63+Nz/1AVDMujYzBhMB0GA1Ud\nDgQWBBT5l2Nhv3ZffQyT4nMyEwo3/91+gDAfBgNVHSMEGDAWgBT5l2Nhv3ZffQyT\n4nMyEwo3/91+gDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAKBggq\nhkjOPQQDAgNIADBFAiB93vdN1cDo6Y/s2coogwkpbyzG07MWJWcdn2wMLZ9NcQIh\nAMGswXhJ2OZ3HBSDnt4Nk0m8pAo02S5Ngs8vwdLtb2oy\n-----END CERTIFICATE-----"
+        },
+        "SourceType": "CERTIFICATE_BUNDLE"
+      }
+    }
+  },
+  "liveRaw": {
+    "TrustAnchorArn": "arn:aws:rolesanywhere:us-east-1:111111111111:trust-anchor/400fbb64-0009-4231-a9f5-02553e62c6c8",
+    "NotificationSettings": [
+      {
+        "Channel": "ALL",
+        "Enabled": true,
+        "Event": "CA_CERTIFICATE_EXPIRY",
+        "Threshold": 45
+      },
+      {
+        "Channel": "ALL",
+        "Enabled": true,
+        "Event": "END_ENTITY_CERTIFICATE_EXPIRY",
+        "Threshold": 45
+      }
+    ],
+    "Enabled": true,
+    "Source": {
+      "SourceType": "CERTIFICATE_BUNDLE",
+      "SourceData": {
+        "X509CertificateData": "-----BEGIN CERTIFICATE-----\nMIIBnTCCAUOgAwIBAgIUB6w5GVsiPA98IQknPXbDCfBYuvYwCgYIKoZIzj0EAwIw\nHDEaMBgGA1UEAwwRY2RrcmQtaHVudDA3MDgtY2EwHhcNMjYwNzA4MDEyODMyWhcN\nMjYwODA3MDEyODMyWjAcMRowGAYDVQQDDBFjZGtyZC1odW50MDcwOC1jYTBZMBMG\nByqGSM49AgEGCCqGSM49AwEHA0IABKWZ40lCqvvvGgZy+bvbEEmDRZCh5C4mcI9k\nIUGlPgfeZfSgtTzoF3lVKt4feJr80ZoqF7j28pX63+Nz/1AVDMujYzBhMB0GA1Ud\nDgQWBBT5l2Nhv3ZffQyT4nMyEwo3/91+gDAfBgNVHSMEGDAWgBT5l2Nhv3ZffQyT\n4nMyEwo3/91+gDAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAKBggq\nhkjOPQQDAgNIADBFAiB93vdN1cDo6Y/s2coogwkpbyzG07MWJWcdn2wMLZ9NcQIh\nAMGswXhJ2OZ3HBSDnt4Nk0m8pAo02S5Ngs8vwdLtb2oy\n-----END CERTIFICATE-----"
+      }
+    },
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708RolesAnywhere/9e8f3cc0-7a6c-11f1-936b-1209b76a853f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708RolesAnywhere",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TrustAnchor",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "TrustAnchorId": "400fbb64-0009-4231-a9f5-02553e62c6c8",
+    "Name": "cdkrd-hunt0708-anchor"
+  },
+  "schema": {
+    "readOnly": ["TrustAnchorArn", "TrustAnchorId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["TrustAnchorArn", "TrustAnchorId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TrustAnchor",
+      "resourceType": "AWS::RolesAnywhere::TrustAnchor",
+      "path": "NotificationSettings",
+      "actual": [
+        {
+          "Channel": "ALL",
+          "Enabled": true,
+          "Event": "CA_CERTIFICATE_EXPIRY",
+          "Threshold": 45
+        },
+        {
+          "Channel": "ALL",
+          "Enabled": true,
+          "Event": "END_ENTITY_CERTIFICATE_EXPIRY",
+          "Threshold": 45
+        }
+      ],
+      "physicalId": "400fbb64-0009-4231-a9f5-02553e62c6c8",
+      "constructPath": "CdkRealDriftHunt0708RolesAnywhere/TrustAnchor"
+    }
+  ]
+}

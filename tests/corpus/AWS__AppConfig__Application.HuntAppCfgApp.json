@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntAppCfgApp",
+    "resourceType": "AWS::AppConfig::Application",
+    "physicalId": "5p56psc",
+    "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntAppCfgApp",
+    "declared": {
+      "Name": "cdkrd-hunt-0708d-app"
+    }
+  },
+  "liveRaw": {
+    "ApplicationId": "5p56psc",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftHunt0708DVpMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntAppCfgApp",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708DVpMisc/ed11d250-7a70-11f1-85fb-0ecb5367f463",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-0708d-app"
+  },
+  "schema": {
+    "readOnly": ["ApplicationId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["ApplicationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "V1",
+    "resourceType": "AWS::StepFunctions::StateMachineVersion",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:1",
+    "constructPath": "CdkRealDriftHunt0708gSfn/V1",
+    "declared": {
+      "Description": "hunt v1",
+      "StateMachineArn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv"
+    }
+  },
+  "liveRaw": {
+    "Description": "hunt v1",
+    "StateMachineRevisionId": "INITIAL",
+    "StateMachineArn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:1"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Description", "StateMachineArn", "StateMachineRevisionId"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "StateMachineArn", "StateMachineRevisionId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "V1",
+      "resourceType": "AWS::StepFunctions::StateMachineVersion",
+      "path": "StateMachineRevisionId",
+      "actual": "INITIAL",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmCEE63372-Km6uaQv7cFLv:1",
+      "constructPath": "CdkRealDriftHunt0708gSfn/V1"
+    }
+  ]
+}

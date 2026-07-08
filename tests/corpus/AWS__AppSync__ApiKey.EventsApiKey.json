@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EventsApiKey",
+    "resourceType": "AWS::AppSync::ApiKey",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky/apikeys/da2-gonknqlfcvg4rbmzc4rhtnuzki",
+    "constructPath": "CdkRealDriftHunt0708AppSyncEvents/EventsApiKey",
+    "declared": {
+      "ApiId": "q6ihygkfmzfwjimciq5wgoeuky",
+      "Description": "cdkrd bug-hunt events api key"
+    }
+  },
+  "liveRaw": {
+    "ApiId": "q6ihygkfmzfwjimciq5wgoeuky",
+    "Description": "cdkrd bug-hunt events api key",
+    "Expires": 1784077200
+  },
+  "schema": {
+    "readOnly": ["ApiKey", "ApiKeyId", "Arn"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["ApiKey", "ApiKeyId", "Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EventsApiKey",
+      "resourceType": "AWS::AppSync::ApiKey",
+      "path": "Expires",
+      "actual": 1784077200,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky/apikeys/da2-gonknqlfcvg4rbmzc4rhtnuzki",
+      "constructPath": "CdkRealDriftHunt0708AppSyncEvents/EventsApiKey"
+    }
+  ]
+}
