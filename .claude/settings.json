@@ -42,6 +42,13 @@
           },
           {
             "type": "command",
+            "command": ".claude/hooks/ci-green-gate.sh",
+            "if": "Bash(gh pr merge*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr merge*)",
+            "timeout": 30,
+            "statusMessage": "Checking the PR's CI is all-green before merge..."
+          },
+          {
+            "type": "command",
             "command": ".claude/hooks/non-english-text-gate.sh",
             "if": "Bash(gh pr create*) or Bash(gh pr edit*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr edit*) or Bash(gh -C * pr merge*)",
             "timeout": 20,
