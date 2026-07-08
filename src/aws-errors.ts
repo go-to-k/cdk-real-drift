@@ -64,7 +64,14 @@ export function classifyStackStatus(status: string | undefined): {
 //   SNS / Budgets       : NotFoundException
 //   IAM                 : NoSuchEntity / NoSuchEntityException
 //   EC2 EIP             : InvalidAllocationID.NotFound / InvalidAddress.NotFound
+//   EC2 LaunchTemplate  : InvalidLaunchTemplateId.NotFound (deleted launch template)
+//   EC2 NetworkAcl      : InvalidNetworkAclID.NotFound (NACL of a NetworkAclEntry deleted)
 //   Glue                : EntityNotFoundException (GetTable on a deleted table/db)
+//   DMS                 : ResourceNotFoundFault (Describe{Endpoints,ReplicationSubnetGroups})
+//   DAX                 : ClusterNotFoundFault / ParameterGroupNotFoundFault /
+//                         SubnetGroupNotFoundFault (Describe{Clusters,ParameterGroups,SubnetGroups})
+//   ElastiCache         : CacheParameterGroupNotFoundFault (DescribeCacheParameterGroups)
+//   Route53             : NoSuchHostedZone (ListResourceRecordSets on a deleted hosted zone)
 //   cdkrd ResourceGoneError : a list/describe-based override whose PARENT container
 //                             exists but whose specific keyed resource is absent (a
 //                             Route53 record / MetricFilter deleted while its zone /
@@ -83,10 +90,24 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'NoSuchEntityException',
   'InvalidAllocationID.NotFound',
   'InvalidAddress.NotFound',
+  // EC2 DescribeLaunchTemplateVersions on a deleted launch template (readEc2LaunchTemplate).
+  'InvalidLaunchTemplateId.NotFound',
+  // EC2 DescribeNetworkAcls on a deleted NACL (readEc2NetworkAclEntry's parent NACL).
+  'InvalidNetworkAclID.NotFound',
   'EntityNotFoundException',
   // DocumentDB describe-db-clusters / describe-db-instances on a deleted target.
   'DBClusterNotFoundFault',
   'DBInstanceNotFoundFault',
+  // DMS DescribeEndpoints / DescribeReplicationSubnetGroups on a deleted target.
+  'ResourceNotFoundFault',
+  // DAX DescribeClusters / DescribeParameterGroups / DescribeSubnetGroups on a deleted target.
+  'ClusterNotFoundFault',
+  'ParameterGroupNotFoundFault',
+  'SubnetGroupNotFoundFault',
+  // ElastiCache DescribeCacheParameterGroups on a deleted parameter group.
+  'CacheParameterGroupNotFoundFault',
+  // Route53 ListResourceRecordSets when the record's hosted ZONE was deleted out of band.
+  'NoSuchHostedZone',
   // Cloud Map (ServiceDiscovery) GetNamespace / GetService on a deleted target.
   'NamespaceNotFound',
   'ServiceNotFound',
