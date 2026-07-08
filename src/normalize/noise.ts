@@ -2489,6 +2489,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
   'AWS::EC2::VPCEndpoint': new Set(['ServiceRegion', 'DnsOptions']),
   'AWS::EC2::VPCPeeringConnection': new Set(['PeerRegion']),
+  //     * EC2 VPCCidrBlock `Ipv6CidrBlock` + `Ipv6CidrBlockNetworkBorderGroup` — a
+  //       dual-stack / secondary-CIDR association that declares `AmazonProvidedIpv6CidrBlock`
+  //       (no explicit block) reads back the /56 AWS allocates plus its border group
+  //       (defaulting to the region), both AWS-assigned at creation, create-only, and per-VPC
+  //       (the block AWS picks differs every deploy). A user who brings their own CIDR DECLARES
+  //       `Ipv6CidrBlock` (compared in the declared loop); undeclared, these are AWS's choice,
+  //       never user intent. First-run FP on every clean dual-stack VPC (#684, live 2026-07-08);
+  //       mirrors EIP `NetworkBorderGroup` / `PrivateIpAddress`.
+  'AWS::EC2::VPCCidrBlock': new Set(['Ipv6CidrBlock', 'Ipv6CidrBlockNetworkBorderGroup']),
   //   AWS::Grafana::Workspace.GrafanaVersion — a workspace that pins no explicit version reads
   //   back the concrete Grafana version AWS provisioned ("10.4" today). AWS assigns the current
   //   GA default at creation, and that default moves over time (a fresh deploy next year reads a
