@@ -1,3 +1,10 @@
+## [0.2.56](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.55...v0.2.56) (2026-07-08)
+
+
+### Bug Fixes
+
+* **cli:** reject verb-inapplicable flags (record --dry-run et al) ([#780](https://github.com/go-to-k/cdk-real-drift/issues/780)) ([#822](https://github.com/go-to-k/cdk-real-drift/issues/822)) ([2f8c7ca](https://github.com/go-to-k/cdk-real-drift/commit/2f8c7ca122ec808b33d09b8906f3a112394ce050))
+
 ## [0.2.55](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.54...v0.2.55) (2026-07-08)
 
 
