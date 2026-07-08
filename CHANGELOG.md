@@ -1,3 +1,12 @@
+## [0.2.57](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.56...v0.2.57) (2026-07-08)
+
+
+### Bug Fixes
+
+* **baseline:** recordedPhysicalIds cover zero-entry complete resources ([#674](https://github.com/go-to-k/cdk-real-drift/issues/674) void) ([#792](https://github.com/go-to-k/cdk-real-drift/issues/792)) ([#834](https://github.com/go-to-k/cdk-real-drift/issues/834)) ([ce3d446](https://github.com/go-to-k/cdk-real-drift/commit/ce3d44629450f895376b7d7ee6a24fbb628940c5))
+* **check:** deleted stack + committed baseline = drift, not skipped ([#781](https://github.com/go-to-k/cdk-real-drift/issues/781)) ([#823](https://github.com/go-to-k/cdk-real-drift/issues/823)) ([cf2e814](https://github.com/go-to-k/cdk-real-drift/commit/cf2e814d694a536908af5c4ec13a10f482076434))
+* **revert:** RFC6902 test preconditions guard CC index patches against stale-index writes ([#762](https://github.com/go-to-k/cdk-real-drift/issues/762)) ([#832](https://github.com/go-to-k/cdk-real-drift/issues/832)) ([714c022](https://github.com/go-to-k/cdk-real-drift/commit/714c022f810df4f31211cbfb0e39fdf88a874ed0))
+
 ## [0.2.56](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.55...v0.2.56) (2026-07-08)
 
 
