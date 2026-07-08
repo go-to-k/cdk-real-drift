@@ -12,6 +12,7 @@ import {
   rejectedEmptyStripOps,
   tagPreservingOps,
   toPatchDocument,
+  toPointer,
   writeOnlyReincludeOps,
 } from '../src/revert/plan.js';
 import { parseSchema } from '../src/schema/schema-strip.js';
@@ -2652,5 +2653,24 @@ describe('#641 symptom 2 — CC revert strips bare-null array husks from the mod
     expect(plan.items).toHaveLength(1);
     expect(plan.items[0]!.kind).toBe('sdk');
     expect(plan.items[0]!.ops.every((o) => o.path !== '/Foo')).toBe(true);
+  });
+});
+
+describe('#748: toPointer splits dots only at bracket depth 0', () => {
+  it('keeps a dotted identity inside a bracket segment intact', () => {
+    // IAM names allow `.` — an attachment member Roles[my.role] must NOT split inside the bracket
+    expect(toPointer('Roles[my.role]')).toBe('/Roles[my.role]');
+    expect(toPointer('Users[john.doe]')).toBe('/Users[john.doe]');
+    // a nested-writer path with a dotted id in the middle segment
+    expect(toPointer('BackupPlan.BackupPlanRule[daily.backups].ScheduleExpression')).toBe(
+      '/BackupPlan/BackupPlanRule[daily.backups]/ScheduleExpression'
+    );
+  });
+
+  it('still splits top-level dots and escapes ~ and / per segment (unchanged)', () => {
+    expect(toPointer('A.B.0.C')).toBe('/A/B/0/C');
+    expect(toPointer('VersioningConfiguration.Status')).toBe('/VersioningConfiguration/Status');
+    expect(toPointer('a~b')).toBe('/a~0b');
+    expect(toPointer('a/b')).toBe('/a~1b');
   });
 });

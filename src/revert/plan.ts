@@ -323,12 +323,34 @@ function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
   return ops;
 }
 
-// dotted finding path ("A.B.0.C") -> RFC6902 JSON pointer ("/A/B/0/C")
-function toPointer(dotted: string): string {
+// dotted finding path ("A.B.0.C") -> RFC6902 JSON pointer ("/A/B/0/C"). Split on dots at
+// bracket depth 0 ONLY: an identity-keyed array segment `Prop[<id>]` may itself carry a `.`
+// in the id — IAM names allow `.` (`svc.deploy`, `john.doe`), a Backup rule name may too —
+// and splitting inside the bracket garbled the pointer (`Roles[my/role]` after escaping),
+// which then no-op'd the IAM detach (burning a policy version) or threw on a Backup nested
+// writer (#748). The bracket content stays in its owning segment so the writers' `\[(.+)\]$`
+// parse recovers the full id.
+function splitTopLevelDots(dotted: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let depth = 0;
+  for (const ch of dotted) {
+    if (ch === '[') depth++;
+    else if (ch === ']') depth = Math.max(0, depth - 1);
+    if (ch === '.' && depth === 0) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+export function toPointer(dotted: string): string {
   return (
     '/' +
-    dotted
-      .split('.')
+    splitTopLevelDots(dotted)
       .map((s) => s.replace(/~/g, '~0').replace(/\//g, '~1'))
       .join('/')
   );
