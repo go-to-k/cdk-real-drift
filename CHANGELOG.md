@@ -1,3 +1,10 @@
+## [0.2.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.20...v0.2.21) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold a fully-undeclared object atDefault when every leaf matches a schema nested default ([#624](https://github.com/go-to-k/cdk-real-drift/issues/624) general improvement) ([#657](https://github.com/go-to-k/cdk-real-drift/issues/657)) ([4a9a5fe](https://github.com/go-to-k/cdk-real-drift/commit/4a9a5fe59552c68adfa767b28e972f7d51a24a1d))
+
 ## [0.2.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.19...v0.2.20) (2026-07-08)
 
 
