@@ -21,6 +21,7 @@ import {
   gatherFindings,
   isManagedBySiblingStack,
   regatherTouched,
+  type SiblingCheck,
 } from '../src/commands/gather.js';
 import type { AddedChild } from '../src/read/child-enumerators.js';
 import type { Desired } from '../src/desired/template-adapter.js';
@@ -769,7 +770,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       child(subArn),
       new Map()
     );
-    expect(managed).toBe(true);
+    expect(managed).toBe('managed');
   });
 
   it('does NOT fold a genuinely out-of-band subscription (no owning stack -> API throws)', async () => {
@@ -782,7 +783,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       child(subArn),
       new Map()
     );
-    expect(managed).toBe(false);
+    expect(managed).toBe('notManaged');
   });
 
   it('does NOT fold when the owning-stack resource type differs (id reuse guard)', async () => {
@@ -799,12 +800,15 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
         },
       ],
     });
+    // the id+type match misses in the first-100 window, so the #726 pagination fallback lists the
+    // owning stack; it holds no Subscription with this id either -> not managed.
+    cfn.on(ListStackResourcesCommand).resolves({ StackResourceSummaries: [] });
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
       new Map()
     );
-    expect(managed).toBe(false);
+    expect(managed).toBe('notManaged');
   });
 
   it('skips the API call for a pipe-composite CC identifier (within-stack sub-resource)', async () => {
@@ -814,7 +818,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       child('api123|res456|GET', 'AWS::ApiGateway::Method'),
       new Map()
     );
-    expect(managed).toBe(false);
+    expect(managed).toBe('notManaged');
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(0);
   });
 
@@ -832,11 +836,35 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
         },
       ],
     });
-    const cache = new Map<string, boolean>();
+    const cache = new Map<string, SiblingCheck>();
     await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
     await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
-    expect(cache.get(subArn)).toBe(true);
+    expect(cache.get(subArn)).toBe('managed');
+  });
+
+  it('#754: a THROTTLE/denied error returns unverified and is NOT memoized', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const throttle = new Error('Rate exceeded');
+    throttle.name = 'Throttling';
+    cfn.on(DescribeStackResourcesCommand).rejects(throttle);
+    const cache = new Map<string, SiblingCheck>();
+    const first = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      cache
+    );
+    // a failed check is 'unverified' (the caller reports coverage-incomplete, never a false added)
+    expect(first).toBe('unverified');
+    // NOT cached -> a later candidate re-attempts (a transient throttle must not poison the run)
+    expect(cache.has(subArn)).toBe(false);
+    const second = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      cache
+    );
+    expect(second).toBe('unverified');
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(2);
   });
 
   it('#726: child BEYOND the DescribeStackResources 100-window resolves via paginated ListStackResources', async () => {
@@ -886,7 +914,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       child(subArn),
       new Map()
     );
-    expect(managed).toBe(true);
+    expect(managed).toBe('managed');
     // it queried the OWNING stack by name and paginated to page 2
     expect(cfn.commandCalls(ListStackResourcesCommand)).toHaveLength(2);
     expect(cfn.commandCalls(ListStackResourcesCommand)[0]!.args[0].input).toMatchObject({
@@ -926,6 +954,6 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       child(subArn),
       new Map()
     );
-    expect(managed).toBe(false);
+    expect(managed).toBe('notManaged');
   });
 });
