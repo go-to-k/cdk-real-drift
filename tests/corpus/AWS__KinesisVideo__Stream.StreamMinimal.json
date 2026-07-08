@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "StreamMinimal",
+    "resourceType": "AWS::KinesisVideo::Stream",
+    "physicalId": "cdkrd-hunt0708e-kvs-min",
+    "constructPath": "CdkRealDriftHunt0708EKvs/StreamMinimal",
+    "declared": {
+      "Name": "cdkrd-hunt0708e-kvs-min"
+    }
+  },
+  "liveRaw": {
+    "StreamStorageConfiguration": {
+      "DefaultStorageTier": "HOT"
+    },
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:alias/aws/kinesisvideo",
+    "Arn": "arn:aws:kinesisvideo:us-east-1:111111111111:stream/cdkrd-hunt0708e-kvs-min/1783476428258",
+    "DataRetentionInHours": 0,
+    "Tags": [],
+    "Name": "cdkrd-hunt0708e-kvs-min"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {
+      "StreamStorageConfiguration.DefaultStorageTier": "HOT"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamMinimal",
+      "resourceType": "AWS::KinesisVideo::Stream",
+      "path": "StreamStorageConfiguration.DefaultStorageTier",
+      "actual": "HOT",
+      "nested": true,
+      "physicalId": "cdkrd-hunt0708e-kvs-min",
+      "constructPath": "CdkRealDriftHunt0708EKvs/StreamMinimal"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamMinimal",
+      "resourceType": "AWS::KinesisVideo::Stream",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/kinesisvideo",
+      "physicalId": "cdkrd-hunt0708e-kvs-min",
+      "constructPath": "CdkRealDriftHunt0708EKvs/StreamMinimal"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamMinimal",
+      "resourceType": "AWS::KinesisVideo::Stream",
+      "path": "DataRetentionInHours",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt0708e-kvs-min",
+      "constructPath": "CdkRealDriftHunt0708EKvs/StreamMinimal"
+    }
+  ]
+}

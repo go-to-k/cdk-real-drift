@@ -1044,6 +1044,19 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       { CertificateField: 'x509Subject', MappingRules: [{ Specifier: '*' }] },
     ],
   },
+  // A Kinesis Video stream that declares no retention reads back 0 hours (retain nothing —
+  // the create default). A signaling channel that declares neither Type nor MessageTtlSeconds
+  // reads back SINGLE_MASTER / 60s. All constant, user-settable knobs — equality-gated, so a
+  // channel created FULL_MESH or a stream with a retention window surfaces. Live, hunt
+  // 2026-07-08 round E (#624). (StreamStorageConfiguration folds via the object descend; the
+  // AWS-managed KmsKeyId via CONTEXT_ARN_DEFAULTS.)
+  'AWS::KinesisVideo::Stream': {
+    DataRetentionInHours: 0,
+  },
+  'AWS::KinesisVideo::SignalingChannel': {
+    Type: 'SINGLE_MASTER',
+    MessageTtlSeconds: 60,
+  },
   // A CodeStar notification rule / Recycle Bin rule read back the "on" default status when
   // the template declares none (observed live on hunt 2026-07-03, #492). These ARE
   // user-settable knobs (a user can pause a rule) — equality-gated, so a DISABLED rule no
@@ -1726,6 +1739,13 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
   // whole-account default scope. createOnly (never drifts), but derived rather than value-
   // independent per the fold-strategy order. Live, hunt 2026-07-08 round F (#626).
   'AWS::ResourceExplorer2::View': { Scope: 'arn:{partition}:iam::{accountId}:root' },
+  // A Kinesis Video stream that declares no KMS key reads back the AWS-managed
+  // `alias/aws/kinesisvideo` key ARN — f(partition, region, account). Equality-gated, so a
+  // stream switched to a customer CMK (a real, mutable change) still surfaces. Live, hunt
+  // 2026-07-08 round E (#624).
+  'AWS::KinesisVideo::Stream': {
+    KmsKeyId: 'arn:{partition}:kms:{region}:{accountId}:alias/aws/kinesisvideo',
+  },
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
@@ -1916,6 +1936,13 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
   // worthy residue surfaces. Every other sub-key is a meaningful config value (not noise), so
   // fragmenting is the desired behavior here. Follow-up to #555 (#565).
   'AWS::Athena::WorkGroup': new Set(['WorkGroupConfiguration']),
+  // A Kinesis Video stream that declares no StreamStorageConfiguration reads back the whole
+  // default object {DefaultStorageTier:"HOT"} — a FULLY-undeclared object whose only leaf is
+  // schema-`default`-annotated (HOT). The top-level undeclared loop consults only KNOWN_DEFAULTS
+  // / schema.defaults (top-level), so the object surfaced whole; descend it so DefaultStorageTier
+  // folds via schema.defaultPaths and only a non-default residue (a WARM tier set out of band)
+  // would surface. Live, hunt 2026-07-08 round E (#624).
+  'AWS::KinesisVideo::Stream': new Set(['StreamStorageConfiguration']),
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value

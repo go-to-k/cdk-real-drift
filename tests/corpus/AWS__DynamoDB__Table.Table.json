@@ -157,7 +157,7 @@
       "constructPath": "CdkRealDriftIntegDdbGsiProjection/Table"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Table",
       "resourceType": "AWS::DynamoDB::Table",
       "path": "GlobalSecondaryIndexes[gsi1].WarmThroughput",

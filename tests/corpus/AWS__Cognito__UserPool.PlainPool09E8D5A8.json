@@ -1,17 +1,20 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest3 fixture, R74): fresh-deploy AWS::Cognito::UserPool model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
   "resource": {
-    "logicalId": "Users0A0EEA89",
+    "logicalId": "PlainPool09E8D5A8",
     "resourceType": "AWS::Cognito::UserPool",
-    "physicalId": "us-east-1_Ifea0bzss",
-    "constructPath": "CdkrdIntegHarvest3/Users",
+    "physicalId": "us-east-1_YPQTSv5BD",
+    "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool",
     "declared": {
       "AccountRecoverySetting": {
         "RecoveryMechanisms": [
           {
-            "Name": "verified_email",
+            "Name": "verified_phone_number",
             "Priority": 1
+          },
+          {
+            "Name": "verified_email",
+            "Priority": 2
           }
         ]
       },
@@ -20,14 +23,6 @@
       },
       "EmailVerificationMessage": "The verification code to your new account is {####}",
       "EmailVerificationSubject": "Verify your new account",
-      "Policies": {
-        "PasswordPolicy": {
-          "MinimumLength": 12,
-          "RequireNumbers": true,
-          "RequireSymbols": true,
-          "TemporaryPasswordValidityDays": 3
-        }
-      },
       "SmsVerificationMessage": "The verification code to your new account is {####}",
       "VerificationMessageTemplate": {
         "DefaultEmailOption": "CONFIRM_WITH_CODE",
@@ -39,31 +34,26 @@
   },
   "liveRaw": {
     "UserPoolTags": {
-      "aws:cloudformation:stack-name": "CdkrdIntegHarvest3",
-      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdIntegHarvest3/b01a95f0-6682-11f1-ba13-122419eb6ddf",
-      "aws:cloudformation:logical-id": "Users0A0EEA89"
+      "aws:cloudformation:stack-name": "CdkRealDriftHunt0708gRevert",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708gRevert/585e0cf0-7a7f-11f1-b775-0affec88a2d3",
+      "aws:cloudformation:logical-id": "PlainPool09E8D5A8"
     },
     "Policies": {
       "PasswordPolicy": {
         "RequireNumbers": true,
-        "MinimumLength": 12,
-        "TemporaryPasswordValidityDays": 3,
-        "RequireUppercase": false,
-        "RequireLowercase": false,
+        "MinimumLength": 8,
+        "TemporaryPasswordValidityDays": 7,
+        "RequireUppercase": true,
+        "RequireLowercase": true,
         "RequireSymbols": true
       },
       "SignInPolicy": {
         "AllowedFirstAuthFactors": ["PASSWORD"]
       }
     },
-    "VerificationMessageTemplate": {
-      "EmailMessage": "The verification code to your new account is {####}",
-      "SmsMessage": "The verification code to your new account is {####}",
-      "EmailSubject": "Verify your new account",
-      "DefaultEmailOption": "CONFIRM_WITH_CODE"
+    "KeyConfiguration": {
+      "KeyType": "AWS_OWNED_KEY"
     },
-    "ProviderURL": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_Ifea0bzss",
-    "MfaConfiguration": "OFF",
     "Schema": [
       {
         "DeveloperOnlyAttribute": false,
@@ -286,36 +276,51 @@
       }
     ],
     "AdminCreateUserConfig": {
-      "UnusedAccountValidityDays": 3,
+      "UnusedAccountValidityDays": 7,
       "AllowAdminCreateUserOnly": true
     },
     "UserPoolTier": "ESSENTIALS",
-    "DeletionProtection": "INACTIVE",
-    "UserPoolName": "Users0A0EEA89-RYUoEBfJwQHo",
+    "UserPoolName": "PlainPool09E8D5A8-8lfA05FTxeOt",
     "SmsVerificationMessage": "The verification code to your new account is {####}",
-    "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_Ifea0bzss",
-    "UserPoolId": "us-east-1_Ifea0bzss",
     "UserAttributeUpdateSettings": {
       "AttributesRequireVerificationBeforeUpdate": []
     },
     "EmailConfiguration": {
       "EmailSendingAccount": "COGNITO_DEFAULT"
     },
-    "AliasAttributes": [],
     "EmailVerificationSubject": "Verify your new account",
-    "LambdaConfig": {},
-    "Arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_Ifea0bzss",
-    "UsernameAttributes": [],
-    "AutoVerifiedAttributes": [],
-    "EmailVerificationMessage": "The verification code to your new account is {####}",
     "AccountRecoverySetting": {
       "RecoveryMechanisms": [
         {
           "Priority": 1,
+          "Name": "verified_phone_number"
+        },
+        {
+          "Priority": 2,
           "Name": "verified_email"
         }
       ]
-    }
+    },
+    "VerificationMessageTemplate": {
+      "EmailMessage": "The verification code to your new account is {####}",
+      "SmsMessage": "The verification code to your new account is {####}",
+      "EmailSubject": "Verify your new account",
+      "DefaultEmailOption": "CONFIRM_WITH_CODE"
+    },
+    "IssuerConfiguration": {
+      "Type": "ORIGINAL"
+    },
+    "ProviderURL": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_YPQTSv5BD",
+    "MfaConfiguration": "OFF",
+    "DeletionProtection": "INACTIVE",
+    "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_YPQTSv5BD",
+    "UserPoolId": "us-east-1_YPQTSv5BD",
+    "AliasAttributes": [],
+    "LambdaConfig": {},
+    "Arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_YPQTSv5BD",
+    "UsernameAttributes": [],
+    "AutoVerifiedAttributes": [],
+    "EmailVerificationMessage": "The verification code to your new account is {####}"
   },
   "schema": {
     "readOnly": ["Arn", "ProviderName", "ProviderURL", "UserPoolId"],
@@ -324,26 +329,54 @@
     "readOnlyPaths": ["Arn", "ProviderName", "ProviderURL", "UserPoolId"],
     "writeOnlyPaths": ["EnabledMfas"],
     "createOnlyPaths": [],
-    "defaults": {}
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["UserPoolTags"]
   },
   "opts": {
     "accountId": "111111111111",
     "region": "us-east-1",
-    "kmsAliasTargets": {}
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
   },
   "expected": [
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "MfaConfiguration",
-      "actual": "OFF",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "path": "Policies",
+      "actual": {
+        "PasswordPolicy": {
+          "RequireNumbers": true,
+          "MinimumLength": 8,
+          "TemporaryPasswordValidityDays": 7,
+          "RequireUppercase": true,
+          "RequireLowercase": true,
+          "RequireSymbols": true
+        },
+        "SignInPolicy": {
+          "AllowedFirstAuthFactors": ["PASSWORD"]
+        }
+      },
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "KeyConfiguration",
+      "actual": {
+        "KeyType": "AWS_OWNED_KEY"
+      },
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[address]",
       "actual": {
@@ -358,12 +391,12 @@
         "Name": "address"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[birthdate]",
       "actual": {
@@ -378,12 +411,12 @@
         "Name": "birthdate"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[email]",
       "actual": {
@@ -398,12 +431,12 @@
         "Name": "email"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[email_verified]",
       "actual": {
@@ -414,12 +447,12 @@
         "Name": "email_verified"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[family_name]",
       "actual": {
@@ -434,12 +467,12 @@
         "Name": "family_name"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[gender]",
       "actual": {
@@ -454,12 +487,12 @@
         "Name": "gender"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[given_name]",
       "actual": {
@@ -474,12 +507,12 @@
         "Name": "given_name"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[identities]",
       "actual": {
@@ -491,12 +524,12 @@
         "Name": "identities"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[locale]",
       "actual": {
@@ -511,12 +544,12 @@
         "Name": "locale"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[middle_name]",
       "actual": {
@@ -531,12 +564,12 @@
         "Name": "middle_name"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[name]",
       "actual": {
@@ -551,12 +584,12 @@
         "Name": "name"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[nickname]",
       "actual": {
@@ -571,12 +604,12 @@
         "Name": "nickname"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[phone_number]",
       "actual": {
@@ -591,12 +624,12 @@
         "Name": "phone_number"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[phone_number_verified]",
       "actual": {
@@ -607,12 +640,12 @@
         "Name": "phone_number_verified"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[picture]",
       "actual": {
@@ -627,12 +660,12 @@
         "Name": "picture"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[preferred_username]",
       "actual": {
@@ -647,12 +680,12 @@
         "Name": "preferred_username"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[profile]",
       "actual": {
@@ -667,12 +700,12 @@
         "Name": "profile"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[sub]",
       "actual": {
@@ -687,12 +720,12 @@
         "Name": "sub"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[updated_at]",
       "actual": {
@@ -706,12 +739,12 @@
         "Name": "updated_at"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[website]",
       "actual": {
@@ -726,12 +759,12 @@
         "Name": "website"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "Schema[zoneinfo]",
       "actual": {
@@ -746,68 +779,76 @@
         "Name": "zoneinfo"
       },
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolTier",
       "actual": "ESSENTIALS",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "DeletionProtection",
-      "actual": "INACTIVE",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "generated",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "UserPoolName",
-      "actual": "Users0A0EEA89-RYUoEBfJwQHo",
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "actual": "PlainPool09E8D5A8-8lfA05FTxeOt",
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
       "path": "EmailConfiguration",
       "actual": {
         "EmailSendingAccount": "COGNITO_DEFAULT"
       },
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Users0A0EEA89",
-      "resourceType": "AWS::Cognito::UserPool",
-      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
-      "actual": 3,
-      "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Users0A0EEA89",
+      "logicalId": "PlainPool09E8D5A8",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "Policies.SignInPolicy",
+      "path": "IssuerConfiguration",
       "actual": {
-        "AllowedFirstAuthFactors": ["PASSWORD"]
+        "Type": "ORIGINAL"
       },
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlainPool09E8D5A8",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "MfaConfiguration",
+      "actual": "OFF",
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlainPool09E8D5A8",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "DeletionProtection",
+      "actual": "INACTIVE",
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PlainPool09E8D5A8",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "AdminCreateUserConfig.UnusedAccountValidityDays",
+      "actual": 7,
       "nested": true,
-      "physicalId": "us-east-1_Ifea0bzss",
-      "constructPath": "CdkrdIntegHarvest3/Users"
+      "physicalId": "us-east-1_YPQTSv5BD",
+      "constructPath": "CdkRealDriftHunt0708gRevert/PlainPool"
     }
   ]
 }

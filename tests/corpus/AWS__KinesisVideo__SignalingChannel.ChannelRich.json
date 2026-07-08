@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ChannelRich",
+    "resourceType": "AWS::KinesisVideo::SignalingChannel",
+    "physicalId": "cdkrd-hunt0708e-sig-rich",
+    "constructPath": "CdkRealDriftHunt0708EKvs/ChannelRich",
+    "declared": {
+      "MessageTtlSeconds": 120,
+      "Name": "cdkrd-hunt0708e-sig-rich",
+      "Type": "SINGLE_MASTER"
+    }
+  },
+  "liveRaw": {
+    "Type": "SINGLE_MASTER",
+    "MessageTtlSeconds": 120,
+    "Arn": "arn:aws:kinesisvideo:us-east-1:111111111111:channel/cdkrd-hunt0708e-sig-rich/1783476428191",
+    "Tags": [],
+    "Name": "cdkrd-hunt0708e-sig-rich"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

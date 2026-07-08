@@ -113,7 +113,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "TableCD117FA1",
       "resourceType": "AWS::DynamoDB::Table",
       "path": "WarmThroughput",
