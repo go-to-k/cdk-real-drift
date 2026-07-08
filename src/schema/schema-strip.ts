@@ -4,6 +4,12 @@
 import { type CloudFormationClient, DescribeTypeCommand } from '@aws-sdk/client-cloudformation';
 import type { SchemaInfo } from '../types.js';
 
+// DescribeType is a REGIONAL call (the CloudFormationClient is per-region), and
+// registry schema rollouts are region-staggered (readOnly/writeOnly/default
+// annotations can differ across regions). So the cache is keyed on BOTH the
+// client's region AND the resourceType (`${region}\0${resourceType}`) — keying on
+// resourceType alone would leak region 1's schema to every other region in a
+// multi-region `--all` run, skewing the writeOnly/defaults sets (#788).
 const cache = new Map<string, SchemaInfo>();
 const EMPTY: SchemaInfo = {
   readOnly: new Set(),
@@ -23,10 +29,12 @@ export async function getSchemaInfo(
   client: CloudFormationClient,
   resourceType: string
 ): Promise<SchemaInfo> {
-  const cached = cache.get(resourceType);
+  const region = await client.config.region();
+  const cacheKey = `${region}\0${resourceType}`;
+  const cached = cache.get(cacheKey);
   if (cached) return cached;
   const info = await fetch(client, resourceType);
-  cache.set(resourceType, info);
+  cache.set(cacheKey, info);
   return info;
 }
 
