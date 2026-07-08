@@ -1,3 +1,10 @@
+## [0.2.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.15...v0.2.16) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold fully-undeclared Cognito Schema + KVS object/KMS + DynamoDB WarmThroughput derived defaults ([#624](https://github.com/go-to-k/cdk-real-drift/issues/624) [#627](https://github.com/go-to-k/cdk-real-drift/issues/627) [#629](https://github.com/go-to-k/cdk-real-drift/issues/629)) ([#645](https://github.com/go-to-k/cdk-real-drift/issues/645)) ([63d7556](https://github.com/go-to-k/cdk-real-drift/commit/63d75566278e98c355724bdfaf885ded8cc510ff))
+
 ## [0.2.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.14...v0.2.15) (2026-07-08)
 
 
