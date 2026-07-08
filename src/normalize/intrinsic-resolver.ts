@@ -284,7 +284,38 @@ export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
   }
   const model = ctx.liveAttrs[logicalId];
   if (!model) return UNRESOLVED;
-  const got = getPath(model, attr.split('.'));
+  const segs = attr.split('.');
+  // A parent stack consuming a NESTED stack's output uses
+  // `Fn::GetAtt [Nested, "Outputs.<OutputKey>"]` (and the `Fn::Sub`
+  // `${Nested.Outputs.<OutputKey>}` form). The live Cloud Control model for
+  // `AWS::CloudFormation::Stack` stores `Outputs` as an ARRAY of
+  // `{ OutputKey, OutputValue }` objects (readOnly), so descending
+  // `["Outputs", "<OutputKey>"]` through getPath indexes the array by the string
+  // key -> undefined -> permanently UNRESOLVED. Build an OutputKey -> OutputValue
+  // map and resolve the key against it (detection-preserving: a changed output
+  // still differs). Confined to AWS::CloudFormation::Stack so getPath's general
+  // array behavior is unchanged for every other type.
+  if (
+    ctx.typeOf?.[logicalId] === 'AWS::CloudFormation::Stack' &&
+    segs.length >= 2 &&
+    segs[0] === 'Outputs'
+  ) {
+    const outputs = model['Outputs'];
+    if (Array.isArray(outputs)) {
+      const key = segs[1];
+      const entry = outputs.find(
+        (o): o is Record<string, unknown> =>
+          o !== null && typeof o === 'object' && (o as Record<string, unknown>)['OutputKey'] === key
+      );
+      if (entry === undefined) return UNRESOLVED;
+      // Descend any remaining path segments (rare, but keep parity with getPath).
+      const rest = segs.slice(2);
+      const got =
+        rest.length === 0 ? entry['OutputValue'] : getPath(entry, ['OutputValue', ...rest]);
+      return got === undefined ? UNRESOLVED : got;
+    }
+  }
+  const got = getPath(model, segs);
   return got === undefined ? UNRESOLVED : got;
 }
 
