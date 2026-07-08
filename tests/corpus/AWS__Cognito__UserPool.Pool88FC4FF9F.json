@@ -362,231 +362,410 @@
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Pool88FC4FF9F",
       "resourceType": "AWS::Cognito::UserPool",
-      "path": "Schema",
-      "actual": [
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "address"
+      "path": "Schema[address]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "10",
-            "MaxLength": "10"
-          },
-          "Required": false,
-          "Name": "birthdate"
+        "Required": false,
+        "Name": "address"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[birthdate]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "10",
+          "MaxLength": "10"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "email"
+        "Required": false,
+        "Name": "birthdate"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[email]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "Boolean",
-          "Required": false,
-          "Name": "email_verified"
+        "Required": false,
+        "Name": "email"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[email_verified]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Boolean",
+        "Required": false,
+        "Name": "email_verified"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[family_name]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "family_name"
+        "Required": false,
+        "Name": "family_name"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[gender]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "gender"
+        "Required": false,
+        "Name": "gender"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[given_name]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "given_name"
+        "Required": false,
+        "Name": "given_name"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[identities]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {},
+        "Required": false,
+        "Name": "identities"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[locale]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {},
-          "Required": false,
-          "Name": "identities"
+        "Required": false,
+        "Name": "locale"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[middle_name]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "locale"
+        "Required": false,
+        "Name": "middle_name"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[name]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "middle_name"
+        "Required": false,
+        "Name": "name"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[nickname]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "name"
+        "Required": false,
+        "Name": "nickname"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[phone_number]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "nickname"
+        "Required": false,
+        "Name": "phone_number"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[phone_number_verified]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Boolean",
+        "Required": false,
+        "Name": "phone_number_verified"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[picture]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "phone_number"
+        "Required": false,
+        "Name": "picture"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[preferred_username]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "Boolean",
-          "Required": false,
-          "Name": "phone_number_verified"
+        "Required": false,
+        "Name": "preferred_username"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[profile]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "picture"
+        "Required": false,
+        "Name": "profile"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[sub]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": false,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "1",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "preferred_username"
+        "Required": true,
+        "Name": "sub"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[updated_at]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "Number",
+        "Required": false,
+        "NumberAttributeConstraints": {
+          "MinValue": "0"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "profile"
+        "Name": "updated_at"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[website]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": false,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "1",
-            "MaxLength": "2048"
-          },
-          "Required": true,
-          "Name": "sub"
+        "Required": false,
+        "Name": "website"
+      },
+      "nested": true,
+      "physicalId": "us-east-1_BUaNF3GfH",
+      "constructPath": "CdkdriftIntegHarvest8/Pool8"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Pool88FC4FF9F",
+      "resourceType": "AWS::Cognito::UserPool",
+      "path": "Schema[zoneinfo]",
+      "actual": {
+        "DeveloperOnlyAttribute": false,
+        "Mutable": true,
+        "AttributeDataType": "String",
+        "StringAttributeConstraints": {
+          "MinLength": "0",
+          "MaxLength": "2048"
         },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "Number",
-          "Required": false,
-          "NumberAttributeConstraints": {
-            "MinValue": "0"
-          },
-          "Name": "updated_at"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "website"
-        },
-        {
-          "DeveloperOnlyAttribute": false,
-          "Mutable": true,
-          "AttributeDataType": "String",
-          "StringAttributeConstraints": {
-            "MinLength": "0",
-            "MaxLength": "2048"
-          },
-          "Required": false,
-          "Name": "zoneinfo"
-        }
-      ],
+        "Required": false,
+        "Name": "zoneinfo"
+      },
+      "nested": true,
       "physicalId": "us-east-1_BUaNF3GfH",
       "constructPath": "CdkdriftIntegHarvest8/Pool8"
     },

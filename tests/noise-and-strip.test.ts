@@ -23,6 +23,7 @@ import {
   KNOWN_DEFAULTS,
   KNOWN_DEFAULT_PATHS,
   GENERATED_NESTED_PATHS,
+  DESCEND_UNDECLARED_OBJECT_PATHS,
   CONTEXT_ARN_DEFAULTS,
   VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   stripAwsTagsDeep,
@@ -774,6 +775,24 @@ describe('noise suppressors', () => {
     expect(CONTEXT_ARN_DEFAULTS['AWS::ResourceExplorer2::View']).toEqual({
       Scope: 'arn:{partition}:iam::{accountId}:root',
     });
+  });
+
+  it('KinesisVideo Stream/SignalingChannel first-run defaults fold (#624)', () => {
+    // Tier-1 constants (auto-exercised by the generic KNOWN_DEFAULTS atDefault test + corpus).
+    expect(KNOWN_DEFAULTS['AWS::KinesisVideo::Stream']).toEqual({ DataRetentionInHours: 0 });
+    expect(KNOWN_DEFAULTS['AWS::KinesisVideo::SignalingChannel']).toEqual({
+      Type: 'SINGLE_MASTER',
+      MessageTtlSeconds: 60,
+    });
+    // The AWS-managed KMS key ARN is a tier-2 context-ARN derived default (a customer CMK still
+    // surfaces, equality-gated); the whole-object StreamStorageConfiguration descends leaf-by-
+    // leaf so its schema-`default` DefaultStorageTier=HOT folds (the #624 object-descend gap).
+    expect(CONTEXT_ARN_DEFAULTS['AWS::KinesisVideo::Stream']).toEqual({
+      KmsKeyId: 'arn:{partition}:kms:{region}:{accountId}:alias/aws/kinesisvideo',
+    });
+    expect(DESCEND_UNDECLARED_OBJECT_PATHS['AWS::KinesisVideo::Stream']).toContain(
+      'StreamStorageConfiguration'
+    );
   });
 
   it('common stateful/streaming-type constant defaults from the offline corpus sweep', () => {

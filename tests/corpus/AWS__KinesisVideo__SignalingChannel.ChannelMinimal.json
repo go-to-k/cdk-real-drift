@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ChannelMinimal",
+    "resourceType": "AWS::KinesisVideo::SignalingChannel",
+    "physicalId": "cdkrd-hunt0708e-sig-min",
+    "constructPath": "CdkRealDriftHunt0708EKvs/ChannelMinimal",
+    "declared": {
+      "Name": "cdkrd-hunt0708e-sig-min"
+    }
+  },
+  "liveRaw": {
+    "Type": "SINGLE_MASTER",
+    "MessageTtlSeconds": 60,
+    "Arn": "arn:aws:kinesisvideo:us-east-1:111111111111:channel/cdkrd-hunt0708e-sig-min/1783476428047",
+    "Tags": [],
+    "Name": "cdkrd-hunt0708e-sig-min"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ChannelMinimal",
+      "resourceType": "AWS::KinesisVideo::SignalingChannel",
+      "path": "Type",
+      "actual": "SINGLE_MASTER",
+      "physicalId": "cdkrd-hunt0708e-sig-min",
+      "constructPath": "CdkRealDriftHunt0708EKvs/ChannelMinimal"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ChannelMinimal",
+      "resourceType": "AWS::KinesisVideo::SignalingChannel",
+      "path": "MessageTtlSeconds",
+      "actual": 60,
+      "physicalId": "cdkrd-hunt0708e-sig-min",
+      "constructPath": "CdkRealDriftHunt0708EKvs/ChannelMinimal"
+    }
+  ]
+}

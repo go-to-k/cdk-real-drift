@@ -3,6 +3,7 @@ import { classifyResource, matchesKnownDefault, normalizeLiveModel } from '../sr
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import {
   ebOptionSettingTier,
+  IDENTITY_KEYED_DEFAULT_ELEMENTS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
 } from '../src/normalize/noise.js';
@@ -1017,6 +1018,49 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       tiers(classifyResource(bare('AWS::SQS::Queue'), live, emptySchema));
     expect(t({ VisibilityTimeout: 30 }).atDefault).toEqual(['VisibilityTimeout']);
     expect(t({ VisibilityTimeout: 60 }).undeclared).toEqual(['VisibilityTimeout']);
+  });
+
+  it('#627: DynamoDB top-level WarmThroughput derives from ProvisionedThroughput / on-demand constant', () => {
+    // a provisioned table's undeclared WarmThroughput echoes its own ProvisionedThroughput
+    const t = (live: Record<string, unknown>) =>
+      tiers(classifyResource(bare('AWS::DynamoDB::Table'), live, emptySchema));
+    // (a bare table surfaces the undeclared ProvisionedThroughput itself too — in a real
+    // template it is declared; here only the WarmThroughput fold is under test.)
+    expect(
+      t({
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+        WarmThroughput: { ReadUnitsPerSecond: 5, WriteUnitsPerSecond: 5 },
+      }).atDefault
+    ).toContain('WarmThroughput');
+    // a warm throughput that does NOT match the provisioned capacity still surfaces
+    const nonMatch = t({
+      ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+      WarmThroughput: { ReadUnitsPerSecond: 99, WriteUnitsPerSecond: 99 },
+    });
+    expect(nonMatch.undeclared).toContain('WarmThroughput');
+    expect(nonMatch.atDefault).not.toContain('WarmThroughput');
+    // an on-demand table (no ProvisionedThroughput) folds the {12000,4000} constant
+    expect(
+      t({ WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 } }).atDefault
+    ).toEqual(['WarmThroughput']);
+    // the GSI-nested WarmThroughput derive (per-GSI ProvisionedThroughput / constant) is
+    // exercised end-to-end by the DynamoDB OnDemandGsi/ProvGsi/CappedV2 corpus-replay cases.
+  });
+
+  it('#629: a bare Cognito UserPool folds every fully-undeclared standard Schema attribute; a custom one surfaces', () => {
+    const stdEmail = IDENTITY_KEYED_DEFAULT_ELEMENTS['AWS::Cognito::UserPool']!.Schema!.email;
+    const stdSub = IDENTITY_KEYED_DEFAULT_ELEMENTS['AWS::Cognito::UserPool']!.Schema!.sub;
+    // a custom attribute the user added out of band (custom: prefix normalized to its bare id)
+    const custom = { Name: 'custom:tier', AttributeDataType: 'String', Mutable: true };
+    const t = tiers(
+      classifyResource(
+        bare('AWS::Cognito::UserPool'),
+        { Schema: [structuredClone(stdEmail), structuredClone(stdSub), custom] },
+        emptySchema
+      )
+    );
+    expect(t.atDefault.sort()).toEqual(['Schema[email]', 'Schema[sub]']);
+    expect(t.undeclared).toEqual(['Schema[tier]']); // the genuine custom attribute still surfaces
   });
 
   it('#626: ResourceExplorer2 View undeclared Scope folds via the context-ARN default', () => {

@@ -1,10 +1,10 @@
 {
   "corpusVersion": 1,
   "resource": {
-    "logicalId": "Global7C59AC82",
+    "logicalId": "CappedV2285CE39D",
     "resourceType": "AWS::DynamoDB::GlobalTable",
-    "physicalId": "cdkrd-integ-ddb-nested-sets-global",
-    "constructPath": "CdkRealDriftIntegDdbNestedSets/Global",
+    "physicalId": "CdkRealDriftHunt0708gDdbWarm-CappedV2285CE39D-T2XPUTD5CT8S",
+    "constructPath": "CdkRealDriftHunt0708gDdbWarm/CappedV2",
     "declared": {
       "AttributeDefinitions": [
         {
@@ -12,31 +12,25 @@
           "AttributeType": "S"
         },
         {
-          "AttributeName": "sk",
+          "AttributeName": "g",
           "AttributeType": "S"
-        },
-        {
-          "AttributeName": "gsi1pk",
-          "AttributeType": "S"
-        },
-        {
-          "AttributeName": "lsi1sk",
-          "AttributeType": "N"
         }
       ],
       "BillingMode": "PAY_PER_REQUEST",
       "GlobalSecondaryIndexes": [
         {
-          "IndexName": "gsi1",
+          "IndexName": "gsiCapped",
           "KeySchema": [
             {
-              "AttributeName": "gsi1pk",
+              "AttributeName": "g",
               "KeyType": "HASH"
             }
           ],
           "Projection": {
-            "NonKeyAttributes": ["quebec", "foxtrot", "tango", "golf"],
-            "ProjectionType": "INCLUDE"
+            "ProjectionType": "ALL"
+          },
+          "WriteOnDemandThroughputSettings": {
+            "MaxWriteRequestUnits": 10
           }
         }
       ],
@@ -44,82 +38,62 @@
         {
           "AttributeName": "pk",
           "KeyType": "HASH"
-        },
-        {
-          "AttributeName": "sk",
-          "KeyType": "RANGE"
-        }
-      ],
-      "LocalSecondaryIndexes": [
-        {
-          "IndexName": "lsi1",
-          "KeySchema": [
-            {
-              "AttributeName": "pk",
-              "KeyType": "HASH"
-            },
-            {
-              "AttributeName": "lsi1sk",
-              "KeyType": "RANGE"
-            }
-          ],
-          "Projection": {
-            "NonKeyAttributes": ["sierra", "echo", "november", "alpha"],
-            "ProjectionType": "INCLUDE"
-          }
         }
       ],
       "Replicas": [
         {
           "GlobalSecondaryIndexes": [
             {
-              "IndexName": "gsi1"
+              "IndexName": "gsiCapped",
+              "ReadOnDemandThroughputSettings": {
+                "MaxReadRequestUnits": 25
+              }
             }
           ],
+          "ReadOnDemandThroughputSettings": {
+            "MaxReadRequestUnits": 100
+          },
           "Region": "us-east-1"
         }
       ],
-      "TableName": "cdkrd-integ-ddb-nested-sets-global"
+      "WriteOnDemandThroughputSettings": {
+        "MaxWriteRequestUnits": 50
+      }
     }
   },
   "liveRaw": {
-    "TableId": "1e6f34f7-6919-4262-8e4d-971c3939d6a5",
-    "TableName": "cdkrd-integ-ddb-nested-sets-global",
+    "TableId": "7e1494f8-17b2-4ee0-a9c9-3b4a9b733d1c",
+    "TableName": "CdkRealDriftHunt0708gDdbWarm-CappedV2285CE39D-T2XPUTD5CT8S",
     "AttributeDefinitions": [
-      {
-        "AttributeType": "S",
-        "AttributeName": "gsi1pk"
-      },
       {
         "AttributeType": "S",
         "AttributeName": "pk"
       },
       {
         "AttributeType": "S",
-        "AttributeName": "sk"
-      },
-      {
-        "AttributeType": "N",
-        "AttributeName": "lsi1sk"
+        "AttributeName": "g"
       }
     ],
     "BillingMode": "PAY_PER_REQUEST",
     "GlobalSecondaryIndexes": [
       {
-        "IndexName": "gsi1",
+        "IndexName": "gsiCapped",
         "Projection": {
-          "NonKeyAttributes": ["golf", "foxtrot", "tango", "quebec"],
-          "ProjectionType": "INCLUDE"
+          "NonKeyAttributes": [],
+          "ProjectionType": "ALL"
         },
         "KeySchema": [
           {
             "KeyType": "HASH",
-            "AttributeName": "gsi1pk"
+            "AttributeName": "g"
           }
         ],
         "WarmThroughput": {
           "ReadUnitsPerSecond": 12000,
           "WriteUnitsPerSecond": 4000
+        },
+        "WriteOnDemandThroughputSettings": {
+          "MaxWriteRequestUnits": 10
         }
       }
     ],
@@ -127,36 +101,13 @@
       {
         "KeyType": "HASH",
         "AttributeName": "pk"
-      },
-      {
-        "KeyType": "RANGE",
-        "AttributeName": "sk"
-      }
-    ],
-    "LocalSecondaryIndexes": [
-      {
-        "IndexName": "lsi1",
-        "Projection": {
-          "NonKeyAttributes": ["november", "sierra", "alpha", "echo"],
-          "ProjectionType": "INCLUDE"
-        },
-        "KeySchema": [
-          {
-            "KeyType": "HASH",
-            "AttributeName": "pk"
-          },
-          {
-            "KeyType": "RANGE",
-            "AttributeName": "lsi1sk"
-          }
-        ]
       }
     ],
     "WarmThroughput": {
       "ReadUnitsPerSecond": 12000,
       "WriteUnitsPerSecond": 4000
     },
-    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/cdkrd-integ-ddb-nested-sets-global",
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftHunt0708gDdbWarm-CappedV2285CE39D-T2XPUTD5CT8S",
     "Replicas": [
       {
         "ContributorInsightsSpecification": {
@@ -164,26 +115,35 @@
         },
         "GlobalSecondaryIndexes": [
           {
-            "IndexName": "gsi1",
+            "IndexName": "gsiCapped",
             "ContributorInsightsSpecification": {
               "Enabled": false
+            },
+            "ReadOnDemandThroughputSettings": {
+              "MaxReadRequestUnits": 25
             }
           }
         ],
         "Region": "us-east-1",
         "GlobalTableSettingsReplicationMode": "DISABLED",
         "TableClass": "STANDARD",
-        "DeletionProtectionEnabled": false
+        "DeletionProtectionEnabled": false,
+        "ReadOnDemandThroughputSettings": {
+          "MaxReadRequestUnits": 100
+        }
       }
     ],
     "TimeToLiveSpecification": {
       "Enabled": false
+    },
+    "WriteOnDemandThroughputSettings": {
+      "MaxWriteRequestUnits": 50
     }
   },
   "schema": {
     "readOnly": ["Arn", "StreamArn", "TableId"],
     "writeOnly": ["GlobalTableSourceArn"],
-    "createOnly": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "createOnly": ["TableName"],
     "readOnlyPaths": ["Arn", "StreamArn", "TableId"],
     "writeOnlyPaths": [
       "GlobalSecondaryIndexes.*.WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity",
@@ -192,9 +152,12 @@
       "Replicas.*.ReadProvisionedThroughputSettings.ReadCapacityAutoScalingSettings.SeedCapacity",
       "WriteProvisionedThroughputSettings.WriteCapacityAutoScalingSettings.SeedCapacity"
     ],
-    "createOnlyPaths": ["GlobalTableSourceArn", "KeySchema", "LocalSecondaryIndexes", "TableName"],
+    "createOnlyPaths": ["TableName"],
     "defaults": {},
-    "defaultPaths": {}
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["GlobalTableWitnesses", "Replicas"],
+    "freeFormMapPaths": []
   },
   "opts": {
     "accountId": "111111111111",
@@ -205,28 +168,28 @@
   "expected": [
     {
       "tier": "atDefault",
-      "logicalId": "Global7C59AC82",
+      "logicalId": "CappedV2285CE39D",
       "resourceType": "AWS::DynamoDB::GlobalTable",
       "path": "WarmThroughput",
       "actual": {
         "ReadUnitsPerSecond": 12000,
         "WriteUnitsPerSecond": 4000
       },
-      "physicalId": "cdkrd-integ-ddb-nested-sets-global",
-      "constructPath": "CdkRealDriftIntegDdbNestedSets/Global"
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-CappedV2285CE39D-T2XPUTD5CT8S",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/CappedV2"
     },
     {
       "tier": "atDefault",
-      "logicalId": "Global7C59AC82",
+      "logicalId": "CappedV2285CE39D",
       "resourceType": "AWS::DynamoDB::GlobalTable",
-      "path": "GlobalSecondaryIndexes[gsi1].WarmThroughput",
+      "path": "GlobalSecondaryIndexes[gsiCapped].WarmThroughput",
       "actual": {
         "ReadUnitsPerSecond": 12000,
         "WriteUnitsPerSecond": 4000
       },
       "nested": true,
-      "physicalId": "cdkrd-integ-ddb-nested-sets-global",
-      "constructPath": "CdkRealDriftIntegDdbNestedSets/Global"
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-CappedV2285CE39D-T2XPUTD5CT8S",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/CappedV2"
     }
   ]
 }

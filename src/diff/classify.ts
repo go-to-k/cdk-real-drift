@@ -533,6 +533,45 @@ function alignCompositeKeySubset(
 const isNestedObject = (x: unknown): x is Record<string, unknown> =>
   x !== null && typeof x === 'object' && !Array.isArray(x);
 
+// #627: a DynamoDB table's/GSI's undeclared WarmThroughput echoes its EFFECTIVE capacity —
+// the {12000,4000} on-demand constant AWS seeds when there is no ProvisionedThroughput, or the
+// sibling ProvisionedThroughput's read/write units (as warm units) on a provisioned table/GSI.
+// So it is a DERIVED default keyed on the sibling ProvisionedThroughput, unifying both cases:
+// compute it and equality-gate, so an out-of-band warm-throughput change (which auto-ratchets
+// upward under load and never decreases) still surfaces — the same trade-off the type accepts.
+const DDB_TABLE_TYPES = new Set(['AWS::DynamoDB::Table', 'AWS::DynamoDB::GlobalTable']);
+function warmThroughputDefault(provisionedThroughput: unknown): Record<string, number> {
+  if (
+    isNestedObject(provisionedThroughput) &&
+    typeof provisionedThroughput.ReadCapacityUnits === 'number' &&
+    typeof provisionedThroughput.WriteCapacityUnits === 'number'
+  ) {
+    return {
+      ReadUnitsPerSecond: provisionedThroughput.ReadCapacityUnits,
+      WriteUnitsPerSecond: provisionedThroughput.WriteCapacityUnits,
+    };
+  }
+  return { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 };
+}
+// A GSI-nested WarmThroughput path (`GlobalSecondaryIndexes[<IndexName>].WarmThroughput`) that
+// echoes THAT GSI's effective capacity. Resolves the GSI's own ProvisionedThroughput from the
+// live model by IndexName so the derived default is per-GSI.
+function dynamoGsiWarmThroughputAtDefault(
+  resourceType: string,
+  path: string,
+  value: unknown,
+  live: Record<string, unknown>
+): boolean {
+  if (!DDB_TABLE_TYPES.has(resourceType)) return false;
+  const m = /^GlobalSecondaryIndexes\[(.*)\]\.WarmThroughput$/.exec(path);
+  if (m === null || !Array.isArray(live.GlobalSecondaryIndexes)) return false;
+  const gsi = (live.GlobalSecondaryIndexes as unknown[]).find(
+    (g) => isNestedObject(g) && g.IndexName === m[1]
+  );
+  if (!isNestedObject(gsi)) return false;
+  return deepEqual(value, warmThroughputDefault(gsi.ProvisionedThroughput));
+}
+
 // A CloudFormation AUTO-GENERATED physical name. When a resource declares no explicit name,
 // CFn mints `<stackName>-<logicalId>-<random>` (the stack name is the FIRST segment of the
 // CDK construct path). DELIBERATELY strict — it must start with this stack's name AND end
@@ -1158,7 +1197,10 @@ export function classifyResource(
     const atDefault =
       (schemaPath in schema.defaultPaths &&
         matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
-      (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath]));
+      (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath])) ||
+      // #627: a GSI's undeclared WarmThroughput echoing that GSI's effective capacity
+      // (on-demand constant or its own ProvisionedThroughput) — a per-GSI derived default.
+      dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live);
     const tier = atDefault
       ? 'atDefault'
       : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
@@ -1956,6 +1998,18 @@ export function classifyResource(
         continue;
       }
     }
+    // #627: a provisioned DynamoDB table's top-level WarmThroughput echoes its own
+    // ProvisionedThroughput (an on-demand table's {12000,4000} constant is already folded by
+    // KNOWN_DEFAULTS above). Derived from the sibling ProvisionedThroughput and equality-gated,
+    // so an out-of-band warm-throughput change still surfaces.
+    if (
+      DDB_TABLE_TYPES.has(resourceType) &&
+      k === 'WarmThroughput' &&
+      deepEqual(v, warmThroughputDefault(live.ProvisionedThroughput))
+    ) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
     // A live value that is an AWS-MANAGED default resource NAME, recognized by its reserved
     // `default.` / `default:` prefix (an RDS instance's default parameter/option group) rather
     // than a constant — a CUSTOM group name never carries the prefix, so it still surfaces.
@@ -2056,6 +2110,36 @@ export function classifyResource(
     // per (type, path) so objects with no foldable defaults are never fragmented into noise.
     if (isNestedObject(v) && DESCEND_UNDECLARED_OBJECT_PATHS[resourceType]?.has(k)) {
       collectNestedUndeclared({}, v, k, emitNested, NESTED_ARRAY_IDENTITY[resourceType]);
+      continue;
+    }
+    // #629: a FULLY-undeclared identity-keyed SUBSET array (a bare Cognito UserPool's `Schema`
+    // — no standardAttributes declared) reads back the whole always-present element set (all 21
+    // standard attributes). The declared-side per-element fold (below) never runs because
+    // nothing is declared, so the whole array surfaced. Route each live element through the SAME
+    // curated-default-shape fold: an element matching its IDENTITY_KEYED_DEFAULT_ELEMENTS shape
+    // folds `atDefault`, a genuinely custom (e.g. `custom:*`) attribute still surfaces. The
+    // array sibling of the #555/#624 object descend.
+    const subsetSpecU = IDENTITY_KEYED_SUBSET_ARRAYS[resourceType]?.[k];
+    const defaultElsU = IDENTITY_KEYED_DEFAULT_ELEMENTS[resourceType]?.[k];
+    if (subsetSpecU !== undefined && defaultElsU !== undefined && Array.isArray(v)) {
+      const { idField, normalizeId } = subsetSpecU;
+      for (const lEl of v) {
+        if (!isNestedObject(lEl) || typeof lEl[idField] !== 'string') {
+          findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: lEl });
+          continue;
+        }
+        const raw = lEl[idField] as string;
+        const id = normalizeId ? normalizeId(raw) : raw;
+        const atDefault = id in defaultElsU && deepEqual(lEl, defaultElsU[id]);
+        findings.push({
+          tier: atDefault ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: `${k}[${id}]`,
+          actual: lEl,
+          nested: true,
+        });
+      }
       continue;
     }
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });

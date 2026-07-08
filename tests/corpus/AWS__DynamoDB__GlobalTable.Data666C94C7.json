@@ -340,7 +340,7 @@
       "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::DynamoDB::GlobalTable",
       "path": "GlobalSecondaryIndexes[gsi1].WarmThroughput",
@@ -353,7 +353,7 @@
       "constructPath": "CdkRealDriftIntegDdbGlobalTableRich/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::DynamoDB::GlobalTable",
       "path": "GlobalSecondaryIndexes[gsi2].WarmThroughput",

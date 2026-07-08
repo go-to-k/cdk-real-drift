@@ -1,0 +1,182 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ProvGsiD9A6350E",
+    "resourceType": "AWS::DynamoDB::Table",
+    "physicalId": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+    "constructPath": "CdkRealDriftHunt0708gDdbWarm/ProvGsi",
+    "declared": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "pk",
+          "AttributeType": "S"
+        },
+        {
+          "AttributeName": "status",
+          "AttributeType": "S"
+        }
+      ],
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "byStatus",
+          "KeySchema": [
+            {
+              "AttributeName": "status",
+              "KeyType": "HASH"
+            }
+          ],
+          "Projection": {
+            "ProjectionType": "ALL"
+          },
+          "ProvisionedThroughput": {
+            "ReadCapacityUnits": 5,
+            "WriteCapacityUnits": 5
+          }
+        }
+      ],
+      "KeySchema": [
+        {
+          "AttributeName": "pk",
+          "KeyType": "HASH"
+        }
+      ],
+      "ProvisionedThroughput": {
+        "ReadCapacityUnits": 5,
+        "WriteCapacityUnits": 5
+      }
+    }
+  },
+  "liveRaw": {
+    "SSESpecification": {
+      "SSEEnabled": false
+    },
+    "ContributorInsightsSpecification": {
+      "Enabled": false
+    },
+    "PointInTimeRecoverySpecification": {
+      "PointInTimeRecoveryEnabled": false
+    },
+    "ProvisionedThroughput": {
+      "WriteCapacityUnits": 5,
+      "ReadCapacityUnits": 5
+    },
+    "WarmThroughput": {
+      "ReadUnitsPerSecond": 5,
+      "WriteUnitsPerSecond": 5
+    },
+    "TableName": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+    "AttributeDefinitions": [
+      {
+        "AttributeType": "S",
+        "AttributeName": "pk"
+      },
+      {
+        "AttributeType": "S",
+        "AttributeName": "status"
+      }
+    ],
+    "BillingMode": "PROVISIONED",
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "byStatus",
+        "ContributorInsightsSpecification": {
+          "Enabled": false
+        },
+        "Projection": {
+          "NonKeyAttributes": [],
+          "ProjectionType": "ALL"
+        },
+        "ProvisionedThroughput": {
+          "WriteCapacityUnits": 5,
+          "ReadCapacityUnits": 5
+        },
+        "KeySchema": [
+          {
+            "KeyType": "HASH",
+            "AttributeName": "status"
+          }
+        ],
+        "WarmThroughput": {
+          "ReadUnitsPerSecond": 5,
+          "WriteUnitsPerSecond": 5
+        }
+      }
+    ],
+    "KeySchema": [
+      {
+        "KeyType": "HASH",
+        "AttributeName": "pk"
+      }
+    ],
+    "Arn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+    "DeletionProtectionEnabled": false,
+    "Tags": [],
+    "TimeToLiveSpecification": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "StreamArn"],
+    "writeOnly": ["ImportSourceSpecification"],
+    "createOnly": ["ImportSourceSpecification", "TableName"],
+    "readOnlyPaths": ["Arn", "StreamArn"],
+    "writeOnlyPaths": ["ImportSourceSpecification"],
+    "createOnlyPaths": ["ImportSourceSpecification", "TableName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ProvGsiD9A6350E",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 5,
+        "WriteUnitsPerSecond": 5
+      },
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/ProvGsi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ProvGsiD9A6350E",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "BillingMode",
+      "actual": "PROVISIONED",
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/ProvGsi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ProvGsiD9A6350E",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/ProvGsi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ProvGsiD9A6350E",
+      "resourceType": "AWS::DynamoDB::Table",
+      "path": "GlobalSecondaryIndexes[byStatus].WarmThroughput",
+      "actual": {
+        "ReadUnitsPerSecond": 5,
+        "WriteUnitsPerSecond": 5
+      },
+      "nested": true,
+      "physicalId": "CdkRealDriftHunt0708gDdbWarm-ProvGsiD9A6350E-ZBH9YWKEZ5HS",
+      "constructPath": "CdkRealDriftHunt0708gDdbWarm/ProvGsi"
+    }
+  ]
+}

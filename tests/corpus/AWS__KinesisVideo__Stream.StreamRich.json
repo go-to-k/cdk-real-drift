@@ -1,0 +1,69 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "StreamRich",
+    "resourceType": "AWS::KinesisVideo::Stream",
+    "physicalId": "cdkrd-hunt0708e-kvs-rich",
+    "constructPath": "CdkRealDriftHunt0708EKvs/StreamRich",
+    "declared": {
+      "DataRetentionInHours": 24,
+      "DeviceName": "cdkrd-cam-1",
+      "MediaType": "video/h264",
+      "Name": "cdkrd-hunt0708e-kvs-rich"
+    }
+  },
+  "liveRaw": {
+    "StreamStorageConfiguration": {
+      "DefaultStorageTier": "HOT"
+    },
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:alias/aws/kinesisvideo",
+    "MediaType": "video/h264",
+    "Arn": "arn:aws:kinesisvideo:us-east-1:111111111111:stream/cdkrd-hunt0708e-kvs-rich/1783476428144",
+    "DataRetentionInHours": 24,
+    "Tags": [],
+    "Name": "cdkrd-hunt0708e-kvs-rich",
+    "DeviceName": "cdkrd-cam-1"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {
+      "StreamStorageConfiguration.DefaultStorageTier": "HOT"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamRich",
+      "resourceType": "AWS::KinesisVideo::Stream",
+      "path": "StreamStorageConfiguration.DefaultStorageTier",
+      "actual": "HOT",
+      "nested": true,
+      "physicalId": "cdkrd-hunt0708e-kvs-rich",
+      "constructPath": "CdkRealDriftHunt0708EKvs/StreamRich"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamRich",
+      "resourceType": "AWS::KinesisVideo::Stream",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/kinesisvideo",
+      "physicalId": "cdkrd-hunt0708e-kvs-rich",
+      "constructPath": "CdkRealDriftHunt0708EKvs/StreamRich"
+    }
+  ]
+}
