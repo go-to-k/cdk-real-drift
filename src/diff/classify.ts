@@ -1244,6 +1244,32 @@ export function classifyResource(
   ) {
     knownDef = { ...knownDef, Encrypted: true, AvailabilityZoneRelocationStatus: 'enabled' };
   }
+  // A TargetGroup's undeclared health-check defaults are a deterministic function of the
+  // declared TargetType and ProtocolVersion — a single KNOWN_DEFAULTS constant covers only the
+  // HTTP/instance case, so a clean gRPC / instance / lambda group floods first-run potential
+  // drift (#648). Derive the per-type default and equality-gate it (a real out-of-band change to
+  // any still surfaces). Live-verified across all three variants (hunt 2026-07-08 #648):
+  //   - HealthCheckIntervalSeconds: lambda -> 35, else 30.
+  //   - HealthCheckPath: GRPC -> "/AWS.ALB/healthcheck", else "/" (only present for HTTP-family
+  //     health checks; a TCP group returns none so the default is inert there).
+  //   - HealthCheckTimeoutSeconds: lambda -> 30 (the base 5 constant covers instance/ip/gRPC).
+  //   - Matcher: GRPC -> {GrpcCode:"12"} (the base {HttpCode:"200"} constant covers the rest).
+  //   - HealthyThresholdCount: 5 for every undeclared group.
+  // A group that DECLARES any of these carries it in the template and is compared there.
+  if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
+    const targetType = declaredIn?.['TargetType'];
+    // gRPC groups declare ProtocolVersion: GRPC; instance/ip groups read it back HTTP1 from
+    // live; a lambda group has neither (so the "/" path default applies).
+    const protocolVersion = declaredIn?.['ProtocolVersion'] ?? live['ProtocolVersion'];
+    knownDef = {
+      ...knownDef,
+      HealthyThresholdCount: 5,
+      HealthCheckIntervalSeconds: targetType === 'lambda' ? 35 : 30,
+      HealthCheckPath: protocolVersion === 'GRPC' ? '/AWS.ALB/healthcheck' : '/',
+      ...(targetType === 'lambda' ? { HealthCheckTimeoutSeconds: 30 } : {}),
+      ...(protocolVersion === 'GRPC' ? { Matcher: { GrpcCode: '12' } } : {}),
+    };
+  }
   // AWS/CDK-generated values for THIS resource (its minted name, a default log group
   // derived from the physical id), with the live physical id substituted in — keyed
   // by property, consulted by the undeclared loop below. Empty when the type has no

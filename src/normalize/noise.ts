@@ -1306,6 +1306,14 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A lambda TargetGroup's declared `Targets` element reads back an AWS-filled
+  // `AvailabilityZone: "all"` husk (a lambda target has no AZ) that the template never declares —
+  // the #618 in-element husk class. Equality-gated: a real target with a specific AZ still
+  // surfaces. `Targets` is identity-keyed by target Id, so the path crosses the array (`*`).
+  // Live-verified on a fresh lambda target group (hunt 2026-07-08 #648).
+  'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    'Targets.*.AvailabilityZone': 'all',
+  },
   // A WebSocket API Stage whose DefaultRouteSettings declares only throttling (CDK's
   // WebSocketStage renders just ThrottlingRateLimit / ThrottlingBurstLimit) reads back the
   // sibling `LoggingLevel: "OFF"` — the documented service default AWS fills into
@@ -2874,6 +2882,10 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     'routing.http.response.server.enabled': 'true',
   },
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    // A group that declares no deregistration delay reads back the 300s default; a lambda group
+    // additionally reads back the multi-value-headers "false" default (live-verified #648).
+    'deregistration_delay.timeout_seconds': '300',
+    'lambda.multi_value_headers.enabled': 'false',
     'load_balancing.algorithm.anomaly_mitigation': 'off',
     'load_balancing.algorithm.type': 'round_robin',
     'load_balancing.cross_zone.enabled': 'use_load_balancer_configuration',
