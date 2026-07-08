@@ -2531,3 +2531,95 @@ describe('#553: Lex BotLocales routes to the nested SDK writer (kind=sdk), not C
     expect(plan.items[0]).toMatchObject({ kind: 'sdk', resourceType: 'AWS::Lex::Bot' });
   });
 });
+
+describe('#641 symptom 2 — CC revert strips bare-null array husks from the model', () => {
+  // S3 echoes `TagFilters: [null]` inside every prefix-scoped IntelligentTiering / Metrics
+  // config element; the husk lives in Cloud Control's own server-side model, so a CC revert
+  // of an unrelated property (here VersioningConfiguration) fails model validation unless the
+  // patch also drops the husk.
+  const bucketLive = (): Record<string, unknown> => ({
+    VersioningConfiguration: { Status: 'Enabled' },
+    IntelligentTieringConfigurations: [{ Id: 'dataTier', Prefix: 'data/', TagFilters: [null] }],
+    MetricsConfigurations: [
+      { Id: 'EntireBucket' },
+      { Id: 'LogsOnly', Prefix: 'logs/', TagFilters: [null] },
+    ],
+  });
+  const versioningRemoval = (): Finding =>
+    F({
+      tier: 'undeclared',
+      path: 'VersioningConfiguration',
+      actual: { Status: 'Enabled' },
+      unrecorded: true,
+    });
+
+  it('prepends remove ops for each pure-null array husk before the real revert op', () => {
+    const plan = buildRevertPlan([versioningRemoval()], undefined, {
+      removeUnrecorded: true,
+      liveByLogical: new Map([['R', bucketLive()]]),
+    });
+    expect(plan.items).toHaveLength(1);
+    const ops = plan.items[0]!.ops;
+    // the husk removals lead, then the unrelated-property revert
+    expect(ops.map((o) => ({ op: o.op, path: o.path }))).toEqual([
+      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
+      { op: 'remove', path: '/MetricsConfigurations/1/TagFilters' },
+      { op: 'remove', path: '/VersioningConfiguration' },
+    ]);
+    // and they serialize to Cloud Control as pure remove ops (no value)
+    expect(JSON.parse(toPatchDocument(plan.items[0]!))).toEqual([
+      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
+      { op: 'remove', path: '/MetricsConfigurations/1/TagFilters' },
+      { op: 'remove', path: '/VersioningConfiguration' },
+    ]);
+  });
+
+  it('no husk in the live model -> no extra ops (unchanged plan)', () => {
+    const clean = {
+      VersioningConfiguration: { Status: 'Enabled' },
+      MetricsConfigurations: [{ Id: 'EntireBucket' }],
+    };
+    const plan = buildRevertPlan([versioningRemoval()], undefined, {
+      removeUnrecorded: true,
+      liveByLogical: new Map([['R', clean]]),
+    });
+    expect(plan.items[0]!.ops.map((o) => o.path)).toEqual(['/VersioningConfiguration']);
+  });
+
+  it('leaves a MIXED array (real object + null) untouched — only pure-null husks are dropped', () => {
+    const mixed = {
+      VersioningConfiguration: { Status: 'Enabled' },
+      MetricsConfigurations: [{ Id: 'LogsOnly', TagFilters: [{ Key: 'team', Value: 'a' }, null] }],
+    };
+    const plan = buildRevertPlan([versioningRemoval()], undefined, {
+      removeUnrecorded: true,
+      liveByLogical: new Map([['R', mixed]]),
+    });
+    // no husk op emitted for the mixed array; only the real revert remains
+    expect(plan.items[0]!.ops.map((o) => o.path)).toEqual(['/VersioningConfiguration']);
+  });
+
+  it('no liveByLogical provided -> no husk sanitization (back-compat)', () => {
+    const plan = buildRevertPlan([versioningRemoval()], undefined, { removeUnrecorded: true });
+    expect(plan.items[0]!.ops.map((o) => o.path)).toEqual(['/VersioningConfiguration']);
+  });
+
+  it('does NOT add husk ops to an SDK-writer (non-cc) item', () => {
+    // AWS::Config::ConfigRule InputParameters routes to an SDK writer, not a CC patch, so
+    // even with a (hypothetical) husk in its live model no husk op is injected.
+    const f = F({
+      tier: 'declared',
+      resourceType: 'AWS::Config::ConfigRule',
+      physicalId: 'cdkrd-rule',
+      path: 'InputParameters',
+      desired: { maxAccessKeyAge: 90 },
+      actual: { maxAccessKeyAge: '365' },
+    });
+    const plan = buildRevertPlan([f], undefined, {
+      liveByLogical: new Map([['R', { Foo: [null] }]]),
+    });
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops.every((o) => o.path !== '/Foo')).toBe(true);
+  });
+});

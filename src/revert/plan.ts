@@ -281,6 +281,38 @@ export interface RevertPlan {
   notRevertable: NotRevertable[];
 }
 
+// A bare `null` array ELEMENT is a service read artifact (S3 echoes `TagFilters: [null]`
+// inside every prefix-scoped IntelligentTiering / Metrics config element that declares no
+// tag filter — #641). It is stripped from the DIFF view (cc-api-strip, symptom 1), but a
+// Cloud Control revert of ANY property on the same resource sends an RFC6902 patch that CC
+// applies to its OWN server-side model — which still contains the husk — and the provider's
+// update validation then REJECTS the null element ("expected type JSONObject, found Null"),
+// FAILING the revert of the unrelated property (#641 symptom 2). Emit `remove` ops that drop
+// the husk from CC's model too. Restricted to a PURE-null array (every element null): remove
+// the WHOLE property (absent = valid, and it dodges any minItems constraint an empty `[]`
+// would trip). Removing a KEY never shifts an array index, so the ops are order-independent
+// and safe to prepend to the real revert op. A REAL out-of-band edit produces non-null
+// objects (a mixed array is left untouched — not the observed husk shape), so detection and
+// legitimate reverts are unaffected.
+function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
+  const ops: PatchOp[] = [];
+  const walk = (value: unknown, pointer: string): void => {
+    if (Array.isArray(value)) {
+      if (value.length > 0 && value.every((v) => v === null || v === undefined)) {
+        if (pointer !== '')
+          ops.push({ op: 'remove', path: pointer, human: `strip null array husk at ${pointer}` });
+        return; // a pure-null array has no non-null children to recurse into
+      }
+      value.forEach((v, i) => walk(v, `${pointer}/${i}`));
+    } else if (value && typeof value === 'object') {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>))
+        walk(v, `${pointer}/${k.replace(/~/g, '~0').replace(/\//g, '~1')}`);
+    }
+  };
+  walk(model, '');
+  return ops;
+}
+
 // dotted finding path ("A.B.0.C") -> RFC6902 JSON pointer ("/A/B/0/C")
 function toPointer(dotted: string): string {
   return (
@@ -320,6 +352,12 @@ export interface RevertOptions {
   // — a self-ref / peer / prefix-list rule wiped). Merge them back into the revert value so
   // CC preserves them. Same shape classify uses to subtract them (buildSiblingSgRules).
   siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+  // logicalId -> the RAW live model (read.live, pre-normalize). Used to sanitize a bare
+  // `null` array-element husk out of a Cloud Control revert patch (#641 symptom 2): the husk
+  // is stripped from the DIFF view (cc-api-strip) but persists in Cloud Control's OWN
+  // server-side model, so a CC UpdateResource of ANY property on the same resource fails
+  // model validation ("expected type JSONObject, found Null") unless the patch also drops it.
+  liveByLogical?: Map<string, Record<string, unknown>>;
 }
 
 // True when a finding path is AT or UNDER any create-only schema path. The schema's
@@ -667,6 +705,23 @@ export function buildRevertPlan(
       } as RevertItem);
     item.ops.push(op);
     itemsByLogical.set(key, item);
+  }
+
+  // #641 symptom 2: a Cloud Control UpdateResource patch is applied by CC to its OWN
+  // server-side model, which still carries any bare-null array husk the service echoes on
+  // read (e.g. S3 `TagFilters: [null]`). Prepend `remove` ops that strip the husk so the
+  // resulting model validates — otherwise the revert of an UNRELATED property on that
+  // resource hard-fails with a model-validation error. Only `cc` items (SDK writers build
+  // their own native payloads, never a CC patch); computed once per resource from its raw
+  // live model.
+  if (opts.liveByLogical) {
+    for (const item of itemsByLogical.values()) {
+      if (item.kind !== 'cc') continue;
+      const live = opts.liveByLogical.get(item.logicalId);
+      if (!live) continue;
+      const huskOps = nullHuskRemovalOps(live);
+      if (huskOps.length > 0) item.ops.unshift(...huskOps);
+    }
   }
 
   // Order DELETE items LAST. A `delete` (out-of-band `added` resource) can be REFERENCED
