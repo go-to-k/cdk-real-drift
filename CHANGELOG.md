@@ -1,3 +1,10 @@
+## [0.2.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.16...v0.2.17) (2026-07-08)
+
+
+### Bug Fixes
+
+* **revert:** stop calling a stack CLEAN when a revert did not converge — count FAILED updates + detect no-op removals ([#631](https://github.com/go-to-k/cdk-real-drift/issues/631)) ([#638](https://github.com/go-to-k/cdk-real-drift/issues/638)) ([91dd33d](https://github.com/go-to-k/cdk-real-drift/commit/91dd33d2ecddff46e95f9e162dd75a0d10d0798c))
+
 ## [0.2.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.15...v0.2.16) (2026-07-08)
 
 
