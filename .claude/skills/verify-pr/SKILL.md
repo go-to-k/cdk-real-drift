@@ -60,38 +60,54 @@ Run each check and report pass/fail:
    - If a shared helper changed, list its importers (`grep -rl` under `src`/
      `tests`) and confirm the new behavior is correct for each.
 
-6. **Live-test changed behavior**
+6. **Live-test changed behavior (per-PR, collision-safe)**
    - Unit tests verify code correctness; this verifies _feature_ correctness
      against the runtime the user actually sees.
    - Build the latest source: `vp pack` (DIRECTLY — not `vp run build`, whose
      cache can replay a stale `dist/` and make this live-test exercise an old
      binary).
-   - For each user-visible change (CLI command, output format, flag, error
-     message), run the actual command path and confirm the output matches the
-     spec:
+   - Scope the live-test to THIS PR's change, not the whole product:
      - CLI surface change → `node dist/cli.js <check|accept|revert> <args>` (e.g.
        `node dist/cli.js --help`, or against a synthesized `cdk.out` /
        `.cdkrd/baselines/<stack>.<region>.json` baseline fixture); verify each output mode
        (`--json` / `--show-all` / `--fail-on` / `--dry-run`).
      - Library change → run a minimal repro importing the new code path.
+     - A classify / fold / FP-fix change → the real harvested **corpus** case is
+       authoritative live data: `vp test run corpus-replay` reproduces the fold on
+       the recorded live model offline. If the fix was **live-proven in its
+       originating hunt** (the issue carries the real repro) and a committed corpus
+       case pins it, that IS the live evidence — cite the case + the hunt.
+     - Any FRESH real-AWS deploy uses a **UNIQUE stack name** (`…<issue>…` /
+       hunt-style), NEVER a shared fixed-name fixture, so it can never collide with
+       another agent's live stack or its `delstack -s <name>` teardown.
    - "Tests passed" is not "feature works." If you cannot live-test (e.g. no AWS
-     credentials and no offline fixture), say so explicitly rather than skip
+     credentials and no offline fixture / corpus), say so explicitly rather than skip
      silently, and DO NOT set the `verify-pr` marker — let the human decide.
 
-7. **Integration fixtures (real AWS) — required before a release (R50)**
-   - Run EVERY fixture under `tests/integration/` (see its README "When to
-     run"): `basic/verify.sh`, `basic/verify-deleted-guards.sh`,
-     `basic/verify-vs-cdk-drift.sh`, `iam`, `lambda`, `revert`, `policies`.
-     Scripts sharing a fixture (`basic`'s three) run sequentially.
-   - Each must print `INTEG PASS`. These mutate a real AWS account (and clean
-     up after themselves) — they need credentials and a bootstrapped account.
-   - If credentials are absent, say so explicitly and DO NOT set the
-     `verify-pr` marker — let the human run them or decide.
-   - **Sweep the orphans the fixtures ALWAYS leave.** The `basic`/`revert`
-     fixtures' S3 `autoDeleteObjects` custom-resource Lambdas auto-create
-     `/aws/lambda/*CustomS3AutoDeleteObjects*` log groups that stack deletion
-     does NOT remove — every core-fixture run leaves ~4 of them (observed on
-     three consecutive runs). After the fixtures pass, run:
+7. **Shared-name CORE integration suite (real AWS) — release-window gated (R50)**
+   - The core suite under `tests/integration/` (`basic/verify.sh`,
+     `basic/verify-deleted-guards.sh`, `basic/verify-vs-cdk-drift.sh`, `iam`,
+     `lambda`, `revert`, `policies`) uses **hardcoded stack names**
+     (`CdkdriftIntegBasic`, …). Two agents running it concurrently deploy the SAME
+     CloudFormation stack in one account and each teardown deletes the other's live
+     stack — so it must NEVER run concurrently with another live suite.
+   - **Acquire a GLOBAL CLEAN WINDOW first**: confirm no other agent is mid-live-run
+     (no active hunt/verify-pr worktree, the shared core stacks absent) before
+     starting. If a window can't be acquired, do NOT start — wait or defer.
+   - **When it applies**: required for a change to the core `check`/`revert` HOT PATH
+     that is NOT already covered by a committed corpus case (a new SDK reader/writer,
+     a pipeline/normalize change with no golden replay). Each must print `INTEG PASS`.
+   - **When it may be DEFERRED (log it explicitly)**: a PR whose diff is fully
+     covered by unit tests + a real-corpus **replay** AND was **live-proven in its
+     originating hunt** may set the `verify-pr` marker WITHOUT re-running the shared
+     suite — step 6's per-PR live evidence stands in. State the deferral in the PR /
+     report ("core suite deferred — offline+corpus+hunt-verified; not re-run") so the
+     skip is visible, never silent. The suite still runs at the next clean-window
+     release verification. If credentials are absent, say so and let the human decide.
+   - **Sweep the orphans the suite ALWAYS leaves** (only when it was actually run).
+     The `basic`/`revert` fixtures' S3 `autoDeleteObjects` custom-resource Lambdas
+     auto-create `/aws/lambda/*CustomS3AutoDeleteObjects*` log groups that stack
+     deletion does NOT remove — ~4 per run. After the fixtures pass, run:
 
      ```bash
      AWS_REGION=us-east-1 bash tests/integration/sweep-orphans.sh --delete
@@ -127,7 +143,7 @@ Present results as a table:
 | docs consistency               | pass/fail                 |
 | code review                    | pass/issues found         |
 | live-test changed behavior     | pass/skipped/issues found |
-| integration fixtures (7)       | pass/skipped/issues found |
+| shared CORE suite (7)          | pass/deferred/skipped     |
 | retrospective + rule proposals | done/skipped              |
 
 If all pass, confirm "Ready to release."
