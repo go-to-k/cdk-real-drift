@@ -1,3 +1,10 @@
+## [0.2.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.13...v0.2.14) (2026-07-08)
+
+
+### Bug Fixes
+
+* **revert:** REVERT_SET_DEFAULT_PATHS gaps — Cognito UserPool + SNS Subscription ([#630](https://github.com/go-to-k/cdk-real-drift/issues/630)) ([#635](https://github.com/go-to-k/cdk-real-drift/issues/635)) ([008e227](https://github.com/go-to-k/cdk-real-drift/commit/008e2278bba802f92ef10bfea96a12ff20f2542f))
+
 ## [0.2.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.12...v0.2.13) (2026-07-08)
 
 
