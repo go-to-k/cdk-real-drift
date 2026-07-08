@@ -838,4 +838,94 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
     expect(cache.get(subArn)).toBe(true);
   });
+
+  it('#726: child BEYOND the DescribeStackResources 100-window resolves via paginated ListStackResources', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // DescribeStackResources returns only the first 100 (no pagination), and the child is NOT
+    // among them — but every returned resource still names the owning stack.
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          StackName: 'BigProducer',
+          LogicalResourceId: 'SomeOther',
+          PhysicalResourceId: 'other-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    // ListStackResources paginates: page 1 lacks the child, page 2 (via NextToken) has it.
+    cfn
+      .on(ListStackResourcesCommand)
+      .resolvesOnce({
+        StackResourceSummaries: [
+          {
+            LogicalResourceId: 'Filler',
+            PhysicalResourceId: 'filler-phys',
+            ResourceType: 'AWS::SQS::Queue',
+            LastUpdatedTimestamp: new Date(0),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+        NextToken: 'page2',
+      })
+      .resolves({
+        StackResourceSummaries: [
+          {
+            LogicalResourceId: 'NotifTopicSub',
+            PhysicalResourceId: subArn,
+            ResourceType: 'AWS::SNS::Subscription',
+            LastUpdatedTimestamp: new Date(0),
+            ResourceStatus: 'CREATE_COMPLETE',
+          },
+        ],
+      });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      new Map()
+    );
+    expect(managed).toBe(true);
+    // it queried the OWNING stack by name and paginated to page 2
+    expect(cfn.commandCalls(ListStackResourcesCommand)).toHaveLength(2);
+    expect(cfn.commandCalls(ListStackResourcesCommand)[0]!.args[0].input).toMatchObject({
+      StackName: 'BigProducer',
+    });
+  });
+
+  it('#726: a genuinely out-of-band child stays added even after paginating the whole owning-window', async () => {
+    // Describe returns 100 without the child; ListStackResources paginates fully and never finds
+    // it (it truly belongs to no stack that owns this physical id) -> report as added (fail safe).
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(DescribeStackResourcesCommand).resolves({
+      StackResources: [
+        {
+          StackName: 'BigProducer',
+          LogicalResourceId: 'X',
+          PhysicalResourceId: 'x-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          Timestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Y',
+          PhysicalResourceId: 'y-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      new Map()
+    );
+    expect(managed).toBe(false);
+  });
 });

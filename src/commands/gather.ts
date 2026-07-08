@@ -4,6 +4,7 @@ import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcon
 import {
   CloudFormationClient,
   DescribeStackResourcesCommand,
+  ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
@@ -172,11 +173,35 @@ export async function isManagedBySiblingStack(
     const res = await cfn.send(
       new DescribeStackResourcesCommand({ PhysicalResourceId: physicalId })
     );
-    // DescribeStackResources(PhysicalResourceId) returns every resource of the OWNING
-    // stack; confirm the one matching this child's id + type is present (a stack owns it).
-    managed = (res.StackResources ?? []).some(
-      (r) => r.PhysicalResourceId === physicalId && r.ResourceType === c.resourceType
-    );
+    const owns = (
+      rs: { PhysicalResourceId?: string | undefined; ResourceType?: string | undefined }[]
+    ): boolean =>
+      rs.some((r) => r.PhysicalResourceId === physicalId && r.ResourceType === c.resourceType);
+    const first = res.StackResources ?? [];
+    if (owns(first)) {
+      managed = true;
+    } else {
+      // DescribeStackResources(PhysicalResourceId) returns ONLY the first 100 resources of the
+      // owning stack and CANNOT paginate (#726). When the child is beyond that window in a big
+      // sibling stack the match above misses and a fully CFn-managed child would be false-flagged
+      // `added` (with a DeleteResource revert offer). Fall back to the PAGINATED
+      // ListStackResources on the owning stack — its name comes from any resource Describe DID
+      // return (they all belong to the one owning stack).
+      const stackName = first[0]?.StackName;
+      if (stackName) {
+        let next: string | undefined;
+        do {
+          const page = await cfn.send(
+            new ListStackResourcesCommand({ StackName: stackName, NextToken: next })
+          );
+          if (owns(page.StackResourceSummaries ?? [])) {
+            managed = true;
+            break;
+          }
+          next = page.NextToken;
+        } while (next);
+      }
+    }
   } catch {
     // No stack owns this physical id (ValidationError "does not exist") -> genuinely out of
     // band; or a permission/throttle error -> fail open to the current "report as added".
