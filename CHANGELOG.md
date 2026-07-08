@@ -1,3 +1,10 @@
+## [0.2.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.30...v0.2.31) (2026-07-08)
+
+
+### Bug Fixes
+
+* **added:** fold cross-stack sibling children so they are not flagged out of band ([#666](https://github.com/go-to-k/cdk-real-drift/issues/666)) ([#691](https://github.com/go-to-k/cdk-real-drift/issues/691)) ([b169210](https://github.com/go-to-k/cdk-real-drift/commit/b169210c7c36527776403fcae409124e0f976ee3))
+
 ## [0.2.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.29...v0.2.30) (2026-07-08)
 
 
