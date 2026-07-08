@@ -124,9 +124,9 @@ export function formatFinding(f: Finding, stackName = ''): string {
   // R78: an ELB attribute-bag drift names the changed attribute by Key
   // (LoadBalancerAttributes[idle_timeout.timeout_seconds]) rather than a bare
   // array index, so the report points at the exact setting.
-  const pathDisplay = f.attributeKey ? `${f.path}[${f.attributeKey}]` : f.path;
+  const pathDisplay = f.attributeKey ? `${f.path}[${sanitizeForTerminal(f.attributeKey)}]` : f.path;
   let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
-  if (f.note) s += ` — ${f.note}`;
+  if (f.note) s += ` — ${sanitizeForTerminal(f.note)}`;
   if (f.tier === 'declared') {
     // A map-valued drift (both sides objects) is shown as a per-KEY delta, not a truncated
     // whole-object dump (see formatMapDelta) — the user's case: one ResponseParameters
@@ -159,7 +159,7 @@ export function formatFinding(f: Finding, stackName = ''): string {
   // A non-classifying origin hint (diff/hints.ts) — the finding is still real drift; this
   // just names where the live value likely came from. Readable (style.note) trailing line
   // below the values — it is meant to be read, so NOT dim.
-  if (f.hint) s += `\n      ${style.note(`↳ ${f.hint}`)}`;
+  if (f.hint) s += `\n      ${style.note(`↳ ${sanitizeForTerminal(f.hint)}`)}`;
   return s;
 }
 
@@ -192,11 +192,12 @@ function formatMapDelta(
     if (inD && inA) {
       if (deepEqual(desired[k], actual[k])) continue;
       const { a, b } = jPair(desired[k], actual[k]);
-      s += `\n      ~ ${k}\n          ${lhs}=${style.desired(a)}\n          ${rhs}=${style.actual(b)}`;
+      const sk = sanitizeForTerminal(k);
+      s += `\n      ~ ${sk}\n          ${lhs}=${style.desired(a)}\n          ${rhs}=${style.actual(b)}`;
     } else if (inD) {
-      s += `\n      - ${k} (in ${baselineLabels ? 'baseline' : 'template'}, absent in live)\n          ${lhs}=${style.desired(j(desired[k]))}`;
+      s += `\n      - ${sanitizeForTerminal(k)} (in ${baselineLabels ? 'baseline' : 'template'}, absent in live)\n          ${lhs}=${style.desired(j(desired[k]))}`;
     } else {
-      s += `\n      + ${k} (in live, not in ${baselineLabels ? 'baseline' : 'template'})\n          ${rhs}=${style.actual(j(actual[k]))}`;
+      s += `\n      + ${sanitizeForTerminal(k)} (in live, not in ${baselineLabels ? 'baseline' : 'template'})\n          ${rhs}=${style.actual(j(actual[k]))}`;
     }
   }
   // A whole-object swap with NO per-key difference shouldn't happen (deepEqual gates the
@@ -219,14 +220,14 @@ function formatArrayDelta(d: ArrayDelta): string {
   // 8 = len('baseline'); pad 'actual' to match so the '=' column lines up.
   const baseline = (v: unknown): string => `\n          baseline=${style.desired(j(v))}`;
   const actual = (v: unknown): string => `\n          actual  =${style.actual(j(v))}`;
-  let s = ` — ${d.identityField}-keyed element(s) changed vs .cdkrd baseline:`;
-  for (const a of d.added) s += `\n      + [${a.id}]${actual(a.value)}`;
+  let s = ` — ${sanitizeForTerminal(d.identityField)}-keyed element(s) changed vs .cdkrd baseline:`;
+  for (const a of d.added) s += `\n      + [${sanitizeForTerminal(a.id)}]${actual(a.value)}`;
   for (const c of d.changed) {
     // pair-aware truncation so a long recorded-vs-live element shows WHERE it diverges
     const { a: base, b: act } = jPair(c.recorded, c.actual);
-    s += `\n      ~ [${c.id}]\n          baseline=${style.desired(base)}\n          actual  =${style.actual(act)}`;
+    s += `\n      ~ [${sanitizeForTerminal(c.id)}]\n          baseline=${style.desired(base)}\n          actual  =${style.actual(act)}`;
   }
-  for (const r of d.removed) s += `\n      - [${r.id}]${baseline(r.value)}`;
+  for (const r of d.removed) s += `\n      - [${sanitizeForTerminal(r.id)}]${baseline(r.value)}`;
   return s;
 }
 
@@ -583,6 +584,26 @@ export function safeSlice(s: string, start: number, end: number): string {
 function j(v: unknown): string {
   const s = JSON.stringify(v);
   return s && s.length > VALUE_CAP ? safeSlice(s, 0, VALUE_CAP) + '…' : (s ?? String(v));
+}
+
+// #829: drift VALUES are JSON.stringify-escaped (via j()/jPair()), but several live-derived
+// KEYS/IDS and note/hint lines are printed RAW — a live map key, ELB attributeKey, or
+// array-delta identity id (all charset-permissive: env-var names, header/param names, policy
+// names, custom-resource property keys) can carry control bytes. A key like
+// `owner\r\nresult: CLEAN\x1b[2K` would inject a physical line that matches report.ts's
+// documented `^result:` CI grep verdict — spoofing a CLEAN result past grep-based automation —
+// or use CR + ANSI escapes to overwrite a real drift line on a TTY. Escape ASCII control
+// chars (C0 range + DEL) to a visible `\xNN` form so a hostile key can never emit a raw
+// newline / CR / ESC; printable text (incl. non-ASCII) is untouched. Pure + exported for tests.
+export function sanitizeForTerminal(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const code = ch.charCodeAt(0);
+    // C0 controls (\x00-\x1f) + DEL (\x7f) -> visible \xNN; a raw CR/LF/ESC could
+    // else inject a spoofed `result:` line or overwrite a real drift line on a TTY.
+    out += code < 0x20 || code === 0x7f ? `\\x${code.toString(16).padStart(2, '0')}` : ch;
+  }
+  return out;
 }
 
 // Truncate a desired/actual (or baseline/actual) PAIR so the FIRST point at which the
