@@ -40,13 +40,25 @@ export function matchesGlob(pattern: string, name: string): boolean {
  * (`X.Policies` covering `X.Policies[Mp].Name`) is handled separately by the ancestor
  * walk in `pathMatches`, so bounding `*` here does not under-match. The stack/region
  * axes keep `matchesGlob` (their names contain no `.`/`[`, so it is equivalent there).
+ *
+ * INSIDE a `[...]` bracket segment a `*` / `?` is UNBOUNDED within that bracket: the
+ * brackets already delimit the key, so a `.` between them is DATA, not a segment
+ * boundary — cdkrd's own canonical paths carry dotted bracket keys such as
+ * `Alb.LoadBalancerAttributes[routing.http2.enabled]`. So `...[*]` and `...[routing.*]`
+ * match those keys, while `.` OUTSIDE brackets stays a hard segment boundary. A `*`/`?`
+ * inside a bracket may not cross the closing `]` (still one bracket segment).
  */
 export function matchesPathGlob(pattern: string, target: string): boolean {
   let out = '^';
+  let inBracket = false;
   for (const ch of pattern.replace(/\*+/g, '*')) {
-    if (ch === '*') out += '[^.[]*';
-    else if (ch === '?') out += '[^.[]';
-    else out += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (ch === '*') out += inBracket ? '[^\\]]*' : '[^.[]*';
+    else if (ch === '?') out += inBracket ? '[^\\]]' : '[^.[]';
+    else {
+      if (ch === '[') inBracket = true;
+      else if (ch === ']') inBracket = false;
+      out += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
   }
   out += '$';
   return new RegExp(out).test(target);

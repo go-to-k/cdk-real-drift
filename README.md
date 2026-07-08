@@ -473,9 +473,19 @@ ignore:
   non-CDK stack). Rules written with the older full `<stack>/<constructPath>.<path>`
   form still match. Widening a stamped scope to a `*` glob (to intentionally ignore a
   path across every stack/account/region) stays a hand-edit.
-- All four fields accept the same `*` / `?` glob, and a parent `path` covers child
-  paths. The three scope axes — **stack, account, region** — are exactly the
-  baseline file's identity axes. **Account** keeps a `stack: "Prod*"` rule from
+- All four fields accept `*` / `?` globs, but the `path` axis is **segment-aware**
+  while the scope axes are not. In `path`, `*` / `?` match within a single `.`-delimited
+  segment (`*.DesiredCount` matches `<anyId>.DesiredCount`, not a deeper
+  `Tbl.Config.DesiredCount`) — a parent `path` still covers child paths via the subtree
+  walk, so the segment bound does not under-match. Inside a `[...]` bracket key a `*` /
+  `?` is **unbounded within that bracket** (the brackets delimit the key, so a `.`
+  between them is data): `Alb.LoadBalancerAttributes[*]` and
+  `Alb.LoadBalancerAttributes[routing.*]` both match the dotted key
+  `[routing.http2.enabled]`. On **stack / account / region**, `*` / `?` are unbounded
+  (those names carry no `.`). The three scope axes are exactly the
+  baseline file's identity axes; each is **omitted to leave that axis unscoped**
+  (match-all) — a present-but-empty `""` is rejected (it would match nothing).
+  **Account** keeps a `stack: "Prod*"` rule from
   leaking into a same-named stack in another account (stack-name uniqueness only
   holds within one account / App); **region** is independent the same way — the same
   stack in several accounts or regions may drift in only one.
