@@ -1,3 +1,10 @@
+## [0.2.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.29...v0.2.30) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** fold ASG first-run undeclared batch + EC2 LaunchTemplate generated-name echo ([#639](https://github.com/go-to-k/cdk-real-drift/issues/639)) ([#690](https://github.com/go-to-k/cdk-real-drift/issues/690)) ([a7a3629](https://github.com/go-to-k/cdk-real-drift/commit/a7a36296dcb803b64fd46bdc0d487d24750c9a13))
+
 ## [0.2.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.28...v0.2.29) (2026-07-08)
 
 
