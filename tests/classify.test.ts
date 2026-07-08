@@ -1102,6 +1102,73 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t({ Scope: 'arn:aws:iam::111111111111:root' }).undeclared).toEqual(['Scope']);
   });
 
+  it('#676: RestApi resource-policy execute-api:/* shorthand folds against the echoed full ARN', () => {
+    const apiId = 'wmvd2s08ng';
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    const arn = `arn:aws:execute-api:us-east-1:111111111111:${apiId}/*`;
+    const res: DesiredResource = {
+      logicalId: 'PrivApi',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      physicalId: apiId,
+      declared: {
+        // the documented abbreviated form (CDK grantInvokeFromVpcEndpointsOnly / AWS docs)
+        Policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: '*',
+              Action: 'execute-api:Invoke',
+              Resource: ['execute-api:/*'],
+            },
+            {
+              Effect: 'Deny',
+              Principal: '*',
+              Action: 'execute-api:Invoke',
+              Resource: ['execute-api:/*'],
+              Condition: { StringNotEquals: { 'aws:SourceVpce': 'vpce-abc123' } },
+            },
+          ],
+        },
+      },
+    };
+    // clean deploy: the service echoes the shorthand back as the full ARN. Expansion makes the
+    // two match -> ZERO declared drift.
+    const mkLive = (resource: string) => ({
+      Policy: JSON.stringify({
+        Version: '2012-10-17',
+        Statement: [
+          { Effect: 'Allow', Principal: '*', Action: 'execute-api:Invoke', Resource: [resource] },
+          {
+            Effect: 'Deny',
+            Principal: '*',
+            Action: 'execute-api:Invoke',
+            Resource: [resource],
+            Condition: { StringNotEquals: { 'aws:SourceVpce': 'vpce-abc123' } },
+          },
+        ],
+      }),
+    });
+    expect(tiers(classifyResource(res, mkLive(arn), emptySchema, opts)).declared).toEqual([]);
+    // a policy live-repointed at a DIFFERENT api id is NOT the echo of this api's shorthand and
+    // still surfaces (equality-gated — out-of-band detection preserved).
+    expect(
+      tiers(
+        classifyResource(
+          res,
+          mkLive('arn:aws:execute-api:us-east-1:111111111111:OTHERAPIID/*'),
+          emptySchema,
+          opts
+        )
+      ).declared.length
+    ).toBeGreaterThan(0);
+    // with no resolved account the expansion is skipped -> the shorthand vs ARN still surfaces
+    // (never a wrong silent fold when context is missing)
+    expect(tiers(classifyResource(res, mkLive(arn), emptySchema)).declared.length).toBeGreaterThan(
+      0
+    );
+  });
+
   it('noise-sweep batch: the default folds, a flipped (security-relevant) value surfaces', () => {
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));

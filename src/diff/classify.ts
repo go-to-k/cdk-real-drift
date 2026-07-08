@@ -1054,6 +1054,37 @@ function remapSortedIndexToDeclared(
   return rawIdx < 0 ? path : `${arrayKey}.${rawIdx}${m[2]}`;
 }
 
+// #676: an API Gateway resource policy authored with the documented abbreviated resource form
+// `execute-api:/...` (the shape CDK's grantInvokeFromVpcEndpointsOnly + the AWS console/docs use,
+// since the api id does not exist at authoring time) is echo-EXPANDED by the service to the full
+// ARN `arn:<partition>:execute-api:<region>:<account>:<apiId>/...` on read. The two are
+// semantically identical, so expand the DECLARED shorthand to the same ARN before the compare —
+// `execute-api:` is a literal prefix AWS replaces textually, so a suffix like `/*` or
+// `/prod/GET/*` is preserved. Equality-gated (context-derived, fold tier 2): a resource pointing
+// at a DIFFERENT api id / region / path expands to a non-matching ARN and still surfaces. Applied
+// to Resource + NotResource on every statement; other (already-ARN or non-execute-api) resources
+// are untouched.
+function expandExecuteApiResources(policy: unknown, arnPrefix: string): unknown {
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return policy;
+  const p = policy as Record<string, unknown>;
+  const stmts = p['Statement'];
+  if (!Array.isArray(stmts)) return policy;
+  const PREFIX = 'execute-api:';
+  const expand = (r: unknown): unknown =>
+    typeof r === 'string' && r.startsWith(PREFIX) ? arnPrefix + r.slice(PREFIX.length) : r;
+  const newStmts = stmts.map((s) => {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return s;
+    const stmt = { ...(s as Record<string, unknown>) };
+    for (const key of ['Resource', 'NotResource']) {
+      const v = stmt[key];
+      if (typeof v === 'string') stmt[key] = expand(v);
+      else if (Array.isArray(v)) stmt[key] = v.map(expand);
+    }
+    return stmt;
+  });
+  return { ...p, Statement: newStmts };
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -1395,6 +1426,21 @@ export function classifyResource(
     if (Array.isArray(types) && types.includes('PRIVATE')) {
       knownDef = { ...knownDef, SecurityPolicy: 'TLS_1_2' };
       knownDefPaths = { ...knownDefPaths, 'EndpointConfiguration.IpAddressType': 'dualstack' };
+    }
+    // #676: expand the declared resource policy's `execute-api:/...` shorthand to the ARN the
+    // service echoes back, so a clean private (or any) api with the documented shorthand policy
+    // does not false-drift on every statement. Re-canonicalize so the expanded Resource arrays
+    // sort identically to the live side. Needs the api id (physicalId) + account + region.
+    if (physicalId && opts.accountId !== undefined && declared['Policy']) {
+      const partition = opts.region?.startsWith('cn-')
+        ? 'aws-cn'
+        : opts.region?.startsWith('us-gov-')
+          ? 'aws-us-gov'
+          : 'aws';
+      const arnPrefix = `arn:${partition}:execute-api:${opts.region ?? ''}:${opts.accountId}:${physicalId}`;
+      declared['Policy'] = canonicalizePolicy(
+        expandExecuteApiResources(declared['Policy'], arnPrefix) as Record<string, unknown>
+      );
     }
   }
   // #642: a UserPool's undeclared AdminCreateUserConfig.UnusedAccountValidityDays is
