@@ -1306,6 +1306,23 @@ export function classifyResource(
   if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
     knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
   }
+  // #703: a function's default log group is the DERIVED `/aws/lambda/<name>` (GENERATED_DEFAULTS
+  // resolves it, above, via resolveGeneratedDefault). It ALSO sits in GENERATED_NESTED_PATHS as a
+  // value-INDEPENDENT nested fold, which shadows the derivation when LoggingConfig is only
+  // PARTIALLY declared (e.g. `{ LogFormat: JSON }`) and LogGroup surfaces at sub-key level via
+  // emitNested — so an out-of-band log RE-POINT to a custom group was folded and INVISIBLE (a
+  // silent FN, and security-relevant: logs land elsewhere while the team watches /aws/lambda/<fn>).
+  // Promote it to a tier-2 derived equality gate: fold only the AWS-default value; a custom
+  // LogGroup surfaces. The value-independent branch in emitNested is suppressed for any nested
+  // path that already has a knownDefPaths gate (the equality gate handles the atDefault case).
+  if (resourceType === 'AWS::Lambda::Function') {
+    const genLogGroup = (genDef['LoggingConfig'] as Record<string, unknown> | undefined)?.[
+      'LogGroup'
+    ];
+    if (typeof genLogGroup === 'string') {
+      knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogGroup': genLogGroup };
+    }
+  }
   // #653: a Glue Schema declares its Registry by ARN (Registry.Arn); the live read echoes
   // the registry's NAME (Registry.Name) as an undeclared sub-key — the trailing segment of
   // the declared ARN. Derive the expected name from the declared Registry.Arn tail and
@@ -1443,8 +1460,12 @@ export function classifyResource(
         // physical-id segment (the AWS default) — a custom value the user set surfaces.
         (generatedPaths.includes(schemaPath) && isPhysicalIdSegment(value, physicalId)) ||
           // Value-INDEPENDENT nested generated path (KMS KeyPolicy.Id): AWS/CFn-injected,
-          // never derivable from the physical id — folded only in this live-only case.
-          generatedNestedPaths?.has(schemaPath)
+          // never derivable from the physical id — folded only in this live-only case. But NOT
+          // when the path also has a knownDefPaths equality gate this run (#703 Lambda
+          // LoggingConfig.LogGroup, derived above): the gate already folded the AWS-default
+          // value via `atDefault`, so a value reaching here is a real custom one that must
+          // surface, not be value-independent-folded.
+          (generatedNestedPaths?.has(schemaPath) && !(schemaPath in knownDefPaths))
         ? 'generated'
         : 'undeclared';
     // A free-form map key surfaces (not folded), but only when it is a real undeclared
