@@ -1,3 +1,10 @@
+## [0.2.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.25...v0.2.26) (2026-07-08)
+
+
+### Bug Fixes
+
+* **read,noise:** ApiGatewayV2 WebSocket RouteResponse read-gap + first-run folds ([#664](https://github.com/go-to-k/cdk-real-drift/issues/664), [#665](https://github.com/go-to-k/cdk-real-drift/issues/665)) ([#671](https://github.com/go-to-k/cdk-real-drift/issues/671)) ([c4bfb37](https://github.com/go-to-k/cdk-real-drift/commit/c4bfb37ae1bb90d86d88ca6e3c3135cee36b3b59))
+
 ## [0.2.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.24...v0.2.25) (2026-07-08)
 
 
