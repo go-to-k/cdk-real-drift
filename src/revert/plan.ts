@@ -119,6 +119,22 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // 50 reported SUCCESS yet the live value stayed 50 — "1 drift remain"). Write the 300
   // default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::Events::ApiDestination\0InvocationRateLimitPerSecond',
+  // Cognito UpdateUserPool is a FULL-PUT provider: it IGNORES an omitted property and keeps
+  // the existing live value, so a bare `remove` revert of an out-of-band change is a silent
+  // no-op. Live-proven for DeletionProtection (#630, reproduced twice: a bare pool set to
+  // ACTIVE out of band, then `revert --remove-unrecorded` planned a `remove`, reported
+  // CLEAN, yet the live pool stayed ACTIVE). MfaConfiguration and UserPoolTier are the same
+  // provider family (same UpdateUserPool omit-ignored behavior), so write their KNOWN_DEFAULTS
+  // defaults (INACTIVE / OFF / ESSENTIALS) back explicitly — idempotent and safe.
+  'AWS::Cognito::UserPool\0DeletionProtection',
+  'AWS::Cognito::UserPool\0MfaConfiguration',
+  'AWS::Cognito::UserPool\0UserPoolTier',
+  // SNS SetSubscriptionAttributes HARD-FAILS a `remove` of FilterPolicyScope (#630,
+  // live-proven: setting it to MessageBody out of band, then reverting via `remove` fails with
+  // InvalidRequest "FilterPolicyScope: Invalid value [null]. Please use either MessageBody or
+  // MessageAttributes"). SNS refuses to clear the attribute, so revert can only converge by
+  // SETTING the "MessageAttributes" default (from KNOWN_DEFAULTS) explicitly.
+  'AWS::SNS::Subscription\0FilterPolicyScope',
 ]);
 
 /**
