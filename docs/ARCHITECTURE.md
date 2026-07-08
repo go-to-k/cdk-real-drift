@@ -595,7 +595,18 @@ non-trivial value is recorded and then changes to `false`/empty out of band, the
 baseline removal-detection (§8) DOES surface it. We deliberately do NOT skip
 `isTrivialEmpty` under `--show-all` — that would re-flood inventory with the very
 `false`/empty noise the subtractive model exists to remove. (Considered and rejected;
-see [redesign-notes.md](redesign-notes.md).)
+see [redesign-notes.md](redesign-notes.md).) **Carve-out (#632):** the
+self-correction above fails for an UNDECLARED switch AWS materialized ON at
+creation that a user later disables out of band — the `false` never had a
+non-trivial baseline value to be removed, so `isTrivialEmpty` swallowed it BEFORE
+the fold table was consulted, making the disable invisible (undetectable,
+unrecordable, unrevertable — proven live for SQS SSE-SQS + KMS key disable). The
+curated `MEANINGFUL_WHEN_OFF` allowlist in `classify.ts` names the exact
+`(type, path)` pairs whose OFF state is a real divergence from a `KNOWN_DEFAULTS`
+pin and surfaces them even on a first run; it is predicate-gated (NOT a blanket
+"any diverging `false` surfaces") because most "default true" booleans are
+CONDITIONAL — an SSE-KMS queue reads `SqsManagedSseEnabled:false` legitimately,
+so the predicate surfaces the OFF state only when the queue uses no KMS key.
 
 ## 7. Revert (the only AWS-mutating path)
 

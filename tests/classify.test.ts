@@ -1093,7 +1093,10 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ).toEqual(['WarmThroughput']);
 
     // ESM created enabled → folds. (Enabled:false is dropped upstream as trivially-empty,
-    // like the KMS Key Enabled case — neither undeclared nor atDefault.)
+    // like the KMS Key Enabled case — neither undeclared nor atDefault.) #632 fixed the
+    // KMS/SQS twins of this via the curated MEANINGFUL_WHEN_OFF allowlist; ESM is left
+    // unchanged here pending a live confirm that an undeclared ESM Enabled=false is
+    // unconditionally a real out-of-band disable.
     expect(t('AWS::Lambda::EventSourceMapping', { Enabled: true }).atDefault).toEqual(['Enabled']);
     const disabled = t('AWS::Lambda::EventSourceMapping', { Enabled: false });
     expect(disabled.undeclared).toEqual([]);
@@ -10077,5 +10080,65 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
     expect(t.map((f) => f.path)).toEqual(['AccessConfig']);
     expect(t[0]!.tier).toBe('undeclared');
     expect(t[0]!.actual).toEqual({ AuthenticationMode: 'CONFIG_MAP' });
+  });
+});
+
+// #632: an undeclared boolean/empty value that DIVERGES from its KNOWN_DEFAULTS pin must
+// surface (undeclared) instead of being swallowed by the trivial-empty drop. Before the fix
+// the top-level undeclared loop dropped any `false`/`""` via isTrivialEmpty BEFORE consulting
+// the fold table, so a `true→false` flip of a switch whose pinned default is `true` (SQS
+// SSE-SQS, KMS key Enabled) was completely invisible — undetectable, unrecordable, unrevertable
+// (both proven live 2026-07-08). The nested twin (KNOWN_DEFAULT_PATHS) had the same gap.
+describe('#632 undeclared boolean flipped off is not swallowed by trivial-empty', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const classify = (
+    type: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource({ logicalId: 'R', resourceType: type, physicalId: 'p', declared }, live, bare);
+
+  it('SQS SqsManagedSseEnabled=false (KNOWN_DEFAULTS true) surfaces as undeclared', () => {
+    const f = classify('AWS::SQS::Queue', {}, { SqsManagedSseEnabled: false });
+    const hit = f.find((x) => x.path === 'SqsManagedSseEnabled');
+    expect(hit?.tier).toBe('undeclared');
+    expect(hit?.actual).toBe(false);
+  });
+
+  it('SQS SqsManagedSseEnabled=true (the pin) still folds atDefault (no new FP)', () => {
+    const f = classify('AWS::SQS::Queue', {}, { SqsManagedSseEnabled: true });
+    expect(f.find((x) => x.path === 'SqsManagedSseEnabled')?.tier).toBe('atDefault');
+  });
+
+  it('KMS Key Enabled=false (KNOWN_DEFAULTS true) surfaces as undeclared', () => {
+    const f = classify('AWS::KMS::Key', {}, { Enabled: false });
+    const hit = f.find((x) => x.path === 'Enabled');
+    expect(hit?.tier).toBe('undeclared');
+    expect(hit?.actual).toBe(false);
+  });
+
+  it('a false value with NO fold entry is still dropped (feature-off husk stays quiet)', () => {
+    const f = classify('AWS::SQS::Queue', {}, { SomeUnpinnedFlag: false });
+    expect(f.find((x) => x.path === 'SomeUnpinnedFlag')).toBeUndefined();
+  });
+
+  it('SSE-KMS queue SqsManagedSseEnabled=false is NOT surfaced (conditional default, no FP)', () => {
+    // SSE-SQS and SSE-KMS are mutually exclusive: a queue that declares a KMS key reads
+    // SqsManagedSseEnabled=false legitimately on a clean deploy — must stay dropped.
+    const f = classify(
+      'AWS::SQS::Queue',
+      { KmsMasterKeyId: 'arn:aws:kms:us-east-1:111111111111:key/abc' },
+      { KmsMasterKeyId: 'arn:aws:kms:us-east-1:111111111111:key/abc', SqsManagedSseEnabled: false }
+    );
+    expect(f.find((x) => x.path === 'SqsManagedSseEnabled')).toBeUndefined();
   });
 });
