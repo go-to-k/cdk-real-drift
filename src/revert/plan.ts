@@ -1114,9 +1114,40 @@ export function rejectedEmptyStripOps(
   return out;
 }
 
-/** Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control. */
+// A JSON pointer carries a NUMERIC array-index segment when any `/`-separated segment is
+// all digits (e.g. `/CacheBehaviors/0/ViewerProtocolPolicy` -> the `0`). Such a pointer
+// is POSITIONAL: it addresses "whatever element sits at index N right now", not a stable
+// identity. If the live array shifted between when classify computed the index and when
+// the user confirms the revert (a prepend/reorder in a same-length object array during the
+// confirm-prompt window), an op at `/Prop/0/Sub` silently lands on a DIFFERENT element and
+// corrupts a sibling (#762).
+function hasArrayIndexSegment(pointer: string): boolean {
+  return pointer.split('/').some((seg) => /^\d+$/.test(seg));
+}
+
+/**
+ * Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control.
+ *
+ * #762: the Cloud Control path had no analogue of the SDK-writer guard (writers.ts
+ * `desiredModel` re-reads + re-canonicalizes the live model so an indexed op lands on the
+ * SAME element classify diffed). For an INDEX-BEARING pointer we emit a preceding RFC6902
+ * `test` precondition asserting the addressed location still equals the value classify saw
+ * (`op.prior` = the finding's live `actual`). Cloud Control accepts standard RFC6902 and
+ * evaluates `test` atomically before the mutation, so a shifted index makes it REJECT the
+ * whole patch instead of writing the wrong element — fail-closed, the same intent as the
+ * writer-path re-read. Scalar non-indexed pointers carry no aliasing risk (a named property
+ * is stable regardless of array order), so they get NO `test` op — the patch stays minimal.
+ */
 export function toPatchDocument(item: RevertItem): string {
-  return JSON.stringify(
-    item.ops.map(({ op, path, value }) => (op === 'remove' ? { op, path } : { op, path, value }))
-  );
+  const doc: { op: string; path: string; value?: unknown }[] = [];
+  for (const { op, path, value, prior } of item.ops) {
+    // Guard only index-bearing pointers, and only when we know the value classify diffed
+    // against (`prior` = f.actual). A `test` with an `undefined` value is meaningless
+    // (RFC6902 has no "undefined"): skip it rather than assert an absent value.
+    if (hasArrayIndexSegment(path) && prior !== undefined) {
+      doc.push({ op: 'test', path, value: prior });
+    }
+    doc.push(op === 'remove' ? { op, path } : { op, path, value });
+  }
+  return JSON.stringify(doc);
 }
