@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DefaultNs",
+    "resourceType": "AWS::AppSync::ChannelNamespace",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky/channelNamespace/default",
+    "constructPath": "CdkRealDriftHunt0708AppSyncEvents/DefaultNs",
+    "declared": {
+      "ApiId": "q6ihygkfmzfwjimciq5wgoeuky",
+      "Name": "default"
+    }
+  },
+  "liveRaw": {
+    "SubscribeAuthModes": [],
+    "PublishAuthModes": [],
+    "HandlerConfigs": {},
+    "ApiId": "q6ihygkfmzfwjimciq5wgoeuky",
+    "ChannelNamespaceArn": "arn:aws:appsync:us-east-1:111111111111:apis/q6ihygkfmzfwjimciq5wgoeuky/channelNamespace/default",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftHunt0708AppSyncEvents",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708AppSyncEvents/32739bd0-7a6c-11f1-964a-12bd8434d3df",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "DefaultNs",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "default"
+  },
+  "schema": {
+    "readOnly": ["ChannelNamespaceArn"],
+    "writeOnly": ["CodeS3Location"],
+    "createOnly": ["ApiId", "Name"],
+    "readOnlyPaths": ["ChannelNamespaceArn"],
+    "writeOnlyPaths": ["CodeS3Location"],
+    "createOnlyPaths": ["ApiId", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["PublishAuthModes", "SubscribeAuthModes"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

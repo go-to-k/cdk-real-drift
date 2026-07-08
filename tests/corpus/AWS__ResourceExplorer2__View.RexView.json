@@ -1,0 +1,56 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RexView",
+    "resourceType": "AWS::ResourceExplorer2::View",
+    "physicalId": "arn:aws:resource-explorer-2:us-east-1:111111111111:view/cdkrd-hunt-0708f-view/f1851768-efa7-422c-a5fe-501bcc4242ce",
+    "constructPath": "CdkRealDriftHunt0708FMisc/RexView",
+    "declared": {
+      "ViewName": "cdkrd-hunt-0708f-view"
+    }
+  },
+  "liveRaw": {
+    "Filters": {
+      "FilterString": ""
+    },
+    "ViewArn": "arn:aws:resource-explorer-2:us-east-1:111111111111:view/cdkrd-hunt-0708f-view/f1851768-efa7-422c-a5fe-501bcc4242ce",
+    "Scope": "arn:aws:iam::111111111111:root",
+    "IncludedProperties": [],
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkRealDriftHunt0708FMisc",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708FMisc/3f8c8370-7a7d-11f1-9dca-0ef759634907",
+      "aws:cloudformation:logical-id": "RexView"
+    },
+    "ViewName": "cdkrd-hunt-0708f-view"
+  },
+  "schema": {
+    "readOnly": ["ViewArn"],
+    "writeOnly": [],
+    "createOnly": ["Scope", "ViewName"],
+    "readOnlyPaths": ["ViewArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Scope", "ViewName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RexView",
+      "resourceType": "AWS::ResourceExplorer2::View",
+      "path": "Scope",
+      "actual": "arn:aws:iam::111111111111:root",
+      "physicalId": "arn:aws:resource-explorer-2:us-east-1:111111111111:view/cdkrd-hunt-0708f-view/f1851768-efa7-422c-a5fe-501bcc4242ce",
+      "constructPath": "CdkRealDriftHunt0708FMisc/RexView"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Vgw",
+    "resourceType": "AWS::EC2::VPNGateway",
+    "physicalId": "vgw-02dd4c8424294bb56",
+    "constructPath": "CdkRealDriftHunt0708Vpn/Vgw",
+    "declared": {
+      "Type": "ipsec.1"
+    }
+  },
+  "liveRaw": {
+    "VPNGatewayId": "vgw-02dd4c8424294bb56",
+    "Type": "ipsec.1",
+    "AmazonSideAsn": 64512,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708Vpn/3274d451-7a6c-11f1-b1b4-0e54e818a535",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708Vpn",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Vgw",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VPNGatewayId"],
+    "writeOnly": [],
+    "createOnly": ["AmazonSideAsn", "Type"],
+    "readOnlyPaths": ["VPNGatewayId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AmazonSideAsn", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Vgw",
+      "resourceType": "AWS::EC2::VPNGateway",
+      "path": "AmazonSideAsn",
+      "actual": 64512,
+      "physicalId": "vgw-02dd4c8424294bb56",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vgw"
+    }
+  ]
+}

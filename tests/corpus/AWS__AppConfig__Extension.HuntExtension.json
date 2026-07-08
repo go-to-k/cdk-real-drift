@@ -1,0 +1,83 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntExtension",
+    "resourceType": "AWS::AppConfig::Extension",
+    "physicalId": "5s8opx5",
+    "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtension",
+    "declared": {
+      "Actions": {
+        "ON_DEPLOYMENT_START": [
+          {
+            "Name": "hunt-notify",
+            "Uri": "arn:aws:events:us-east-1:111111111111:event-bus/default"
+          }
+        ]
+      },
+      "Description": "cdkrd hunt extension",
+      "Name": "cdkrd-hunt-0708d-ext",
+      "Parameters": {
+        "huntParam": {
+          "Description": "optional hunt parameter",
+          "Required": false
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt extension",
+    "Parameters": {
+      "huntParam": {
+        "Dynamic": false,
+        "Description": "optional hunt parameter",
+        "Required": false
+      }
+    },
+    "Actions": {
+      "ON_DEPLOYMENT_START": [
+        {
+          "Uri": "arn:aws:events:us-east-1:111111111111:event-bus/default",
+          "Name": "hunt-notify"
+        }
+      ]
+    },
+    "Id": "5s8opx5",
+    "Arn": "arn:aws:appconfig:us-east-1:111111111111:extension/5s8opx5/1",
+    "VersionNumber": 1,
+    "Tags": [
+      {
+        "Value": "CdkRealDriftHunt0708DVpMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntExtension",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708DVpMisc/ed11d250-7a70-11f1-85fb-0ecb5367f463",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-0708d-ext"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "VersionNumber"],
+    "writeOnly": ["LatestVersionNumber"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id", "VersionNumber"],
+    "writeOnlyPaths": ["LatestVersionNumber"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Actions", "Parameters"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

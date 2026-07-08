@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ApiDeploymentStageprod3EB9684E",
+    "resourceType": "AWS::ApiGateway::Stage",
+    "physicalId": "prod",
+    "constructPath": "CdkRealDriftHunt0708gApigwCanary/Api/DeploymentStage.prod",
+    "declared": {
+      "CanarySetting": {
+        "PercentTraffic": 10,
+        "UseStageCache": false
+      },
+      "DeploymentId": "xn6iv8",
+      "RestApiId": "lzniau0ph2",
+      "StageName": "prod"
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "xn6iv8",
+    "StageName": "prod",
+    "TracingEnabled": false,
+    "RestApiId": "lzniau0ph2",
+    "CanarySetting": {
+      "DeploymentId": "xn6iv8",
+      "PercentTraffic": 10,
+      "UseStageCache": false
+    },
+    "Tags": [
+      {
+        "Value": "ApiDeploymentStageprod3EB9684E",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708gApigwCanary/c9d3cea0-7a80-11f1-a1d0-0affcfb358e5",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708gApigwCanary",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "CacheClusterEnabled": false
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["RestApiId", "StageName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RestApiId", "StageName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["MethodSettings"],
+    "freeFormMapPaths": ["CanarySetting.StageVariableOverrides", "Variables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "ApiDeploymentStageprod3EB9684E",
+      "resourceType": "AWS::ApiGateway::Stage",
+      "path": "CanarySetting.DeploymentId",
+      "actual": "xn6iv8",
+      "nested": true,
+      "physicalId": "prod",
+      "constructPath": "CdkRealDriftHunt0708gApigwCanary/Api/DeploymentStage.prod"
+    }
+  ]
+}

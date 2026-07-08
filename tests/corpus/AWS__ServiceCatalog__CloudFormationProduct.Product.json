@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Product",
+    "resourceType": "AWS::ServiceCatalog::CloudFormationProduct",
+    "physicalId": "prod-bme7axqm2leri",
+    "constructPath": "CdkRealDriftHunt0708ESvcCat/Product",
+    "declared": {
+      "Description": "hunt fixture product",
+      "Distributor": "cdkrd",
+      "Name": "cdkrd-hunt0708e-product",
+      "Owner": "cdkrd-hunt",
+      "ProvisioningArtifactParameters": [
+        {
+          "Description": "initial version",
+          "Info": {
+            "LoadTemplateFromURL": "https://s3.us-east-1.amazonaws.com/cdk-hnb659fds-assets-111111111111-us-east-1/180f7f4d71098d3cbe88f73ce42dd66b715e7d758132a546662be423d5b015b0.json"
+          },
+          "Name": "v1"
+        }
+      ],
+      "SupportEmail": "hunt@example.com"
+    }
+  },
+  "liveRaw": {
+    "Owner": "cdkrd-hunt",
+    "Description": "hunt fixture product",
+    "Distributor": "cdkrd",
+    "ProductName": "cdkrd-hunt0708e-product",
+    "SupportEmail": "hunt@example.com",
+    "ProductType": "CLOUD_FORMATION_TEMPLATE",
+    "ProvisioningArtifactIds": "pa-vq3vgxf4pmfzm",
+    "ProvisioningArtifactNames": "v1",
+    "Id": "prod-bme7axqm2leri",
+    "Tags": [],
+    "ProvisioningArtifactParameters": [
+      {
+        "Type": "CLOUD_FORMATION_TEMPLATE",
+        "Description": "initial version",
+        "Info": {
+          "LoadTemplateFromURL": "https://s3.us-east-1.amazonaws.com/cdk-hnb659fds-assets-111111111111-us-east-1/180f7f4d71098d3cbe88f73ce42dd66b715e7d758132a546662be423d5b015b0.json"
+        },
+        "Name": "v1"
+      }
+    ],
+    "Name": "cdkrd-hunt0708e-product"
+  },
+  "schema": {
+    "readOnly": ["Id", "ProductName", "ProvisioningArtifactIds", "ProvisioningArtifactNames"],
+    "writeOnly": ["AcceptLanguage", "ReplaceProvisioningArtifacts"],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "ProductName", "ProvisioningArtifactIds", "ProvisioningArtifactNames"],
+    "writeOnlyPaths": [
+      "AcceptLanguage",
+      "ProvisioningArtifactParameters.*.DisableTemplateValidation",
+      "ReplaceProvisioningArtifacts"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Product",
+      "resourceType": "AWS::ServiceCatalog::CloudFormationProduct",
+      "path": "ProductType",
+      "actual": "CLOUD_FORMATION_TEMPLATE",
+      "physicalId": "prod-bme7axqm2leri",
+      "constructPath": "CdkRealDriftHunt0708ESvcCat/Product"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Product",
+      "resourceType": "AWS::ServiceCatalog::CloudFormationProduct",
+      "path": "ProvisioningArtifactParameters[v1].Type",
+      "actual": "CLOUD_FORMATION_TEMPLATE",
+      "nested": true,
+      "physicalId": "prod-bme7axqm2leri",
+      "constructPath": "CdkRealDriftHunt0708ESvcCat/Product"
+    }
+  ]
+}

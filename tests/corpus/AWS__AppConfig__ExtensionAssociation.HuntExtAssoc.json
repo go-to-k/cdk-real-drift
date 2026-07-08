@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntExtAssoc",
+    "resourceType": "AWS::AppConfig::ExtensionAssociation",
+    "physicalId": "qza1zzu",
+    "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc",
+    "declared": {
+      "ExtensionIdentifier": "5s8opx5",
+      "Parameters": {
+        "huntParam": "v1"
+      },
+      "ResourceIdentifier": "arn:aws:appconfig:us-east-1:111111111111:application/5p56psc"
+    }
+  },
+  "liveRaw": {
+    "ResourceArn": "arn:aws:appconfig:us-east-1:111111111111:application/5p56psc",
+    "Parameters": {
+      "huntParam": "v1"
+    },
+    "ExtensionArn": "arn:aws:appconfig:us-east-1:111111111111:extension/5s8opx5/1",
+    "Id": "qza1zzu",
+    "Arn": "arn:aws:appconfig:us-east-1:111111111111:extensionassociation/qza1zzu",
+    "ExtensionVersionNumber": 1,
+    "Tags": [
+      {
+        "Value": "CdkRealDriftHunt0708DVpMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntExtAssoc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708DVpMisc/ed11d250-7a70-11f1-85fb-0ecb5367f463",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "ExtensionArn", "Id", "ResourceArn"],
+    "writeOnly": ["ExtensionIdentifier", "ResourceIdentifier"],
+    "createOnly": ["ExtensionIdentifier", "ExtensionVersionNumber", "ResourceIdentifier"],
+    "readOnlyPaths": ["Arn", "ExtensionArn", "Id", "ResourceArn"],
+    "writeOnlyPaths": ["ExtensionIdentifier", "ResourceIdentifier"],
+    "createOnlyPaths": ["ExtensionIdentifier", "ExtensionVersionNumber", "ResourceIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Parameters"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntExtAssoc",
+      "resourceType": "AWS::AppConfig::ExtensionAssociation",
+      "path": "ExtensionIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "qza1zzu",
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntExtAssoc",
+      "resourceType": "AWS::AppConfig::ExtensionAssociation",
+      "path": "ResourceIdentifier",
+      "note": "write-only — cannot be read back",
+      "physicalId": "qza1zzu",
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntExtAssoc",
+      "resourceType": "AWS::AppConfig::ExtensionAssociation",
+      "path": "ExtensionVersionNumber",
+      "actual": 1,
+      "physicalId": "qza1zzu",
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc"
+    }
+  ]
+}

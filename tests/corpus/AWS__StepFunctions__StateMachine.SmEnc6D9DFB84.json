@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SmEnc6D9DFB84",
+    "resourceType": "AWS::StepFunctions::StateMachine",
+    "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmEnc6D9DFB84-urARXFvJYAXu",
+    "constructPath": "CdkRealDriftHunt0708gSfn/SmEnc",
+    "declared": {
+      "DefinitionString": "{\"StartAt\":\"P2\",\"States\":{\"P2\":{\"Type\":\"Pass\",\"End\":true}}}",
+      "EncryptionConfiguration": {
+        "KmsDataKeyReusePeriodSeconds": 300,
+        "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/1c68fba3-c16d-4227-8368-5b9ec888e43b",
+        "Type": "CUSTOMER_MANAGED_KMS_KEY"
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708gSfn-SmEncRoleEC17B84F-STKSWVTmAXLf"
+    }
+  },
+  "liveRaw": {
+    "DefinitionString": "{\"StartAt\":\"P2\",\"States\":{\"P2\":{\"Type\":\"Pass\",\"End\":true}}}",
+    "EncryptionConfiguration": {
+      "Type": "CUSTOMER_MANAGED_KMS_KEY",
+      "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/1c68fba3-c16d-4227-8368-5b9ec888e43b",
+      "KmsDataKeyReusePeriodSeconds": 300
+    },
+    "LoggingConfiguration": {
+      "IncludeExecutionData": false,
+      "Level": "OFF"
+    },
+    "StateMachineRevisionId": "INITIAL",
+    "Arn": "arn:aws:states:us-east-1:111111111111:stateMachine:SmEnc6D9DFB84-urARXFvJYAXu",
+    "StateMachineName": "SmEnc6D9DFB84-urARXFvJYAXu",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftHunt0708gSfn-SmEncRoleEC17B84F-STKSWVTmAXLf",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708gSfn/585cd470-7a7f-11f1-b37a-124616eb4d5f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708gSfn",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SmEnc6D9DFB84",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "SmEnc6D9DFB84-urARXFvJYAXu",
+    "StateMachineType": "STANDARD",
+    "TracingConfiguration": {
+      "Enabled": false
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnly": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnly": ["StateMachineName", "StateMachineType"],
+    "readOnlyPaths": ["Arn", "Name", "StateMachineRevisionId"],
+    "writeOnlyPaths": ["Definition", "DefinitionS3Location", "DefinitionSubstitutions"],
+    "createOnlyPaths": ["StateMachineName", "StateMachineType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["LoggingConfiguration.Destinations"],
+    "freeFormMapPaths": ["DefinitionSubstitutions"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SmEnc6D9DFB84",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "LoggingConfiguration",
+      "actual": {
+        "IncludeExecutionData": false,
+        "Level": "OFF"
+      },
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmEnc6D9DFB84-urARXFvJYAXu",
+      "constructPath": "CdkRealDriftHunt0708gSfn/SmEnc"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "SmEnc6D9DFB84",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineName",
+      "actual": "SmEnc6D9DFB84-urARXFvJYAXu",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmEnc6D9DFB84-urARXFvJYAXu",
+      "constructPath": "CdkRealDriftHunt0708gSfn/SmEnc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SmEnc6D9DFB84",
+      "resourceType": "AWS::StepFunctions::StateMachine",
+      "path": "StateMachineType",
+      "actual": "STANDARD",
+      "physicalId": "arn:aws:states:us-east-1:111111111111:stateMachine:SmEnc6D9DFB84-urARXFvJYAXu",
+      "constructPath": "CdkRealDriftHunt0708gSfn/SmEnc"
+    }
+  ]
+}

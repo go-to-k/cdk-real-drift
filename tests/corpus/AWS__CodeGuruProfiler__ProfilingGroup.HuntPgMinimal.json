@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPgMinimal",
+    "resourceType": "AWS::CodeGuruProfiler::ProfilingGroup",
+    "physicalId": "cdkrd-hunt-0708d-pg-min",
+    "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntPgMinimal",
+    "declared": {
+      "ProfilingGroupName": "cdkrd-hunt-0708d-pg-min"
+    }
+  },
+  "liveRaw": {
+    "AnomalyDetectionNotificationConfiguration": [],
+    "AgentPermissions": {
+      "Principals": []
+    },
+    "ComputePlatform": "Default",
+    "ProfilingGroupName": "cdkrd-hunt-0708d-pg-min",
+    "Arn": "arn:aws:codeguru-profiler:us-east-1:111111111111:profilingGroup/cdkrd-hunt-0708d-pg-min",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ComputePlatform", "ProfilingGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ComputePlatform", "ProfilingGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPgMinimal",
+      "resourceType": "AWS::CodeGuruProfiler::ProfilingGroup",
+      "path": "ComputePlatform",
+      "actual": "Default",
+      "physicalId": "cdkrd-hunt-0708d-pg-min",
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntPgMinimal"
+    }
+  ]
+}

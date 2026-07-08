@@ -1,0 +1,94 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Aip",
+    "resourceType": "AWS::Bedrock::ApplicationInferenceProfile",
+    "physicalId": "arn:aws:bedrock:us-east-1:111111111111:application-inference-profile/dgsnhongtx0l",
+    "constructPath": "CdkRealDriftHunt0708Bedrock/Aip",
+    "declared": {
+      "Description": "cdkrd bug-hunt application inference profile",
+      "InferenceProfileName": "cdkrd-hunt0708-aip",
+      "ModelSource": {
+        "CopyFrom": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+      }
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "Type": "APPLICATION",
+    "Description": "cdkrd bug-hunt application inference profile",
+    "InferenceProfileArn": "arn:aws:bedrock:us-east-1:111111111111:application-inference-profile/dgsnhongtx0l",
+    "InferenceProfileIdentifier": "arn:aws:bedrock:us-east-1:111111111111:application-inference-profile/dgsnhongtx0l",
+    "CreatedAt": "2026-07-08T01:27:46.011470324Z",
+    "InferenceProfileName": "cdkrd-hunt0708-aip",
+    "Models": [
+      {
+        "ModelArn": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+      }
+    ],
+    "InferenceProfileId": "dgsnhongtx0l",
+    "UpdatedAt": "2026-07-08T01:27:46.011470324Z",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708Bedrock/327a79a0-7a6c-11f1-b5f6-0e169744b13b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708Bedrock",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Aip",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CreatedAt",
+      "InferenceProfileArn",
+      "InferenceProfileId",
+      "InferenceProfileIdentifier",
+      "Models",
+      "Status",
+      "Type",
+      "UpdatedAt"
+    ],
+    "writeOnly": ["ModelSource"],
+    "createOnly": ["Description", "InferenceProfileName", "ModelSource"],
+    "readOnlyPaths": [
+      "CreatedAt",
+      "InferenceProfileArn",
+      "InferenceProfileId",
+      "InferenceProfileIdentifier",
+      "Models",
+      "Status",
+      "Type",
+      "UpdatedAt"
+    ],
+    "writeOnlyPaths": ["ModelSource"],
+    "createOnlyPaths": ["Description", "InferenceProfileName", "ModelSource"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Aip",
+      "resourceType": "AWS::Bedrock::ApplicationInferenceProfile",
+      "path": "ModelSource",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:bedrock:us-east-1:111111111111:application-inference-profile/dgsnhongtx0l",
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Aip"
+    }
+  ]
+}

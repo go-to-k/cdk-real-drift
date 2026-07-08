@@ -1019,6 +1019,25 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t({ VisibilityTimeout: 60 }).undeclared).toEqual(['VisibilityTimeout']);
   });
 
+  it('#626: ResourceExplorer2 View undeclared Scope folds via the context-ARN default', () => {
+    const t = (live: Record<string, unknown>, opts?: Parameters<typeof classifyResource>[3]) =>
+      tiers(classifyResource(bare('AWS::ResourceExplorer2::View'), live, emptySchema, opts));
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    // the account-root ARN, derived from account+region+partition, folds atDefault
+    expect(t({ Scope: 'arn:aws:iam::111111111111:root' }, opts).atDefault).toEqual(['Scope']);
+    // a view scoped elsewhere (an OU) is NOT the default and still surfaces (equality-gated)
+    expect(
+      t({ Scope: 'arn:aws:organizations::111111111111:ou/o-x/ou-x' }, opts).undeclared
+    ).toEqual(['Scope']);
+    // China / GovCloud partitions are derived from the region prefix
+    expect(
+      t({ Scope: 'arn:aws-cn:iam::111111111111:root' }, { ...opts, region: 'cn-north-1' }).atDefault
+    ).toEqual(['Scope']);
+    // with no resolved account/region the substitution is skipped → stays undeclared, never a
+    // wrong fold
+    expect(t({ Scope: 'arn:aws:iam::111111111111:root' }).undeclared).toEqual(['Scope']);
+  });
+
   it('noise-sweep batch: the default folds, a flipped (security-relevant) value surfaces', () => {
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));

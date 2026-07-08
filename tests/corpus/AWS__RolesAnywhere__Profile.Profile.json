@@ -1,0 +1,140 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Profile",
+    "resourceType": "AWS::RolesAnywhere::Profile",
+    "physicalId": "b1265716-d00d-4616-b0f2-6c5bdcc77e75",
+    "constructPath": "CdkRealDriftHunt0708RolesAnywhere/Profile",
+    "declared": {
+      "Enabled": true,
+      "Name": "cdkrd-hunt0708-profile",
+      "RoleArns": ["arn:aws:iam::111111111111:role/cdkrd-hunt0708-rolesanywhere-role"]
+    }
+  },
+  "liveRaw": {
+    "ProfileId": "b1265716-d00d-4616-b0f2-6c5bdcc77e75",
+    "ManagedPolicyArns": [],
+    "RoleArns": ["arn:aws:iam::111111111111:role/cdkrd-hunt0708-rolesanywhere-role"],
+    "AcceptRoleSessionName": false,
+    "AttributeMappings": [
+      {
+        "MappingRules": [
+          {
+            "Specifier": "*"
+          }
+        ],
+        "CertificateField": "x509Issuer"
+      },
+      {
+        "MappingRules": [
+          {
+            "Specifier": "DNS"
+          },
+          {
+            "Specifier": "URI"
+          },
+          {
+            "Specifier": "Name/*"
+          }
+        ],
+        "CertificateField": "x509SAN"
+      },
+      {
+        "MappingRules": [
+          {
+            "Specifier": "*"
+          }
+        ],
+        "CertificateField": "x509Subject"
+      }
+    ],
+    "Enabled": true,
+    "DurationSeconds": 3600,
+    "ProfileArn": "arn:aws:rolesanywhere:us-east-1:111111111111:profile/b1265716-d00d-4616-b0f2-6c5bdcc77e75",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708RolesAnywhere/9e8f3cc0-7a6c-11f1-936b-1209b76a853f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708RolesAnywhere",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Profile",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt0708-profile"
+  },
+  "schema": {
+    "readOnly": ["ProfileArn", "ProfileId"],
+    "writeOnly": ["RequireInstanceProperties"],
+    "createOnly": ["RequireInstanceProperties"],
+    "readOnlyPaths": ["ProfileArn", "ProfileId"],
+    "writeOnlyPaths": ["RequireInstanceProperties"],
+    "createOnlyPaths": ["RequireInstanceProperties"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Profile",
+      "resourceType": "AWS::RolesAnywhere::Profile",
+      "path": "AttributeMappings",
+      "actual": [
+        {
+          "MappingRules": [
+            {
+              "Specifier": "*"
+            }
+          ],
+          "CertificateField": "x509Issuer"
+        },
+        {
+          "MappingRules": [
+            {
+              "Specifier": "DNS"
+            },
+            {
+              "Specifier": "URI"
+            },
+            {
+              "Specifier": "Name/*"
+            }
+          ],
+          "CertificateField": "x509SAN"
+        },
+        {
+          "MappingRules": [
+            {
+              "Specifier": "*"
+            }
+          ],
+          "CertificateField": "x509Subject"
+        }
+      ],
+      "physicalId": "b1265716-d00d-4616-b0f2-6c5bdcc77e75",
+      "constructPath": "CdkRealDriftHunt0708RolesAnywhere/Profile"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Profile",
+      "resourceType": "AWS::RolesAnywhere::Profile",
+      "path": "DurationSeconds",
+      "actual": 3600,
+      "physicalId": "b1265716-d00d-4616-b0f2-6c5bdcc77e75",
+      "constructPath": "CdkRealDriftHunt0708RolesAnywhere/Profile"
+    }
+  ]
+}
