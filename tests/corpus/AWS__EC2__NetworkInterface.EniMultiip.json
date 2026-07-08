@@ -178,17 +178,17 @@
       "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "SourceDestCheck",
-      "actual": true,
+      "path": "SecondaryPrivateIpAddressCount",
+      "actual": 3,
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "SecondaryPrivateIpAddressCount",
-      "actual": 3,
+      "path": "SourceDestCheck",
+      "actual": true,
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     }

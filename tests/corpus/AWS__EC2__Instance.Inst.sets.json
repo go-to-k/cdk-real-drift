@@ -303,6 +303,17 @@
       "tier": "atDefault",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
+      "path": "CreditSpecification",
+      "actual": {
+        "CPUCredits": "unlimited"
+      },
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
       "path": "InstanceInitiatedShutdownBehavior",
       "actual": "stop",
       "physicalId": "i-06fd4581f0d168d8a",
@@ -414,17 +425,6 @@
       "actual": {
         "ThreadsPerCore": 2,
         "CoreCount": 1
-      },
-      "physicalId": "i-06fd4581f0d168d8a",
-      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Inst",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "CreditSpecification",
-      "actual": {
-        "CPUCredits": "unlimited"
       },
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"

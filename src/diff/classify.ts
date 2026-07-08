@@ -1501,6 +1501,48 @@ export function classifyResource(
       knownDef = { ...knownDef, ...twins };
     }
   }
+  // #640: an EC2 Instance on a BURSTABLE (T-family) InstanceType reads back an undeclared
+  // CreditSpecification.CPUCredits whose default depends on the family — the T2 family
+  // defaults to "standard", every later burstable family (t3 / t3a / t4g) defaults to
+  // "unlimited". Derive the expected default from the declared InstanceType family and
+  // equality-gate the whole {CPUCredits} object (fold tier 2): a user who pins the other
+  // credit mode still surfaces. Non-burstable families carry no CreditSpecification, so
+  // leave the default unset there (nothing to fold).
+  if (resourceType === 'AWS::EC2::Instance') {
+    const instanceType = declared['InstanceType'];
+    const family = typeof instanceType === 'string' ? instanceType.split('.')[0] : undefined;
+    const creditDefault =
+      family === 't2'
+        ? 'standard'
+        : family === 't3' || family === 't3a' || family === 't4g'
+          ? 'unlimited'
+          : undefined;
+    if (creditDefault !== undefined) {
+      knownDef = { ...knownDef, CreditSpecification: { CPUCredits: creditDefault } };
+    }
+  }
+  // #640: a gp2 EBS Volume (declared VolumeType "gp2", or omitted — gp2 is the AWS default)
+  // reads back an undeclared baseline Iops that AWS computes from the declared Size:
+  // 3 IOPS/GiB, clamped to [100, 16000]. Derive that baseline and equality-gate it (fold
+  // tier 2): a user who bumps Iops still surfaces. gp3 / io1 / io2 declare Iops explicitly
+  // and are compared in the declared loop, so only gate the gp2 case.
+  if (resourceType === 'AWS::EC2::Volume') {
+    const volumeType = declared['VolumeType'] ?? 'gp2';
+    const size = declared['Size'];
+    if (volumeType === 'gp2' && typeof size === 'number') {
+      knownDef = { ...knownDef, Iops: Math.min(16000, Math.max(100, 3 * size)) };
+    }
+  }
+  // #640: an EC2 NetworkInterface that declares a PrivateIpAddresses list reads back an
+  // undeclared SecondaryPrivateIpAddressCount = all-but-the-primary of that list, i.e.
+  // max(0, len - 1). Derive it from the declared list and equality-gate it (fold tier 2):
+  // an out-of-band change to the secondary-IP count still surfaces.
+  if (resourceType === 'AWS::EC2::NetworkInterface') {
+    const ips = declared['PrivateIpAddresses'];
+    if (Array.isArray(ips)) {
+      knownDef = { ...knownDef, SecondaryPrivateIpAddressCount: Math.max(0, ips.length - 1) };
+    }
+  }
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
