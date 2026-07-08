@@ -1,3 +1,10 @@
+## [0.2.53](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.52...v0.2.53) (2026-07-08)
+
+
+### Bug Fixes
+
+* **config:** bracket-aware path glob + reject empty scope; doc glob semantics ([#777](https://github.com/go-to-k/cdk-real-drift/issues/777)) ([#817](https://github.com/go-to-k/cdk-real-drift/issues/817)) ([bb43bdf](https://github.com/go-to-k/cdk-real-drift/commit/bb43bdfb1fd8d4600fd0546416932a055ed58b75))
+
 ## [0.2.52](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.51...v0.2.52) (2026-07-08)
 
 
