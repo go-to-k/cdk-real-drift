@@ -1,3 +1,12 @@
+## [0.2.46](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.45...v0.2.46) (2026-07-08)
+
+
+### Bug Fixes
+
+* **read:** isManagedBySiblingStack fails CLOSED on an errored check — no DeleteResource from a throttle ([#754](https://github.com/go-to-k/cdk-real-drift/issues/754)) ([#771](https://github.com/go-to-k/cdk-real-drift/issues/771)) ([12b1cd4](https://github.com/go-to-k/cdk-real-drift/commit/12b1cd41c9a656885e5e6e64ded7d7e8bdd8e819))
+* **revert:** toPointer splits dots only at bracket depth 0 — dotted identity in a bracket segment ([#748](https://github.com/go-to-k/cdk-real-drift/issues/748)) ([#770](https://github.com/go-to-k/cdk-real-drift/issues/770)) ([1fb6243](https://github.com/go-to-k/cdk-real-drift/commit/1fb6243af9f5085b4f098c3fbcf98d9e77aa0ee4))
+* **synth:** honor GovCloud/ISO region pins — widen CONCRETE_REGION for multi-part infixes ([#742](https://github.com/go-to-k/cdk-real-drift/issues/742)) ([#768](https://github.com/go-to-k/cdk-real-drift/issues/768)) ([95f17f3](https://github.com/go-to-k/cdk-real-drift/commit/95f17f3416a3e07231a9585c508b40e4cbe00b8f))
+
 ## [0.2.45](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.44...v0.2.45) (2026-07-08)
 
 
