@@ -21,7 +21,19 @@ describe('isResourceNotFoundError', () => {
       'NoSuchEntityException', // IAM
       'InvalidAllocationID.NotFound',
       'InvalidAddress.NotFound', // EC2 EIP
+      'InvalidLaunchTemplateId.NotFound', // EC2 DescribeLaunchTemplateVersions (deleted template)
+      'InvalidNetworkAclID.NotFound', // EC2 DescribeNetworkAcls (deleted NACL of a NetworkAclEntry)
       'EntityNotFoundException', // Glue GetTable on a deleted table/db
+      'DBClusterNotFoundFault', // DocumentDB describe-db-clusters
+      'DBInstanceNotFoundFault', // DocumentDB describe-db-instances
+      'NamespaceNotFound', // Cloud Map GetNamespace
+      'ServiceNotFound', // Cloud Map GetService
+      'ResourceNotFoundFault', // DMS Describe{Endpoints,ReplicationSubnetGroups}
+      'ClusterNotFoundFault', // DAX DescribeClusters
+      'ParameterGroupNotFoundFault', // DAX DescribeParameterGroups
+      'SubnetGroupNotFoundFault', // DAX DescribeSubnetGroups
+      'CacheParameterGroupNotFoundFault', // ElastiCache DescribeCacheParameterGroups
+      'NoSuchHostedZone', // Route53 ListResourceRecordSets (deleted hosted zone)
       'RuleSetDoesNotExistException', // SES DescribeReceiptRuleSet
       'RuleDoesNotExistException', // SES DescribeReceiptRule
     ]) {

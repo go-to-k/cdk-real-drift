@@ -666,13 +666,13 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
 // drift) and AWS default-fills them, so a passthrough would false-flag; scalar coverage is
 // the deliverable. Read-ONLY: a ModifyEndpoint writer is deferred to a follow-up (revert of
 // connection settings needs per-engine care). A deleted endpoint surfaces as
-// ResourceNotFoundException → the router maps it to `deleted`.
+// ResourceNotFoundFault → the router maps it to `deleted`.
 const readDmsEndpoint: OverrideReader = async ({ physicalId, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
   const filterName = id.startsWith('arn:') ? 'endpoint-arn' : 'endpoint-id';
-  // ResourceNotFoundException propagates so a deleted endpoint maps to `deleted`.
+  // ResourceNotFoundFault propagates so a deleted endpoint maps to `deleted`.
   const r = await c.send(
     new DescribeEndpointsCommand({ Filters: [{ Name: filterName, Values: [id] }] })
   );
