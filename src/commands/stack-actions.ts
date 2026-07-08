@@ -28,7 +28,7 @@ import { withinStackPath } from '../construct-path.js';
 import { style } from '../report/style.js';
 import { bulkMultiselect } from './bulk-multiselect.js';
 import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
-import { applyRevertDelete, applyRevertItem } from '../revert/apply.js';
+import { applyRevertDelete, applyRevertDeletes, applyRevertItem } from '../revert/apply.js';
 import {
   buildRevertPlan,
   rejectedEmptyStripOps,
@@ -894,13 +894,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       );
     },
   });
+  // Partition `delete`-kind items out of the main loop: they are applied as a batch AFTER
+  // all non-delete items, with dependency-aware retry (issue #765). Non-deletes (plan.ts
+  // already orders them first) keep their inline path and MUST run before the deletes.
+  const deleteItems = plan.items.filter((i) => i.kind === 'delete');
   for (const item of plan.items) {
+    if (item.kind === 'delete') continue;
     let r: { ok: boolean; error?: string; hint?: string };
-    if (item.kind === 'delete') {
-      // physicalId IS the CC identifier (the composite the finding carried); delete it.
-      r = await applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId));
-      if (!r.ok) failedDeleteIds.add(item.logicalId);
-    } else if (item.kind === 'sdk') {
+    if (item.kind === 'sdk') {
       const res = byLogical.get(item.logicalId);
       // Same transient-retry wrapper as the Cloud Control path (issue #467): an SDK
       // writer can also throw a "resource is currently updating" error that settles on
@@ -968,9 +969,28 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       ...(r.hint !== undefined && { hint: r.hint }),
     });
     if (!r.ok) worst = Math.max(worst, 2);
-    // A failed NON-delete op (delete failures already tracked above) — feed the convergence
+    // A failed NON-delete op (this loop no longer runs deletes) — feed the convergence
     // verdict so a FAILED update never rides under a CLEAN summary.
-    if (!r.ok && item.kind !== 'delete') failedUpdateIds.add(item.logicalId);
+    if (!r.ok) failedUpdateIds.add(item.logicalId);
+  }
+  // Apply the `delete`-kind items as a dependency-aware batch AFTER the non-deletes
+  // (issue #765): a delete that first fails on a DependencyViolation is retried once the
+  // pass that frees its dependency has run. Fold each outcome back into applied / worst /
+  // failedDeleteIds exactly as the old inline single-item delete path did.
+  const deleteOutcomes = await applyRevertDeletes(deleteItems, (item) =>
+    // physicalId IS the CC identifier (the composite the finding carried); delete it.
+    applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId))
+  );
+  for (const { item, result: r } of deleteOutcomes) {
+    if (!r.ok) failedDeleteIds.add(item.logicalId);
+    applied.push({
+      logicalId: item.logicalId,
+      displayId: item.displayId,
+      ok: r.ok,
+      ...(r.error !== undefined && { error: r.error }),
+      ...(r.hint !== undefined && { hint: r.hint }),
+    });
+    if (!r.ok) worst = Math.max(worst, 2);
   }
   // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
   // produced two results) so a fully reverted resource never prints `reverted:` twice.
