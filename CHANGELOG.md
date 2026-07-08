@@ -1,3 +1,10 @@
+## [0.2.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.26...v0.2.27) (2026-07-08)
+
+
+### Bug Fixes
+
+* **revert:** converge [#651](https://github.com/go-to-k/cdk-real-drift/issues/651) sibling subnet attrs (PrivateDnsNameOptionsOnLaunch + AssignIpv6AddressOnCreation) ([#682](https://github.com/go-to-k/cdk-real-drift/issues/682)) ([35815dd](https://github.com/go-to-k/cdk-real-drift/commit/35815dd21de8857f69bee1601eec85855e076cbb))
+
 ## [0.2.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.25...v0.2.26) (2026-07-08)
 
 
