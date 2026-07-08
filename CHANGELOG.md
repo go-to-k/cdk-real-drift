@@ -1,3 +1,11 @@
+## [0.2.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.43...v0.2.44) (2026-07-08)
+
+
+### Bug Fixes
+
+* **read:** paginate isManagedBySiblingStack via ListStackResources (DescribeStackResources 100-cap, [#726](https://github.com/go-to-k/cdk-real-drift/issues/726)) ([#737](https://github.com/go-to-k/cdk-real-drift/issues/737)) ([edbf105](https://github.com/go-to-k/cdk-real-drift/commit/edbf105240ce5ebb651723cd84f9106b0f823339))
+* **read:** read AWS::IAM::AccessKey Status via SDK override — detect out-of-band deactivation ([#716](https://github.com/go-to-k/cdk-real-drift/issues/716)) ([#738](https://github.com/go-to-k/cdk-real-drift/issues/738)) ([b0bda96](https://github.com/go-to-k/cdk-real-drift/commit/b0bda9655d66dd3e87706deec02f867fdabd8041))
+
 ## [0.2.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.42...v0.2.43) (2026-07-08)
 
 
