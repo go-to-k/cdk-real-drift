@@ -19,7 +19,11 @@ export interface SynthStack {
   template: Record<string, unknown>;
 }
 
-const CONCRETE_REGION = /^[a-z]{2}-[a-z]+-\d+$/;
+// A concrete AWS region pin. Allows the multi-part infixes of GovCloud / ISO partitions
+// (`us-gov-west-1`, `us-iso-east-1`, `us-isob-east-1`, `eu-isoe-west-1`), not just the
+// three-segment commercial form — otherwise those pins test false and env.region is silently
+// discarded, so the stack is read against the wrong region (#742).
+export const CONCRETE_REGION = /^[a-z]{2}(-[a-z]+)+-\d+$/;
 
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
