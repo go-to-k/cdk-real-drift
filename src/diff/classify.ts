@@ -132,6 +132,24 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
     SqsManagedSseEnabled: ({ declared, live }) =>
       declared['KmsMasterKeyId'] === undefined && live['KmsMasterKeyId'] === undefined,
   },
+  // #632 follow-up — the UNCONDITIONAL top-level members of the blast radius: a fresh deploy
+  // ALWAYS reads these `true` (confirmed across the committed corpus, no false-on-clean case,
+  // no restore/import/legacy path that yields an untouched `false`), so an undeclared `false`
+  // is unambiguously an out-of-band disable. (The DB `AutoMinorVersionUpgrade` /
+  // `AllowVersionUpgrade`, ELBv2 TargetGroup `HealthCheckEnabled` (Lambda-target conditional),
+  // and the nested Athena/EKS/Cognito-password/EnableSNI switches are DEFERRED to a live-verified
+  // follow-up — a snapshot-restored DB / a Lambda target group can read `false` legitimately.)
+  //
+  // A VPC always resolves DNS by default; disabling it out of band breaks name resolution.
+  'AWS::EC2::VPC': { EnableDnsSupport: () => true },
+  // Source/dest checking is ON for every ENI/instance at launch (a NAT declares `false`); an
+  // undeclared `false` means it was turned into a router out of band.
+  'AWS::EC2::Instance': { SourceDestCheck: () => true },
+  'AWS::EC2::NetworkInterface': { SourceDestCheck: () => true },
+  // A user-pool client is created with token revocation ON; an undeclared `false` disables it.
+  'AWS::Cognito::UserPoolClient': { EnableTokenRevocation: () => true },
+  // A composite alarm is created with its actions ON; an undeclared `false` silences them.
+  'AWS::CloudWatch::CompositeAlarm': { ActionsEnabled: () => true },
 };
 
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements

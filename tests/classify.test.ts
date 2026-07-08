@@ -10356,3 +10356,41 @@ describe('#618 VPNConnection VpnTunnelOptionsSpecifications subset + husk fold',
     expect(t.undeclared).toEqual(['VpnTunnelOptionsSpecifications[169.254.234.232/30]']);
   });
 });
+
+// #632 follow-up: extend MEANINGFUL_WHEN_OFF to the UNCONDITIONAL top-level members of the
+// blast radius (a fresh deploy always reads them true; no restore/conditional path yields an
+// untouched false — corpus-mined, no false-on-clean case). An undeclared false is a real
+// out-of-band disable and must surface instead of being swallowed by the trivial-empty drop.
+describe('#632 follow-up: unconditional boolean disables surface (undeclared)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const tierOf = (type: string, key: string, val: unknown) => {
+    const f = classifyResource(
+      { logicalId: 'R', resourceType: type, physicalId: 'p', declared: {} },
+      { [key]: val },
+      bare
+    );
+    return f.find((x) => x.path === key)?.tier;
+  };
+  const cases: [string, string][] = [
+    ['AWS::EC2::VPC', 'EnableDnsSupport'],
+    ['AWS::EC2::Instance', 'SourceDestCheck'],
+    ['AWS::EC2::NetworkInterface', 'SourceDestCheck'],
+    ['AWS::Cognito::UserPoolClient', 'EnableTokenRevocation'],
+    ['AWS::CloudWatch::CompositeAlarm', 'ActionsEnabled'],
+  ];
+  for (const [type, key] of cases) {
+    it(`${type} ${key}=false surfaces undeclared; =true folds atDefault`, () => {
+      expect(tierOf(type, key, false)).toBe('undeclared');
+      expect(tierOf(type, key, true)).toBe('atDefault');
+    });
+  }
+});
