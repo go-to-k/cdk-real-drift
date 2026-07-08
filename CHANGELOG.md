@@ -1,3 +1,11 @@
+## [0.2.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.36...v0.2.37) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** detect out-of-band Lambda log re-pointing — LoggingConfig.LogGroup derived gate ([#703](https://github.com/go-to-k/cdk-real-drift/issues/703)) ([#709](https://github.com/go-to-k/cdk-real-drift/issues/709)) ([c734fdb](https://github.com/go-to-k/cdk-real-drift/commit/c734fdbac8e8be91ce76df1287f4de4830d9eecf))
+* **revert:** converge Cognito UserPool Policies revert — write the KNOWN_DEFAULTS default ([#702](https://github.com/go-to-k/cdk-real-drift/issues/702)) ([#710](https://github.com/go-to-k/cdk-real-drift/issues/710)) ([75528d3](https://github.com/go-to-k/cdk-real-drift/commit/75528d3878b37e454910a3babda7f14b47a09d5d))
+
 ## [0.2.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.35...v0.2.36) (2026-07-08)
 
 
