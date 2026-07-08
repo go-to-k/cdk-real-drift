@@ -38,6 +38,7 @@ import {
   ACCESS_STRING_PATHS,
   PROPERTIES_FILE_PATHS,
   SSH_PUBLIC_KEY_PATHS,
+  isNumericStringEqualScalar,
   isStringlyEqualScalar,
   isStringlyEqualScalarArray,
   isStringlyEqualDeep,
@@ -874,6 +875,15 @@ function isPolicySubsetOf(sub: Record<string, unknown>, sup: Record<string, unkn
 // unit tests.
 export function matchesKnownDefault(live: unknown, def: unknown): boolean {
   if (deepEqual(live, def)) return true;
+  // SCALAR leaves fold through NUMERIC-string representation tolerance: a pinned default `1`
+  // must match a live `"1"` when a provider echoes the value stringified (real: SQS returns
+  // `"5"` for `5`, Budgets `"5.0"` for `5`). This only relaxes REPRESENTATION of
+  // semantically-equal NUMBERS (`1` vs `"1"`); `1` vs `"2"` still differs, so no real drift
+  // is hidden. Deliberately numeric-ONLY (not isStringlyEqualScalar's boolean<->string arm):
+  // an S3 schema default `EventBridgeEnabled` stored as the STRING "true" must NOT fold a
+  // live BOOLEAN true, which would hide a real user-enabled EventBridge config (#731).
+  // Restricted to scalar leaves — the object/array subset tolerance below is untouched.
+  if (!isNestedObject(live) && !isNestedObject(def)) return isNumericStringEqualScalar(live, def);
   if (!isNestedObject(live) || !isNestedObject(def)) return false;
   // Trivially-empty live sub-keys the default does NOT list carry no inventory value (a
   // schema-strip residue husk — RedshiftServerless Workgroup's echo attribute reads back an

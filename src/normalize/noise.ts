@@ -4143,9 +4143,22 @@ export function isEqualUnorderedScalarSet(a: unknown, b: unknown): boolean {
   const scalar = (v: unknown): boolean =>
     typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
   if (!a.every(scalar) || !b.every(scalar)) return false;
-  const sort = (arr: unknown[]): string[] => arr.map((v) => `${typeof v}:${String(v)}`).sort();
-  const sa = sort(a);
-  const sb = sort(b);
+  // CANONICAL scalar key: normalize numeric strings the SAME way `isStringlyEqualScalar`
+  // does, so a numeric value and its decimal-string representation produce IDENTICAL keys.
+  // Without this the `${typeof v}:…` prefix made `number:80` and `string:80` distinct, so a
+  // path that both REORDERS and STRINGIFIES (declared `[80, 443]` vs live `["443", "80"]`)
+  // folded in neither the positional stringly guard (order differs) nor here (type differs).
+  // A string that round-trips as a number (per DECIMAL_RE, the exact rule
+  // `isStringlyEqualScalar` uses) collapses to `num:<Number(v)>`; a non-numeric string stays
+  // `str:<v>`, and a genuine value change (`"80"` vs `"81"`) still yields distinct keys, so
+  // real drift is preserved.
+  const key = (v: unknown): string => {
+    if (typeof v === 'number') return `num:${v}`;
+    if (typeof v === 'string' && DECIMAL_RE.test(v.trim())) return `num:${Number(v)}`;
+    return `${typeof v}:${String(v)}`;
+  };
+  const sa = a.map(key).sort();
+  const sb = b.map(key).sort();
   return sa.every((v, i) => v === sb[i]);
 }
 
@@ -4674,6 +4687,26 @@ export function isStringlyEqualScalar(a: unknown, b: unknown): boolean {
   if (prim(a) && typeof b === 'string') return eq(a, b);
   if (prim(b) && typeof a === 'string') return eq(b, a);
   return false;
+}
+
+// NUMERIC-string representation equality ONLY — the numeric arm of isStringlyEqualScalar
+// WITHOUT its `String(p) === s` boolean<->string arm. Two operands are equal iff both are
+// numeric (a number, or a plain-decimal string per DECIMAL_RE) and denote the same number:
+// `1` == `"1"`, `5` == `"5.0"`, but `"80"` != `"81"`. Used by matchesKnownDefault's leaf
+// gate (#731): a KNOWN_DEFAULTS default stored as the STRING "true" must NOT fold a live
+// BOOLEAN true — that would hide a real S3 EventBridge-enabled config (the S3 schema
+// default `EventBridgeEnabled` is the string "true"). So the fold tolerates numeric
+// representation but never boolean<->string. Non-numeric operands never fold here.
+export function isNumericStringEqualScalar(a: unknown, b: unknown): boolean {
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number'
+      ? v
+      : typeof v === 'string' && DECIMAL_RE.test(v.trim())
+        ? Number(v)
+        : undefined;
+  const na = num(a);
+  const nb = num(b);
+  return na !== undefined && nb !== undefined && na === nb;
 }
 
 // R23: a scalar ARRAY whose elements are pairwise stringly-equal is not drift.
