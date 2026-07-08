@@ -1230,6 +1230,85 @@ describe('readLive (SDK supplement path — ECS Service ServiceConnectConfigurat
   });
 });
 
+describe('readLive (supplement failure re-folds exempted props to a readGap, #752)', () => {
+  // When a supplement read fails (missing narrow IAM permission / throttle), a DECLARED
+  // exempted prop (OVERRIDE_READABLE_WRITEONLY) must NOT false-flag as declared drift
+  // against an absent live value — it must degrade to a readGap (declared value mirrored
+  // into live so it folds to no drift) plus a LOUD stderr warning naming the failed call.
+  let warnings: string[] = [];
+  beforeEach(() => {
+    warnings = [];
+    vi.spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      warnings.push(String(chunk));
+      return true;
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const ecUser = (declared: Record<string, unknown>): DesiredResource =>
+    res({ resourceType: 'AWS::ElastiCache::User', physicalId: 'reader', declared });
+
+  it('mirrors the DECLARED exempted prop into live (declared==live -> no drift, a readGap)', async () => {
+    // CC never echoes AccessString (writeOnly); the user DECLARED it. When
+    // elasticache:DescribeUsers is denied, without the fix AccessString stays absent from
+    // live and false-flags declared drift; with the fix it is mirrored from declared.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"UserId":"reader","UserName":"reader","Engine":"redis","Status":"active"}',
+      },
+    });
+    elasticache.on(DescribeCacheUsersCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      ecUser({
+        UserId: 'reader',
+        UserName: 'reader',
+        Engine: 'redis',
+        AccessString: 'on ~app:* -@all +@read',
+      }),
+      'us-east-1',
+      '1'
+    );
+    // The declared AccessString is mirrored onto live so declared == live -> readGap, NOT
+    // a `desired="…" actual=undefined` declared-tier drift.
+    expect(r.live?.AccessString).toBe('on ~app:* -@all +@read');
+    expect(r.skippedReason).toBeUndefined();
+  });
+
+  it('emits a LOUD stderr warning naming the failed supplement call and the read-gap prop', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"UserId":"reader","Status":"active"}' },
+    });
+    elasticache.on(DescribeCacheUsersCommand).rejects(named('ThrottlingException'));
+    await readLive(
+      cc as unknown as CloudControlClient,
+      ecUser({ UserId: 'reader', AccessString: 'on ~* +@all' }),
+      'us-east-1',
+      '1'
+    );
+    const joined = warnings.join('');
+    expect(joined).toContain('AWS::ElastiCache::User');
+    expect(joined).toContain('ThrottlingException');
+    expect(joined).toContain('AccessString');
+  });
+
+  it('does NOT mirror an UNDECLARED exempted prop (nothing to compare -> stays absent)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"UserId":"reader","Status":"active"}' },
+    });
+    elasticache.on(DescribeCacheUsersCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      ecUser({ UserId: 'reader' }), // AccessString NOT declared
+      'us-east-1',
+      '1'
+    );
+    expect('AccessString' in (r.live ?? {})).toBe(false);
+    // still warns (loud), but reports no restored read-gap prop
+    expect(warnings.join('')).toContain('AWS::ElastiCache::User');
+  });
+});
+
 describe('readLive (SDK supplement path — cache user AccessString, #482)', () => {
   const ecUser = (): DesiredResource =>
     res({

@@ -3,6 +3,7 @@
 //   GetResource → skip + log. Declared/undeclared labeling happens later.
 import { type CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { isResourceNotFoundError } from '../aws-errors.js';
+import { OVERRIDE_READABLE_WRITEONLY } from '../schema/schema-strip.js';
 import type { DesiredResource } from '../types.js';
 import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
 
@@ -332,6 +333,38 @@ function compositeWith(
   };
 }
 
+// A supplement read failed, so its props (exempted from the writeOnly/readGap strip by
+// OVERRIDE_READABLE_WRITEONLY on the assumption the supplement provides the live value)
+// would false-flag as declared drift against an absent live value (#752). Restore the
+// readGap for the props the user DECLARED — mirror the declared value into the live model
+// so declared == live folds to no drift (the readGap outcome) — and warn on stderr naming
+// the failed supplement call, so a permission gap degrades LOUDLY to coverage-incomplete
+// instead of silently to false declared drift. Only exempted TOP-LEVEL props that are (a)
+// declared and (b) NOT already present in the live model are mirrored (an undeclared prop
+// has nothing to compare, and a prop the CC read already echoed is genuinely readable).
+function restoreSupplementReadGaps(
+  resourceType: string,
+  declared: Record<string, unknown>,
+  live: Record<string, unknown>,
+  error: unknown
+): void {
+  const exempt = OVERRIDE_READABLE_WRITEONLY[resourceType];
+  const restored: string[] = [];
+  for (const path of exempt ?? []) {
+    if (path in declared && !(path in live)) {
+      live[path] = declared[path];
+      restored.push(path);
+    }
+  }
+  const call = (error as Error)?.name || 'unknown error';
+  const gap = restored.length
+    ? ` — treating ${restored.join(', ')} as an unverifiable read-gap (declared value assumed unchanged; grant the missing read permission to detect out-of-band drift on it)`
+    : '';
+  process.stderr.write(
+    `[cdkrd] warning: supplement read for ${resourceType} failed (${call})${gap}\n`
+  );
+}
+
 export async function readLive(
   cc: CloudControlClient,
   resource: DesiredResource,
@@ -376,8 +409,18 @@ export async function readLive(
           accountId,
         });
         if (extra) Object.assign(live, extra);
-      } catch {
-        /* keep the CC model; the supplement prop stays an (unavoidable) readGap */
+      } catch (e) {
+        // The supplement read FAILED (a missing narrow IAM permission like
+        // ssm:DescribeParameters / ecs:DescribeServices / elasticache:DescribeUsers /
+        // lex:DescribeBotLocale, or a transient throttle). Those props are exempted from
+        // the writeOnly/readGap strip by OVERRIDE_READABLE_WRITEONLY on the ASSUMPTION the
+        // supplement WILL provide the live value — so leaving them absent makes a DECLARED
+        // value compare against nothing and FALSE-flag as declared-tier drift (#752). Degrade
+        // LOUDLY to coverage-incomplete instead: re-fold each exempted prop the user DECLARED
+        // back to a readGap by mirroring the declared value into the live model (declared ==
+        // live -> no drift surfaced, exactly the readGap semantic), and warn on stderr naming
+        // the failed call so the permission gap is visible rather than silent false drift.
+        restoreSupplementReadGaps(resourceType, declared, live, e);
       }
     }
     return { live };
