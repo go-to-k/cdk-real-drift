@@ -27,7 +27,13 @@ import {
   UpdateIntegrationCommand,
   UpdateIntegrationResponseCommand,
   UpdateMethodResponseCommand,
+  UpdateRestApiCommand,
 } from '@aws-sdk/client-api-gateway';
+import {
+  ApiGatewayV2Client,
+  type RouteSettings,
+  UpdateStageCommand as UpdateApiGatewayV2StageCommand,
+} from '@aws-sdk/client-apigatewayv2';
 import { CloudWatchClient, PutAnomalyDetectorCommand } from '@aws-sdk/client-cloudwatch';
 import {
   DLMClient,
@@ -2229,7 +2235,95 @@ const writeKinesisVideoStreamStorage: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::ApiGatewayV2::Stage — Cloud Control CAN read this type, but its UpdateResource
+// REJECTS ANY patch on a stage with AutoDeploy=true: the CC handler applies our scoped
+// patch to the FULL current model — which includes the AWS-materialized DeploymentId — and
+// calls UpdateStage with DeploymentId set, and an auto-deploy stage rejects any explicit
+// DeploymentId write ("Deployment ID cannot be set on this stage because AutoDeploy is
+// enabled"). CDK's L2 WebSocketStage and the HTTP-API default stage BOTH set autoDeploy:true
+// by default, so in practice EVERY ApiGatewayV2 stage a CDK user deploys is un-revertable
+// via CC. The poison (DeploymentId) is injected by the CC handler itself, so stripping on our
+// side can't fix it → bypass CC and call apigatewayv2:UpdateStage DIRECTLY with ONLY the
+// drifted properties (NEVER DeploymentId). #667.
+//
+// The CFn Stage property names (DefaultRouteSettings / RouteSettings / AccessLogSettings /
+// Description / StageVariables / ClientCertificateId) map 1:1 onto UpdateStageRequest's typed
+// fields (same PascalCase, same nested RouteSettings shape), so reconstruct the desired value
+// from the DECLARED template + revert ops and send only the top-level properties the ops touch
+// — a partial update that leaves every other live stage setting untouched. Applies to WebSocket
+// AND HTTP API stages. The composite identifier is `ApiId|StageName` (ctx.identifier, resolved
+// by CC_IDENTIFIER_ADAPTERS on the read side); the bare CFn physical id is only the StageName.
+const APIGWV2_STAGE_UPDATE_FIELDS = new Set([
+  'DefaultRouteSettings',
+  'RouteSettings',
+  'AccessLogSettings',
+  'Description',
+  'StageVariables',
+  'ClientCertificateId',
+  'AutoDeploy',
+]);
+const writeApiGatewayV2Stage: SdkWriter = async (ctx, ops) => {
+  // Prefer the resolved composite identifier (`ApiId|StageName`); fall back to declared
+  // ApiId + the physical-id StageName when no identifier was threaded.
+  const [apiIdFromComposite, stageFromComposite] = (ctx.identifier ?? '').split('|');
+  const apiId = str(apiIdFromComposite) ?? str(ctx.declared['ApiId']);
+  const stageName =
+    str(stageFromComposite) ?? str(ctx.physicalId) ?? str(ctx.declared['StageName']);
+  if (!apiId || !stageName)
+    throw new Error('cannot resolve ApiId|StageName for ApiGatewayV2 Stage revert');
+  // Reconstruct the desired model = declared intent + revert ops. `remove` back to a
+  // default is expressed by the declared value's absence (the field is simply omitted).
+  const desired = applyOps({ ...ctx.declared }, ops);
+  const touched = new Set(
+    ops.map((o) => o.path.replace(/^\//, '').split('/')[0]).filter((p): p is string => !!p)
+  );
+  const input: Record<string, unknown> = { ApiId: apiId, StageName: stageName };
+  for (const p of touched) {
+    if (!APIGWV2_STAGE_UPDATE_FIELDS.has(p)) continue;
+    // Send the desired value (or `null`/absent -> the API clears it). NEVER DeploymentId.
+    input[p] = desired[p as keyof typeof desired] as unknown;
+  }
+  // Nothing settable touched (e.g. only DeploymentId drifted, which is never revertable) — no-op.
+  if (Object.keys(input).length <= 2) return;
+  await new ApiGatewayV2Client({ region: ctx.region }).send(
+    new UpdateApiGatewayV2StageCommand(
+      input as { ApiId: string; StageName: string; DefaultRouteSettings?: RouteSettings }
+    )
+  );
+};
+
+// AWS::ApiGateway::RestApi `Policy` — the RestApi resource policy is held in the Cloud
+// Control live model as a JSON STRING, while classify/diff parses it for comparison and
+// produces findings under object sub-paths (e.g. `Policy.Statement`). The revert planner's
+// sub-path patch (`/Policy/Statement`) is then rejected by the CC handler ("parent is not a
+// container in source" — the parent `Policy` is a string, not an object). The #389 JSON-string
+// class, but routed HERE (an SDK writer) rather than the noise.ts JSON_STRING_PROPS table.
+// apigateway:UpdateRestApi with a single `replace /policy` patchOperation carrying the WHOLE
+// desired policy document serialized to a compact JSON string is live-verified to converge.
+// The desired policy is the DECLARED template value (the object form); a revert to an ABSENT
+// declared policy clears it (empty string). The RestApi physical id IS its RestApiId. #677.
+const writeApiGatewayRestApiPolicy: SdkWriter = async (ctx) => {
+  const restApiId = str(ctx.physicalId) ?? str(ctx.declared['RestApiId']);
+  if (!restApiId) throw new Error('cannot resolve RestApiId for RestApi Policy revert');
+  const declaredPolicy = ctx.declared['Policy'];
+  // The declared policy is an object; serialize it whole. An absent declared policy reverts
+  // to the empty string (UpdateRestApi with `replace /policy value=""` clears it).
+  const value =
+    declaredPolicy === undefined || declaredPolicy === null
+      ? ''
+      : typeof declaredPolicy === 'string'
+        ? declaredPolicy
+        : JSON.stringify(declaredPolicy);
+  await new APIGatewayClient({ region: ctx.region }).send(
+    new UpdateRestApiCommand({
+      restApiId,
+      patchOperations: [{ op: 'replace', path: '/policy', value } satisfies PatchOperation],
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::ApiGatewayV2::Stage': writeApiGatewayV2Stage,
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
   'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
   'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
@@ -2420,6 +2514,15 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   'AWS::ApiGateway::Stage': {
     match: (p) => p.startsWith('MethodSettings['),
     writer: writeCloudControlIndexNested,
+  },
+  // The RestApi resource `Policy` reads back from Cloud Control as a JSON STRING, so a
+  // sub-path patch (`/Policy/Statement`) is rejected ("parent is not a container"). Any drift
+  // under Policy re-serializes the WHOLE declared policy and replaces `/policy` via
+  // apigateway:UpdateRestApi. Scoped to Policy only — other RestApi props stay on Cloud
+  // Control. #677.
+  'AWS::ApiGateway::RestApi': {
+    match: (p) => p === 'Policy' || p.startsWith('Policy.') || p.startsWith('Policy['),
+    writer: writeApiGatewayRestApiPolicy,
   },
   // Any drift UNDER the writeOnly BotLocales (an utterance / slot / slot-type / prompt edit, OR a
   // whole intent / slot / slot type added or removed out of band) re-supplies the DECLARED

@@ -3,7 +3,12 @@ import {
   UpdateIntegrationCommand,
   UpdateIntegrationResponseCommand,
   UpdateMethodResponseCommand,
+  UpdateRestApiCommand,
 } from '@aws-sdk/client-api-gateway';
+import {
+  ApiGatewayV2Client,
+  UpdateStageCommand as UpdateApiGatewayV2StageCommand,
+} from '@aws-sdk/client-apigatewayv2';
 import {
   CloudWatchClient,
   DescribeAnomalyDetectorsCommand,
@@ -196,6 +201,7 @@ const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
 const eventbridge = mockClient(EventBridgeClient);
 const apigw = mockClient(APIGatewayClient);
+const apigwv2 = mockClient(ApiGatewayV2Client);
 const ecs = mockClient(ECSClient);
 const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
@@ -256,6 +262,7 @@ beforeEach(() => {
   kafka.reset();
   eventbridge.reset();
   apigw.reset();
+  apigwv2.reset();
   ecs.reset();
   cloudwatch.reset();
   dlm.reset();
@@ -2940,5 +2947,140 @@ describe('Lex BotLocales writer (revert-by-rebuild via lexv2-models Update* APIs
         [utteranceOp]
       )
     ).rejects.toThrow(/Lex Bot id/);
+  });
+});
+
+describe('ApiGatewayV2 Stage writer (autoDeploy — bypass CC UpdateStage, issue #667)', () => {
+  const stageCtx = (over: Partial<OverrideCtx> = {}): OverrideCtx =>
+    ctx({
+      physicalId: 'prod', // the Ref (bare StageName)
+      identifier: 'abc123|prod', // ApiId|StageName resolved by CC_IDENTIFIER_ADAPTERS
+      declared: {
+        ApiId: 'abc123',
+        StageName: 'prod',
+        AutoDeploy: true,
+        DefaultRouteSettings: { ThrottlingRateLimit: 100, ThrottlingBurstLimit: 50 },
+      },
+      ...over,
+    });
+  // an out-of-band mutation dropped ThrottlingRateLimit 100 -> 50; revert restores the declared 100.
+  const op: PatchOp = {
+    op: 'add',
+    path: '/DefaultRouteSettings/ThrottlingRateLimit',
+    value: 100,
+    human: 'DefaultRouteSettings.ThrottlingRateLimit -> deployed-template value',
+  };
+
+  it('routes an ApiGatewayV2::Stage revert to the whole-type SDK writer', () => {
+    expect(SDK_WRITERS['AWS::ApiGatewayV2::Stage']).toBeDefined();
+    expect(resolveSdkWriter('AWS::ApiGatewayV2::Stage', [op])).toBe(
+      SDK_WRITERS['AWS::ApiGatewayV2::Stage']
+    );
+  });
+
+  it('calls UpdateStage with ONLY the drifted property and NEVER DeploymentId', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(stageCtx(), [op]);
+    const calls = apigwv2.commandCalls(UpdateApiGatewayV2StageCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    // identifier segments resolved from the composite ctx.identifier `ApiId|StageName`.
+    expect(input.ApiId).toBe('abc123');
+    expect(input.StageName).toBe('prod');
+    // ONLY the touched top-level property is sent (the declared desired value).
+    expect(input.DefaultRouteSettings).toEqual({
+      ThrottlingRateLimit: 100,
+      ThrottlingBurstLimit: 50,
+    });
+    // NEVER DeploymentId (the CC-injected poison auto-deploy stages reject).
+    expect(input).not.toHaveProperty('DeploymentId');
+    // untouched props are not re-sent.
+    expect(input).not.toHaveProperty('RouteSettings');
+    expect(input).not.toHaveProperty('AccessLogSettings');
+  });
+
+  it('falls back to declared ApiId + physical-id StageName when no composite identifier', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(stageCtx({ identifier: undefined }), [op]);
+    const input = apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)[0]!.args[0].input;
+    expect(input.ApiId).toBe('abc123');
+    expect(input.StageName).toBe('prod');
+  });
+
+  it('throws when ApiId/StageName are unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(
+        ctx({ physicalId: '', identifier: undefined, declared: {} }),
+        [op]
+      )
+    ).rejects.toThrow(/ApiId\|StageName/);
+  });
+});
+
+describe('ApiGateway RestApi Policy writer (JSON-string prop, issue #677)', () => {
+  const desiredPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: '*',
+        Action: 'execute-api:Invoke',
+        Resource: 'arn:aws:execute-api:us-east-1:123456789012:wmvd2s08ng/*',
+      },
+      {
+        Effect: 'Deny',
+        Principal: '*',
+        Action: 'execute-api:Invoke',
+        Resource: 'arn:aws:execute-api:us-east-1:123456789012:wmvd2s08ng/*',
+        Condition: { StringNotEquals: { 'aws:SourceVpce': 'vpce-1234' } },
+      },
+    ],
+  };
+  const restApiCtx = (over: Partial<OverrideCtx> = {}): OverrideCtx =>
+    ctx({ physicalId: 'wmvd2s08ng', declared: { Policy: desiredPolicy }, ...over });
+  // the finding is a whole-statement declared drift under Policy (parsed object sub-path).
+  const op: PatchOp = {
+    op: 'add',
+    path: '/Policy/Statement',
+    value: desiredPolicy.Statement,
+    human: 'Policy.Statement -> deployed-template value',
+  };
+
+  it('routes a Policy sub-path drift to the nested RestApi SDK writer', () => {
+    const writer = resolveSdkWriter('AWS::ApiGateway::RestApi', [op]);
+    expect(writer).toBeDefined();
+    expect(writer).toBe(SDK_NESTED_WRITERS['AWS::ApiGateway::RestApi']!.writer);
+    // a non-Policy drift is NOT captured by this writer (stays on Cloud Control).
+    expect(SDK_NESTED_WRITERS['AWS::ApiGateway::RestApi']!.match('Description')).toBe(false);
+    expect(SDK_NESTED_WRITERS['AWS::ApiGateway::RestApi']!.match('Policy')).toBe(true);
+    expect(SDK_NESTED_WRITERS['AWS::ApiGateway::RestApi']!.match('Policy.Statement')).toBe(true);
+  });
+
+  it('replaces /policy with the WHOLE declared policy serialized to a compact JSON string', async () => {
+    apigw.on(UpdateRestApiCommand).resolves({});
+    await resolveSdkWriter('AWS::ApiGateway::RestApi', [op])!(restApiCtx(), [op]);
+    const calls = apigw.commandCalls(UpdateRestApiCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    expect(input.restApiId).toBe('wmvd2s08ng'); // the RestApi physical id IS the RestApiId.
+    expect(input.patchOperations).toEqual([
+      { op: 'replace', path: '/policy', value: JSON.stringify(desiredPolicy) },
+    ]);
+  });
+
+  it('reverts an absent declared policy to the empty string (clears it)', async () => {
+    apigw.on(UpdateRestApiCommand).resolves({});
+    await resolveSdkWriter('AWS::ApiGateway::RestApi', [op])!(restApiCtx({ declared: {} }), [op]);
+    const input = apigw.commandCalls(UpdateRestApiCommand)[0]!.args[0].input;
+    expect(input.patchOperations).toEqual([{ op: 'replace', path: '/policy', value: '' }]);
+  });
+
+  it('throws when the RestApiId is unresolvable', async () => {
+    await expect(
+      resolveSdkWriter('AWS::ApiGateway::RestApi', [op])!(
+        ctx({ physicalId: '', declared: { Policy: desiredPolicy } }),
+        [op]
+      )
+    ).rejects.toThrow(/RestApiId/);
   });
 });
