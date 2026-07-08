@@ -152,7 +152,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "ServiceLinkedRoleARN",
@@ -161,7 +161,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZoneIds",
@@ -179,7 +179,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZones",
@@ -188,7 +188,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZoneDistribution",
@@ -208,7 +208,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "InstanceLifecyclePolicy",
@@ -221,7 +221,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "TerminationPolicies",
@@ -230,7 +230,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "CapacityReservationSpecification",
@@ -250,7 +250,7 @@
       "constructPath": "CdkRealDriftIntegAsgNotificationMetrics/Asg/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "AsgASGD1D7B4E2",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "LaunchTemplate.LaunchTemplateName",

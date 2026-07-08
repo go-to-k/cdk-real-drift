@@ -624,6 +624,10 @@ describe('noise suppressors', () => {
       Cooldown: '300',
       HealthCheckType: 'EC2',
       HealthCheckGracePeriod: 0,
+      TerminationPolicies: ['Default'],
+      AvailabilityZoneDistribution: { CapacityDistributionStrategy: 'balanced-best-effort' },
+      InstanceLifecyclePolicy: { RetentionTriggers: { TerminateHookAbandon: 'terminate' } },
+      CapacityReservationSpecification: { CapacityReservationPreference: 'default' },
     });
     // CloudWatch alarms (Alarm.ActionsEnabled already folds via its schema default).
     expect(KNOWN_DEFAULTS['AWS::CloudWatch::Alarm'].TreatMissingData).toBe('missing');

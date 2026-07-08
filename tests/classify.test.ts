@@ -9627,6 +9627,85 @@ describe('Face-stack false-positive folds', () => {
     expect(userSetJob.generated).toEqual([]);
   });
 
+  it('EC2 LaunchTemplate undeclared LaunchTemplateName (<logicalId>_<random>) folds to generated (#639)', () => {
+    // A LaunchTemplate with no explicit LaunchTemplateName reads back CFn's `<logicalId>_<random>`
+    // minted name. It folds via GENERATED_LOGICALID_PREFIX_PATHS, NOT a value-independent fold that
+    // would also hide a user-set name. Observed live: logical id "Lt" -> "LtFD2A8520_TE2V74FxIYEe".
+    const ltResource = {
+      logicalId: 'LtFD2A8520',
+      resourceType: 'AWS::EC2::LaunchTemplate',
+      physicalId: 'lt-024b5f274d171865a',
+      constructPath: 'Stack/Lt',
+      declared: {},
+    };
+    const lt = tiers(
+      classifyResource(ltResource, { LaunchTemplateName: 'LtFD2A8520_TE2V74FxIYEe' }, emptySchema)
+    );
+    expect(lt.generated).toEqual(['LaunchTemplateName']);
+    expect(lt.undeclared).toEqual([]);
+    // A user-SET LaunchTemplateName (no logical-id prefix) still surfaces as real undeclared drift.
+    const userSet = tiers(
+      classifyResource(ltResource, { LaunchTemplateName: 'my-web-tier-lt' }, emptySchema)
+    );
+    expect(userSet.undeclared).toEqual(['LaunchTemplateName']);
+    expect(userSet.generated).toEqual([]);
+  });
+
+  it('ASG first-run undeclared batch folds (constants + SLR ARN + AZs + nested LT name) (#639)', () => {
+    // A clean, un-mutated ASG that declares only VPCZoneIdentifier + a LaunchTemplate ref reads
+    // back a batch of AWS-materialized defaults; every one must fold (zero-potential-drift).
+    const asgResource = {
+      logicalId: 'Asg',
+      resourceType: 'AWS::AutoScaling::AutoScalingGroup',
+      physicalId: 'cdkrd-asg',
+      constructPath: 'Stack/Asg',
+      declared: { LaunchTemplate: { LaunchTemplateId: 'lt-024b5f274d171865a', Version: '1' } },
+    };
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    const live = {
+      ServiceLinkedRoleARN:
+        'arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling',
+      AvailabilityZones: ['us-east-1a', 'us-east-1b'],
+      AvailabilityZoneIds: ['use1-az1', 'use1-az2'],
+      AvailabilityZoneDistribution: { CapacityDistributionStrategy: 'balanced-best-effort' },
+      InstanceLifecyclePolicy: { RetentionTriggers: { TerminateHookAbandon: 'terminate' } },
+      TerminationPolicies: ['Default'],
+      CapacityReservationSpecification: { CapacityReservationPreference: 'default' },
+      LaunchTemplate: {
+        LaunchTemplateId: 'lt-024b5f274d171865a',
+        Version: '1',
+        LaunchTemplateName: 'LtFD2A8520_TE2V74FxIYEe',
+      },
+    };
+    const t = tiers(classifyResource(asgResource, live, emptySchema, opts));
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual([
+      'AvailabilityZoneDistribution',
+      'AvailabilityZoneIds',
+      'AvailabilityZones',
+      'CapacityReservationSpecification',
+      'InstanceLifecyclePolicy',
+      'ServiceLinkedRoleARN',
+      'TerminationPolicies',
+    ]);
+    expect(t.generated).toEqual(['LaunchTemplate.LaunchTemplateName']);
+    // Detection preserved: a TerminationPolicies list changed away from the default surfaces,
+    // and a custom (non-account) service-linked role ARN surfaces.
+    const mutated = tiers(
+      classifyResource(
+        asgResource,
+        {
+          ...live,
+          TerminationPolicies: ['OldestInstance'],
+          ServiceLinkedRoleARN: 'arn:aws:iam::111111111111:role/my-custom-asg-role',
+        },
+        emptySchema,
+        opts
+      )
+    );
+    expect(mutated.undeclared.sort()).toEqual(['ServiceLinkedRoleARN', 'TerminationPolicies']);
+  });
+
   it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {
     const declared = {
       Rules: [
