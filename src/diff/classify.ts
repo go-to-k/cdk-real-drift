@@ -429,6 +429,52 @@ const CC_ALT_REPRESENTATION: Record<string, Record<string, string>> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': { SubnetMappings: 'Subnets' },
 };
 
+// #652/#643 SHAPE-MISMATCH SIBLING ECHO: a resource type offers two declarable shapes for
+// the SAME data, and the live read materializes the OTHER (richer) shape than the one the
+// user declared — echoing the declared values under a different sibling key, PLUS filling in
+// the extra shape's service defaults. Unlike CC_ALT_REPRESENTATION (drop a live-only field
+// on presence of its declared twin), the twin here is a whole OBJECT whose overlapping keys
+// must be VERIFIED to echo the declared source (so a genuine out-of-band change to an
+// overlapping value still surfaces) and whose extended-only leaves must FOLD as the service
+// defaults they are (not surface). Keyed resourceType -> { twinKey: sourceKey }.
+//   - AWS::KinesisFirehose::DeliveryStream: declaring the plain `S3DestinationConfiguration`
+//     (writeOnly → readGap, the simplest / older-CDK / raw-CFn destination shape) makes AWS
+//     materialize the destination as the richer `ExtendedS3DestinationConfiguration` twin —
+//     mirroring BucketARN/BufferingHints/CompressionFormat/RoleARN and default-filling
+//     EncryptionConfiguration (NoEncryption), CloudWatchLoggingOptions (off), S3BackupMode
+//     (Disabled). A first `check` of every plain-S3 stream otherwise reported the whole twin
+//     object as [Potential Drift] on a clean deploy (#652). The extended-only defaults already
+//     fold via KNOWN_DEFAULT_PATHS (proven by the ExtendedS3-declared corpus case), so routing
+//     the twin through the SAME nested descent used for a declared object — with a synthetic
+//     declared side built from the echoed source keys — folds the echo AND surfaces any genuine
+//     out-of-band leaf change (a re-targeted bucket, an enabled encryption, a changed
+//     compression), preserving detection.
+const SHAPE_ECHO_TWIN: Record<string, Record<string, string>> = {
+  'AWS::KinesisFirehose::DeliveryStream': {
+    ExtendedS3DestinationConfiguration: 'S3DestinationConfiguration',
+  },
+};
+
+// True when every key present in BOTH the declared source and the live twin object echoes
+// the declared value (deep-equal for scalars/arrays; recursive subset for nested objects, so
+// the twin carrying extra service-injected sub-keys inside a shared block does not break the
+// match — those extras fold in the descent). A single overlapping key that DIFFERS means the
+// twin is NOT a clean echo (a genuine out-of-band change), so the caller must not fold it —
+// return false and let the whole twin surface as detectable drift.
+function twinOverlapEchoes(
+  source: Record<string, unknown>,
+  twin: Record<string, unknown>
+): boolean {
+  for (const [k, tv] of Object.entries(twin)) {
+    if (!(k in source)) continue;
+    const sv = source[k];
+    if (isNestedObject(sv) && isNestedObject(tv)) {
+      if (!twinOverlapEchoes(sv, tv)) return false;
+    } else if (!deepEqual(sv, tv)) return false;
+  }
+  return true;
+}
+
 // Per-type attachment-list properties handled by tier rather than a positional compare.
 // AWS::IAM::ManagedPolicy's `Roles`/`Users`/`Groups` name the principals a managed
 // policy is attached to — but the same policy is commonly attached from SEVERAL places
@@ -1144,6 +1190,14 @@ export function classifyResource(
       });
     }
   }
+  // #652: a SHAPE_ECHO_TWIN source shape is commonly writeOnly (Firehose
+  // S3DestinationConfiguration → readGap above), so it is about to be stripped from
+  // `declared`. Snapshot the source object(s) the twin echoes BEFORE the strip, so the
+  // undeclared-loop twin fold below can still verify + subtract the echo. Only the exact
+  // source keys named for THIS type are captured (nothing else is retained).
+  const twinSources: Record<string, unknown> = {};
+  for (const src of Object.values(SHAPE_ECHO_TWIN[resourceType] ?? {}))
+    if (isNestedObject(declared[src])) twinSources[src] = declared[src];
   // writeOnly cannot be read back: strip it from the DECLARED side too so it is never
   // compared (the LIVE side was already stripped by normalizeLiveModel above).
   deepStripPaths(declared, schema.writeOnlyPaths);
@@ -2219,6 +2273,31 @@ export function classifyResource(
     // above, so a type curated to fragment (Athena WorkGroupConfiguration) keeps that behavior.
     if (isNestedObject(v) && Object.keys(v).length > 0 && allLeavesAtSchemaDefault(v, k)) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // #652/#643: `k` is the SHAPE-ECHO twin of a declared source shape (Firehose
+    // ExtendedS3DestinationConfiguration ← declared S3DestinationConfiguration). When the
+    // twin's overlapping keys ECHO the declared source (verified so a genuine out-of-band
+    // change to a shared value still surfaces), descend the twin against a synthetic declared
+    // side built from the source keys: the echoed overlaps are matched (not emitted) and only
+    // the extended-only leaves flow through emitNested — folding the service defaults
+    // (EncryptionConfiguration/CloudWatchLoggingOptions/S3BackupMode via KNOWN_DEFAULT_PATHS +
+    // isTrivialEmpty) while surfacing any genuine non-default extended leaf. If the overlap does
+    // NOT echo, skip the fold and let the whole twin surface below (detectable drift).
+    const twinSourceKey = SHAPE_ECHO_TWIN[resourceType]?.[k];
+    // The source may have been writeOnly-stripped from `declared` (Firehose
+    // S3DestinationConfiguration), so prefer the pre-strip snapshot; fall back to `declared`
+    // for a readable source shape.
+    const twinSource =
+      twinSourceKey !== undefined
+        ? (twinSources[twinSourceKey] ?? declared[twinSourceKey])
+        : undefined;
+    if (isNestedObject(v) && isNestedObject(twinSource) && twinOverlapEchoes(twinSource, v)) {
+      // Map the source keys onto the twin's shape (same key names for the shared block), so
+      // collectNestedUndeclared treats each echoed overlap as "declared" (present → not emitted)
+      // and emits only the extended-only leaves for emitNested to classify (atDefault vs a real
+      // out-of-band change).
+      collectNestedUndeclared(twinSource, v, k, emitNested, NESTED_ARRAY_IDENTITY[resourceType]);
       continue;
     }
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });

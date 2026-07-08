@@ -127,26 +127,24 @@
       "constructPath": "CdkrdIntegHarvest3/Tap"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Tap",
       "resourceType": "AWS::KinesisFirehose::DeliveryStream",
-      "path": "ExtendedS3DestinationConfiguration",
+      "path": "ExtendedS3DestinationConfiguration.EncryptionConfiguration",
       "actual": {
-        "BucketARN": "arn:aws:s3:::cdkrdintegharvest3-firehosesinkb757fe18-uznwhjxebzxy",
-        "BufferingHints": {
-          "IntervalInSeconds": 300,
-          "SizeInMBs": 5
-        },
-        "CompressionFormat": "GZIP",
-        "EncryptionConfiguration": {
-          "NoEncryptionConfig": "NoEncryption"
-        },
-        "CloudWatchLoggingOptions": {
-          "Enabled": false
-        },
-        "RoleARN": "arn:aws:iam::111111111111:role/CdkrdIntegHarvest3-FirehoseRoleAA67C190-pTvsbEFAnRrY",
-        "S3BackupMode": "Disabled"
+        "NoEncryptionConfig": "NoEncryption"
       },
+      "nested": true,
+      "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
+      "constructPath": "CdkrdIntegHarvest3/Tap"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Tap",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.S3BackupMode",
+      "actual": "Disabled",
+      "nested": true,
       "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
       "constructPath": "CdkrdIntegHarvest3/Tap"
     }
