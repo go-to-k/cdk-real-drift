@@ -75,7 +75,15 @@ non-negotiable", which is enforced by a gate, not by trust.
    ```bash
    grep -rln "Kinesis\|Dashboard\|Secret\|intelligentTiering\|FunctionUrl" tests/integration/*/app.ts
    ```
-   Empty hits = untested = good hunting ground.
+   Empty hits = untested = good hunting ground. But a NON-empty hit does **NOT** mean
+   the type's undeclared-default scenario is covered: an existing fixture/corpus case
+   that **DECLARES** the suspect property never exercises the undeclared-default fold,
+   so a first-run FP on that property stays latent under apparent coverage (observed on
+   `Events::ApiDestination` `InvocationRateLimitPerSecond` — the pre-existing corpus case
+   declared it, hiding the undeclared-300 FP; #615). Before skipping a "covered" type,
+   check whether any existing case leaves the suspect property **UNDECLARED** — `grep`
+   the fixture `app.ts` / the corpus case's `declared` block for it; if every case
+   declares it, the undeclared-default path is still open hunting ground.
 4. **Probe CC support BEFORE an expensive deploy — skip the CC-gap tail.** For a
    high-cost or slow stateful/niche type (RDS-family, OpenSearch, MSK, Neptune,
    DocumentDB, Cloud Map, …), first check whether Cloud Control can even READ it —
