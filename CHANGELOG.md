@@ -1,3 +1,10 @@
+## [0.2.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.17...v0.2.18) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold IoT ThingType SearchableAttributes reorder — service re-sorts a schema-ordered set ([#623](https://github.com/go-to-k/cdk-real-drift/issues/623)) ([#636](https://github.com/go-to-k/cdk-real-drift/issues/636)) ([5eedb6f](https://github.com/go-to-k/cdk-real-drift/commit/5eedb6f3a22fa9e0d46c5cec99333b789dc0f8dd))
+
 ## [0.2.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.16...v0.2.17) (2026-07-08)
 
 
