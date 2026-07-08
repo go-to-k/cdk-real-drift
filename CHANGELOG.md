@@ -1,3 +1,10 @@
+## [0.2.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.35...v0.2.36) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** minimal-config first-run batch — ALB/Events/EIP/Cognito/ESM/KMS ([#701](https://github.com/go-to-k/cdk-real-drift/issues/701)) ([#708](https://github.com/go-to-k/cdk-real-drift/issues/708)) ([9e38044](https://github.com/go-to-k/cdk-real-drift/commit/9e38044f0c15533330a11b84c29742d96a5a09ba))
+
 ## [0.2.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.34...v0.2.35) (2026-07-08)
 
 
