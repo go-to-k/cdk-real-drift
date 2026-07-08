@@ -178,6 +178,28 @@ git -C .worktrees/<name> rebase origin/main                        # clean if di
 
 Re-run gates, `git push --force-with-lease`.
 
+**A rebase CONFLICT on your target file is usually a DUPLICATE, not a merge to
+resolve.** The claim comment does NOT beat a peer who STARTED earlier, so even a
+peripheral, file-disjoint, offline lane can be raced — when your lane's file
+conflicts on rebase (or `gh pr merge` reports "merge conflicts"), a peer most
+likely landed the SAME fix in parallel. Before resolving anything, check whether
+the work already shipped:
+
+```bash
+gh issue view <n> --json state,stateReason                     # CLOSED/COMPLETED → already fixed
+git log origin/main --oneline | grep -iE "<n>|<fix-keyword>"   # the peer's merged PR
+git show origin/main:<your-target-file> | grep -n "<marker>"   # main already carries the fix?
+```
+
+If the issue is CLOSED (or main already carries an equivalent fix), **ABANDON the
+lane — do NOT resolve the conflict to re-apply a now-duplicate fix**: `git rebase
+--abort`, `gh pr close <pr> --delete-branch` (or never open one), comment the
+collision on the issue, `git worktree remove`. This is the merge-time twin of
+"check the FIX FILE, not the issue tag" — it happened on both #726 and #742, each
+after a full lane (implement + test + live-verify) was already done. The claim
+comment reduces collisions but cannot eliminate them; the rebase/merge conflict is
+your last, authoritative signal to stop and check before spending more.
+
 ## 8. Verify before merge (`/verify-pr`)
 
 Run `/verify-pr`. Its live-test rules decide how each PR is verified:
