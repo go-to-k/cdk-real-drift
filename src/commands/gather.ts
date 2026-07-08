@@ -152,11 +152,16 @@ async function readAddedModel(
 // keeps the current behavior — the child is still reported as `added` rather than silently
 // dropped. Results are memoized per physical id (added candidates are rare, but a shared
 // parent can enumerate the same live child under multiple declared parents).
+// 'managed' = a CFn stack owns it (sibling-managed, not out of band); 'notManaged' = no stack
+// owns it (genuinely out of band -> report as `added`); 'unverified' = the membership check
+// itself FAILED (throttle / AccessDenied / network), so we CANNOT say either way (#754).
+export type SiblingCheck = 'managed' | 'notManaged' | 'unverified';
+
 export async function isManagedBySiblingStack(
   cfn: CloudFormationClient,
   c: AddedChild,
-  cache: Map<string, boolean>
-): Promise<boolean> {
+  cache: Map<string, SiblingCheck>
+): Promise<SiblingCheck> {
   const physicalId = c.identifier;
   // Pipe-composite CC identifiers (`RestApiId|…`, `UserPoolId|…`) are not CloudFormation
   // physical resource ids — they belong to within-stack API Gateway / Cognito sub-resources
@@ -165,7 +170,7 @@ export async function isManagedBySiblingStack(
   // `:` and ARE the class, so `:` is NOT a composite marker here; the lone `:`-joined
   // composite (API Gateway GatewayResponse `RestApiId:ResponseType`) simply fails the
   // DescribeStackResources lookup and falls through to "report as added" (fail open).
-  if (physicalId.includes('|')) return false;
+  if (physicalId.includes('|')) return 'notManaged';
   const cached = cache.get(physicalId);
   if (cached !== undefined) return cached;
   let managed = false;
@@ -202,13 +207,24 @@ export async function isManagedBySiblingStack(
         } while (next);
       }
     }
-  } catch {
-    // No stack owns this physical id (ValidationError "does not exist") -> genuinely out of
-    // band; or a permission/throttle error -> fail open to the current "report as added".
-    managed = false;
+  } catch (e) {
+    // Distinguish a GENUINE not-found from a FAILED check (#754). CloudFormation answers
+    // DescribeStackResources for a physical id that belongs to no stack with a ValidationError
+    // ("Stack for <id> does not exist") — that is a definite "not managed", cacheable. Any other
+    // error (Throttling under an --all sweep, AccessDenied without cloudformation:DescribeStack-
+    // Resources, a network blip) means we could NOT determine membership: return 'unverified' and
+    // do NOT memoize it (so a transient throttle does not poison the whole run, and the caller can
+    // report coverage-incomplete instead of a false `added` whose revert offers a destructive
+    // DeleteResource on a possibly CFn-managed resource).
+    if ((e as { name?: string }).name === 'ValidationError') {
+      cache.set(physicalId, 'notManaged');
+      return 'notManaged';
+    }
+    return 'unverified';
   }
-  cache.set(physicalId, managed);
-  return managed;
+  const result: SiblingCheck = managed ? 'managed' : 'notManaged';
+  cache.set(physicalId, result);
+  return result;
 }
 
 interface ClassifyOpts {
@@ -477,7 +493,7 @@ export async function gatherFindings(
   // GetResource) and normalized so `record` can snapshot it and a later change surfaces
   // as drift (PR4). An enumeration failure is a coverage gap, not drift — surfaced as a
   // `skipped` finding on the parent so it is never silently lost.
-  const siblingStackCache = new Map<string, boolean>();
+  const siblingStackCache = new Map<string, SiblingCheck>();
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
@@ -495,9 +511,23 @@ export async function gatherFindings(
       const children = await enumerate({ parent: r, desired, region });
       for (const c of children) {
         // A child CDK placed in a SIBLING stack of the same app (cross-stack refs, #666)
-        // is fully CloudFormation-managed — not out of band. Skip it rather than false-flag
-        // it as `added` (fails open on any resolve error -> still reported).
-        if (await isManagedBySiblingStack(cfn, c, siblingStackCache)) continue;
+        // is fully CloudFormation-managed — not out of band, so skip it.
+        const sibling = await isManagedBySiblingStack(cfn, c, siblingStackCache);
+        if (sibling === 'managed') continue;
+        if (sibling === 'unverified') {
+          // The sibling-membership check FAILED (throttle / denied), so we cannot say whether this
+          // child is CFn-managed. Do NOT report it as `added` — a false `added` would offer a
+          // destructive Cloud Control DeleteResource on a possibly sibling-managed resource (#754).
+          // Surface it as coverage-incomplete instead, so the gap is visible but never destructive.
+          findings.push({
+            tier: 'skipped',
+            logicalId: r.logicalId,
+            resourceType: r.resourceType,
+            path: '',
+            note: `sibling-stack membership unverifiable for ${c.label} (${c.resourceType})`,
+          });
+          continue;
+        }
         const read = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
         findings.push(addedFinding(r, c, read));
       }
