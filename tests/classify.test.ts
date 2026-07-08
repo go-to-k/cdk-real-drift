@@ -1169,6 +1169,43 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     );
   });
 
+  it('#705: Classic ELB Policies folds ONLY the default SSL policy; a downgrade / added policy surfaces', () => {
+    const t = (policies: unknown[]) =>
+      tiers(
+        classifyResource(
+          bare('AWS::ElasticLoadBalancing::LoadBalancer'),
+          { Policies: policies },
+          emptySchema
+        )
+      );
+    // the AWS default SSL negotiation policy — identified by PolicyName; the huge cipher
+    // Attributes list is ignored (derived from the name).
+    const defaultPolicy = {
+      PolicyType: 'SSLNegotiationPolicyType',
+      PolicyName: 'ELBSecurityPolicy-2016-08',
+      Attributes: [{ Name: 'Protocol-SSLv3', Value: 'false' }],
+    };
+    // clean deploy: the default SSL policy folds atDefault
+    expect(t([defaultPolicy]).atDefault).toEqual(['Policies']);
+    // a DOWNGRADE to an older/weaker predefined policy (SSLv3 back on) SURFACES — the FN #705 fixes
+    expect(
+      t([
+        {
+          PolicyType: 'SSLNegotiationPolicyType',
+          PolicyName: 'ELBSecurityPolicy-2015-05',
+          Attributes: [{ Name: 'Protocol-SSLv3', Value: 'true' }],
+        },
+      ]).undeclared
+    ).toEqual(['Policies']);
+    // an out-of-band ADDED policy alongside the default SURFACES (array is no longer just the default)
+    expect(
+      t([
+        defaultPolicy,
+        { PolicyType: 'AppCookieStickinessPolicyType', PolicyName: 'my-stickiness' },
+      ]).undeclared
+    ).toEqual(['Policies']);
+  });
+
   it('noise-sweep batch: the default folds, a flipped (security-relevant) value surfaces', () => {
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));
