@@ -10250,3 +10250,89 @@ describe('#623 IoT ThingType SearchableAttributes reorder folds (nested scalar s
     ).toEqual(['ThingTypeProperties.SearchableAttributes']);
   });
 });
+
+// #618: a Site-to-Site VPN's VpnTunnelOptionsSpecifications is a SET keyed by
+// TunnelInsideCidr whose live model is a superset — AWS default-fills each declared spec
+// (empty crypto lists + LogOptions-off) AND materializes the second tunnel (a VPN always
+// has two). A positional/whole-array compare false-flagged the whole array as DECLARED
+// drift that SURVIVED record and whose wholeArrayRevert would push a 1-tunnel array at a
+// live 2-tunnel VPN. Aligned by TunnelInsideCidr: declared specs subset-compare, the
+// AWS-materialized husk tunnel folds atDefault, a real change still surfaces.
+describe('#618 VPNConnection VpnTunnelOptionsSpecifications subset + husk fold', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const tunnelHusk = (cidr: string) => ({
+    Phase1EncryptionAlgorithms: [],
+    Phase2EncryptionAlgorithms: [],
+    Phase1IntegrityAlgorithms: [],
+    Phase2IntegrityAlgorithms: [],
+    Phase1DHGroupNumbers: [],
+    Phase2DHGroupNumbers: [],
+    IKEVersions: [],
+    TunnelInsideCidr: cidr,
+    LogOptions: { CloudwatchLogOptions: { LogEnabled: false, BgpLogEnabled: false } },
+  });
+  const classify = (declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource(
+      { logicalId: 'Vpn', resourceType: 'AWS::EC2::VPNConnection', physicalId: 'vpn-1', declared },
+      live,
+      bare
+    );
+
+  it('one declared spec + AWS-filled twin + materialized 2nd tunnel → NO declared drift', () => {
+    const t = tiers(
+      classify(
+        { VpnTunnelOptionsSpecifications: [{ TunnelInsideCidr: '169.254.100.0/30' }] },
+        {
+          VpnTunnelOptionsSpecifications: [
+            tunnelHusk('169.254.100.0/30'),
+            tunnelHusk('169.254.234.232/30'),
+          ],
+        }
+      )
+    );
+    expect(t.declared).toEqual([]);
+    // the AWS-materialized second tunnel is a pure husk → folded atDefault (not undeclared)
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual(['VpnTunnelOptionsSpecifications[169.254.234.232/30]']);
+  });
+
+  it('a genuinely removed declared tunnel spec still surfaces as declared drift', () => {
+    // declare a CIDR that no live tunnel matches → the declared element has no live twin
+    const t = tiers(
+      classify(
+        { VpnTunnelOptionsSpecifications: [{ TunnelInsideCidr: '169.254.111.0/30' }] },
+        {
+          VpnTunnelOptionsSpecifications: [
+            tunnelHusk('169.254.100.0/30'),
+            tunnelHusk('169.254.234.232/30'),
+          ],
+        }
+      )
+    );
+    expect(t.declared).toEqual(['VpnTunnelOptionsSpecifications']);
+  });
+
+  it('a live-only tunnel with REAL (non-husk) content surfaces as undeclared (fail-closed)', () => {
+    const realTunnel = {
+      ...tunnelHusk('169.254.234.232/30'),
+      Phase1EncryptionAlgorithms: ['AES256'],
+    };
+    const t = tiers(
+      classify(
+        { VpnTunnelOptionsSpecifications: [{ TunnelInsideCidr: '169.254.100.0/30' }] },
+        { VpnTunnelOptionsSpecifications: [tunnelHusk('169.254.100.0/30'), realTunnel] }
+      )
+    );
+    expect(t.declared).toEqual([]);
+    expect(t.undeclared).toEqual(['VpnTunnelOptionsSpecifications[169.254.234.232/30]']);
+  });
+});

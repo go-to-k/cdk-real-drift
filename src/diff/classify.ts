@@ -153,6 +153,15 @@ interface SubsetArraySpec {
   // one as `dev:tier`), so an exact-Name match would treat the declared attribute as
   // removed (a false declared drift). Strip those AWS-added prefixes on both sides.
   normalizeId?: (id: string) => string;
+  // Fold a LIVE-ONLY element to `atDefault` (not `undeclared`) when everything on it
+  // EXCEPT its identity field is trivially-empty — a pure AWS-materialized HUSK the user
+  // never declared and cannot meaningfully own. A Site-to-Site VPN always has exactly two
+  // tunnels, so declaring one `VpnTunnelOptionsSpecifications` spec makes AWS assign the
+  // other with an AWS-picked TunnelInsideCidr and every crypto/IKE list left `[]` (= "all
+  // algorithms allowed", the default) plus a LogOptions-off default — a husk that must not
+  // surface as first-run [Potential Drift] (#618). OFF by default: BlockDeviceMappings /
+  // Cognito Schema extra elements carry real content, so they still surface (fail-closed).
+  foldHuskExtras?: boolean;
 }
 const stripCognitoAttrPrefix = (id: string): string => id.replace(/^(custom|dev):/, '');
 const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpec>> = {
@@ -211,6 +220,22 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   // subnet (the hybrid-DNS norm — one endpoint IP per AZ); multiple IPs in one subnet would
   // collapse on the key, an accepted edge case. Surfaced by the issue #467 --wait live-test.
   'AWS::Route53Resolver::ResolverEndpoint': { IpAddresses: { idField: 'SubnetId' } },
+  // A Site-to-Site VPN's `VpnTunnelOptionsSpecifications` is a SET keyed by TunnelInsideCidr
+  // whose live model is a SUPERSET of the template's in two ways (#618): (1) AWS fills each
+  // declared spec with service defaults the template never set — 7 empty crypto/IKE lists
+  // (`[]` = "all algorithms allowed") plus a `LogOptions.CloudwatchLogOptions` off-default —
+  // an undeclared superset per element, not a declared change; (2) a VPN ALWAYS has exactly
+  // two tunnels, so declaring one spec makes AWS materialize the OTHER with an AWS-assigned
+  // TunnelInsideCidr and the same all-default body. A positional/whole-array compare then
+  // false-flags the whole array as DECLARED drift on a clean deploy — which SURVIVES `record`
+  // and whose `wholeArrayRevert` would push a 1-tunnel array at a live 2-tunnel VPN (service-
+  // disruptive). Align by TunnelInsideCidr so each declared spec subset-compares against its
+  // live twin (the default-filled keys fold as trivially-empty undeclared inventory), and
+  // fold the AWS-materialized second tunnel — an all-default husk — to `atDefault` via
+  // foldHuskExtras. A genuinely removed/edited declared tunnel spec still surfaces.
+  'AWS::EC2::VPNConnection': {
+    VpnTunnelOptionsSpecifications: { idField: 'TunnelInsideCidr', foldHuskExtras: true },
+  },
 };
 // Nested object-arrays whose element identity is a NON-standard field (not Key/Id/
 // AttributeName/IndexName/Name). collectNestedUndeclared aligns identity-keyed arrays so a
@@ -1548,7 +1573,14 @@ export function classifyResource(
       for (const lEl of live[k] as unknown[]) {
         const id = idOf(lEl);
         if (id !== undefined && !declaredIds.has(id)) {
-          const atDefault = defaultEls && id in defaultEls && deepEqual(lEl, defaultEls[id]);
+          // A live-only element that is trivially-empty EXCEPT its identity field is a pure
+          // AWS-materialized husk (the VPN's second tunnel) → atDefault, not undeclared.
+          const isHuskExtra =
+            subsetSpec.foldHuskExtras === true &&
+            isNestedObject(lEl) &&
+            Object.entries(lEl).every(([ek, ev]) => ek === idField || isTrivialEmpty(ev));
+          const atDefault =
+            isHuskExtra || (defaultEls && id in defaultEls && deepEqual(lEl, defaultEls[id]));
           findings.push({
             tier: atDefault ? 'atDefault' : 'undeclared',
             logicalId,

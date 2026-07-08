@@ -1,0 +1,202 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Vpn",
+    "resourceType": "AWS::EC2::VPNConnection",
+    "physicalId": "vpn-0dff9a60d73220d14",
+    "constructPath": "CdkRealDriftHunt0708Vpn/Vpn",
+    "declared": {
+      "CustomerGatewayId": "cgw-042f19dd974c4121b",
+      "StaticRoutesOnly": true,
+      "Type": "ipsec.1",
+      "VpnGatewayId": "vgw-02dd4c8424294bb56",
+      "VpnTunnelOptionsSpecifications": [
+        {
+          "TunnelInsideCidr": "169.254.100.0/30"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "RemoteIpv4NetworkCidr": "0.0.0.0/0",
+    "VpnTunnelOptionsSpecifications": [
+      {
+        "Phase2EncryptionAlgorithms": [],
+        "Phase2DHGroupNumbers": [],
+        "Phase2IntegrityAlgorithms": [],
+        "Phase1IntegrityAlgorithms": [],
+        "TunnelInsideCidr": "169.254.100.0/30",
+        "IKEVersions": [],
+        "LogOptions": {
+          "CloudwatchLogOptions": {
+            "BgpLogEnabled": false,
+            "LogEnabled": false
+          }
+        },
+        "Phase1EncryptionAlgorithms": [],
+        "Phase1DHGroupNumbers": []
+      },
+      {
+        "Phase2EncryptionAlgorithms": [],
+        "Phase2DHGroupNumbers": [],
+        "Phase2IntegrityAlgorithms": [],
+        "Phase1IntegrityAlgorithms": [],
+        "TunnelInsideCidr": "169.254.234.232/30",
+        "IKEVersions": [],
+        "LogOptions": {
+          "CloudwatchLogOptions": {
+            "BgpLogEnabled": false,
+            "LogEnabled": false
+          }
+        },
+        "Phase1EncryptionAlgorithms": [],
+        "Phase1DHGroupNumbers": []
+      }
+    ],
+    "CustomerGatewayId": "cgw-042f19dd974c4121b",
+    "OutsideIpAddressType": "PublicIpv4",
+    "StaticRoutesOnly": true,
+    "EnableAcceleration": false,
+    "Type": "ipsec.1",
+    "TunnelBandwidth": "standard",
+    "LocalIpv4NetworkCidr": "0.0.0.0/0",
+    "VpnGatewayId": "vgw-02dd4c8424294bb56",
+    "VpnConnectionId": "vpn-0dff9a60d73220d14",
+    "TunnelInsideIpVersion": "ipv4",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708Vpn/3274d451-7a6c-11f1-b1b4-0e54e818a535",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708Vpn",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Vpn",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VpnConnectionId"],
+    "writeOnly": ["PreSharedKeyStorage"],
+    "createOnly": [
+      "EnableAcceleration",
+      "LocalIpv4NetworkCidr",
+      "LocalIpv6NetworkCidr",
+      "OutsideIpAddressType",
+      "PreSharedKeyStorage",
+      "RemoteIpv4NetworkCidr",
+      "RemoteIpv6NetworkCidr",
+      "StaticRoutesOnly",
+      "TransportTransitGatewayAttachmentId",
+      "TunnelInsideIpVersion",
+      "Type",
+      "VpnConcentratorId"
+    ],
+    "readOnlyPaths": ["VpnConnectionId"],
+    "writeOnlyPaths": ["PreSharedKeyStorage", "VpnTunnelOptionsSpecifications.*.PreSharedKey"],
+    "createOnlyPaths": [
+      "EnableAcceleration",
+      "LocalIpv4NetworkCidr",
+      "LocalIpv6NetworkCidr",
+      "OutsideIpAddressType",
+      "PreSharedKeyStorage",
+      "RemoteIpv4NetworkCidr",
+      "RemoteIpv6NetworkCidr",
+      "StaticRoutesOnly",
+      "TransportTransitGatewayAttachmentId",
+      "TunnelInsideIpVersion",
+      "Type",
+      "VpnConcentratorId"
+    ],
+    "defaults": {
+      "TunnelBandwidth": "standard"
+    },
+    "defaultPaths": {
+      "TunnelBandwidth": "standard"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["VpnTunnelOptionsSpecifications"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "VpnTunnelOptionsSpecifications[169.254.234.232/30]",
+      "actual": {
+        "Phase2EncryptionAlgorithms": [],
+        "Phase2DHGroupNumbers": [],
+        "Phase2IntegrityAlgorithms": [],
+        "Phase1IntegrityAlgorithms": [],
+        "TunnelInsideCidr": "169.254.234.232/30",
+        "IKEVersions": [],
+        "LogOptions": {
+          "CloudwatchLogOptions": {
+            "BgpLogEnabled": false,
+            "LogEnabled": false
+          }
+        },
+        "Phase1EncryptionAlgorithms": [],
+        "Phase1DHGroupNumbers": []
+      },
+      "nested": true,
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "RemoteIpv4NetworkCidr",
+      "actual": "0.0.0.0/0",
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "OutsideIpAddressType",
+      "actual": "PublicIpv4",
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "TunnelBandwidth",
+      "actual": "standard",
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "LocalIpv4NetworkCidr",
+      "actual": "0.0.0.0/0",
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Vpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "TunnelInsideIpVersion",
+      "actual": "ipv4",
+      "physicalId": "vpn-0dff9a60d73220d14",
+      "constructPath": "CdkRealDriftHunt0708Vpn/Vpn"
+    }
+  ]
+}
