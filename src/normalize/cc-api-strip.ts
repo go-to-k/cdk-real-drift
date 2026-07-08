@@ -60,7 +60,20 @@ export function stripCcApiAwsManagedFields(
 // so this is a defensive hardening to keep the two free-form guards consistent.
 function stripWalk(value: unknown, freeForm: boolean): unknown {
   if (value === null || value === undefined) return value;
-  if (Array.isArray(value)) return value.map((v) => stripWalk(v, freeForm));
+  if (Array.isArray(value)) {
+    const mapped = value.map((v) => stripWalk(v, freeForm));
+    // A bare JSON `null` array ELEMENT is never a meaningful user value — it is a
+    // service read artifact. S3, for one, echoes `TagFilters: [null]` inside every
+    // prefix-scoped IntelligentTiering / Metrics config element that declares no
+    // tag filter (#641), which then surfaces as a first-run undeclared FP on a
+    // clean deploy. Drop null/undefined elements so the husk never surfaces; a REAL
+    // out-of-band edit produces non-null objects, which still surface. Only outside
+    // free-form USER maps (Lambda env Variables, Glue Parameters, …), where an array
+    // value would be the user's own data and must be preserved verbatim. (This is
+    // the safe complement to the #632 lesson: a null husk is droppable; a meaningful
+    // scalar like `false` is not — and this drops only nulls, never scalars.)
+    return freeForm ? mapped : mapped.filter((v) => v !== null && v !== undefined);
+  }
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, child] of Object.entries(value as Record<string, unknown>)) {
