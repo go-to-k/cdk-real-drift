@@ -117,7 +117,16 @@ export function parseCfnTemplate(text: string): Record<string, unknown> {
   if (format === 'json') {
     parsed = JSON.parse(body);
   } else {
-    parsed = yamlParse(body, { customTags: CUSTOM_TAGS });
+    // CloudFormation's service-side YAML parser resolves the YAML 1.1 schema, not
+    // yaml@2's default 1.2 core schema. Under 1.2 `yes`/`no`/`on`/`off` stay strings
+    // and `0755` parses as decimal 755 — diverging from what CFn actually deployed
+    // (1.1 folds those to boolean / octal 493, and `1:30` to sexagesimal 90),
+    // producing first-run declared false positives and silent revert corruption
+    // (#785). Pinning `version: '1.1'` selects the `yaml-1.1` base schema so implicit
+    // scalar resolution matches CFn. CUSTOM_TAGS (the CFn short forms) still layer on
+    // top as additional tags; the YAML-1.1-only `!!binary`/`!!timestamp`/... tags only
+    // fire on explicit `!!` markers a CFn template never carries, so no regression.
+    parsed = yamlParse(body, { version: '1.1', customTags: CUSTOM_TAGS });
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('Template root is not an object.');
