@@ -672,6 +672,38 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('tgw-attach-aaa_tgw-rtb-bbb');
   });
 
+  // VPCCidrBlock: composite [Id, VpcId] — CHILD (vpc-cidr-assoc-... Id) first, then the
+  // VpcId from the declared Ref (the CFn physical id is only the child Id). (#647)
+  it('EC2 VPCCidrBlock: builds the Id|VpcId composite — CHILD first', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::VPCCidrBlock',
+        physicalId: 'vpc-cidr-assoc-0fb680f722ffd3d6b',
+        declared: { VpcId: 'vpc-099304131d588ddc1', AmazonProvidedIpv6CidrBlock: true },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('vpc-cidr-assoc-0fb680f722ffd3d6b|vpc-099304131d588ddc1');
+  });
+
+  it('EC2 VPCCidrBlock: an unresolved VpcId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::EC2::VPCCidrBlock',
+        physicalId: 'vpc-cidr-assoc-0fb680f722ffd3d6b',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('vpc-cidr-assoc-0fb680f722ffd3d6b');
+  });
+
   // R77: AppConfig Environment/ConfigurationProfile composite [ApplicationId, <child id>].
   for (const t of ['AWS::AppConfig::Environment', 'AWS::AppConfig::ConfigurationProfile']) {
     it(`${t}: builds the ApplicationId|<child> composite identifier`, async () => {
