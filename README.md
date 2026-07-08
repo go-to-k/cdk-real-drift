@@ -462,13 +462,17 @@ ignore:
 ```
 
 - Every rule is a mapping `{ path, stack?, account?, region? }`. `cdkrd ignore`
-  writes the unscoped form (and is **comment-preserving and append-only**: it keeps
-  your existing comments and layout, and appends new rules at the end — you own the
-  order). `path` is an exact `<constructPath>.<path>` — the construct path WITHIN the
-  stack (the stack/Stage prefix stripped), byte-identical to what `cdkrd check` prints, so
-  you can copy what you see (or `<logicalId>.<path>` on a non-CDK stack). Rules written with
-  the older full `<stack>/<constructPath>.<path>` form still match. The optional `stack` /
-  `account` / `region` scopes are a hand-edit.
+  stamps the current **stack / account / region** onto each rule it writes (the same
+  three identity axes a baseline file is keyed on), so ignoring a within-stack path on
+  one stack never leaks to a same-named twin stack in another account/region — an
+  unscoped `{ path }` was match-all (#757). The verb is **comment-preserving and
+  append-only**: it keeps your existing comments and layout, and appends new rules at
+  the end — you own the order. `path` is an exact `<constructPath>.<path>` — the
+  construct path WITHIN the stack (the stack/Stage prefix stripped), byte-identical to
+  what `cdkrd check` prints, so you can copy what you see (or `<logicalId>.<path>` on a
+  non-CDK stack). Rules written with the older full `<stack>/<constructPath>.<path>`
+  form still match. Widening a stamped scope to a `*` glob (to intentionally ignore a
+  path across every stack/account/region) stays a hand-edit.
 - All four fields accept the same `*` / `?` glob, and a parent `path` covers child
   paths. The three scope axes — **stack, account, region** — are exactly the
   baseline file's identity axes. **Account** keeps a `stack: "Prod*"` rule from

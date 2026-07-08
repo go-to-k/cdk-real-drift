@@ -139,8 +139,10 @@ keeps a personal-account run from colliding with a committed shared-account
 baseline. Value-pinned rules would leak per-account facts into the single shared
 file. (An ignore rule _can_ narrow itself with the same `stack` / `account` /
 `region` scopes — those exist exactly so a `stack: "Prod*"` rule does not leak
-into a same-named stack in another account — but those are optional hand-edits,
-not the per-account, per-value facts a baseline must isolate.)
+into a same-named stack in another account, and the `ignore` verb now stamps the
+current stack/account/region onto each rule it writes (#757; widening to a `*`
+glob is the hand-edit) — but they are policy narrowing, not the per-account,
+per-value facts a baseline must isolate.)
 
 **Store only paths there → the third mode is gone.** An ignore rule has no
 value, so it can only express "never look at X again" (mode two of §1). Ignoring

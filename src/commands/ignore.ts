@@ -81,6 +81,8 @@ export async function runIgnore(args: string[]): Promise<number> {
         findings: reconciled,
         yes: a.yes,
         interactive: isInteractive(),
+        accountId: desired.accountId,
+        region,
       });
       if (result.wrote) wroteAny = true;
       // a non-interactive ignore that needed a decision but had no --yes refuses (R38)

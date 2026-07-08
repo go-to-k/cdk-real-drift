@@ -1318,10 +1318,12 @@ describe('ignoreStack (PR-B — write ignore.yaml ignore rules; declared + undec
     });
     expect(r.wrote).toBe(true);
     expect(r.added).toBe(2);
-    // append-only writes in finding order (declared first, then undeclared) — not sorted
+    // append-only writes in finding order (declared first, then undeclared) — not sorted.
+    // Each rule is stamped with the stack scope (issue #757); no accountId/region were
+    // passed here, so those axes stay omitted (match-any).
     expect((await loadConfig()).ignore).toEqual([
-      { path: 'B.VersioningConfiguration' },
-      { path: 'B.AccelerateConfiguration' },
+      { path: 'B.VersioningConfiguration', stack: 'S' },
+      { path: 'B.AccelerateConfiguration', stack: 'S' },
     ]);
   });
 
