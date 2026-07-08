@@ -1,3 +1,10 @@
+## [0.2.45](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.44...v0.2.45) (2026-07-08)
+
+
+### Bug Fixes
+
+* **desired:** derive AWS::Partition / AWS::URLSuffix from the region ([#730](https://github.com/go-to-k/cdk-real-drift/issues/730)) ([#739](https://github.com/go-to-k/cdk-real-drift/issues/739)) ([6738626](https://github.com/go-to-k/cdk-real-drift/commit/673862639b3d77aeb5b88547739e4212a50993cd))
+
 ## [0.2.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.43...v0.2.44) (2026-07-08)
 
 
