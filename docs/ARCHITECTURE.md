@@ -550,6 +550,10 @@ _real change still detected_ ([tests/classify.test.ts](../tests/classify.test.ts
    positive) — but `gather` then prints a one-line per-region warning
    (`kmsListAliasesDeniedWarning`, deduped via a process-lifetime region set), so the
    degraded coverage (blind to a key swap) is surfaced rather than silent (R115).
+   Only a DEFINITIVE outcome is cached (success, or a definitive access-denial):
+   a TRANSIENT failure (throttle / network blip surviving adaptive retry) is NOT
+   cached, so the next stack in the region re-queries instead of one blip
+   poisoning key-swap detection for the whole run.
 
 > Classes 1 & 3 are a latent risk in any AWS-snapshot diff; they were also
 > back-ported to **cdkd** (PR #802, merged) since cdkd's `drift-calculator` shared
