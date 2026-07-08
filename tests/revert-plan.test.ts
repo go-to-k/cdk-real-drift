@@ -478,6 +478,85 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Cognito UserPool DeletionProtection (SET-DEFAULT) -> add op writing INACTIVE, not a no-op remove', () => {
+    // #630: AWS::Cognito::UserPool DeletionProtection is in REVERT_SET_DEFAULT_PATHS:
+    // UpdateUserPool is a full-PUT provider that IGNORES an omitted property, so a bare
+    // `remove` of an out-of-band ACTIVE is a silent no-op (live-proven twice: check surfaced
+    // it, revert reported CLEAN, yet the live pool stayed ACTIVE). Revert must write the
+    // "INACTIVE" default (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPool',
+      path: 'DeletionProtection',
+      actual: 'ACTIVE',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DeletionProtection',
+      value: 'INACTIVE',
+      prior: 'ACTIVE',
+    });
+  });
+
+  it('Cognito UserPool MfaConfiguration (SET-DEFAULT) -> add op writing OFF, not a no-op remove', () => {
+    // #630: same Cognito UpdateUserPool full-PUT provider family as DeletionProtection —
+    // an omitted MfaConfiguration is ignored, so revert must write the "OFF" default
+    // (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPool',
+      path: 'MfaConfiguration',
+      actual: 'ON',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MfaConfiguration',
+      value: 'OFF',
+      prior: 'ON',
+    });
+  });
+
+  it('Cognito UserPool UserPoolTier (SET-DEFAULT) -> add op writing ESSENTIALS, not a no-op remove', () => {
+    // #630: same Cognito UpdateUserPool full-PUT provider family — an omitted UserPoolTier
+    // is ignored, so revert must write the "ESSENTIALS" default (from KNOWN_DEFAULTS)
+    // explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPool',
+      path: 'UserPoolTier',
+      actual: 'PLUS',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/UserPoolTier',
+      value: 'ESSENTIALS',
+      prior: 'PLUS',
+    });
+  });
+
+  it('SNS Subscription FilterPolicyScope (SET-DEFAULT) -> add op writing MessageAttributes, not a no-op remove', () => {
+    // #630: AWS::SNS::Subscription FilterPolicyScope is in REVERT_SET_DEFAULT_PATHS:
+    // SetSubscriptionAttributes HARD-FAILS a `remove` (live-proven InvalidRequest "Invalid
+    // value [null]. Please use either MessageBody or MessageAttributes"), so revert must
+    // write the "MessageAttributes" default (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::SNS::Subscription',
+      path: 'FilterPolicyScope',
+      actual: 'MessageBody',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/FilterPolicyScope',
+      value: 'MessageAttributes',
+      prior: 'MessageBody',
+    });
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.
