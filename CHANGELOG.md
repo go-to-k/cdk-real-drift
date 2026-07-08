@@ -1,3 +1,10 @@
+## [0.2.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.11...v0.2.12) (2026-07-08)
+
+
+### Bug Fixes
+
+* **read:** supplement MemoryDB ParameterGroup Parameters (writeOnly readGap) + surface the CFn-never-applied divergence ([#620](https://github.com/go-to-k/cdk-real-drift/issues/620)) ([f366284](https://github.com/go-to-k/cdk-real-drift/commit/f3662844259b7e74b043a30cc60e2b7abd6ff497))
+
 ## [0.2.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.10...v0.2.11) (2026-07-07)
 
 
