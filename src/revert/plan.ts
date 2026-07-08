@@ -154,7 +154,25 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // whole default attribute-mapping array (from KNOWN_DEFAULTS) back explicitly so revert
   // converges — the whole-array-valued twin of DurationSeconds above.
   'AWS::RolesAnywhere::Profile\0AttributeMappings',
+  // EC2 ModifySubnetAttribute IGNORES an omitted EnableDns64 (live-proven on a dual-stack
+  // VPC 2026-07-08: EnableDns64 flipped `true` out of band, then `revert` planned a `remove`,
+  // Cloud Control reported the update applied, yet `describe-subnets` stayed `True` — the
+  // revert looped forever, #651). The subnet's `EnableDns64` default is the plain constant
+  // `false`, but it folds `atDefault` via the CFn SCHEMA default (not KNOWN_DEFAULTS), so the
+  // set-default value comes from REVERT_SET_DEFAULT_VALUES below rather than KNOWN_DEFAULTS.
+  // (The issue also flags sibling booleans AssignIpv6AddressOnCreation / Ipv6Native /
+  // PrivateDnsNameOptionsOnLaunch as candidates for the same silent no-op — left UNVERIFIED
+  // pending a live repro, so not added here.)
+  'AWS::EC2::Subnet\0EnableDns64',
 ]);
+
+// Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
+// that folds `atDefault` via the CFn SCHEMA default rather than KNOWN_DEFAULTS (so it is
+// absent from that table). Consulted as a FALLBACK when KNOWN_DEFAULTS carries no value for
+// the path — KNOWN_DEFAULTS stays the primary source. Keyed `${resourceType}\0${path}`.
+const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
+  'AWS::EC2::Subnet\0EnableDns64': false,
+};
 
 /**
  * A nested undeclared value (a live sub-key inside a declared object, R96/R98) — a dotted
@@ -701,8 +719,10 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
   // known AWS default explicitly instead of a no-op `remove` (e.g. IAM Role
   // MaxSessionDuration). The value is the same KNOWN_DEFAULTS default that mutes an
   // at-default first sighting; if it is somehow absent we fall through to `remove`.
-  const knownDefault = KNOWN_DEFAULTS[f.resourceType]?.[f.path];
-  if (knownDefault !== undefined && REVERT_SET_DEFAULT_PATHS.has(`${f.resourceType}\0${f.path}`)) {
+  const setDefaultKey = `${f.resourceType}\0${f.path}`;
+  const knownDefault =
+    KNOWN_DEFAULTS[f.resourceType]?.[f.path] ?? REVERT_SET_DEFAULT_VALUES[setDefaultKey];
+  if (knownDefault !== undefined && REVERT_SET_DEFAULT_PATHS.has(setDefaultKey)) {
     return {
       op: 'add',
       path: pointer,
@@ -920,6 +940,20 @@ export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> =
     '/Distributions/*/FastLaunchConfigurations',
     '/Distributions/*/LaunchTemplateConfigurations',
   ],
+  // Lambda EventInvokeConfig with no destinations configured (the common
+  // `configureAsyncInvoke({ retryAttempts, maxEventAge })` shape): Cloud Control's read
+  // echoes empty destination HUSKS `DestinationConfig: {OnSuccess: {}, OnFailure: {}}`, and
+  // the CC update handler folds its own read-back state into the update — but the schema
+  // requires a `Destination` inside each OnSuccess/OnFailure, so ANY patch (even a
+  // MaximumRetryAttempts-only revert) failed with "required key [Destination] not found"
+  // (#650, live-proven 2026-07-08). Unlike the array husks above these are empty OBJECTS
+  // `{}`, so the strip gate below also drops an empty PLAIN OBJECT (not just an empty array).
+  // Dropping the husk lets the handler treat the destination as absent (no destination),
+  // which is exactly what the `{}` echo meant.
+  'AWS::Lambda::EventInvokeConfig': [
+    '/DestinationConfig/OnSuccess',
+    '/DestinationConfig/OnFailure',
+  ],
 };
 // Expand a JSON pointer that MAY contain `*` array-wildcard segments into a {pointer, value}
 // pair for every matching live node. A `*` matches each index of an array node; a normal
@@ -941,12 +975,22 @@ function expandPointer(model: unknown, pointer: string): { pointer: string; valu
   }
   return frontier.map(({ path, node }) => ({ pointer: `/${path.join('/')}`, value: node }));
 }
+// A schema-invalid EMPTY husk the service echoes on read but rejects when re-sent on an
+// update: an empty ARRAY `[]` (VpcLattice / ImageBuilder above) or an empty PLAIN OBJECT
+// `{}` (Lambda EventInvokeConfig DestinationConfig husks, #650). A populated array/object is
+// real data and is NEVER dropped; an absent pointer needs no strip.
+function isEmptyHusk(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length === 0;
+  if (value !== null && typeof value === 'object') return Object.keys(value).length === 0;
+  return false;
+}
+
 // Extra `remove` ops for a cc-kind item on a type in the table above. Fail-safe gates:
-// the LIVE model must carry the pointer as an EMPTY array (a populated array is real
-// data and is never dropped; an absent pointer needs no strip and a `remove` on it
-// would itself fail), and no planned op may already rewrite the pointer or an ANCESTOR
-// of it (such a rewrite replaces what lives there, so a trailing remove would target a
-// path the patch may have just dropped).
+// the LIVE model must carry the pointer as an EMPTY husk (an empty array `[]` or empty
+// object `{}` — a populated one is real data and is never dropped; an absent pointer needs
+// no strip and a `remove` on it would itself fail), and no planned op may already rewrite
+// the pointer or an ANCESTOR of it (such a rewrite replaces what lives there, so a trailing
+// remove would target a path the patch may have just dropped).
 export function rejectedEmptyStripOps(
   resourceType: string,
   ops: PatchOp[],
@@ -957,13 +1001,13 @@ export function rejectedEmptyStripOps(
   const out: PatchOp[] = [];
   for (const pointer of pointers) {
     for (const { pointer: concrete, value } of expandPointer(liveRaw, pointer)) {
-      if (!Array.isArray(value) || value.length > 0) continue;
+      if (!isEmptyHusk(value)) continue;
       const covered = ops.some((o) => concrete === o.path || concrete.startsWith(`${o.path}/`));
       if (covered) continue;
       out.push({
         op: 'remove',
         path: concrete,
-        human: `${concrete.slice(1).replaceAll('/', '.')} -> drop service-echoed empty array (service rejects [] on update)`,
+        human: `${concrete.slice(1).replaceAll('/', '.')} -> drop service-echoed empty husk (service rejects it on update)`,
       });
     }
   }

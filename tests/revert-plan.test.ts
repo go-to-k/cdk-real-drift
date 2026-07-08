@@ -361,6 +361,28 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#651: appeared-since-record undeclared EC2 Subnet EnableDns64 -> add op writing the false default', () => {
+    // AWS::EC2::Subnet EnableDns64 is in REVERT_SET_DEFAULT_PATHS: EC2 ModifySubnetAttribute
+    // leaves an OMITTED EnableDns64 UNCHANGED, so a bare `remove` of an out-of-band `true` is
+    // a silent no-op (Cloud Control reports the update applied yet describe-subnets stays True
+    // — the revert loops forever; live-proven on a dual-stack VPC 2026-07-08). The `false`
+    // default folds atDefault via the CFn SCHEMA default (not KNOWN_DEFAULTS), so it is sourced
+    // from REVERT_SET_DEFAULT_VALUES. Revert must write `false` explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Subnet',
+      path: 'EnableDns64',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/EnableDns64',
+      value: false,
+      prior: true,
+    });
+  });
+
   it('Transfer Server SecurityPolicyName (SET-DEFAULT) -> add op writing the default policy, not a no-op remove', () => {
     // AWS::Transfer::Server SecurityPolicyName is in REVERT_SET_DEFAULT_PATHS: UpdateServer
     // leaves the policy UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
@@ -2366,6 +2388,80 @@ describe('rejectedEmptyStripOps — array-WILDCARD husk inside array elements (#
 
   it('no Distributions array -> nothing to expand', () => {
     expect(rejectedEmptyStripOps(T, [descOp], { Name: 'dist' })).toEqual([]);
+  });
+});
+
+describe('rejectedEmptyStripOps — service-rejected empty-OBJECT husk (#650 Lambda EventInvokeConfig)', () => {
+  const T = 'AWS::Lambda::EventInvokeConfig';
+  const retryOp: PatchOp = {
+    op: 'add',
+    path: '/MaximumRetryAttempts',
+    value: 1,
+    human: 'MaximumRetryAttempts -> deployed-template value',
+  };
+  // The exact live model from the issue: no destinations configured, so the CC read echoes
+  // empty destination HUSKS {OnSuccess: {}, OnFailure: {}}; the schema requires a Destination
+  // inside each, so ANY patch (even a MaximumRetryAttempts-only revert) was rejected with
+  // "required key [Destination] not found", poisoning the unrelated retry revert.
+  const liveWithHusks = {
+    FunctionName: 'cdkrd-hunt0708i-fn',
+    MaximumRetryAttempts: 2,
+    DestinationConfig: { OnSuccess: {}, OnFailure: {} },
+    Qualifier: '$LATEST',
+    MaximumEventAgeInSeconds: 3600,
+  };
+
+  it('appends a remove op for each empty destination husk on a MaximumRetryAttempts-only revert', () => {
+    const strip = rejectedEmptyStripOps(T, [retryOp], liveWithHusks);
+    expect(strip.map((o) => `${o.op} ${o.path}`)).toEqual([
+      'remove /DestinationConfig/OnSuccess',
+      'remove /DestinationConfig/OnFailure',
+    ]);
+    // The serialized update document reverts MaximumRetryAttempts but no longer carries the
+    // empty husks, so the service would not reject it (it treats the absent destinations as
+    // "no destination", which is what the {} echo meant).
+    expect(
+      toPatchDocument({
+        logicalId: 'Async',
+        displayId: 'Async',
+        resourceType: T,
+        physicalId: 'cdkrd-hunt0708i-fn:$LATEST',
+        kind: 'cc',
+        ops: [retryOp, ...strip],
+      })
+    ).toBe(
+      JSON.stringify([
+        { op: 'add', path: '/MaximumRetryAttempts', value: 1 },
+        { op: 'remove', path: '/DestinationConfig/OnSuccess' },
+        { op: 'remove', path: '/DestinationConfig/OnFailure' },
+      ])
+    );
+  });
+
+  it('a POPULATED destination is real data — never stripped', () => {
+    const live = structuredClone(liveWithHusks) as unknown as {
+      DestinationConfig: { OnSuccess: unknown; OnFailure: unknown };
+    };
+    live.DestinationConfig.OnSuccess = { Destination: 'arn:aws:sqs:...:success' };
+    // OnFailure stays an empty husk, so only it is stripped.
+    const strip = rejectedEmptyStripOps(T, [retryOp], live);
+    expect(strip.map((o) => `${o.op} ${o.path}`)).toEqual(['remove /DestinationConfig/OnFailure']);
+  });
+
+  it('an ABSENT DestinationConfig needs no strip', () => {
+    expect(
+      rejectedEmptyStripOps(T, [retryOp], { FunctionName: 'fn', MaximumRetryAttempts: 2 })
+    ).toEqual([]);
+  });
+
+  it('an op already rewriting DestinationConfig (an ancestor) suppresses the strip', () => {
+    const wholeOp: PatchOp = {
+      op: 'add',
+      path: '/DestinationConfig',
+      value: {},
+      human: 'DestinationConfig -> deployed-template value',
+    };
+    expect(rejectedEmptyStripOps(T, [wholeOp], liveWithHusks)).toEqual([]);
   });
 });
 
