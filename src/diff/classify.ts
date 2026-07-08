@@ -1224,6 +1224,27 @@ export function classifyResource(
       ...(freeFormKey && { freeFormKey: true }),
     });
   };
+  // #624 (general, fail-closed): true when a FULLY-undeclared OBJECT is entirely AWS-materialized
+  // defaults — every scalar leaf equality-matches the schema's nested `default` (schema.defaultPaths)
+  // or the hand-coded KNOWN_DEFAULT_PATHS twin, and any empty sub-value is trivially empty. A single
+  // leaf that is a real (non-default) value — or an ARRAY, which this rule does not attempt to fold —
+  // makes it false, so the whole object surfaces. Lets a fully-undeclared object whose only leaves are
+  // schema-annotated defaults (e.g. KinesisVideo StreamStorageConfiguration `{DefaultStorageTier:"HOT"}`)
+  // fold whole atDefault WITHOUT a per-type DESCEND_UNDECLARED_OBJECT_PATHS entry.
+  const allLeavesAtSchemaDefault = (value: unknown, basePath: string): boolean => {
+    if (isTrivialEmpty(value)) return true;
+    if (Array.isArray(value)) return false;
+    if (isNestedObject(value))
+      return Object.entries(value).every(([sk, sv]) =>
+        allLeavesAtSchemaDefault(sv, `${basePath}.${sk}`)
+      );
+    const schemaPath = basePath.replace(/\[[^\]]*\]/g, '.*');
+    return (
+      (schemaPath in schema.defaultPaths &&
+        matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
+      (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath]))
+    );
+  };
   // ----------------------------------------------------------------------------------------
 
   for (const [k, v] of Object.entries(declared)) {
@@ -2140,6 +2161,14 @@ export function classifyResource(
           nested: true,
         });
       }
+      continue;
+    }
+    // #624 (general): a fully-undeclared OBJECT whose every leaf is a schema/known nested default
+    // is entirely AWS-materialized — fold the WHOLE object atDefault. Fail-closed: a single
+    // non-default leaf (or any array) leaves it surfacing whole. Runs AFTER the per-type descends
+    // above, so a type curated to fragment (Athena WorkGroupConfiguration) keeps that behavior.
+    if (isNestedObject(v) && Object.keys(v).length > 0 && allLeavesAtSchemaDefault(v, k)) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
     }
     findings.push({ tier: 'undeclared', logicalId, resourceType, path: k, actual: v });

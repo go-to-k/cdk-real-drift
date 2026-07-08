@@ -61,7 +61,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Csc",
       "resourceType": "AWS::Lambda::CodeSigningConfig",
       "path": "CodeSigningPolicies",
