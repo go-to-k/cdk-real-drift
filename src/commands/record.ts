@@ -35,6 +35,12 @@ export async function runRecord(args: string[]): Promise<number> {
   }
 
   let worst = 0;
+  // Did ANY stack actually write a baseline? Cancelling the record multiselect (or the
+  // empty-baseline confirm) returns `{ wrote:false, refused:false }` — a clean no-op, not
+  // an error — so `worst` stays 0. Without tracking `wrote`, the "commit the baseline
+  // file(s)" footer would fire even when nothing was written, telling the user to commit
+  // files that never changed (#799).
+  let wroteAny = false;
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
   const showProgress = !a.json && isInteractive();
   for (const [idx, { stackName, region, template }] of stacks.entries()) {
@@ -71,6 +77,7 @@ export async function runRecord(args: string[]): Promise<number> {
       });
       // a non-interactive record that needed a decision but had no --yes refuses (R38)
       if (result.refused) worst = Math.max(worst, 2);
+      if (result.wrote) wroteAny = true;
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — nothing to record`);
@@ -84,7 +91,10 @@ export async function runRecord(args: string[]): Promise<number> {
       worst = Math.max(worst, 2);
     }
   }
-  if (worst === 0)
+  // Only nudge the user to commit when a baseline was actually written — cancelling every
+  // stack's record prompt leaves the files untouched, so the "commit …" footer would be a
+  // lie (#799).
+  if (worst === 0 && wroteAny)
     console.log('commit the baseline file(s) so drift is detected against them going forward.');
   return worst;
 }
