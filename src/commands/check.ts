@@ -121,6 +121,17 @@ export function nestedStackWarning(resources: DesiredResource[], stackName: stri
   return `warning: ${stackName} has ${nested.length} nested CloudFormation stack(s) — cdkrd does not recurse into them, so the resources INSIDE them are NOT checked: ${names.join(', ')}`;
 }
 
+// #727: under --pre-deploy the declared source is the LOCAL synth template, so a
+// resource that exists there but has not been deployed yet legitimately has NO physical
+// id. gather.ts emits `skipped: no physical id` for it (correct on the deployed path,
+// where a missing physical id is a real anomaly — cf. #689), but under --pre-deploy this
+// is EXPECTED, not a coverage gap: the next deploy will create it. This predicate matches
+// ONLY that exact skip reason (note === 'no physical id'), so other skips — CC-unsupported,
+// read errors — remain genuine coverage gaps even under --pre-deploy. Pure + exported.
+export function isPendingCreationSkip(f: Finding): boolean {
+  return f.tier === 'skipped' && f.note === 'no physical id';
+}
+
 // Resources cdkrd could NOT read this run land in the `skipped` tier — a
 // CC-unsupported type with no SDK override, a read error (throttle / AccessDenied), a
 // missing physical id, a Custom resource. They are genuinely UNCHECKED, yet `skipped`
@@ -128,9 +139,17 @@ export function nestedStackWarning(resources: DesiredResource[], stackName: stri
 // footer — so a materially under-covered run can read `result: CLEAN`, exit 0. Surface
 // the gap LOUDLY (same not-silent principle as the nested-stack / KMS warnings); the
 // `--strict` flag additionally turns it into a non-zero exit. Returns null when nothing
-// was skipped. Pure + exported for unit tests.
-export function coverageWarning(findings: Finding[], stackName: string): string | null {
-  const skipped = findings.filter((f) => f.tier === 'skipped');
+// was skipped. Under --pre-deploy (#727) a "no physical id" skip is a not-yet-deployed
+// local resource, not a gap — excluded here so it is not warned as under-coverage. Pure
+// + exported for unit tests.
+export function coverageWarning(
+  findings: Finding[],
+  stackName: string,
+  preDeploy = false
+): string | null {
+  const skipped = findings.filter(
+    (f) => f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f))
+  );
   if (skipped.length === 0) return null;
   const names = skipped
     .map((f) => (f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId))
@@ -140,11 +159,34 @@ export function coverageWarning(findings: Finding[], stackName: string): string 
   return `warning: ${stackName}: ${skipped.length} resource(s) were NOT checked (coverage incomplete) — ${shown.join(', ')}${more}; see the skipped breakdown (--verbose)`;
 }
 
+// #727: under --pre-deploy, the informational count of local resources that are not yet
+// deployed (a "no physical id" skip) — they will be created by the next deploy, so they
+// are surfaced as info, NOT a coverage gap. Returns the info line, or null when none.
+// Pure + exported for unit tests.
+export function pendingCreationInfo(findings: Finding[], stackName: string): string | null {
+  const pending = findings.filter(isPendingCreationSkip);
+  if (pending.length === 0) return null;
+  const names = pending
+    .map((f) => (f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId))
+    .sort();
+  const shown = names.slice(0, 10);
+  const more = names.length > shown.length ? `, …(+${names.length - shown.length} more)` : '';
+  return `info: ${stackName}: ${pending.length} resource(s) not yet deployed — will be created by the next deploy (pending creation, not a coverage gap): ${shown.join(', ')}${more}`;
+}
+
 // The coverage gap that `--strict` fails on: any resource skipped (unread) OR any
-// nested stack not recursed into. Pure + exported.
-export function hasCoverageGap(findings: Finding[], resources: DesiredResource[]): boolean {
+// nested stack not recursed into. Under --pre-deploy (#727) a "no physical id" skip is a
+// not-yet-deployed local resource (pending creation), which is EXPECTED and therefore not
+// a gap — excluded so `--strict --pre-deploy` no longer false-fails on a feature branch
+// that merely ADDS a resource with zero real drift. Non-pre-deploy behavior is unchanged.
+// Pure + exported.
+export function hasCoverageGap(
+  findings: Finding[],
+  resources: DesiredResource[],
+  preDeploy = false
+): boolean {
   return (
-    findings.some((f) => f.tier === 'skipped') ||
+    findings.some((f) => f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f))) ||
     resources.some((r) => r.resourceType === 'AWS::CloudFormation::Stack')
   );
 }
@@ -155,13 +197,15 @@ export function hasCoverageGap(findings: Finding[], resources: DesiredResource[]
 // path fold the identical value into `worst` — the --pre-deploy branch returns
 // early (its own report + continue), so without sharing this it silently never
 // applied --strict (a skipped resource / un-recursed nested stack under
-// --strict --pre-deploy exited 0).
+// --strict --pre-deploy exited 0). Under --pre-deploy (#727) a "no physical id"
+// skip (a not-yet-deployed local resource) does not count as a gap.
 export function strictCoverageExit(
   strict: boolean,
   findings: Finding[],
-  resources: DesiredResource[]
+  resources: DesiredResource[],
+  preDeploy = false
 ): number {
-  return strict && hasCoverageGap(findings, resources) ? 1 : 0;
+  return strict && hasCoverageGap(findings, resources, preDeploy) ? 1 : 0;
 }
 
 /**
@@ -328,8 +372,16 @@ export async function runCheck(args: string[]): Promise<number> {
       // complaint that prompted R127) and (b) duplicate the footer. --json has no info:
       // footer, so keep the loud stderr warning there to preserve the invariant.
       if (a.json) {
-        const covWarn = coverageWarning(gathered.findings, stackName);
+        const covWarn = coverageWarning(gathered.findings, stackName, a.preDeploy);
         if (covWarn) console.error(covWarn);
+      }
+      // #727: under --pre-deploy, surface not-yet-deployed local resources (a "no physical
+      // id" skip) as INFORMATIONAL — they are excluded from the coverage gap / --strict
+      // exit above, so say WHY the count is not a gap (they will be created by the deploy).
+      // stderr keeps --json stdout clean.
+      if (a.preDeploy) {
+        const pendingInfo = pendingCreationInfo(gathered.findings, stackName);
+        if (pendingInfo) console.error(pendingInfo);
       }
       // a mid-operation / failed stack state still gets compared, but the result may be
       // transient/unreliable — say so loudly (REVIEW_IN_PROGRESS / deleting states never
@@ -394,8 +446,12 @@ export async function runCheck(args: string[]): Promise<number> {
         // --strict still applies under --pre-deploy: live reads (and so the skipped
         // tier / un-recursed nested stacks) happen here too, only the DECLARED side
         // comes from the synth template. Fold the coverage-gap exit BEFORE the early
-        // continue, or --strict --pre-deploy would silently never fail.
-        worst = Math.max(worst, strictCoverageExit(a.strict, gathered.findings, desired.resources));
+        // continue, or --strict --pre-deploy would silently never fail. Pass preDeploy so
+        // a not-yet-deployed local resource (#727) is pending-creation info, not a gap.
+        worst = Math.max(
+          worst,
+          strictCoverageExit(a.strict, gathered.findings, desired.resources, true)
+        );
         continue;
       }
 
