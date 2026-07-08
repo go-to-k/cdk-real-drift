@@ -160,9 +160,22 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // revert looped forever, #651). The subnet's `EnableDns64` default is the plain constant
   // `false`, but it folds `atDefault` via the CFn SCHEMA default (not KNOWN_DEFAULTS), so the
   // set-default value comes from REVERT_SET_DEFAULT_VALUES below rather than KNOWN_DEFAULTS.
-  // (The issue also flags sibling booleans AssignIpv6AddressOnCreation / Ipv6Native /
-  // PrivateDnsNameOptionsOnLaunch as candidates for the same silent no-op — left UNVERIFIED
-  // pending a live repro, so not added here.)
+  // Sibling undeclared subnet attributes hit by the same EC2 ModifySubnetAttribute
+  // omit-is-ignored no-op the #651 issue flagged — each folds `atDefault` from
+  // KNOWN_DEFAULTS (AWS::EC2::Subnet), so writing that default explicitly converges
+  // where a `remove` silently no-ops.
+  //   - PrivateDnsNameOptionsOnLaunch: LIVE-VERIFIED 2026-07-08 on a dual-stack VPC —
+  //     enabled a resource-name DNS record out of band, `revert`'s `remove` left it
+  //     unchanged ("1 drift(s) remain"), the set-default (whole default object)
+  //     converges (CLEAN after revert). This is the object-valued twin of EnableDns64.
+  //   - AssignIpv6AddressOnCreation: CDK DECLARES it on every dual-stack subnet, so it is
+  //     not reachable as undeclared drift through CDK (a declared revert already
+  //     converges); this entry defensively covers the raw-CFn case where the attribute is
+  //     left undeclared and flipped out of band — same provider omit-no-op, same fix.
+  //   - Ipv6Native is create-only (not settable by ModifySubnetAttribute), so it cannot
+  //     drift out of band and needs no revert entry — it folds fine as `atDefault`.
+  'AWS::EC2::Subnet\0AssignIpv6AddressOnCreation',
+  'AWS::EC2::Subnet\0PrivateDnsNameOptionsOnLaunch',
   'AWS::EC2::Subnet\0EnableDns64',
 ]);
 

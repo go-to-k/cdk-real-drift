@@ -383,6 +383,52 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#651 sibling: undeclared EC2 Subnet PrivateDnsNameOptionsOnLaunch -> add op writing the default object', () => {
+    // LIVE-VERIFIED 2026-07-08: same EC2 ModifySubnetAttribute omit-no-op as EnableDns64 —
+    // enabling a resource-name DNS record out of band then reverting via `remove` left the
+    // live value unchanged ("1 drift(s) remain"); writing the whole KNOWN_DEFAULTS default
+    // object converged (CLEAN after revert). The object-valued twin of EnableDns64.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Subnet',
+      path: 'PrivateDnsNameOptionsOnLaunch',
+      actual: {
+        EnableResourceNameDnsARecord: true,
+        HostnameType: 'ip-name',
+        EnableResourceNameDnsAAAARecord: false,
+      },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/PrivateDnsNameOptionsOnLaunch',
+      value: {
+        EnableResourceNameDnsARecord: false,
+        HostnameType: 'ip-name',
+        EnableResourceNameDnsAAAARecord: false,
+      },
+    });
+  });
+
+  it('#651 sibling: undeclared EC2 Subnet AssignIpv6AddressOnCreation -> add op writing the false default', () => {
+    // Same provider omit-no-op class; defensively covers the raw-CFn case where the
+    // attribute is left undeclared (CDK always declares it on dual-stack subnets) and
+    // flipped out of band. The `false` default is sourced from KNOWN_DEFAULTS.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Subnet',
+      path: 'AssignIpv6AddressOnCreation',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AssignIpv6AddressOnCreation',
+      value: false,
+      prior: true,
+    });
+  });
+
   it('Transfer Server SecurityPolicyName (SET-DEFAULT) -> add op writing the default policy, not a no-op remove', () => {
     // AWS::Transfer::Server SecurityPolicyName is in REVERT_SET_DEFAULT_PATHS: UpdateServer
     // leaves the policy UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
