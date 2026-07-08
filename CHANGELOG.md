@@ -1,3 +1,13 @@
+## [0.2.50](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.49...v0.2.50) (2026-07-08)
+
+
+### Bug Fixes
+
+* **commands:** error on a glob stack arg that matches no stacks ([#778](https://github.com/go-to-k/cdk-real-drift/issues/778)) ([#815](https://github.com/go-to-k/cdk-real-drift/issues/815)) ([5e1fb04](https://github.com/go-to-k/cdk-real-drift/commit/5e1fb047054f6353873454ae31a8db66ac10b465))
+* **desired:** key ImportValue exports cache by account+region, degrade on ListExports failure ([#784](https://github.com/go-to-k/cdk-real-drift/issues/784)) ([#814](https://github.com/go-to-k/cdk-real-drift/issues/814)) ([f41c7f2](https://github.com/go-to-k/cdk-real-drift/commit/f41c7f27b11bfc7f492089caf74c330e08d46c54))
+* **read:** do not cache transient kms:ListAliases failures ([#789](https://github.com/go-to-k/cdk-real-drift/issues/789)) ([#813](https://github.com/go-to-k/cdk-real-drift/issues/813)) ([d278db5](https://github.com/go-to-k/cdk-real-drift/commit/d278db5b6e67cdd885cadee60a696cf8b8301c61))
+* **schema:** key DescribeType schema cache by region ([#788](https://github.com/go-to-k/cdk-real-drift/issues/788)) ([#812](https://github.com/go-to-k/cdk-real-drift/issues/812)) ([6a8c103](https://github.com/go-to-k/cdk-real-drift/commit/6a8c1032b1d58350e09dcd2d9ebec0e2ef85be7d))
+
 ## [0.2.49](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.48...v0.2.49) (2026-07-08)
 
 
