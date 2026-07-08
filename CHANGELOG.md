@@ -1,3 +1,11 @@
+## [0.2.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.42...v0.2.43) (2026-07-08)
+
+
+### Bug Fixes
+
+* **desired:** collect IAM standalone inline-policy siblings (RolePolicy/UserPolicy/GroupPolicy) ([#697](https://github.com/go-to-k/cdk-real-drift/issues/697)) ([#735](https://github.com/go-to-k/cdk-real-drift/issues/735)) ([5ccc4c2](https://github.com/go-to-k/cdk-real-drift/commit/5ccc4c2e3dc6b5b856c1b8b694fda10b54f5f616))
+* **normalize:** YAML-string Content structural compare — SSM Document DocumentFormat: YAML ([#713](https://github.com/go-to-k/cdk-real-drift/issues/713)) ([#736](https://github.com/go-to-k/cdk-real-drift/issues/736)) ([5a2116d](https://github.com/go-to-k/cdk-real-drift/commit/5a2116d941146bda6e39de232e2423adad297274))
+
 ## [0.2.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.41...v0.2.42) (2026-07-08)
 
 
