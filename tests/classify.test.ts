@@ -1020,6 +1020,26 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t({ VisibilityTimeout: 60 }).undeclared).toEqual(['VisibilityTimeout']);
   });
 
+  it('#624 general: a fully-undeclared object whose every leaf is a schema nested default folds whole atDefault; anything else surfaces', () => {
+    // The general fail-closed rule that closes the fully-undeclared-object gap (KinesisVideo
+    // StreamStorageConfiguration, Lambda CodeSigningConfig CodeSigningPolicies) for ANY type
+    // whose schema annotates the nested defaults — no per-type DESCEND entry needed.
+    const schema: SchemaInfo = {
+      ...emptySchema,
+      defaultPaths: { 'Conf.Tier': 'HOT', 'Conf.Nested.Mode': 'A' },
+    };
+    const t = (live: Record<string, unknown>) =>
+      tiers(classifyResource(bare('AWS::X::Y'), live, schema));
+    // every leaf (incl. a deeper nested one) at its schema default -> WHOLE object folds atDefault
+    expect(t({ Conf: { Tier: 'HOT', Nested: { Mode: 'A' } } }).atDefault).toEqual(['Conf']);
+    // one leaf off its default -> the whole object surfaces (fail-closed)
+    expect(t({ Conf: { Tier: 'WARM', Nested: { Mode: 'A' } } }).undeclared).toEqual(['Conf']);
+    // a leaf with NO schema default -> surfaces (never fold an object with a real settable value)
+    expect(t({ Conf: { Tier: 'HOT', Extra: 'x' } }).undeclared).toEqual(['Conf']);
+    // an array member -> not folded by this rule (conservative), surfaces
+    expect(t({ Conf: { Tier: 'HOT', List: [1] } }).undeclared).toEqual(['Conf']);
+  });
+
   it('#627: DynamoDB top-level WarmThroughput derives from ProvisionedThroughput / on-demand constant', () => {
     // a provisioned table's undeclared WarmThroughput echoes its own ProvisionedThroughput
     const t = (live: Record<string, unknown>) =>
