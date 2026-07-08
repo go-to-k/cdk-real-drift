@@ -1,3 +1,10 @@
+## [0.2.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.37...v0.2.38) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** EC2 Instance/Volume/ENI first-run undeclared folds ([#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#719](https://github.com/go-to-k/cdk-real-drift/issues/719)) ([013729d](https://github.com/go-to-k/cdk-real-drift/commit/013729d0530e90604ee50ced094735ce677e8a51))
+
 ## [0.2.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.36...v0.2.37) (2026-07-08)
 
 
