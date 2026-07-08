@@ -452,14 +452,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::ApiGatewayV2::Integration': {
     ConnectionType: 'INTERNET',
-    // The WebSocket default (29000) is protocol-derived, NOT a single constant: an HTTP-API
-    // integration reads 30000, a WebSocket one reads 29000 (per the CFn schema description).
-    // This pin folds the HTTP 30000; the WebSocket 29000 cannot be equality-gated by a single
-    // constant here without breaking the HTTP fold, and the discriminator (the parent Api's
-    // ProtocolType) is not on the Integration model — folding it needs a tier-2 derivation in
-    // classify.ts, DEFERRED to a follow-up (#664). Until then a WebSocket integration's
-    // undeclared TimeoutInMillis=29000 still surfaces (the residual first-run FP tracked below).
-    TimeoutInMillis: 30000,
+    // TimeoutInMillis is NOT a single constant on this shared type — its undeclared default is
+    // protocol-specific: a WebSocket-API integration reads back 29000, an HTTP-API one reads
+    // 30000 (per the CFn schema description). Both are stable constants, so both fold as tier-1
+    // equality-gated defaults — but a single KNOWN_DEFAULTS key holds only one value, so the
+    // pair lives in KNOWN_DEFAULT_ONE_OF below (a live value equal to EITHER folds; any other
+    // value, or a declared timeout, still surfaces). See that entry for the full reasoning.
     // WebSocket integration constant service defaults, materialized on every route created
     // with CDK's WebSocketLambdaIntegration when the template declares none of them. All are
     // equality-gated so a declared / out-of-band-changed value still surfaces. This type ALSO
@@ -1238,6 +1236,30 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::CodeStarConnections::Connection': {
     HostArn:
       'arn:aws:codestar-connections:us-west-2:000000000000:host/00000000-0000-0000-0000-000000000000',
+  },
+};
+
+// A top-level twin of KNOWN_DEFAULTS for the rare property whose undeclared AWS default is a
+// stable constant but takes ONE OF SEVERAL values depending on a sibling the value itself does
+// not carry. Each entry lists the full SET of accepted defaults; a live value that deep-equals
+// ANY member folds to `atDefault`, and anything else — including a declared value — still
+// surfaces. This is still tier-1 (equality-gated constants), just against a small closed set
+// rather than a single value; it is NOT a tier-2 derivation (no value is computed from the
+// declared inputs). Reach for it ONLY when the two-plus defaults are genuine, stable constants
+// and the discriminator (e.g. the parent's protocol) is off the resource's own model.
+export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknown[]>> = {
+  // AWS::ApiGatewayV2::Integration is shared by HTTP and WebSocket APIs, and its undeclared
+  // TimeoutInMillis default is protocol-specific: a WebSocket integration reads back 29000, an
+  // HTTP integration reads back 30000 (per the CFn schema description). Both are stable
+  // constants, but the discriminator — the parent Api's ProtocolType — is not on the Integration
+  // model, so a single KNOWN_DEFAULTS constant cannot cover both without breaking the other.
+  // Folding the SET {29000, 30000} keeps a clean deploy of EITHER protocol at zero first-run
+  // drift, while equality-gating preserves detection: a user who DECLARES a timeout is compared
+  // in the declared dimension (never folded), and an out-of-band change to any value outside the
+  // set (e.g. 10000) re-surfaces as real undeclared drift. HTTP's 30000 and WebSocket's 29000
+  // are folded as PEERS here — neither masks the other, and neither masks a custom value.
+  'AWS::ApiGatewayV2::Integration': {
+    TimeoutInMillis: [29000, 30000],
   },
 };
 

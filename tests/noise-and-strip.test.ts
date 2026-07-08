@@ -22,6 +22,7 @@ import {
   isIntelligentTieringMatch,
   INTELLIGENT_TIERING_PATHS,
   KNOWN_DEFAULTS,
+  KNOWN_DEFAULT_ONE_OF,
   KNOWN_DEFAULT_PATHS,
   GENERATED_NESTED_PATHS,
   DESCEND_UNDECLARED_OBJECT_PATHS,
@@ -2116,6 +2117,47 @@ describe('#664 ApiGatewayV2 WebSocket first-run undeclared folds', () => {
     );
     expect(r.undeclared).toContain('PassthroughBehavior');
     expect(r.atDefault).not.toContain('PassthroughBehavior');
+  });
+
+  it('Integration: TimeoutInMillis one-of defaults {29000, 30000} are registered', () => {
+    expect(KNOWN_DEFAULT_ONE_OF['AWS::ApiGatewayV2::Integration'].TimeoutInMillis).toEqual([
+      29000, 30000,
+    ]);
+  });
+
+  it('Integration: an undeclared WebSocket TimeoutInMillis=29000 folds to atDefault', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', IntegrationUri: 'arn:aws:lambda:...' },
+      {
+        ApiId: 'api1',
+        IntegrationType: 'AWS_PROXY',
+        IntegrationUri: 'arn:aws:lambda:...',
+        TimeoutInMillis: 29000,
+      }
+    );
+    expect(r.atDefault).toContain('TimeoutInMillis');
+    expect(r.undeclared).not.toContain('TimeoutInMillis');
+  });
+
+  it('Integration: an undeclared HTTP TimeoutInMillis=30000 also folds to atDefault (the peer default)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'HTTP_PROXY' },
+      { ApiId: 'api1', IntegrationType: 'HTTP_PROXY', TimeoutInMillis: 30000 }
+    );
+    expect(r.atDefault).toContain('TimeoutInMillis');
+    expect(r.undeclared).not.toContain('TimeoutInMillis');
+  });
+
+  it('Integration: an undeclared TimeoutInMillis OUTSIDE the set (10000) still surfaces (equality-gated)', () => {
+    const r = t(
+      'AWS::ApiGatewayV2::Integration',
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY' },
+      { ApiId: 'api1', IntegrationType: 'AWS_PROXY', TimeoutInMillis: 10000 }
+    );
+    expect(r.undeclared).toContain('TimeoutInMillis');
+    expect(r.atDefault).not.toContain('TimeoutInMillis');
   });
 
   it('Stage: an undeclared DefaultRouteSettings.LoggingLevel at the default folds to atDefault', () => {

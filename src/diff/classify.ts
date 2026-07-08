@@ -67,6 +67,7 @@ import {
   EPOCH_HOUR_PATHS,
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
   isEpochHourEqual,
+  KNOWN_DEFAULT_ONE_OF,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   ORDER_SIGNIFICANT_ARRAY_KEYS,
@@ -2061,6 +2062,11 @@ export function classifyResource(
     if (
       (k in schema.defaults && matchesKnownDefault(v, schema.defaults[k])) ||
       (k in knownDef && matchesKnownDefault(v, knownDef[k])) ||
+      // A live value equal to ONE OF several stable-constant AWS defaults for this key (e.g.
+      // an ApiGatewayV2 Integration's protocol-specific TimeoutInMillis, 29000 for WebSocket
+      // vs 30000 for HTTP). Still equality-gated — a declared value or any value outside the
+      // set falls through to `undeclared`.
+      KNOWN_DEFAULT_ONE_OF[resourceType]?.[k]?.some((d) => matchesKnownDefault(v, d)) ||
       // A top-level key whose AWS default is NON-DETERMINISTIC (ECS
       // AvailabilityZoneRebalancing reads back ENABLED or DISABLED depending on the
       // service) — folded atDefault regardless of value: undeclared, so any value is
