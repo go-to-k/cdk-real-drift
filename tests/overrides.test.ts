@@ -2276,6 +2276,24 @@ describe('SDK overrides', () => {
     it('undefined when no apiId can be resolved', async () => {
       expect(await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}))).toBeUndefined();
     });
+
+    it('PAGINATES ListApiKeys: finds the declared key on page 2 (nextToken loop)', async () => {
+      // Page 1 carries a nextToken and NOT our key; page 2 holds da2-xyz. Reading only
+      // page 1 (the pre-fix behavior) would miss it → a FALSE `skipped` for a present key.
+      appsync
+        .on(ListApiKeysCommand)
+        .resolvesOnce({ apiKeys: [{ id: 'da2-other', expires: 111 }], nextToken: 'p2' })
+        .resolvesOnce({
+          apiKeys: [{ id: 'da2-xyz', description: 'the key', expires: 1784631600 }],
+        });
+      const out = await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN));
+      expect(out).toEqual({ ApiId: 'abc123', Description: 'the key', Expires: 1784631600 });
+      // Page 2 was requested with the page-1 nextToken.
+      expect(appsync.commandCalls(ListApiKeysCommand)[1]?.args[0].input).toEqual({
+        apiId: 'abc123',
+        nextToken: 'p2',
+      });
+    });
   });
 });
 
@@ -2683,6 +2701,45 @@ describe('EC2 ClientVpn family (NON_PROVISIONABLE, issue #534)', () => {
           ctx({ TargetNetworkCidr: '192.168.0.0/16' })
         )
       ).toBeUndefined();
+    });
+
+    it('PAGINATES DescribeClientVpnAuthorizationRules: matches a rule on page 2 (NextToken loop)', async () => {
+      // Page 1 carries a NextToken and NOT the declared rule; page 2 holds it. Reading only
+      // page 1 (the pre-fix behavior) would throw ResourceGoneError → a FALSE `deleted`.
+      ec2
+        .on(DescribeClientVpnAuthorizationRulesCommand)
+        .resolvesOnce({
+          AuthorizationRules: [{ DestinationCidr: '10.0.0.0/16', GroupId: 'other' }],
+          NextToken: 'p2',
+        } as never)
+        .resolvesOnce({
+          AuthorizationRules: [
+            {
+              DestinationCidr: '192.168.0.0/16',
+              GroupId: 'grp-1',
+              Description: 'admins',
+              AccessAll: false,
+            },
+          ],
+        } as never);
+      const out = await SDK_OVERRIDES['AWS::EC2::ClientVpnAuthorizationRule'](
+        ctx({
+          ClientVpnEndpointId: 'cvpn-endpoint-abc',
+          TargetNetworkCidr: '192.168.0.0/16',
+          AccessGroupId: 'grp-1',
+        })
+      );
+      expect(out).toEqual({
+        ClientVpnEndpointId: 'cvpn-endpoint-abc',
+        TargetNetworkCidr: '192.168.0.0/16',
+        AccessGroupId: 'grp-1',
+        Description: 'admins',
+        AuthorizeAllGroups: false,
+      });
+      // Page 2 was requested with the page-1 NextToken.
+      expect(
+        ec2.commandCalls(DescribeClientVpnAuthorizationRulesCommand)[1]?.args[0].input
+      ).toEqual({ ClientVpnEndpointId: 'cvpn-endpoint-abc', NextToken: 'p2' });
     });
   });
 
@@ -3151,6 +3208,67 @@ describe('SDK supplements', () => {
     });
     // The built-in slot type was never described.
     expect(lex.commandCalls(DescribeSlotTypeCommand)).toHaveLength(0);
+  });
+
+  it('Lex::Bot: PAGINATES every list call — page-2 intent AND page-2 slot both appear (nextToken loops)', async () => {
+    // Two locales across two ListBotLocales pages; each list (locales/intents/slots) carries
+    // a page-1 nextToken. Reading only page 1 (the pre-fix behavior) would DROP the page-2
+    // locale (fr_FR), the page-2 intent (CdkrdCancel), and the page-2 slot (Qty) → a PARTIAL
+    // BotLocales model (a false-confidence FN). Assert every page-2 element survives.
+    lex
+      .on(ListBotLocalesCommand)
+      .resolvesOnce({ botLocaleSummaries: [{ localeId: 'en_US' }], nextToken: 'bl2' })
+      .resolvesOnce({ botLocaleSummaries: [{ localeId: 'fr_FR' }] });
+    lex.on(DescribeBotLocaleCommand).resolves({ localeId: 'x' });
+    // No custom slot types (keep the fixture focused on intent/slot pagination).
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+
+    // Intents paginate: I_ORDER on page 1, I_CANCEL on page 2 (both under en_US and fr_FR).
+    lex
+      .on(ListIntentsCommand)
+      .resolvesOnce({ intentSummaries: [{ intentId: 'I_ORDER' }], nextToken: 'in2' })
+      .resolvesOnce({ intentSummaries: [{ intentId: 'I_CANCEL' }] })
+      .resolvesOnce({ intentSummaries: [{ intentId: 'I_ORDER' }], nextToken: 'in2' })
+      .resolvesOnce({ intentSummaries: [{ intentId: 'I_CANCEL' }] });
+    lex.on(DescribeIntentCommand, { intentId: 'I_ORDER' }).resolves({
+      intentId: 'I_ORDER',
+      intentName: 'CdkrdOrder',
+    });
+    lex.on(DescribeIntentCommand, { intentId: 'I_CANCEL' }).resolves({
+      intentId: 'I_CANCEL',
+      intentName: 'CdkrdCancel',
+    });
+
+    // Slots for I_ORDER paginate: Size on page 1, Qty on page 2. I_CANCEL has no slots.
+    lex
+      .on(ListSlotsCommand, { intentId: 'I_ORDER' })
+      .resolvesOnce({ slotSummaries: [{ slotId: 'SL_SIZE' }], nextToken: 'sl2' })
+      .resolvesOnce({ slotSummaries: [{ slotId: 'SL_QTY' }] })
+      .resolvesOnce({ slotSummaries: [{ slotId: 'SL_SIZE' }], nextToken: 'sl2' })
+      .resolvesOnce({ slotSummaries: [{ slotId: 'SL_QTY' }] });
+    lex.on(ListSlotsCommand, { intentId: 'I_CANCEL' }).resolves({ slotSummaries: [] });
+    lex
+      .on(DescribeSlotCommand, { slotId: 'SL_SIZE' })
+      .resolves({ slotId: 'SL_SIZE', slotName: 'Size' });
+    lex
+      .on(DescribeSlotCommand, { slotId: 'SL_QTY' })
+      .resolves({ slotId: 'SL_QTY', slotName: 'Qty' });
+
+    const out = (await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))) as {
+      BotLocales: {
+        LocaleId: string;
+        Intents: { Name: string; Slots?: { Name: string }[] }[];
+      }[];
+    };
+    // Page-2 locale (fr_FR) survived pagination.
+    expect(out.BotLocales.map((l) => l.LocaleId)).toEqual(['en_US', 'fr_FR']);
+    for (const loc of out.BotLocales) {
+      // Page-2 intent (CdkrdCancel) survived.
+      expect(loc.Intents.map((i) => i.Name)).toEqual(['CdkrdOrder', 'CdkrdCancel']);
+      // Page-2 slot (Qty) survived under the paginated intent.
+      const order = loc.Intents.find((i) => i.Name === 'CdkrdOrder');
+      expect(order?.Slots?.map((s) => s.Name)).toEqual(['Size', 'Qty']);
+    }
   });
 
   it('Lex::Bot: an empty botLocaleSummaries yields undefined (nothing to add)', async () => {

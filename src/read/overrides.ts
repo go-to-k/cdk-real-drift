@@ -6,7 +6,7 @@
 // differ from the underlying target. Returns CFn-shaped properties for the
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
-import { AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
+import { type ApiKey, AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import {
@@ -31,6 +31,7 @@ import {
   type MetricFilter,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
+  type AuthorizationRule,
   DescribeAddressesCommand,
   DescribeClientVpnAuthorizationRulesCommand,
   DescribeClientVpnEndpointsCommand,
@@ -113,15 +114,19 @@ import {
 } from '@aws-sdk/client-kafka';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
 import {
+  type BotLocaleSummary,
   DescribeBotLocaleCommand,
   DescribeIntentCommand,
   DescribeSlotCommand,
   DescribeSlotTypeCommand,
+  type IntentSummary,
   LexModelsV2Client,
   ListBotLocalesCommand,
   ListIntentsCommand,
   ListSlotsCommand,
   ListSlotTypesCommand,
+  type SlotSummary,
+  type SlotTypeSummary,
 } from '@aws-sdk/client-lex-models-v2';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import {
@@ -506,8 +511,10 @@ const dimSetEqual = (a: unknown, b: unknown): boolean => {
   const norm = (v: unknown): string =>
     JSON.stringify(
       (Array.isArray(v) ? (v as { Name?: unknown; Value?: unknown }[]) : [])
-        .map((d) => [str(d.Name) ?? '', str(d.Value) ?? ''])
-        .sort()
+        .map((d): [string, string] => [str(d.Name) ?? '', str(d.Value) ?? ''])
+        // Explicit comparator (require-array-sort-compare): order the [Name, Value]
+        // pairs deterministically so the JSON.stringify equality is order-insensitive.
+        .sort((x, y) => (x[0] === y[0] ? x[1].localeCompare(y[1]) : x[0].localeCompare(y[0])))
     );
   return norm(a) === norm(b);
 };
@@ -984,14 +991,24 @@ const readEc2ClientVpnAuthorizationRule: OverrideReader = async ({ declared, reg
   const cidr = str(declared.TargetNetworkCidr);
   const groupId = str(declared.AccessGroupId);
   const c = new EC2Client({ region, ...READ_RETRY });
-  const r = await c.send(
-    new DescribeClientVpnAuthorizationRulesCommand({ ClientVpnEndpointId: endpointId })
-  );
-  const rule = (r.AuthorizationRules ?? []).find(
-    (a) =>
-      (cidr === undefined || a.DestinationCidr === cidr) &&
-      (groupId === undefined || a.GroupId === groupId)
-  );
+  // PAGINATE: an endpoint can hold many authorization rules; reading only page 1 could
+  // misread a PRESENT rule (on a later page) as absent → a FALSE `deleted`. Follow
+  // NextToken (EC2 capitalizes it) until the matching rule is found or all pages are read.
+  const isOurRule = (a: AuthorizationRule): boolean =>
+    (cidr === undefined || a.DestinationCidr === cidr) &&
+    (groupId === undefined || a.GroupId === groupId);
+  let rule: AuthorizationRule | undefined;
+  let nextToken: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeClientVpnAuthorizationRulesCommand({
+        ClientVpnEndpointId: endpointId,
+        NextToken: nextToken,
+      })
+    );
+    rule = (r.AuthorizationRules ?? []).find(isOurRule);
+    nextToken = r.NextToken;
+  } while (!rule && nextToken);
   if (!rule)
     throw new ResourceGoneError(
       `ClientVpnAuthorizationRule cidr=${cidr} group=${groupId} absent from endpoint ${endpointId}`
@@ -1904,8 +1921,20 @@ const readAppSyncApiKey: OverrideReader = async ({ physicalId, declared, region 
   const keyId = m?.[2];
   if (!apiId) return undefined;
   const c = new AppSyncClient({ region, ...READ_RETRY });
-  const keys = (await c.send(new ListApiKeysCommand({ apiId }))).apiKeys ?? [];
-  const k = keyId ? keys.find((x) => x.id === keyId) : keys[0];
+  // PAGINATE: an API can hold many keys; reading only page 1 could miss the declared key
+  // (on a later page) → a FALSE `skipped` for a still-present key. Follow nextToken
+  // (AppSync lowercases it) to gather ALL keys before matching. Stop early once the
+  // keyId-matched key is found; otherwise accumulate every page.
+  const keys: ApiKey[] = [];
+  let nextToken: string | undefined;
+  let k: ApiKey | undefined;
+  do {
+    const r = await c.send(new ListApiKeysCommand({ apiId, ...(nextToken && { nextToken }) }));
+    keys.push(...(r.apiKeys ?? []));
+    if (keyId) k = keys.find((x) => x.id === keyId);
+    nextToken = r.nextToken;
+  } while (!k && nextToken);
+  if (!keyId) k = keys[0];
   if (!k) return undefined; // key deleted out of band -> router maps undefined to skipped
   const model: Record<string, unknown> = { ApiId: apiId };
   if (k.description !== undefined && k.description !== '') model.Description = k.description;
@@ -2510,8 +2539,21 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
   const botVersion = 'DRAFT';
   const c = new LexModelsV2Client({ region, ...READ_RETRY });
   try {
-    const locales = await c.send(new ListBotLocalesCommand({ botId, botVersion }));
-    const localeSummaries = locales.botLocaleSummaries ?? [];
+    // PAGINATE every LexModelsV2 list call (all use lowercase `nextToken`): reading only
+    // page 1 of locales / slot types / intents / slots would silently DROP later-page
+    // elements → a PARTIAL BotLocales model (a false-confidence FN — an out-of-band intent
+    // / slot on page 2 stays invisible). Accumulate all pages before use.
+    const localeSummaries: BotLocaleSummary[] = [];
+    {
+      let nextToken: string | undefined;
+      do {
+        const r = await c.send(
+          new ListBotLocalesCommand({ botId, botVersion, ...(nextToken && { nextToken }) })
+        );
+        localeSummaries.push(...(r.botLocaleSummaries ?? []));
+        nextToken = r.nextToken;
+      } while (nextToken);
+    }
     const botLocales: Rec[] = [];
     for (const ls of localeSummaries) {
       const localeId = str(ls.localeId);
@@ -2534,9 +2576,24 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
 
       // SlotTypes — custom slot types only; build id→name for slot resolution.
       const slotTypeNames = new Map<string, string>();
-      const slotTypes = await c.send(new ListSlotTypesCommand({ botId, botVersion, localeId }));
+      const slotTypeSummaries: SlotTypeSummary[] = [];
+      {
+        let nextToken: string | undefined;
+        do {
+          const r = await c.send(
+            new ListSlotTypesCommand({
+              botId,
+              botVersion,
+              localeId,
+              ...(nextToken && { nextToken }),
+            })
+          );
+          slotTypeSummaries.push(...(r.slotTypeSummaries ?? []));
+          nextToken = r.nextToken;
+        } while (nextToken);
+      }
       const cfnSlotTypes: Rec[] = [];
-      for (const sts of slotTypes.slotTypeSummaries ?? []) {
+      for (const sts of slotTypeSummaries) {
         const slotTypeId = str(sts.slotTypeId);
         if (!slotTypeId) continue;
         // Built-in slot types (AMAZON.*) carry no describe-able user model; skip them.
@@ -2582,9 +2639,19 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
       }
 
       // Intents — with their slots + slot-priority name resolution.
-      const intents = await c.send(new ListIntentsCommand({ botId, botVersion, localeId }));
+      const intentSummaries: IntentSummary[] = [];
+      {
+        let nextToken: string | undefined;
+        do {
+          const r = await c.send(
+            new ListIntentsCommand({ botId, botVersion, localeId, ...(nextToken && { nextToken }) })
+          );
+          intentSummaries.push(...(r.intentSummaries ?? []));
+          nextToken = r.nextToken;
+        } while (nextToken);
+      }
       const cfnIntents: Rec[] = [];
-      for (const is of intents.intentSummaries ?? []) {
+      for (const is of intentSummaries) {
         const intentId = str(is.intentId);
         if (!intentId) continue;
         const intent = await c.send(
@@ -2608,8 +2675,24 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
         // Slots — build id→name for the SlotPriorities resolution.
         const slotNames = new Map<string, string>();
         const cfnSlots: Rec[] = [];
-        const slots = await c.send(new ListSlotsCommand({ botId, botVersion, localeId, intentId }));
-        for (const ss of slots.slotSummaries ?? []) {
+        const slotSummaries: SlotSummary[] = [];
+        {
+          let nextToken: string | undefined;
+          do {
+            const r = await c.send(
+              new ListSlotsCommand({
+                botId,
+                botVersion,
+                localeId,
+                intentId,
+                ...(nextToken && { nextToken }),
+              })
+            );
+            slotSummaries.push(...(r.slotSummaries ?? []));
+            nextToken = r.nextToken;
+          } while (nextToken);
+        }
+        for (const ss of slotSummaries) {
           const slotId = str(ss.slotId);
           if (!slotId) continue;
           const slot = await c.send(
