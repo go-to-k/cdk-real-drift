@@ -2268,6 +2268,90 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  describe('Firehose plain-S3 destination echoed as ExtendedS3 twin (#652 shape-mismatch echo)', () => {
+    const T = 'AWS::KinesisFirehose::DeliveryStream';
+    // S3DestinationConfiguration is writeOnly (readGap on read), so the live model surfaces
+    // the destination only as the richer ExtendedS3DestinationConfiguration twin.
+    const firehoseSchema: SchemaInfo = {
+      readOnly: new Set(['Arn']),
+      writeOnly: new Set(['S3DestinationConfiguration']),
+      createOnly: new Set(['DeliveryStreamType', 'DeliveryStreamName']),
+      readOnlyPaths: ['Arn'],
+      writeOnlyPaths: ['S3DestinationConfiguration'],
+      createOnlyPaths: ['DeliveryStreamType', 'DeliveryStreamName'],
+      defaults: {},
+      defaultPaths: {},
+    };
+    // Exactly the fresh-deploy model from tests/corpus/…DeliveryStream.Tap.json (#652):
+    // declared plain S3DestinationConfiguration; live echoes it as ExtendedS3.
+    const declared = {
+      DeliveryStreamType: 'DirectPut',
+      S3DestinationConfiguration: {
+        BucketARN: 'arn:aws:s3:::mybucket',
+        BufferingHints: { IntervalInSeconds: 300, SizeInMBs: 5 },
+        CompressionFormat: 'GZIP',
+        RoleARN: 'arn:aws:iam::111111111111:role/FirehoseRole',
+      },
+    };
+    const liveTwin = (overrides: Record<string, unknown> = {}) => ({
+      DeliveryStreamType: 'DirectPut',
+      ExtendedS3DestinationConfiguration: {
+        BucketARN: 'arn:aws:s3:::mybucket',
+        BufferingHints: { IntervalInSeconds: 300, SizeInMBs: 5 },
+        CompressionFormat: 'GZIP',
+        EncryptionConfiguration: { NoEncryptionConfig: 'NoEncryption' },
+        CloudWatchLoggingOptions: { Enabled: false },
+        RoleARN: 'arn:aws:iam::111111111111:role/FirehoseRole',
+        S3BackupMode: 'Disabled',
+        ...overrides,
+      },
+    });
+
+    it('a clean deploy yields ZERO potential drift — the whole ExtendedS3 twin folds (no undeclared)', () => {
+      const t = tiers(classifyResource(res(T, declared), liveTwin(), firehoseSchema));
+      // The invariant: nothing surfaces as undeclared potential drift on a first check.
+      expect(t.undeclared).toEqual([]);
+      // The echoed overlap (BucketARN/BufferingHints/CompressionFormat/RoleARN) is matched and
+      // dropped; the extended-only service defaults fold to atDefault (or drop as trivial-empty).
+      expect(t.atDefault).toEqual([
+        'ExtendedS3DestinationConfiguration.EncryptionConfiguration',
+        'ExtendedS3DestinationConfiguration.S3BackupMode',
+      ]);
+      // The declared plain-S3 config is a readGap (writeOnly — cannot be read back).
+      expect(t.readGap).toEqual(['S3DestinationConfiguration']);
+    });
+
+    it('a genuine out-of-band change in the twin still surfaces (detection preserved)', () => {
+      // CompressionFormat flipped GZIP -> UNCOMPRESSED out of band: the overlap no longer
+      // echoes, so the whole twin surfaces as undeclared drift (fail-open, detectable).
+      const t = tiers(
+        classifyResource(
+          res(T, declared),
+          liveTwin({ CompressionFormat: 'UNCOMPRESSED' }),
+          firehoseSchema
+        )
+      );
+      expect(t.undeclared).toEqual(['ExtendedS3DestinationConfiguration']);
+    });
+
+    it('an out-of-band ENABLED encryption in the extended-only block surfaces as nested drift', () => {
+      // The overlap still echoes, but EncryptionConfiguration is no longer at its NoEncryption
+      // default (a KMS key was attached out of band) — it surfaces, the rest still folds.
+      const t = tiers(
+        classifyResource(
+          res(T, declared),
+          liveTwin({
+            EncryptionConfiguration: {
+              KMSEncryptionConfig: { AWSKMSKeyARN: 'arn:aws:kms:us-east-1:111111111111:key/abc' },
+            },
+          }),
+          firehoseSchema
+        )
+      );
+      expect(t.undeclared).toEqual(['ExtendedS3DestinationConfiguration.EncryptionConfiguration']);
+    });
+  });
+
   describe('RDS OptionGroup OptionSettings subset (Name-keyed reorder + server default-fill, #480)', () => {
     const T = 'AWS::RDS::OptionGroup';
     const declared = {
