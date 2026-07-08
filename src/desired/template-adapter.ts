@@ -10,7 +10,7 @@ import {
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
 import { classifyStackStatus, StackNotCheckableError } from '../aws-errors.js';
-import { resolveProperties } from '../normalize/intrinsic-resolver.js';
+import { evalCondition, resolveProperties } from '../normalize/intrinsic-resolver.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
 import { recoverNonAsciiMasks } from './recover-nonascii.js';
 import { parseCfnTemplate } from './yaml-cfn.js';
@@ -244,6 +244,19 @@ export async function loadDesired(
     (template.Resources ?? {}) as Record<string, any>
   )) {
     if (res.Type === 'AWS::CDK::Metadata') continue;
+    // A resource guarded by a template `Condition:` that evaluates definitively FALSE is
+    // never created by CloudFormation (the raw-CFn multi-env staple — one template serving
+    // dev/prod). It has no physical id and no live counterpart to compare, so pushing it
+    // would make classifyRead tag it a permanent `skipped: no physical id` — false
+    // "coverage incomplete" noise that also keeps `check --strict` red forever, with
+    // nothing the user can do in-tool. Drop it (matching CloudFormation's own semantics:
+    // the resource is not part of the stack). Gate on "condition FALSE **and** no physical
+    // id" so the fold is strictly noise-only: an UNRESOLVED or TRUE condition keeps today's
+    // conservative behavior, and a false condition that somehow has a physical id (a CFn
+    // anomaly) still surfaces.
+    if (typeof res.Condition === 'string' && !physIds[logicalId]) {
+      if (evalCondition(res.Condition, ctx) === false) continue;
+    }
     const cdkPath = res.Metadata?.['aws:cdk:path'];
     const declaredRaw = (res.Properties ?? {}) as Record<string, unknown>;
     resources.push({

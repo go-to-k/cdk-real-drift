@@ -505,3 +505,69 @@ describe('loadDesired stack parameter resolution', () => {
     expect(desired.resources[0]!.declared).toEqual({ Tag: 'plain' });
   });
 });
+
+describe('loadDesired resource-level Condition (#689)', () => {
+  // A resource guarded by a Condition that evaluates FALSE is never created, so it has
+  // no physical id and no live counterpart. It must be DROPPED from the desired set —
+  // not pushed through to classifyRead where it becomes a permanent
+  // `skipped: no physical id` (false "coverage incomplete" noise; keeps --strict red).
+  function condStack(
+    cfn: ReturnType<typeof mockClient>,
+    envValue: string,
+    resourceSummaries: Array<{ LogicalResourceId: string; PhysicalResourceId: string }>
+  ) {
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Parameters: { Env: { Type: 'String', Default: 'dev' } },
+        Conditions: {
+          ProdCond: { 'Fn::Equals': [{ Ref: 'Env' }, 'prod'] }, // false when Env=dev
+          DevCond: { 'Fn::Equals': [{ Ref: 'Env' }, 'dev'] }, // true when Env=dev
+          UnkCond: { 'Fn::Equals': [{ Ref: 'Nonexistent' }, 'x'] }, // UNRESOLVED
+        },
+        Resources: {
+          ProdOnly: { Type: 'AWS::SNS::Topic', Condition: 'ProdCond' }, // false → drop
+          DevOnly: { Type: 'AWS::SNS::Topic', Condition: 'DevCond' }, // true → keep
+          Unk: { Type: 'AWS::SNS::Topic', Condition: 'UnkCond' }, // unresolved → keep
+          Always: { Type: 'AWS::SNS::Topic' }, // no condition → keep
+          // A condition-FALSE resource that somehow HAS a physical id (a CFn anomaly)
+          // must still surface — the fold is gated on "false AND no physical id".
+          AnomalyFalse: { Type: 'AWS::SNS::Topic', Condition: 'ProdCond' },
+        },
+      }),
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: resourceSummaries.map((s) => ({
+        LogicalResourceId: s.LogicalResourceId,
+        PhysicalResourceId: s.PhysicalResourceId,
+        ResourceType: 'AWS::SNS::Topic',
+        LastUpdatedTimestamp: new Date(0),
+        ResourceStatus: 'CREATE_COMPLETE',
+      })),
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/C/x',
+          StackName: 'C',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [{ ParameterKey: 'Env', ParameterValue: envValue }],
+        },
+      ],
+    });
+  }
+
+  it('drops a condition-FALSE resource with no physical id; keeps true/unresolved/unconditioned', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    condStack(cfn, 'dev', [
+      { LogicalResourceId: 'DevOnly', PhysicalResourceId: 'arn:dev' },
+      { LogicalResourceId: 'Always', PhysicalResourceId: 'arn:always' },
+      // Anomaly: a condition-false resource that nonetheless has a physical id.
+      { LogicalResourceId: 'AnomalyFalse', PhysicalResourceId: 'arn:anomaly' },
+    ]);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'C', 'us-east-1');
+    const ids = desired.resources.map((r) => r.logicalId).sort();
+    // ProdOnly (condition false, no physical id) is dropped; everything else survives.
+    expect(ids).toEqual(['Always', 'AnomalyFalse', 'DevOnly', 'Unk']);
+  });
+});
