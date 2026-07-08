@@ -65,11 +65,22 @@ export function buildResolverContext(
   // Fn::Join and mis-evaluate conditions like HasTrustedAccounts).
   const paramDefs = (template.Parameters ?? {}) as Record<
     string,
-    { Default?: unknown; Type?: string }
+    { Default?: unknown; Type?: string; NoEcho?: unknown }
   >;
   const isList = (k: string): boolean => {
     const t = paramDefs[k]?.Type ?? '';
-    return t === 'CommaDelimitedList' || t.startsWith('List<');
+    // Plain list params AND SSM list-typed params. An SSM list param
+    // (AWS::SSM::Parameter::Value<List<...>> / <CommaDelimitedList>) is returned by
+    // DescribeStacks' ResolvedValue as a COMMA-JOINED string (AWS-documented), so it must
+    // split to an array too — else declared "sg-a,sg-b" (string) vs live ["sg-a","sg-b"]
+    // is a declared FP on every list-typed property fed by it, and an Fn::Select/Join over
+    // it fails closed to UNRESOLVED (#745).
+    return (
+      t === 'CommaDelimitedList' ||
+      t.startsWith('List<') ||
+      t.includes('::Parameter::Value<List<') ||
+      t.includes('::Parameter::Value<CommaDelimitedList')
+    );
   };
   // CommaDelimitedList values are whitespace-trimmed by CloudFormation
   // ("a, b , c" -> ["a","b","c"]); mirror that so a Fn::Select / membership test
@@ -78,6 +89,15 @@ export function buildResolverContext(
     isList(k) ? (raw === '' ? [] : raw.split(',').map((s) => s.trim())) : raw;
   const params: Record<string, string | string[]> = {};
   for (const [k, def] of Object.entries(paramDefs)) {
+    // A NoEcho parameter's template Default is a PLACEHOLDER (the raw-CFn/SAM
+    // `Default: "changeme"` staple), NOT the real deployed secret. Seeding it makes every
+    // property fed by the param a declared FP ("placeholder" vs the live secret) that
+    // survives record and whose revert would OVERWRITE the live secret with the placeholder;
+    // a Condition/Fn::If over it would also bake the wrong branch. The real deployed value
+    // comes back masked '****' from DescribeStacks and is dropped in loadDesired, so skip the
+    // Default too and let the param resolve UNRESOLVED (property skipped, conditions
+    // fail-closed) — the same safe treatment as the masked deployed value (#744).
+    if (def?.NoEcho === true || def?.NoEcho === 'true') continue;
     if (def && 'Default' in def) params[k] = toParam(k, String(def.Default));
   }
   for (const [k, v] of Object.entries(stackParams)) params[k] = toParam(k, v); // deployed values win
@@ -231,6 +251,15 @@ export async function loadDesired(
     stackName,
     stackId
   );
+
+  // AWS::NotificationARNs is a LIST-valued pseudo-parameter that DescribeStacks already
+  // returned above — plumb it so a `{ Ref: "AWS::NotificationARNs" }` (nested-stack /
+  // alarm-action pattern) resolves instead of surfacing as a permanent `unresolved` footer
+  // that also blocks `--strict`. It goes in `params` (which carries arrays) rather than the
+  // scalar-typed `pseudo` map; resolveRef checks pseudo then params, and CFn reserves the
+  // `AWS::` prefix so no user parameter can collide. Absent/empty → leave it unresolved (#746).
+  const notificationArns = stack?.NotificationARNs ?? [];
+  if (notificationArns.length > 0) ctx.params['AWS::NotificationARNs'] = notificationArns;
 
   // Fn::ImportValue is synchronous in the resolver, so prefetch exports here — but
   // ONLY when the template actually references it, so normal stacks pay nothing for the

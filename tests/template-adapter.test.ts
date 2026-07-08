@@ -265,6 +265,48 @@ describe('buildResolverContext', () => {
     expect(partOf('us-isof-south-1')).toEqual({ p: 'aws-iso-f', u: 'csp.hci.ic.gov' });
     expect(partOf('eu-isoe-west-1')).toEqual({ p: 'aws-iso-e', u: 'cloud.adc-e.uk' });
   });
+
+  it('splits an SSM list-typed param (Parameter::Value<List<...>>) to a trimmed array (#745)', () => {
+    // An SSM list param's deployed ResolvedValue is a COMMA-JOINED string; it must split to
+    // an array or a list-typed property (SecurityGroupIds/Subnets) Ref'ing it is a declared
+    // FP (declared "sg-a,sg-b" vs live ["sg-a","sg-b"]).
+    const template = {
+      Parameters: {
+        Sgs: { Type: 'AWS::SSM::Parameter::Value<List<AWS::EC2::SecurityGroup::Id>>' },
+        Csv: { Type: 'AWS::SSM::Parameter::Value<CommaDelimitedList>' },
+        Plain: { Type: 'AWS::SSM::Parameter::Value<String>' },
+      },
+    };
+    const ctx = buildResolverContext(
+      template,
+      { Sgs: 'sg-a, sg-b ,sg-c', Csv: 'x,y', Plain: 'single' },
+      {},
+      'us-east-1',
+      '999',
+      'S',
+      'arn'
+    );
+    expect(ctx.params.Sgs).toEqual(['sg-a', 'sg-b', 'sg-c']);
+    expect(ctx.params.Csv).toEqual(['x', 'y']);
+    expect(ctx.params.Plain).toBe('single'); // a scalar SSM param is NOT split
+  });
+
+  it('does NOT seed a NoEcho parameter from its template Default (#744)', () => {
+    // A NoEcho Default is a placeholder, not the deployed secret. Seeding it FPs every
+    // property fed by the param and revert would overwrite the live secret; it must stay
+    // out of ctx so a Ref resolves UNRESOLVED (deployed value is masked '****' and dropped).
+    const template = {
+      Parameters: {
+        Secret: { Type: 'String', NoEcho: true, Default: 'changeme' },
+        SecretStr: { Type: 'String', NoEcho: 'true', Default: 'changeme2' }, // NoEcho as string
+        Plain: { Type: 'String', Default: 'kept' },
+      },
+    };
+    const ctx = buildResolverContext(template, {}, {}, 'us-east-1', '999', 'S', 'arn');
+    expect('Secret' in ctx.params).toBe(false); // NoEcho Default NOT seeded
+    expect('SecretStr' in ctx.params).toBe(false);
+    expect(ctx.params.Plain).toBe('kept'); // an ordinary Default is still seeded
+  });
 });
 
 describe('parseTemplateBody', () => {
@@ -586,6 +628,56 @@ describe('loadDesired stack parameter resolution', () => {
     paramMocks(cfn, [{ ParameterKey: 'P', ParameterValue: 'plain' }]);
     const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'P', 'us-east-1');
     expect(desired.resources[0]!.declared).toEqual({ Tag: 'plain' });
+  });
+});
+
+describe('loadDesired Ref AWS::NotificationARNs (#746)', () => {
+  function notifMocks(cfn: ReturnType<typeof mockClient>, notificationArns?: string[]) {
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: {
+          Q: { Type: 'AWS::SQS::Queue', Properties: { Arns: { Ref: 'AWS::NotificationARNs' } } },
+        },
+      }),
+    });
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'Q',
+          PhysicalResourceId: 'q-phys',
+          ResourceType: 'AWS::SQS::Queue',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/N/x',
+          StackName: 'N',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+          ...(notificationArns ? { NotificationARNs: notificationArns } : {}),
+        },
+      ],
+    });
+  }
+
+  it('resolves Ref AWS::NotificationARNs to the DescribeStacks NotificationARNs list', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const arns = ['arn:aws:sns:us-east-1:111122223333:Topic1'];
+    notifMocks(cfn, arns);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'N', 'us-east-1');
+    expect(desired.resources[0]!.declared).toEqual({ Arns: arns });
+  });
+
+  it('leaves Ref AWS::NotificationARNs UNRESOLVED when the stack has none', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    notifMocks(cfn, undefined);
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'N', 'us-east-1');
+    expect(desired.resources[0]!.declared).toEqual({ Arns: UNRESOLVED });
   });
 });
 
