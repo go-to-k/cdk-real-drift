@@ -9706,6 +9706,71 @@ describe('Face-stack false-positive folds', () => {
     expect(mutated.undeclared.sort()).toEqual(['ServiceLinkedRoleARN', 'TerminationPolicies']);
   });
 
+  it('ELBv2 TargetGroup health-check defaults derive from TargetType/ProtocolVersion (#648)', () => {
+    // gRPC group: interval 30, path /AWS.ALB/healthcheck, Matcher {GrpcCode:12}, threshold 5.
+    const grpc = tiers(
+      classifyResource(
+        {
+          logicalId: 'GrpcTg',
+          resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+          physicalId: 'grpc',
+          declared: { TargetType: 'ip', Protocol: 'HTTP', ProtocolVersion: 'GRPC' },
+        },
+        {
+          HealthCheckIntervalSeconds: 30,
+          HealthCheckPath: '/AWS.ALB/healthcheck',
+          Matcher: { GrpcCode: '12' },
+          HealthyThresholdCount: 5,
+        },
+        emptySchema
+      )
+    );
+    expect(grpc.undeclared).toEqual([]);
+    expect(grpc.atDefault.sort()).toEqual([
+      'HealthCheckIntervalSeconds',
+      'HealthCheckPath',
+      'HealthyThresholdCount',
+      'Matcher',
+    ]);
+
+    // lambda group: interval 35, timeout 30, path / (no ProtocolVersion). ProtocolVersion read
+    // from live for an instance group; a lambda group has none.
+    const lambda = tiers(
+      classifyResource(
+        {
+          logicalId: 'LamTg',
+          resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+          physicalId: 'lam',
+          declared: { TargetType: 'lambda' },
+        },
+        {
+          HealthCheckIntervalSeconds: 35,
+          HealthCheckTimeoutSeconds: 30,
+          HealthCheckPath: '/',
+          HealthyThresholdCount: 5,
+        },
+        emptySchema
+      )
+    );
+    expect(lambda.undeclared).toEqual([]);
+
+    // Detection preserved: an out-of-band interval change (a group that never declared it)
+    // away from the derived default surfaces as real undeclared drift.
+    const drifted = tiers(
+      classifyResource(
+        {
+          logicalId: 'InstTg',
+          resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+          physicalId: 'inst',
+          declared: { TargetType: 'instance', Protocol: 'HTTP' },
+        },
+        { HealthCheckIntervalSeconds: 60, HealthCheckPath: '/', HealthyThresholdCount: 5 },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['HealthCheckIntervalSeconds']);
+  });
+
   it('WAF WebACL ByteMatch SearchStringBase64 echo folds; a changed pattern is real drift', () => {
     const declared = {
       Rules: [

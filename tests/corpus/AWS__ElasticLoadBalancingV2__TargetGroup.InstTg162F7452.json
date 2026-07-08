@@ -1,0 +1,391 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "InstTg162F7452",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+    "constructPath": "CdkRealDriftHunt0708iMisc/InstTg",
+    "declared": {
+      "Name": "cdkrd-hunt0708i-inst",
+      "Port": 80,
+      "Protocol": "HTTP",
+      "TargetGroupAttributes": [
+        {
+          "Key": "stickiness.enabled",
+          "Value": "false"
+        }
+      ],
+      "TargetType": "instance",
+      "VpcId": "vpc-024ce3500f00b6155"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+    "HealthCheckIntervalSeconds": 30,
+    "LoadBalancerArns": [],
+    "Matcher": {
+      "HttpCode": "200"
+    },
+    "HealthCheckPath": "/",
+    "Port": 80,
+    "Targets": [],
+    "HealthCheckEnabled": true,
+    "ProtocolVersion": "HTTP1",
+    "UnhealthyThresholdCount": 2,
+    "HealthCheckTimeoutSeconds": 5,
+    "Name": "cdkrd-hunt0708i-inst",
+    "VpcId": "vpc-024ce3500f00b6155",
+    "TargetGroupFullName": "targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+    "HealthyThresholdCount": 5,
+    "HealthCheckProtocol": "HTTP",
+    "TargetGroupAttributes": [
+      {
+        "Value": "lb_cookie",
+        "Key": "stickiness.type"
+      },
+      {
+        "Value": "86400",
+        "Key": "stickiness.app_cookie.duration_seconds"
+      },
+      {
+        "Value": "1",
+        "Key": "target_group_health.dns_failover.minimum_healthy_targets.count"
+      },
+      {
+        "Value": "use_load_balancer_configuration",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "86400",
+        "Key": "stickiness.lb_cookie.duration_seconds"
+      },
+      {
+        "Value": "off",
+        "Key": "target_group_health.dns_failover.minimum_healthy_targets.percentage"
+      },
+      {
+        "Value": "false",
+        "Key": "stickiness.enabled"
+      },
+      {
+        "Value": "off",
+        "Key": "target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage"
+      },
+      {
+        "Value": "0",
+        "Key": "slow_start.duration_seconds"
+      },
+      {
+        "Value": "300",
+        "Key": "deregistration_delay.timeout_seconds"
+      },
+      {
+        "Value": "1",
+        "Key": "target_group_health.unhealthy_state_routing.minimum_healthy_targets.count"
+      },
+      {
+        "Value": "off",
+        "Key": "load_balancing.algorithm.anomaly_mitigation"
+      },
+      {
+        "Value": "",
+        "Key": "stickiness.app_cookie.cookie_name"
+      },
+      {
+        "Value": "round_robin",
+        "Key": "load_balancing.algorithm.type"
+      }
+    ],
+    "TargetType": "instance",
+    "HealthCheckPort": "traffic-port",
+    "Protocol": "HTTP",
+    "TargetGroupName": "cdkrd-hunt0708i-inst",
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftHunt0708iMisc/04e5b890-7a8c-11f1-a555-0e325c63a7c3",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftHunt0708iMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "InstTg162F7452",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["LoadBalancerArns", "TargetGroupArn", "TargetGroupFullName", "TargetGroupName"],
+    "writeOnly": [],
+    "createOnly": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "LoadBalancerArns",
+      "TargetGroupArn",
+      "TargetGroupFullName",
+      "TargetGroupName"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["LoadBalancerArns"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[deregistration_delay.timeout_seconds]",
+      "actual": "300",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[load_balancing.algorithm.anomaly_mitigation]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[load_balancing.algorithm.type]",
+      "actual": "round_robin",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "use_load_balancer_configuration",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[slow_start.duration_seconds]",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.app_cookie.duration_seconds]",
+      "actual": "86400",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.lb_cookie.duration_seconds]",
+      "actual": "86400",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.type]",
+      "actual": "lb_cookie",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckIntervalSeconds",
+      "actual": 30,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Matcher",
+      "actual": {
+        "HttpCode": "200"
+      },
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPath",
+      "actual": "/",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Targets",
+      "actual": [],
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "ProtocolVersion",
+      "actual": "HTTP1",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "UnhealthyThresholdCount",
+      "actual": 2,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthyThresholdCount",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "HTTP",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "InstTg162F7452",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPort",
+      "actual": "traffic-port",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-inst/260e8a45e360c142",
+      "constructPath": "CdkRealDriftHunt0708iMisc/InstTg"
+    }
+  ]
+}
