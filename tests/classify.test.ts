@@ -9083,7 +9083,7 @@ describe('real-stack false-positive folds', () => {
     expect(t.undeclared).toEqual([]);
   });
 
-  it('Lambda default LoggingConfig sub-keys fold (LogGroup generated, LogFormat/SystemLogLevel atDefault)', () => {
+  it('Lambda default LoggingConfig sub-keys fold; a re-pointed LogGroup surfaces (#703)', () => {
     // The template declares a partial LoggingConfig (as a CDK provider-framework function
     // does); AWS fills in the default LogGroup + format/level, which descend as sub-keys.
     const res: DesiredResource = {
@@ -9102,9 +9102,28 @@ describe('real-stack false-positive folds', () => {
       },
     };
     const t = tiers(classifyResource(res, live, mkSchema()));
-    expect(t.generated).toEqual(['LoggingConfig.LogGroup']);
-    expect(t.atDefault.sort()).toEqual(['LoggingConfig.LogFormat', 'LoggingConfig.SystemLogLevel']);
+    // #703: the AWS-default LogGroup `/aws/lambda/<name>` now folds via a DERIVED equality gate
+    // (atDefault), not the value-independent `generated` fold, so a change away is detectable.
+    expect(t.generated).toEqual([]);
+    expect(t.atDefault.sort()).toEqual([
+      'LoggingConfig.LogFormat',
+      'LoggingConfig.LogGroup',
+      'LoggingConfig.SystemLogLevel',
+    ]);
     expect(t.undeclared).toEqual([]);
+    // #703 core: logs RE-POINTED out of band to a custom group must SURFACE (was invisible).
+    const repointed = {
+      FunctionName: 'my-fn',
+      LoggingConfig: {
+        ApplicationLogLevel: 'FATAL',
+        LogGroup: 'my-custom-log-group',
+        LogFormat: 'Text',
+        SystemLogLevel: 'INFO',
+      },
+    };
+    expect(tiers(classifyResource(res, repointed, mkSchema())).undeclared).toEqual([
+      'LoggingConfig.LogGroup',
+    ]);
     // a function that opts into JSON logging still surfaces the non-default LogFormat
     const jsonLive = {
       FunctionName: 'my-fn',
