@@ -596,6 +596,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `AWS::ElastiCache::User` / `AWS::MemoryDB::User` with its writeOnly
   `AccessString` — the Redis/Valkey ACL; an out-of-band permission grant is
   otherwise invisible to the Cloud Control read),
+  `memorydb:DescribeParameters` + `memorydb:DescribeParameterGroups` (supplement an
+  `AWS::MemoryDB::ParameterGroup` with its writeOnly `Parameters` — folding the
+  family-default fill by diffing the managed `default.<family>` group; the MemoryDB
+  provider does not apply declared parameters on CREATE, so this surfaces the
+  never-applied tuning that was otherwise an invisible readGap),
   `redshift-serverless:GetWorkgroup` (supplements an
   `AWS::RedshiftServerless::Workgroup` with its writeOnly `ConfigParameters` /
   `SecurityGroupIds` / `SubnetIds`, which the Cloud Control read returns only
@@ -643,6 +648,10 @@ is refused, never overwritten, so the un-read credential is never cleared),
 `AWS::ElastiCache::ParameterGroup` — a changed declared parameter is modified back
 to its desired value; an out-of-band-added undeclared parameter is reset to the
 family default),
+`memorydb:UpdateParameterGroup` / `ResetParameterGroup` (revert an
+`AWS::MemoryDB::ParameterGroup` — a declared parameter is applied to its desired
+value, which also materializes tuning the provider never applied on CREATE; an
+out-of-band-added undeclared parameter is reset to the family default),
 `ses:UpdateReceiptRule` (reverts an `AWS::SES::ReceiptRule` — the whole rule is
 re-supplied in place, since Cloud Control has no handler for the type),
 `cloudwatch:PutAnomalyDetector` (reverts an `AWS::CloudWatch::AnomalyDetector`

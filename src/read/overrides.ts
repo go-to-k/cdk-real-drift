@@ -80,6 +80,8 @@ import {
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
 import {
+  DescribeParameterGroupsCommand as DescribeMemoryDbParameterGroupsCommand,
+  DescribeParametersCommand as DescribeMemoryDbParametersCommand,
   DescribeUsersCommand as DescribeMemoryDbUsersCommand,
   MemoryDBClient,
 } from '@aws-sdk/client-memorydb';
@@ -2256,6 +2258,91 @@ const supplementMemoryDbUser: SupplementReader = async ({ physicalId, declared, 
   return access !== undefined ? { AccessString: access } : undefined;
 };
 
+// Read every parameter of a MemoryDB parameter group as a { name -> value } map (paginated).
+const readMemoryDbParamMap = async (
+  c: MemoryDBClient,
+  groupName: string
+): Promise<Record<string, string>> => {
+  const out: Record<string, string> = {};
+  let token: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeMemoryDbParametersCommand({ ParameterGroupName: groupName, NextToken: token })
+    );
+    for (const p of r.Parameters ?? []) {
+      const n = str(p.Name);
+      const v = str(p.Value);
+      if (n !== undefined && v !== undefined) out[n] = v;
+    }
+    token = str(r.NextToken);
+  } while (token !== undefined);
+  return out;
+};
+
+// The managed `default.<family>` parameter group carries the family's default parameter
+// values. Find it by listing parameter groups and matching the family on a `default.`-prefixed
+// name (the name transform — memorydb_redis7 -> default.memorydb-redis7 — is not reliable to
+// synthesize, so match on Family instead). Returns {} when it cannot be resolved.
+const readMemoryDbFamilyDefaults = async (
+  c: MemoryDBClient,
+  family: string
+): Promise<Record<string, string>> => {
+  let token: string | undefined;
+  do {
+    const r = await c.send(new DescribeMemoryDbParameterGroupsCommand({ NextToken: token }));
+    for (const g of r.ParameterGroups ?? []) {
+      const name = str(g.Name);
+      if (name?.startsWith('default.') && str(g.Family) === family) {
+        return readMemoryDbParamMap(c, name);
+      }
+    }
+    token = str(r.NextToken);
+  } while (token !== undefined);
+  return {};
+};
+
+// AWS::MemoryDB::ParameterGroup — `Parameters` is writeOnly in the registry schema, so Cloud
+// Control never echoes it and a declared parameter was an unverifiable readGap (out-of-band
+// changes silently invisible). Worse, the MemoryDB CloudFormation provider does NOT apply the
+// declared Parameters on CREATE (it applies them only on a later UPDATE — verified on a raw,
+// non-CDK template; AWS's own drift detection reports IN_SYNC because it too cannot read the
+// writeOnly Parameters), so a freshly created group silently runs the family defaults, not the
+// declared tuning. Project the live parameters (via memorydb:DescribeParameters — the twin of
+// ElastiCache #612, but MemoryDB has NO source=user filter and no modified flag) so the classify
+// pipeline compares them; schema-strip OVERRIDE_READABLE_WRITEONLY exempts `Parameters` from the
+// writeOnly strip. To avoid re-introducing a default-fill FP (a group reads back ALL ~40 family
+// parameters), fold undeclared parameters still at their family default by diffing against the
+// managed `default.<family>` group — projecting a parameter only when it DIVERGES from the family
+// default (a real modification, declared or out-of-band) OR the template DECLARES it (so a declared
+// parameter is always comparable, including the CFn-never-applied divergence we want to surface).
+// FP-safe: when the family defaults cannot be resolved, fall back to projecting only the declared
+// parameters (never the full effective set).
+const supplementMemoryDbParameterGroup: SupplementReader = async ({
+  physicalId,
+  declared,
+  region,
+}) => {
+  const name = str(declared.ParameterGroupName) ?? str(physicalId);
+  if (!name) return undefined;
+  const c = new MemoryDBClient({ region, ...READ_RETRY });
+  const live = await readMemoryDbParamMap(c, name);
+  if (Object.keys(live).length === 0) return undefined;
+  const family = str(declared.Family);
+  const defaults = family ? await readMemoryDbFamilyDefaults(c, family) : {};
+  const haveDefaults = Object.keys(defaults).length > 0;
+  const declaredParams =
+    typeof declared.Parameters === 'object' && declared.Parameters !== null
+      ? (declared.Parameters as Record<string, unknown>)
+      : {};
+  const projected: Record<string, string> = {};
+  for (const [k, v] of Object.entries(live)) {
+    const isDeclared = Object.prototype.hasOwnProperty.call(declaredParams, k);
+    const isModified = haveDefaults && v !== defaults[k];
+    if (isDeclared || isModified) projected[k] = v;
+  }
+  return Object.keys(projected).length > 0 ? { Parameters: projected } : undefined;
+};
+
 // AWS::RedshiftServerless::Workgroup — ConfigParameters / SecurityGroupIds / SubnetIds are
 // writeOnly in the registry schema and, unlike the hunt's harvested corpus suggested, the
 // Cloud Control GetResource does NOT return them at the top level (they live only inside the
@@ -2593,5 +2680,6 @@ export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::ECS::Service': supplementEcsService,
   'AWS::ElastiCache::User': supplementElastiCacheUser,
   'AWS::MemoryDB::User': supplementMemoryDbUser,
+  'AWS::MemoryDB::ParameterGroup': supplementMemoryDbParameterGroup,
   'AWS::RedshiftServerless::Workgroup': supplementRedshiftServerlessWorkgroup,
 };

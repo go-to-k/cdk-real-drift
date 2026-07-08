@@ -37,6 +37,11 @@ import {
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
 import {
+  DescribeParameterGroupsCommand as DescribeMemoryDbParameterGroupsCommand,
+  DescribeParametersCommand as DescribeMemoryDbParametersCommand,
+  MemoryDBClient,
+} from '@aws-sdk/client-memorydb';
+import {
   DescribeBotLocaleCommand,
   DescribeIntentCommand,
   DescribeSlotCommand,
@@ -119,6 +124,7 @@ const dms = mockClient(DatabaseMigrationServiceClient);
 const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
 const elasticache = mockClient(ElastiCacheClient);
+const memorydb = mockClient(MemoryDBClient);
 const eb = mockClient(ElasticBeanstalkClient);
 const lex = mockClient(LexModelsV2Client);
 
@@ -155,6 +161,7 @@ beforeEach(() => {
     mediaconvert,
     dax,
     elasticache,
+    memorydb,
     lex,
     eb,
   ])
@@ -3131,5 +3138,95 @@ describe('SDK supplements', () => {
 
   it('Lex::Bot: undefined (skipped) when the physical id is empty', async () => {
     expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}))).toBeUndefined();
+  });
+
+  describe('MemoryDB::ParameterGroup', () => {
+    const stubGroups = (): void => {
+      memorydb.on(DescribeMemoryDbParameterGroupsCommand).resolves({
+        ParameterGroups: [
+          { Name: 'default.memorydb-redis7', Family: 'memorydb_redis7' },
+          { Name: 'pg', Family: 'memorydb_redis7' },
+        ],
+      } as never);
+    };
+    const params = (m: Record<string, string>): never =>
+      ({ Parameters: Object.entries(m).map(([Name, Value]) => ({ Name, Value })) }) as never;
+
+    it('projects declared params (even at the family default — the CFn-never-applied case) + out-of-band-modified, folding untouched defaults', async () => {
+      stubGroups();
+      // The declared maxmemory-policy/timeout read back at the family DEFAULT (the MemoryDB
+      // provider never applied them on create); maxmemory-samples was modified out of band;
+      // activedefrag is an untouched default.
+      memorydb.on(DescribeMemoryDbParametersCommand, { ParameterGroupName: 'pg' }).resolves(
+        params({
+          'maxmemory-policy': 'noeviction',
+          timeout: '0',
+          activedefrag: 'no',
+          'maxmemory-samples': '10',
+        })
+      );
+      memorydb
+        .on(DescribeMemoryDbParametersCommand, { ParameterGroupName: 'default.memorydb-redis7' })
+        .resolves(
+          params({
+            'maxmemory-policy': 'noeviction',
+            timeout: '0',
+            activedefrag: 'no',
+            'maxmemory-samples': '3',
+          })
+        );
+      const out = await SDK_SUPPLEMENTS['AWS::MemoryDB::ParameterGroup'](
+        ctx(
+          {
+            ParameterGroupName: 'pg',
+            Family: 'memorydb_redis7',
+            Parameters: { 'maxmemory-policy': 'allkeys-lru', timeout: '300' },
+          },
+          'pg'
+        )
+      );
+      // declared → always projected (surfaces the never-applied divergence); modified undeclared
+      // → projected; untouched undeclared default (activedefrag) → folded.
+      expect(out).toEqual({
+        Parameters: { 'maxmemory-policy': 'noeviction', timeout: '0', 'maxmemory-samples': '10' },
+      });
+    });
+
+    it('falls back to declared-only when the family default group cannot be resolved (no fill FP)', async () => {
+      memorydb
+        .on(DescribeMemoryDbParameterGroupsCommand)
+        .resolves({ ParameterGroups: [] } as never);
+      memorydb
+        .on(DescribeMemoryDbParametersCommand, { ParameterGroupName: 'pg' })
+        .resolves(
+          params({ 'maxmemory-policy': 'allkeys-lru', timeout: '300', activedefrag: 'no' })
+        );
+      const out = await SDK_SUPPLEMENTS['AWS::MemoryDB::ParameterGroup'](
+        ctx(
+          {
+            ParameterGroupName: 'pg',
+            Family: 'memorydb_redis7',
+            Parameters: { 'maxmemory-policy': 'allkeys-lru', timeout: '300' },
+          },
+          'pg'
+        )
+      );
+      // Without defaults, only the declared params project — the undeclared `activedefrag` is NOT
+      // surfaced (never a full-effective-set fill FP).
+      expect(out).toEqual({ Parameters: { 'maxmemory-policy': 'allkeys-lru', timeout: '300' } });
+    });
+
+    it('undefined when the group has no readable parameters', async () => {
+      memorydb.on(DescribeMemoryDbParametersCommand).resolves({ Parameters: [] } as never);
+      expect(
+        await SDK_SUPPLEMENTS['AWS::MemoryDB::ParameterGroup'](
+          ctx({ ParameterGroupName: 'pg', Family: 'memorydb_redis7' }, 'pg')
+        )
+      ).toBeUndefined();
+    });
+
+    it('undefined (skipped) when no name is resolvable', async () => {
+      expect(await SDK_SUPPLEMENTS['AWS::MemoryDB::ParameterGroup'](ctx({}))).toBeUndefined();
+    });
   });
 });

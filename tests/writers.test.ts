@@ -143,6 +143,11 @@ import {
   ResetCacheParameterGroupCommand,
 } from '@aws-sdk/client-elasticache';
 import {
+  MemoryDBClient,
+  ResetParameterGroupCommand as ResetMemoryDbParameterGroupCommand,
+  UpdateParameterGroupCommand as UpdateMemoryDbParameterGroupCommand,
+} from '@aws-sdk/client-memorydb';
+import {
   DescribeClientVpnEndpointsCommand,
   EC2Client,
   ModifyClientVpnEndpointCommand,
@@ -199,6 +204,7 @@ const kafka = mockClient(KafkaClient);
 const codebuild = mockClient(CodeBuildClient);
 const dax = mockClient(DAXClient);
 const elasticache = mockClient(ElastiCacheClient);
+const memorydb = mockClient(MemoryDBClient);
 const ec2 = mockClient(EC2Client);
 const lex = mockClient(LexModelsV2Client);
 
@@ -236,6 +242,7 @@ beforeEach(() => {
   sqs.reset();
   serviceDiscovery.reset();
   elasticache.reset();
+  memorydb.reset();
   docdb.reset();
   eb.reset();
   cloudfront.reset();
@@ -1776,6 +1783,58 @@ describe('ElastiCache ParameterGroup writer (source=user reader; Modify/Reset)',
     ]);
     expect(elasticache.commandCalls(ModifyCacheParameterGroupCommand)).toHaveLength(0);
     expect(elasticache.commandCalls(ResetCacheParameterGroupCommand)).toHaveLength(0);
+  });
+});
+
+describe('MemoryDB ParameterGroup writer (SDK_SUPPLEMENTS reader; Update/Reset)', () => {
+  const PGN = 'cdkrd-memorydb-params';
+  // No SDK_OVERRIDES reader for this type (it is a supplement), so desiredModel applies the ops to
+  // an empty base — the desired values come from each op's `value`, no read stub needed.
+
+  it('a declared param (incl. one the provider never applied) -> UpdateParameterGroup', async () => {
+    memorydb.on(UpdateMemoryDbParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::MemoryDB::ParameterGroup'](ctx({ physicalId: PGN }), [
+      {
+        op: 'add',
+        path: '/Parameters/maxmemory-policy',
+        value: 'allkeys-lru',
+        human: 'Parameters.maxmemory-policy -> deployed-template value',
+      },
+    ]);
+    const update = memorydb.commandCalls(UpdateMemoryDbParameterGroupCommand);
+    expect(update).toHaveLength(1);
+    expect(update[0]!.args[0].input).toEqual({
+      ParameterGroupName: PGN,
+      ParameterNameValues: [{ ParameterName: 'maxmemory-policy', ParameterValue: 'allkeys-lru' }],
+    });
+    expect(memorydb.commandCalls(ResetMemoryDbParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('an undeclared added param -> ResetParameterGroup with bare ParameterNames (no update)', async () => {
+    memorydb.on(ResetMemoryDbParameterGroupCommand).resolves({});
+    await SDK_WRITERS['AWS::MemoryDB::ParameterGroup'](ctx({ physicalId: PGN }), [
+      {
+        op: 'remove',
+        path: '/Parameters/maxmemory-samples',
+        human: 'Parameters.maxmemory-samples -> remove (undeclared, not in baseline)',
+      },
+    ]);
+    const reset = memorydb.commandCalls(ResetMemoryDbParameterGroupCommand);
+    expect(reset).toHaveLength(1);
+    expect(reset[0]!.args[0].input).toEqual({
+      ParameterGroupName: PGN,
+      AllParameters: false,
+      ParameterNames: ['maxmemory-samples'],
+    });
+    expect(memorydb.commandCalls(UpdateMemoryDbParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('sends nothing when no Parameters op is present', async () => {
+    await SDK_WRITERS['AWS::MemoryDB::ParameterGroup'](ctx({ physicalId: PGN }), [
+      { op: 'add', path: '/Description', value: 'x', human: 'x' },
+    ]);
+    expect(memorydb.commandCalls(UpdateMemoryDbParameterGroupCommand)).toHaveLength(0);
+    expect(memorydb.commandCalls(ResetMemoryDbParameterGroupCommand)).toHaveLength(0);
   });
 });
 
