@@ -1,3 +1,10 @@
+## [0.2.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.12...v0.2.13) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** surface an undeclared switch disabled out of band — isTrivialEmpty swallowed the false before the KNOWN_DEFAULTS gate ([#632](https://github.com/go-to-k/cdk-real-drift/issues/632)) ([#634](https://github.com/go-to-k/cdk-real-drift/issues/634)) ([ac0bdb7](https://github.com/go-to-k/cdk-real-drift/commit/ac0bdb796c40d1f308bb4049899c8c3e5479864b))
+
 ## [0.2.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.11...v0.2.12) (2026-07-08)
 
 
