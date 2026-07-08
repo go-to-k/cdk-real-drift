@@ -24,6 +24,48 @@ const BOOLEAN_FLAGS = new Set([
   '--all',
 ]);
 
+/** The four verbs, so parseCommonArgs can reject a flag the running verb never consumes. */
+export type Verb = 'check' | 'record' | 'ignore' | 'revert';
+
+// Canonical (long) form of a flag alias, for the per-verb applicability check below.
+const CANONICAL_FLAG: Record<string, string> = {
+  '-y': '--yes',
+  '-v': '--verbose',
+  '-a': '--app',
+  '-c': '--context',
+};
+const canonicalFlag = (flag: string): string => CANONICAL_FLAG[flag] ?? flag;
+
+// Flags every verb accepts (identity/targeting/output surface consumed by the shared
+// gather + report layers regardless of verb). `--json` suppresses the gather spinner and
+// selects JSON output where a verb emits it; `--yes` skips a confirm on every verb that
+// has one (check's inline actions included).
+const GLOBAL_FLAGS = ['--region', '--profile', '--app', '--context', '--all', '--json', '--yes'];
+
+// Per-verb allowed flag surface (canonical names), so a verb-INAPPLICABLE flag fails fast
+// with the same loud exit-2 as an unknown flag instead of being silently accepted — the
+// worst instances (`record --dry-run` WRITING the baseline it claims to preview,
+// `record --fail` never failing CI) invert the user's intent (#780). Derived from the flags
+// each command actually reads (`a.<flag>` in src/commands/<verb>.ts): only `check` consumes
+// the scope/coverage flags; `--dry-run` / `--wait` are revert-only; `--remove-unrecorded`
+// is read by `check` (its inline revert) and `revert`; `--verbose` by all but `ignore`.
+const ALLOWED_FLAGS_BY_VERB: Record<Verb, Set<string>> = {
+  check: new Set([
+    ...GLOBAL_FLAGS,
+    '--fail',
+    '--strict',
+    '--show-all',
+    '--pre-deploy',
+    '--undeclared-only',
+    '--declared-only',
+    '--verbose',
+    '--remove-unrecorded',
+  ]),
+  record: new Set([...GLOBAL_FLAGS, '--verbose']),
+  ignore: new Set(GLOBAL_FLAGS),
+  revert: new Set([...GLOBAL_FLAGS, '--verbose', '--remove-unrecorded', '--dry-run', '--wait']),
+};
+
 export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty → all stacks the CDK app defines)
   all: boolean; // explicitly target EVERY stack the app defines (the default when no name is given); overrides any positional names
@@ -77,7 +119,7 @@ export function isInteractive(): boolean {
   return Boolean(process.stdin.isTTY);
 }
 
-export function parseCommonArgs(args: string[]): CommonArgs {
+export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
   const values: Record<string, string> = {}; // canonical value-flag → its (last) value
   const found = new Set<string>(); // boolean flags seen
   const stackNames: string[] = [];
@@ -145,6 +187,25 @@ export function parseCommonArgs(args: string[]): CommonArgs {
       continue;
     }
     throw new Error(`unknown option "${a}" — see cdkrd --help`);
+  }
+
+  // Reject a flag the RUNNING verb never consumes with the same loud exit-2 as an unknown
+  // flag (#780). Without this, verb-inapplicable flags are silently accepted — and the
+  // dangerous pair INVERTS intent: `record --dry-run` / `ignore --dry-run` WRITE the file
+  // they claim to preview, `record --fail` never fails CI. Only when a verb is supplied
+  // (the CLI always does; the no-verb call in unit tests keeps today's permissive parse).
+  if (verb !== undefined) {
+    const allowed = ALLOWED_FLAGS_BY_VERB[verb];
+    for (const flag of found)
+      if (!allowed.has(canonicalFlag(flag)))
+        throw new Error(
+          `option "${flag}" is not valid for the \`${verb}\` command — see cdkrd --help`
+        );
+    // `--wait` is tracked as a value (waitMs), not in `found`, so check it separately.
+    if (waitMs !== undefined && !allowed.has('--wait'))
+      throw new Error(
+        `option "--wait" is not valid for the \`${verb}\` command — see cdkrd --help`
+      );
   }
 
   const has = (flag: string): boolean => found.has(flag);

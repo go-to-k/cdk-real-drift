@@ -207,3 +207,88 @@ describe('isInteractive (non-interactive simply means non-TTY, R58)', () => {
     withTTY(false, () => expect(isInteractive()).toBe(false));
   });
 });
+
+describe('parseCommonArgs per-verb flag applicability (#780)', () => {
+  // The dangerous pair: a preview/no-op flag on a FILE-WRITING verb used to be silently
+  // accepted, inverting intent (`record --dry-run --yes` WROTE the baseline).
+  it('rejects `--dry-run` on every verb except revert', () => {
+    for (const verb of ['check', 'record', 'ignore'] as const)
+      expect(() => parseCommonArgs(['--dry-run'], verb)).toThrow(
+        new RegExp(`"--dry-run" is not valid for the \`${verb}\` command`)
+      );
+    expect(() => parseCommonArgs(['--dry-run'], 'revert')).not.toThrow();
+  });
+
+  it('rejects `--fail` outside check', () => {
+    for (const verb of ['record', 'ignore', 'revert'] as const)
+      expect(() => parseCommonArgs(['--fail'], verb)).toThrow(/"--fail" is not valid/);
+    expect(() => parseCommonArgs(['--fail'], 'check')).not.toThrow();
+  });
+
+  it('rejects check-only scope/coverage flags on other verbs', () => {
+    for (const flag of [
+      '--strict',
+      '--show-all',
+      '--pre-deploy',
+      '--undeclared-only',
+      '--declared-only',
+    ])
+      expect(() => parseCommonArgs([flag], 'record')).toThrow(
+        /is not valid for the `record` command/
+      );
+  });
+
+  it('rejects `--wait` and `--remove-unrecorded` outside their verbs', () => {
+    expect(() => parseCommonArgs(['--wait'], 'record')).toThrow(/"--wait" is not valid/);
+    expect(() => parseCommonArgs(['--wait=5m'], 'check')).toThrow(/"--wait" is not valid/);
+    expect(() => parseCommonArgs(['--remove-unrecorded'], 'record')).toThrow(/is not valid/);
+    expect(() => parseCommonArgs(['--remove-unrecorded'], 'ignore')).toThrow(/is not valid/);
+  });
+
+  it('rejects `--verbose` (`-v`) on ignore but allows it on check/record/revert', () => {
+    expect(() => parseCommonArgs(['--verbose'], 'ignore')).toThrow(/"--verbose" is not valid/);
+    expect(() => parseCommonArgs(['-v'], 'ignore')).toThrow(/"-v" is not valid/);
+    for (const verb of ['check', 'record', 'revert'] as const)
+      expect(() => parseCommonArgs(['--verbose'], verb)).not.toThrow();
+  });
+
+  it('accepts each verb-appropriate flag set (no false rejection)', () => {
+    expect(() =>
+      parseCommonArgs(
+        ['--fail', '--strict', '--show-all', '--pre-deploy', '--json', '--verbose'],
+        'check'
+      )
+    ).not.toThrow();
+    expect(() => parseCommonArgs(['--yes', '--verbose', '--json'], 'record')).not.toThrow();
+    expect(() => parseCommonArgs(['--yes', '--json'], 'ignore')).not.toThrow();
+    expect(() =>
+      parseCommonArgs(['--dry-run', '--yes', '--wait=10m', '--remove-unrecorded'], 'revert')
+    ).not.toThrow();
+  });
+
+  it('global identity/targeting flags are accepted on every verb', () => {
+    for (const verb of ['check', 'record', 'ignore', 'revert'] as const)
+      expect(() =>
+        parseCommonArgs(
+          [
+            'MyStack',
+            '--region',
+            'us-east-1',
+            '--profile',
+            'p',
+            '--app',
+            'x',
+            '-c',
+            'k=v',
+            '--all',
+            '--json',
+          ],
+          verb
+        )
+      ).not.toThrow();
+  });
+
+  it('a no-verb call keeps the permissive parse (back-compat for internal callers)', () => {
+    expect(() => parseCommonArgs(['--dry-run', '--fail', '--wait=5m'])).not.toThrow();
+  });
+});

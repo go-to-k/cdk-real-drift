@@ -171,7 +171,7 @@ export function finalCheckExit(code: number, fail: boolean): number {
 }
 
 export async function runCheck(args: string[]): Promise<number> {
-  const a = parseCommonArgs(args);
+  const a = parseCommonArgs(args, 'check');
   if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
 
   // .cdkrd/ignore.yaml ignore rules, loaded once (cwd-relative). A malformed config
