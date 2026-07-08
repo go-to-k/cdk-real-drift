@@ -67,6 +67,7 @@ import {
   GetRolePolicyCommand,
   GetUserPolicyCommand,
   IAMClient,
+  ListAccessKeysCommand,
   ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
@@ -235,6 +236,24 @@ const readIamPolicy: OverrideReader = async ({ declared, region }) => {
         ? { Users: declared.Users }
         : { Groups: declared.Groups }),
   };
+};
+
+// AWS::IAM::AccessKey — Cloud Control GetResource throws UnsupportedActionException, so the
+// key was silently `skipped` and an out-of-band Status flip (Active <-> Inactive, a
+// security-relevant change) went undetected (#716). The CFn physical id IS the AccessKeyId; the
+// owning user comes from the declared `UserName` (resolved by classify). iam:ListAccessKeys
+// returns the user's key metadata (Status/CreateDate) — read back only `Status` (the one
+// mutable, meaningful property; the SecretAccessKey is writeOnly and stays unread). Serial is a
+// create/rotation trigger with no readable live value, so it is not projected.
+const readIamAccessKey: OverrideReader = async ({ declared, physicalId, region }) => {
+  const userName = str(declared.UserName);
+  if (!userName) return undefined;
+  const c = new IAMClient({ region, ...READ_RETRY });
+  // A user has at most 2 access keys, so a single ListAccessKeys page always suffices.
+  const r = await c.send(new ListAccessKeysCommand({ UserName: userName }));
+  const meta = (r.AccessKeyMetadata ?? []).find((m) => m.AccessKeyId === physicalId);
+  if (!meta) return undefined;
+  return { UserName: userName, Status: meta.Status };
 };
 
 const readIamManagedPolicy: OverrideReader = async ({ physicalId, region }) => {
@@ -2027,6 +2046,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::SQS::QueuePolicy': readSqsQueuePolicy,
   'AWS::IAM::Policy': readIamPolicy,
   'AWS::IAM::ManagedPolicy': readIamManagedPolicy,
+  'AWS::IAM::AccessKey': readIamAccessKey,
   'AWS::Lambda::Permission': readLambdaPermission,
   'AWS::Budgets::Budget': readBudget,
   'AWS::EC2::EIP': readEc2Eip,
