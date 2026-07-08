@@ -687,6 +687,91 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     expect(logs).toContain('could not be re-read to verify');
   });
 
+  // #631: a FAILED update op must NOT ride under a CLEAN verdict even if the re-read
+  // happens to look converged — "never claim convergence we could not verify". The SNS
+  // FilterPolicyScope `remove` hard-failed (InvalidRequest[null]) yet the summary still
+  // said CLEAN. Here the write FAILS (non-transient) but the re-read returns the desired
+  // value; before the fix only failed DELETES fed the verdict, so this printed CLEAN.
+  it('a FAILED update op is unconfirmed, never CLEAN — even if the re-read looks converged', async () => {
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: {
+        OperationStatus: 'FAILED',
+        RequestToken: 't',
+        StatusMessage: 'InvalidRequest: Invalid value [null]',
+      },
+    });
+    cc.on(GetResourceCommand).resolves(liveRead('Enabled')); // re-read LOOKS clean
+
+    const { outcome, logs } = await run();
+    expect(outcome.exit).toBe(2); // a failed apply bumps the exit to 2
+    expect(logs).not.toContain('CLEAN after revert');
+    expect(logs).toContain('FAILED:');
+    expect(logs).toContain('could not be confirmed converged');
+  });
+
+  // #631: a `remove`-style revert the provider SILENTLY IGNORED (reports ok, value
+  // persists) on an UNRECORDED undeclared value re-reads as "awaiting a baseline" (not
+  // isDrift), so it escaped the verdict and the stack was falsely called CLEAN (Cognito
+  // UserPool DeletionProtection remove-revert, live 2026-07-08). Now the persisted value is
+  // detected as a no-op removal and reported.
+  it('a no-op remove of an unrecorded undeclared value is NOT CLEAN (persisted value detected)', async () => {
+    const noopGathered = (): GatherResult =>
+      ({
+        desired: {
+          stackName: 's',
+          region: 'r',
+          accountId: '111122223333',
+          resources: [
+            { logicalId: 'B', resourceType: 'AWS::S3::Bucket', physicalId: 'b-phys', declared: {} },
+          ],
+          rawTemplate: '{}',
+          ctx: {
+            params: {},
+            pseudo: {},
+            conditions: {},
+            physIds: {},
+            liveAttrs: {},
+            mappings: {},
+            exports: {},
+            condCache: new Map(),
+          },
+        },
+        findings: [undeclared()], // AccelerateConfiguration, unrecorded (no baseline)
+        schemas: new Map([['AWS::S3::Bucket', EMPTY_SCHEMA]]),
+        liveByLogical: new Map(),
+      }) as GatherResult;
+
+    const cc = mockClient(CloudControlClient);
+    mockApplySuccess(cc); // the UpdateResource "succeeds"...
+    // ...but the value persists unchanged (the provider ignored the omitted property).
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'b-phys',
+        Properties: JSON.stringify({ AccelerateConfiguration: { AccelerationStatus: 'Enabled' } }),
+      },
+    });
+
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (s: unknown) => logs.push(String(s));
+    let outcome;
+    try {
+      outcome = await revertStack({
+        ...params(),
+        gathered: noopGathered(),
+        removeUnrecorded: true,
+      });
+    } finally {
+      console.log = orig;
+    }
+    const out = logs.join('\n');
+    expect(out).not.toContain('CLEAN after revert');
+    expect(out).toContain('NOT reverted:');
+    expect(out).toContain('AccelerateConfiguration');
+    expect(outcome!.exit).toBe(1);
+  });
+
   // issue #467 — the `revert --wait` path.
   const rslvrFailed = {
     ProgressEvent: {
