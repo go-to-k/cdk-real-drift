@@ -19,7 +19,12 @@ export interface SynthStack {
   template: Record<string, unknown>;
 }
 
-const CONCRETE_REGION = /^[a-z]{2}-[a-z]+-\d+$/;
+// A resolved AWS region code. The multi-part infix (`(-[a-z]+)+`) admits partition
+// regions with extra segments — `us-gov-west-1`, `us-iso-east-1`, `us-isob-east-1`,
+// `eu-isoe-west-1` — alongside ordinary two-infix regions like `us-east-1`. It still
+// rejects an env-agnostic stack's unresolved region (a `${Token[...]}` placeholder /
+// `unknown-region` string), so that stays folded to `undefined` (env-agnostic).
+export const CONCRETE_REGION = /^[a-z]{2}(-[a-z]+)+-\d+$/;
 
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
