@@ -1,3 +1,10 @@
+## [0.2.55](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.54...v0.2.55) (2026-07-08)
+
+
+### Bug Fixes
+
+* **record:** suppress commit footer when nothing was written ([#799](https://github.com/go-to-k/cdk-real-drift/issues/799)) ([#820](https://github.com/go-to-k/cdk-real-drift/issues/820)) ([fc6aac7](https://github.com/go-to-k/cdk-real-drift/commit/fc6aac7c3cae20030bca776329587b7271a049af))
+
 ## [0.2.54](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.53...v0.2.54) (2026-07-08)
 
 
