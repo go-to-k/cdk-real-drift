@@ -1,3 +1,10 @@
+## [0.2.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.19...v0.2.20) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold VPNConnection VpnTunnelOptionsSpecifications declared-tier FP — subset-align + AWS-materialized husk tunnel ([#618](https://github.com/go-to-k/cdk-real-drift/issues/618)) ([#644](https://github.com/go-to-k/cdk-real-drift/issues/644)) ([62bd83d](https://github.com/go-to-k/cdk-real-drift/commit/62bd83dfffd0e5a840f1045442a6b34d968d4166))
+
 ## [0.2.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.18...v0.2.19) (2026-07-08)
 
 
