@@ -497,7 +497,17 @@ export interface ApplyBaselineOptions {
   warn?: (s: string) => void; // stderr note channel for the promotion case
 }
 
-const topSegment = (p: string): string => p.split('.')[0] ?? p;
+// A recorded path is TOP-LEVEL when it is a bare template key — no nested descent
+// separator (`.` object step or `[` array/identity step). `declaredByLogical` carries
+// only top-level declared KEYS (Object.keys(declared)), so the "promoted into the
+// template" test can only be answered for a top-level path: a nested path's top segment
+// is ALWAYS a declared key by construction (collectNestedUndeclared descends only where
+// the parent key is declared), so testing that segment would fold EVERY nested recorded
+// value into `promotedStale` and never surface a legitimate removal (#749). A nested
+// value is "promoted" only if its DECLARED parent now declares that exact nested value —
+// which `declaredByLogical` cannot express — so a nested recorded path can never qualify
+// here and must fall through to the "removed since record" drift.
+const isTopLevelPath = (p: string): boolean => !p.includes('.') && !p.includes('[');
 
 /**
  * Reconcile undeclared findings against the recorded baseline (per ENTRY, R62):
@@ -728,8 +738,11 @@ export function applyBaseline(
       removedFromTemplate.push(`${a.logicalId}.${a.path}`);
       continue;
     }
-    // promoted into the template since record → not a removal, just stale baseline
-    if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
+    // promoted into the template since record → not a removal, just stale baseline.
+    // #749: gate on the FULL path (only meaningful for a top-level path), NOT its top
+    // segment — otherwise every nested recorded value, whose top segment is a declared
+    // key by construction, would be swallowed here and never surface as a removal.
+    if (isTopLevelPath(a.path) && opts.declaredByLogical?.get(a.logicalId)?.has(a.path)) {
       promotedStale.push(`${a.logicalId}.${a.path}`);
       continue;
     }
