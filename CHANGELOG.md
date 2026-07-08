@@ -1,3 +1,11 @@
+## [0.2.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.41...v0.2.42) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** EC2 derived first-run folds — CreditSpecification/gp2 Iops/ENI SecondaryIpCount ([#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#734](https://github.com/go-to-k/cdk-real-drift/issues/734)) ([ea3e879](https://github.com/go-to-k/cdk-real-drift/commit/ea3e87980a23df6407bf866bbda2a2ca54a4d253))
+* **noise:** six-type first-run undeclared-default constant folds ([#711](https://github.com/go-to-k/cdk-real-drift/issues/711)) ([#733](https://github.com/go-to-k/cdk-real-drift/issues/733)) ([5693f20](https://github.com/go-to-k/cdk-real-drift/commit/5693f20d39a59ec46cdb72fc517017320b5dad9b))
+
 ## [0.2.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.40...v0.2.41) (2026-07-08)
 
 
