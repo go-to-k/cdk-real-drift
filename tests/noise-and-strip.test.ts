@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { matchesKnownDefault } from '../src/diff/classify.js';
+import { classifyResource, matchesKnownDefault } from '../src/diff/classify.js';
 import { stripCcApiAwsManagedFields } from '../src/normalize/cc-api-strip.js';
+import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 import {
   awsManagedTags,
   canonicalizeIdArraysDeep,
@@ -1118,6 +1119,179 @@ describe('noise suppressors', () => {
     // non-strings never match
     expect(isCfnTemplateNonAsciiMask(1, 1)).toBe(false);
     expect(isCfnTemplateNonAsciiMask('?', undefined)).toBe(false);
+  });
+});
+
+describe('#649 DynamoDB first-run FPs: ContributorInsights Mode + SSE type/KMS echoes', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const bare = (resourceType: string, declared: Record<string, unknown> = {}): DesiredResource => ({
+    logicalId: 'Tbl',
+    resourceType,
+    physicalId: 'my-table-phys',
+    declared,
+  });
+  const t = (
+    resourceType: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ): { atDefault: string[]; generated: string[]; undeclared: string[] } => {
+    const findings: Finding[] = classifyResource(bare(resourceType, declared), live, emptySchema);
+    const by = (tier: string) =>
+      findings
+        .filter((f) => f.tier === tier)
+        .map((f) => f.path)
+        .sort();
+    return { atDefault: by('atDefault'), generated: by('generated'), undeclared: by('undeclared') };
+  };
+  // The account's AWS-managed aws/dynamodb key ARN AWS echoes into SSESpecification.KMSMasterKeyId.
+  const accountKmsArn =
+    'arn:aws:kms:us-east-1:111122223333:key/e6ab85f6-1234-5678-9abc-def012345678';
+
+  it('table shapes: Mode/SSEType are equality-gated KNOWN_DEFAULT_PATHS, KMSMasterKeyId is value-independent', () => {
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::DynamoDB::Table']['ContributorInsightsSpecification.Mode']
+    ).toBe('ACCESSED_AND_THROTTLED_KEYS');
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::DynamoDB::Table'][
+        'GlobalSecondaryIndexes.*.ContributorInsightsSpecification.Mode'
+      ]
+    ).toBe('ACCESSED_AND_THROTTLED_KEYS');
+    expect(KNOWN_DEFAULT_PATHS['AWS::DynamoDB::Table']['SSESpecification.SSEType']).toBe('KMS');
+    expect(
+      GENERATED_NESTED_PATHS['AWS::DynamoDB::Table'].has('SSESpecification.KMSMasterKeyId')
+    ).toBe(true);
+    // GlobalTable twin (#523): SSEType top-level, CI per-replica + per-replica-GSI, KMS per-replica.
+    expect(KNOWN_DEFAULT_PATHS['AWS::DynamoDB::GlobalTable']['SSESpecification.SSEType']).toBe(
+      'KMS'
+    );
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::DynamoDB::GlobalTable'][
+        'Replicas.*.ContributorInsightsSpecification.Mode'
+      ]
+    ).toBe('ACCESSED_AND_THROTTLED_KEYS');
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::DynamoDB::GlobalTable'][
+        'Replicas.*.GlobalSecondaryIndexes.*.ContributorInsightsSpecification.Mode'
+      ]
+    ).toBe('ACCESSED_AND_THROTTLED_KEYS');
+    expect(
+      GENERATED_NESTED_PATHS['AWS::DynamoDB::GlobalTable'].has(
+        'Replicas.*.SSESpecification.KMSMasterKeyId'
+      )
+    ).toBe(true);
+  });
+
+  it('classic Table: a clean table with the declared flags surfaces ZERO undeclared drift', () => {
+    // The user DECLARED ContributorInsightsSpecification.Enabled + SSESpecification.SSEEnabled;
+    // AWS echoes the undeclared Mode / SSEType / KMSMasterKeyId siblings. All three must fold.
+    const r = t(
+      'AWS::DynamoDB::Table',
+      {
+        ContributorInsightsSpecification: { Enabled: true },
+        SSESpecification: { SSEEnabled: true },
+      },
+      {
+        ContributorInsightsSpecification: { Enabled: true, Mode: 'ACCESSED_AND_THROTTLED_KEYS' },
+        SSESpecification: { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: accountKmsArn },
+      }
+    );
+    expect(r.undeclared).toEqual([]);
+    expect(r.atDefault).toContain('ContributorInsightsSpecification.Mode');
+    expect(r.atDefault).toContain('SSESpecification.SSEType');
+    expect(r.generated).toContain('SSESpecification.KMSMasterKeyId');
+  });
+
+  it('classic Table: a GSI-nested ContributorInsights Mode default folds too', () => {
+    // GSIs are keyed by IndexName (IDENTITY_FIELDS), so the undeclared descent aligns the
+    // declared GSI to the live one and reports the finding path identity-keyed
+    // (GlobalSecondaryIndexes[gsi1]…), where the `.*` fold key matches.
+    const r = t(
+      'AWS::DynamoDB::Table',
+      {
+        GlobalSecondaryIndexes: [
+          { IndexName: 'gsi1', ContributorInsightsSpecification: { Enabled: true } },
+        ],
+      },
+      {
+        GlobalSecondaryIndexes: [
+          {
+            IndexName: 'gsi1',
+            ContributorInsightsSpecification: {
+              Enabled: true,
+              Mode: 'ACCESSED_AND_THROTTLED_KEYS',
+            },
+          },
+        ],
+      }
+    );
+    const gsiModePath = 'GlobalSecondaryIndexes[gsi1].ContributorInsightsSpecification.Mode';
+    expect(r.undeclared).not.toContain(gsiModePath);
+    expect(r.atDefault).toContain(gsiModePath);
+  });
+
+  it('detection preserved: a CHANGED Mode / SSEType still surfaces (equality-gated)', () => {
+    // ContributorInsights Mode flipped to the other enum value out of band → real undeclared drift.
+    const changedMode = t(
+      'AWS::DynamoDB::Table',
+      { ContributorInsightsSpecification: { Enabled: true } },
+      { ContributorInsightsSpecification: { Enabled: true, Mode: 'THROTTLED_KEYS' } }
+    );
+    expect(changedMode.undeclared).toContain('ContributorInsightsSpecification.Mode');
+    expect(changedMode.atDefault).not.toContain('ContributorInsightsSpecification.Mode');
+    // A hypothetical non-KMS SSEType would also surface (only 'KMS' folds).
+    const changedType = t(
+      'AWS::DynamoDB::Table',
+      { SSESpecification: { SSEEnabled: true } },
+      { SSESpecification: { SSEEnabled: true, SSEType: 'SOMETHING_ELSE' } }
+    );
+    expect(changedType.undeclared).toContain('SSESpecification.SSEType');
+    expect(changedType.atDefault).not.toContain('SSESpecification.SSEType');
+  });
+
+  it('a user-DECLARED KMSMasterKeyId is compared in the declared dimension (detection preserved)', () => {
+    // Declaring a customer-managed key sends KMSMasterKeyId through the DECLARED loop, so an
+    // out-of-band swap to a DIFFERENT key surfaces as declared drift — the value-independent
+    // undeclared fold only applies when the key is UNDECLARED (delegated to AWS).
+    const findings = classifyResource(
+      bare('AWS::DynamoDB::Table', {
+        SSESpecification: { SSEEnabled: true, KMSMasterKeyId: 'alias/my-key' },
+      }),
+      { SSESpecification: { SSEEnabled: true, KMSMasterKeyId: 'alias/attacker-key' } },
+      emptySchema
+    );
+    const declared = findings.filter((f) => f.tier === 'declared').map((f) => f.path);
+    expect(declared).toContain('SSESpecification.KMSMasterKeyId');
+  });
+
+  it('GlobalTable twin: top-level SSEType default folds clean, a changed type surfaces', () => {
+    // GlobalTable's SSESpecification is top-level (SSEEnabled/SSEType), so this end-to-end
+    // fold is reachable today. (The per-replica Mode/KMSMasterKeyId noise-side folds are
+    // asserted structurally in the shapes test above; their undeclared descent additionally
+    // needs the `Replicas` array keyed by Region in NESTED_ARRAY_IDENTITY, which lives in
+    // classify.ts and is out of scope for this noise-only change.)
+    const clean = t(
+      'AWS::DynamoDB::GlobalTable',
+      { SSESpecification: { SSEEnabled: true } },
+      { SSESpecification: { SSEEnabled: true, SSEType: 'KMS' } }
+    );
+    expect(clean.atDefault).toContain('SSESpecification.SSEType');
+    expect(clean.undeclared).not.toContain('SSESpecification.SSEType');
+    const changed = t(
+      'AWS::DynamoDB::GlobalTable',
+      { SSESpecification: { SSEEnabled: true } },
+      { SSESpecification: { SSEEnabled: true, SSEType: 'SOMETHING_ELSE' } }
+    );
+    expect(changed.undeclared).toContain('SSESpecification.SSEType');
+    expect(changed.atDefault).not.toContain('SSESpecification.SSEType');
   });
 });
 
