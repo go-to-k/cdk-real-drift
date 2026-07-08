@@ -1,3 +1,10 @@
+## [0.2.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.18...v0.2.19) (2026-07-08)
+
+
+### Bug Fixes
+
+* **revert:** converge revert for InternetMonitor Status + RolesAnywhere DurationSeconds + KinesisVideo retention/TTL ([#597](https://github.com/go-to-k/cdk-real-drift/issues/597)-class follow-up) ([#656](https://github.com/go-to-k/cdk-real-drift/issues/656)) ([f44914e](https://github.com/go-to-k/cdk-real-drift/commit/f44914e7433d48ccbc59271bdc2a9b65e7b39a78)), closes [#597-class](https://github.com/go-to-k/cdk-real-drift/issues/597-class)
+
 ## [0.2.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.17...v0.2.18) (2026-07-08)
 
 
