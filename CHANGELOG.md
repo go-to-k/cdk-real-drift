@@ -1,3 +1,10 @@
+## [0.2.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.21...v0.2.22) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** extend MEANINGFUL_WHEN_OFF to the unconditional top-level [#632](https://github.com/go-to-k/cdk-real-drift/issues/632) blast-radius switches ([#659](https://github.com/go-to-k/cdk-real-drift/issues/659)) ([a257c9f](https://github.com/go-to-k/cdk-real-drift/commit/a257c9f359f1ca817afed15ebf435f9c59eb0e30))
+
 ## [0.2.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.20...v0.2.21) (2026-07-08)
 
 
