@@ -552,6 +552,7 @@ describe('noise suppressors', () => {
       TargetConnectionNetworkType: 'IPV4',
       DefaultAuthScheme: 'NONE',
       EndpointNetworkType: 'IPV4',
+      IdleClientTimeout: 1800,
     });
     expect(KNOWN_DEFAULTS['AWS::AmazonMQ::Broker']).toEqual({
       AuthenticationStrategy: 'SIMPLE',
