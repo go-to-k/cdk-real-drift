@@ -77,6 +77,7 @@ import {
   GetPolicyVersionCommand,
   GetRolePolicyCommand,
   IAMClient,
+  ListAccessKeysCommand,
   ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
@@ -252,6 +253,32 @@ describe('SDK overrides', () => {
       Groups: ['GroupA'],
     });
     expect(iam.commandCalls(ListEntitiesForPolicyCommand)).toHaveLength(2);
+  });
+
+  it('IAM AccessKey (#716): reads Status for the key matching the physical id', async () => {
+    iam.on(ListAccessKeysCommand).resolves({
+      AccessKeyMetadata: [
+        { UserName: 'svc', AccessKeyId: 'AKIAOTHER', Status: 'Active', CreateDate: new Date(0) },
+        { UserName: 'svc', AccessKeyId: 'AKIATARGET', Status: 'Inactive', CreateDate: new Date(0) },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({ UserName: 'svc' }, 'AKIATARGET'));
+    // only Status (mutable) + UserName are projected — the secret is never read
+    expect(out).toEqual({ UserName: 'svc', Status: 'Inactive' });
+  });
+
+  it('IAM AccessKey (#716): undefined when no declared UserName or the key is not found', async () => {
+    iam.on(ListAccessKeysCommand).resolves({
+      AccessKeyMetadata: [
+        { UserName: 'svc', AccessKeyId: 'AKIAOTHER', Status: 'Active', CreateDate: new Date(0) },
+      ],
+    });
+    // no UserName -> cannot resolve the owning user
+    expect(await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({}, 'AKIATARGET'))).toBeUndefined();
+    // the physical id is not among the user's keys -> undefined (falls back to skipped, no wrong read)
+    expect(
+      await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({ UserName: 'svc' }, 'AKIATARGET'))
+    ).toBeUndefined();
   });
 
   it('Lambda Permission: matches statement by Action + Principal', async () => {

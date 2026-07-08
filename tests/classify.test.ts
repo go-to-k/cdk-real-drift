@@ -1206,6 +1206,23 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ).toEqual(['Policies']);
   });
 
+  it('#716: IAM AccessKey Status default Active folds; an out-of-band Inactive flip surfaces', () => {
+    const res: DesiredResource = {
+      logicalId: 'Ak',
+      resourceType: 'AWS::IAM::AccessKey',
+      physicalId: 'AKIA...',
+      declared: { UserName: 'svc' }, // Status omitted -> AWS default Active
+    };
+    // clean deploy: undeclared Status "Active" folds atDefault (no first-run FP from the new reader)
+    expect(
+      tiers(classifyResource(res, { UserName: 'svc', Status: 'Active' }, emptySchema)).atDefault
+    ).toEqual(['Status']);
+    // an out-of-band deactivation (Active -> Inactive) SURFACES — the drift #716 restores
+    expect(
+      tiers(classifyResource(res, { UserName: 'svc', Status: 'Inactive' }, emptySchema)).undeclared
+    ).toEqual(['Status']);
+  });
+
   it('noise-sweep batch: the default folds, a flipped (security-relevant) value surfaces', () => {
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));

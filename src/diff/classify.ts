@@ -1295,6 +1295,14 @@ export function classifyResource(
   // already emitted as a readGap above AND stripped from `declared` by writeOnlyPaths,
   // so it cannot reach this loop (the old guard was dead code for top-level keys).
   let knownDef = KNOWN_DEFAULTS[resourceType] ?? {};
+  // #716: an AWS::IAM::AccessKey (now readable via the SDK_OVERRIDES ListAccessKeys reader) whose
+  // template omits Status reads back the AWS default Status "Active". Equality-gate it here (a
+  // top-level KNOWN_DEFAULTS-equivalent kept in classify.ts so the fold ships with the reader in
+  // one lane) so a clean deploy stays CLEAN; an out-of-band flip to "Inactive" (a deactivated key)
+  // still surfaces as the drift #716 restores.
+  if (resourceType === 'AWS::IAM::AccessKey') {
+    knownDef = { ...knownDef, Status: 'Active' };
+  }
   // A Redshift RA3 cluster is ALWAYS encrypted (RA3 mandates encryption — it can never be false)
   // and AWS enables AvailabilityZoneRelocation for it by default, so an RA3 cluster that declares
   // neither reads back Encrypted=true / AvailabilityZoneRelocationStatus="enabled" — AWS-forced
