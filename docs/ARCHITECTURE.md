@@ -872,11 +872,13 @@ replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
 ```
 
 `recordedPhysicalIds` (additive, optional — #674) records the PHYSICAL id each
-resource's entries were snapshot against, so a later deploy that **replaces** a
-resource (new physical id) can void the now-stale entries (see the lifecycle
-paragraph below). Old committed baselines have no such field; a resource whose
-physical id was unknown at record time is simply absent — both fall back to the
-pre-#674 behavior (never void).
+recorded-OR-snapshot-`complete` resource was captured against, so a later deploy
+that **replaces** a resource (new physical id) can void the now-stale entries (see
+the lifecycle paragraph below). It covers a `complete` resource even with ZERO
+undeclared entries (#792), so a replacement of such a resource does not surface its
+fresh AWS defaults as false "appeared since record" drift. Old committed baselines
+have no such field; a resource whose physical id was unknown at record time is
+simply absent — both fall back to the pre-#674 behavior (never void).
 
 **Per-entry classification (R62).** The unit of "recorded" is the ENTRY, not the
 file: an undeclared finding with a matching entry is suppressed; with an entry

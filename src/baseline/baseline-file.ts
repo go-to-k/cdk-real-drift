@@ -186,16 +186,21 @@ function sortRecorded(recorded: RecordedEntry[]): RecordedEntry[] {
   );
 }
 
-/** #674: keep only physical ids for logicalIds that still carry a recorded entry, with
- *  sorted keys, so the baseline JSON is byte-stable and free of dead entries. */
+/** #674/#792: keep physical ids for logicalIds that either carry a recorded entry OR
+ *  are snapshot-`complete` (a complete resource with ZERO undeclared entries has nothing
+ *  in `recorded`, but its physical id must still be persisted so #674's replacement void
+ *  fires for it — else an out-of-band REPLACEMENT of a zero-entry complete resource, whose
+ *  fresh AWS defaults now "appear since record", surfaces as false drift). Sorted keys keep
+ *  the JSON byte-stable; a logicalId neither recorded nor complete is dropped as dead. */
 function sortedPhysicalIds(
   ids: Record<string, string>,
-  recorded: RecordedEntry[]
+  recorded: RecordedEntry[],
+  complete: string[]
 ): Record<string, string> {
-  const live = new Set(recorded.map((e) => e.logicalId));
+  const persist = new Set([...recorded.map((e) => e.logicalId), ...complete]);
   const out: Record<string, string> = {};
   for (const key of Object.keys(ids).sort())
-    if (live.has(key) && ids[key] !== undefined) out[key] = ids[key];
+    if (persist.has(key) && ids[key] !== undefined) out[key] = ids[key];
   return out;
 }
 
@@ -208,12 +213,19 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
     ...b,
     recorded: sortRecorded(b.recorded),
     ...(b.completeResources ? { completeResources: [...b.completeResources].sort() } : {}),
-    // #674: write the physical-id map with sorted keys so the JSON stays byte-stable
-    // across machines (same clean-PR-diff goal as sortRecorded). Only for logicalIds
-    // that still have at least one recorded entry — a stray id for a resource with no
-    // entries would be dead weight.
+    // #674/#792: write the physical-id map with sorted keys so the JSON stays byte-stable
+    // across machines (same clean-PR-diff goal as sortRecorded). Kept for logicalIds that
+    // have a recorded entry OR are snapshot-`complete` — a complete resource with zero
+    // undeclared entries must still carry its id so #674's replacement void can fire for
+    // it (else an out-of-band REPLACEMENT surfaces as false "appeared since record").
     ...(b.recordedPhysicalIds
-      ? { recordedPhysicalIds: sortedPhysicalIds(b.recordedPhysicalIds, b.recorded) }
+      ? {
+          recordedPhysicalIds: sortedPhysicalIds(
+            b.recordedPhysicalIds,
+            b.recorded,
+            b.completeResources ?? []
+          ),
+        }
       : {}),
   };
   await writeFile(p, JSON.stringify(stable, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
@@ -275,6 +287,12 @@ export async function writeBaseline(
   const allIds = opts.allLogicalIds ?? [
     ...new Set([...findings.map((f) => f.logicalId), ...recorded.map((a) => a.logicalId)]),
   ];
+  const completeResources = computeCompleteResources(
+    allIds,
+    findings,
+    recorded,
+    opts.previous?.completeResources ?? []
+  );
   const path = await writeBaselineFile({
     schemaVersion: 2,
     stackName,
@@ -283,39 +301,47 @@ export async function writeBaseline(
     capturedAt: new Date().toISOString(),
     templateHash: hashTemplate(rawTemplate),
     recorded,
-    completeResources: computeCompleteResources(
-      allIds,
-      findings,
+    completeResources,
+    // #674/#792: capture the physical id per recorded logicalId AND per zero-entry
+    // `complete` resource. writeBaselineFile prunes this to recorded-or-complete ids.
+    // Carry forward the previous baseline's map for ids this run did not resolve a
+    // physical id for, so a re-record does not drop a previously-captured id (symmetric
+    // with carryForwardUnreadable on `recorded`).
+    ...buildRecordedPhysicalIds(
       recorded,
-      opts.previous?.completeResources ?? []
+      completeResources,
+      opts.physicalIdByLogical,
+      opts.previous
     ),
-    // #674: capture the physical id per recorded logicalId. writeBaselineFile prunes
-    // this to ids that still have an entry. Carry forward the previous baseline's map
-    // for ids this run did not resolve a physical id for, so a re-record does not drop
-    // a previously-captured id (symmetric with carryForwardUnreadable on `recorded`).
-    ...buildRecordedPhysicalIds(recorded, opts.physicalIdByLogical, opts.previous),
   });
   return { path, count: recorded.length };
 }
 
 /**
- * #674: build the `recordedPhysicalIds` map (logicalId -> physical id) for the entries
- * being written. Prefers the physical id resolved THIS run; falls back to the previous
- * baseline's stored id when this run did not resolve one (a resource skipped / with no
- * physical id must not lose its previously-captured id on re-record — else a later
- * replacement could not be detected). Returns `{}` (spread to nothing) when no id is
- * known, so the field stays absent on baselines with no physical ids at all.
+ * #674/#792: build the `recordedPhysicalIds` map (logicalId -> physical id) for the
+ * resources being written. Covers every RECORDED logicalId PLUS every snapshot-`complete`
+ * resource — the latter so a resource recorded as complete but with ZERO undeclared
+ * entries (nothing in `recorded`) still carries its physical id, letting #674's replacement
+ * void fire for it too (an out-of-band REPLACEMENT of such a resource must not surface as
+ * false "appeared since record" drift; see #792). Prefers the physical id resolved THIS
+ * run; falls back to the previous baseline's stored id when this run did not resolve one
+ * (a resource skipped / with no physical id must not lose its previously-captured id on
+ * re-record — else a later replacement could not be detected). A resource with no known
+ * physical id (this run or prior) is simply absent — today's behavior, never invented.
+ * Returns `{}` (spread to nothing) when no id is known, so the field stays absent on
+ * baselines with no physical ids at all.
  */
 function buildRecordedPhysicalIds(
   recorded: RecordedEntry[],
+  complete: string[],
   live: Map<string, string> | undefined,
   previous: BaselineFile | undefined
 ): { recordedPhysicalIds?: Record<string, string> } {
   const prior = previous?.recordedPhysicalIds ?? {};
   const out: Record<string, string> = {};
-  for (const e of recorded) {
-    const id = live?.get(e.logicalId) ?? prior[e.logicalId];
-    if (id !== undefined) out[e.logicalId] = id;
+  for (const logicalId of new Set([...recorded.map((e) => e.logicalId), ...complete])) {
+    const id = live?.get(logicalId) ?? prior[logicalId];
+    if (id !== undefined) out[logicalId] = id;
   }
   return Object.keys(out).length > 0 ? { recordedPhysicalIds: out } : {};
 }
