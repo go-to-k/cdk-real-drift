@@ -49,6 +49,15 @@ Report as a table:
 If all pass, confirm "All checks passed."
 If any fail, show the error output and STOP — do not write the commit-gate marker.
 
+**Before treating a failure in a file you did NOT touch as a real (or peer-introduced)
+`main` regression, rule out a stale worktree cache.** A long-lived worktree's
+tsgo/oxc cache can REPLAY phantom errors from an earlier dependency/lockfile state
+(the inverse of the cache MASKING real ones). If CI on `main` is green and the
+failure is in code outside your diff, REPRODUCE it in a throwaway fresh worktree
+(`git worktree add … main` → `pnpm install` → `vp check`) before reporting "main is
+red" or opening a fix lane — a clean fresh worktree means the error was a local cache
+artifact, not a regression.
+
 ## Commit-gate marker (on success only)
 
 After all four checks pass, record the `check` marker so the markgate `check`
