@@ -129,6 +129,16 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::Cognito::UserPool\0DeletionProtection',
   'AWS::Cognito::UserPool\0MfaConfiguration',
   'AWS::Cognito::UserPool\0UserPoolTier',
+  // Policies is the same UpdateUserPool omit-ignored behavior (#702, live-proven: mutating
+  // PasswordPolicy.MinimumLength out of band, then `revert --remove-unrecorded` planned a
+  // `remove`, reported reverted, yet the live pool stayed MinimumLength=10). Its whole-object
+  // KNOWN_DEFAULTS default (min length 8, all four char classes, 7-day temp lifetime, PASSWORD
+  // first factor) is written back explicitly so revert converges.
+  // BLAST RADIUS: UpdateUserPool ignores EVERY omitted field, so ANY future UserPool
+  // KNOWN_DEFAULTS addition needs a matching entry here. VerificationMessageTemplate /
+  // AccountRecoverySetting are the next two (their folds land with #701 — add them once the
+  // KNOWN_DEFAULTS defaults exist so the set-default write resolves a value).
+  'AWS::Cognito::UserPool\0Policies',
   // SNS SetSubscriptionAttributes HARD-FAILS a `remove` of FilterPolicyScope (#630,
   // live-proven: setting it to MessageBody out of band, then reverting via `remove` fails with
   // InvalidRequest "FilterPolicyScope: Invalid value [null]. Please use either MessageBody or
