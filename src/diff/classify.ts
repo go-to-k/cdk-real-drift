@@ -662,6 +662,33 @@ function dynamoGsiWarmThroughputAtDefault(
   return deepEqual(value, warmThroughputDefault(gsi.ProvisionedThroughput));
 }
 
+// #705: a Classic ELB (ElasticLoadBalancing::LoadBalancer) with an HTTPS/SSL listener but no
+// declared SSL policy reads back an AWS-assigned SSL negotiation policy. The whole `Policies`
+// array was folded value-independently, which made an out-of-band SSL-policy DOWNGRADE (an older
+// predefined policy, a custom SSLv3-enabled one) OR any added policy INVISIBLE — a security FN.
+// Fold atDefault ONLY when EVERY element is the AWS default SSL negotiation policy, identified by
+// its stable `PolicyName` (the ~100 cipher `Attributes` are a derived function of the name and
+// move over time, so they are ignored — the name is the pinnable identity, exactly like a
+// KNOWN_DEFAULTS constant; a future AWS default bump surfaces as a fold-gap to add here). Any
+// element with a different PolicyName, a non-SSL policy type, or any additional policy makes the
+// whole property surface (equality-gated — out-of-band detection restored).
+const CLB_DEFAULT_SSL_POLICY_NAME = 'ELBSecurityPolicy-2016-08';
+function clbDefaultSslPoliciesAtDefault(
+  resourceType: string,
+  key: string,
+  value: unknown
+): boolean {
+  if (resourceType !== 'AWS::ElasticLoadBalancing::LoadBalancer' || key !== 'Policies')
+    return false;
+  if (!Array.isArray(value) || value.length === 0) return false;
+  return value.every(
+    (el) =>
+      isNestedObject(el) &&
+      el['PolicyType'] === 'SSLNegotiationPolicyType' &&
+      el['PolicyName'] === CLB_DEFAULT_SSL_POLICY_NAME
+  );
+}
+
 // A CloudFormation AUTO-GENERATED physical name. When a resource declares no explicit name,
 // CFn mints `<stackName>-<logicalId>-<random>` (the stack name is the FIRST segment of the
 // CDK construct path). DELIBERATELY strict — it must start with this stack's name AND end
@@ -2279,7 +2306,10 @@ export function classifyResource(
       // AWS-assigned default — it is just absent — so let it fall through to the shared
       // trivial-empty drop rather than surfacing a spurious atDefault (e.g. an NLB's empty
       // SecurityGroups []).
-      (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) && !isTrivialEmpty(v))
+      (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) && !isTrivialEmpty(v)) ||
+      // #705: a Classic ELB's undeclared Policies folds atDefault ONLY when it is exactly the
+      // AWS default SSL negotiation policy (by PolicyName); a downgrade / added policy surfaces.
+      clbDefaultSslPoliciesAtDefault(resourceType, k, v)
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
