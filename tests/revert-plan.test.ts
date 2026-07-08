@@ -557,6 +557,73 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('InternetMonitor Status (SET-DEFAULT) -> add op writing ACTIVE, not a no-op remove', () => {
+    // Follow-up to #626: UpdateMonitor IGNORES an omitted Status (live-proven — a monitor
+    // paused to INACTIVE, then `revert --remove-unrecorded` reported CLEAN, yet live stayed
+    // INACTIVE). Revert must write the "ACTIVE" default (from KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::InternetMonitor::Monitor',
+      path: 'Status',
+      actual: 'INACTIVE',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Status',
+      value: 'ACTIVE',
+      prior: 'INACTIVE',
+    });
+  });
+
+  it('RolesAnywhere Profile DurationSeconds (SET-DEFAULT) -> add op writing 3600, not a no-op remove', () => {
+    // Follow-up to #619: UpdateProfile IGNORES an omitted DurationSeconds (live-proven — a
+    // profile duration changed to 7200, then `revert --remove-unrecorded` reported reverted,
+    // yet live stayed 7200). Revert must write the 3600 default (from KNOWN_DEFAULTS)
+    // explicitly. (Contrast Bedrock Agent IdleSessionTTLInSeconds, verified same session to
+    // converge via a plain `remove`, so it is deliberately NOT in the set.)
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RolesAnywhere::Profile',
+      path: 'DurationSeconds',
+      actual: 7200,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DurationSeconds',
+      value: 3600,
+      prior: 7200,
+    });
+  });
+
+  it('KinesisVideo Stream/SignalingChannel folded props -> prop-scoped SDK item (CC UpdateResource rejects them on a Tags-min-items validation)', () => {
+    // Follow-up to #624: Cloud Control UpdateResource FAILS any KVS patch on
+    // "#/Tags: expected minimum item count: 1", so the folded MUTABLE props revert via the
+    // service's own UpdateDataRetention / UpdateSignalingChannel APIs (SDK_PROP_WRITERS)
+    // instead of a CC patch. Live-proven to converge (24->0, 120->60).
+    const retention = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::KinesisVideo::Stream',
+      path: 'DataRetentionInHours',
+      actual: 24,
+      physicalId: 'my-stream',
+    });
+    const ttl = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::KinesisVideo::SignalingChannel',
+      path: 'MessageTtlSeconds',
+      actual: 120,
+      physicalId: 'my-channel',
+    });
+    const plan = buildRevertPlan([retention, ttl], baseline([]));
+    expect(plan.notRevertable).toHaveLength(0);
+    const r = plan.items.find((i) => i.ops.some((o) => o.path === '/DataRetentionInHours'))!;
+    const t = plan.items.find((i) => i.ops.some((o) => o.path === '/MessageTtlSeconds'))!;
+    expect(r.kind).toBe('sdk');
+    expect(t.kind).toBe('sdk');
+  });
+
   it('appeared-since-record undeclared drift on a KNOWN_DEFAULTS-but-not-SET-DEFAULT property still -> remove op', () => {
     // S3 OwnershipControls is in KNOWN_DEFAULTS but NOT in REVERT_SET_DEFAULT_PATHS:
     // DeleteBucketOwnershipControls resets it to the AWS default, so `remove` converges.

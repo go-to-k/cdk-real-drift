@@ -51,6 +51,13 @@ import {
   PutMetricFilterCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
+  DescribeSignalingChannelCommand,
+  DescribeStreamCommand,
+  KinesisVideoClient,
+  UpdateDataRetentionCommand,
+  UpdateSignalingChannelCommand,
+} from '@aws-sdk/client-kinesis-video';
+import {
   ElasticBeanstalkClient,
   UpdateApplicationCommand,
   UpdateEnvironmentCommand,
@@ -2126,6 +2133,71 @@ const writeElasticBeanstalkEnvironment: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// Kinesis Video Stream / SignalingChannel: Cloud Control UpdateResource REJECTS ANY patch
+// with `ValidationException: #/Tags: expected minimum item count: 1, found: 0` — the KVS CFn
+// schema requires a non-empty Tags array in the model CC reconstructs — so a folded MUTABLE
+// prop (#624: DataRetentionInHours / MessageTtlSeconds) cannot be reverted through Cloud
+// Control at all. Revert via the service's own granular update API instead. The revert TARGET
+// is the KNOWN_DEFAULTS default (a plain `remove` back to default); an explicit `add`/replace
+// carries the value. Live-proven follow-up (a `remove` revert of an out-of-band retention/TTL
+// FAILED on the Tags validation until routed here).
+const KVS_STREAM_RETENTION_DEFAULT = 0;
+const KVS_CHANNEL_MESSAGE_TTL_DEFAULT = 60;
+// DescribeStream / UpdateDataRetention accept EITHER StreamName or StreamARN — pick by shape
+// (the CFn physical id may be an ARN).
+const kvsStreamRef = (id: string): { StreamName: string } | { StreamARN: string } =>
+  id.startsWith('arn:') ? { StreamARN: id } : { StreamName: id };
+const kvsChannelDescribeRef = (id: string): { ChannelName: string } | { ChannelARN: string } =>
+  id.startsWith('arn:') ? { ChannelARN: id } : { ChannelName: id };
+
+const writeKinesisVideoStreamRetention: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!id) throw new Error('cannot resolve Kinesis Video stream for revert');
+  const op = ops.find((o) => o.path.replace(/^\//, '') === 'DataRetentionInHours');
+  if (!op) return;
+  const target =
+    op.op === 'add' && typeof op.value === 'number' ? op.value : KVS_STREAM_RETENTION_DEFAULT;
+  const kv = new KinesisVideoClient({ region: ctx.region });
+  const desc = await kv.send(new DescribeStreamCommand(kvsStreamRef(id)));
+  const current = desc.StreamInfo?.DataRetentionInHours ?? 0;
+  const version = desc.StreamInfo?.Version;
+  if (version === undefined) throw new Error(`cannot resolve stream version for ${id}`);
+  if (target === current) return;
+  // UpdateDataRetention is a DELTA API (increase/decrease by N hours), so translate the
+  // absolute target into the signed change from the current live value.
+  await kv.send(
+    new UpdateDataRetentionCommand({
+      ...kvsStreamRef(id),
+      CurrentVersion: version,
+      Operation: target > current ? 'INCREASE_DATA_RETENTION' : 'DECREASE_DATA_RETENTION',
+      DataRetentionChangeInHours: Math.abs(target - current),
+    })
+  );
+};
+
+const writeKinesisVideoSignalingChannel: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!id) throw new Error('cannot resolve Kinesis Video signaling channel for revert');
+  const op = ops.find((o) => o.path.replace(/^\//, '') === 'MessageTtlSeconds');
+  if (!op) return;
+  const target =
+    op.op === 'add' && typeof op.value === 'number' ? op.value : KVS_CHANNEL_MESSAGE_TTL_DEFAULT;
+  const kv = new KinesisVideoClient({ region: ctx.region });
+  const desc = await kv.send(new DescribeSignalingChannelCommand(kvsChannelDescribeRef(id)));
+  const arn = desc.ChannelInfo?.ChannelARN;
+  const version = desc.ChannelInfo?.Version;
+  if (arn === undefined || version === undefined)
+    throw new Error(`cannot resolve signaling channel ARN/version for ${id}`);
+  // UpdateSignalingChannel addresses the channel by ARN and takes the absolute TTL.
+  await kv.send(
+    new UpdateSignalingChannelCommand({
+      ChannelARN: arn,
+      CurrentVersion: version,
+      SingleMasterConfiguration: { MessageTtlSeconds: target },
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
   'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
@@ -2166,6 +2238,10 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
   'AWS::Cognito::IdentityPool': { CognitoEvents: writeCognitoIdentityPoolEvents },
   'AWS::Config::ConfigRule': { InputParameters: writeConfigRuleInputParameters },
+  'AWS::KinesisVideo::Stream': { DataRetentionInHours: writeKinesisVideoStreamRetention },
+  'AWS::KinesisVideo::SignalingChannel': {
+    MessageTtlSeconds: writeKinesisVideoSignalingChannel,
+  },
   'AWS::MSK::Configuration': { ServerProperties: writeMskConfiguration },
   'AWS::IAM::Role': { Policies: writeIamRoleInlinePolicies },
   'AWS::Logs::LogGroup': { BearerTokenAuthenticationEnabled: writeLogGroupBearerTokenAuth },
