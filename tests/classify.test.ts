@@ -10764,3 +10764,84 @@ describe('#632 follow-up: unconditional boolean disables surface (undeclared)', 
     });
   }
 });
+
+// #747: a live-only (out-of-band-added) map key containing a `.` / `[` / `]` must NOT be
+// appended verbatim as a `${path}.${key}` nested finding path — `toPointer` (and the
+// baseline `topSegment` / ignore-rule glob) re-split on `.`/`[`, corrupting the location
+// so a revert patches the WRONG place. The declared side already emits the whole map at
+// the parent path (drift-calculator `hasPathUnsafeKey`); the UNDECLARED side must mirror
+// it. Assert the finding path is the PARENT (`Parameters`), value = the whole live map,
+// NOT a split `Parameters.projection.enabled`.
+describe('#747 dotted live-only map key -> whole map at parent path (undeclared)', () => {
+  const bareSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('Glue Table Parameters with Athena projection.enabled emits parent path only', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Tbl',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'my-table',
+      // The property is DECLARED (so the nested-undeclared descent runs) but the dotted key
+      // is live-only (out-of-band added / AWS-materialized).
+      declared: { Parameters: { classification: 'csv' } },
+    };
+    const live: Record<string, unknown> = {
+      Parameters: { classification: 'csv', 'projection.enabled': 'true' },
+    };
+    const findings = classifyResource(resource, live, bareSchema);
+    const undeclared = findings.filter((f) => f.tier === 'undeclared');
+    // Exactly one undeclared finding, at the PARENT path — no split segments.
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0].path).toBe('Parameters');
+    // NEVER the corrupt per-key path.
+    expect(findings.map((f) => f.path)).not.toContain('Parameters.projection.enabled');
+    expect(findings.map((f) => f.path)).not.toContain('Parameters.projection');
+    // The whole live map is carried so revert rewrites it as a unit.
+    expect(undeclared[0].actual).toEqual({
+      classification: 'csv',
+      'projection.enabled': 'true',
+    });
+  });
+
+  it('safe live-only keys still descend per-key (guard is scoped to path-unsafe keys)', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Tbl',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'my-table',
+      declared: { Parameters: { classification: 'csv' } },
+    };
+    const live: Record<string, unknown> = {
+      Parameters: { classification: 'csv', safeKey: 'v' },
+    };
+    const undeclared = classifyResource(resource, live, bareSchema).filter(
+      (f) => f.tier === 'undeclared'
+    );
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0].path).toBe('Parameters.safeKey');
+  });
+
+  it('bracket key ([]) also emits parent path only', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Tbl',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'my-table',
+      declared: { Parameters: { a: '1' } },
+    };
+    const live: Record<string, unknown> = {
+      Parameters: { a: '1', 'weird[0]': 'x' },
+    };
+    const undeclared = classifyResource(resource, live, bareSchema).filter(
+      (f) => f.tier === 'undeclared'
+    );
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0].path).toBe('Parameters');
+  });
+});
