@@ -1,3 +1,10 @@
+## [0.2.32](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.31...v0.2.32) (2026-07-08)
+
+
+### Bug Fixes
+
+* **normalize:** drop bare null array-element husks in CC read (S3 TagFilters:[null], [#641](https://github.com/go-to-k/cdk-real-drift/issues/641)) ([#687](https://github.com/go-to-k/cdk-real-drift/issues/687)) ([f0f1f1c](https://github.com/go-to-k/cdk-real-drift/commit/f0f1f1cce769301f17a3866739bdf28495f2278c))
+
 ## [0.2.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.30...v0.2.31) (2026-07-08)
 
 
