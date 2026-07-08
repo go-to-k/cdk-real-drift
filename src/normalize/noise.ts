@@ -1,6 +1,12 @@
 // Undeclared-property noise suppressors (slice fixes A1/A2/A4).
 // Keep conservative — over-suppression hides real undeclared drift.
 
+// The CFn-aware YAML codec (already a dependency). Used as a JSON-string compare
+// fallback: JSON is a subset of YAML, so `parse` handles a JSON string and a
+// genuine YAML string alike (SSM Document.Content declared `DocumentFormat: YAML`
+// reads back as canonical JSON — #713).
+import { parse as parseYaml } from 'yaml';
+
 // A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
 // Every entry is equality-gated: it only suppresses a live value EQUAL to the
 // listed default, so an out-of-band change to anything else still surfaces (and
@@ -3221,21 +3227,51 @@ function deepCompareUnordered(a: unknown, b: unknown): boolean {
     ak.every((k) => Object.hasOwn(bo, k) && deepCompareUnordered(ao[k], bo[k]))
   );
 }
-export function isJsonStringStructEqual(a: unknown, b: unknown): boolean {
-  const parse = (s: string): unknown => {
+// Parse a string operand into a structured value for the JSON-string compare.
+// Try strict JSON first, then fall back to the CFn-aware YAML codec — JSON is a
+// SUBSET of YAML, so `parseYaml` handles both a JSON string and a genuine YAML
+// string (R75+: SSM Document.Content declared `DocumentFormat: YAML` reads back as
+// canonical JSON — #713). Only a parse that yields an OBJECT or ARRAY counts as a
+// structured operand; a bare scalar (`"hello"`, `42`) returns the SENTINEL so an
+// unrelated scalar string is never vacuously folded against an object.
+function parseStructured(s: string): unknown {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(s);
+  } catch {
     try {
-      return JSON.parse(s);
+      parsed = parseYaml(s);
     } catch {
       return SENTINEL_UNPARSEABLE;
     }
-  };
-  if (typeof a === 'string' && b !== null && typeof b === 'object') {
-    const pa = parse(a);
+  }
+  return parsed !== null && typeof parsed === 'object' ? parsed : SENTINEL_UNPARSEABLE;
+}
+export function isJsonStringStructEqual(a: unknown, b: unknown): boolean {
+  const aStr = typeof a === 'string';
+  const bStr = typeof b === 'string';
+  const aObj = !aStr && a !== null && typeof a === 'object';
+  const bObj = !bStr && b !== null && typeof b === 'object';
+  // string vs object (either order): declared object, live JSON/YAML string (or vice
+  // versa). Parse the string side and structurally compare, key-order-insensitive.
+  if (aStr && bObj) {
+    const pa = parseStructured(a);
     return pa !== SENTINEL_UNPARSEABLE && deepCompareUnordered(pa, b);
   }
-  if (typeof b === 'string' && a !== null && typeof a === 'object') {
-    const pb = parse(b);
+  if (bStr && aObj) {
+    const pb = parseStructured(b);
     return pb !== SENTINEL_UNPARSEABLE && deepCompareUnordered(a, pb);
+  }
+  // string vs string: a declared YAML string (`DocumentFormat: YAML`) whose live
+  // counterpart is the same document re-serialized to canonical JSON (#713). Parse
+  // BOTH — each side may be JSON or YAML — and structurally compare. The
+  // object/array guard in parseStructured keeps two unrelated scalar strings from
+  // folding, and a genuinely different document still differs after the parse.
+  if (aStr && bStr) {
+    const pa = parseStructured(a);
+    if (pa === SENTINEL_UNPARSEABLE) return false;
+    const pb = parseStructured(b);
+    return pb !== SENTINEL_UNPARSEABLE && deepCompareUnordered(pa, pb);
   }
   return false;
 }
