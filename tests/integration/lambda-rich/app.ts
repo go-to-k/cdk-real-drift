@@ -33,7 +33,12 @@ const fn = new LambdaFunction(stack, "Handler", {
   timeout: Duration.seconds(15),
   ephemeralStorageSize: Size.mebibytes(1024),
   tracing: Tracing.ACTIVE,
-  reservedConcurrentExecutions: 2,
+  // NOTE: reservedConcurrentExecutions intentionally omitted — setting it is rejected in
+  // regions/accounts at the small default Lambda concurrency limit (the deploy fails with
+  // "decreases account's UnreservedConcurrentExecution below its minimum value of [10]",
+  // wasting a paid deploy + delstack cycle). It exercises no cdkrd-specific fold — a plain
+  // declared mutable prop — and verify-detect.sh mutates MemorySize/Timeout, so detection
+  // coverage is unaffected. See #685.
   description: "cdkrd lambda-rich test handler",
   environment: {
     STAGE: "test",
