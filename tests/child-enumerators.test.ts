@@ -32,6 +32,7 @@ import {
   diffUserPoolGroups,
   diffUserPoolResourceServers,
   diffVpcChildren,
+  isBodyDefinedRestApi,
   isEnumerableRoute,
 } from '../src/read/child-enumerators.js';
 
@@ -166,6 +167,59 @@ describe('diffApiGatewayChildren', () => {
       liveMethodsByResource: {},
     });
     expect(added2.map((a) => a.identifier)).toEqual([`${API}|res9`]);
+  });
+
+  it('suppresses ALL resource/method additions for a Body-defined (OpenAPI) RestApi (#714)', () => {
+    // A SpecRestApi materializes `/ping` + its ANY method from the `Body`, with no sibling
+    // AWS::ApiGateway::Resource / Method template resources — so declaredResourceIds and
+    // declaredMethodKeys are empty. Without bodyDefined this flags `/ping` (+ method) as
+    // out-of-band `added`; with it, they must NOT surface.
+    const withoutFlag = diffApiGatewayChildren({
+      apiId: API,
+      rootResourceId: ROOT,
+      declaredResourceIds: [],
+      declaredMethodKeys: [],
+      liveResources: [{ id: 'pingres', path: '/ping' }],
+      liveMethodsByResource: {
+        [ROOT]: [],
+        pingres: [{ httpMethod: 'ANY' }],
+      },
+    });
+    // Sanity: without the fix the Body-materialized `/ping` IS flagged (the false positive).
+    expect(withoutFlag.map((a) => a.identifier)).toEqual([`${API}|pingres`]);
+
+    const withFlag = diffApiGatewayChildren({
+      apiId: API,
+      rootResourceId: ROOT,
+      declaredResourceIds: [],
+      declaredMethodKeys: [],
+      liveResources: [{ id: 'pingres', path: '/ping' }],
+      liveMethodsByResource: {
+        [ROOT]: [],
+        pingres: [{ httpMethod: 'ANY' }],
+      },
+      bodyDefined: true,
+    });
+    expect(withFlag).toEqual([]);
+  });
+});
+
+describe('isBodyDefinedRestApi (#714)', () => {
+  it('detects a Body-defined (OpenAPI) RestApi', () => {
+    expect(isBodyDefinedRestApi({ Body: { openapi: '3.0.1', paths: {} } })).toBe(true);
+  });
+
+  it('detects a BodyS3Location-defined RestApi', () => {
+    expect(isBodyDefinedRestApi({ BodyS3Location: { Bucket: 'b', Key: 'spec.yaml' } })).toBe(true);
+  });
+
+  it('is false for a child-resource-defined RestApi (Name only)', () => {
+    expect(isBodyDefinedRestApi({ Name: 'my-api' })).toBe(false);
+  });
+
+  it('is false when Body is absent / null', () => {
+    expect(isBodyDefinedRestApi({})).toBe(false);
+    expect(isBodyDefinedRestApi({ Body: null, BodyS3Location: undefined })).toBe(false);
   });
 });
 
