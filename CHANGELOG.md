@@ -1,3 +1,10 @@
+## [0.2.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.38...v0.2.39) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** fold API Gateway execute-api:/* resource-policy shorthand against the echoed ARN ([#676](https://github.com/go-to-k/cdk-real-drift/issues/676)) ([#721](https://github.com/go-to-k/cdk-real-drift/issues/721)) ([1e9e9a0](https://github.com/go-to-k/cdk-real-drift/commit/1e9e9a0d8a170b841f103af07f84403df398b6b8))
+
 ## [0.2.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.37...v0.2.38) (2026-07-08)
 
 
