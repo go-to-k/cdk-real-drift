@@ -115,13 +115,40 @@
       "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "InterfaceType",
+      "actual": "interface",
+      "physicalId": "eni-0876958cf7bca8260",
+      "constructPath": "CdkRealDriftIntegEniRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv4PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-0876958cf7bca8260",
+      "constructPath": "CdkRealDriftIntegEniRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv6PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-0876958cf7bca8260",
+      "constructPath": "CdkRealDriftIntegEniRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddress",
       "actual": "10.0.0.221",
       "physicalId": "eni-0876958cf7bca8260",
       "constructPath": "CdkRealDriftIntegEniRich/Eni"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddresses",
@@ -140,33 +167,6 @@
       "resourceType": "AWS::EC2::NetworkInterface",
       "path": "SecondaryPrivateIpAddressCount",
       "actual": 0,
-      "physicalId": "eni-0876958cf7bca8260",
-      "constructPath": "CdkRealDriftIntegEniRich/Eni"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Eni",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv6PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-0876958cf7bca8260",
-      "constructPath": "CdkRealDriftIntegEniRich/Eni"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Eni",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv4PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-0876958cf7bca8260",
-      "constructPath": "CdkRealDriftIntegEniRich/Eni"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Eni",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "InterfaceType",
-      "actual": "interface",
       "physicalId": "eni-0876958cf7bca8260",
       "constructPath": "CdkRealDriftIntegEniRich/Eni"
     }

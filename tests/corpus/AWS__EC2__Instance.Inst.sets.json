@@ -300,23 +300,11 @@
   },
   "expected": [
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "AvailabilityZone",
-      "physicalId": "i-06fd4581f0d168d8a",
-      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Inst",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "Volumes[/dev/xvda]",
-      "actual": {
-        "VolumeId": "vol-0aac921ab46964337",
-        "Device": "/dev/xvda"
-      },
-      "nested": true,
+      "path": "InstanceInitiatedShutdownBehavior",
+      "actual": "stop",
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
@@ -324,17 +312,27 @@
       "tier": "atDefault",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "Tenancy",
-      "actual": "default",
+      "path": "MetadataOptions",
+      "actual": {
+        "HttpPutResponseHopLimit": 2,
+        "HttpProtocolIpv6": "disabled",
+        "HttpTokens": "required",
+        "InstanceMetadataTags": "disabled",
+        "HttpEndpoint": "enabled"
+      },
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "SecurityGroups",
-      "actual": ["default"],
+      "path": "PrivateDnsNameOptions",
+      "actual": {
+        "EnableResourceNameDnsARecord": false,
+        "HostnameType": "ip-name",
+        "EnableResourceNameDnsAAAARecord": false
+      },
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
@@ -344,6 +342,24 @@
       "resourceType": "AWS::EC2::Instance",
       "path": "PrivateIpAddress",
       "actual": "10.0.0.226",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SourceDestCheck",
+      "actual": true,
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "Tenancy",
+      "actual": "default",
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
@@ -394,39 +410,6 @@
       "tier": "undeclared",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "SubnetId",
-      "actual": "subnet-0f3c7a3910f1a4f50",
-      "physicalId": "i-06fd4581f0d168d8a",
-      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Inst",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "MetadataOptions",
-      "actual": {
-        "HttpPutResponseHopLimit": 2,
-        "HttpProtocolIpv6": "disabled",
-        "HttpTokens": "required",
-        "InstanceMetadataTags": "disabled",
-        "HttpEndpoint": "enabled"
-      },
-      "physicalId": "i-06fd4581f0d168d8a",
-      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "Inst",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "InstanceInitiatedShutdownBehavior",
-      "actual": "stop",
-      "physicalId": "i-06fd4581f0d168d8a",
-      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Inst",
-      "resourceType": "AWS::EC2::Instance",
       "path": "CpuOptions",
       "actual": {
         "ThreadsPerCore": 2,
@@ -439,11 +422,9 @@
       "tier": "undeclared",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "PrivateDnsNameOptions",
+      "path": "CreditSpecification",
       "actual": {
-        "EnableResourceNameDnsARecord": false,
-        "HostnameType": "ip-name",
-        "EnableResourceNameDnsAAAARecord": false
+        "CPUCredits": "unlimited"
       },
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
@@ -458,11 +439,11 @@
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "SourceDestCheck",
-      "actual": true,
+      "path": "SecurityGroups",
+      "actual": ["default"],
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     },
@@ -470,10 +451,29 @@
       "tier": "undeclared",
       "logicalId": "Inst",
       "resourceType": "AWS::EC2::Instance",
-      "path": "CreditSpecification",
+      "path": "SubnetId",
+      "actual": "subnet-0f3c7a3910f1a4f50",
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "Volumes[/dev/xvda]",
       "actual": {
-        "CPUCredits": "unlimited"
+        "VolumeId": "vol-0aac921ab46964337",
+        "Device": "/dev/xvda"
       },
+      "nested": true,
+      "physicalId": "i-06fd4581f0d168d8a",
+      "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "Inst",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "AvailabilityZone",
       "physicalId": "i-06fd4581f0d168d8a",
       "constructPath": "CdkRealDriftIntegEc2InstanceSets/Inst"
     }

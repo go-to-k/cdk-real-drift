@@ -133,17 +133,26 @@
       "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "PrivateIpAddress",
-      "actual": "10.0.0.10",
+      "path": "GroupSet",
+      "actual": ["sg-0dd629030dbd15c82"],
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "SecondaryPrivateIpAddressCount",
-      "actual": 3,
+      "path": "InterfaceType",
+      "actual": "interface",
+      "physicalId": "eni-01ce38782d866c24f",
+      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Eni",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv4PrefixCount",
+      "actual": 0,
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     },
@@ -160,17 +169,8 @@
       "tier": "atDefault",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv4PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-01ce38782d866c24f",
-      "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Eni",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "GroupSet",
-      "actual": ["sg-0dd629030dbd15c82"],
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.10",
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     },
@@ -184,11 +184,11 @@
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     },
     {
-      "tier": "atDefault",
+      "tier": "undeclared",
       "logicalId": "Eni",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "InterfaceType",
-      "actual": "interface",
+      "path": "SecondaryPrivateIpAddressCount",
+      "actual": 3,
       "physicalId": "eni-01ce38782d866c24f",
       "constructPath": "CdkRealDriftIntegEniMultiipRich/Eni"
     }

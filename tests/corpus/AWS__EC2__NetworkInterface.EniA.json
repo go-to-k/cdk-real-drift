@@ -96,13 +96,49 @@
       "tier": "atDefault",
       "logicalId": "EniA",
       "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "GroupSet",
+      "actual": ["sg-068968f8cf5536d62"],
+      "physicalId": "eni-0020122cb730d7d89",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniA",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "InterfaceType",
+      "actual": "interface",
+      "physicalId": "eni-0020122cb730d7d89",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniA",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv4PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-0020122cb730d7d89",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniA",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv6PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-0020122cb730d7d89",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniA",
+      "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddress",
       "actual": "10.0.0.150",
       "physicalId": "eni-0020122cb730d7d89",
       "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EniA",
       "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddresses",
@@ -128,44 +164,8 @@
       "tier": "atDefault",
       "logicalId": "EniA",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv6PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-0020122cb730d7d89",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniA",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv4PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-0020122cb730d7d89",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "EniA",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "GroupSet",
-      "actual": ["sg-068968f8cf5536d62"],
-      "physicalId": "eni-0020122cb730d7d89",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniA",
-      "resourceType": "AWS::EC2::NetworkInterface",
       "path": "SourceDestCheck",
       "actual": true,
-      "physicalId": "eni-0020122cb730d7d89",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniA",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "InterfaceType",
-      "actual": "interface",
       "physicalId": "eni-0020122cb730d7d89",
       "constructPath": "CdkRealDriftIntegAuthNetRich/EniA"
     }

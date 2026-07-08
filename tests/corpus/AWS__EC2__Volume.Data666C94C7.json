@@ -70,15 +70,16 @@
   },
   "expected": [
     {
-      "tier": "unresolved",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::EC2::Volume",
-      "path": "AvailabilityZone",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
       "physicalId": "vol-010c7274153ce356a",
       "constructPath": "CdkRealDriftIntegEc2Rich/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::EC2::Volume",
       "path": "KmsKeyId",
@@ -87,11 +88,10 @@
       "constructPath": "CdkRealDriftIntegEc2Rich/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "unresolved",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::EC2::Volume",
-      "path": "AvailabilityZoneId",
-      "actual": "use1-az1",
+      "path": "AvailabilityZone",
       "physicalId": "vol-010c7274153ce356a",
       "constructPath": "CdkRealDriftIntegEc2Rich/Data"
     }
