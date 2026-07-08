@@ -52,7 +52,10 @@ the full design.
   rest of the API (auth / X-Ray / logging, plus DataSources / Resolvers / Functions)
   **is** checked.
 - **Stack state.** A stack with no meaningful deployed reality is **skipped with a
-  clear note** (`REVIEW_IN_PROGRESS`, a delete in progress). A stack mid-operation
+  clear note** (`REVIEW_IN_PROGRESS`, a delete in progress, or `ROLLBACK_COMPLETE`
+  — a failed initial create whose resources CloudFormation already deleted; unlike
+  `UPDATE_ROLLBACK_COMPLETE`, which keeps a prior deployed reality and **is**
+  checked). A stack mid-operation
   or in a `*_FAILED` state is still checked, but `check` warns that results may be
   transient. Only stable `*_COMPLETE` states are fully reliable.
 - **SDK-override coverage.** The CC-gap types read via an SDK override compare the
