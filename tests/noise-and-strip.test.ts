@@ -770,6 +770,21 @@ describe('noise suppressors', () => {
     ); // #633
   });
 
+  it('VPCCidrBlock AmazonProvided ipv6 block + border group fold value-independent (#684)', () => {
+    // A dual-stack / secondary-CIDR association that declares AmazonProvidedIpv6CidrBlock (no
+    // explicit block) reads back the /56 AWS allocates plus its NetworkBorderGroup — both
+    // AWS-assigned at creation, create-only, per-VPC. First-run [Potential Drift] FP on every
+    // clean dual-stack VPC until folded (live-verified 2026-07-08, us-east-1: check went from
+    // 2 potential drift to CLEAN). A user who brings their own CIDR DECLARES Ipv6CidrBlock,
+    // which is then compared in the declared dimension (detection preserved).
+    expect(VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::EC2::VPCCidrBlock']).toContain(
+      'Ipv6CidrBlock'
+    ); // #684
+    expect(VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS['AWS::EC2::VPCCidrBlock']).toContain(
+      'Ipv6CidrBlockNetworkBorderGroup'
+    ); // #684
+  });
+
   it('ResourceExplorer2 View undeclared Scope folds via the context-ARN default (#626)', () => {
     // The account-root Scope is a tier-2 DERIVED default (arn:<partition>:iam::<account>:root),
     // built from the read context and equality-gated so a view scoped elsewhere still surfaces.
