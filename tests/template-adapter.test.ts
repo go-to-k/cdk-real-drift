@@ -95,6 +95,70 @@ describe('collectPrincipalsWithSiblingPolicies', () => {
     expect(m.get('MyUser')).toEqual(['UserDefaultPolicyA55']);
     expect(m.get('MyGroup')).toEqual(['GroupDefaultPolicyB33']);
   });
+
+  it('also maps standalone RolePolicy/UserPolicy/GroupPolicy inline-policy types (#697)', () => {
+    const resources = {
+      MyRole: { Type: 'AWS::IAM::Role' },
+      MyUser: { Type: 'AWS::IAM::User' },
+      MyGroup: { Type: 'AWS::IAM::Group' },
+      RolePol: {
+        Type: 'AWS::IAM::RolePolicy',
+        Properties: { PolicyName: 'RoleInlineA', RoleName: { Ref: 'MyRole' } },
+      },
+      UserPol: {
+        Type: 'AWS::IAM::UserPolicy',
+        Properties: { PolicyName: 'UserInlineB', UserName: { Ref: 'MyUser' } },
+      },
+      GroupPol: {
+        Type: 'AWS::IAM::GroupPolicy',
+        Properties: { PolicyName: 'GroupInlineC', GroupName: { Ref: 'MyGroup' } },
+      },
+    };
+    const m = collectPrincipalsWithSiblingPolicies(resources);
+    expect(m.get('MyRole')).toEqual(['RoleInlineA']);
+    expect(m.get('MyUser')).toEqual(['UserInlineB']);
+    expect(m.get('MyGroup')).toEqual(['GroupInlineC']);
+  });
+
+  it('merges standalone RolePolicy names with an AWS::IAM::Policy on the same role (#697)', () => {
+    const resources = {
+      MyRole: { Type: 'AWS::IAM::Role' },
+      DefaultPol: {
+        Type: 'AWS::IAM::Policy',
+        Properties: { PolicyName: 'RoleDefaultPolicyABC', Roles: [{ Ref: 'MyRole' }] },
+      },
+      StandalonePol: {
+        Type: 'AWS::IAM::RolePolicy',
+        Properties: { PolicyName: 'RoleInlineStandalone', RoleName: { Ref: 'MyRole' } },
+      },
+    };
+    // does not regress the existing AWS::IAM::Policy handling: BOTH names present
+    expect(collectPrincipalsWithSiblingPolicies(resources).get('MyRole')).toEqual([
+      'RoleDefaultPolicyABC',
+      'RoleInlineStandalone',
+    ]);
+  });
+
+  it("marks the principal 'unresolved' for a standalone type with an unresolvable PolicyName (#697)", () => {
+    const resources = {
+      MyRole: { Type: 'AWS::IAM::Role' },
+      RolePol: {
+        Type: 'AWS::IAM::RolePolicy',
+        Properties: { PolicyName: { 'Fn::GetAtt': ['X', 'Y'] }, RoleName: { Ref: 'MyRole' } },
+      },
+    };
+    expect(collectPrincipalsWithSiblingPolicies(resources).get('MyRole')).toBe('unresolved');
+  });
+
+  it('ignores a standalone type whose principal is a literal name, not a Ref (#697)', () => {
+    const resources = {
+      RolePol: {
+        Type: 'AWS::IAM::RolePolicy',
+        Properties: { PolicyName: 'p', RoleName: 'literal-role-name' },
+      },
+    };
+    expect(collectPrincipalsWithSiblingPolicies(resources).size).toBe(0); // literal has no logicalId
+  });
 });
 
 describe('collectClustersWithSiblingCapacityProviders', () => {
