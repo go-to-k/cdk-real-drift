@@ -235,9 +235,14 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
 /**
  * Which resources the record snapshot covered COMPLETELY (R62): every undeclared
  * finding of the resource is in `recorded` (zero undeclared findings = trivially
- * complete), and the resource was actually observed — a `skipped` (unread) or
- * `deleted` resource cannot be snapshot. Ignored-tier values do not block
- * completeness: they were visible and deliberately ruled out.
+ * complete), and the resource was actually observed — a `skipped` (unread),
+ * `deleted`, or `readGap` (part of its live model UNREAD) resource cannot be
+ * snapshot. A `readGap` finding means some of the resource's live state could not
+ * be read this run (#795), so undeclared values hidden behind that gap were NOT
+ * captured — the resource must not claim completeness, else a later cdkrd that
+ * closes the read gap would surface those newly-visible values as false "appeared
+ * since record" drift. Ignored-tier values do not block completeness: they were
+ * visible and deliberately ruled out.
  * Monotonic via `previousComplete`: once complete, a resource stays complete
  * (declining to record an appeared-since-record value keeps it drift, instead of
  * demoting it back to unrecorded) — pruned to ids still in the template.
@@ -251,7 +256,8 @@ export function computeCompleteResources(
   const recordedKeys = new Set(recorded.map(recordedKey));
   const blocked = new Set<string>();
   for (const f of findings) {
-    if (f.tier === 'skipped' || f.tier === 'deleted') blocked.add(f.logicalId);
+    if (f.tier === 'skipped' || f.tier === 'deleted' || f.tier === 'readGap')
+      blocked.add(f.logicalId);
     if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
   }
   const all = new Set(allLogicalIds);
