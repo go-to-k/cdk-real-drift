@@ -64,7 +64,7 @@
       "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AccelFED3756B",
       "resourceType": "AWS::GlobalAccelerator::Accelerator",
       "path": "IpAddresses",

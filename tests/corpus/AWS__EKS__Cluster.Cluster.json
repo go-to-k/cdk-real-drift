@@ -136,7 +136,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "AccessConfig",

@@ -78,7 +78,7 @@
       "constructPath": "CdkRealDriftIntegMisc0Cov3/HuntGlueSchema"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntGlueSchema",
       "resourceType": "AWS::Glue::Schema",
       "path": "CheckpointVersion",
@@ -90,7 +90,7 @@
       "constructPath": "CdkRealDriftIntegMisc0Cov3/HuntGlueSchema"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntGlueSchema",
       "resourceType": "AWS::Glue::Schema",
       "path": "Registry.Name",

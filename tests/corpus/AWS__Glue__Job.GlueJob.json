@@ -71,7 +71,7 @@
       "constructPath": "CdkrdIntegHarvest5/GlueJob"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "GlueJob",
       "resourceType": "AWS::Glue::Job",
       "path": "Timeout",
@@ -89,7 +89,7 @@
       "constructPath": "CdkrdIntegHarvest5/GlueJob"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "GlueJob",
       "resourceType": "AWS::Glue::Job",
       "path": "ExecutionProperty",

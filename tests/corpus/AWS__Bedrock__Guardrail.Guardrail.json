@@ -158,7 +158,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Guardrail",
       "resourceType": "AWS::Bedrock::Guardrail",
       "path": "ContentPolicyConfig.ContentFiltersTierConfig",
@@ -170,7 +170,7 @@
       "constructPath": "CdkRealDriftIntegBedrockGuardrailRich/Guardrail"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Guardrail",
       "resourceType": "AWS::Bedrock::Guardrail",
       "path": "TopicPolicyConfig.TopicsTierConfig",
