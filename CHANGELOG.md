@@ -1,3 +1,10 @@
+## [0.2.59](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.58...v0.2.59) (2026-07-08)
+
+
+### Bug Fixes
+
+* **report:** sanitize live keys/ids/notes against control-char injection ([#829](https://github.com/go-to-k/cdk-real-drift/issues/829)) ([#848](https://github.com/go-to-k/cdk-real-drift/issues/848)) ([4c1aef3](https://github.com/go-to-k/cdk-real-drift/commit/4c1aef3730cedc16555b8d5c852b4642b672e0d3))
+
 ## [0.2.58](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.57...v0.2.58) (2026-07-08)
 
 
