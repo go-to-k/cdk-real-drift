@@ -1,3 +1,10 @@
+## [0.2.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.39...v0.2.40) (2026-07-08)
+
+
+### Bug Fixes
+
+* **desired:** drop condition-false resources from the desired set ([#689](https://github.com/go-to-k/cdk-real-drift/issues/689)) ([#720](https://github.com/go-to-k/cdk-real-drift/issues/720)) ([1f1b9ff](https://github.com/go-to-k/cdk-real-drift/commit/1f1b9ff3b761725cd6e2d4fffb5ef559583cd7d0))
+
 ## [0.2.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.38...v0.2.39) (2026-07-08)
 
 
