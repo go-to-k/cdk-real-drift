@@ -6,11 +6,14 @@
 // exits 0 (a hint names --fail); with --fail drift exits 1 and prompts are
 // suppressed. Errors always exit 2. The exit is the worst across all checked
 // stacks.
+import { readdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
   type ApplyBaselineOptions,
   type BaselineFile,
+  baselinePath,
   checkBaselineAccount,
   constructPathsByLogical,
   declaredKeysByLogical,
@@ -168,6 +171,29 @@ export function strictCoverageExit(
  */
 export function finalCheckExit(code: number, fail: boolean): number {
   return fail || code !== 1 ? code : 0;
+}
+
+/**
+ * #781: does a committed baseline exist for this stack, under ANY account/region axis?
+ * When a stack is gone (a DescribeStacks "does not exist"), we do NOT know the
+ * account/region it was deployed to, so we cannot construct the exact baseline path.
+ * A committed baseline is named `<stackName>.<accountId>.<region>.json` under
+ * `.cdkrd/baselines/`, so match by the `<stackName>.` filename prefix across the whole
+ * directory — a prior baseline is PROOF the stack was once deployed, which distinguishes
+ * "deleted out of band" (real drift) from "never deployed yet" (a benign skip). The
+ * baselines directory is derived from `baselinePath` so the layout stays single-sourced.
+ * Pure (filesystem-only, no AWS) + exported for unit tests. Missing dir → false.
+ */
+export function hasBaselineForStack(stackName: string): boolean {
+  const dir = dirname(baselinePath(stackName, 'a', 'r'));
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return false; // no `.cdkrd/baselines/` directory at all → nothing was ever recorded
+  }
+  const prefix = `${stackName}.`;
+  return entries.some((f) => f.startsWith(prefix) && f.endsWith('.json'));
 }
 
 export async function runCheck(args: string[]): Promise<number> {
@@ -491,6 +517,21 @@ export async function runCheck(args: string[]): Promise<number> {
       worst = Math.max(worst, strictCoverageExit(a.strict, gathered.findings, desired.resources));
     } catch (e) {
       if (isStackNotDeployed(e)) {
+        // #781: "does not exist" alone cannot tell a NEVER-deployed stack from one DELETED
+        // out of band — both surface the same DescribeStacks error. A committed baseline is
+        // proof the stack was once deployed, so its presence promotes this from a benign skip
+        // (exit 0) to real drift: the deployed state is GONE. Without this, `check --fail`
+        // (and `--strict`) exit 0 on a deleted stack, indistinguishable from never-deployed.
+        if (hasBaselineForStack(stackName)) {
+          const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
+          console.error(`[Drift] ${stackName} (${region}): ${msg}`);
+          jsonError(stackName, region, msg);
+          // Drift, not an error: gate on --fail exactly like a per-stack drift code (R53), and
+          // make --strict fail regardless (a missing whole stack is the ultimate coverage gap).
+          worst = Math.max(worst, finalCheckExit(1, a.fail), a.strict ? 1 : 0);
+          anyDrift = true;
+          continue;
+        }
         console.error(`note: ${stackName}: not deployed yet — skipped`);
         jsonError(stackName, region, 'not deployed yet — skipped');
         continue;
