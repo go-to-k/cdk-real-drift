@@ -265,6 +265,20 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
       ? `${rtb}|${att}`
       : undefined;
   },
+  // VPCCidrBlock primaryIdentifier is [Id, VpcId] — CHILD (the vpc-cidr-assoc-... Id)
+  // FIRST, then VpcId. The CFn physical id is only the child segment (Id), so CC
+  // GetResource with the bare id ValidationException-skips it (read-gap) on every
+  // dual-stack (`IpProtocol.DUAL_STACK`) or secondary-CIDR VPC — its declared props
+  // (AmazonProvidedIpv6CidrBlock, CidrBlock, IPAM fields) go entirely unwatched. VpcId
+  // comes from the resolved declared Ref (the VPC is in the same template by
+  // construction). Verified live (#647, us-east-1): `<Id>|<VpcId>` reads; the reverse
+  // order (`VpcId|Id`) returns ResourceNotFoundException. Child-first like ECS Service,
+  // so not `compositeWith` (that is parent-first).
+  'AWS::EC2::VPCCidrBlock': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const vpcId = declared.VpcId;
+    return typeof vpcId === 'string' && vpcId.length > 0 ? `${pid}|${vpcId}` : undefined;
+  },
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
