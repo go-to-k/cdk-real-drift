@@ -138,6 +138,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // reads back "CWL") — observed-only like the ApiGateway Authorizer AuthType fold; an
   // S3/FH/XRay destination's value simply doesn't match and surfaces once, recordable.
   'AWS::Logs::DeliveryDestination': { DeliveryDestinationType: 'CWL' },
+  // An account policy that declares no Scope reads back the AWS service default "ALL"
+  // (the policy applies to all log groups). Equality-gated: a scoped policy DECLARES its
+  // own Scope, which no longer matches this constant and surfaces. #711.
+  'AWS::Logs::AccountPolicy': { Scope: 'ALL' },
   // A Delivery that declares no RecordFields materializes the source's FULL default
   // field list on read. This is the CloudFront ACCESS_LOGS default (the most common
   // vended source) — equality-gated, so a field added/removed/reordered out of band no
@@ -556,6 +560,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Kinesis::Stream': {
     MaxRecordSizeInKiB: 1024,
+    // A stream that declares no RetentionPeriodHours reads back the AWS service default
+    // (24 hours). Equality-gated: a stream that sets a longer retention no longer matches
+    // and surfaces (undeclared), and an out-of-band retention change still surfaces. #711.
+    RetentionPeriodHours: 24,
   },
   'AWS::SSM::Parameter': {
     DataType: 'text',
@@ -735,6 +743,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     GroupName: 'default',
     ActionAfterCompletion: 'NONE',
     ScheduleExpressionTimezone: 'UTC',
+    // A schedule that declares no State reads back the AWS service default (ENABLED).
+    // Equality-gated: a DISABLED schedule no longer matches and surfaces, and an
+    // out-of-band disable still surfaces. #711.
+    State: 'ENABLED',
   },
   // R-noise-sweep (found by the eni-rich / dbproxy-rich / elasticache-cachecluster-rich
   // hunt): constant, documented service defaults a fresh resource reports as undeclared
@@ -893,6 +905,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
+    // A Gateway endpoint that omits VpcEndpointType reads back the AWS service default
+    // "Gateway". Equality-gated: an Interface (or GatewayLoadBalancer) endpoint DECLARES
+    // its own type, which no longer matches this constant and surfaces; only the exact
+    // "Gateway" default folds. #711.
+    VpcEndpointType: 'Gateway',
     // An endpoint that declares no `PolicyDocument` reads back the AWS-attached DEFAULT policy:
     // full access ("allow every principal every action on every resource"). It is the standard
     // default, not user intent — a user who tightens access DECLARES a policy, which no longer
@@ -1692,6 +1709,10 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // constant default to atDefault; a container that actually reserves CPU (Cpu != 0)
     // no longer matches and surfaces. Observed live on the ecs-taskdef-caps deploy.
     'ContainerDefinitions.*.Cpu': 0,
+    // A container that does not declare Essential reads back the AWS service default
+    // (true) for EVERY container. Equality-gated: a container that sets Essential: false
+    // no longer matches and surfaces, and an out-of-band change still surfaces. #711.
+    'ContainerDefinitions.*.Essential': true,
   },
   'AWS::Glue::Database': {
     'DatabaseInput.CreateTableDefaultPermissions': [
@@ -1707,6 +1728,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Route53::HealthCheck': {
     'HealthCheckConfig.EnableSNI': true,
+    // A health check that declares neither RequestInterval nor FailureThreshold reads back
+    // the AWS service defaults (30-second interval, 3 consecutive failures). Equality-gated:
+    // a check that sets a different interval/threshold no longer matches and surfaces, and an
+    // out-of-band change still surfaces. #711.
+    'HealthCheckConfig.RequestInterval': 30,
+    'HealthCheckConfig.FailureThreshold': 3,
   },
   'AWS::Route53::RecordSet': {
     // A geoproximity record may declare only AWSRegion (or Coordinates); AWS then sets
