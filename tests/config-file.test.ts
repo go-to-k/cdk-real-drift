@@ -508,10 +508,12 @@ describe('ignoreRuleFor', () => {
       path: 'Policies',
       actual: [{}],
     };
-    // plain stack + a CDK Stage both collapse to the same within-stack rule
-    expect(ignoreRuleFor(f, 'MyStack')).toEqual({ path: 'ApiRole.Policies' });
+    // plain stack + a CDK Stage both collapse to the same within-stack path (the stack
+    // scope is stamped on, but no account/region were passed here so those stay omitted)
+    expect(ignoreRuleFor(f, 'MyStack')).toEqual({ path: 'ApiRole.Policies', stack: 'MyStack' });
     expect(ignoreRuleFor({ ...f, constructPath: 'my-app/Rds/ApiRole' }, 'my-app-Rds')).toEqual({
       path: 'ApiRole.Policies',
+      stack: 'my-app-Rds',
     });
     // round-trip: the within-stack rule the verb now writes matches the finding it came from
     expect(ign([f], 'MyStack', cfg([ignoreRuleFor(f, 'MyStack')]))[0]?.tier).toBe('ignored');

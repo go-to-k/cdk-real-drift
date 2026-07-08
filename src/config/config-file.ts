@@ -151,23 +151,38 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
 }
 
 /**
- * The exact ignore rule the `ignore` verb writes for a finding — always the unscoped
- * rule (just `path`); the optional `stack` / `region` scopes stay hand-authored (the
- * verb writes the simplest rule; narrowing is a manual edit). Prefer the human-friendly
- * `<constructPath>.<path>` when present (CDK stacks): it is what `cdk-local` targets on
- * and readable in the git-committed config diff. The construct path is written WITHIN the
- * stack (the stack/Stage prefix stripped, given `stackName`) so it is byte-identical to
- * what the report prints for the finding — copy what you see. Naturally stack-scoped even
- * without the prefix (a `stack:` scope narrows further). Falls back to `<logicalId>.<path>`,
- * ALWAYS present (the CloudFormation key) so a rule is writable even on a non-CDK /
- * metadata-stripped stack. Pure + exported; `applyIgnores` matches the within-stack path,
- * the full construct path (older rules), AND the logicalId, so every form works.
+ * The exact ignore rule the `ignore` verb (and check's inline ignore) writes for a
+ * finding. The rule is STAMPED with the current stack / account / region scope (the same
+ * three identity axes a baseline file is keyed on), so ignoring a within-stack path on one
+ * stack does NOT leak to a same-named twin stack in another account/region — an unscoped
+ * `{ path }` was match-all, silently silencing the identical path everywhere (issue #757).
+ * The literal identity values are valid exact globs; hand-widening to a `*` glob stays a
+ * manual edit. A scope field is omitted only when genuinely unavailable (empty string).
+ * Prefer the human-friendly `<constructPath>.<path>` for `path` when present (CDK stacks):
+ * it is what `cdk-local` targets on and readable in the git-committed config diff. The
+ * construct path is written WITHIN the stack (the stack/Stage prefix stripped, given
+ * `stackName`) so it is byte-identical to what the report prints for the finding — copy
+ * what you see. Falls back to `<logicalId>.<path>`, ALWAYS present (the CloudFormation
+ * key) so a rule is writable even on a non-CDK / metadata-stripped stack. Pure + exported;
+ * `applyIgnores` matches the within-stack path, the full construct path (older rules), AND
+ * the logicalId, so every form works.
  */
-export function ignoreRuleFor(finding: Finding, stackName = ''): IgnoreRuleObject {
+export function ignoreRuleFor(
+  finding: Finding,
+  stackName = '',
+  accountId = '',
+  region = ''
+): IgnoreRuleObject {
   const id = finding.constructPath
     ? withinStackPath(finding.constructPath, stackName)
     : finding.logicalId;
-  return { path: finding.path ? `${id}.${finding.path}` : id };
+  const rule: IgnoreRuleObject = { path: finding.path ? `${id}.${finding.path}` : id };
+  // Only stamp a scope field when the value is actually known — an empty string would
+  // write `stack: ""`, a glob that matches nothing (silently disabling the rule).
+  if (stackName) rule.stack = stackName;
+  if (accountId) rule.account = accountId;
+  if (region) rule.region = region;
+  return rule;
 }
 
 /** Canonical identity of a rule (path + the three optional scopes), for dedupe. */

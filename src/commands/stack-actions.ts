@@ -412,6 +412,11 @@ export interface IgnoreStackParams {
   findings: Finding[];
   yes: boolean;
   interactive: boolean; // whether the multiselect decision prompt may be shown (TTY only)
+  // Current identity scope, stamped onto each written rule (issue #757) so an ignore
+  // does not leak to a same-named stack in another account/region. Optional only for
+  // callers that cannot resolve them; a missing field is omitted from the rule (match-any).
+  accountId?: string | undefined;
+  region?: string | undefined;
 }
 
 /**
@@ -471,7 +476,7 @@ export function ignoreSelectOptions(
  * ignore` and (PR-B2) check's interactive flow, so both write rules identically.
  */
 export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
-  const { stackName, findings, yes, interactive } = p;
+  const { stackName, findings, yes, interactive, accountId = '', region = '' } = p;
   // ignore is symmetric with revert (declared + undeclared + added), unlike record
   // (undeclared only) — it fills the gap of accepting a DECLARED or out-of-band ADDED
   // drift in-tool.
@@ -506,7 +511,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
     }
   }
   const { path, added, alreadyPresent } = await addIgnoreRules(
-    chosen.map((f) => ignoreRuleFor(f, stackName))
+    chosen.map((f) => ignoreRuleFor(f, stackName, accountId, region))
   );
   if (added.length > 0) {
     const dup = alreadyPresent.length > 0 ? `, ${alreadyPresent.length} already present` : '';

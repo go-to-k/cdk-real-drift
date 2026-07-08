@@ -434,6 +434,8 @@ async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
     findings,
     yes: p.yes,
     interactive: true,
+    accountId: p.desired.accountId,
+    region: p.region,
   });
   // reconciled findings are all not-yet-ignored, so a completed run always writes a new
   // rule; !wrote means the multiselect was cancelled → back to the menu.
@@ -513,6 +515,8 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       findings: groups.ignore,
       yes: true,
       interactive: true,
+      accountId: p.desired.accountId,
+      region: p.region,
     });
   }
   // revert (AWS, last): pass ONLY the chosen findings; autoSelectAll skips the op
