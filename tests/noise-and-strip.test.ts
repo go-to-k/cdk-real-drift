@@ -1345,6 +1345,45 @@ describe('cc-api strip', () => {
     });
     expect(out).toEqual({ LoggingConfiguration: { Level: 'OFF' } });
   });
+
+  it('drops bare null array-element husks (S3 TagFilters:[null], #641)', () => {
+    // S3 echoes `TagFilters: [null]` inside every prefix-scoped IntelligentTiering /
+    // Metrics config element that declares no tag filter — a service read artifact, not
+    // a user value. The null husk is dropped so it never surfaces as first-run undeclared
+    // drift; a REAL out-of-band edit produces non-null objects, which are preserved.
+    const out = stripCcApiAwsManagedFields({
+      IntelligentTieringConfigurations: [{ Id: 'dataTier', Prefix: 'data/', TagFilters: [null] }],
+      MetricsConfigurations: [
+        { Id: 'EntireBucket' },
+        { Id: 'LogsOnly', Prefix: 'logs/', TagFilters: [null] },
+      ],
+    });
+    expect(out).toEqual({
+      IntelligentTieringConfigurations: [{ Id: 'dataTier', Prefix: 'data/', TagFilters: [] }],
+      MetricsConfigurations: [
+        { Id: 'EntireBucket' },
+        { Id: 'LogsOnly', Prefix: 'logs/', TagFilters: [] },
+      ],
+    });
+  });
+
+  it('keeps a real (non-null) array element, dropping only the null husk', () => {
+    // a genuine out-of-band TagFilter is a non-null object and must keep surfacing —
+    // only the interleaved null artifact is removed.
+    const out = stripCcApiAwsManagedFields({
+      TagFilters: [{ Key: 'team', Value: 'a' }, null],
+    });
+    expect(out).toEqual({ TagFilters: [{ Key: 'team', Value: 'a' }] });
+  });
+
+  it('does NOT drop null array elements under a free-form USER map (user data preserved)', () => {
+    // inside a free-form map the array is the user's own data; a null there is the user's,
+    // not a service artifact, so it is left verbatim (consistent with the sticky free-form guard).
+    const out = stripCcApiAwsManagedFields({
+      Environment: { Variables: { list: [null, 'v'] } },
+    });
+    expect(out).toEqual({ Environment: { Variables: { list: [null, 'v'] } } });
+  });
 });
 
 describe('parseSchema', () => {

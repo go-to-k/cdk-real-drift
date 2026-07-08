@@ -321,36 +321,6 @@
       },
       "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
       "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Data666C94C7",
-      "resourceType": "AWS::S3::Bucket",
-      "path": "IntelligentTieringConfigurations[dataTier].TagFilters",
-      "actual": [null],
-      "nested": true,
-      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
-      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Data666C94C7",
-      "resourceType": "AWS::S3::Bucket",
-      "path": "IntelligentTieringConfigurations[logsTier].TagFilters",
-      "actual": [null],
-      "nested": true,
-      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
-      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "Data666C94C7",
-      "resourceType": "AWS::S3::Bucket",
-      "path": "MetricsConfigurations[LogsOnly].TagFilters",
-      "actual": [null],
-      "nested": true,
-      "physicalId": "cdkrealdriftintegs3richextras-data666c94c7-45yg6ntha7ln",
-      "constructPath": "CdkRealDriftIntegS3RichExtras/Data"
     }
   ]
 }
