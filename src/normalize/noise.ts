@@ -885,6 +885,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Cooldown: '300', // default cooldown 300s (CC returns it as a string)
     HealthCheckType: 'EC2',
     HealthCheckGracePeriod: 0,
+    // Constant defaults AWS materializes into a fresh ASG that declares none of them
+    // (live-verified on a minimal Min/Max/Desired ASG, hunt 2026-07-08 #639). Each is a
+    // stable documented default, so equality-gate it: change one out of band (e.g. a real
+    // TerminationPolicies list, disabling capacity rebalancing) and it no longer matches,
+    // surfacing as real undeclared drift. `TerminationPolicies` is create-time-defaulted to
+    // ["Default"]; a declared list is compared in the declared loop and never reaches here.
+    TerminationPolicies: ['Default'],
+    AvailabilityZoneDistribution: { CapacityDistributionStrategy: 'balanced-best-effort' },
+    InstanceLifecyclePolicy: { RetentionTriggers: { TerminateHookAbandon: 'terminate' } },
+    CapacityReservationSpecification: { CapacityReservationPreference: 'default' },
   },
   // A warm pool that declares no MinSize reads back MinSize:0 — the documented
   // constant default ("minimum 0 warmed instances"). Observed undeclared on a fresh
@@ -1840,6 +1850,14 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
   'AWS::KinesisVideo::Stream': {
     KmsKeyId: 'arn:{partition}:kms:{region}:{accountId}:alias/aws/kinesisvideo',
   },
+  // An AutoScalingGroup that declares no ServiceLinkedRoleARN reads back the account's
+  // AWS-managed service-linked role ARN — f(partition, accountId) (IAM ARNs carry no region).
+  // Derived, not value-independent: a user who passes a CUSTOM service-linked role declares it
+  // and it is compared in the declared loop (detection preserved). Live, hunt 2026-07-08 #639.
+  'AWS::AutoScaling::AutoScalingGroup': {
+    ServiceLinkedRoleARN:
+      'arn:{partition}:iam::{accountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling',
+  },
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
@@ -2067,6 +2085,12 @@ export const GENERATED_LOGICALID_PREFIX_PATHS: Record<string, ReadonlySet<string
   'AWS::Cognito::IdentityPool': new Set(['IdentityPoolName']),
   'AWS::Cognito::UserPool': new Set(['UserPoolName']),
   'AWS::Batch::JobDefinition': new Set(['JobDefinitionName']),
+  // A LaunchTemplate that declares no LaunchTemplateName reads back CFn's
+  // `<logicalId>_<random>` minted name (e.g. "LtFD2A8520_TE2V74FxIYEe") — the same
+  // generated-name class as the Cognito/Batch names above (hash suffix present, so the
+  // #525/#537 over-fold concern does not apply). A user-SET name has no logical-id prefix
+  // and still surfaces. Live, hunt 2026-07-08 #639.
+  'AWS::EC2::LaunchTemplate': new Set(['LaunchTemplateName']),
 };
 
 // True when `value` is the `<logicalId><sep><random>` CFn auto-generated-name form: the logical
@@ -2125,6 +2149,13 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // `Replicas.*.SSESpecification.KMSMasterKeyId`. Live-proven 2026-07-08 #649.
   'AWS::DynamoDB::Table': new Set(['SSESpecification.KMSMasterKeyId']),
   'AWS::DynamoDB::GlobalTable': new Set(['Replicas.*.SSESpecification.KMSMasterKeyId']),
+  // An ASG references its LaunchTemplate by the declared Id + Version; AWS echoes the LT's
+  // minted NAME alongside them inside the live `LaunchTemplate` object. The name is the LT's
+  // own `<logicalId>_<random>` generated value (a different resource's logical id, so the
+  // top-level GENERATED_LOGICALID gate can't derive it from THIS resource) — a per-resource
+  // AWS-assigned identifier, never user intent when undeclared. Fold value-independent. Live,
+  // hunt 2026-07-08 #639.
+  'AWS::AutoScaling::AutoScalingGroup': new Set(['LaunchTemplate.LaunchTemplateName']),
 };
 
 // Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
@@ -2334,6 +2365,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   `Policies`, which is then compared in the declared loop. Observed live on a fresh
   //   internet-facing CLB with an HTTPS listener (elb-classic-https, 2026-07-07).
   'AWS::ElasticLoadBalancing::LoadBalancer': new Set(['AvailabilityZones', 'Policies']),
+  //   AWS::AutoScaling::AutoScalingGroup.AvailabilityZones / .AvailabilityZoneIds — an ASG
+  //   declares `VPCZoneIdentifier` (subnets); AWS reads back the AZs it PLACED the group in —
+  //   the AZs of those subnets (["us-east-1a","us-east-1b"]) plus their per-account zone IDs
+  //   (["use1-az1","use1-az2"]). Both are a pure reflection of where the declared subnets live
+  //   (the subnet-id → AZ mapping is not resolvable offline), so they cannot be pinned to a
+  //   constant nor derived. Undeclared → whatever AZs AWS chose are not user intent; a user who
+  //   wants specific AZs declares `AvailabilityZones` instead, compared in the declared loop.
+  //   Exact twin of the classic-ELB AvailabilityZones fold above. Live, hunt 2026-07-08 #639.
+  'AWS::AutoScaling::AutoScalingGroup': new Set(['AvailabilityZones', 'AvailabilityZoneIds']),
   //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
   //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
   //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for

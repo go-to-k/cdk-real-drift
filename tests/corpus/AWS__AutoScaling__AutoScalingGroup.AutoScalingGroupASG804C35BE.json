@@ -110,7 +110,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "ServiceLinkedRoleARN",
@@ -119,7 +119,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZoneIds",
@@ -137,7 +137,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZones",
@@ -146,7 +146,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "AvailabilityZoneDistribution",
@@ -166,7 +166,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "InstanceLifecyclePolicy",
@@ -179,7 +179,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "CapacityReservationSpecification",
@@ -190,7 +190,7 @@
       "constructPath": "CdkdriftIntegHarvest12/AutoScalingGroup/ASG"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "AutoScalingGroupASG804C35BE",
       "resourceType": "AWS::AutoScaling::AutoScalingGroup",
       "path": "LaunchTemplate.LaunchTemplateName",
