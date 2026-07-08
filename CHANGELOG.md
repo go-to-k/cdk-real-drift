@@ -1,3 +1,11 @@
+## [0.2.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.23...v0.2.24) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** fold DynamoDB Table first-run FPs — ContributorInsights Mode + SSE type/KMS echoes ([#649](https://github.com/go-to-k/cdk-real-drift/issues/649)) ([#662](https://github.com/go-to-k/cdk-real-drift/issues/662)) ([6336f8b](https://github.com/go-to-k/cdk-real-drift/commit/6336f8b74f08a1e7717eb063930ff9f67917c639))
+* **read:** add CC_IDENTIFIER_ADAPTERS entry for AWS::EC2::VPCCidrBlock composite id ([#647](https://github.com/go-to-k/cdk-real-drift/issues/647)) ([#663](https://github.com/go-to-k/cdk-real-drift/issues/663)) ([41149e1](https://github.com/go-to-k/cdk-real-drift/commit/41149e1c88ccb930043f16f7ada7890fd1c29662))
+
 ## [0.2.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.22...v0.2.23) (2026-07-08)
 
 
