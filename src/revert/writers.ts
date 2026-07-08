@@ -54,8 +54,10 @@ import {
   DescribeSignalingChannelCommand,
   DescribeStreamCommand,
   KinesisVideoClient,
+  type DefaultStorageTier,
   UpdateDataRetentionCommand,
   UpdateSignalingChannelCommand,
+  UpdateStreamStorageConfigurationCommand,
 } from '@aws-sdk/client-kinesis-video';
 import {
   ElasticBeanstalkClient,
@@ -2198,6 +2200,35 @@ const writeKinesisVideoSignalingChannel: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// KVS Stream StreamStorageConfiguration.DefaultStorageTier — mutable via its own dedicated
+// UpdateStreamStorageConfiguration API, and (like the other KVS props) unrevertable through
+// Cloud Control (the Tags-min-items ValidationException). A nested-path writer: on a `remove`
+// it restores the "HOT" default; an explicit `add` carries the value. Live-proven follow-up (a
+// DefaultStorageTier changed to WARM out of band FAILED the CC Tags validation until routed here).
+const KVS_STREAM_STORAGE_TIER_DEFAULT = 'HOT';
+const writeKinesisVideoStreamStorage: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!id) throw new Error('cannot resolve Kinesis Video stream for revert');
+  const op = ops.find((o) =>
+    o.path.replace(/^\//, '').replace(/\//g, '.').endsWith('DefaultStorageTier')
+  );
+  if (!op) return;
+  const target = (
+    op.op === 'add' && typeof op.value === 'string' ? op.value : KVS_STREAM_STORAGE_TIER_DEFAULT
+  ) as DefaultStorageTier;
+  const kv = new KinesisVideoClient({ region: ctx.region });
+  const desc = await kv.send(new DescribeStreamCommand(kvsStreamRef(id)));
+  const version = desc.StreamInfo?.Version;
+  if (version === undefined) throw new Error(`cannot resolve stream version for ${id}`);
+  await kv.send(
+    new UpdateStreamStorageConfigurationCommand({
+      ...kvsStreamRef(id),
+      CurrentVersion: version,
+      StreamStorageConfiguration: { DefaultStorageTier: target },
+    })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
   'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
@@ -2344,6 +2375,14 @@ export const SDK_NESTED_WRITERS: Record<string, NestedWriterSpec> = {
   'AWS::ApiGateway::Method': {
     match: isApiGatewayMethodKnobPath,
     writer: writeApiGatewayMethod,
+  },
+  // KVS Stream StreamStorageConfiguration is descended (a fully-undeclared object whose
+  // DefaultStorageTier folds to its schema default), so an out-of-band tier change surfaces at
+  // the nested path — unrevertable via CC (Tags validation), reverted via UpdateStreamStorage-
+  // Configuration instead.
+  'AWS::KinesisVideo::Stream': {
+    match: (p) => p === 'StreamStorageConfiguration' || p.startsWith('StreamStorageConfiguration.'),
+    writer: writeKinesisVideoStreamStorage,
   },
   // Any drift UNDER the writeOnly ServiceConnectConfiguration / VolumeConfigurations
   // re-supplies the whole declared prop via ecs:UpdateService (CC cannot sub-path patch

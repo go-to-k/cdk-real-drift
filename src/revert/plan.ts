@@ -148,6 +148,12 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // CONVERGE via a plain `remove` — UpdateAgent re-materializes the 600 default on omit — so it
   // needs NO entry here.)
   'AWS::RolesAnywhere::Profile\0DurationSeconds',
+  // RolesAnywhere ignores an omitted AttributeMappings on update the same way (live-proven:
+  // an out-of-band put-attribute-mapping changed x509Subject *->CN, then `revert` planned a
+  // `remove`, which the provider reported reverted yet left the live mapping CN). Write the
+  // whole default attribute-mapping array (from KNOWN_DEFAULTS) back explicitly so revert
+  // converges — the whole-array-valued twin of DurationSeconds above.
+  'AWS::RolesAnywhere::Profile\0AttributeMappings',
 ]);
 
 /**
