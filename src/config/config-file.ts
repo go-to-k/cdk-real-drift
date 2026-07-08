@@ -173,6 +173,17 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
  * key) so a rule is writable even on a non-CDK / metadata-stripped stack. Pure + exported;
  * `applyIgnores` matches the within-stack path, the full construct path (older rules), AND
  * the logicalId, so every form works.
+ *
+ * EXCEPTION — an `added`-tier finding always keys on `logicalId`, NEVER constructPath
+ * (issue #802). For an added child the constructPath is a display LABEL
+ * (`<parent> ▸ <label>`, gather.ts) built from a NON-unique, human name — a Cognito
+ * UserPoolClient's ClientName, an SNS subscription's `protocol endpoint` — so a rule
+ * written against it silently ignores EVERY same-labelled added child under the parent,
+ * present and future. The label can also carry glob metacharacters (an https endpoint's
+ * `?query` turns the `?` into a wildcard). The logicalId form `<parent>/<CC-identifier>`
+ * is the UNIQUE identity (and `applyIgnores` matches logicalId targets), so it is the only
+ * safe thing to write. This is scoped to `added` only; declared/undeclared keep the
+ * human-friendly constructPath, whose path IS unique.
  */
 export function ignoreRuleFor(
   finding: Finding,
@@ -180,9 +191,10 @@ export function ignoreRuleFor(
   accountId = '',
   region = ''
 ): IgnoreRuleObject {
-  const id = finding.constructPath
-    ? withinStackPath(finding.constructPath, stackName)
-    : finding.logicalId;
+  const id =
+    finding.constructPath && finding.tier !== 'added'
+      ? withinStackPath(finding.constructPath, stackName)
+      : finding.logicalId;
   const rule: IgnoreRuleObject = { path: finding.path ? `${id}.${finding.path}` : id };
   // Only stamp a scope field when the value is actually known — an empty string would
   // write `stack: ""`, a glob that matches nothing (silently disabling the rule).

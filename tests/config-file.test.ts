@@ -538,6 +538,47 @@ describe('ignoreRuleFor', () => {
     };
     expect(ignoreRuleFor(f)).toEqual({ path: 'Svc' });
   });
+
+  it('keys an `added` finding on the unique logicalId, NOT the non-unique display label (#802)', () => {
+    // A Cognito UserPoolClient added child: its constructPath label is the ClientName,
+    // which is NOT unique — writing a rule against it would silence EVERY same-named
+    // client under the pool (present and future). The logicalId form
+    // `<parent>/<CC-identifier>` is the unique identity — that is what must be written.
+    const addedFinding: Finding = {
+      tier: 'added',
+      logicalId: 'UserPool/us-east-1_abc123|7clientid7',
+      constructPath: 'MyStack/UserPool ▸ my-app-client',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      path: '',
+    };
+    // NOT the label form 'MyStack/UserPool ▸ my-app-client'
+    expect(ignoreRuleFor(addedFinding)).toEqual({ path: 'UserPool/us-east-1_abc123|7clientid7' });
+    // stamping a stack scope must not re-introduce the label either
+    expect(ignoreRuleFor(addedFinding, 'MyStack')).toEqual({
+      path: 'UserPool/us-east-1_abc123|7clientid7',
+      stack: 'MyStack',
+    });
+    // and the rule the verb writes round-trips: it ignores exactly this finding
+    expect(
+      ign([addedFinding], 'MyStack', cfg([ignoreRuleFor(addedFinding, 'MyStack')]))[0]?.tier
+    ).toBe('ignored');
+  });
+
+  it('an `added` finding whose label carries a glob metachar keys on logicalId (no accidental wildcard) (#802)', () => {
+    // An SNS https subscription's label `https https://host/path?q=1` has a `?` — as a
+    // path glob the `?` is a single-char wildcard, so a label-based rule would over-match.
+    // The logicalId form is a literal composite id with no glob semantics leaking in.
+    const addedFinding: Finding = {
+      tier: 'added',
+      logicalId: 'Topic/arn:aws:sns:us-east-1:111111111111:T:sub-uuid',
+      constructPath: 'MyStack/Topic ▸ https https://host/path?q=1',
+      resourceType: 'AWS::SNS::Subscription',
+      path: '',
+    };
+    const rule = ignoreRuleFor(addedFinding);
+    expect(rule.path).toBe('Topic/arn:aws:sns:us-east-1:111111111111:T:sub-uuid');
+    expect(rule.path).not.toContain('?');
+  });
 });
 
 describe('mergeIgnoreRules', () => {
