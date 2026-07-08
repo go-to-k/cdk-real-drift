@@ -537,13 +537,67 @@ reserved for picker rows you aren't on. Piped / CI / `--json` output is plain te
 
 ### JSON output contract
 
-`--json` emits
-`{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`.
-Each finding has a stable shape: `tier` (`deleted` | `declared` | `undeclared` |
-`readGap` | `unresolved` | `skipped` | `ignored`), `logicalId`, `resourceType`,
-`path`, `desired`, `actual`, `note`, `physicalId`, `constructPath`. An unrecorded
-value keeps `tier: "undeclared"` and carries `"unrecorded": true`; `drifted`
-excludes it. The output always carries every finding regardless of `--verbose`.
+`--json` emits **one top-level JSON array for the whole invocation — one element per
+stack**:
+
+```json
+[
+  { "stack": "stackA (us-east-1)", "drifted": 1, "findings": [ ... ] },
+  { "stack": "stackB (us-east-1)", "drifted": 0, "findings": [] }
+]
+```
+
+The whole stdout stream is a single `JSON.parse`-able value. This holds even for a
+single-stack run — it is an **array of one** (never a bare object), so a consumer's
+`JSON.parse` always yields an array and never has to special-case the count. (Earlier
+builds printed one pretty-printed `{...}` per stack back-to-back, which was neither one
+valid JSON value nor JSONL; multi-stack `--json` was unparseable — issue #755.) All
+`note` / `warning` / progress lines go to **stderr**, so stdout stays pure JSON.
+
+A **stack that errored or was skipped** before it could be checked still appears as an
+element so a consumer sees which stacks ran: it carries `"error": "<reason>"` alongside
+`"drifted": 0` and an empty `"findings": []`. (`error` is absent on a
+successfully-checked stack.)
+
+Each stack element is `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`
+(`error` added only on failure). Each **finding** has a stable shape:
+
+- Always present: `tier`, `logicalId`, `resourceType`, `path`.
+- Usually present: `desired`, `actual`, `note`, `physicalId`, `constructPath` (any of
+  these may be omitted when it doesn't apply — e.g. an undeclared finding has no
+  `desired`).
+- `tier` is one of `deleted` | `added` | `declared` | `undeclared` | `atDefault` |
+  `generated` | `ignored` | `readGap` | `unresolved` | `skipped`. The output carries
+  **every** finding of every tier (including the informational `atDefault` / `generated`
+  / `ignored` / `readGap` / `unresolved` / `skipped` ones the text report folds into its
+  `info:` footer), regardless of `--verbose`.
+- `drifted` counts only confirmed-drift tiers (`deleted` / `declared` / `undeclared` /
+  `added`) that are not `unrecorded`; the informational tiers and unrecorded values are
+  excluded.
+
+Optional per-finding fields, present only when they apply:
+
+- `hint` — a non-classifying, human-facing note on where a live value likely came from
+  (e.g. an account/region-level auto-instrumentation footprint). Display-only; it never
+  changes the tier.
+- `unrecorded` (`true`) — a live-only value (`undeclared` or `added`) with no baseline
+  entry yet: **potential drift**, not confirmed drift. Excluded from `drifted`.
+- `attributeKey` — for a `declared` drift inside an identity-keyed attribute bag (ELB
+  `LoadBalancerAttributes` / `TargetGroupAttributes`), the `Key` of the changed
+  attribute (`path` stays at the bag property; `desired`/`actual` are the scalar value).
+- `arrayDelta` — for an `undeclared` recorded identity-keyed array that changed vs the
+  baseline, the element-level delta (`{ identityField, added, changed, removed }`) so a
+  consumer sees which element(s) differ, not the whole-array dump.
+- `nested` (`true`) — an `undeclared` value is a live sub-key inside a property you
+  _did_ declare (dotted `path`). `freeFormKey` (`true`) additionally marks it as living
+  inside a free-form map (e.g. a Lambda env var).
+- `modelReadFailed` (`true`) — an `added` resource whose full live model could not be
+  read this run (`actual` is only the enumerator's identity snippet); it exists but is
+  not change-watchable until the next check.
+- On an `added` finding, `desired` carries the **recorded baseline model** and `actual`
+  the live one (so a recorded `added` resource that changed shows the delta), and
+  `unrecorded` marks a never-recorded one as potential drift.
+
 After publication this shape is a backward-compatible API.
 
 ## IAM permissions

@@ -270,6 +270,41 @@ function groupReasons(items: Finding[]): string {
     .join(', ');
 }
 
+// The `--json` payload for a SINGLE stack: `{ stack, drifted, findings }` plus the
+// exit code the same findings map to. Pure + exported so the multi-stack check loop
+// can COLLECT one object per stack and serialize a single top-level JSON ARRAY at the
+// end (issue #755) — instead of each stack's report() printing its own pretty-printed
+// object inline, which concatenated into `{...}\n{...}`: not a single parseable JSON
+// value and not JSONL. The array is the machine contract for a whole invocation; a lone
+// stack is simply an array of one (kept uniform so `JSON.parse` always yields an array —
+// see README "JSON output contract"). `report()`'s own json path still logs the bare
+// object so report-level unit tests / any single-report caller are unchanged; the ARRAY
+// framing is owned by the check loop.
+export interface StackJsonReport {
+  stack: string;
+  drifted: number;
+  findings: Finding[];
+  // Present ONLY on a stack that ERRORED before it could be checked — so a --json
+  // consumer sees WHICH stacks ran and which failed, rather than a silent omission (the
+  // pre-#755 behavior printed nothing for an errored stack). Never set on a
+  // successfully-checked stack.
+  error?: string;
+}
+
+export function buildStackJson(
+  rawFindings: Finding[],
+  header: string
+): { json: StackJsonReport; code: number } {
+  // Annotate origin hints (diff/hints.ts) so the --json payload carries them exactly as
+  // the text path does — the single render chokepoint. A hint is display-only.
+  const findings = annotateHints(rawFindings);
+  // unrecorded findings (R60/R62): inventory awaiting a baseline decision, not drift —
+  // never counted toward the verdict/exit.
+  const isDriftHere = (f: Finding): boolean => DRIFT_TIERS.includes(f.tier) && !f.unrecorded;
+  const drifted = findings.filter(isDriftHere).length;
+  return { json: { stack: header, drifted, findings }, code: drifted === 0 ? 0 : 1 };
+}
+
 export function report(rawFindings: Finding[], header: string, opts: ReportOptions = {}): number {
   const log = opts.log ?? console.log;
   const stackName = stackNameFromHeader(header);
@@ -283,7 +318,10 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   const drifted = findings.filter(isDriftHere).length;
 
   if (opts.json) {
-    log(JSON.stringify({ stack: header, drifted, findings }, null, 2));
+    // Single-report json (direct callers / unit tests): the bare object. The multi-stack
+    // check loop does NOT route through here for --json — it collects buildStackJson()
+    // objects and prints one top-level array (issue #755).
+    log(JSON.stringify(buildStackJson(rawFindings, header).json, null, 2));
     return drifted === 0 ? 0 : 1;
   }
 

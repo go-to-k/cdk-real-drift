@@ -22,7 +22,7 @@ import {
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
-import { report, stackSeparator } from '../report/report.js';
+import { buildStackJson, report, type StackJsonReport, stackSeparator } from '../report/report.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
@@ -234,6 +234,24 @@ export async function runCheck(args: string[]): Promise<number> {
 
   let worst = 0;
   let anyDrift = false; // for the report-only hint (R53)
+  // #755: in --json mode each stack's report object is COLLECTED here and a single
+  // top-level JSON ARRAY (one element per stack) is printed once, after the loop —
+  // instead of each stack's report() printing its own pretty-printed object inline,
+  // which concatenated into `{...}\n{...}` (not one parseable JSON value, not JSONL).
+  // A stack that ERRORED / was skipped still gets an element (with an `error` field) so
+  // a consumer sees which stacks ran. In text mode this stays empty and unused.
+  const jsonReports: StackJsonReport[] = [];
+  // Record an errored/skipped stack in the --json output so it is not silently omitted
+  // (no-op in text mode, where the reason already goes to stderr).
+  const jsonError = (stackName: string, region: string | undefined, message: string): void => {
+    if (a.json)
+      jsonReports.push({
+        stack: region ? `${stackName} (${region})` : stackName,
+        drifted: 0,
+        findings: [],
+        error: message,
+      });
+  };
   // R37: one blank line between consecutive stack reports (text mode only) — done
   // here at the call site so a single-stack run never gets a stray leading blank.
   const separate = stackSeparator();
@@ -241,9 +259,10 @@ export async function runCheck(args: string[]): Promise<number> {
   const showProgress = !a.json && isInteractive();
   for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
-      console.error(
-        `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
-      );
+      const msg =
+        'no region — set env on the stack, pass --region, or set a region for the AWS profile';
+      console.error(`error: ${stackName}: ${msg}`);
+      jsonError(stackName, region, msg);
       worst = Math.max(worst, 2);
       continue;
     }
@@ -256,6 +275,7 @@ export async function runCheck(args: string[]): Promise<number> {
       const sKey = synthKey(stackName, region);
       if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
+        jsonError(stackName, region, 'not in the synth output — skipped (--pre-deploy)');
         continue;
       }
       // The stack's synth template (always carried by resolveStacks) is the non-ASCII
@@ -325,14 +345,24 @@ export async function runCheck(args: string[]): Promise<number> {
             `note: ${stackName}: --pre-deploy reports declared drift only (undeclared tiers are evaluated against the deployed template — run check without --pre-deploy)`
           );
         if (!a.json) separate();
-        const preDeployCode = report(
-          applyIgnores(declaredOnly, { stackName, accountId: desired.accountId, region }, config),
-          `${posPrefix}${stackName} (${region})`,
-          {
-            json: a.json,
-            verbose: a.verbose,
-          }
+        const preDeployReconciled = applyIgnores(
+          declaredOnly,
+          { stackName, accountId: desired.accountId, region },
+          config
         );
+        const preDeployHeader = `${posPrefix}${stackName} (${region})`;
+        // #755: in --json collect the stack's object (printed as one array at the end);
+        // in text mode render inline as before.
+        let preDeployCode: number;
+        if (a.json) {
+          const { json, code } = buildStackJson(preDeployReconciled, preDeployHeader);
+          jsonReports.push(json);
+          preDeployCode = code;
+        } else {
+          preDeployCode = report(preDeployReconciled, preDeployHeader, {
+            verbose: a.verbose,
+          });
+        }
         if (preDeployCode === 1) anyDrift = true;
         worst = Math.max(worst, finalCheckExit(preDeployCode, a.fail));
         // --strict still applies under --pre-deploy: live reads (and so the skipped
@@ -393,13 +423,23 @@ export async function runCheck(args: string[]): Promise<number> {
         config
       );
       if (!a.json) separate();
-      let code = report(reconciled, `${posPrefix}${stackName} (${region})`, {
-        json: a.json,
-        verbose: a.verbose,
-        // --show-all is inventory mode: list every undeclared value, including the
-        // ones at an AWS default (otherwise folded to a count) (R86).
-        expandAtDefault: a.showAll,
-      });
+      const reportHeader = `${posPrefix}${stackName} (${region})`;
+      // #755: in --json collect the stack's object (one top-level array printed after the
+      // loop); in text mode render inline as before. The interactive flow below is
+      // suppressed under --json, so this branch is the whole json output path.
+      let code: number;
+      if (a.json) {
+        const { json, code: jsonCode } = buildStackJson(reconciled, reportHeader);
+        jsonReports.push(json);
+        code = jsonCode;
+      } else {
+        code = report(reconciled, reportHeader, {
+          verbose: a.verbose,
+          // --show-all is inventory mode: list every undeclared value, including the
+          // ones at an AWS default (otherwise folded to a count) (R86).
+          expandAtDefault: a.showAll,
+        });
+      }
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);
 
       // R28 (extended R121): drift found in a TTY → offer to resolve it inline
@@ -452,18 +492,27 @@ export async function runCheck(args: string[]): Promise<number> {
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — skipped`);
+        jsonError(stackName, region, 'not deployed yet — skipped');
         continue;
       }
       // a stack that exists but has no meaningful deployed state (REVIEW_IN_PROGRESS /
       // deleting): skip with a clear reason, not a meaningless CLEAN and not an error.
       if (e instanceof StackNotCheckableError) {
         console.error(`note: ${stackName}: ${e.message} — skipped`);
+        jsonError(stackName, region, `${e.message} — skipped`);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);
+      jsonError(stackName, region, (e as Error).message);
       worst = Math.max(worst, 2);
     }
   }
+  // #755: emit the whole invocation's --json output as ONE top-level array (one element
+  // per stack — checked, errored, or skipped) so the stream is a single JSON.parse-able
+  // value. Printed once here, after the loop, on stdout (the machine channel; all notes /
+  // warnings above go to stderr). Even a single-stack run is an array of one, kept uniform
+  // so a consumer's JSON.parse always yields an array.
+  if (a.json) console.log(JSON.stringify(jsonReports, null, 2));
   // Report-only mode found drift: say so, and say how to make it fail — a script
   // author piping this must discover --fail from the output, not from a surprise
   // green pipeline (R53). Suppressed under --json (machine consumers read stdout).
