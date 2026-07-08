@@ -106,6 +106,33 @@ const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::Listener': 'ListenerAttributes',
 };
 
+// #632: undeclared KNOWN_DEFAULTS pins whose OFF state (a live `false`/`""` that DIVERGES
+// from the pinned default) is a REAL, detectable divergence — an out-of-band DISABLE of a
+// switch AWS materialized ON at creation. The undeclared loop otherwise drops any `false`/`""`
+// via isTrivialEmpty BEFORE the fold table is consulted ("false does not stay meaningful",
+// which keeps feature-off husks quiet), so a `true→false` flip of such a switch was
+// completely invisible — undetectable, unbaselineable by `record`, unrevertable (SQS SSE-SQS
+// disable + KMS key disable both proven live 2026-07-08). This is CURATED + predicate-gated,
+// NOT a blanket "any diverging false surfaces": most "default true" booleans are CONDITIONAL
+// (true only in a specific config, legitimately `false` otherwise), so a blanket rule would
+// false-positive on every such clean deploy — e.g. an SSE-KMS SQS queue reads
+// SqsManagedSseEnabled=false legitimately (mutually exclusive with SSE-SQS), and a non-HTTPS
+// Route53 HealthCheck reads EnableSNI=false. The predicate returns true only when the OFF
+// state is a genuine divergence in THIS resource's config. Add an entry ONLY after a live
+// confirm that the OFF state is meaningful in EVERY clean-deploy configuration of the type.
+type OffStateContext = { declared: Record<string, unknown>; live: Record<string, unknown> };
+const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) => boolean>> = {
+  // A KMS key is always created enabled; `disable-key` (Enabled=false) is always meaningful.
+  'AWS::KMS::Key': { Enabled: () => true },
+  // SSE-SQS defaults ON, but is mutually exclusive with SSE-KMS: a queue that uses a KMS key
+  // reads SqsManagedSseEnabled=false legitimately. Surface the OFF state only when the queue
+  // uses no KMS key — i.e. encryption was genuinely disabled out of band.
+  'AWS::SQS::Queue': {
+    SqsManagedSseEnabled: ({ declared, live }) =>
+      declared['KmsMasterKeyId'] === undefined && live['KmsMasterKeyId'] === undefined,
+  },
+};
+
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
 // AWS always returns — keyed by the property -> the element's identity field. Cognito
 // UserPool `Schema` is the case: AWS returns all ~21 standard attributes (sub, email,
@@ -1980,7 +2007,20 @@ export function classifyResource(
     // and trivially-empty {}/[]. These carry no inventory value, so they are not folded.
     if (isAllAwsTags(v)) continue;
     if (physicalId !== undefined && v === physicalId) continue;
-    if (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId) || isEmptyPolicyShell(v))
+    // #632: an OFF state (a live `false`/`""` diverging from a KNOWN_DEFAULTS pin) that is a
+    // REAL divergence per the curated MEANINGFUL_WHEN_OFF predicate must NOT be swallowed by
+    // the trivial-empty drop below — surface it so an out-of-band disable is detected,
+    // recorded, and revertible. The atDefault gate above already `continue`d when the value
+    // MATCHED the pin, so reaching here with a pin means it diverges; the predicate gates the
+    // narrow set of paths whose OFF state is genuinely meaningful in this resource's config.
+    const offStateIsMeaningful =
+      k in knownDef &&
+      !matchesKnownDefault(v, knownDef[k]) &&
+      (MEANINGFUL_WHEN_OFF[resourceType]?.[k]?.({ declared, live }) ?? false);
+    if (
+      !offStateIsMeaningful &&
+      (isTrivialEmpty(v) || isSelfEchoTrivialEmpty(v, physicalId) || isEmptyPolicyShell(v))
+    )
       continue;
     // #555: a FULLY-undeclared OBJECT listed in DESCEND_UNDECLARED_OBJECT_PATHS is descended
     // leaf-by-leaf (via the SAME emitNested classification the declared-nested loop uses)
