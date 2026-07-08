@@ -10381,16 +10381,18 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
   });
 
   it('a fully-undeclared object NOT in the allowlist stays ONE whole undeclared finding (no fragmentation)', () => {
-    // EKS AccessConfig is a fully-undeclared object but NOT registered to descend — it must
-    // remain a single whole-object finding, proving the descend is opt-in per (type, path).
+    // EKS OutpostConfig is a fully-undeclared object but NOT registered to descend and not a
+    // known default — it must remain a single whole-object finding, proving the descend is
+    // opt-in per (type, path). (AccessConfig is now a KNOWN_DEFAULTS fold, #653, so it can no
+    // longer serve as the undeclared example here.)
     const t = classifyResource(
       bare('AWS::EKS::Cluster'),
-      { AccessConfig: { AuthenticationMode: 'CONFIG_MAP' } },
+      { OutpostConfig: { ControlPlaneInstanceType: 'm5.large' } },
       emptySchema
     );
-    expect(t.map((f) => f.path)).toEqual(['AccessConfig']);
+    expect(t.map((f) => f.path)).toEqual(['OutpostConfig']);
     expect(t[0]!.tier).toBe('undeclared');
-    expect(t[0]!.actual).toEqual({ AuthenticationMode: 'CONFIG_MAP' });
+    expect(t[0]!.actual).toEqual({ ControlPlaneInstanceType: 'm5.large' });
   });
 });
 

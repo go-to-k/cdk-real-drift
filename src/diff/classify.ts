@@ -856,8 +856,15 @@ export function matchesKnownDefault(live: unknown, def: unknown): boolean {
   // per-deploy ENI shape. A key the default DOES list must still deep-equal it — so a
   // trivially-empty live value that is the OPPOSITE of a non-empty default (VpcLattice
   // SharingConfig `{enabled:false}` vs default `{enabled:true}`, #483) never vacuously folds.
+  // RECURSE on nested-object values so the subset tolerance applies at every depth, not
+  // just the top level: AWS grows nested default objects over time (e.g. an ECS Service's
+  // DeploymentCircuitBreaker gained ResetOnHealthyTask + ThresholdConfiguration), so an
+  // OLDER live echo carrying fewer sub-keys must still fold against the fuller pinned
+  // default. Still equality-gated at every leaf — a sub-key set to a non-default value, or
+  // an extra non-trivial key the default doesn't list at any level, breaks the match and
+  // surfaces. (A strict deepEqual here folded only the exact recorded shape.)
   return Object.entries(live).every(([k, v]) =>
-    k in def ? deepEqual(v, def[k]) : isTrivialEmpty(v)
+    k in def ? matchesKnownDefault(v, def[k]) : isTrivialEmpty(v)
   );
 }
 
@@ -1298,6 +1305,17 @@ export function classifyResource(
   // durable function that pins Text explicitly declares it and is compared, never reaching here.
   if (resourceType === 'AWS::Lambda::Function' && 'DurableConfig' in declared) {
     knownDefPaths = { ...knownDefPaths, 'LoggingConfig.LogFormat': 'JSON' };
+  }
+  // #653: a Glue Schema declares its Registry by ARN (Registry.Arn); the live read echoes
+  // the registry's NAME (Registry.Name) as an undeclared sub-key — the trailing segment of
+  // the declared ARN. Derive the expected name from the declared Registry.Arn tail and
+  // equality-gate it (fold tier 2): a schema re-pointed to a different registry surfaces.
+  if (resourceType === 'AWS::Glue::Schema') {
+    const arn = (declared['Registry'] as Record<string, unknown> | undefined)?.['Arn'];
+    if (typeof arn === 'string') {
+      const name = arn.split(/[:/]/).pop();
+      if (name) knownDefPaths = { ...knownDefPaths, 'Registry.Name': name };
+    }
   }
   // #678: a PRIVATE RestApi (declared EndpointConfiguration.Types includes 'PRIVATE') gets
   // DIFFERENT AWS defaults than an EDGE/REGIONAL api — SecurityPolicy TLS_1_2 (not TLS_1_0)

@@ -69,7 +69,7 @@
       "constructPath": "main-CostCheck/CfnBudgetCostForDaily"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "CfnBudgetCostForDaily",
       "resourceType": "AWS::Budgets::Budget",
       "path": "Budget.BudgetName",

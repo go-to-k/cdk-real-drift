@@ -562,6 +562,12 @@ describe('noise suppressors', () => {
         Type: 'BOUNDED_PERCENT',
         Value: 50,
       },
+      'DeploymentConfiguration.DeploymentCircuitBreaker': {
+        ThresholdConfiguration: { Type: 'BOUNDED_PERCENT', Value: 50 },
+        Enable: false,
+        ResetOnHealthyTask: true,
+        Rollback: false,
+      },
     });
     expect(KNOWN_DEFAULT_PATHS['AWS::OpenSearchService::Domain']).toEqual({
       'EBSOptions.Iops': 3000,
@@ -870,13 +876,24 @@ describe('noise suppressors', () => {
       FailureRetentionPeriod: 31,
       SuccessRetentionPeriod: 31,
       ProvisionedResourceCleanup: 'AUTOMATIC',
+      RunConfig: {
+        TimeoutInSeconds: 840,
+        MemoryInMB: 1500,
+        EphemeralStorage: 1024,
+        ActiveTracing: false,
+      },
     });
     expect(KNOWN_DEFAULTS['AWS::MSK::Cluster']).toEqual({
       EnhancedMonitoring: 'DEFAULT',
       StorageMode: 'LOCAL',
     });
     expect(KNOWN_DEFAULTS['AWS::OpenSearchService::Domain'].IPAddressType).toBe('ipv4');
-    expect(KNOWN_DEFAULTS['AWS::Glue::Job']).toEqual({ JobMode: 'SCRIPT', MaxRetries: 0 });
+    expect(KNOWN_DEFAULTS['AWS::Glue::Job']).toEqual({
+      JobMode: 'SCRIPT',
+      MaxRetries: 0,
+      Timeout: 2880,
+      ExecutionProperty: { MaxConcurrentRuns: 1 },
+    });
     // nested
     expect(KNOWN_DEFAULT_PATHS['AWS::WAFv2::WebACL']).toEqual({
       'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,

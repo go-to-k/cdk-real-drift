@@ -80,7 +80,7 @@
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet1/EIP"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "WorkersVpcPublicSubnet1EIP1A313755",
       "resourceType": "AWS::EC2::EIP",
       "path": "NetworkInterfaceId",

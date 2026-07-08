@@ -256,6 +256,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::EKS::Cluster': {
     ControlPlaneScalingConfig: { Tier: 'standard' },
     UpgradePolicy: { SupportType: 'EXTENDED' },
+    // A cluster that declares no AccessConfig reads back the default authentication mode
+    // CONFIG_MAP (the one path the #531 EKS batch missed). Equality-gated: a cluster on
+    // API / API_AND_CONFIG_MAP no longer matches and surfaces.
+    AccessConfig: { AuthenticationMode: 'CONFIG_MAP' },
   },
   // A vpc-cni (and other) addon reads back the kube-system namespace it installs into when
   // the template declares no NamespaceConfig. AddonVersion is per-cluster-version → record-worthy.
@@ -612,6 +616,26 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // A service that declares no deployment controller reads back the default rolling
     // (ECS) controller. Observed live on a fresh Fargate service.
     DeploymentController: { Type: 'ECS' },
+    // A service that declares NO DeploymentConfiguration reads back AWS's full default
+    // rolling-deploy config. Pinned to the CURRENT (2026-07-08) enriched shape — AWS has
+    // grown the DeploymentCircuitBreaker default over time (adding ResetOnHealthyTask +
+    // ThresholdConfiguration), so matchesKnownDefault's subset tolerance folds an OLDER
+    // (fewer-key) live echo too, while a value CHANGED away from a default still surfaces.
+    // (Partially-declared services — CDK L2 usually sets only Maximum/MinimumPercent —
+    // fold the AWS-added sub-keys via KNOWN_DEFAULT_PATHS below instead.)
+    DeploymentConfiguration: {
+      BakeTimeInMinutes: 0,
+      Alarms: { AlarmNames: [], Enable: false, Rollback: false },
+      Strategy: 'ROLLING',
+      DeploymentCircuitBreaker: {
+        ThresholdConfiguration: { Type: 'BOUNDED_PERCENT', Value: 50 },
+        Enable: false,
+        ResetOnHealthyTask: true,
+        Rollback: false,
+      },
+      MaximumPercent: 200,
+      MinimumHealthyPercent: 100,
+    },
   },
   'AWS::AppSync::GraphQLApi': {
     ApiType: 'GRAPHQL',
@@ -897,6 +921,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     FailureRetentionPeriod: 31,
     SuccessRetentionPeriod: 31,
     ProvisionedResourceCleanup: 'AUTOMATIC',
+    // A canary that declares no RunConfig reads back the full default run configuration
+    // (840s max timeout, 1500 MB, 1024 MB ephemeral storage, tracing off). Equality-gated;
+    // a canary that customizes any knob no longer matches and surfaces.
+    RunConfig: {
+      TimeoutInSeconds: 840,
+      MemoryInMB: 1500,
+      EphemeralStorage: 1024,
+      ActiveTracing: false,
+    },
   },
   'AWS::MSK::Cluster': {
     EnhancedMonitoring: 'DEFAULT',
@@ -905,6 +938,44 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Glue::Job': {
     JobMode: 'SCRIPT',
     MaxRetries: 0,
+    // A job that declares neither reads back Glue's constant defaults: a 2880-minute
+    // (48h) timeout and single-concurrency execution. Equality-gated: a custom timeout or
+    // concurrency no longer matches and surfaces.
+    Timeout: 2880,
+    ExecutionProperty: { MaxConcurrentRuns: 1 },
+  },
+  // #653 corpus-mining batch — constant service defaults on clean deploys of covered types.
+  // A verified email identity that declares no DKIM / feedback config reads back AWS's
+  // enabled-by-default DKIM (Easy-DKIM, RSA_2048_BIT) + email-forwarding. Equality-gated.
+  'AWS::SES::EmailIdentity': {
+    DkimAttributes: { SigningEnabled: true },
+    DkimSigningAttributes: { NextSigningKeyLength: 'RSA_2048_BIT' },
+    FeedbackAttributes: { EmailForwardingEnabled: true },
+  },
+  // A configuration set reads back sending enabled + reputation metrics on by default.
+  'AWS::SES::ConfigurationSet': {
+    SendingOptions: { SendingEnabled: true },
+    ReputationOptions: { ReputationMetricsEnabled: true },
+  },
+  // A registered schema reads back the auto-registered first version as the latest checkpoint.
+  'AWS::Glue::Schema': {
+    CheckpointVersion: { IsLatest: true, VersionNumber: 1 },
+  },
+  // A signing profile that declares no validity period reads back the platform default
+  // (135 months for the AWSLambda-SHA384-ECDSA platform). Equality-gated.
+  'AWS::Signer::SigningProfile': {
+    SignatureValidityPeriod: { Type: 'MONTHS', Value: 135 },
+  },
+  // A code-signing config that declares no policy reads back the default "Warn" action for
+  // an untrusted artifact on deploy (the other value is "Enforce"). Equality-gated.
+  'AWS::Lambda::CodeSigningConfig': {
+    CodeSigningPolicies: { UntrustedArtifactOnDeployment: 'Warn' },
+  },
+  // A raw-CFn security group (CDK always declares egress; a hand-written CfnSecurityGroup
+  // may not) reads back AWS's default allow-all egress rule that it adds on creation.
+  // Equality-gated: a group with a narrowed egress reads a different array and surfaces.
+  'AWS::EC2::SecurityGroup': {
+    SecurityGroupEgress: [{ CidrIp: '0.0.0.0/0', FromPort: -1, ToPort: -1, IpProtocol: '-1' }],
   },
   // R-noise-sweep (PR #355 follow-up): constant service defaults a fresh resource
   // reports as undeclared on every first run. Each is a documented account-/region-
@@ -1616,6 +1687,29 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
       Type: 'BOUNDED_PERCENT',
       Value: 50,
     },
+    // A service that declares DeploymentConfiguration (CDK L2 sets Maximum/MinimumPercent)
+    // but not the circuit breaker reads the WHOLE default DeploymentCircuitBreaker object —
+    // pinned to today's enriched shape (matchesKnownDefault's recursive subset tolerance
+    // folds an older fewer-key echo too). The paired Alarms default object also echoes.
+    'DeploymentConfiguration.DeploymentCircuitBreaker': {
+      ThresholdConfiguration: { Type: 'BOUNDED_PERCENT', Value: 50 },
+      Enable: false,
+      ResetOnHealthyTask: true,
+      Rollback: false,
+    },
+    // (The paired DeploymentConfiguration.Alarms default {AlarmNames:[],Enable:false,
+    // Rollback:false} is all-empty/false, so the trivial-empty husk handling already drops
+    // it — no explicit entry needed.)
+  },
+  // A guardrail that declares content/topic policies but no tier reads back the default
+  // CLASSIC tier under each policy config. Equality-gated: a STANDARD tier surfaces.
+  'AWS::Bedrock::Guardrail': {
+    'ContentPolicyConfig.ContentFiltersTierConfig': { TierName: 'CLASSIC' },
+    'TopicPolicyConfig.TopicsTierConfig': { TierName: 'CLASSIC' },
+  },
+  // A canary that declares a Schedule but no RetryConfig reads back the default 0 retries.
+  'AWS::Synthetics::Canary': {
+    'Schedule.RetryConfig': { MaxRetries: 0 },
   },
   'AWS::OpenSearchService::Domain': {
     // A gp3 EBS volume reads back the gp3 baseline 3000 IOPS / 125 MiB/s throughput
@@ -1853,6 +1947,11 @@ export const GENERATED_PATHS: Record<string, string[]> = {
   // the declared SamplingRule object — pure identity, never user-editable.
   // Observed live on the xray-insightrule-rich fixture.
   'AWS::XRay::SamplingRule': ['SamplingRule.RuleARN'],
+  // A budget that declares no BudgetName reads back the CFn-minted name
+  // `<logicalId>-<region>-<epochMillis>-<random>`, which IS the resource's physical id
+  // (the whole-id echo isPhysicalIdSegment folds) — AWS-generated identity, never user
+  // intent. A user-declared BudgetName is compared in the declared loop, unaffected.
+  'AWS::Budgets::Budget': ['Budget.BudgetName'],
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the READ
@@ -1922,6 +2021,12 @@ export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => 
     StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
     AllocatedStorage: (e) => (e.startsWith('aurora') ? 1 : undefined),
     Port: rdsDefaultPort,
+  },
+  // A cache cluster that declares no Port reads back the engine's default listener port —
+  // 6379 for redis/valkey, 11211 for memcached. Derived from the live Engine and
+  // equality-gated; an out-of-band port change still surfaces.
+  'AWS::ElastiCache::CacheCluster': {
+    Port: (e) => (/memcached/i.test(e) ? 11211 : /redis|valkey/i.test(e) ? 6379 : undefined),
   },
 };
 
@@ -2519,7 +2624,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   AWS::RDS::DBInstance.AvailabilityZone above. A user who pins a placement DECLARES it and is
   //   then compared in the declared loop.
   'AWS::Neptune::DBInstance': new Set(['PreferredMaintenanceWindow', 'AvailabilityZone']),
-  'AWS::ElastiCache::CacheCluster': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
+  //   AWS::ElastiCache::CacheCluster.PreferredAvailabilityZones — a cluster that declares no
+  //   AZ placement reads back the AZ(s) AWS picked from its subnet group (["us-east-1a"]) —
+  //   subnet-group-derived, not user intent when undeclared; a user who pins placement
+  //   DECLARES it and is then compared in the declared loop.
+  'AWS::ElastiCache::CacheCluster': new Set([
+    'PreferredMaintenanceWindow',
+    'SnapshotWindow',
+    'PreferredAvailabilityZones',
+  ]),
   'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
   'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow']),
@@ -2572,7 +2685,24 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress']),
   'AWS::EC2::NatGateway': new Set(['PrivateIpAddress', 'VpcId']),
   'AWS::EFS::MountTarget': new Set(['IpAddress']),
-  'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
+  //   AWS::EC2::EIP.NetworkInterfaceId — an EIP associated with an ENI (directly or via an
+  //   instance) reflects the eni-… it is bound to; the attachment is not user intent on the
+  //   EIP itself (a user who cares associates it explicitly / declares it), and the id is
+  //   AWS-assigned per-ENI, so fold value-independent.
+  'AWS::EC2::EIP': new Set(['NetworkBorderGroup', 'NetworkInterfaceId']),
+  //   AWS::EFS::FileSystem.KmsKeyId — an encrypted file system that declares no key reads
+  //   back the account aws/elasticfilesystem managed-key ARN (per-account, AWS-assigned) —
+  //   the exact twin of the RDS/OpenSearch AWS-assigned KmsKeyId folds (#533). Undeclared,
+  //   so whatever managed key AWS assigned is not user intent.
+  'AWS::EFS::FileSystem': new Set(['KmsKeyId']),
+  //   AWS::EC2::SecurityGroup.VpcId — a group that declares no VpcId lands in the account
+  //   default VPC (an AWS-assigned id, not in the group's declared inputs); VpcId is
+  //   create-only so it can never drift. A user who targets a VPC DECLARES it.
+  'AWS::EC2::SecurityGroup': new Set(['VpcId']),
+  //   AWS::GlobalAccelerator::Accelerator.IpAddresses — AWS assigns the static anycast IPs
+  //   from its pool when the template declares none; they are AWS-owned addresses, never
+  //   user intent. A user who brings their own IPs DECLARES them.
+  'AWS::GlobalAccelerator::Accelerator': new Set(['IpAddresses']),
   'AWS::EC2::VPCEndpoint': new Set(['ServiceRegion', 'DnsOptions']),
   'AWS::EC2::VPCPeeringConnection': new Set(['PeerRegion']),
   //     * EC2 VPCCidrBlock `Ipv6CidrBlock` + `Ipv6CidrBlockNetworkBorderGroup` — a

@@ -72,7 +72,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Files8E6940B8",
       "resourceType": "AWS::EFS::FileSystem",
       "path": "KmsKeyId",

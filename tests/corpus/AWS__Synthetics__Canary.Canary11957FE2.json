@@ -104,7 +104,7 @@
       "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Canary11957FE2",
       "resourceType": "AWS::Synthetics::Canary",
       "path": "RunConfig",
@@ -136,7 +136,7 @@
       "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Canary11957FE2",
       "resourceType": "AWS::Synthetics::Canary",
       "path": "Schedule.RetryConfig",
