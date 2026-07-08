@@ -307,14 +307,10 @@ export function collectPrincipalsWithSiblingPolicies(
   ctx?: ResolverContext
 ): Map<string, string[] | 'unresolved'> {
   const principals = new Map<string, string[] | 'unresolved'>();
-  for (const res of Object.values(resources)) {
-    if (res?.Type !== 'AWS::IAM::Policy') continue;
-    const name = resolvePolicyName(res.Properties?.PolicyName, ctx);
-    const refs = [
-      ...((res.Properties?.Roles ?? []) as unknown[]),
-      ...((res.Properties?.Users ?? []) as unknown[]),
-      ...((res.Properties?.Groups ?? []) as unknown[]),
-    ];
+  // Register one inline-policy sibling: attach `name` (resolved PolicyName) to each
+  // principal logicalId in `refs`. An unresolvable PolicyName marks the principal
+  // 'unresolved' (classify then suppresses the whole live Policies property).
+  const attach = (name: string | undefined, refs: unknown[]) => {
     for (const r of refs) {
       const ref = r && typeof r === 'object' ? (r as Record<string, unknown>).Ref : undefined;
       if (typeof ref !== 'string') continue;
@@ -323,9 +319,36 @@ export function collectPrincipalsWithSiblingPolicies(
       if (name === undefined) principals.set(ref, 'unresolved');
       else principals.set(ref, [...(prev ?? []), name]);
     }
+  };
+  for (const res of Object.values(resources)) {
+    const name = resolvePolicyName(res?.Properties?.PolicyName, ctx);
+    if (res?.Type === 'AWS::IAM::Policy') {
+      // Array reference props: attach the same inline policy to every referenced principal.
+      attach(name, [
+        ...((res.Properties?.Roles ?? []) as unknown[]),
+        ...((res.Properties?.Users ?? []) as unknown[]),
+        ...((res.Properties?.Groups ?? []) as unknown[]),
+      ]);
+    } else {
+      // Standalone inline-policy types attach to a SINGLE principal via a singular
+      // RoleName / UserName / GroupName (a Ref/GetAtt to the principal, or a literal
+      // name). Only a Ref maps to a principal logicalId — resolve exactly like the
+      // Policy array entries (a literal name has no logicalId, so it is ignored).
+      const singular = IAM_STANDALONE_INLINE_POLICY_TYPES.get(res?.Type);
+      if (singular !== undefined) attach(name, [res?.Properties?.[singular]]);
+    }
   }
   return principals;
 }
+
+// The standalone inline-policy resource types, mapped to the singular property that
+// references their one attached principal. Each is the CDK `CfnRolePolicy` /
+// `CfnUserPolicy` / `CfnGroupPolicy` equivalent of an inline policy on the principal.
+const IAM_STANDALONE_INLINE_POLICY_TYPES: ReadonlyMap<string, string> = new Map([
+  ['AWS::IAM::RolePolicy', 'RoleName'],
+  ['AWS::IAM::UserPolicy', 'UserName'],
+  ['AWS::IAM::GroupPolicy', 'GroupName'],
+]);
 
 /**
  * The set of ECS Cluster logicalIds that a sibling AWS::ECS::ClusterCapacityProviderAssociations
