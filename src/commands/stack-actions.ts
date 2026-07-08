@@ -386,8 +386,13 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
     desired.rawTemplate,
     recorded,
     // full resource list (read-clean resources are snapshot-complete too) +
-    // previous baseline so completeness stays monotonic across re-records (R62)
-    { allLogicalIds: desired.resources.map((r) => r.logicalId), previous: existing }
+    // previous baseline so completeness stays monotonic across re-records (R62) +
+    // #674: per-resource physical id so a later REPLACING deploy can void stale entries
+    {
+      allLogicalIds: desired.resources.map((r) => r.logicalId),
+      previous: existing,
+      physicalIdByLogical: physicalIdsByLogical(desired.resources),
+    }
   );
   console.log(style.ok(recordOutcomeMessage(stackName, path, count, refreshedOnly, !!existing)));
   // record's scope excludes declared/deleted: if such drift is present, say so —
@@ -753,7 +758,16 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // lets a constructPath-form ignore rule match it during applyIgnores.
   const physicalIdByLogical = physicalIdsByLogical(gathered.desired.resources);
   const constructPathByLogical = constructPathsByLogical(gathered.desired.resources);
-  const baselineOpts = { declaredByLogical, physicalIdByLogical, constructPathByLogical };
+  // #675: the current template's logical-id set so applyBaseline can fold recorded
+  // entries whose resource was removed from the template. #674 reuses physicalIdByLogical
+  // (LIVE physical ids) to void entries recorded against a since-REPLACED resource.
+  const allLogicalIds = gathered.desired.resources.map((r) => r.logicalId);
+  const baselineOpts = {
+    declaredByLogical,
+    physicalIdByLogical,
+    constructPathByLogical,
+    allLogicalIds,
+  };
   const drifted = applyIgnores(
     applyBaseline(gathered.findings, baseline, { ...baselineOpts, warn: console.error }),
     { stackName, accountId: gathered.desired.accountId, region },

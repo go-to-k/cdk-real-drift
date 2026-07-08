@@ -13,6 +13,8 @@ import {
   constructPathsByLogical,
   physicalIdsByLogical,
   formatPromotedStaleNote,
+  formatRemovedFromTemplateNote,
+  formatReplacedStaleNote,
   identityArrayDelta,
   checkBaselineAccount,
   computeCompleteResources,
@@ -901,6 +903,224 @@ describe('baseline', () => {
     const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ note: 'baseline value removed since record' });
+  });
+
+  describe('#675 — resource REMOVED from the template (baseline entries folded, not phantom drift)', () => {
+    it('folds a recorded entry whose logicalId is absent from the current template', () => {
+      // 'A' was removed from the template and deleted by the deploy. It is in neither the
+      // template nor live AWS — its recorded entry must not surface as "removed since record".
+      const b = baseline([
+        { logicalId: 'A', resourceType: 'AWS::S3::Bucket', path: 'P', value: ['x'] },
+      ]);
+      const warnings: string[] = [];
+      const out = applyBaseline([], b, {
+        allLogicalIds: ['B', 'C'], // 'A' gone from the template
+        warn: (m) => warnings.push(m),
+      });
+      expect(out).toHaveLength(0); // never surfaced as drift
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('no longer in the template');
+      expect(warnings[0]).toContain('re-run `cdkrd record`');
+    });
+
+    it('folds MANY removed-from-template entries into ONE warn line', () => {
+      const b = baseline([
+        { logicalId: 'A', resourceType: 'AWS::S3::Bucket', path: 'P1', value: 1 },
+        { logicalId: 'A', resourceType: 'AWS::S3::Bucket', path: 'P2', value: 2 },
+      ]);
+      const warnings: string[] = [];
+      const out = applyBaseline([], b, { allLogicalIds: ['Other'], warn: (m) => warnings.push(m) });
+      expect(out).toHaveLength(0);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain(
+        '2 baseline entries belong to resources no longer in the template'
+      );
+    });
+
+    it('a still-present logicalId behaves as before (genuine removal still surfaces)', () => {
+      // 'A' is STILL in the template, so a recorded path now absent is a genuine removal.
+      const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+      const out = applyBaseline([], b, { allLogicalIds: ['A'] });
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ note: 'baseline value removed since record' });
+    });
+
+    it('with NO allLogicalIds passed, keeps today’s behavior (surfaces the removal)', () => {
+      const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
+      const out = applyBaseline([], b); // no allLogicalIds
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ note: 'baseline value removed since record' });
+    });
+  });
+
+  describe('#674 — resource REPLACED by a deploy (stale entries voided when live physId differs)', () => {
+    const atDef = (logicalId: string, path: string, value: unknown): Finding => ({
+      tier: 'atDefault',
+      logicalId,
+      resourceType: 'AWS::SQS::Queue',
+      path,
+      actual: value,
+    });
+    // helper: a baseline carrying a recorded physical id for the logicalId
+    const withPhys = (
+      recorded: BaselineFile['recorded'],
+      recordedPhysicalIds: Record<string, string>
+    ): BaselineFile => ({ ...baseline(recorded), recordedPhysicalIds });
+
+    it('voids a changed-from-baseline entry when the live physical id DIFFERS (replacement)', () => {
+      // Recorded VisibilityTimeout=120 against the OLD queue (phys-old). The new (replaced)
+      // queue reads the fresh AWS default 30 (atDefault). Without the fix this surfaces as
+      // "changed from your .cdkrd baseline" drift; the recorded 120 belongs to a deleted queue.
+      const b = withPhys(
+        [
+          {
+            logicalId: 'Q',
+            resourceType: 'AWS::SQS::Queue',
+            path: 'VisibilityTimeout',
+            value: 120,
+          },
+        ],
+        { Q: 'phys-old' }
+      );
+      const warnings: string[] = [];
+      const out = applyBaseline([atDef('Q', 'VisibilityTimeout', 30)], b, {
+        physicalIdByLogical: new Map([['Q', 'phys-new']]),
+        warn: (m) => warnings.push(m),
+      });
+      // the fresh default folds (atDefault passes through as folded inventory, not drift)
+      expect(out.some((f) => f.tier === 'undeclared')).toBe(false);
+      // and a folded nudge is emitted
+      expect(warnings.some((w) => w.includes('since REPLACED by a deploy'))).toBe(true);
+    });
+
+    it('does NOT surface a "removed since record" finding for a replaced resource', () => {
+      // The recorded path is gone from the (new) resource's findings — but because the
+      // resource was replaced, it is void, not "removed since record".
+      const b = withPhys(
+        [
+          {
+            logicalId: 'Q',
+            resourceType: 'AWS::SQS::Queue',
+            path: 'VisibilityTimeout',
+            value: 120,
+          },
+        ],
+        { Q: 'phys-old' }
+      );
+      const warnings: string[] = [];
+      const out = applyBaseline([], b, {
+        physicalIdByLogical: new Map([['Q', 'phys-new']]),
+        warn: (m) => warnings.push(m),
+      });
+      expect(out.some((f) => f.note === 'baseline value removed since record')).toBe(false);
+      expect(warnings.some((w) => w.includes('since REPLACED by a deploy'))).toBe(true);
+    });
+
+    it('a MATCHING physical id behaves as before (recorded value still compared → drift)', () => {
+      // Same physical id -> not replaced. A changed live value is real drift.
+      const b = withPhys(
+        [
+          {
+            logicalId: 'Q',
+            resourceType: 'AWS::SQS::Queue',
+            path: 'VisibilityTimeout',
+            value: 120,
+          },
+        ],
+        { Q: 'phys-same' }
+      );
+      const out = applyBaseline([atDef('Q', 'VisibilityTimeout', 30)], b, {
+        physicalIdByLogical: new Map([['Q', 'phys-same']]),
+      });
+      // recorded 120 vs live 30 -> surfaces as drift (forced to undeclared)
+      expect(out.some((f) => f.tier === 'undeclared' && f.path === 'VisibilityTimeout')).toBe(true);
+    });
+
+    it('a MISSING recorded physical id (old baseline) falls back to today’s behavior (no void)', () => {
+      // Old committed baseline: no recordedPhysicalIds. Even if the live id "differs", there
+      // is nothing to compare, so the recorded value is compared as usual (→ drift).
+      const b = baseline([
+        { logicalId: 'Q', resourceType: 'AWS::SQS::Queue', path: 'VisibilityTimeout', value: 120 },
+      ]);
+      const out = applyBaseline([atDef('Q', 'VisibilityTimeout', 30)], b, {
+        physicalIdByLogical: new Map([['Q', 'phys-new']]),
+      });
+      expect(out.some((f) => f.tier === 'undeclared' && f.path === 'VisibilityTimeout')).toBe(true);
+    });
+
+    it('an UNKNOWN live physical id (unread this run) does NOT void — fall back to today’s behavior', () => {
+      const b = withPhys(
+        [
+          {
+            logicalId: 'Q',
+            resourceType: 'AWS::SQS::Queue',
+            path: 'VisibilityTimeout',
+            value: 120,
+          },
+        ],
+        { Q: 'phys-old' }
+      );
+      const out = applyBaseline([atDef('Q', 'VisibilityTimeout', 30)], b, {
+        physicalIdByLogical: new Map(), // no live id resolved
+      });
+      expect(out.some((f) => f.tier === 'undeclared' && f.path === 'VisibilityTimeout')).toBe(true);
+    });
+  });
+
+  describe('formatRemovedFromTemplateNote (#675 — folded one-liner)', () => {
+    it('singular names the one entry', () => {
+      expect(formatRemovedFromTemplateNote(['A.P'])).toBe(
+        'note: baseline entry (A.P) belongs to resources no longer in the template — re-run `cdkrd record` to clean them up.'
+      );
+    });
+    it('plural folds to a count (no per-entry list)', () => {
+      const note = formatRemovedFromTemplateNote(['A.P1', 'A.P2', 'B.Q']);
+      expect(note).toContain('3 baseline entries belong to resources no longer in the template');
+      expect(note).not.toContain('A.P1');
+    });
+  });
+
+  describe('formatReplacedStaleNote (#674 — folded one-liner)', () => {
+    it('singular names the one entry', () => {
+      expect(formatReplacedStaleNote(['Q.VisibilityTimeout'])).toBe(
+        'note: baseline entry (Q.VisibilityTimeout) was recorded against a resource since REPLACED by a deploy — re-run `cdkrd record`.'
+      );
+    });
+    it('plural folds to a count (no per-entry list)', () => {
+      const note = formatReplacedStaleNote(['Q.A', 'Q.B']);
+      expect(note).toContain('2 baseline entries were recorded against a resource since REPLACED');
+      expect(note).not.toContain('Q.A');
+    });
+  });
+
+  describe('writeBaseline captures recordedPhysicalIds (#674)', () => {
+    it('stores per-resource physical id, pruned to logicalIds with an entry, sorted', () => {
+      const recorded: BaselineFile['recorded'] = [
+        { logicalId: 'Q', resourceType: 'AWS::SQS::Queue', path: 'VisibilityTimeout', value: 30 },
+      ];
+      // exercise sortedPhysicalIds directly via writeBaselineFile to keep this pure (no fs
+      // in this assertion; the round-trip fs test lives in the writeBaselineFile block).
+      const file: BaselineFile = {
+        ...baseline(recorded),
+        schemaVersion: 2,
+        recordedPhysicalIds: { Z: 'phys-Z-noentry', Q: 'phys-Q' },
+      };
+      // sortedPhysicalIds is internal; assert its effect through a fs round-trip.
+      return (async () => {
+        const dir = await mkdtemp(join(tmpdir(), 'cdkrd-phys-'));
+        const cwd = process.cwd();
+        process.chdir(dir);
+        try {
+          const p = await writeBaselineFile(file);
+          const reread = JSON.parse(await readFile(p, 'utf8')) as BaselineFile;
+          // 'Z' has no recorded entry -> pruned; only 'Q' remains
+          expect(reread.recordedPhysicalIds).toEqual({ Q: 'phys-Q' });
+        } finally {
+          process.chdir(cwd);
+          await rm(dir, { recursive: true, force: true });
+        }
+      })();
+    });
   });
 
   describe('writeBaselineFile (deterministic order, R40)', () => {

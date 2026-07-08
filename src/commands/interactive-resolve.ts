@@ -172,6 +172,8 @@ const baselineOpts = (p: ResolveParams): ApplyBaselineOptions => ({
   declaredByLogical: declaredKeysByLogical(p.desired.resources),
   constructPathByLogical: constructPathsByLogical(p.desired.resources),
   physicalIdByLogical: physicalIdsByLogical(p.desired.resources),
+  // #675: fold recorded entries whose resource was removed from the template.
+  allLogicalIds: p.desired.resources.map((r) => r.logicalId),
 });
 
 /**
