@@ -232,7 +232,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // content hash (not a constant default) — folded as `generated` via
   // GENERATED_TOPLEVEL_PATHS instead.
   'AWS::Lambda::Version': { RuntimePolicy: { UpdateRuntimeOn: 'Auto' } },
-  'AWS::Events::Rule': { EventBusName: 'default' },
+  // A rule that declares no State reads back ENABLED (the default for a new rule).
+  // Equality-gated: a DISABLED rule reads a different value and surfaces.
+  'AWS::Events::Rule': { EventBusName: 'default', State: 'ENABLED' },
   'AWS::Athena::WorkGroup': {
     State: 'ENABLED',
     // A workgroup that declares ONLY Name/Description reads back AWS's whole default
@@ -360,6 +362,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {
     IpAddressType: 'ipv4',
     EnablePrefixForIpv6SourceNat: 'off',
+    // A load balancer that declares neither reads back the constant defaults —
+    // internet-facing scheme and the application (ALB) type. Equality-gated: an
+    // internal LB or an NLB/GWLB reads a different value and surfaces. (SecurityGroups,
+    // an AWS-assigned VPC-default SG when undeclared, folds value-independent below.)
+    Scheme: 'internet-facing',
+    Type: 'application',
   },
   'AWS::ElasticLoadBalancingV2::Listener': {
     // A listener that declares no mutual-TLS config reads back the "off" default.
@@ -586,6 +594,17 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // longer matches and surfaces. Observed live.
     KeyConfiguration: { KeyType: 'AWS_OWNED_KEY' },
     IssuerConfiguration: { Type: 'ORIGINAL' },
+    // A bare pool (raw CfnUserPool; L2 fixtures always declare these) reads back the
+    // constant defaults: the code-based verification message option and the two-mechanism
+    // account-recovery order (verified_email > verified_phone_number). Equality-gated
+    // (subset-tolerant): a pool that customizes either no longer matches and surfaces.
+    VerificationMessageTemplate: { DefaultEmailOption: 'CONFIRM_WITH_CODE' },
+    AccountRecoverySetting: {
+      RecoveryMechanisms: [
+        { Priority: 1, Name: 'verified_email' },
+        { Priority: 2, Name: 'verified_phone_number' },
+      ],
+    },
     // A pool that never configures WebAuthn reads back the constant default
     // WebAuthnFactorConfiguration "SINGLE_FACTOR" (observed live). Equality-gated: a
     // pool that enables MULTI_FACTOR WebAuthn no longer matches and surfaces.
@@ -870,6 +889,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // Observed live on a fresh EIP (vpc-common NAT gateway).
   'AWS::EC2::EIP': {
     PublicIpv4Pool: 'amazon',
+    // An address that declares no Domain reads back "vpc" (EC2-Classic is retired, so
+    // vpc is the only value for a new EIP). Equality-gated constant.
+    Domain: 'vpc',
   },
   'AWS::EC2::TransitGateway': {
     SecurityGroupReferencingSupport: 'disable',
@@ -2465,6 +2487,12 @@ export function ebOptionSettingTier(
 //   and "DISABLED" on others (both observed live), depending on how/when the service was
 //   created; neither is "the" default.
 export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
+  //   AWS::ElasticLoadBalancingV2::LoadBalancer.SecurityGroups — an ALB that declares no
+  //   SecurityGroups is placed in its VPC's default security group (an AWS-assigned sg-…
+  //   id, not in the LB's declared inputs and not derivable without a VPC lookup). Undeclared,
+  //   so whatever SG AWS attached is its default, never user intent — a user who wants a
+  //   specific SG DECLARES it, and it is then compared in the declared loop.
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': new Set(['SecurityGroups']),
   //   AWS::Batch::JobQueue.JobQueueType — a queue that declares no JobQueueType reads back
   //   the type AWS DERIVES from its attached compute environment (ECS_FARGATE for a Fargate
   //   CE, ECS for EC2, EKS for EKS). The value lives on a DIFFERENT resource (the CE), not in

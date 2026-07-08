@@ -93,7 +93,7 @@ import {
 } from '../normalize/noise.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
-import { rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
+import { canonicalizePolicy, rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
@@ -1317,6 +1317,54 @@ export function classifyResource(
       if (name) knownDefPaths = { ...knownDefPaths, 'Registry.Name': name };
     }
   }
+  // #701: an EventSourceMapping's default BatchSize depends on the source service — 10 for
+  // SQS, 100 for Kinesis / DynamoDB streams / MSK / Kafka. Derive the expected default from
+  // the declared EventSourceArn's service segment (arn:<p>:<service>:...) and equality-gate
+  // it (fold tier 2): a mapping that pins a custom batch size still surfaces. (An unknown /
+  // self-managed source leaves BatchSize unfolded so it never wrongly folds.)
+  if (resourceType === 'AWS::Lambda::EventSourceMapping') {
+    const arn = declared['EventSourceArn'];
+    const service = typeof arn === 'string' ? arn.split(':')[2] : undefined;
+    const batchDefault =
+      service === 'sqs'
+        ? 10
+        : service === 'kinesis' || service === 'dynamodb' || service === 'kafka'
+          ? 100
+          : undefined;
+    if (batchDefault !== undefined) knownDef = { ...knownDef, BatchSize: batchDefault };
+  }
+  // #701: a KMS key that declares no KeyPolicy (optional in CFn since 2021; raw-CFn users
+  // omit it, CDK always emits it) reads back the DEFAULT root-access policy — a single
+  // "Enable IAM User Permissions" statement granting kms:* to the account root. It is a
+  // deterministic function of the account id (fold tier 2). Policy canonicalization strips
+  // the Sid / Id, so the compared shape is the single {Effect,Principal,Action,Resource}
+  // statement (matching the KMS corpus). A policy scoped to anything else still surfaces.
+  if (resourceType === 'AWS::KMS::Key' && opts.accountId !== undefined) {
+    const partition = opts.region?.startsWith('cn-')
+      ? 'aws-cn'
+      : opts.region?.startsWith('us-gov-')
+        ? 'aws-us-gov'
+        : 'aws';
+    // Build the RAW default policy and run it through the SAME canonicalization the live
+    // side gets, so the two match regardless of canonicalization details (array-wrapping,
+    // root-ARN reduction to the account id, key ordering).
+    knownDef = {
+      ...knownDef,
+      KeyPolicy: canonicalizePolicy({
+        Version: '2012-10-17',
+        Id: 'key-default-1',
+        Statement: [
+          {
+            Sid: 'Enable IAM User Permissions',
+            Effect: 'Allow',
+            Principal: { AWS: `arn:${partition}:iam::${opts.accountId}:root` },
+            Action: 'kms:*',
+            Resource: '*',
+          },
+        ],
+      }),
+    };
+  }
   // #678: a PRIVATE RestApi (declared EndpointConfiguration.Types includes 'PRIVATE') gets
   // DIFFERENT AWS defaults than an EDGE/REGIONAL api — SecurityPolicy TLS_1_2 (not TLS_1_0)
   // and EndpointConfiguration.IpAddressType 'dualstack' (not 'ipv4'), both live-verified.
@@ -2160,8 +2208,11 @@ export function classifyResource(
       // A top-level key whose AWS default is NON-DETERMINISTIC (ECS
       // AvailabilityZoneRebalancing reads back ENABLED or DISABLED depending on the
       // service) — folded atDefault regardless of value: undeclared, so any value is
-      // AWS's choice, not user intent.
-      VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k)
+      // AWS's choice, not user intent. A trivially-empty value ([] / "" / {}) is NOT an
+      // AWS-assigned default — it is just absent — so let it fall through to the shared
+      // trivial-empty drop rather than surfacing a spurious atDefault (e.g. an NLB's empty
+      // SecurityGroups []).
+      (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) && !isTrivialEmpty(v))
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
