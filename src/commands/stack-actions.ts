@@ -778,6 +778,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     schemas: gathered.schemas,
     siblingSgRules: buildSiblingSgRules(gathered.desired),
     stackName,
+    // raw live models so a CC revert patch can strip a bare-null array husk out of CC's
+    // server-side model (#641 symptom 2), else the unrelated-property revert fails validation.
+    liveByLogical: gathered.liveByLogical,
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
