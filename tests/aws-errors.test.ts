@@ -88,11 +88,21 @@ describe('classifyStackStatus (stack-state checkability)', () => {
     }
   });
 
-  it('stable *_COMPLETE states (incl. rollback/import complete) → ok', () => {
+  it('ROLLBACK_COMPLETE → skip (initial create failed and rolled back — resources deleted)', () => {
+    const c = classifyStackStatus('ROLLBACK_COMPLETE');
+    expect(c.kind).toBe('skip');
+    expect(c.message).toMatch(/create failed and rolled back/);
+  });
+
+  it('UPDATE_ROLLBACK_COMPLETE → ok (keeps the prior deployed reality)', () => {
+    // Distinct from ROLLBACK_COMPLETE: a failed UPDATE rolled back to a real deployed state.
+    expect(classifyStackStatus('UPDATE_ROLLBACK_COMPLETE').kind).toBe('ok');
+  });
+
+  it('stable *_COMPLETE states (incl. import complete) → ok', () => {
     for (const s of [
       'CREATE_COMPLETE',
       'UPDATE_COMPLETE',
-      'ROLLBACK_COMPLETE',
       'UPDATE_ROLLBACK_COMPLETE',
       'IMPORT_COMPLETE',
       undefined,
