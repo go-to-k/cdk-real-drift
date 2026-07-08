@@ -264,6 +264,19 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   its real-AWS live-test) is not demanded. pr-review and integ-\* stay UNPORTED on purpose:
   pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
   providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
+- **Claim a filed issue before working it — post a `gh issue comment` the moment
+  you START (or commit to start) work, so parallel agents and sessions don't
+  collide.** Multiple agents pick up open issues concurrently; two of them fixing
+  the same issue waste each other's work AND collide on the same files — most
+  fixes land in the central fold/revert tables (`normalize/noise.ts`,
+  `diff/classify.ts`, `revert/plan.ts`), so same-issue almost always means
+  same-file. Before editing, comment which PR / worktree branch you are using and
+  which file(s) you will touch (e.g. `working on this in PR #669 —
+src/revert/plan.ts`). This is the issue-level twin of the worktree
+  DISJOINT-FILE rule: the comment is the lock. Also check for an existing
+  "working on this" comment (and open PRs referencing the issue) BEFORE you start
+  — if one exists, pick a different issue. Skip only for a trivial change you will
+  PR within minutes.
 
 ## Dependencies
 
