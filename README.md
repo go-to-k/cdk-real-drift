@@ -663,7 +663,13 @@ place, since Cloud Control has no handler for the type),
 `config:DescribeConfigRules` / `config:PutConfigRule`,
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
 `VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
-Control cannot sub-path patch it).
+Control cannot sub-path patch it),
+`apigateway:UpdateStage` (reverts an `AWS::ApiGatewayV2::Stage` — an `autoDeploy`
+stage rejects the `DeploymentId` the Cloud Control handler injects, so only the
+drifted stage properties are written directly, never `DeploymentId`),
+`apigateway:UpdateRestApi` (reverts an `AWS::ApiGateway::RestApi` `Policy` — the
+whole desired resource policy is re-serialized and replaced, since Cloud Control
+holds the policy as a JSON string it cannot sub-path patch).
 
 </details>
 
