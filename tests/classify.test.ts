@@ -10205,3 +10205,48 @@ describe('#632 undeclared boolean flipped off is not swallowed by trivial-empty'
     expect(f.find((x) => x.path === 'SqsManagedSseEnabled')).toBeUndefined();
   });
 });
+
+// #623: IoT ThingType `ThingTypeProperties.SearchableAttributes` is a nested SCALAR set the
+// service re-sorts (declared ["serial","model"] reads back ["model","serial"]). The CFn
+// schema annotates it insertionOrder:true so the schema-driven fold does NOT engage — the
+// curated UNORDERED_NESTED_OBJECT_ARRAY_PATHS entry folds the reorder while a genuine
+// attribute add/remove still surfaces as declared drift. (Was a declared-tier FP that
+// survived record and looped revert forever.)
+describe('#623 IoT ThingType SearchableAttributes reorder folds (nested scalar set)', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(['Arn', 'Id']),
+    writeOnly: new Set(),
+    createOnly: new Set(['ThingTypeName']),
+    readOnlyPaths: ['Arn', 'Id'],
+    writeOnlyPaths: [],
+    createOnlyPaths: ['ThingTypeName'],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const declaredPaths = (declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource(
+      { logicalId: 'ThingType', resourceType: 'AWS::IoT::ThingType', physicalId: 'p', declared },
+      live,
+      bare
+    )
+      .filter((f) => f.tier === 'declared')
+      .map((f) => f.path);
+
+  it('a reordered-but-identical attribute set is NOT declared drift', () => {
+    expect(
+      declaredPaths(
+        { ThingTypeProperties: { SearchableAttributes: ['serial', 'model'] } },
+        { ThingTypeProperties: { SearchableAttributes: ['model', 'serial'] } }
+      )
+    ).toEqual([]);
+  });
+
+  it('a genuine attribute change still surfaces as declared drift (fail-closed)', () => {
+    expect(
+      declaredPaths(
+        { ThingTypeProperties: { SearchableAttributes: ['serial', 'model'] } },
+        { ThingTypeProperties: { SearchableAttributes: ['model', 'firmware'] } }
+      )
+    ).toEqual(['ThingTypeProperties.SearchableAttributes']);
+  });
+});

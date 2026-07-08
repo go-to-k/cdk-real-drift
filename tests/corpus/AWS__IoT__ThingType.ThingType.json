@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ThingType",
+    "resourceType": "AWS::IoT::ThingType",
+    "physicalId": "cdkrd-hunt0708e-type",
+    "constructPath": "CdkRealDriftHunt0708EIot/ThingType",
+    "declared": {
+      "ThingTypeName": "cdkrd-hunt0708e-type",
+      "ThingTypeProperties": {
+        "SearchableAttributes": ["serial", "model"],
+        "ThingTypeDescription": "hunt fixture thing type"
+      }
+    }
+  },
+  "liveRaw": {
+    "DeprecateThingType": false,
+    "ThingTypeName": "cdkrd-hunt0708e-type",
+    "ThingTypeProperties": {
+      "ThingTypeDescription": "hunt fixture thing type",
+      "Mqtt5Configuration": {
+        "PropagatingAttributes": []
+      },
+      "SearchableAttributes": ["model", "serial"]
+    },
+    "Id": "4e3f5c9b-6fde-47e2-9aff-e0ae207352c9",
+    "Arn": "arn:aws:iot:us-east-1:111111111111:thingtype/cdkrd-hunt0708e-type",
+    "Tags": []
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["ThingTypeName"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ThingTypeName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
