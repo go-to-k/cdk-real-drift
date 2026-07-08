@@ -124,6 +124,11 @@ import {
   ModifyCacheParameterGroupCommand,
   ResetCacheParameterGroupCommand,
 } from '@aws-sdk/client-elasticache';
+import {
+  MemoryDBClient,
+  ResetParameterGroupCommand as ResetMemoryDbParameterGroupCommand,
+  UpdateParameterGroupCommand as UpdateMemoryDbParameterGroupCommand,
+} from '@aws-sdk/client-memorydb';
 import { EC2Client, ModifyClientVpnEndpointCommand } from '@aws-sdk/client-ec2';
 import {
   DescribeEventBusCommand,
@@ -1584,6 +1589,57 @@ const writeElastiCacheParameterGroup: SdkWriter = async (ctx, ops) => {
   }
 };
 
+// AWS::MemoryDB::ParameterGroup — the twin of the ElastiCache writer above, read via an
+// SDK_SUPPLEMENTS reader. The CFn `Parameters` is a { name → value } map. An `add` op reverts a
+// DECLARED parameter (including one the MemoryDB CFn provider never applied on create) to its
+// deployed-template value via UpdateParameterGroup — which is exactly the API call the provider
+// skips, so revert actually MATERIALIZES the declared intent. A `remove` op resets an
+// out-of-band-added undeclared parameter to the family default via ResetParameterGroup (which
+// takes bare `ParameterNames`, unlike ElastiCache's ParameterNameValues). Keyed on the
+// `/Parameters/<key>` path (or a whole-map `/Parameters` op → every desired key).
+const writeMemoryDbParameterGroup: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['ParameterGroupName']);
+  if (!name) throw new Error('cannot resolve MemoryDB parameter-group name for revert');
+  const desired = await desiredModel('AWS::MemoryDB::ParameterGroup', ctx, ops);
+  const desiredValues = (desired.Parameters as Record<string, unknown> | undefined) ?? {};
+  const modifyKeys = new Set<string>();
+  const resetKeys = new Set<string>();
+  for (const op of ops) {
+    const segs = op.path.replace(/^\//, '').split('/');
+    if (segs[0] !== 'Parameters') continue;
+    const key = segs[1]?.replace(/~1/g, '/').replace(/~0/g, '~');
+    if (op.op === 'remove') {
+      if (key !== undefined) resetKeys.add(key);
+    } else if (key !== undefined) {
+      modifyKeys.add(key);
+    } else {
+      for (const k of Object.keys(desiredValues)) modifyKeys.add(k);
+    }
+  }
+  const c = new MemoryDBClient({ region: ctx.region });
+  const modify = [...modifyKeys]
+    .filter((k) => typeof desiredValues[k] === 'string')
+    .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
+  if (modify.length > 0) {
+    await c.send(
+      new UpdateMemoryDbParameterGroupCommand({
+        ParameterGroupName: name,
+        ParameterNameValues: modify,
+      })
+    );
+  }
+  const reset = [...resetKeys];
+  if (reset.length > 0) {
+    await c.send(
+      new ResetMemoryDbParameterGroupCommand({
+        ParameterGroupName: name,
+        AllParameters: false,
+        ParameterNames: reset,
+      })
+    );
+  }
+};
+
 // AWS::EC2::ClientVpnEndpoint — NON_PROVISIONABLE (read via DescribeClientVpnEndpoints; #534).
 // ec2:ModifyClientVpnEndpoint is a PARTIAL modify: send ONLY the drifted top-level props in the
 // mutable allowlist. Two props need reshaping vs the reader's projection: DnsServers (the read is
@@ -2077,6 +2133,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::DAX::Cluster': writeDaxCluster,
   'AWS::DAX::ParameterGroup': writeDaxParameterGroup,
   'AWS::ElastiCache::ParameterGroup': writeElastiCacheParameterGroup,
+  'AWS::MemoryDB::ParameterGroup': writeMemoryDbParameterGroup,
   'AWS::EC2::ClientVpnEndpoint': writeEc2ClientVpnEndpoint,
   'AWS::OpenSearchService::Domain': writeOpenSearchDomain,
   'AWS::CloudFront::Distribution': writeCloudFrontDistribution,

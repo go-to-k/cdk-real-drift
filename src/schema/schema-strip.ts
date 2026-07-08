@@ -81,6 +81,13 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
   // NoPasswordRequired stay writeOnly readGaps (read shape differs from CFn input).
   'AWS::ElastiCache::User': ['AccessString'],
   'AWS::MemoryDB::User': ['AccessString'],
+  // AWS::MemoryDB::ParameterGroup `Parameters` is writeOnly (CC never echoes the parameter
+  // map), so a declared parameter was an unverifiable readGap — and because the MemoryDB CFn
+  // provider does not apply declared Parameters on CREATE, the divergence was doubly invisible.
+  // The SDK_SUPPLEMENTS reader fetches the live parameters via memorydb:DescribeParameters and
+  // folds the undeclared family-default fill by diffing the managed default.<family> group, so
+  // compare it, don't readGap.
+  'AWS::MemoryDB::ParameterGroup': ['Parameters'],
   // AWS::RedshiftServerless::Workgroup ConfigParameters / SecurityGroupIds / SubnetIds
   // are writeOnly in the registry schema, so cdkrd filed them under the write-only readGap
   // bucket and an out-of-band change was silently invisible (#490 — a security-relevant FN

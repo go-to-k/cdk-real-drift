@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Pg",
+    "resourceType": "AWS::MemoryDB::ParameterGroup",
+    "physicalId": "cdkrd-integ-memorydb-pg",
+    "constructPath": "CdkRealDriftIntegMemoryDbParamGroup/Pg",
+    "declared": {
+      "Description": "cdkrd integ memorydb redis7 parameter group",
+      "Family": "memorydb_redis7",
+      "ParameterGroupName": "cdkrd-integ-memorydb-pg",
+      "Parameters": {
+        "maxmemory-policy": "allkeys-lru",
+        "timeout": "300"
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd integ memorydb redis7 parameter group",
+    "ParameterGroupName": "cdkrd-integ-memorydb-pg",
+    "Family": "memorydb_redis7",
+    "ARN": "arn:aws:memorydb:us-east-1:111111111111:parametergroup/cdkrd-integ-memorydb-pg",
+    "Parameters": {
+      "maxmemory-policy": "allkeys-lru",
+      "timeout": "300"
+    }
+  },
+  "schema": {
+    "readOnly": ["ARN"],
+    "writeOnly": [],
+    "createOnly": ["Description", "Family", "ParameterGroupName"],
+    "readOnlyPaths": ["ARN"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "Family", "ParameterGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
