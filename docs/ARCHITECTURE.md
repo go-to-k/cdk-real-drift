@@ -852,8 +852,16 @@ replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
   "accountId": "<aws account the baseline was captured in>",
   "capturedAt": "<iso>", "templateHash": "<hash of deployed template>",
   "recorded": [ { "logicalId", "resourceType", "path", "value" }, ... ],
-  "completeResources": [ "<logicalIds the record snapshot fully covered>" ] }
+  "completeResources": [ "<logicalIds the record snapshot fully covered>" ],
+  "recordedPhysicalIds": { "<logicalId>": "<physical id at record>", ... } }
 ```
+
+`recordedPhysicalIds` (additive, optional — #674) records the PHYSICAL id each
+resource's entries were snapshot against, so a later deploy that **replaces** a
+resource (new physical id) can void the now-stale entries (see the lifecycle
+paragraph below). Old committed baselines have no such field; a resource whose
+physical id was unknown at record time is simply absent — both fall back to the
+pre-#674 behavior (never void).
 
 **Per-entry classification (R62).** The unit of "recorded" is the ENTRY, not the
 file: an undeclared finding with a matching entry is suppressed; with an entry
@@ -906,6 +914,27 @@ removed since record". `applyBaseline` is passed the set of currently-declared k
 (`declaredKeysByLogical`) and suppresses that false removal, emitting a one-line
 stderr note ("now declared in the template — re-run `cdkrd record`") instead. So the
 behavior we recommend is never punished as drift.
+
+**Lifecycle folds (a normal deploy never re-surfaces stale entries).** Two IaC
+lifecycle events leave recorded entries pointing at state that no longer exists;
+both fold into a one-line stderr nudge (mirroring the promotion note), never drift:
+
+- **Removed from the template (#675).** A resource legitimately deleted from the
+  CDK app is in neither the template nor live AWS. `applyBaseline` is passed the
+  current template's logical-id set (`allLogicalIds`); a recorded entry whose
+  logicalId is absent from it is folded ("N baseline entries belong to resources no
+  longer in the template — re-run `cdkrd record`"), not reported as "baseline value
+  removed since record".
+- **Replaced by a deploy (#674).** A property change that forces a
+  create-before-delete replacement (e.g. adding an explicit `QueueName`) gives the
+  resource a NEW physical id; its recorded entries belong to the old, deleted
+  resource. `applyBaseline` compares the entry's `recordedPhysicalIds` value to
+  the LIVE physical id (`physicalIdByLogical`); when they DIFFER it voids every
+  entry for that logicalId — the fresh AWS default folds to `atDefault`, never as
+  "changed from your .cdkrd baseline", and revert never offers the stale value.
+  Backward compatible: it only voids when a recorded physical id EXISTS and DIFFERS
+  from a KNOWN live id (an old baseline with no recorded id, or an unread resource,
+  keeps prior behavior).
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal

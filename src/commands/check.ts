@@ -381,6 +381,9 @@ export async function runCheck(args: string[]): Promise<number> {
             declaredByLogical: declaredKeysByLogical(desired.resources),
             constructPathByLogical: constructPathsByLogical(desired.resources),
             physicalIdByLogical: physicalIdsByLogical(desired.resources),
+            // #675: current template's logical-id set so recorded entries for a resource
+            // removed from the template fold into a nudge (not phantom "removed" drift).
+            allLogicalIds: desired.resources.map((r) => r.logicalId),
             warn: (s: string) => {
               if (!a.json) console.error(s);
             },

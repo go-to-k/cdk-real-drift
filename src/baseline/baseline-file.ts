@@ -52,6 +52,15 @@ export interface BaselineFile {
   // is UNRECORDED (never decided). Monotonic: once complete, a resource stays
   // complete (declining to record a new appeared value must not demote it back).
   completeResources?: string[];
+  // #674: logicalId -> the PHYSICAL id the recorded entries were snapshot against.
+  // Additive & OPTIONAL — old committed baselines have none, and a resource whose
+  // physical id was unknown at record time is simply absent. At `applyBaseline` time
+  // an entry's recorded physical id (if present) is compared to the LIVE physical id:
+  // when they DIFFER, the resource was REPLACED by a deploy (create-before-delete,
+  // new physical id, fresh AWS defaults), so its recorded entries belong to the old,
+  // deleted resource and must NOT surface as drift against the new one. Absent/unknown
+  // recorded id -> fall back to today's behavior (never void).
+  recordedPhysicalIds?: Record<string, string>;
 }
 
 export function baselinePath(stackName: string, accountId: string, region: string): string {
@@ -117,6 +126,19 @@ function sortRecorded(recorded: RecordedEntry[]): RecordedEntry[] {
   );
 }
 
+/** #674: keep only physical ids for logicalIds that still carry a recorded entry, with
+ *  sorted keys, so the baseline JSON is byte-stable and free of dead entries. */
+function sortedPhysicalIds(
+  ids: Record<string, string>,
+  recorded: RecordedEntry[]
+): Record<string, string> {
+  const live = new Set(recorded.map((e) => e.logicalId));
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(ids).sort())
+    if (live.has(key) && ids[key] !== undefined) out[key] = ids[key];
+  return out;
+}
+
 export async function writeBaselineFile(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
@@ -126,6 +148,13 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
     ...b,
     recorded: sortRecorded(b.recorded),
     ...(b.completeResources ? { completeResources: [...b.completeResources].sort() } : {}),
+    // #674: write the physical-id map with sorted keys so the JSON stays byte-stable
+    // across machines (same clean-PR-diff goal as sortRecorded). Only for logicalIds
+    // that still have at least one recorded entry — a stray id for a resource with no
+    // entries would be dead weight.
+    ...(b.recordedPhysicalIds
+      ? { recordedPhysicalIds: sortedPhysicalIds(b.recordedPhysicalIds, b.recorded) }
+      : {}),
   };
   await writeFile(p, JSON.stringify(stable, null, 2) + '\n', 'utf8'); // pretty + stable for clean PR diffs
   return p;
@@ -174,7 +203,14 @@ export async function writeBaseline(
   findings: Finding[],
   rawTemplate: string,
   recorded: RecordedEntry[] = buildRecorded(findings),
-  opts: { allLogicalIds?: string[] | undefined; previous?: BaselineFile | undefined } = {}
+  opts: {
+    allLogicalIds?: string[] | undefined;
+    previous?: BaselineFile | undefined;
+    // #674: logicalId -> live physical id at record time, so a later deploy that
+    // REPLACES a resource (new physical id) can void its stale recorded entries.
+    // Optional: an omitting caller keeps today's (physical-id-less) behavior.
+    physicalIdByLogical?: Map<string, string> | undefined;
+  } = {}
 ): Promise<{ path: string; count: number }> {
   const allIds = opts.allLogicalIds ?? [
     ...new Set([...findings.map((f) => f.logicalId), ...recorded.map((a) => a.logicalId)]),
@@ -193,8 +229,35 @@ export async function writeBaseline(
       recorded,
       opts.previous?.completeResources ?? []
     ),
+    // #674: capture the physical id per recorded logicalId. writeBaselineFile prunes
+    // this to ids that still have an entry. Carry forward the previous baseline's map
+    // for ids this run did not resolve a physical id for, so a re-record does not drop
+    // a previously-captured id (symmetric with carryForwardUnreadable on `recorded`).
+    ...buildRecordedPhysicalIds(recorded, opts.physicalIdByLogical, opts.previous),
   });
   return { path, count: recorded.length };
+}
+
+/**
+ * #674: build the `recordedPhysicalIds` map (logicalId -> physical id) for the entries
+ * being written. Prefers the physical id resolved THIS run; falls back to the previous
+ * baseline's stored id when this run did not resolve one (a resource skipped / with no
+ * physical id must not lose its previously-captured id on re-record — else a later
+ * replacement could not be detected). Returns `{}` (spread to nothing) when no id is
+ * known, so the field stays absent on baselines with no physical ids at all.
+ */
+function buildRecordedPhysicalIds(
+  recorded: RecordedEntry[],
+  live: Map<string, string> | undefined,
+  previous: BaselineFile | undefined
+): { recordedPhysicalIds?: Record<string, string> } {
+  const prior = previous?.recordedPhysicalIds ?? {};
+  const out: Record<string, string> = {};
+  for (const e of recorded) {
+    const id = live?.get(e.logicalId) ?? prior[e.logicalId];
+    if (id !== undefined) out[e.logicalId] = id;
+  }
+  return Object.keys(out).length > 0 ? { recordedPhysicalIds: out } : {};
 }
 
 /**
@@ -425,6 +488,12 @@ export interface ApplyBaselineOptions {
   // making a recorded value removed out of band UN-revertable (a real revert FN: the
   // value the user chose to keep disappeared, yet `revert` refuses to restore it).
   physicalIdByLogical?: Map<string, string>;
+  // #675: the CURRENT template's full logical-id set. A recorded entry whose logicalId
+  // is absent from it belongs to a resource legitimately REMOVED from the template (and
+  // deleted by the deploy) — nothing drifted, so it must be folded into a nudge, never
+  // surfaced as "baseline value removed since record". Optional: when omitted, the
+  // absent-from-template check is skipped (today's behavior).
+  allLogicalIds?: Set<string> | string[];
   warn?: (s: string) => void; // stderr note channel for the promotion case
 }
 
@@ -463,6 +532,27 @@ export function applyBaseline(
   const recorded = baseline.recorded;
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
   const kept: Finding[] = [];
+  // #675: current template's logical-id set (optional). Recorded entries for a logicalId
+  // NOT in it belong to a resource removed from the template — folded, never surfaced.
+  const currentLogicalIds =
+    opts.allLogicalIds === undefined
+      ? undefined
+      : Array.isArray(opts.allLogicalIds)
+        ? new Set(opts.allLogicalIds)
+        : opts.allLogicalIds;
+  // #674: a logicalId whose RECORDED physical id differs from the LIVE physical id was
+  // REPLACED by a deploy (create-before-delete → new physical id, fresh AWS defaults).
+  // Its recorded entries belong to the old, deleted resource, so treat them all as VOID:
+  // never a suppression MATCH, never surfaced as "changed since record" drift, never a
+  // "removed since record" finding — just a folded nudge. Backward compatible: only void
+  // when a recorded id EXISTS and DIFFERS from a KNOWN live id (absent recorded id = old
+  // baseline; absent live id = unread this run → fall back to today's behavior).
+  const recordedPhysIds = baseline.recordedPhysicalIds ?? {};
+  const replacedLogical = new Set<string>();
+  for (const [logicalId, recordedId] of Object.entries(recordedPhysIds)) {
+    const liveId = opts.physicalIdByLogical?.get(logicalId);
+    if (liveId !== undefined && liveId !== recordedId) replacedLogical.add(logicalId);
+  }
   for (const f of findings) {
     // PR4: reconcile `added` against the baseline as a full mirror of undeclared — but on
     // the WHOLE resource (path ''), not a property. A matching entry whose value is equal
@@ -505,7 +595,14 @@ export function applyBaseline(
       kept.push(f);
       continue;
     }
-    const entry = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+    // #674: on a REPLACED resource treat every recorded entry as absent — the snapshot
+    // was taken against the old, deleted physical resource, so it must not match/suppress
+    // or surface as "changed" against the brand-new one's fresh AWS defaults. The value
+    // then folds through the tiers below (an at-default value folds; a genuine non-default
+    // value on the new resource is unrecorded, not drift — the user never recorded IT).
+    const entry = replacedLogical.has(f.logicalId)
+      ? undefined
+      : recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
     // re-canonicalize the baseline value through the CURRENT pipeline before comparing
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
@@ -534,8 +631,11 @@ export function applyBaseline(
       kept.push(f);
       continue;
     }
-    if (complete.has(f.logicalId)) {
-      // the record snapshot covered this whole resource, so this value is new
+    if (complete.has(f.logicalId) && !replacedLogical.has(f.logicalId)) {
+      // the record snapshot covered this whole resource, so this value is new. #674: a
+      // REPLACED resource's completeness belongs to the OLD physical resource, so an
+      // undeclared value on the new one is NOT "appeared since record" — fall through to
+      // unrecorded (the user never recorded the replacement).
       kept.push({
         ...f,
         note: f.note ? `${f.note}; appeared since record` : 'appeared since record',
@@ -601,16 +701,33 @@ export function applyBaseline(
       (p) => path === p || path.startsWith(`${p}.`) || path.startsWith(`${p}[`)
     );
   const promotedStale: string[] = [];
+  const removedFromTemplate: string[] = []; // #675
+  const replacedStale: string[] = []; // #674
   for (const a of recorded) {
     // PR4: an `added`-resource entry has an empty path (the whole resource is the value)
     // and is reconciled in the loop above, never here. If its live resource is gone the
     // out-of-band addition was simply removed — nothing to "restore", so skip it (a
     // property-removal note against a synthesized child id would be meaningless).
     if (a.path === '') continue;
+    // #674: the resource was REPLACED by a deploy — this entry belongs to the old,
+    // deleted physical resource, so it is void, not "removed since record". Fold it.
+    if (replacedLogical.has(a.logicalId)) {
+      replacedStale.push(`${a.logicalId}.${a.path}`);
+      continue;
+    }
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
     if (skippedLogical.has(a.logicalId)) continue; // unread this run -> not "removed"
     if (deletedLogical.has(a.logicalId)) continue; // subsumed by the `deleted` finding
     if (underDeclaredDrift(a.logicalId, a.path)) continue; // subsumed by parent declared drift
+    // #675: the resource is gone from the CURRENT template entirely (legitimately removed
+    // from IaC and deleted by the deploy). It is in neither template nor live AWS —
+    // nothing drifted, so fold into a nudge instead of a synthetic "removed since record"
+    // finding. Gated on a KNOWN logical-id set (opts.allLogicalIds present) so a caller
+    // that does not pass it keeps today's behavior.
+    if (currentLogicalIds !== undefined && !currentLogicalIds.has(a.logicalId)) {
+      removedFromTemplate.push(`${a.logicalId}.${a.path}`);
+      continue;
+    }
     // promoted into the template since record → not a removal, just stale baseline
     if (opts.declaredByLogical?.get(a.logicalId)?.has(topSegment(a.path))) {
       promotedStale.push(`${a.logicalId}.${a.path}`);
@@ -640,6 +757,9 @@ export function applyBaseline(
     });
   }
   if (promotedStale.length > 0) opts.warn?.(formatPromotedStaleNote(promotedStale));
+  if (removedFromTemplate.length > 0)
+    opts.warn?.(formatRemovedFromTemplateNote(removedFromTemplate));
+  if (replacedStale.length > 0) opts.warn?.(formatReplacedStaleNote(replacedStale));
   return kept;
 }
 
@@ -653,6 +773,28 @@ export function formatPromotedStaleNote(paths: string[]): string {
   const subject = n === 1 ? `baseline entry (${paths[0]}) is` : `${n} baseline entries are`;
   const them = n === 1 ? 'it' : 'them';
   return `note: ${subject} now declared in the template — re-run \`cdkrd record\` to clean ${them} up.`;
+}
+
+/**
+ * #675: the folded one-line note for baseline entries whose resource is no longer in
+ * the template at all (legitimately removed from IaC and deleted by the deploy). Mirror
+ * of formatPromotedStaleNote. Pure + exported for unit tests.
+ */
+export function formatRemovedFromTemplateNote(paths: string[]): string {
+  const n = paths.length;
+  const subject = n === 1 ? `baseline entry (${paths[0]}) belongs` : `${n} baseline entries belong`;
+  return `note: ${subject} to resources no longer in the template — re-run \`cdkrd record\` to clean them up.`;
+}
+
+/**
+ * #674: the folded one-line note for baseline entries recorded against a resource that a
+ * deploy has since REPLACED (new physical id). Mirror of formatPromotedStaleNote. Pure +
+ * exported for unit tests.
+ */
+export function formatReplacedStaleNote(paths: string[]): string {
+  const n = paths.length;
+  const subject = n === 1 ? `baseline entry (${paths[0]}) was` : `${n} baseline entries were`;
+  return `note: ${subject} recorded against a resource since REPLACED by a deploy — re-run \`cdkrd record\`.`;
 }
 
 /** logicalId -> set of declared top-level keys, for applyBaseline's promotion check. */

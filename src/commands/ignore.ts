@@ -10,6 +10,7 @@ import {
   checkBaselineAccount,
   declaredKeysByLogical,
   loadBaseline,
+  physicalIdsByLogical,
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
@@ -68,6 +69,8 @@ export async function runIgnore(args: string[]): Promise<number> {
       const reconciled = applyIgnores(
         applyBaseline(findings, baseline, {
           declaredByLogical: declaredKeysByLogical(desired.resources),
+          physicalIdByLogical: physicalIdsByLogical(desired.resources),
+          allLogicalIds: desired.resources.map((r) => r.logicalId),
           warn: console.error,
         }),
         { stackName, accountId: desired.accountId, region },
