@@ -1,3 +1,10 @@
+## [0.2.49](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.48...v0.2.49) (2026-07-08)
+
+
+### Bug Fixes
+
+* **diff:** numeric-string tolerance for matchesKnownDefault + unordered scalar sets ([#731](https://github.com/go-to-k/cdk-real-drift/issues/731)) ([#797](https://github.com/go-to-k/cdk-real-drift/issues/797)) ([d1bbc6d](https://github.com/go-to-k/cdk-real-drift/commit/d1bbc6d91fb698a39cdf3380f549dcb6f79c9693))
+
 ## [0.2.48](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.47...v0.2.48) (2026-07-08)
 
 
