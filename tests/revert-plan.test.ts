@@ -361,6 +361,37 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#702: appeared-since-record undeclared Cognito UserPool Policies -> add op writing the KNOWN_DEFAULTS default', () => {
+    // AWS::Cognito::UserPool Policies is in REVERT_SET_DEFAULT_PATHS: UpdateUserPool is a
+    // full-PUT that IGNORES an omitted property, so a bare `remove` of an out-of-band
+    // PasswordPolicy change is a silent no-op (live-proven #702: MinimumLength stayed 10).
+    // Revert must write the whole-object KNOWN_DEFAULTS default back explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPool',
+      physicalId: 'us-east-1_pool',
+      path: 'Policies',
+      actual: { PasswordPolicy: { MinimumLength: 10 } },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Policies',
+      value: {
+        PasswordPolicy: {
+          MinimumLength: 8,
+          RequireLowercase: true,
+          RequireNumbers: true,
+          RequireSymbols: true,
+          RequireUppercase: true,
+          TemporaryPasswordValidityDays: 7,
+        },
+        SignInPolicy: { AllowedFirstAuthFactors: ['PASSWORD'] },
+      },
+      prior: { PasswordPolicy: { MinimumLength: 10 } },
+    });
+  });
+
   it('#651: appeared-since-record undeclared EC2 Subnet EnableDns64 -> add op writing the false default', () => {
     // AWS::EC2::Subnet EnableDns64 is in REVERT_SET_DEFAULT_PATHS: EC2 ModifySubnetAttribute
     // leaves an OMITTED EnableDns64 UNCHANGED, so a bare `remove` of an out-of-band `true` is
