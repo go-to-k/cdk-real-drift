@@ -96,13 +96,49 @@
       "tier": "atDefault",
       "logicalId": "EniB",
       "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "GroupSet",
+      "actual": ["sg-068968f8cf5536d62"],
+      "physicalId": "eni-09f7c461bd5f47f4c",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniB",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "InterfaceType",
+      "actual": "interface",
+      "physicalId": "eni-09f7c461bd5f47f4c",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniB",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv4PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-09f7c461bd5f47f4c",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniB",
+      "resourceType": "AWS::EC2::NetworkInterface",
+      "path": "Ipv6PrefixCount",
+      "actual": 0,
+      "physicalId": "eni-09f7c461bd5f47f4c",
+      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EniB",
+      "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddress",
       "actual": "10.0.0.134",
       "physicalId": "eni-09f7c461bd5f47f4c",
       "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "EniB",
       "resourceType": "AWS::EC2::NetworkInterface",
       "path": "PrivateIpAddresses",
@@ -128,44 +164,8 @@
       "tier": "atDefault",
       "logicalId": "EniB",
       "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv6PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-09f7c461bd5f47f4c",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniB",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "Ipv4PrefixCount",
-      "actual": 0,
-      "physicalId": "eni-09f7c461bd5f47f4c",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "EniB",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "GroupSet",
-      "actual": ["sg-068968f8cf5536d62"],
-      "physicalId": "eni-09f7c461bd5f47f4c",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniB",
-      "resourceType": "AWS::EC2::NetworkInterface",
       "path": "SourceDestCheck",
       "actual": true,
-      "physicalId": "eni-09f7c461bd5f47f4c",
-      "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "EniB",
-      "resourceType": "AWS::EC2::NetworkInterface",
-      "path": "InterfaceType",
-      "actual": "interface",
       "physicalId": "eni-09f7c461bd5f47f4c",
       "constructPath": "CdkRealDriftIntegAuthNetRich/EniB"
     }

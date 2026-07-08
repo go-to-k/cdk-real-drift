@@ -455,6 +455,30 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     Tenancy: 'default',
     SourceDestCheck: true,
     InstanceInitiatedShutdownBehavior: 'stop',
+    // An instance that declares no MetadataOptions reads back the IMDS defaults AWS
+    // materializes at launch: IMDSv2 required (HttpTokens), a hop limit of 2, IPv6 and
+    // metadata-tags disabled, endpoint enabled — the AL2023-era secure defaults. Whole-object
+    // KNOWN_DEFAULTS (equality-gated, subset-tolerant): weaken any of them out of band
+    // (HttpTokens:"optional" to drop IMDSv2 enforcement, or raise the hop limit) and the
+    // object no longer matches, so it re-surfaces as real undeclared drift — detection is
+    // preserved. An older AMI whose defaults differ (e.g. hop limit 1) simply doesn't match
+    // and surfaces once, recordable. Observed live on fresh ec2-instance-rich / -sets deploys (#640).
+    MetadataOptions: {
+      HttpTokens: 'required',
+      HttpPutResponseHopLimit: 2,
+      HttpProtocolIpv6: 'disabled',
+      InstanceMetadataTags: 'disabled',
+      HttpEndpoint: 'enabled',
+    },
+    // An instance in an IPv4 subnet that declares no PrivateDnsNameOptions reads back the
+    // constant default: an ip-name hostname with resource-name DNS A/AAAA records off.
+    // Equality-gated, so switching HostnameType (resource-name) or enabling a DNS record out
+    // of band no longer matches and re-surfaces. Observed live (ec2-instance-rich / -sets, #640).
+    PrivateDnsNameOptions: {
+      HostnameType: 'ip-name',
+      EnableResourceNameDnsARecord: false,
+      EnableResourceNameDnsAAAARecord: false,
+    },
   },
   // R105 (second dogfood-audit wave): more top-level constant service defaults
   // (same exclusions as R104 — no names/ids/ARNs, no region-/account-specific
@@ -2710,7 +2734,24 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //     * EC2 NatGateway `VpcId` — AWS DERIVES the VPC id from the declared SubnetId and reads
   //       it back (create-only, embeds the per-resource `vpc-…` id, never declared by CDK).
   'AWS::EC2::Instance': new Set(['PrivateIpAddress']),
-  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress']),
+  //   AWS::EC2::NetworkInterface.PrivateIpAddresses — an ENI that declares no
+  //   PrivateIpAddresses reads back the single auto-assigned primary
+  //   ([{PrivateIpAddress:"10.0.0.x", Primary:true}]) — the plural-array twin of the singular
+  //   PrivateIpAddress fold above. GroupSet — an ENI that declares no security groups is
+  //   placed in its VPC's default group (an AWS-assigned sg-… id, not derivable without a VPC
+  //   lookup); the exact twin of the ElasticLoadBalancingV2::LoadBalancer.SecurityGroups fold.
+  //   Both are undeclared → whatever AWS assigned is its default, never user intent; a user who
+  //   manages the ENI's IPs or SGs DECLARES them (the eni-rich fixture does), and they are then
+  //   compared in the declared loop. Live-confirmed on fresh eni-rich ENIs (2026-07-08, #640).
+  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress', 'PrivateIpAddresses', 'GroupSet']),
+  //   AWS::EC2::Volume.KmsKeyId — an encrypted volume (Encrypted:true) that declares no key
+  //   reads back the account aws/ebs managed-key ARN (per-account, AWS-assigned) — the exact
+  //   twin of the RDS/OpenSearch/EFS AWS-assigned KmsKeyId folds (#533). An EBS volume's key is
+  //   set at creation and immutable (re-encryption requires snapshot+recreate), so this can
+  //   never hide a real out-of-band change. AvailabilityZoneId — the zone-id (use1-az1) AWS
+  //   derives from the declared AvailabilityZone; per-account mapping, create-only. Both
+  //   undeclared → not user intent. Live-confirmed on fresh volumes (2026-07-08, #640).
+  'AWS::EC2::Volume': new Set(['KmsKeyId', 'AvailabilityZoneId']),
   'AWS::EC2::NatGateway': new Set(['PrivateIpAddress', 'VpcId']),
   'AWS::EFS::MountTarget': new Set(['IpAddress']),
   //   AWS::EC2::EIP.NetworkInterfaceId — an EIP associated with an ENI (directly or via an

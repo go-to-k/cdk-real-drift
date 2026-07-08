@@ -299,19 +299,75 @@
   },
   "expected": [
     {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "InstanceInitiatedShutdownBehavior",
+      "actual": "stop",
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "MetadataOptions",
+      "actual": {
+        "HttpPutResponseHopLimit": 2,
+        "HttpProtocolIpv6": "disabled",
+        "HttpTokens": "required",
+        "InstanceMetadataTags": "disabled",
+        "HttpEndpoint": "enabled"
+      },
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "PrivateDnsNameOptions",
+      "actual": {
+        "EnableResourceNameDnsARecord": false,
+        "HostnameType": "ip-name",
+        "EnableResourceNameDnsAAAARecord": false
+      },
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.216",
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "SourceDestCheck",
+      "actual": true,
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HostB4E45AD7",
+      "resourceType": "AWS::EC2::Instance",
+      "path": "Tenancy",
+      "actual": "default",
+      "physicalId": "i-0b7c750351d0a5aa6",
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+    },
+    {
       "tier": "readGap",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
       "path": "LaunchTemplate",
       "note": "write-only — cannot be read back",
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
-      "tier": "unresolved",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "AvailabilityZone",
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
@@ -337,55 +393,14 @@
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "unresolved",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "UserData",
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "Tenancy",
-      "actual": "default",
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
       "tier": "undeclared",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
-      "path": "SecurityGroups",
-      "actual": ["CdkRealDriftIntegEc2Rich-SgD4954771-nA4Jj877L60k"],
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "PrivateIpAddress",
-      "actual": "10.0.0.216",
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "Volumes",
-      "actual": [
-        {
-          "VolumeId": "vol-094cd4ee2e33c8e54",
-          "Device": "/dev/xvda"
-        },
-        {
-          "VolumeId": "vol-010c7274153ce356a",
-          "Device": "/dev/sdf"
-        }
-      ],
+      "path": "CpuOptions",
+      "actual": {
+        "ThreadsPerCore": 2,
+        "CoreCount": 1
+      },
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
@@ -422,23 +437,8 @@
       "tier": "undeclared",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
-      "path": "MetadataOptions",
-      "actual": {
-        "HttpPutResponseHopLimit": 2,
-        "HttpProtocolIpv6": "disabled",
-        "HttpTokens": "required",
-        "InstanceMetadataTags": "disabled",
-        "HttpEndpoint": "enabled"
-      },
-      "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "HostB4E45AD7",
-      "resourceType": "AWS::EC2::Instance",
-      "path": "InstanceInitiatedShutdownBehavior",
-      "actual": "stop",
+      "path": "SecurityGroups",
+      "actual": ["CdkRealDriftIntegEc2Rich-SgD4954771-nA4Jj877L60k"],
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
@@ -446,33 +446,33 @@
       "tier": "undeclared",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
-      "path": "CpuOptions",
-      "actual": {
-        "ThreadsPerCore": 2,
-        "CoreCount": 1
-      },
+      "path": "Volumes",
+      "actual": [
+        {
+          "VolumeId": "vol-094cd4ee2e33c8e54",
+          "Device": "/dev/xvda"
+        },
+        {
+          "VolumeId": "vol-010c7274153ce356a",
+          "Device": "/dev/sdf"
+        }
+      ],
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "undeclared",
+      "tier": "unresolved",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
-      "path": "PrivateDnsNameOptions",
-      "actual": {
-        "EnableResourceNameDnsARecord": false,
-        "HostnameType": "ip-name",
-        "EnableResourceNameDnsAAAARecord": false
-      },
+      "path": "AvailabilityZone",
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "atDefault",
+      "tier": "unresolved",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
-      "path": "SourceDestCheck",
-      "actual": true,
+      "path": "UserData",
       "physicalId": "i-0b7c750351d0a5aa6",
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     }
