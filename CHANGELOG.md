@@ -1,3 +1,10 @@
+## [0.2.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.22...v0.2.23) (2026-07-08)
+
+
+### Bug Fixes
+
+* **revert:** converge revert for RolesAnywhere AttributeMappings + KinesisVideo StreamStorageConfiguration (follow-up 2) ([#661](https://github.com/go-to-k/cdk-real-drift/issues/661)) ([8632081](https://github.com/go-to-k/cdk-real-drift/commit/8632081d62a64f96c504fc9a562b154c08e8034a))
+
 ## [0.2.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.21...v0.2.22) (2026-07-08)
 
 
