@@ -19,7 +19,7 @@ import { resolveStacks } from './resolve-stacks.js';
 import { revertStack } from './stack-actions.js';
 
 export async function runRevert(args: string[]): Promise<number> {
-  const a = parseCommonArgs(args);
+  const a = parseCommonArgs(args, 'revert');
   if (a.profile) process.env.AWS_PROFILE = a.profile;
   const dryRun = args.includes('--dry-run');
 

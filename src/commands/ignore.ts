@@ -20,7 +20,7 @@ import { gatherWithProgress, progressLabel } from './progress.js';
 import { ignoreStack } from './stack-actions.js';
 
 export async function runIgnore(args: string[]): Promise<number> {
-  const a = parseCommonArgs(args);
+  const a = parseCommonArgs(args, 'ignore');
   if (a.profile) process.env.AWS_PROFILE = a.profile;
 
   let config;

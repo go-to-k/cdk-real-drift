@@ -11,7 +11,7 @@ import { gatherWithProgress, progressLabel } from './progress.js';
 import { recordStack } from './stack-actions.js';
 
 export async function runRecord(args: string[]): Promise<number> {
-  const a = parseCommonArgs(args);
+  const a = parseCommonArgs(args, 'record');
   if (a.profile) process.env.AWS_PROFILE = a.profile;
 
   let config;
