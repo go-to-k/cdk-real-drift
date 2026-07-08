@@ -275,10 +275,10 @@ anything non-obvious you learned in memory.
   a worktree while `main` is checked out in the main tree, it exits 1 with
   `fatal: 'main' is already used by worktree …` — but the REMOTE merge AND remote
   branch delete already SUCCEEDED (gh only failed the post-merge local `checkout main`
-  + local branch delete). Confirm with `gh pr view <n> --json state,mergedAt`
-  (`MERGED`), then do the local cleanup yourself: `git checkout main && git pull`,
-  `git worktree remove …`, `git branch -D wt-…` (the `git push origin --delete` will
-  report "remote ref does not exist" — benign, gh already removed it).
+  - local branch delete). Confirm with `gh pr view <n> --json state,mergedAt`
+    (`MERGED`), then do the local cleanup yourself: `git checkout main && git pull`,
+    `git worktree remove …`, `git branch -D wt-…` (the `git push origin --delete` will
+    report "remote ref does not exist" — benign, gh already removed it).
 
 ## Important existing rules this skill leans on
 
