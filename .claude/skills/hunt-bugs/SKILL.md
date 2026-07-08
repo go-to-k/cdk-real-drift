@@ -17,6 +17,50 @@ This is a deliberately exploratory, possibly-expensive workflow. Cost is accepta
 **only because every deployed stack is deleted and verified gone** — see "Cleanup is
 non-negotiable", which is enforced by a gate, not by trust.
 
+## Default posture: assume many latent bugs remain — sweep wide, ~5 rounds
+
+Unless the user scopes it down, run this hunt on the working assumption that **there
+are still plenty of latent bugs left to find** — every past sweep has surfaced fresh
+FP/FN classes, and the fold/normalize tables are known-incomplete allowlists. So by
+default:
+
+- **Do ~5 rounds**, not one. Each round is a fresh angle on a fresh set of
+  common-but-untested types/configs. Treat one clean round as a signal to change the
+  angle, not to stop early — keep going until ~5 rounds are done or the user says
+  enough.
+- **Vary the lens every round** — don't just deploy more resource types. Rotate
+  through the angles that expose different bug classes: first-run undeclared FP
+  (fold gaps), declared-tier normalization FP, missed-detection FN (mutate a declared
+  mutable prop out of band), write-only / read-gap FN, revert non-convergence
+  (silent no-op / husk-poisoned patch), composite-identifier read skips, and the
+  offline corpus-mining sweep. The catalogue in "Core principles" + "Gotchas" is the
+  menu; pick a different mix each round.
+- **Parallelize within the 3–4 stack cap** and keep stack names unique so concurrent
+  agents/sessions never collide.
+
+"5 rounds, many angles, latent bugs assumed" is the DEFAULT — a narrower scope
+happens only when the user asks for it.
+
+## Goal: filing issues vs. fixing — ASK at run time unless told
+
+The end state of a hunt is not fixed. It can stop at **filing GitHub issues** for
+what it finds, or go all the way to **fixing + PR + merge**. These are very different
+in cost, blast radius, and collision risk with parallel agents. **So unless the user
+has explicitly stated the goal in their invocation, ASK them at the start of the run
+which they want** — do not assume. Typical options to offer:
+
+- **Issue-only** — investigate, live-verify, harvest corpus, and FILE well-scoped
+  issues (with the repro + recommended fold/fix), but do NOT change `src/`. Best when
+  other agents are working filed issues in parallel, or the user wants to review
+  before any fix lands.
+- **Fix + PR** — additionally root-cause, fix in `src/`, add the unit test, keep the
+  fixture, and carry it through PR (per "On a confirmed bug" + the merge steps).
+
+Only skip the question when the user already said which (e.g. "issueを立てるまでを
+ゴールに" = issue-only, or "直して" / "fix and PR" = fix). When in doubt, ASK — a wrong
+assumption here either wastes a fix that collides with a parallel agent, or stops
+short of a fix the user wanted.
+
 ## Core principles
 
 1. **Many-people-hit beats niche.** Prioritize the resources/configs a large
