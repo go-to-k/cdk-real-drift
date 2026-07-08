@@ -1,3 +1,10 @@
+## [0.2.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.14...v0.2.15) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** fold 2026-07-08 bug-hunt first-run FPs across 12 zero/low-coverage types ([#619](https://github.com/go-to-k/cdk-real-drift/issues/619) [#622](https://github.com/go-to-k/cdk-real-drift/issues/622) [#625](https://github.com/go-to-k/cdk-real-drift/issues/625) [#626](https://github.com/go-to-k/cdk-real-drift/issues/626) [#628](https://github.com/go-to-k/cdk-real-drift/issues/628) [#633](https://github.com/go-to-k/cdk-real-drift/issues/633)) ([#637](https://github.com/go-to-k/cdk-real-drift/issues/637)) ([b31fe4b](https://github.com/go-to-k/cdk-real-drift/commit/b31fe4b07f3296a8180ce6180268b7daaa03d48c))
+
 ## [0.2.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.13...v0.2.14) (2026-07-08)
 
 
