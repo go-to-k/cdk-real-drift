@@ -1,3 +1,10 @@
+## [0.2.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.40...v0.2.41) (2026-07-08)
+
+
+### Bug Fixes
+
+* **noise:** detect Classic ELB SSL-policy downgrade — Policies per-element equality gate ([#705](https://github.com/go-to-k/cdk-real-drift/issues/705)) ([#732](https://github.com/go-to-k/cdk-real-drift/issues/732)) ([279d66d](https://github.com/go-to-k/cdk-real-drift/commit/279d66d66c0f7924b58d3702e81aeac1336fc118))
+
 ## [0.2.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.39...v0.2.40) (2026-07-08)
 
 
