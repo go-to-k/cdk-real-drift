@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.0...v0.4.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **revert:** writer-routed KNOWN_DEFAULTS now converge on revert ([#912](https://github.com/go-to-k/cdk-real-drift/issues/912)) ([#1019](https://github.com/go-to-k/cdk-real-drift/issues/1019)) ([cf781ae](https://github.com/go-to-k/cdk-real-drift/commit/cf781ae2ce7c4d4a47699fffc5d3234544b4fc91))
+
 # [0.4.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.14...v0.4.0) (2026-07-09)
 
 
