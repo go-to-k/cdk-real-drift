@@ -188,23 +188,42 @@ describe('parseCommonArgs', () => {
   });
 });
 
-describe('isInteractive (non-interactive simply means non-TTY, R58)', () => {
-  // Stub process.stdin.isTTY; restore in finally so other tests
-  // (and the real terminal) are unaffected.
-  const withTTY = (tty: boolean, fn: () => void) => {
-    const saved = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
-    Object.defineProperty(process.stdin, 'isTTY', { value: tty, configurable: true });
+describe('isInteractive (non-interactive simply means non-TTY, R58; #869 both axes)', () => {
+  // Stub BOTH process.stdin.isTTY and process.stdout.isTTY; restore in finally so other
+  // tests (and the real terminal) are unaffected. #869: the interactive UI writes to
+  // stdout, so interactivity must require stdout to be a TTY too — a redirected stdout
+  // (`check > file`) is report-only, never prompts.
+  const stub = (stream: NodeJS.ReadStream | NodeJS.WriteStream, tty: boolean): (() => void) => {
+    const saved = Object.getOwnPropertyDescriptor(stream, 'isTTY');
+    Object.defineProperty(stream, 'isTTY', { value: tty, configurable: true });
+    return () => {
+      if (saved) Object.defineProperty(stream, 'isTTY', saved);
+      else delete (stream as { isTTY?: boolean }).isTTY;
+    };
+  };
+  const withTTY = (stdinTty: boolean, stdoutTty: boolean, fn: () => void) => {
+    const restoreIn = stub(process.stdin, stdinTty);
+    const restoreOut = stub(process.stdout, stdoutTty);
     try {
       fn();
     } finally {
-      if (saved) Object.defineProperty(process.stdin, 'isTTY', saved);
-      else delete (process.stdin as { isTTY?: boolean }).isTTY;
+      restoreOut();
+      restoreIn();
     }
   };
 
-  it('true exactly when stdin is a TTY', () => {
-    withTTY(true, () => expect(isInteractive()).toBe(true));
-    withTTY(false, () => expect(isInteractive()).toBe(false));
+  it('true only when BOTH stdin and stdout are a TTY', () => {
+    withTTY(true, true, () => expect(isInteractive()).toBe(true));
+    withTTY(false, true, () => expect(isInteractive()).toBe(false));
+  });
+
+  it('#869: a TTY stdin with a redirected stdout (`check > file`) is NOT interactive', () => {
+    // The regression: gating on stdin alone RAN the prompt into the file, deadlocking.
+    withTTY(true, false, () => expect(isInteractive()).toBe(false));
+  });
+
+  it('a fully non-TTY run (CI/pipe) is not interactive', () => {
+    withTTY(false, false, () => expect(isInteractive()).toBe(false));
   });
 });
 
