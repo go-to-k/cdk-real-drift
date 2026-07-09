@@ -1,3 +1,11 @@
+## [0.2.66](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.65...v0.2.66) (2026-07-09)
+
+
+### Bug Fixes
+
+* **check:** emit '[]' for --json on a zero-stack app ([#885](https://github.com/go-to-k/cdk-real-drift/issues/885)) ([#898](https://github.com/go-to-k/cdk-real-drift/issues/898)) ([8157bdc](https://github.com/go-to-k/cdk-real-drift/commit/8157bdc971fafe25e291ec8fff6723fe57a2dcfa))
+* **commands:** exact-name stack selection targets every same-named region instance ([#884](https://github.com/go-to-k/cdk-real-drift/issues/884)) ([#899](https://github.com/go-to-k/cdk-real-drift/issues/899)) ([ec90b0f](https://github.com/go-to-k/cdk-real-drift/commit/ec90b0fceef4f2ac586ec9dab009425b64d7e71f))
+
 ## [0.2.65](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.64...v0.2.65) (2026-07-09)
 
 
