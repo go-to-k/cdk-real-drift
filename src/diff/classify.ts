@@ -7,6 +7,7 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
+import { partitionForRegion } from '../desired/template-adapter.js';
 import {
   isArnNameMatch,
   isLogGroupArnWildcardMatch,
@@ -1460,11 +1461,9 @@ export function classifyResource(
   // the Sid / Id, so the compared shape is the single {Effect,Principal,Action,Resource}
   // statement (matching the KMS corpus). A policy scoped to anything else still surfaces.
   if (resourceType === 'AWS::KMS::Key' && opts.accountId !== undefined) {
-    const partition = opts.region?.startsWith('cn-')
-      ? 'aws-cn'
-      : opts.region?.startsWith('us-gov-')
-        ? 'aws-us-gov'
-        : 'aws';
+    // Derive the partition from the single canonical helper so every partition it supports
+    // (incl. the four ISO partitions) folds identically (#945). Unknown region → `aws` (as before).
+    const partition = opts.region !== undefined ? partitionForRegion(opts.region).partition : 'aws';
     // Build the RAW default policy and run it through the SAME canonicalization the live
     // side gets, so the two match regardless of canonicalization details (array-wrapping,
     // root-ARN reduction to the account id, key ordering).
@@ -1504,11 +1503,9 @@ export function classifyResource(
     // does not false-drift on every statement. Re-canonicalize so the expanded Resource arrays
     // sort identically to the live side. Needs the api id (physicalId) + account + region.
     if (physicalId && opts.accountId !== undefined && declared['Policy']) {
-      const partition = opts.region?.startsWith('cn-')
-        ? 'aws-cn'
-        : opts.region?.startsWith('us-gov-')
-          ? 'aws-us-gov'
-          : 'aws';
+      // Canonical partition helper (#945): folds ISO partitions too. Unknown region → `aws`.
+      const partition =
+        opts.region !== undefined ? partitionForRegion(opts.region).partition : 'aws';
       const arnPrefix = `arn:${partition}:execute-api:${opts.region ?? ''}:${opts.accountId}:${physicalId}`;
       declared['Policy'] = canonicalizePolicy(
         expandExecuteApiResources(declared['Policy'], arnPrefix) as Record<string, unknown>
@@ -2436,11 +2433,8 @@ export function classifyResource(
       opts.accountId !== undefined &&
       typeof v === 'string'
     ) {
-      const partition = opts.region.startsWith('cn-')
-        ? 'aws-cn'
-        : opts.region.startsWith('us-gov-')
-          ? 'aws-us-gov'
-          : 'aws';
+      // Canonical partition helper (#945): folds ISO partitions too. region is defined here.
+      const partition = partitionForRegion(opts.region).partition;
       const ctxArnDefault = ctxArnTemplate
         .replace('{partition}', partition)
         .replace('{region}', opts.region)

@@ -195,4 +195,33 @@ describe('#701 KMS default KeyPolicy derived from the account root', () => {
       tier(classifyResource(res, { KeyPolicy: scoped }, emptySchema, opts), 'undeclared')
     ).toContain('KeyPolicy');
   });
+  // #945: the KMS site now derives the partition from the canonical partitionForRegion helper
+  // (folds the ISO partitions the old cn-/us-gov--only ternary missed). Note the root-ARN
+  // principal is already partition-tolerant — policy-canonical reduces `arn:aws*:iam::<acct>:root`
+  // to the bare account id — so this fold landed even before the fix; this guards that ISO regions
+  // stay ZERO potential drift on the default KeyPolicy regardless of the built prefix.
+  it.each([
+    ['us-iso-east-1', 'aws-iso'],
+    ['eu-isoe-west-1', 'aws-iso-e'],
+  ])('folds the ISO-partition default root policy in %s (partition %s)', (region, partition) => {
+    const isoPolicy = {
+      Version: '2012-10-17',
+      Id: 'key-default-1',
+      Statement: [
+        {
+          Sid: 'Enable IAM User Permissions',
+          Effect: 'Allow',
+          Principal: { AWS: `arn:${partition}:iam::111111111111:root` },
+          Action: 'kms:*',
+          Resource: '*',
+        },
+      ],
+    };
+    const f = classifyResource(res, { KeyPolicy: isoPolicy }, emptySchema, {
+      accountId: '111111111111',
+      region,
+    });
+    expect(tier(f, 'atDefault')).toContain('KeyPolicy');
+    expect(tier(f, 'undeclared')).not.toContain('KeyPolicy');
+  });
 });

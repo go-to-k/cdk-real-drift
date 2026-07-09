@@ -1097,6 +1097,16 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(
       t({ Scope: 'arn:aws-cn:iam::111111111111:root' }, { ...opts, region: 'cn-north-1' }).atDefault
     ).toEqual(['Scope']);
+    // #945: ISO partitions must fold too (the CONTEXT_ARN_DEFAULTS {partition} substitution now
+    // derives from partitionForRegion, not the old cn-/us-gov--only ternary that fell back to aws)
+    expect(
+      t({ Scope: 'arn:aws-iso:iam::111111111111:root' }, { ...opts, region: 'us-iso-east-1' })
+        .atDefault
+    ).toEqual(['Scope']);
+    expect(
+      t({ Scope: 'arn:aws-iso-e:iam::111111111111:root' }, { ...opts, region: 'eu-isoe-west-1' })
+        .atDefault
+    ).toEqual(['Scope']);
     // with no resolved account/region the substitution is skipped → stays undeclared, never a
     // wrong fold
     expect(t({ Scope: 'arn:aws:iam::111111111111:root' }).undeclared).toEqual(['Scope']);
@@ -1167,6 +1177,19 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(tiers(classifyResource(res, mkLive(arn), emptySchema)).declared.length).toBeGreaterThan(
       0
     );
+    // #945: in an ISO region the service echoes `arn:aws-iso*:execute-api:...`; the expansion must
+    // build the matching partition prefix (via partitionForRegion) so the fold still lands. Before
+    // the fix the cn-/us-gov--only ternary fell back to `arn:aws:` → a first-check false drift.
+    for (const [region, partition] of [
+      ['us-iso-east-1', 'aws-iso'],
+      ['eu-isoe-west-1', 'aws-iso-e'],
+    ]) {
+      const isoOpts = { accountId: '111111111111', region };
+      const isoArn = `arn:${partition}:execute-api:${region}:111111111111:${apiId}/*`;
+      expect(tiers(classifyResource(res, mkLive(isoArn), emptySchema, isoOpts)).declared).toEqual(
+        []
+      );
+    }
   });
 
   it('#705: Classic ELB Policies folds ONLY the default SSL policy; a downgrade / added policy surfaces', () => {
