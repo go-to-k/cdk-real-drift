@@ -43,7 +43,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Schedule",
       "resourceType": "AWS::AutoScaling::ScheduledAction",
       "path": "EndTime",
@@ -52,7 +52,7 @@
       "constructPath": "CdkRealDriftIntegAutoScalingScheduledActionRich/Schedule"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Schedule",
       "resourceType": "AWS::AutoScaling::ScheduledAction",
       "path": "StartTime",
