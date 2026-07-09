@@ -311,11 +311,23 @@ export async function runCheck(args: string[]): Promise<number> {
       emitEmptyJsonOnError();
       return 2;
     }
-    const synthed = await synthApp(app, {
-      region: a.region,
-      profile: a.profile,
-      context: a.context,
-    });
+    let synthed;
+    try {
+      synthed = await synthApp(app, {
+        region: a.region,
+        profile: a.profile,
+        context: a.context,
+        // Refuse (not just warn) an assembly with unresolved context lookups here: under
+        // --pre-deploy the synth template is the DECLARED source, so CDK's dummy-value
+        // placeholders (vpc-12345, ...) would surface as guaranteed false declared drift
+        // and a revert would write them back to AWS (#907).
+        preDeploy: true,
+      });
+    } catch (e) {
+      console.error(`error: ${(e as Error).message}`);
+      emitEmptyJsonOnError();
+      return 2;
+    }
     // Key by stackName + region, NOT stackName alone: a stack name is region-scoped in
     // CloudFormation, so an app can define two same-named stacks in different regions.
     // Keyed by name alone, the second would overwrite the first and BOTH would then be
