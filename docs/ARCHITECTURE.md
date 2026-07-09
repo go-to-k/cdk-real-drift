@@ -335,8 +335,10 @@ checked.
 
 [src/normalize/intrinsic-resolver.ts](../src/normalize/intrinsic-resolver.ts).
 Resolves `Ref` / `Fn::Sub` / `Fn::If` (+ condition eval: Equals/And/Or/Not) /
-`Fn::Join` / `Fn::Select` / `Fn::GetAtt` / `Fn::FindInMap` / `Fn::Split` /
-`Fn::ImportValue` / `AWS::NoValue`, plus the `Fn::Sub` `${!Literal}` escape.
+`Fn::Join` / `Fn::Select` / `Fn::GetAtt` (both the array form and the long-form
+`"LogicalId.Attr"` string) / `Fn::FindInMap` / `Fn::Split` / `Fn::Cidr` (the
+deterministic IPv4 subnet split) / `Fn::ImportValue` / `AWS::NoValue`, plus the
+`Fn::Sub` `${!Literal}` escape.
 `Fn::FindInMap` resolves against `ctx.mappings` (from `template.Mappings`);
 `Fn::ImportValue` against `ctx.exports` (CFn cross-stack exports — see below);
 `Fn::Select` returns `UNRESOLVED` (not `undefined`) for an out-of-range index. All

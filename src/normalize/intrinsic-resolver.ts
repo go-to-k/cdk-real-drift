@@ -80,7 +80,12 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
       }
       case 'Fn::Join': {
         if (!Array.isArray(v)) return UNRESOLVED;
-        const [delim, list] = v as [string, unknown];
+        const [delim, list] = v as [unknown, unknown];
+        // CFn requires a LITERAL string delimiter. A non-string delimiter used raw via
+        // `parts.join(delim)` would FABRICATE a declared value — `join({Ref:…})` leaks
+        // `[object Object]`, `join(0)` splices a bogus "0" — worse than UNRESOLVED. Fail
+        // closed rather than mis-resolve.
+        if (typeof delim !== 'string') return UNRESOLVED;
         const resolved = resolve(list, ctx);
         if (!Array.isArray(resolved)) return UNRESOLVED;
         const parts = resolved.filter((p) => p !== NOVALUE);
@@ -146,6 +151,18 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         const src = resolve(v[1], ctx);
         if (typeof delim !== 'string' || typeof src !== 'string') return UNRESOLVED;
         return src.split(delim);
+      }
+      case 'Fn::Cidr': {
+        // Fn::Cidr [ipBlock, count, cidrBits] is a deterministic pure function: it
+        // splits ipBlock (a CIDR like "10.0.0.0/16") into `count` subnets each of size
+        // 2^cidrBits addresses (so subnet mask = 32 - cidrBits for IPv4), starting at the
+        // ipBlock base and incrementing by 2^cidrBits per subnet. Resolving it lets a
+        // declared subnet CidrBlock (`{ "Fn::Select": [n, { "Fn::Cidr": … }] }`) be
+        // compared instead of left a blind spot. Fail closed to UNRESOLVED on any
+        // unresolved / mistyped / out-of-range arg (IPv6 is not resolved).
+        if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
+        const [ipBlock, count, cidrBits] = v.slice(0, 3).map((x) => resolve(x, ctx));
+        return resolveCidr(ipBlock, count, cidrBits);
       }
       case 'Fn::ImportValue': {
         const name = resolve(v, ctx);
@@ -265,6 +282,16 @@ const GETATT_DECLARED_PROPERTY: Record<string, Record<string, string>> = {
 // GetAtt against the target's CURRENT attribute is still real drift detection on
 // the CONSUMING resource (does it actually point at that attribute's value?).
 export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
+  // Fn::GetAtt has a long-form STRING argument in JSON — `{"Fn::GetAtt": "Bucket.Arn"}`
+  // — as well as the array form `[LogicalId, AttrName]` (yaml-cfn.ts already handles the
+  // YAML SHORT form `!GetAtt`). Attribute names can contain dots (e.g. `Outputs.X`), so
+  // split the string on the FIRST dot only into `[logicalId, attrPath]`; a no-dot string
+  // has no attribute -> UNRESOLVED. Then fall through to the array-form logic below.
+  if (typeof v === 'string') {
+    const dot = v.indexOf('.');
+    if (dot < 0) return UNRESOLVED;
+    v = [v.slice(0, dot), v.slice(dot + 1)];
+  }
   if (!Array.isArray(v) || v.length < 2) return UNRESOLVED;
   const logicalId = String(v[0]);
   const attr = String(v[1]);
@@ -319,6 +346,67 @@ export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
   return got === undefined ? UNRESOLVED : got;
 }
 
+// Resolve Fn::Cidr [ipBlock, count, cidrBits] for IPv4. Returns the array of
+// "<ip>/<maskLen>" CIDR strings, or UNRESOLVED (fail-closed) when an arg is the wrong
+// type, the ipBlock is not a valid IPv4 CIDR, or `count` subnets do not fit in the
+// block. `cidrBits` is the number of subnet bits from the RIGHT: each subnet spans
+// 2^cidrBits addresses, its mask length is 32 - cidrBits. IPv6 (a "::"-form ipBlock)
+// is not resolved.
+function resolveCidr(ipBlock: unknown, count: unknown, cidrBits: unknown): unknown {
+  if (typeof ipBlock !== 'string') return UNRESOLVED;
+  // count / cidrBits may arrive as numbers or numeric strings (a resolved Ref); coerce
+  // and demand exact integers.
+  const cnt = Number(count);
+  const bits = Number(cidrBits);
+  if (!Number.isInteger(cnt) || cnt <= 0) return UNRESOLVED;
+  if (!Number.isInteger(bits) || bits < 0 || bits > 32) return UNRESOLVED;
+  // IPv6 not supported (fail closed): an IPv6 CIDR carries "::" / hex groups.
+  if (ipBlock.includes(':')) return UNRESOLVED;
+  const slash = ipBlock.indexOf('/');
+  if (slash < 0) return UNRESOLVED;
+  const ipPart = ipBlock.slice(0, slash);
+  const prefix = Number(ipBlock.slice(slash + 1));
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) return UNRESOLVED;
+  const base = ipv4ToInt(ipPart);
+  if (base === undefined) return UNRESOLVED;
+  const maskLen = 32 - bits;
+  // The subnet mask (maskLen) must be no coarser than the block's own prefix, else the
+  // requested subnets are larger than the block itself.
+  if (maskLen < prefix) return UNRESOLVED;
+  const step = 2 ** bits; // addresses per subnet
+  const blockSize = 2 ** (32 - prefix); // addresses in the whole block
+  // The base is aligned to its own prefix; the first subnet starts there.
+  const alignedBase = Math.floor(base / step) * step;
+  // `count` subnets of `step` addresses each must fit inside the block.
+  if (cnt * step > blockSize) return UNRESOLVED;
+  const out: string[] = [];
+  for (let i = 0; i < cnt; i++) {
+    const addr = alignedBase + i * step;
+    if (addr > 0xffffffff) return UNRESOLVED;
+    out.push(`${intToIpv4(addr)}/${maskLen}`);
+  }
+  return out;
+}
+
+// Parse a dotted-quad IPv4 string to a 32-bit unsigned integer, or undefined if malformed.
+function ipv4ToInt(ip: string): number | undefined {
+  const parts = ip.split('.');
+  if (parts.length !== 4) return undefined;
+  let n = 0;
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p)) return undefined;
+    const octet = Number(p);
+    if (octet < 0 || octet > 255) return undefined;
+    n = n * 256 + octet;
+  }
+  return n >>> 0;
+}
+
+// Format a 32-bit unsigned integer as a dotted-quad IPv4 string.
+function intToIpv4(n: number): string {
+  return [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff].join('.');
+}
+
 function getPath(obj: Record<string, unknown>, segs: string[]): unknown {
   let node: unknown = obj;
   for (const s of segs) {
@@ -340,11 +428,19 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
   let tmpl: string;
   let vars: Record<string, unknown> = {};
   if (typeof v === 'string') tmpl = v;
-  else {
-    const arr = v as [string, Record<string, unknown>];
-    tmpl = arr[0];
-    vars = arr[1] ?? {};
+  else if (Array.isArray(v)) {
+    tmpl = v[0] as string;
+    vars = (v[1] as Record<string, unknown>) ?? {};
+  } else {
+    // CFn Fn::Sub takes only a String or a [String, Map]. Any other shape
+    // (a number / null / bare object) is malformed — fail closed rather than
+    // let a non-string `tmpl` throw on `.replace` below.
+    return UNRESOLVED;
   }
+  // The template string must be a genuine string: `{"Fn::Sub": []}` /
+  // `{"Fn::Sub": [5, {}]}` produce a non-string `tmpl` that would throw on
+  // `.replace`. Fail closed like every other branch.
+  if (typeof tmpl !== 'string') return UNRESOLVED;
   let unresolved = false;
   const out = tmpl.replace(/\$\{([^}]+)\}/g, (_m, ref: string) => {
     // ${!Literal} is the CFn escape for a literal "${Literal}" — emit verbatim,
