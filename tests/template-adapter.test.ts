@@ -6,11 +6,12 @@ import {
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import {
   buildResolverContext,
   collectClustersWithSiblingCapacityProviders,
   collectPrincipalsWithSiblingPolicies,
+  deletedResourceInfo,
   loadDesired,
   parseTemplateBody,
 } from '../src/desired/template-adapter.js';
@@ -356,6 +357,102 @@ describe('loadDesired templateOverride (--pre-deploy)', () => {
     expect(desired.resources[0]!.declared).toEqual({ BucketName: 'from-synth' });
     expect(desired.resources[0]!.physicalId).toBe('b-phys'); // physId still from live stack
     expect(desired.accountId).toBe('111122223333');
+  });
+});
+
+describe('#883 — deletedResourceInfo (deploy-will-DELETE surface under --pre-deploy)', () => {
+  it('lists deployed logical ids absent from the local template (a rename tears down the old one)', () => {
+    // Rename X -> Y: the live stack still has OldBucket; the local template declares NewBucket.
+    const physIds = { OldBucket: 'old-phys', Keep: 'keep-phys' };
+    const template = {
+      Resources: { NewBucket: { Type: 'AWS::S3::Bucket' }, Keep: { Type: 'AWS::S3::Bucket' } },
+    };
+    const line = deletedResourceInfo(physIds, template, 'S');
+    expect(line).toBe(
+      'info: S: 1 deployed resource(s) absent from the local template — the next deploy will DELETE them: OldBucket'
+    );
+  });
+
+  it('returns null when every deployed resource is still in the template (nothing to delete)', () => {
+    const physIds = { A: 'a', B: 'b' };
+    const template = {
+      Resources: { A: { Type: 'AWS::S3::Bucket' }, B: { Type: 'AWS::S3::Bucket' } },
+    };
+    expect(deletedResourceInfo(physIds, template, 'S')).toBeNull();
+  });
+
+  it('caps the listed ids at 10 with an overflow count', () => {
+    const physIds: Record<string, string> = {};
+    for (let i = 0; i < 12; i++) physIds[`R${String(i).padStart(2, '0')}`] = `p${i}`;
+    const line = deletedResourceInfo(physIds, { Resources: {} }, 'S');
+    expect(line).toContain('12 deployed resource(s) absent');
+    expect(line).toContain('…(+2 more)');
+  });
+});
+
+describe('#883 — loadDesired emits the deploy-will-DELETE note ONLY under --pre-deploy', () => {
+  function stack(cfn: ReturnType<typeof mockClient>): void {
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'OldBucket',
+          PhysicalResourceId: 'old-phys',
+          ResourceType: 'AWS::S3::Bucket',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+  }
+
+  it('under --pre-deploy, a deployed resource absent from the synth template is warned to stderr', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    stack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let msg = '';
+    try {
+      // synth template renamed OldBucket -> NewBucket
+      await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+        Resources: { NewBucket: { Type: 'AWS::S3::Bucket' } },
+      });
+      // read BEFORE mockRestore(): mockRestore() resets .mock.calls.
+      msg = err.mock.calls.map((c) => String(c[0])).join('\n');
+    } finally {
+      err.mockRestore();
+    }
+    expect(msg).toContain('the next deploy will DELETE them: OldBucket');
+  });
+
+  it('on the NON-pre-deploy (deployed) path the note never fires (id sets always match)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: { NewBucket: { Type: 'AWS::S3::Bucket', Properties: {} } },
+      }),
+    });
+    stack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let msg = '';
+    try {
+      // no templateOverride => deployed path
+      await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1');
+      msg = err.mock.calls.map((c) => String(c[0])).join('\n');
+    } finally {
+      err.mockRestore();
+    }
+    expect(msg).not.toContain('the next deploy will DELETE');
   });
 });
 

@@ -860,3 +860,57 @@ describe('map-valued declared drift shows a per-KEY delta (not a key-order-confu
     expect(out).not.toContain('~ a.b'); // unchanged
   });
 });
+
+describe('#883 — --pre-deploy footer renders pending-creation skips as their own group', () => {
+  // A `skipped: no physical id` finding is a not-yet-deployed LOCAL resource under
+  // --pre-deploy (the same predicate check.ts's #727 fix uses).
+  const skip = (note: string, resourceType = 'AWS::X::Y'): Finding => ({
+    tier: 'skipped',
+    logicalId: 'L',
+    resourceType,
+    path: '',
+    note,
+  });
+
+  it('WITHOUT preDeploy, a "no physical id" skip stays branded coverage-incomplete (unchanged)', () => {
+    const { text } = run([skip('no physical id')]);
+    expect(text).toContain('NOT checked (coverage incomplete: no physical id 1)');
+    expect(text).not.toContain('pending creation');
+  });
+
+  it('WITH preDeploy, a "no physical id" skip is a pending-creation group, NOT coverage incomplete', () => {
+    const { text } = run([skip('no physical id')], { preDeploy: true });
+    // the contradiction the issue reports must be gone: no "coverage incomplete" for it
+    expect(text).not.toContain('coverage incomplete');
+    expect(text).toContain(
+      'pending creation=1 (not yet deployed — the next deploy will create them, not a coverage gap)'
+    );
+  });
+
+  it('WITH preDeploy, a GENUINE gap (custom resource) still reads coverage incomplete', () => {
+    const { text } = run([skip('custom resource — no cloud-side model to read', 'Custom::Foo')], {
+      preDeploy: true,
+    });
+    expect(text).toContain('NOT checked (coverage incomplete: custom resource 1)');
+    expect(text).not.toContain('pending creation');
+  });
+
+  it('WITH preDeploy, mixed skips split into a coverage-incomplete line AND a pending-creation line', () => {
+    const { text } = run(
+      [
+        skip('no physical id'),
+        skip('custom resource — no cloud-side model to read', 'Custom::Foo'),
+      ],
+      { preDeploy: true }
+    );
+    const lines = text.split('\n');
+    const infoIdx = lines.indexOf('info:');
+    expect(infoIdx).toBeGreaterThan(-1);
+    // the genuine gap keeps the "coverage incomplete" framing …
+    expect(text).toMatch(/skipped=1 — NOT checked \(coverage incomplete: custom resource 1\)/);
+    // … and the not-yet-deployed resource is its own pending-creation line, not a gap
+    expect(text).toContain(
+      'pending creation=1 (not yet deployed — the next deploy will create them, not a coverage gap)'
+    );
+  });
+});
