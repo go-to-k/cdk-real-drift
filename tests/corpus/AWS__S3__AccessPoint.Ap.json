@@ -88,7 +88,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Ap",
       "resourceType": "AWS::S3::AccessPoint",
       "path": "BucketAccountId",
