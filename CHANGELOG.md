@@ -1,3 +1,10 @@
+## [0.4.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.6...v0.4.7) (2026-07-09)
+
+
+### Bug Fixes
+
+* **revert:** ApiGatewayV2 Stage revert can clear AccessLogSettings/StageVariables ([#806](https://github.com/go-to-k/cdk-real-drift/issues/806)) ([#1031](https://github.com/go-to-k/cdk-real-drift/issues/1031)) ([1505fb3](https://github.com/go-to-k/cdk-real-drift/commit/1505fb3c191608d1c2664232d5b02004abd24cff))
+
 ## [0.4.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.5...v0.4.6) (2026-07-09)
 
 
