@@ -3477,6 +3477,60 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // #874: AWS::Lambda::Url exhibits the same platform behavior as apigwv2 (#257) —
+  // the Function URL CORS header lists (`Cors.AllowHeaders` / `Cors.ExposeHeaders`)
+  // are stored/echoed LOWERCASED, so a declared `["Content-Type","Authorization"]`
+  // reads back `["content-type","authorization"]` and false-flagged declared drift.
+  describe('case-insensitive header-name array path (Lambda Url CORS AllowHeaders/ExposeHeaders)', () => {
+    const T = 'AWS::Lambda::Url';
+    const cors = (headers: string[]) => ({
+      Cors: { AllowHeaders: headers, AllowMethods: ['GET', 'POST'] },
+    });
+
+    it('mixed-case declared vs lowercase live CORS AllowHeaders is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(T, cors(['Content-Type', 'X-Custom-Header', 'Authorization'])),
+          cors(['content-type', 'x-custom-header', 'authorization']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a header set in a different order is NOT drift (unordered)', () => {
+      expect(
+        classifyResource(
+          res(T, cors(['Content-Type', 'Authorization'])),
+          cors(['authorization', 'content-type']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely changed header (same length) is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, cors(['Content-Type', 'Authorization'])),
+            cors(['content-type', 'x-api-key']),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Cors.AllowHeaders']);
+    });
+
+    it('ExposeHeaders is folded case-insensitively too', () => {
+      const expose = (h: string[]) => ({ Cors: { ExposeHeaders: h } });
+      expect(
+        classifyResource(
+          res(T, expose(['X-Request-Id', 'Content-Length'])),
+          expose(['x-request-id', 'content-length']),
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+  });
+
   // Found live by the apigwv2-http-rich bug-hunt fixture: the CDK HttpApi $default
   // stage runs AutoDeploy=true, so AWS mints (and re-mints on every auto-deploy) the
   // stage's DeploymentId. It is live-only (the user can't declare it under AutoDeploy),
