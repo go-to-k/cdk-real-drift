@@ -1,3 +1,10 @@
+## [0.4.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.9...v0.4.10) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold Valkey ReplicationGroup first-run defaults ([#818](https://github.com/go-to-k/cdk-real-drift/issues/818)) ([#1040](https://github.com/go-to-k/cdk-real-drift/issues/1040)) ([30a01fc](https://github.com/go-to-k/cdk-real-drift/commit/30a01fc4542b305e965c9fe3109adc228cc33b39))
+
 ## [0.4.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.8...v0.4.9) (2026-07-09)
 
 
