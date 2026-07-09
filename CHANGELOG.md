@@ -1,3 +1,10 @@
+## [0.3.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.3...v0.3.4) (2026-07-09)
+
+
+### Bug Fixes
+
+* **diff:** derive partition from shared partitionForRegion in classify.ts ([#945](https://github.com/go-to-k/cdk-real-drift/issues/945)) ([#999](https://github.com/go-to-k/cdk-real-drift/issues/999)) ([14417dd](https://github.com/go-to-k/cdk-real-drift/commit/14417dd8d3a96ca573b1af46eb9a107a66ab0463))
+
 ## [0.3.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.2...v0.3.3) (2026-07-09)
 
 
