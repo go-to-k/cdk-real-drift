@@ -1,3 +1,12 @@
+## [0.3.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.10...v0.3.11) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** transient kms:ListAliases warns transient, does not poison the region dedupe ([#963](https://github.com/go-to-k/cdk-real-drift/issues/963)) ([#1014](https://github.com/go-to-k/cdk-real-drift/issues/1014)) ([3e68b3e](https://github.com/go-to-k/cdk-real-drift/commit/3e68b3e930a801680e12159284bead6fda6b8deb))
+* **read:** UNRESOLVED parent-ref fail-safe across child enumerators ([#962](https://github.com/go-to-k/cdk-real-drift/issues/962)) ([#1016](https://github.com/go-to-k/cdk-real-drift/issues/1016)) ([525426b](https://github.com/go-to-k/cdk-real-drift/commit/525426bd340957bee12651d1aa76e7bea083db54))
+* **revert:** nullHuskRemovalOps positional array-remove index shift deletes wrong element ([#968](https://github.com/go-to-k/cdk-real-drift/issues/968)) ([#1015](https://github.com/go-to-k/cdk-real-drift/issues/1015)) ([c6babbb](https://github.com/go-to-k/cdk-real-drift/commit/c6babbb4cdcd72a212aa83df0a9d3aa7a6c97e19))
+
 ## [0.3.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.9...v0.3.10) (2026-07-09)
 
 
