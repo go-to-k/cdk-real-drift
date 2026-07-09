@@ -100,6 +100,64 @@ export async function applyRevertItem(
   }, retry);
 }
 
+// Per-item outcome of a batch delete pass (issue #765). Carries the source item so the
+// caller can fold the result back into its own state (failedDeleteIds / applied / worst)
+// exactly as the inline single-item path does.
+export interface BatchDeleteOutcome<T> {
+  item: T;
+  result: ApplyResult;
+}
+
+// Apply a batch of `delete`-kind revert items with DEPENDENCY-AWARE retry (issue #765).
+//
+// Deleting out-of-band `added` resources in an arbitrary order can fail on a
+// DependencyViolation: a resource can only be deleted AFTER the resource that depends on
+// it is gone (e.g. a security group still referenced by an ENI, an API Gateway parent
+// Resource whose child Methods are also queued for deletion). A single pass in the wrong
+// order leaves such an item stuck as FAILED even though it WOULD succeed once its
+// dependent siblings are deleted.
+//
+// Strategy: run a FIRST pass over all delete items, collecting the still-failed ones.
+// Then, while the LAST pass deleted >=1 item AND some remain failed, run another pass
+// over only the still-failed items — a freed dependency can now succeed. Bounded by
+// `deleteItems.length` total passes (each pass must clear >=1 item to continue, so at
+// most N passes) with an explicit no-progress break, guaranteeing termination.
+//
+// Behavior is IDENTICAL to a single inline pass when there are 0 failures (one pass, all
+// succeed) or 0 progress (one pass, the still-failed set never shrinks so no retry runs).
+// `applyOne` performs ONE delete (reusing applyRevertDelete semantics, incl. isAlreadyGone
+// already-gone tolerance) and returns its ApplyResult. Results are returned in the SAME
+// order as `deleteItems` so the caller's output/state folding is deterministic.
+export async function applyRevertDeletes<T>(
+  deleteItems: readonly T[],
+  applyOne: (item: T) => Promise<ApplyResult>
+): Promise<BatchDeleteOutcome<T>[]> {
+  // Latest result per item, keyed by array index (stable + preserves input order).
+  const results = new Map<number, ApplyResult>();
+  let pending = deleteItems.map((item, index) => ({ item, index }));
+
+  // First pass + bounded retry passes. Total passes capped at deleteItems.length: each
+  // continuing pass must have cleared >=1 item, so N items settle in at most N passes.
+  const maxPasses = Math.max(1, deleteItems.length);
+  for (let pass = 0; pass < maxPasses && pending.length > 0; pass++) {
+    const stillFailed: typeof pending = [];
+    for (const p of pending) {
+      const r = await applyOne(p.item);
+      results.set(p.index, r);
+      if (!r.ok) stillFailed.push(p);
+    }
+    // No progress this pass (nothing cleared) → retrying cannot help; stop.
+    if (stillFailed.length === pending.length) break;
+    pending = stillFailed;
+  }
+
+  return deleteItems.map((item, index) => ({
+    item,
+    // Every index is populated: the loop runs at least one pass over every item.
+    result: results.get(index) ?? { ok: false, error: 'delete not attempted' },
+  }));
+}
+
 // DELETE an `added` (out-of-band) resource via Cloud Control DeleteResource. The
 // identifier is the resource's CC primaryIdentifier (for API Gateway children, the
 // `RestApiId|ResourceId[|HttpMethod]` composite already carried on the finding).
