@@ -145,7 +145,11 @@ export async function runIgnore(args: string[]): Promise<number> {
     emitJsonArray(jsonReports);
     return worst;
   }
-  if (worst === 0 && wroteAny)
+  // Nudge to commit whenever a rule was actually written — gate on `wroteAny` alone, NOT
+  // `worst === 0`: in a multi-stack run the written ignore.yaml still needs committing even
+  // when a SIBLING stack errored (worst === 2). `wroteAny` still guards the all-cancelled
+  // case (nothing written → no footer). The exit code is unaffected (#949).
+  if (wroteAny)
     console.log('commit .cdkrd/ignore.yaml so the ignore rules apply for everyone going forward.');
   return worst;
 }

@@ -139,8 +139,11 @@ export async function runRecord(args: string[]): Promise<number> {
   }
   // Only nudge the user to commit when a baseline was actually written — cancelling every
   // stack's record prompt leaves the files untouched, so the "commit …" footer would be a
-  // lie (#799).
-  if (worst === 0 && wroteAny)
+  // lie (#799). Gate on `wroteAny` alone, NOT `worst === 0`: in a multi-stack run a written
+  // baseline still needs committing even when a SIBLING stack errored (worst === 2). The
+  // exit code is unaffected — a written file the user might otherwise forget to commit is
+  // exactly what the footer must catch under a partial failure (#949).
+  if (wroteAny)
     console.log('commit the baseline file(s) so drift is detected against them going forward.');
   return worst;
 }
