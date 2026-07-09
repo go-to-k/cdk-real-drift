@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import {
   fetchManagedAliasTargets,
   isDefinitiveDenial,
+  kmsListAliasesDeniedWarning,
   kmsListAliasesTransientWarning,
+  kmsWarnDecision,
 } from '../src/read/kms-aliases.js';
 
 // #789: fetchManagedAliasTargets must cache ONLY definitive outcomes (success or a
@@ -99,6 +101,48 @@ describe('isDefinitiveDenial (#789)', () => {
     ).toBe(false);
     expect(isDefinitiveDenial({ name: 'TimeoutError' })).toBe(false);
     expect(isDefinitiveDenial(undefined)).toBe(false);
+  });
+});
+
+describe('kmsWarnDecision — transient vs genuine denial + dedupe split (#963)', () => {
+  const region = 'us-east-1';
+
+  it('a TRANSIENT failure emits the transient warning and stamps ONLY the transient set (never poisons the denial set)', () => {
+    const d = kmsWarnDecision(region, { denied: true, transient: true }, false, false);
+    expect(d.warning).toBe(kmsListAliasesTransientWarning(region));
+    expect(d.stampTransient).toBe(true);
+    // The #963 bug: a transient blip must NOT stamp the permanent-denial set, or a later
+    // stack's real denial in the same region would be silenced.
+    expect(d.stampDenied).toBe(false);
+  });
+
+  it('a GENUINE denial emits the denied warning and stamps the denial set', () => {
+    const d = kmsWarnDecision(region, { denied: true, transient: false }, false, false);
+    expect(d.warning).toBe(kmsListAliasesDeniedWarning(region));
+    expect(d.stampDenied).toBe(true);
+    expect(d.stampTransient).toBe(false);
+  });
+
+  it('a genuine denial still surfaces after a transient blip already warned in the region', () => {
+    // transientWarned=true (the blip already warned), deniedWarned=false → the real denial
+    // is NOT deduped away, because it uses the separate denial set.
+    const d = kmsWarnDecision(region, { denied: true, transient: false }, false, true);
+    expect(d.warning).toBe(kmsListAliasesDeniedWarning(region));
+    expect(d.stampDenied).toBe(true);
+  });
+
+  it('dedupes each kind independently: no repeat warning once its own set is stamped', () => {
+    expect(kmsWarnDecision(region, { denied: true, transient: true }, false, true).warning).toBe(
+      null
+    );
+    expect(kmsWarnDecision(region, { denied: true, transient: false }, true, false).warning).toBe(
+      null
+    );
+  });
+
+  it('a successful read (not denied) emits nothing and stamps nothing', () => {
+    const d = kmsWarnDecision(region, { denied: false }, false, false);
+    expect(d).toEqual({ warning: null, stampDenied: false, stampTransient: false });
   });
 });
 

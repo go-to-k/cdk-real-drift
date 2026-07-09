@@ -99,6 +99,37 @@ export function kmsListAliasesTransientWarning(region: string): string {
   );
 }
 
+/** Pure decision for the gather-time KMS warning: given a resolved ListAliases outcome
+ *  and the two per-region dedupe sets' membership, decide WHICH warning to emit (if any)
+ *  and WHICH set to stamp. The split is the #963 fix: a TRANSIENT failure must warn with
+ *  the transient message and stamp ONLY the transient set — it must NOT stamp the
+ *  permanent-denial set, or a later stack's GENUINE denial in the same region would be
+ *  silenced. Transient and denied dedupe independently (separate sets) so neither masks
+ *  the other. `warning` is null when nothing should print (not denied, or already warned
+ *  in that region). */
+export function kmsWarnDecision(
+  region: string,
+  resolved: Pick<ManagedAliasTargets, 'denied' | 'transient'>,
+  deniedWarned: boolean,
+  transientWarned: boolean
+): { warning: string | null; stampDenied: boolean; stampTransient: boolean } {
+  if (!resolved.denied) return { warning: null, stampDenied: false, stampTransient: false };
+  if (resolved.transient) {
+    // Transient blip: dedupe via the SEPARATE transient set; never touch the denial set.
+    return {
+      warning: transientWarned ? null : kmsListAliasesTransientWarning(region),
+      stampDenied: false,
+      stampTransient: !transientWarned,
+    };
+  }
+  // Genuine denial: dedupe via the permanent-denial set.
+  return {
+    warning: deniedWarned ? null : kmsListAliasesDeniedWarning(region),
+    stampDenied: !deniedWarned,
+    stampTransient: false,
+  };
+}
+
 /** True when any resolved declared value in the stack references an AWS-managed KMS
  *  alias, i.e. a ListAliases prefetch is worth doing. */
 export function usesManagedKmsAlias(v: unknown): boolean {
