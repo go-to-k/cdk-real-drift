@@ -1,3 +1,10 @@
+## [0.3.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.6...v0.3.7) (2026-07-09)
+
+
+### Bug Fixes
+
+* **check:** case-insensitive hasBaselineForStack (deleted-detector FN) ([#986](https://github.com/go-to-k/cdk-real-drift/issues/986)) ([#1005](https://github.com/go-to-k/cdk-real-drift/issues/1005)) ([67d8fa3](https://github.com/go-to-k/cdk-real-drift/commit/67d8fa383b87c61136c399379c42f4536d0f2a09))
+
 ## [0.3.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.5...v0.3.6) (2026-07-09)
 
 
