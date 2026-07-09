@@ -346,15 +346,28 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
 // dimension from the resolved ScalingTargetId (`resourceId|dimension|namespace`).
-// undefined when the target ref did not resolve (→ honest skip).
+// The CFn schema ALSO allows the "flat" form — `ResourceId` + `ScalableDimension` +
+// `ServiceNamespace` declared directly, NO `ScalingTargetId` (all createOnly,
+// ScalingTargetId optional) — which raw-CFn / SAM / CDK L1 (`CfnScalingPolicy`)
+// authors commonly use. In that form the dimension comes straight off
+// `declared.ScalableDimension`; without this fallback the adapter returned undefined,
+// cdkrd sent the bare policy ARN, and CC GetResource ValidationException-skipped it
+// (permanent declared read-gap — a mutation to the policy invisible). The composite
+// ORDER (`${Arn}|${dimension}`) is unchanged from the ScalingTargetId path, only the
+// SOURCE of the dimension differs. undefined when neither is resolvable (→ honest skip).
+// Live-surfaced by the flat-form ScalableTarget+ScalingPolicy fixture (#836).
 function scalingPolicyComposite(
   pid: string,
   declared: Record<string, unknown>
 ): string | undefined {
   if (pid.includes('|')) return pid; // already composite — never double-suffix
   const targetId = declared.ScalingTargetId;
-  if (typeof targetId !== 'string') return undefined;
-  const dimension = targetId.split('|')[1];
+  const dimension =
+    typeof targetId === 'string'
+      ? targetId.split('|')[1]
+      : typeof declared.ScalableDimension === 'string'
+        ? declared.ScalableDimension
+        : undefined;
   return dimension ? `${pid}|${dimension}` : undefined;
 }
 

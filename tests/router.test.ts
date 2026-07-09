@@ -906,7 +906,31 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe(`${policyArn}|dynamodb:table:ReadCapacityUnits`);
   });
 
-  it('ScalingPolicy: an unresolved ScalingTargetId falls back to the raw physical id', async () => {
+  // #836: the "flat" form declares ScalableDimension directly (with ResourceId /
+  // ServiceNamespace), NO ScalingTargetId — the dimension comes off the declared
+  // ScalableDimension so the policy still reads instead of read-gapping.
+  it('ScalingPolicy: composes PolicyARN|ScalableDimension from the flat ScalableDimension (no ScalingTargetId, #836)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    const policyArn =
+      'arn:aws:autoscaling:us-east-1:1:scalingPolicy:abc:resource/dynamodb/table/T:policyName/p';
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApplicationAutoScaling::ScalingPolicy',
+        physicalId: policyArn,
+        declared: {
+          ResourceId: 'table/T',
+          ScalableDimension: 'dynamodb:table:ReadCapacityUnits',
+          ServiceNamespace: 'dynamodb',
+        },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe(`${policyArn}|dynamodb:table:ReadCapacityUnits`);
+  });
+
+  it('ScalingPolicy: neither ScalingTargetId nor a flat ScalableDimension falls back to the raw physical id', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(
       cc as unknown as CloudControlClient,
