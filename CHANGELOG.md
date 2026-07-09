@@ -1,3 +1,13 @@
+## [0.2.60](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.59...v0.2.60) (2026-07-09)
+
+
+### Bug Fixes
+
+* **baseline:** block snapshot-completeness for readGap resources ([#795](https://github.com/go-to-k/cdk-real-drift/issues/795)) ([#830](https://github.com/go-to-k/cdk-real-drift/issues/830)) ([9888206](https://github.com/go-to-k/cdk-real-drift/commit/9888206b2ba7775d1ab9afc62f984cd428f8cb64))
+* **desired:** parse deployed YAML templates with the YAML 1.1 schema ([#785](https://github.com/go-to-k/cdk-real-drift/issues/785)) ([#831](https://github.com/go-to-k/cdk-real-drift/issues/831)) ([8a7ca13](https://github.com/go-to-k/cdk-real-drift/commit/8a7ca138610334a9bda5c6e56d2514d5c5bb4880))
+* **read:** degrade a failed SDK supplement read to a loud readGap, not false declared drift ([#752](https://github.com/go-to-k/cdk-real-drift/issues/752)) ([#833](https://github.com/go-to-k/cdk-real-drift/issues/833)) ([3332be4](https://github.com/go-to-k/cdk-real-drift/commit/3332be4ee2208cd8eaaa17bc441d73234f43a36e))
+* **revert:** dependency-aware bounded retry for delete-kind revert items ([#765](https://github.com/go-to-k/cdk-real-drift/issues/765)) ([#840](https://github.com/go-to-k/cdk-real-drift/issues/840)) ([095c598](https://github.com/go-to-k/cdk-real-drift/commit/095c598591a6c444358512da1702204266924c42))
+
 ## [0.2.59](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.58...v0.2.59) (2026-07-08)
 
 
