@@ -1,3 +1,10 @@
+## [0.2.61](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.60...v0.2.61) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold RDS DBCluster BackupRetentionPeriod=1 + DBProxy IdleClientTimeout=1800 ([#717](https://github.com/go-to-k/cdk-real-drift/issues/717)) ([#837](https://github.com/go-to-k/cdk-real-drift/issues/837)) ([892829d](https://github.com/go-to-k/cdk-real-drift/commit/892829dbde762e20c0cae6ee0904bd1e083e72d4))
+
 ## [0.2.60](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.59...v0.2.60) (2026-07-09)
 
 
