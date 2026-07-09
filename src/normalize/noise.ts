@@ -1124,6 +1124,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::AutoScaling::WarmPool': {
     MinSize: 0,
   },
+  // A scheduled action that sets no end time reads back the literal string "null" — a
+  // serialized-null artifact from the SDK/CC read, a stable CONSTANT (not time-varying),
+  // so equality-gate it as a tier-1 default rather than value-independent (#946). Folding
+  // the exact "null" keeps a clean first-run zero-noise (#847), while ANY real EndTime a
+  // user (or an out-of-band `put-scheduled-update-group-action`) sets no longer matches
+  // "null" and surfaces as undeclared drift — a scheduled scaling action that silently
+  // expires is exactly the divergence we must catch. StartTime stays value-independent
+  // (see VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS): its next-occurrence is genuinely
+  // time-varying and cannot be pinned to a constant.
+  'AWS::AutoScaling::ScheduledAction': {
+    EndTime: 'null',
+  },
   'AWS::DocDB::DBCluster': {
     Port: 27017, // DocDB's fixed default port
     // DocumentDB's documented default backup retention (1 day) — surfaced as undeclared
@@ -2924,7 +2936,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   the ARN carries the machine's generated name segment). Not user intent when undeclared —
   //   fold value-independent. Live, hunt 2026-07-08 (#628).
   'AWS::StepFunctions::StateMachineAlias': new Set(['StateMachineArn']),
-  //   AWS::AutoScaling::ScheduledAction.StartTime / .EndTime — a scheduled action that declares
+  //   AWS::AutoScaling::ScheduledAction.StartTime — a scheduled action that declares
   //   a `Recurrence` (a cron expression) but no explicit `StartTime` reads back the concrete
   //   timestamp of the NEXT occurrence AWS computed from that recurrence (e.g. declared
   //   "0 9 * * MON-FRI" → live StartTime "2026-06-22T09:00:00Z"). It is UNDECLARED and
@@ -2932,11 +2944,11 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   `record` — a constant cannot pin it and it is not a stable function of the declared inputs
   //   (it depends on the wall-clock time of the read). Fold value-independent: whatever AWS
   //   computes is not user intent; a user who wants a specific StartTime DECLARES it, and it is
-  //   then compared in the declared loop. `EndTime` reads back the literal string "null" when no
-  //   end time is set (a serialized-null artifact from the SDK/CC read) — folding it here strips
-  //   that cosmetic stringified null. A DECLARED EndTime goes through the declared loop, compared.
-  //   Live, hunt 2026-07-09 (#847).
-  'AWS::AutoScaling::ScheduledAction': new Set(['StartTime', 'EndTime']),
+  //   then compared in the declared loop. `EndTime` is NOT here: its only default artifact is the
+  //   stable constant string "null" (the SDK/CC serialized-null when no end time is set), so it is
+  //   folded as an equality-gated tier-1 KNOWN_DEFAULTS entry instead — a real out-of-band EndTime
+  //   timestamp then surfaces rather than folding to any value (#946). Live, hunt 2026-07-09 (#847).
+  'AWS::AutoScaling::ScheduledAction': new Set(['StartTime']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
