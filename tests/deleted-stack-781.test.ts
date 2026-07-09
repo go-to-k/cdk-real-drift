@@ -4,7 +4,9 @@
 // wrongly stay green on a stack whose committed baseline PROVES it was once deployed.
 //
 // The fix probes `.cdkrd/baselines/` for a `<stackName>.<accountId>.<region>.json`
-// baseline (across ANY account/region axis, since the gone stack's env is unknown).
+// baseline in the REGION being checked (account wildcarded — the gone stack's account is
+// unknown without STS — but region IS known and must match, #942), matched
+// case-insensitively so it agrees with loadBaseline's readFile on macOS/Windows (#986).
 // If one exists → deleted-out-of-band drift → --fail (and --strict) exit 1. If none
 // exists → keep the benign skip + exit 0. This test drives the pure `hasBaselineForStack`
 // probe (filesystem-only, no AWS) plus `finalCheckExit`, mirroring the catch's exit math.
@@ -59,19 +61,35 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
 
   describe('hasBaselineForStack', () => {
     it('is false when no .cdkrd/baselines/ directory exists at all', () => {
-      expect(hasBaselineForStack(STACK)).toBe(false);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
 
-    it('is true once a baseline for the stack is present', async () => {
+    it('is true once a baseline for the stack in this region is present', async () => {
       await writeBaseline(STACK, ACCOUNT, REGION);
-      expect(hasBaselineForStack(STACK)).toBe(true);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(true);
     });
 
-    it('matches across ANY account/region axis (the gone stack env is unknown)', async () => {
-      // Recorded in a different account+region than any we could reconstruct — still proof
-      // the stack was deployed, so it must match on the `<stackName>.` filename prefix.
-      await writeBaseline(STACK, '999988887777', 'ap-northeast-1');
-      expect(hasBaselineForStack(STACK)).toBe(true);
+    it('matches across ANY account axis in this region (the gone stack account is unknown)', async () => {
+      // Recorded under a different account than any we could reconstruct — still proof the
+      // stack was deployed in THIS region, so account stays wildcarded and it must match.
+      await writeBaseline(STACK, '999988887777', REGION);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(true);
+    });
+
+    it('#942: does NOT match a baseline recorded in a DIFFERENT region', async () => {
+      // Region-blind matching falsely reports a same-named stack that was never deployed in
+      // region B as "deleted out of band" merely because a baseline exists in region A.
+      await writeBaseline(STACK, ACCOUNT, 'us-east-1');
+      expect(hasBaselineForStack(STACK, 'eu-west-1')).toBe(false); // wrong region → no match
+      expect(hasBaselineForStack(STACK, 'us-east-1')).toBe(true); // right region → match
+    });
+
+    it('#986: matches a case-differing on-disk baseline (mirrors loadBaseline readFile)', async () => {
+      // `record` wrote `mystack.<acct>.<region>.json`; the stack is later checked as `MyStack`.
+      // On a case-insensitive FS both names resolve to ONE file, so `loadBaseline`'s readFile
+      // would open it — `hasBaselineForStack` must agree via a case-insensitive compare.
+      await writeBaseline('mystack', ACCOUNT, REGION);
+      expect(hasBaselineForStack('MyStack', REGION)).toBe(true);
     });
 
     it('#986: matches a baseline whose on-disk name differs only in CASE', async () => {
@@ -82,57 +100,57 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       // probed as `mystack`, must count. Passes on case-sensitive Linux CI too: the compare
       // is case-insensitive in the code, independent of the FS's own case behavior.
       await writeBaseline(STACK, ACCOUNT, REGION);
-      expect(hasBaselineForStack('mystack')).toBe(true);
+      expect(hasBaselineForStack('mystack', REGION)).toBe(true);
     });
 
     it('#986: the case-insensitive match still guards against a bare-prefix collision', async () => {
       // `MyStackExtra.<...>.json` must NOT satisfy hasBaselineForStack('mystack') even with
       // the case-folded compare — the `<stackName>.` separator still bounds the prefix.
       await writeBaseline('MyStackExtra', ACCOUNT, REGION);
-      expect(hasBaselineForStack('mystack')).toBe(false);
+      expect(hasBaselineForStack('mystack', REGION)).toBe(false);
     });
 
     it('does not match a DIFFERENT stack whose name shares no prefix', async () => {
       await writeBaseline('OtherStack', ACCOUNT, REGION);
-      expect(hasBaselineForStack(STACK)).toBe(false);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
 
     it('does not false-match a stack name that is a prefix of a different stack', async () => {
       // `MyStackExtra.<...>.json` must NOT satisfy hasBaselineForStack('MyStack') — the
       // `<stackName>.` separator guards against a bare-prefix collision.
       await writeBaseline('MyStackExtra', ACCOUNT, REGION);
-      expect(hasBaselineForStack(STACK)).toBe(false);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
 
     it('ignores non-baseline files in the directory (e.g. a stray .txt)', async () => {
       const p = baselinePath(STACK, ACCOUNT, REGION);
       await mkdir(dirname(p), { recursive: true });
       await writeFile(join(dirname(p), `${STACK}.note.txt`), 'x', 'utf8');
-      expect(hasBaselineForStack(STACK)).toBe(false);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
   });
 
   describe('exit-code contract of the not-deployed catch (#781)', () => {
     it('baseline present + --fail → exit 1 (deleted-out-of-band drift fails)', async () => {
       await writeBaseline(STACK, ACCOUNT, REGION);
-      expect(notDeployedExit(hasBaselineForStack(STACK), true, false)).toBe(1);
+      expect(notDeployedExit(hasBaselineForStack(STACK, REGION), true, false)).toBe(1);
     });
 
     it('baseline present + --strict (no --fail) → exit 1 (missing stack is a coverage gap)', async () => {
       await writeBaseline(STACK, ACCOUNT, REGION);
-      expect(notDeployedExit(hasBaselineForStack(STACK), false, true)).toBe(1);
+      expect(notDeployedExit(hasBaselineForStack(STACK, REGION), false, true)).toBe(1);
     });
 
     it('baseline present, report-only (no --fail/--strict) → exit 0 but still surfaced', async () => {
       // R53: report-only mode never fails on drift; the drift line is still printed
       // (that side of the contract is covered by the message, not the exit code).
       await writeBaseline(STACK, ACCOUNT, REGION);
-      expect(notDeployedExit(hasBaselineForStack(STACK), false, false)).toBe(0);
+      expect(notDeployedExit(hasBaselineForStack(STACK, REGION), false, false)).toBe(0);
     });
 
     it('NO baseline (genuinely never deployed) + --fail --strict → exit 0 (benign skip)', () => {
-      expect(hasBaselineForStack(STACK)).toBe(false);
-      expect(notDeployedExit(hasBaselineForStack(STACK), true, true)).toBe(0);
+      expect(hasBaselineForStack(STACK, REGION)).toBe(false);
+      expect(notDeployedExit(hasBaselineForStack(STACK, REGION), true, true)).toBe(0);
     });
   });
 });

@@ -225,17 +225,26 @@ export function finalCheckExit(code: number, fail: boolean): number {
 }
 
 /**
- * #781: does a committed baseline exist for this stack, under ANY account/region axis?
- * When a stack is gone (a DescribeStacks "does not exist"), we do NOT know the
- * account/region it was deployed to, so we cannot construct the exact baseline path.
+ * #781: does a committed baseline exist for this stack IN THE REGION being checked?
  * A committed baseline is named `<stackName>.<accountId>.<region>.json` under
- * `.cdkrd/baselines/`, so match by the `<stackName>.` filename prefix across the whole
- * directory — a prior baseline is PROOF the stack was once deployed, which distinguishes
- * "deleted out of band" (real drift) from "never deployed yet" (a benign skip). The
- * baselines directory is derived from `baselinePath` so the layout stays single-sourced.
+ * `.cdkrd/baselines/`. The gone stack's ACCOUNT is unknown without an STS call, so it
+ * stays wildcarded; but the REGION being checked IS known (the loop's `region`), and a
+ * baseline recorded for THIS stack in THIS region carries exactly that region in its
+ * filename — so we require the `.<region>.json` suffix. A prior baseline in this region
+ * is PROOF the stack was once deployed THERE, which distinguishes "deleted out of band"
+ * (real drift) from "never deployed yet" (a benign skip). Without the region gate, a
+ * same-named stack that was never deployed in region B but has a baseline in region A is
+ * falsely reported "deleted out of band" (#942).
+ *
+ * #986: the match is CASE-INSENSITIVE (both sides lowercased) so it answers consistently
+ * with `loadBaseline`, whose `readFile` opens the file case-insensitively on macOS/Windows.
+ * A case-sensitive `readdirSync` prefix would MISS a baseline committed as `mystack.….json`
+ * when checking `MyStack`, silently downgrading a genuinely deleted stack to a benign skip.
+ *
+ * The baselines directory is derived from `baselinePath` so the layout stays single-sourced.
  * Pure (filesystem-only, no AWS) + exported for unit tests. Missing dir → false.
  */
-export function hasBaselineForStack(stackName: string): boolean {
+export function hasBaselineForStack(stackName: string, region: string): boolean {
   const dir = dirname(baselinePath(stackName, 'a', 'r'));
   let entries: string[];
   try {
@@ -243,16 +252,12 @@ export function hasBaselineForStack(stackName: string): boolean {
   } catch {
     return false; // no `.cdkrd/baselines/` directory at all → nothing was ever recorded
   }
-  // #986: match the `<stackName>.` prefix CASE-INSENSITIVELY. `loadBaseline`'s `readFile`
-  // resolves case-insensitively on macOS/Windows (the dev default), where `mystack` and
-  // `MyStack` map to ONE on-disk baseline file — so a case-SENSITIVE `startsWith` here
-  // disagreed with it, missing a case-differing baseline and downgrading a truly deleted
-  // stack back to a benign "never deployed" skip (exit 0). Lowercasing both sides mirrors
-  // #870's case-insensitive collision semantics; a case-insensitive existence probe can
-  // only make the deleted-out-of-band detector MORE cautious (never a false positive: the
-  // `.json` suffix + `<stackName>.` separator still guard against bare-prefix collisions).
   const prefix = `${stackName}.`.toLowerCase();
-  return entries.some((f) => f.toLowerCase().startsWith(prefix) && f.endsWith('.json'));
+  const suffix = `.${region}.json`.toLowerCase();
+  return entries.some((f) => {
+    const lower = f.toLowerCase();
+    return lower.startsWith(prefix) && lower.endsWith(suffix);
+  });
 }
 
 export async function runCheck(args: string[]): Promise<number> {
@@ -625,7 +630,7 @@ export async function runCheck(args: string[]): Promise<number> {
         // proof the stack was once deployed, so its presence promotes this from a benign skip
         // (exit 0) to real drift: the deployed state is GONE. Without this, `check --fail`
         // (and `--strict`) exit 0 on a deleted stack, indistinguishable from never-deployed.
-        if (hasBaselineForStack(stackName)) {
+        if (hasBaselineForStack(stackName, region)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
           const label = `${stackName} (${region})`;
           console.error(`[Drift] ${label}: ${msg}`);
