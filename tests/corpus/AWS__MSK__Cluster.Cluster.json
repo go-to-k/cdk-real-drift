@@ -128,19 +128,27 @@
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
-      "path": "EncryptionInfo",
+      "path": "EncryptionInfo.EncryptionAtRest",
       "actual": {
-        "EncryptionAtRest": {
-          "DataVolumeKMSKeyId": "arn:aws:kms:ap-northeast-1:111111111111:key/a2715ad0-2ae0-410e-8c6f-09e3de34ff91"
-        },
-        "EncryptionInTransit": {
-          "ClientBroker": "TLS",
-          "InCluster": true
-        }
+        "DataVolumeKMSKeyId": "arn:aws:kms:ap-northeast-1:111111111111:key/a2715ad0-2ae0-410e-8c6f-09e3de34ff91"
       },
+      "nested": true,
+      "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
+      "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::MSK::Cluster",
+      "path": "EncryptionInfo.EncryptionInTransit",
+      "actual": {
+        "ClientBroker": "TLS",
+        "InCluster": true
+      },
+      "nested": true,
       "physicalId": "arn:aws:kafka:ap-northeast-1:111111111111:cluster/cdkrd-fp-msk/0067ab24-fb2f-4477-b169-3e1f61139875-4",
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
@@ -154,7 +162,7 @@
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
       "path": "BrokerNodeGroupInfo.SecurityGroups",
@@ -164,7 +172,7 @@
       "constructPath": "CdkRealDriftIntegMskCluster/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::MSK::Cluster",
       "path": "BrokerNodeGroupInfo.ConnectivityInfo",
