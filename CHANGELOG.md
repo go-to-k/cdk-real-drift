@@ -1,3 +1,10 @@
+## [0.2.79](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.78...v0.2.79) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cli:** flush stdout before process.exit so piped output is not truncated at 64KiB ([#866](https://github.com/go-to-k/cdk-real-drift/issues/866)) ([#982](https://github.com/go-to-k/cdk-real-drift/issues/982)) ([224e32b](https://github.com/go-to-k/cdk-real-drift/commit/224e32b142f133a6aec33693ae0cef9292935dcc))
+
 ## [0.2.78](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.77...v0.2.78) (2026-07-09)
 
 
