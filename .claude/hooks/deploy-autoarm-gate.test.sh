@@ -63,6 +63,35 @@ run "cdkrd check"             "cdkrd check Foo --region us-east-1" 0
 run "echo mentions deploy"    'echo "run aws cloudformation deploy later"' 0
 run "git commit mentions"     "git commit -m 'add cloudformation deploy notes'" 0
 
+# Per-session owner key: the arm goes to owner "autoarm-<sanitized session id>", from
+# $CLAUDE_CODE_SESSION_ID (else the payload session_id, else "autoarm-shared").
+# owner_check <name> <session-env> <payload-session> <expect-owner>
+owner_check() {
+  local name="$1" senv="$2" spayload="$3" expect="$4"
+  local tmp stub armlog payload
+  tmp=$(mktemp -d); armlog="$tmp/armed"; stub="$tmp/stub.sh"
+  cat > "$stub" <<EOF
+#!/usr/bin/env bash
+echo "OWNER=\${CDKRD_BUGHUNT_OWNER}" >> "$armlog"
+EOF
+  chmod +x "$stub"
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "aws cloudformation deploy --stack-name Foo" | jq -Rs .)},\"cwd\":\"$tmp\",\"session_id\":\"$spayload\"}"
+  set +e
+  printf '%s' "$payload" | CLAUDE_CODE_SESSION_ID="$senv" CDKRD_AUTOARM_TRACK="$stub" bash "$HOOK" >/dev/null 2>&1
+  set -e
+  if grep -qx "OWNER=$expect" "$armlog" 2>/dev/null; then
+    PASS=$((PASS + 1)); echo "ok   - $name (owner=$expect)"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL - $name (got $(cat "$armlog" 2>/dev/null), want OWNER=$expect)"
+  fi
+  rm -rf "$tmp"
+}
+
+owner_check "session id from env sanitized"      "sess/ABC 123" ""         "autoarm-sess_ABC_123"
+owner_check "session id from payload fallback"   ""             "pay-xyz"  "autoarm-pay-xyz"
+owner_check "env wins over payload"              "envid"        "payid"    "autoarm-envid"
+owner_check "no session id -> shared fallback"   ""             ""         "autoarm-shared"
+
 echo "----"
 echo "deploy-autoarm-gate: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

@@ -77,13 +77,15 @@ hides under a false CLEAN.
 
 ### 4. Release the bughunt-clean gate
 
-The `deploy-autoarm-gate` hook arms a generic `autoarm` token on any deploy, and
-`/hunt-bugs` arms per-stack owners. Release only after §1–3 show clean:
+The `deploy-autoarm-gate` hook arms a PER-SESSION `autoarm-<session>` token on any
+deploy, and `/hunt-bugs` arms per-stack owners. Release only after §1–3 show clean:
 
 ```bash
-# the generic auto-armed token (set by the deploy hook):
-CDKRD_BUGHUNT_OWNER=autoarm .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
-CDKRD_BUGHUNT_OWNER=autoarm .claude/skills/hunt-bugs/bughunt-track.sh clear
+# the deploy-autoarm token for THIS session (set by the deploy hook). The session key
+# is $CLAUDE_CODE_SESSION_ID — the SAME value the hook armed under:
+AUTOARM="autoarm-$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-shared}" | sed 's#[^A-Za-z0-9._-]#_#g')"
+CDKRD_BUGHUNT_OWNER="$AUTOARM" .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
+CDKRD_BUGHUNT_OWNER="$AUTOARM" .claude/skills/hunt-bugs/bughunt-track.sh clear
 # any per-owner hunt tracking (run verify + clear from the SAME worktree that armed):
 .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
 .claude/skills/hunt-bugs/bughunt-track.sh clear

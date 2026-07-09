@@ -68,14 +68,20 @@ run "armed + echo mentioning git commit"  1 "echo 'run git commit later'"       
 run "armed + echo mentioning gh pr merge" 1 "echo 'remember to gh pr merge soon'"   0
 
 # ---------------------------------------------------------------------------
-# Parallel-safe (per-owner) coverage + the SPOF regression.
+# Per-owner block semantics + the SPOF regression.
+#
+# The block is decided against the COMMITTING owner ONLY. For a `git commit` run from
+# repo root R, that owner key is R's toplevel path (sanitized) — the SAME key the
+# tracker derives when armed from R with NO $CDKRD_BUGHUNT_OWNER. So we arm the "self"
+# owner by running the tracker with no env override, and arm an UNRELATED peer owner
+# via $CDKRD_BUGHUNT_OWNER=ownerB. A peer's pending stacks must NOT block us (stacks
+# are uniquely named — no cross-session contention). Real AWS is unreachable here, so
+# clears use CDKRD_BUGHUNT_FORCE_CLEAR=1 to stand in for a passing verify.
 #
 # The tracker resolves REPO_ROOT from its OWN location (SCRIPT_DIR), so to drive it
 # against a throwaway repo we copy it into that repo's skill path and run the COPY —
-# then the tracker and the cwd-resolving gate agree on the temp repo root. The
-# tracker under test defaults to this worktree's copy, but can be overridden to the
-# OLD single-file tracker via BUGHUNT_TRACKER_OVERRIDE to prove the SPOF case fails
-# against pre-port code.
+# then the tracker and the cwd-resolving gate agree on the temp repo root. The tracker
+# under test defaults to this worktree's copy, overridable via BUGHUNT_TRACKER_OVERRIDE.
 # ---------------------------------------------------------------------------
 TRACKER="${BUGHUNT_TRACKER_OVERRIDE:-$(cd "$(dirname "$0")/../skills/hunt-bugs" && pwd)/bughunt-track.sh}"
 
@@ -132,32 +138,66 @@ mkdir -p "$T/.markgate-bughunt-pending.d"
 check "empty .d/ passes git commit" "$(gate_exit "$T" "git commit -m x")" 0
 rm -rf "$T"
 
-# Armed via .d/ (per-owner) → block all three gated commands.
+# The COMMITTING owner (self) armed → block all three gated commands.
 T=$(spof_setup)
 TR="$T/.claude/skills/hunt-bugs/bughunt-track.sh"
-CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" add CdkRealDriftIntegA >/dev/null
-check "armed via .d/ blocks git commit"   "$(gate_exit "$T" "git commit -m x")"        2
-check "armed via .d/ blocks gh pr create" "$(gate_exit "$T" "gh pr create --fill")"    2
-check "armed via .d/ blocks gh pr merge"  "$(gate_exit "$T" "gh pr merge 5 --squash")" 2
+bash "$TR" add CdkRealDriftIntegSelf >/dev/null   # no $CDKRD_BUGHUNT_OWNER → owner = repo toplevel
+check "self owner armed blocks git commit"   "$(gate_exit "$T" "git commit -m x")"        2
+check "self owner armed blocks gh pr create" "$(gate_exit "$T" "gh pr create --fill")"    2
+check "self owner armed blocks gh pr merge"  "$(gate_exit "$T" "gh pr merge 5 --squash")" 2
 rm -rf "$T"
 
-# SPOF regression: two distinct owners; A's clear must NOT release B's pending stacks.
+# PER-OWNER ISOLATION (the whole point): only an UNRELATED peer owner is armed →
+# the self commit PASSES. A peer session's live hunt no longer blocks us.
 T=$(spof_setup)
 TR="$T/.claude/skills/hunt-bugs/bughunt-track.sh"
-CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" add CdkRealDriftIntegA >/dev/null
 CDKRD_BUGHUNT_OWNER=ownerB bash "$TR" add CdkRealDriftIntegB >/dev/null
-check "both owners armed -> gate blocks" "$(gate_exit "$T" "git commit -m x")" 2
-CDKRD_BUGHUNT_OWNER=ownerA bash "$TR" clear >/dev/null
-# THE proof the SPOF is closed — fails on the old single-file tracker (A's clear
-# wiped the whole file, releasing B), passes on the per-owner port.
-check "after A clears, B still pending -> gate STILL blocks" "$(gate_exit "$T" "git commit -m x")" 2
-assert_file "B's owner file survived A's clear" -s "$T/.markgate-bughunt-pending.d/ownerB"
-assert_file "A's owner file removed by A's clear" ! -e "$T/.markgate-bughunt-pending.d/ownerA"
-CDKRD_BUGHUNT_OWNER=ownerB bash "$TR" clear >/dev/null
-check "after both owners clear -> gate releases" "$(gate_exit "$T" "git commit -m x")" 0
+check "peer owner armed does NOT block self commit" "$(gate_exit "$T" "git commit -m x")" 0
+assert_file "peer owner file present (not touched)" -s "$T/.markgate-bughunt-pending.d/ownerB"
 rm -rf "$T"
 
-# Legacy flat file still honored (back-compat with a session armed pre-port).
+# Combined + SPOF: self + peer both armed. Self is blocked; after self clears, the
+# self commit passes EVEN THOUGH the peer is still pending (per-owner release), and
+# the peer's file survived self's clear (the SPOF this design closes).
+T=$(spof_setup)
+TR="$T/.claude/skills/hunt-bugs/bughunt-track.sh"
+bash "$TR" add CdkRealDriftIntegSelf >/dev/null
+CDKRD_BUGHUNT_OWNER=ownerB bash "$TR" add CdkRealDriftIntegB >/dev/null
+check "self armed (peer too) blocks self commit" "$(gate_exit "$T" "git commit -m x")" 2
+CDKRD_BUGHUNT_FORCE_CLEAR=1 bash "$TR" clear >/dev/null   # self clear (no env → self owner)
+check "after self clears, self commit passes despite peer pending" "$(gate_exit "$T" "git commit -m x")" 0
+assert_file "peer file survived self's clear" -s "$T/.markgate-bughunt-pending.d/ownerB"
+CDKRD_BUGHUNT_OWNER=ownerB CDKRD_BUGHUNT_FORCE_CLEAR=1 bash "$TR" clear >/dev/null
+assert_file "peer file removed by peer's own clear" ! -e "$T/.markgate-bughunt-pending.d/ownerB"
+rm -rf "$T"
+
+# ---------------------------------------------------------------------------
+# PER-SESSION deploy-autoarm token. deploy-autoarm-gate arms "autoarm-<session>" on a
+# deploy; the gate blocks the SAME session's commit (session id from
+# $CLAUDE_CODE_SESSION_ID or the payload session_id) but NOT a peer session's.
+# ---------------------------------------------------------------------------
+# gate_exit_sess <tmp> <cmd> <session-id> -> hook exit with CLAUDE_CODE_SESSION_ID set
+gate_exit_sess() {
+  local tmp="$1" cmd="$2" sess="$3" payload code
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "$cmd" | jq -Rs .)},\"cwd\":\"$tmp\",\"session_id\":\"$sess\"}"
+  set +e
+  printf '%s' "$payload" | CLAUDE_CODE_SESSION_ID="$sess" bash "$HOOK" >/dev/null 2>&1
+  code=$?
+  set -e
+  printf '%s' "$code"
+}
+
+# This session's autoarm token blocks this session's commit; a peer session's does not.
+T=$(spof_setup)
+mkdir -p "$T/.markgate-bughunt-pending.d"
+printf 'AUTODEPLOY-pending-verify\n' > "$T/.markgate-bughunt-pending.d/autoarm-sessX"
+check "own session's autoarm token blocks commit"   "$(gate_exit_sess "$T" "git commit -m x" "sessX")" 2
+check "peer session's autoarm token does NOT block" "$(gate_exit_sess "$T" "git commit -m x" "sessY")" 0
+check "no session id + autoarm-<sess> present -> pass (only autoarm-shared is global-ish)" \
+  "$(gate_exit "$T" "git commit -m x")" 0
+rm -rf "$T"
+
+# Legacy flat file still a GLOBAL block (back-compat with a session armed pre-port).
 T=$(spof_setup)
 printf 'CdkRealDriftIntegLegacy\n' > "$T/.markgate-bughunt-pending"
 check "legacy flat file still blocks" "$(gate_exit "$T" "git commit -m x")" 2
