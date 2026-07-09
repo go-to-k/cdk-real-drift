@@ -1,13 +1,24 @@
 import {
+  LambdaClient,
+  ListAliasesCommand,
+  ListEventSourceMappingsCommand,
+  ListFunctionUrlConfigsCommand,
+  ListVersionsByFunctionCommand,
+} from '@aws-sdk/client-lambda';
+import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
+import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
+import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import type { EnumeratorContext } from '../src/read/child-enumerators.js';
 import {
+  enumerateLambdaFunctionChildren,
   enumerateRdsClusterChildren,
+  enumerateSnsTopicChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
   diffApiGatewayGatewayResponses,
@@ -1687,5 +1698,101 @@ describe('diffEfsFileSystemChildren (EFS file system mount targets)', () => {
         ],
       })
     ).toEqual([]);
+  });
+});
+
+// #962: when a declared child's parent-linking property could not be resolved by the
+// intrinsic resolver (a `{{resolve:...}}` dynamic ref, a no-default Parameter Ref, a
+// degraded Fn::ImportValue, a non-string Fn::Sub, or a malformed Fn::Join that fails
+// closed), that property is the UNRESOLVED symbol — never a plain string that could match
+// the parent's physical id/ARN. A bare `===` match then failed, the declared child was
+// dropped from the declared set, and its LIVE counterpart was falsely flagged `[Added]`
+// (offering a DESTRUCTIVE DeleteResource against a resource the template declares). The
+// enumerators must fail SAFE: an UNRESOLVED parent-ref counts as a potential match, so the
+// declared child stays in the declared set and is NOT flagged added.
+describe('child enumerators fail safe on an UNRESOLVED parent-ref (#962)', () => {
+  it('Lambda alias: an UNRESOLVED FunctionName is NOT flagged added (defect 1)', async () => {
+    const aliasArn = 'arn:aws:lambda:us-east-1:111122223333:function:my-fn:live';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [{ AliasArn: aliasArn, Name: 'live' }] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        // The declared alias targets this function, but its FunctionName is UNRESOLVED
+        // (e.g. an Fn::ImportValue with a degraded export). Its physical id IS the AliasArn.
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Alias',
+            physicalId: aliasArn,
+            declared: { FunctionName: UNRESOLVED },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    // Fail-safe: the declared alias must NOT be reported as an out-of-band addition.
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('Lambda alias: a live alias with NO declared counterpart is still flagged added', async () => {
+    // Guard against over-folding: the fail-safe must not suppress a genuine out-of-band alias.
+    const rogueArn = 'arn:aws:lambda:us-east-1:111122223333:function:my-fn:rogue';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [{ AliasArn: rogueArn, Name: 'rogue' }] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added.map((a) => a.identifier)).toEqual([rogueArn]);
+    lambda.restore();
+  });
+
+  it('SNS subscription: an UNRESOLVED TopicArn is NOT flagged added (defect 2)', async () => {
+    const subArn =
+      'arn:aws:sns:us-east-1:111122223333:my-topic:00000000-1111-2222-3333-444444444444';
+    const sns = mockClient(SNSClient);
+    sns.on(ListSubscriptionsByTopicCommand).resolves({
+      Subscriptions: [{ SubscriptionArn: subArn, Protocol: 'sqs', Endpoint: 'q' }],
+    });
+    const ctx = {
+      parent: { physicalId: 'arn:aws:sns:us-east-1:111122223333:my-topic', logicalId: 'Topic' },
+      desired: {
+        // The declared subscription targets this topic, but its TopicArn is UNRESOLVED
+        // (e.g. a `Ref` to a no-default Parameter). Its physical id IS the SubscriptionArn.
+        resources: [
+          {
+            resourceType: 'AWS::SNS::Subscription',
+            physicalId: subArn,
+            declared: { TopicArn: UNRESOLVED },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateSnsTopicChildren(ctx);
+    expect(added).toEqual([]);
+    sns.restore();
   });
 });

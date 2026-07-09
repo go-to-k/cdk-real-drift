@@ -118,8 +118,28 @@ import {
   type Subscription as SnsSubscription,
 } from '@aws-sdk/client-sns';
 import { READ_RETRY } from './client-config.js';
+import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import type { Desired } from '../desired/template-adapter.js';
 import type { DesiredResource } from '../types.js';
+
+// Fail-safe parent-ref match. A child enumerator links a DECLARED child to its enumerated
+// parent by comparing the child's parent-ref property (UserPoolId, TopicArn, FunctionName,
+// EventBusName, …) against the parent's physical id / ARN. When the intrinsic resolver could
+// NOT evaluate that declared property it is the UNRESOLVED symbol — a `{{resolve:...}}`
+// dynamic reference, a `Ref` to a no-default Parameter (#744), a degraded Fn::ImportValue
+// (#784), a non-string Fn::Sub, or a malformed Fn::Join that fails closed (#851). A bare
+// `===` then FAILS, so the declared child is dropped from the declared set and its LIVE
+// counterpart is falsely flagged `[Added] created out of band` — offering a DESTRUCTIVE
+// Cloud Control DeleteResource against a resource the template explicitly declares (#962).
+// Fail SAFE: "we couldn't resolve what the template says" must never become "this live
+// resource is out of band, delete it?", so an UNRESOLVED parent-ref counts as a POTENTIAL
+// match and the declared child is KEPT. Otherwise the declared value must equal one of the
+// candidate parent ids/ARNs (undefined candidates — e.g. an unresolved parent ARN — are
+// ignored). Mirrors classify.ts's `v === UNRESOLVED || hasUnresolved(v)` detection.
+function parentRefMatches(declaredValue: unknown, ...candidates: (string | undefined)[]): boolean {
+  if (declaredValue === UNRESOLVED || hasUnresolved(declaredValue)) return true;
+  return candidates.some((c) => c !== undefined && declaredValue === c);
+}
 
 // One out-of-band child resource: present live, absent from the template.
 export interface AddedChild {
@@ -318,7 +338,7 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const declaredResourceIds: string[] = [];
   const declaredMethodKeys: string[] = [];
   for (const r of desired.resources) {
-    if (r.declared.RestApiId !== apiId) continue;
+    if (!parentRefMatches(r.declared.RestApiId, apiId)) continue;
     if (r.resourceType === 'AWS::ApiGateway::Resource' && r.physicalId) {
       declaredResourceIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::ApiGateway::Method') {
@@ -343,22 +363,25 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ApiGateway::Authorizer' &&
-      r.declared.RestApiId === apiId &&
+      parentRefMatches(r.declared.RestApiId, apiId) &&
       r.physicalId
     ) {
       declaredAuthorizerIds.push(r.physicalId);
-    } else if (r.resourceType === 'AWS::ApiGateway::Model' && r.declared.RestApiId === apiId) {
+    } else if (
+      r.resourceType === 'AWS::ApiGateway::Model' &&
+      parentRefMatches(r.declared.RestApiId, apiId)
+    ) {
       const name = typeof r.declared.Name === 'string' ? r.declared.Name : r.physicalId;
       if (name) declaredModelNames.push(name);
     } else if (
       r.resourceType === 'AWS::ApiGateway::RequestValidator' &&
-      r.declared.RestApiId === apiId &&
+      parentRefMatches(r.declared.RestApiId, apiId) &&
       r.physicalId
     ) {
       declaredValidatorIds.push(r.physicalId);
     } else if (
       r.resourceType === 'AWS::ApiGateway::GatewayResponse' &&
-      r.declared.RestApiId === apiId &&
+      parentRefMatches(r.declared.RestApiId, apiId) &&
       typeof r.declared.ResponseType === 'string'
     ) {
       declaredResponseTypes.push(r.declared.ResponseType);
@@ -816,7 +839,7 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   // Declared stages of THIS api. A Stage's physical id (Ref) IS its StageName.
   const declaredStageNames: string[] = [];
   for (const r of desired.resources) {
-    if (r.declared.ApiId !== apiId) continue;
+    if (!parentRefMatches(r.declared.ApiId, apiId)) continue;
     if (r.resourceType === 'AWS::ApiGatewayV2::Route' && r.physicalId) {
       declaredRouteIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::ApiGatewayV2::Integration' && r.physicalId) {
@@ -927,7 +950,7 @@ async function pageSubscriptions(client: SNSClient, topicArn: string): Promise<S
   return out;
 }
 
-async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const topicArn = parent.physicalId; // the Topic's physical id IS its ARN
   if (!topicArn) return [];
@@ -938,7 +961,7 @@ async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise<AddedC
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::SNS::Subscription' &&
-      r.declared.TopicArn === topicArn &&
+      parentRefMatches(r.declared.TopicArn, topicArn) &&
       r.physicalId
     ) {
       declaredSubscriptionArns.push(r.physicalId);
@@ -1138,7 +1161,9 @@ async function pageLambdaVersions(
   return out;
 }
 
-async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+export async function enumerateLambdaFunctionChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const functionName = parent.physicalId; // the Function's physical id is its name
   if (!functionName) return [];
@@ -1152,7 +1177,7 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::EventSourceMapping' || !r.physicalId) continue;
     const fn = r.declared.FunctionName;
-    if (fn === functionName || (fnArn !== undefined && fn === fnArn)) {
+    if (parentRefMatches(fn, functionName, fnArn)) {
       declaredMappingIds.push(r.physicalId);
     }
   }
@@ -1166,7 +1191,7 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Url') continue;
     const target = r.declared.TargetFunctionArn;
-    const targetsThis = target === functionName || (fnArn !== undefined && target === fnArn);
+    const targetsThis = parentRefMatches(target, functionName, fnArn);
     if (targetsThis) {
       // The URL's FunctionArn (its primaryIdentifier) is the function's bare ARN for an
       // unqualified URL; prefer the resolved live function ARN, else the declared physicalId.
@@ -1179,30 +1204,28 @@ async function enumerateLambdaFunctionChildren(ctx: EnumeratorContext): Promise<
 
   // Declared aliases targeting THIS function. An AWS::Lambda::Alias's CFn physical id
   // (Ref) IS its AliasArn; its FunctionName resolves (via gather) to the function name or
-  // ARN. Prefer matching on the FunctionName targeting this function; fall back to
-  // including any alias whose FunctionName did not resolve (undefined) so a resolved-id
-  // mismatch never causes a declared alias to be flagged added.
+  // ARN. Match on the FunctionName targeting this function; parentRefMatches also keeps an
+  // alias whose FunctionName is UNRESOLVED (FunctionName is REQUIRED, so it is never
+  // genuinely absent — the earlier `fn === undefined` fail-safe was dead code, #962), so a
+  // resolved-id mismatch never causes a declared alias to be flagged added.
   const declaredAliasArns: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Alias' || !r.physicalId) continue;
-    const fn = r.declared.FunctionName;
-    const targetsThis = fn === functionName || (fnArn !== undefined && fn === fnArn);
-    if (targetsThis || fn === undefined) {
+    if (parentRefMatches(r.declared.FunctionName, functionName, fnArn)) {
       declaredAliasArns.push(r.physicalId);
     }
   }
 
   // Declared versions targeting THIS function. An AWS::Lambda::Version's CFn physical id
   // (Ref) IS its versioned FunctionArn; its FunctionName resolves (via gather) to the
-  // function name or ARN. Prefer matching on the FunctionName targeting this function; fall
-  // back to including any version whose FunctionName did not resolve (undefined) so a
-  // resolved-id mismatch never causes a declared version to be flagged added.
+  // function name or ARN. Match on the FunctionName targeting this function; parentRefMatches
+  // also keeps a version whose FunctionName is UNRESOLVED (the earlier `fn === undefined`
+  // fail-safe was dead code — FunctionName is REQUIRED, #962), so a resolved-id mismatch
+  // never causes a declared version to be flagged added.
   const declaredVersionArns: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Version' || !r.physicalId) continue;
-    const fn = r.declared.FunctionName;
-    const targetsThis = fn === functionName || (fnArn !== undefined && fn === fnArn);
-    if (targetsThis || fn === undefined) {
+    if (parentRefMatches(r.declared.FunctionName, functionName, fnArn)) {
       declaredVersionArns.push(r.physicalId);
     }
   }
@@ -1312,7 +1335,7 @@ async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedC
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Events::Rule') continue;
     const bus = r.declared.EventBusName;
-    if (bus !== busName && !(busArn !== undefined && bus === busArn)) continue;
+    if (!parentRefMatches(bus, busName, busArn)) continue;
     const raw = r.physicalId ?? (typeof r.declared.Name === 'string' ? r.declared.Name : undefined);
     if (raw) declaredRuleNames.push(raw.includes('|') ? raw.slice(raw.lastIndexOf('|') + 1) : raw);
   }
@@ -1489,19 +1512,19 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::Cognito::UserPoolClient' &&
-      r.declared.UserPoolId === userPoolId &&
+      parentRefMatches(r.declared.UserPoolId, userPoolId) &&
       r.physicalId
     ) {
       declaredClientIds.push(r.physicalId);
     } else if (
       r.resourceType === 'AWS::Cognito::UserPoolGroup' &&
-      r.declared.UserPoolId === userPoolId
+      parentRefMatches(r.declared.UserPoolId, userPoolId)
     ) {
       const name = typeof r.declared.GroupName === 'string' ? r.declared.GroupName : r.physicalId;
       if (name) declaredGroupNames.push(name);
     } else if (
       r.resourceType === 'AWS::Cognito::UserPoolResourceServer' &&
-      r.declared.UserPoolId === userPoolId
+      parentRefMatches(r.declared.UserPoolId, userPoolId)
     ) {
       const identifier =
         typeof r.declared.Identifier === 'string' ? r.declared.Identifier : r.physicalId;
@@ -1697,9 +1720,12 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     if (r.resourceType !== 'AWS::AppSync::DataSource' || typeof r.declared.Name !== 'string') {
       continue;
     }
+    // Fail-safe: an UNRESOLVED ApiId (dynamic ref / no-default Param / degraded ImportValue)
+    // must not exclude a declared datasource (#962); only a RESOLVED, non-matching id does.
     const declaredApiId = r.declared.ApiId;
-    if (typeof declaredApiId !== 'string') continue;
-    if (bareApiId(declaredApiId) !== apiId) continue;
+    if (declaredApiId !== UNRESOLVED && !hasUnresolved(declaredApiId)) {
+      if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
+    }
     declaredDataSourceNames.push(r.declared.Name);
   }
 
@@ -1710,9 +1736,11 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
   const declaredResolverKeys: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::AppSync::Resolver') continue;
+    // Fail-safe: an UNRESOLVED ApiId must not exclude a declared resolver (#962).
     const declaredApiId = r.declared.ApiId;
-    if (typeof declaredApiId !== 'string') continue;
-    if (bareApiId(declaredApiId) !== apiId) continue;
+    if (declaredApiId !== UNRESOLVED && !hasUnresolved(declaredApiId)) {
+      if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
+    }
     const { TypeName, FieldName } = r.declared;
     if (typeof TypeName !== 'string' || typeof FieldName !== 'string') continue;
     declaredResolverKeys.push(`${TypeName}|${FieldName}`);
@@ -1725,9 +1753,11 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
   const declaredFunctionArns: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::AppSync::FunctionConfiguration' || !r.physicalId) continue;
+    // Fail-safe: an UNRESOLVED ApiId must not exclude a declared function (#962).
     const declaredApiId = r.declared.ApiId;
-    if (typeof declaredApiId !== 'string') continue;
-    if (bareApiId(declaredApiId) !== apiId) continue;
+    if (declaredApiId !== UNRESOLVED && !hasUnresolved(declaredApiId)) {
+      if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
+    }
     declaredFunctionArns.push(r.physicalId);
   }
 
@@ -1892,7 +1922,10 @@ async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedC
   // literal declared FilterName when present.
   const declaredFilterNames: string[] = [];
   for (const r of desired.resources) {
-    if (r.resourceType !== 'AWS::Logs::MetricFilter' || r.declared.LogGroupName !== logGroupName) {
+    if (
+      r.resourceType !== 'AWS::Logs::MetricFilter' ||
+      !parentRefMatches(r.declared.LogGroupName, logGroupName)
+    ) {
       continue;
     }
     const name = typeof r.declared.FilterName === 'string' ? r.declared.FilterName : r.physicalId;
@@ -1905,7 +1938,7 @@ async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedC
   for (const r of desired.resources) {
     if (
       r.resourceType !== 'AWS::Logs::SubscriptionFilter' ||
-      r.declared.LogGroupName !== logGroupName
+      !parentRefMatches(r.declared.LogGroupName, logGroupName)
     ) {
       continue;
     }
@@ -1992,7 +2025,7 @@ async function enumerateLoadBalancerChildren(ctx: EnumeratorContext): Promise<Ad
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ElasticLoadBalancingV2::Listener' &&
-      r.declared.LoadBalancerArn === lbArn &&
+      parentRefMatches(r.declared.LoadBalancerArn, lbArn) &&
       r.physicalId
     ) {
       declaredListenerArns.push(r.physicalId);
@@ -2067,7 +2100,7 @@ async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedC
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ElasticLoadBalancingV2::ListenerRule' &&
-      r.declared.ListenerArn === listenerArn &&
+      parentRefMatches(r.declared.ListenerArn, listenerArn) &&
       r.physicalId
     ) {
       declaredRuleArns.push(r.physicalId);
@@ -2142,7 +2175,11 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
   // gather). A subnet's physical id IS its SubnetId.
   const declaredSubnetIds: string[] = [];
   for (const r of desired.resources) {
-    if (r.resourceType === 'AWS::EC2::Subnet' && r.declared.VpcId === vpcId && r.physicalId) {
+    if (
+      r.resourceType === 'AWS::EC2::Subnet' &&
+      parentRefMatches(r.declared.VpcId, vpcId) &&
+      r.physicalId
+    ) {
       declaredSubnetIds.push(r.physicalId);
     }
   }
@@ -2230,7 +2267,7 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::EC2::Route' &&
-      r.declared.RouteTableId === routeTableId &&
+      parentRefMatches(r.declared.RouteTableId, routeTableId) &&
       typeof r.declared.DestinationCidrBlock === 'string'
     ) {
       declaredCidrs.push(r.declared.DestinationCidrBlock);
@@ -2309,7 +2346,7 @@ async function enumerateEcsClusterChildren(ctx: EnumeratorContext): Promise<Adde
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::ECS::Service' || !r.physicalId) continue;
     const decl = r.declared.Cluster;
-    if (decl === cluster || (clusterArn !== undefined && decl === clusterArn)) {
+    if (parentRefMatches(decl, cluster, clusterArn)) {
       declaredServiceArns.push(r.physicalId);
     }
   }
@@ -2375,7 +2412,7 @@ async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChi
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::KMS::Alias') continue;
     const target = r.declared.TargetKeyId;
-    if (target !== keyId && !(keyArn !== undefined && target === keyArn)) continue;
+    if (!parentRefMatches(target, keyId, keyArn)) continue;
     const name = typeof r.declared.AliasName === 'string' ? r.declared.AliasName : r.physicalId;
     if (name) declaredAliasNames.push(name);
   }
@@ -2499,13 +2536,13 @@ async function enumerateAppConfigApplicationChildren(
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::AppConfig::Environment' &&
-      r.declared.ApplicationId === applicationId &&
+      parentRefMatches(r.declared.ApplicationId, applicationId) &&
       r.physicalId
     ) {
       declaredEnvironmentIds.push(r.physicalId);
     } else if (
       r.resourceType === 'AWS::AppConfig::ConfigurationProfile' &&
-      r.declared.ApplicationId === applicationId &&
+      parentRefMatches(r.declared.ApplicationId, applicationId) &&
       r.physicalId
     ) {
       declaredProfileIds.push(r.physicalId);
@@ -2594,7 +2631,7 @@ async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<A
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::EFS::MountTarget' &&
-      r.declared.FileSystemId === fileSystemId &&
+      parentRefMatches(r.declared.FileSystemId, fileSystemId) &&
       r.physicalId
     ) {
       declaredMountTargetIds.push(r.physicalId);
@@ -2693,7 +2730,7 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::RDS::DBInstance' &&
-      r.declared.DBClusterIdentifier === clusterId &&
+      parentRefMatches(r.declared.DBClusterIdentifier, clusterId) &&
       r.physicalId
     ) {
       declaredInstanceIds.push(r.physicalId);
