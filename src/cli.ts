@@ -3,6 +3,7 @@
 // check/record/ignore never write to AWS (record writes only the baseline FILE; ignore
 // writes only .cdkrd/ignore.yaml); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
+import { flushAndExit } from './exit.js';
 import { runRecord } from './commands/record.js';
 import { runIgnore } from './commands/ignore.js';
 import { runCheck } from './commands/check.js';
@@ -128,7 +129,7 @@ async function main(argv: string[]): Promise<number> {
 }
 
 main(process.argv.slice(2))
-  .then((code) => process.exit(code))
+  .then((code) => flushAndExit(code))
   .catch((e: unknown) => {
     const msg = (e as { message?: string })?.message ?? String(e);
     if (/credential|could not load cred|security token/i.test(msg)) {
@@ -144,5 +145,5 @@ main(process.argv.slice(2))
     } else {
       console.error(`error: ${msg}`);
     }
-    process.exit(2);
+    return flushAndExit(2);
   });
