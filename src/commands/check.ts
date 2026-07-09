@@ -396,6 +396,13 @@ export async function runCheck(args: string[]): Promise<number> {
       if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         jsonError(stackName, region, 'not in the synth output — skipped (--pre-deploy)');
+        // #948: a stack resolveStacks discovered but the --pre-deploy synth did not
+        // produce is a WHOLE-stack coverage gap — every one of its resources went
+        // unread. --strict's contract ("exit 1 when coverage is incomplete") must catch
+        // it exactly as strictCoverageExit catches a single skipped resource, else a
+        // NAMED stack (`check Prod --pre-deploy --strict`) is silently un-covered — the
+        // same silent-pass resolveStacks hard-errors on a name matching nothing to avoid.
+        worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }
       // The stack's synth template (always carried by resolveStacks) is the non-ASCII
@@ -669,6 +676,12 @@ export async function runCheck(args: string[]): Promise<number> {
       if (e instanceof StackNotCheckableError) {
         console.error(`note: ${stackName}: ${e.message} — skipped`);
         jsonError(stackName, region, `${e.message} — skipped`);
+        // #948: skipping an ENTIRE stack (REVIEW_IN_PROGRESS / *_IN_PROGRESS /
+        // ROLLBACK_COMPLETE) leaves every one of its resources unread — the maximal
+        // coverage gap. --strict must fail exactly as it does for one skipped resource;
+        // otherwise `check --all --strict --fail` greenlights CI while a whole stack went
+        // unexamined. Not drift (leave --fail untouched), purely a coverage axis.
+        worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);
