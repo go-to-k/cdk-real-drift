@@ -1,3 +1,10 @@
+## [0.2.74](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.73...v0.2.74) (2026-07-09)
+
+
+### Bug Fixes
+
+* **desired:** explicit !!timestamp no longer resolves to a JS Date ([#909](https://github.com/go-to-k/cdk-real-drift/issues/909)) ([#936](https://github.com/go-to-k/cdk-real-drift/issues/936)) ([9b5446b](https://github.com/go-to-k/cdk-real-drift/commit/9b5446b263cc775fb0c2b7ca40bf946a75e8b80e))
+
 ## [0.2.73](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.72...v0.2.73) (2026-07-09)
 
 
