@@ -2338,10 +2338,12 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       },
     });
 
-    it('a reordered set + server-injected param is NOT declared drift; the live-only param surfaces as undeclared', () => {
+    it('a reordered set + server-injected param is NOT declared drift; the default NumberOfRetries folds to atDefault (#845)', () => {
       // AWS reorders the set (LambdaArn first) and injects NumberOfRetries=3 — exactly the
       // shape observed live on firehose-processors-rich. Declared subset of live by
-      // ParameterName -> no declared FP.
+      // ParameterName -> no declared FP. The server-injected NumberOfRetries="3" is the AWS
+      // default (#845), so the live-only entry folds to atDefault (not undeclared); a clean
+      // stream stays clean while a non-"3" retry count still surfaces (see below).
       const findings = classifyResource(
         res(T, declared),
         liveProcessing([
@@ -2353,14 +2355,33 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         emptySchema
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-      const undeclared = findings.filter((f) => f.tier === 'undeclared');
-      expect(undeclared.map((f) => f.path)).toEqual([
+      expect(findings.filter((f) => f.tier === 'undeclared')).toEqual([]);
+      const atDefault = findings.filter((f) => f.tier === 'atDefault');
+      expect(atDefault.map((f) => f.path)).toEqual([
         'ExtendedS3DestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
       ]);
-      expect(undeclared[0]).toMatchObject({
+      expect(atDefault[0]).toMatchObject({
         nested: true,
         actual: { ParameterName: 'NumberOfRetries', ParameterValue: '3' },
       });
+    });
+
+    it('a NON-default NumberOfRetries still surfaces as undeclared (#845 detection preserved)', () => {
+      // NumberOfRetries="5" diverges from the AWS default "3", so it is NOT folded — it
+      // surfaces as undeclared inventory (recorded; a later change still surfaces).
+      const undeclared = classifyResource(
+        res(T, declared),
+        liveProcessing([
+          { ParameterName: 'LambdaArn', ParameterValue: 'arn:aws:lambda:us-east-1:1:function:f' },
+          { ParameterName: 'NumberOfRetries', ParameterValue: '5' },
+          { ParameterName: 'RoleArn', ParameterValue: 'arn:aws:iam::1:role/r' },
+          { ParameterName: 'BufferSizeInMBs', ParameterValue: '1' },
+        ]),
+        emptySchema
+      ).filter((f) => f.tier === 'undeclared');
+      expect(undeclared.map((f) => f.path)).toEqual([
+        'ExtendedS3DestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
+      ]);
     });
 
     it('a genuine change to a DECLARED parameter value still surfaces as declared drift (fail-closed)', () => {
@@ -2444,7 +2465,10 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         emptySchema
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-      expect(findings.filter((f) => f.tier === 'undeclared').map((f) => f.path)).toEqual([
+      // #845: the server-injected NumberOfRetries="3" is the AWS default, so on any destination
+      // config it folds to atDefault (not undeclared) — the fold is destination-agnostic too.
+      expect(findings.filter((f) => f.tier === 'undeclared')).toEqual([]);
+      expect(findings.filter((f) => f.tier === 'atDefault').map((f) => f.path)).toEqual([
         'RedshiftDestinationConfiguration.ProcessingConfiguration.Processors.0.Parameters[NumberOfRetries]',
       ]);
     });

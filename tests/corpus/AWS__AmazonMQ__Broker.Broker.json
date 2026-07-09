@@ -208,7 +208,7 @@
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
       "path": "StorageType",
