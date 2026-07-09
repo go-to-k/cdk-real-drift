@@ -21,7 +21,7 @@ un-deployed code edits would show as false "drift".
 
 ```
 1. baseline file load            .cdkrd/baselines/<stack>.<accountId>.<region>.json
-2. desired (declared):           GetTemplate + DescribeStackResources (phys-id map)
+2. desired (declared):           GetTemplate + ListStackResources (phys-id map)
                                  → intrinsic resolution
 3. live full state per resource: CC API GetResource (default)
                                  → SDK override (gap types) → skip+log
@@ -107,7 +107,7 @@ NEW (cdkd does NOT have these):
 
 - **schema-strip** — `describe-type` readOnly/writeOnly → strip set (cdkd hand-codes per-provider instead; this is our differentiator: less per-type code)
 - **policy canonicalizer** — scalar/array unify + statement sort + account-id↔root-ARN + Condition value-set canonicalize (scalar/array unify + sort) (no Version fabrication); cdkd only URL-decodes + JSON.parse, raw-compares → tolerates false positives
-- **desired-adapter** — GetTemplate + DescribeStackResources → resolved declared
+- **desired-adapter** — GetTemplate + ListStackResources → resolved declared
 - **baseline file I/O** — git-committed JSON (the `record` verb; KEEPS watching)
 - **ignore rules** — git-committed `.cdkrd/ignore.yaml` (hand-edited POLICY, so
   YAML to carry `#` comments saying WHY; baseline stays JSON because it is

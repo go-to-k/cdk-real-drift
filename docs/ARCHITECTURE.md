@@ -216,7 +216,7 @@ Entry: [src/commands/check.ts](../src/commands/check.ts) → shared gather in
 
 ```
 1. resolve stacks        resolve-stacks.ts: synth-discover the app → all | exact names | globs
-2. desired (declared)    template-adapter.ts: GetTemplate + DescribeStackResources
+2. desired (declared)    template-adapter.ts: GetTemplate + ListStackResources
                          (phys-id map) + DescribeStacks (params) → intrinsic resolution
                          (--pre-deploy: LOCAL synth template replaces GetTemplate;
                          otherwise the synth template recovers GetTemplate's `?`-masked
@@ -337,8 +337,10 @@ checked.
 Resolves `Ref` / `Fn::Sub` / `Fn::If` (+ condition eval: Equals/And/Or/Not) /
 `Fn::Join` / `Fn::Select` / `Fn::GetAtt` (both the array form and the long-form
 `"LogicalId.Attr"` string) / `Fn::FindInMap` / `Fn::Split` / `Fn::Cidr` (the
-deterministic IPv4 subnet split) / `Fn::ImportValue` / `AWS::NoValue`, plus the
-`Fn::Sub` `${!Literal}` escape.
+deterministic IPv4 subnet split) / `Fn::Base64` (a pure, environment-INDEPENDENT
+transform — so declared EC2 UserData is compared instead of left UNRESOLVED) /
+`Fn::ImportValue` / `AWS::NoValue`, plus the `Fn::Sub` `${!Literal}` escape.
+`Fn::GetAZs` is deliberately NOT resolved (its value is environment-dependent).
 `Fn::FindInMap` resolves against `ctx.mappings` (from `template.Mappings`);
 `Fn::ImportValue` against `ctx.exports` (CFn cross-stack exports — see below);
 `Fn::Select` returns `UNRESOLVED` (not `undefined`) for an out-of-range index. All
@@ -902,8 +904,9 @@ until the next `record` upgrades the file (a stderr note says so).
 deployed to dev + prod (the very common `env: { account: PERSONAL || SHARED }` CDK
 pattern) gets one baseline file PER account, so they never collide and a
 personal-account run is not blocked by a committed shared-account baseline. Because
-the filename embeds the accountId — which only a gather (`DescribeStackResources`)
-resolves — `loadBaseline` is called AFTER the desired model is built (check was
+the filename embeds the accountId — which only a gather (`DescribeStacks`, whose
+`StackId` ARN carries the account) resolves — `loadBaseline` is called AFTER the
+desired model is built (check was
 already gather-then-load; revert + record's overwrite-check were reordered to match).
 The `accountId` FIELD remains as a **secondary guard** (`checkBaselineAccount`):
 a correctly-named file always matches, so it now only catches a file hand-copied or
@@ -1067,8 +1070,10 @@ a wrong-typed `ignore`, or an unknown top-level key (R62: a typo like `ignroe`
 would otherwise load as an empty config and silently disable every rule) — fails
 the run (exit 2) rather than silently dropping the rules. Applied even under `--show-all`
 (inventory un-suppresses the baseline, not the ignore rules); `--verbose` still lists
-the ignored entries. A CLI to manage rules (`cdkrd ignore <pattern>`) is a future
-open question (§13) — v1 is hand-edited. **Default text layout (R25, spacing
+the ignored entries. Rules can be hand-edited OR appended by the shipped
+`cdkrd ignore` verb (comment-preserving, append-only); a `cdkrd ignore --list`
+view to inspect the active rules without opening the file remains a future open
+question (§13 item 8). **Default text layout (R25, spacing
 R37/R48):** the three DRIFT tiers print in full; the INFORMATIONAL tiers are
 folded into an `info:` footer (per-tier counts + a reason breakdown, e.g.
 `skipped=24 (custom resource 12, override target unresolved 12)`) — a single
