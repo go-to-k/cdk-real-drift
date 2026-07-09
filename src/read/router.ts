@@ -71,6 +71,15 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ApiGatewayV2::Stage': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Route': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Integration': compositeWith('ApiId'),
+  // Model + Deployment are the same parent-first `[ApiId, <child>]` shape as
+  // Stage/Route/Integration — the CFn physical id (Ref) is the bare ModelId /
+  // DeploymentId, so a bare-id CC GetResource ValidationException-skips them (read-gap)
+  // on every WebSocket API with request-validation Models or explicit Deployments, so an
+  // out-of-band Model schema / Deployment description change is invisible. Verified live
+  // (#872, stack CdkrdHuntUWs, us-east-1): `<ApiId>|<ModelId>` / `<ApiId>|<DeploymentId>`
+  // read; the reverse orders return not-found.
+  'AWS::ApiGatewayV2::Model': compositeWith('ApiId'),
+  'AWS::ApiGatewayV2::Deployment': compositeWith('ApiId'),
   // ApiGatewayV2::Authorizer primaryIdentifier is [AuthorizerId, ApiId] — CHILD
   // first, the REVERSE of its v2 siblings (Stage/Route/Integration are [ApiId,
   // <child>] parent-first). The CFn physical id is the bare AuthorizerId; ApiId comes
@@ -302,6 +311,27 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
       typeof routeId === 'string' &&
       routeId.length > 0
       ? `${apiId}|${routeId}|${pid}`
+      : undefined;
+  },
+  // ApiGatewayV2 IntegrationResponse primaryIdentifier is the 3-SEGMENT composite
+  // [ApiId, IntegrationId, IntegrationResponseId] — parent-first, the same shape as its
+  // RouteResponse sibling above. The CFn physical id is only the LAST segment
+  // (IntegrationResponseId), so a bare-id CC GetResource ValidationException-skips it
+  // (read-gap) on every non-proxy WebSocket integration — the response templates / keys
+  // go entirely unwatched. BOTH parent segments are resolvable from the declared model:
+  // `ApiId` is a Ref to the Api, and `IntegrationId` is the declared Ref to the
+  // Integration. Verified live (#872, stack CdkrdHuntUWs, us-east-1):
+  // `ApiId|IntegrationId|IntegrationResponseId` reads; the reversed order returns
+  // not-found. An unresolved parent → fall back to the bare physical id (honest skip).
+  'AWS::ApiGatewayV2::IntegrationResponse': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const apiId = declared.ApiId;
+    const integrationId = declared.IntegrationId;
+    return typeof apiId === 'string' &&
+      apiId.length > 0 &&
+      typeof integrationId === 'string' &&
+      integrationId.length > 0
+      ? `${apiId}|${integrationId}|${pid}`
       : undefined;
   },
   // GuardDuty Filter primaryIdentifier is [DetectorId, Name] — parent-first. The CFn
