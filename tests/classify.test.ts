@@ -1359,15 +1359,18 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ]);
     expect(t('AWS::Glue::Job', { MaxCapacity: 10 }).undeclared).toEqual([]);
 
-    // A rule referencing its peer by id (SourceSecurityGroupId) reads back the peer group's
-    // NAME — an AWS reflection of the declared id, never user intent when undeclared.
+    // A rule referencing its peer by id reads back the peer group's NAME — an AWS reflection of
+    // the declared id, never user intent when undeclared. Ingress echoes SourceSecurityGroupName,
+    // egress echoes DestinationSecurityGroupName (its declared id is DestinationSecurityGroupId) —
+    // #888 fixed the egress key, which had wrongly been SourceSecurityGroupName.
     expect(
       t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'my-app-Exporter-Glue-sg' })
         .atDefault
     ).toEqual(['SourceSecurityGroupName']);
     expect(
-      t('AWS::EC2::SecurityGroupEgress', { SourceSecurityGroupName: 'some-other-sg' }).atDefault
-    ).toEqual(['SourceSecurityGroupName']);
+      t('AWS::EC2::SecurityGroupEgress', { DestinationSecurityGroupName: 'some-other-sg' })
+        .atDefault
+    ).toEqual(['DestinationSecurityGroupName']);
     expect(
       t('AWS::EC2::SecurityGroupIngress', { SourceSecurityGroupName: 'x' }).undeclared
     ).toEqual([]);
@@ -8580,17 +8583,27 @@ describe('CFn auto-generated name folding (generated tier)', () => {
     expect(tier('CdkRealDriftIntegIotVpces-NlbBC02D1613-Rz5FCsQXIO7E')).toBe('generated');
   });
 
-  it('no constructPath -> cannot derive the stack name -> never folds (safe)', () => {
+  it('no constructPath -> still folds via the logicalId-anchored branch (#888)', () => {
+    // An implicitly-created SG (an RDS cluster's / DBProxy's) can lose its aws:cdk:path in the
+    // deployed template, so the stack name cannot be derived. The undeclared name still reads back
+    // `<stack>-<logicalId>-<random>` — the logical id sits as a whole segment before CFn's random
+    // suffix — so it folds anchored on the logical id alone. (An undeclared GroupName can ONLY be
+    // the CFn-minted name; a user-set one is DECLARED and compared in the declared loop.)
     const r: DesiredResource = {
-      logicalId: 'Sg',
+      logicalId: 'ClusterSecurityGroup0921994B',
       resourceType: 'AWS::EC2::SecurityGroup',
       physicalId: 'sg-x',
       declared: {},
     };
-    const f = classifyResource(r, { GroupName: 'Any-Sg-8qZ9xcu9LOZR' }, bare).find(
-      (x) => x.path === 'GroupName'
-    );
-    expect(f?.tier).toBe('undeclared');
+    const tier = (name: string) =>
+      classifyResource(r, { GroupName: name }, bare).find((x) => x.path === 'GroupName')?.tier;
+    // `<stack>-<logicalId>-<random>` with the logical id as a whole non-first segment -> folds
+    expect(tier('Any-ClusterSecurityGroup0921994B-8qZ9xcu9LOZR')).toBe('generated');
+    // a value whose de-suffixed base does NOT end with this resource's logical id -> surfaces
+    expect(tier('Any-OtherLogicalId-8qZ9xcu9LOZR')).toBe('undeclared');
+    // a bare `<logicalId>-<random>` (no prefix segment) is NOT folded by this branch -> surfaces
+    // (that no-prefix form stays scoped per type+path to avoid over-folding short raw-CFn ids)
+    expect(tier('ClusterSecurityGroup0921994B-8qZ9xcu9LOZR')).toBe('undeclared');
   });
 
   // #509: a BucketDeployment's AwsCliLayer LayerName reads back its bare LOGICAL ID
