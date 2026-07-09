@@ -238,11 +238,14 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('phys');
   });
 
-  // R76: ApiGatewayV2 Stage/Route/Integration composite [ApiId, <child id>].
+  // R76 + #872: ApiGatewayV2 Stage/Route/Integration/Model/Deployment composite
+  // [ApiId, <child id>].
   for (const t of [
     'AWS::ApiGatewayV2::Stage',
     'AWS::ApiGatewayV2::Route',
     'AWS::ApiGatewayV2::Integration',
+    'AWS::ApiGatewayV2::Model',
+    'AWS::ApiGatewayV2::Deployment',
   ]) {
     it(`${t}: builds the ApiId|<child> composite identifier`, async () => {
       cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
@@ -255,6 +258,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
       expect(sent()).toBe('api456|child123');
     });
   }
+
+  it('ApiGatewayV2 IntegrationResponse: builds the ApiId|IntegrationId|IntegrationResponseId 3-segment composite (#872)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::IntegrationResponse',
+        physicalId: 'intresp789',
+        declared: { ApiId: 'api456', IntegrationId: 'integ123' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('api456|integ123|intresp789');
+  });
+
+  it('ApiGatewayV2 IntegrationResponse: an unresolved parent (missing IntegrationId) falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::IntegrationResponse',
+        physicalId: 'intresp789',
+        declared: { ApiId: 'api456' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('intresp789');
+  });
 
   it('ApiGatewayV2 Authorizer: builds the AuthorizerId|ApiId composite — CHILD first (reverse of its siblings)', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
