@@ -10,6 +10,7 @@ import {
   type IgnoreRuleObject,
   type IgnoreScope,
   ignoreRuleFor,
+  isUniversalPath,
   loadConfig,
   mergeIgnoreRules,
   parseIgnoreRule,
@@ -142,6 +143,31 @@ describe('applyIgnores', () => {
       cfg([p('*.DesiredCount')])
     );
     expect(out.map((f) => f.tier)).toEqual(['ignored', 'declared', 'undeclared']);
+  });
+
+  it('a `Parent/*` rule matches a DIRECT construct-path child but NOT a deeper descendant (#842)', () => {
+    // A `/` is a real construct-path segment boundary; `Parent/*` means "a direct child",
+    // so it must not leak to arbitrarily deep descendants (`Parent/Child/Grandchild`).
+    const child: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ChildAAAA',
+      constructPath: 'MyStack/Parent/Child',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    const grandchild: Finding = {
+      tier: 'undeclared',
+      logicalId: 'GrandBBBB',
+      constructPath: 'MyStack/Parent/Child/Grandchild',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Policies',
+      actual: [{}],
+    };
+    // direct child (within-stack path `Parent/Child`) is ignored…
+    expect(ign([child], 'MyStack', cfg([p('Parent/*.Policies')]))[0]?.tier).toBe('ignored');
+    // …but the deeper `Parent/Child/Grandchild` must stay drift (no cross-slash leak)
+    expect(ign([grandchild], 'MyStack', cfg([p('Parent/*.Policies')]))[0]?.tier).toBe('undeclared');
   });
 
   it('a parent rule still covers a deep same-named leaf via the ancestor walk (no under-match)', () => {
@@ -374,6 +400,17 @@ describe('applyIgnores', () => {
   });
 });
 
+describe('isUniversalPath (#842 all-wildcard guard)', () => {
+  it('is true for a pure-wildcard/separator path (would ignore everything)', () => {
+    for (const path of ['*', '**', '***', '*.*', '?', '??', '*.?', '*[*]', '*.*[*]', '.'])
+      expect(isUniversalPath(path), path).toBe(true);
+  });
+  it('is false as soon as the path names any literal segment', () => {
+    for (const path of ['Foo', 'Foo*', '*.DesiredCount', 'MyApi/*', '*/ApiRole.Policies', 'a?'])
+      expect(isUniversalPath(path), path).toBe(false);
+  });
+});
+
 describe('loadConfig', () => {
   let dir: string;
   let prevCwd: string;
@@ -458,6 +495,20 @@ describe('loadConfig', () => {
   it('an empty "path" → throws (a silent no-op rule must not masquerade as active, WAVE23)', async () => {
     await write('ignore:\n  - path: ""\n');
     await expect(loadConfig()).rejects.toThrow(/"path" must not be empty/);
+  });
+
+  it('an all-wildcard "path" → throws (would ignore every finding, #842)', async () => {
+    for (const badPath of ['*', '**', '*.*', '?', '*/*', '*.*[*]']) {
+      await write(`ignore:\n  - path: "${badPath}"\n`);
+      await expect(loadConfig(), badPath).rejects.toThrow(/must not be an all-wildcard pattern/);
+    }
+  });
+
+  it('a "path" with at least one literal segment is accepted (not over-rejected)', async () => {
+    await write('ignore:\n  - path: "MyApi/*"\n  - path: "*.DesiredCount"\n  - path: "Foo*"\n');
+    expect(await loadConfig()).toEqual({
+      ignore: [{ path: 'MyApi/*' }, { path: '*.DesiredCount' }, { path: 'Foo*' }],
+    });
   });
 
   it('a mapping entry with a non-string scope → throws', async () => {

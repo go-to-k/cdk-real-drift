@@ -33,13 +33,22 @@ export function matchesGlob(pattern: string, name: string): boolean {
 
 /**
  * Path-axis glob (for ignore-rule `path` patterns against a `<id>.<sub.path>` target):
- * a SEGMENT-aware variant where `*` / `?` do NOT cross a `.` or `[` boundary. So
+ * a SEGMENT-aware variant where `*` / `?` do NOT cross a `.`, `[`, or `/` boundary. So
  * `*.DesiredCount` matches `<anyId>.DesiredCount` (the documented intent — `*` = one id
  * segment) but NOT a same-named leaf nested deeper (`Tbl.Config.DesiredCount`, or a
  * free-form-map key literally named `DesiredCount`). Subtree coverage of a PARENT rule
  * (`X.Policies` covering `X.Policies[Mp].Name`) is handled separately by the ancestor
  * walk in `pathMatches`, so bounding `*` here does not under-match. The stack/region
  * axes keep `matchesGlob` (their names contain no `.`/`[`, so it is equivalent there).
+ *
+ * `/` is ALSO a hard segment boundary: `applyIgnores` matches against `/`-joined
+ * construct paths (`MyApi/Resource/Method`), so `MyApi/*` means "a direct child of
+ * MyApi" — bounding `*` at `/` keeps it from leaking to arbitrarily deep descendants
+ * (`MyApi/Resource/Method`). Deep-subtree coverage of a `/`-parent rule is still
+ * handled by the ancestor walk in `pathMatches` (which trims at `.` / `[`; a rule that
+ * means the whole subtree ends at the parent segment). Inside a `[...]` bracket a `/`
+ * is DATA, not a boundary — the brackets already delimit the key — so it stays literal
+ * there, exactly like `.`.
  *
  * INSIDE a `[...]` bracket segment a `*` / `?` is UNBOUNDED within that bracket: the
  * brackets already delimit the key, so a `.` between them is DATA, not a segment
@@ -52,8 +61,8 @@ export function matchesPathGlob(pattern: string, target: string): boolean {
   let out = '^';
   let inBracket = false;
   for (const ch of pattern.replace(/\*+/g, '*')) {
-    if (ch === '*') out += inBracket ? '[^\\]]*' : '[^.[]*';
-    else if (ch === '?') out += inBracket ? '[^\\]]' : '[^.[]';
+    if (ch === '*') out += inBracket ? '[^\\]]*' : '[^.[/]*';
+    else if (ch === '?') out += inBracket ? '[^\\]]' : '[^.[/]';
     else {
       if (ch === '[') inBracket = true;
       else if (ch === ']') inBracket = false;

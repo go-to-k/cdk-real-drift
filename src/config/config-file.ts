@@ -123,6 +123,24 @@ export async function loadConfig(): Promise<CdkrdConfig> {
 }
 
 /**
+ * True when `path` is an all-wildcard universal matcher — a pattern with NO literal
+ * segment content, made only of the glob metachars (`*` / `?`) and the segment
+ * separators (`.` `[` `]` `/`). Examples: `*`, `**`, `*.*`, `?`, a slash-joined
+ * `*` pair, `*.*[*]`.
+ * Such a rule ignores EVERY finding (issue #842), so the validator rejects it the same
+ * way it rejects an empty path. A pattern with even one literal character (`Foo*`,
+ * `*.DesiredCount`, `MyApi/*`) is NOT universal and is allowed. Exported for tests.
+ */
+export function isUniversalPath(path: string): boolean {
+  // Strip every wildcard and separator; if anything is left, the path names a literal
+  // segment and is a real scope. If NOTHING is left, it is pure wildcards/separators —
+  // a universal matcher. (A path that is only separators like `.` has no wildcard, so it
+  // matches nothing rather than everything, but it is an equally useless no-op and the
+  // same "name a literal segment" guidance applies, so we reject it here too.)
+  return path.replace(/[*?.[\]/]/g, '') === '';
+}
+
+/**
  * Validate one `ignore` array entry: a mapping with a required string `path` and
  * optional string `stack` / `account` / `region` (and no other keys — the same fail-fast
  * typo guard as the unknown-top-level-key check, so a mistyped `reigon` is rejected
@@ -145,6 +163,17 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
     // and the ancestor walk never reaches empty) — a silent no-op rule the user believes
     // is suppressing a property. Reject it loudly so the no-op can't masquerade as active.
     throw new Error(`${at}: "path" must not be empty`);
+  if (isUniversalPath(obj.path))
+    // The mirror-image catastrophe of the empty path: a path made ONLY of wildcards and
+    // segment separators (`*`, `**`, `*.*`, `?`, `*/*`, `*.*[*]`, …) has no literal
+    // content, so — via `pathMatches`'s per-segment glob AND its ancestor walk — it
+    // silences EVERY declared / undeclared / added finding, not the one property the
+    // author meant to suppress (issue #842). That is a foot-gun the size of the whole
+    // report, so reject it as loudly as the empty path; a real rule must name at least
+    // one literal path segment to scope what it ignores.
+    throw new Error(
+      `${at}: "path" must not be an all-wildcard pattern ("${obj.path}") — it would ignore every finding; name at least one literal path segment`
+    );
   for (const k of ['stack', 'account', 'region'] as const) {
     if (obj[k] !== undefined && typeof obj[k] !== 'string')
       throw new Error(`${at}: "${k}" must be a string`);
