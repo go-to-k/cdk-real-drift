@@ -1,3 +1,10 @@
+## [0.2.75](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.74...v0.2.75) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** ApplicationAutoScaling ScalingPolicy flat-form declaration read-gap ([#836](https://github.com/go-to-k/cdk-real-drift/issues/836)) ([#932](https://github.com/go-to-k/cdk-real-drift/issues/932)) ([14514c1](https://github.com/go-to-k/cdk-real-drift/commit/14514c17fe6414f480f2d6d8cc50e536a6d7c9fa))
+
 ## [0.2.74](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.73...v0.2.74) (2026-07-09)
 
 
