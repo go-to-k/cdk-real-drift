@@ -70,7 +70,7 @@ export interface CommonArgs {
   stackNames: string[]; // positional stack names (may be empty → all stacks the CDK app defines)
   all: boolean; // explicitly target EVERY stack the app defines (the default when no name is given); overrides any positional names
   region: string | undefined; // resolved region (no silent default — caller errors if absent)
-  profile: string | undefined; // AWS profile (--profile or $AWS_PROFILE)
+  profile: string | undefined; // AWS profile (--profile, else $AWS_PROFILE, else $AWS_DEFAULT_PROFILE)
   app: string | undefined; // CDK app command OR pre-synthesized cloud-assembly dir
   context: Record<string, string>; // -c/--context key=value overrides for synth (cdk.json is the base layer)
   json: boolean;
@@ -230,7 +230,15 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
     all: has('--all'),
     context,
     region: values['--region'] ?? process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION,
-    profile: values['--profile'] ?? process.env.AWS_PROFILE,
+    // #953: AWS_DEFAULT_PROFILE is a documented AWS-CLI variable that BOTH `aws` and cdk
+    // (toolkit-lib: `AWS_PROFILE || AWS_DEFAULT_PROFILE`) honor. Without this fallback,
+    // the synth/discovery half resolved the AWS_DEFAULT_PROFILE identity while every cdkrd
+    // SDK client fell to the `default` profile — a split-brain that read stacks in the
+    // wrong account, keyed baselines to the wrong accountId, and (worst) let `revert`
+    // WRITE to the wrong account. Bridging it here lets the per-verb `AWS_PROFILE`
+    // export propagate the same profile to every client (mirrors the AWS_DEFAULT_REGION
+    // fallback on the line above).
+    profile: values['--profile'] ?? process.env.AWS_PROFILE ?? process.env.AWS_DEFAULT_PROFILE,
     // -a/--app > CDKRD_APP env (cdk.json "app" fallback resolved in the synth layer)
     app: values['--app'] ?? process.env.CDKRD_APP,
     json: has('--json'),

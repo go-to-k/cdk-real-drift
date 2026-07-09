@@ -31,6 +31,34 @@ describe('parseCommonArgs', () => {
     }
   });
 
+  it('#953: profile resolves --profile > $AWS_PROFILE > $AWS_DEFAULT_PROFILE', () => {
+    const saved = { p: process.env.AWS_PROFILE, d: process.env.AWS_DEFAULT_PROFILE };
+    try {
+      // AWS_DEFAULT_PROFILE alone (the split-brain repro) now bridges to a.profile so the
+      // per-verb AWS_PROFILE export propagates the SAME identity toolkit-lib synth used.
+      delete process.env.AWS_PROFILE;
+      process.env.AWS_DEFAULT_PROFILE = 'prod';
+      expect(parseCommonArgs(['S']).profile).toBe('prod');
+
+      // AWS_PROFILE wins over AWS_DEFAULT_PROFILE (matches toolkit-lib's `||` order).
+      process.env.AWS_PROFILE = 'staging';
+      expect(parseCommonArgs(['S']).profile).toBe('staging');
+
+      // --profile wins over both env vars.
+      expect(parseCommonArgs(['S', '--profile', 'explicit']).profile).toBe('explicit');
+
+      // neither env var → undefined (SDK default chain, unchanged).
+      delete process.env.AWS_PROFILE;
+      delete process.env.AWS_DEFAULT_PROFILE;
+      expect(parseCommonArgs(['S']).profile).toBeUndefined();
+    } finally {
+      if (saved.p !== undefined) process.env.AWS_PROFILE = saved.p;
+      else delete process.env.AWS_PROFILE;
+      if (saved.d !== undefined) process.env.AWS_DEFAULT_PROFILE = saved.d;
+      else delete process.env.AWS_DEFAULT_PROFILE;
+    }
+  });
+
   it('recognizes --show-all, --yes/-y, --pre-deploy', () => {
     expect(parseCommonArgs(['S', '--show-all']).showAll).toBe(true);
     expect(parseCommonArgs(['S', '-y']).yes).toBe(true);
