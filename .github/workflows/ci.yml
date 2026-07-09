@@ -19,8 +19,14 @@ jobs:
 
       - run: vp install --frozen-lockfile
       - run: vp run check
-      - run: vp run test
+      # Build BEFORE test: tests/json-empty-on-error.test.ts (#943/#988/#989) spawns the
+      # built `dist/cli.js` end to end, so `dist/` must exist when `vp run test` runs. The
+      # old order (test before build) left dist absent/stale and the spawned CLI exited 1
+      # ("Cannot find module") — 9 false failures on main only, green in local gates that
+      # `vp pack` first (#987-era CI red). `vp run build` is uncached (vite.config.ts), so
+      # this always rebuilds — no stale-dist replay.
       - run: vp run build
+      - run: vp run test
 
       # go-to-k/cdk-local#402 diagnostics (upstream Vite+ forks-pool crash, NOT a
       # cdk-real-drift issue): if a forks worker crashed ("Worker exited
