@@ -124,3 +124,55 @@ describe('matchesPathGlob (segment-aware — does not cross . or [ boundaries)',
     expect(matchesPathGlob('Tags[a/*]', 'Tags[a/b]')).toBe(true);
   });
 });
+
+describe('backslash escape — `\\*` / `\\?` / `\\\\` are literals, not wildcards (#776)', () => {
+  it('an escaped `\\*` matches a LITERAL `*` and does NOT glob a sibling', () => {
+    // The API Gateway `MethodSettings[*]` bracket key (from `HttpMethod: "*"`): an escaped
+    // `\*` inside the bracket must match the literal `*`, not every sibling HTTP method.
+    expect(
+      matchesPathGlob('Stage.MethodSettings[\\*].CacheTtl', 'Stage.MethodSettings[*].CacheTtl')
+    ).toBe(true);
+    expect(
+      matchesPathGlob('Stage.MethodSettings[\\*].CacheTtl', 'Stage.MethodSettings[GET].CacheTtl')
+    ).toBe(false);
+    // an S3 lifecycle Id `clean*tmp` as a bracket key: only the literal-`*` key matches
+    expect(matchesPathGlob('B.Rules[clean\\*tmp].Status', 'B.Rules[clean*tmp].Status')).toBe(true);
+    expect(matchesPathGlob('B.Rules[clean\\*tmp].Status', 'B.Rules[cleanXYZtmp].Status')).toBe(
+      false
+    );
+  });
+
+  it('an UNESCAPED `*` still globs as before (no regression)', () => {
+    expect(
+      matchesPathGlob('Stage.MethodSettings[*].CacheTtl', 'Stage.MethodSettings[GET].CacheTtl')
+    ).toBe(true);
+    expect(matchesPathGlob('B.Rules[clean*tmp].Status', 'B.Rules[cleanXYZtmp].Status')).toBe(true);
+    expect(matchesGlob('Dev*', 'DevApi')).toBe(true);
+  });
+
+  it('an escaped `\\?` matches a LITERAL `?` and does NOT match an arbitrary char', () => {
+    expect(matchesPathGlob('Tags[a\\?]', 'Tags[a?]')).toBe(true);
+    expect(matchesPathGlob('Tags[a\\?]', 'Tags[ab]')).toBe(false);
+    // unescaped `?` still matches exactly one char
+    expect(matchesPathGlob('Tags[a?]', 'Tags[ab]')).toBe(true);
+  });
+
+  it('a literal `*` next to a real `*` survives the run-collapse (`\\**`)', () => {
+    // `\**` = a literal `*` then a wildcard: `X*Y` matches, `XY` (no literal star) does not.
+    expect(matchesGlob('X\\**Y', 'X*fooY')).toBe(true);
+    expect(matchesGlob('X\\**Y', 'X*Y')).toBe(true);
+    expect(matchesGlob('X\\**Y', 'XfooY')).toBe(false); // needs the literal `*`
+  });
+
+  it('`\\\\` matches a single literal backslash; `isGlob` sees escaped metachars as literals', () => {
+    expect(matchesGlob('a\\\\b', 'a\\b')).toBe(true);
+    expect(isGlob('Foo\\*')).toBe(false); // escaped `*` is a literal, not a glob
+    expect(isGlob('Foo\\?bar')).toBe(false);
+    expect(isGlob('Foo\\*bar*')).toBe(true); // a REAL trailing `*` is still a glob
+  });
+
+  it('globToRegExp compiles an escaped metachar to a regex literal', () => {
+    expect(globToRegExp('a\\*b').source).toBe('^a\\*b$');
+    expect(globToRegExp('a\\?b').source).toBe('^a\\?b$');
+  });
+});
