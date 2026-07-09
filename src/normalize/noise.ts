@@ -41,6 +41,27 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       IngressConfiguration: { IsPubliclyAccessible: true },
     },
   },
+  // A GuardDuty detector declared with only `Enable: true` reads back AWS's constant
+  // new-detector defaults for two undeclared top-level properties:
+  //   FindingPublishingFrequency — the CloudWatch/S3 publishing cadence defaults to
+  //     SIX_HOURS. Equality-gated: a user who lowers it out of band (e.g. FIFTEEN_MINUTES
+  //     or ONE_HOUR) no longer matches and re-surfaces as real undeclared drift.
+  //   DataSources — the legacy data-source surface AWS materializes fully enabled on a new
+  //     detector (S3 protection, EKS audit logs, EC2 EBS malware protection). Pinned as a
+  //     whole-object default; matchesKnownDefault is recursively subset-tolerant, so AWS
+  //     enriching the object with new sub-keys is tolerated while disabling any leaf (e.g.
+  //     S3Logs.Enable=false) breaks the match and re-surfaces. (`Features`, the newer
+  //     surface AWS EXTENDS over time, is folded value-independently — see
+  //     VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS.) Live-confirmed on a fresh
+  //     `Enable: true`-only detector (CdkrdHuntUGd, 2026-07-09; #879).
+  'AWS::GuardDuty::Detector': {
+    FindingPublishingFrequency: 'SIX_HOURS',
+    DataSources: {
+      MalwareProtection: { ScanEc2InstanceWithFindings: { EbsVolumes: true } },
+      S3Logs: { Enable: true },
+      Kubernetes: { AuditLogs: { Enable: true } },
+    },
+  },
   // A Managed Service for Apache Flink application that declares no ApplicationMode
   // reads back STREAMING — the constant service default for Flink runtimes (the only
   // other value, INTERACTIVE, requires a Zeppelin/Studio runtime, a different declared
@@ -2700,6 +2721,18 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   without enumerating each. Both observed live first-run (LineLink cognito, my-app
   //   AimAssociation TOKEN "custom") with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
+  //   AWS::GuardDuty::Detector.Features — a detector declared with only `Enable: true`
+  //   reads back the full list of protection Features AWS materializes on a new detector
+  //   ([{Name:"CLOUD_TRAIL",Status:"ENABLED"}, {Name:"DNS_LOGS",...}, ...]). AWS EXTENDS
+  //   this list over time — new feature names appear as GuardDuty ships them (AI_ANALYST,
+  //   S3_DATA_EVENTS, RUNTIME_MONITORING, …), so a pinned constant would rot into a false
+  //   positive the moment AWS adds one. Fold value-independent: the property is undeclared,
+  //   so whatever feature set AWS enabled is its default, never user intent — a user who
+  //   cares about a specific feature's status DECLARES `Features`, which is then compared in
+  //   the declared loop (detected). (The legacy `DataSources` surface + the SIX_HOURS
+  //   publishing cadence are stable constants folded via KNOWN_DEFAULTS above.) Live-confirmed
+  //   on a fresh `Enable: true`-only detector (CdkrdHuntUGd, 2026-07-09; #879).
+  'AWS::GuardDuty::Detector': new Set(['Features']),
   //   AWS::RDS::DBCluster / ::DBInstance — an Aurora cluster/instance that declares no explicit
   //   KMS key, availability-zone placement, or maintenance/backup window reads back the values
   //   AWS ASSIGNED at creation: a specific `KmsKeyId` (the account/CDK key — create-only, so it
@@ -4188,6 +4221,21 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
     // sibling OAuth lists above; a genuine URL add/remove still changes the multiset.
     'CallbackURLs',
     'LogoutURLs',
+    // Live-observed on a fresh cognito-callbackurls / CdkrdHuntUCase deploy: Cognito
+    // ALPHABETICALLY SORTS the attribute lists it echoes back — declared
+    // ReadAttributes ["phone_number","email","name","family_name","birthdate"] reads
+    // back ["birthdate","email","family_name","name","phone_number"]. These are
+    // set-semantic (order carries no meaning), so a positional compare false-drifts the
+    // identical attribute set as permanent declared-tier drift that survives `record` and
+    // churns on `revert` (Cognito re-sorts the rewritten value immediately). Same
+    // set-reorder class as the OAuth / URL siblings above; a genuine attribute add/remove
+    // still changes the multiset. SupportedIdentityProviders is the same set-semantic list
+    // (a single-element deploy left its order unobservable, but it is a provider SET). #875.
+    // NOTE: scoped strictly to these UserPoolClient lists — UserPool-level AliasAttributes
+    // was live-proven ORDER-PRESERVING and is deliberately NOT folded.
+    'ReadAttributes',
+    'WriteAttributes',
+    'SupportedIdentityProviders',
   ]),
   // R84 (observed live on a fresh harvest6 deploy): WAFv2 stores the IP address
   // set and echoes it in its own canonical order, so a fresh deploy reports the
