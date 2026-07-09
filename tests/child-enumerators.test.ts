@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vite-plus/test';
 import {
+  DescribeDBClustersCommand,
+  DescribeDBInstancesCommand,
+  RDSClient,
+} from '@aws-sdk/client-rds';
+import { mockClient } from 'aws-sdk-client-mock';
+import { describe, expect, it } from 'vite-plus/test';
+import type { EnumeratorContext } from '../src/read/child-enumerators.js';
+import {
+  enumerateRdsClusterChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
   diffApiGatewayGatewayResponses,
@@ -1327,6 +1335,7 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
         { id: 'cluster-writer', label: 'cluster-writer' },
         { id: 'cdkrd-integ-oob', label: 'cdkrd-integ-oob' },
       ],
+      clusterMemberIds: [],
     });
     expect(added).toEqual([
       {
@@ -1342,6 +1351,7 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
     const added = diffRdsClusterChildren({
       declaredInstanceIds: [],
       liveInstances: [{ id: 'reader-1', label: 'reader-1' }],
+      clusterMemberIds: [],
     });
     expect(added[0]!.identifier).toBe('reader-1');
   });
@@ -1354,8 +1364,69 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
           { id: 'writer', label: 'writer' },
           { id: 'reader', label: 'reader' },
         ],
+        clusterMemberIds: [],
       })
     ).toEqual([]);
+  });
+
+  // #896: a Multi-AZ DB cluster implicitly materializes its writer + 2 reader instances
+  // (undeclared) — folded because the parent cluster reports them in DBClusterMembers; a
+  // genuinely out-of-band instance (NOT a member) still surfaces.
+  it('folds implicit cluster members (in DBClusterMembers) but still flags a non-member instance', () => {
+    const added = diffRdsClusterChildren({
+      declaredInstanceIds: [],
+      liveInstances: [
+        { id: 'c1-instance-1', label: 'c1-instance-1' },
+        { id: 'c1-instance-2', label: 'c1-instance-2' },
+        { id: 'c1-instance-3', label: 'c1-instance-3' },
+        { id: 'rogue-oob', label: 'rogue-oob' },
+      ],
+      clusterMemberIds: ['c1-instance-1', 'c1-instance-2', 'c1-instance-3'],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::RDS::DBInstance',
+        identifier: 'rogue-oob',
+        label: 'rogue-oob',
+        live: { DBInstanceIdentifier: 'rogue-oob' },
+      },
+    ]);
+  });
+});
+
+describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
+  it('folds the Multi-AZ cluster member instances the parent reports, flags a non-member', async () => {
+    const rds = mockClient(RDSClient);
+    rds
+      .on(DescribeDBInstancesCommand)
+      .resolves({
+        DBInstances: [
+          { DBInstanceIdentifier: 'c1-instance-1' },
+          { DBInstanceIdentifier: 'c1-instance-2' },
+          { DBInstanceIdentifier: 'c1-instance-3' },
+          { DBInstanceIdentifier: 'rogue-oob' },
+        ],
+      })
+      .on(DescribeDBClustersCommand)
+      .resolves({
+        DBClusters: [
+          {
+            DBClusterMembers: [
+              { DBInstanceIdentifier: 'c1-instance-1' },
+              { DBInstanceIdentifier: 'c1-instance-2' },
+              { DBInstanceIdentifier: 'c1-instance-3' },
+            ],
+          },
+        ],
+      });
+    const ctx = {
+      parent: { physicalId: 'c1' },
+      desired: { resources: [] },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRdsClusterChildren(ctx);
+    expect(added.map((a) => a.identifier)).toEqual(['rogue-oob']);
+    rds.restore();
   });
 });
 
