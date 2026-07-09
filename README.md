@@ -343,6 +343,14 @@ CI (with `--yes`).
 
 ### Options
 
+<!-- Editor note: this table is hand-aligned to a fixed column width. The
+     alignment is COSMETIC only — GitHub renders the table regardless — but a
+     cell that overflows the width silently skews the `|` columns in the source.
+     When editing a row, re-pad the `option` and `meaning` cells (and the
+     separator row) to match, or accept that alignment is inconsequential and
+     leave cells natural-width. Don't chase pixel alignment at the cost of a
+     readable diff. -->
+
 | option                     | meaning                                                                                                                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--region <r>`             | a stack's own `env.region` ALWAYS wins; for an env-AGNOSTIC stack (no `env`) it falls back to `--region` (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`), else the `--profile`'s region         |

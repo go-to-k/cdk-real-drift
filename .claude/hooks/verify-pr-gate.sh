@@ -164,6 +164,15 @@ The skill walks the full PR-readiness checklist:
   - retrospective + proposals for new rules / hooks / skills
   - PR title + body freshness vs the actual diff
 
+Not heavyweight for a doc-like src change: this gate intentionally keys on
+ANY src/** edit (the exemption above is all-or-nothing — a finer
+"behavior-free" heuristic can't be proven fail-safe, so it is not attempted).
+But when the src change is confined to --help / --version text or code
+comments, /verify-pr is CHEAP: its live-test is just `node dist/cli.js --help`
+and the real-AWS core integration suite may be DEFERRED (offline/unit/corpus-
+covered — state the deferral). The gate still applies because --help output is
+user-visible; it is NOT asking for a real-AWS deploy here.
+
 It is the ONLY legitimate setter of this marker. Do NOT call
 `markgate set verify-pr` directly from a shell to bypass this hook —
 the whole point of the gate is that an unverified PR cannot be opened
