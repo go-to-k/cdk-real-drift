@@ -832,16 +832,25 @@ const writeGlueWorkflow: SdkWriter = async (ctx, ops) => {
   const m = await desiredModel('AWS::Glue::Workflow', ctx, ops);
   const name = str(m.Name) ?? str(ctx.physicalId) ?? str(ctx.declared['Name']);
   if (!name) throw new Error('cannot resolve Glue workflow target for revert');
-  await new GlueClient({ region: ctx.region }).send(
-    new UpdateWorkflowCommand({
-      Name: name,
-      ...(m.Description !== undefined && { Description: str(m.Description) }),
-      ...(m.DefaultRunProperties !== undefined && {
-        DefaultRunProperties: m.DefaultRunProperties as Record<string, string>,
-      }),
-      ...(m.MaxConcurrentRuns !== undefined && { MaxConcurrentRuns: Number(m.MaxConcurrentRuns) }),
-    })
-  );
+  // A `remove` op (revert of an OOB-added value back to unset) must send an EXPLICIT clearing
+  // value — UpdateWorkflow is a selective update, so an omitted field keeps the live value and
+  // the revert silently non-converges (#913). Description clears with '' and DefaultRunProperties
+  // with {} (both expressible clears); MaxConcurrentRuns has NO selective clear (its unset state,
+  // "no limit", cannot be sent as a number), so bar it honestly.
+  const removed = (field: string): boolean =>
+    ops.some((o) => o.op === 'remove' && o.path.replace(/^\//, '').split('/')[0] === field);
+  if (removed('MaxConcurrentRuns'))
+    throw new Error(
+      'Glue Workflow MaxConcurrentRuns cannot be cleared via UpdateWorkflow (its unset state, "no limit", is not expressible in a selective update); update it manually'
+    );
+  const input: { Name: string; [k: string]: unknown } = { Name: name };
+  if (m.Description !== undefined) input.Description = str(m.Description);
+  else if (removed('Description')) input.Description = '';
+  if (m.DefaultRunProperties !== undefined)
+    input.DefaultRunProperties = m.DefaultRunProperties as Record<string, string>;
+  else if (removed('DefaultRunProperties')) input.DefaultRunProperties = {};
+  if (m.MaxConcurrentRuns !== undefined) input.MaxConcurrentRuns = Number(m.MaxConcurrentRuns);
+  await new GlueClient({ region: ctx.region }).send(new UpdateWorkflowCommand(input));
 };
 
 // AWS::Glue::Connection — read via the GetConnection override (the whole Glue family is a
@@ -976,6 +985,23 @@ const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
 const writeDlmLifecyclePolicy: SdkWriter = async (ctx, ops) => {
   const id = str(ctx.physicalId);
   if (!id) throw new Error('cannot resolve DLM lifecycle policy id for revert');
+  // A top-level `remove` op (State / Description / ExecutionRoleArn back to unset) has NO safe
+  // selective-update clearing value: UpdateLifecyclePolicy always requires a State, and whether an
+  // undeclared State / Description / ExecutionRoleArn even folds (so an OOB change surfaces as a
+  // `remove`) is UNCONFIRMED live. Rather than silently omit the field — which keeps the live value
+  // and non-converges (#913) — fail honestly; the declared-value case still converges via the
+  // `add` path below. (Needs-live: confirm the fold + the exact clearing payload before turning any
+  // of these into a real clear.)
+  for (const o of ops) {
+    const top = o.path.replace(/^\//, '').split('/')[0] ?? '';
+    if (
+      o.op === 'remove' &&
+      (top === 'State' || top === 'Description' || top === 'ExecutionRoleArn')
+    )
+      throw new Error(
+        `DLM LifecyclePolicy ${top} cannot be cleared via UpdateLifecyclePolicy (no safe clearing value; needs live confirmation); update it manually`
+      );
+  }
   const c = new DLMClient({ region: ctx.region });
   const m = await desiredModel('AWS::DLM::LifecyclePolicy', ctx, ops);
   let details = m.PolicyDetails as Record<string, unknown> | undefined;
@@ -1110,7 +1136,15 @@ const writeConfigRuleInputParameters: SdkWriter = async (ctx, ops) => {
   const name = str(ctx.physicalId) ?? str(ctx.declared['ConfigRuleName']);
   if (!name) throw new Error('cannot resolve Config rule name for revert');
   const op = ops.find((o) => o.path === '/InputParameters');
-  if (op?.op !== 'add') throw new Error('Config rule InputParameters revert: unexpected op');
+  if (!op) throw new Error('Config rule InputParameters revert: op not found');
+  // An OOB-ADDED InputParameters blob on a rule that declared none reverts as a `remove`. Config
+  // stores InputParameters as a whole-rule field, and clearing it needs a re-PUT — but whether the
+  // clear is "omit InputParameters" or "'{}'" is UNCONFIRMED live. Rather than silently drop the op
+  // (a non-converge, #913), fail honestly; an `add` (declared value) converges below.
+  if (op.op !== 'add')
+    throw new Error(
+      'Config rule InputParameters cannot be cleared via revert: PutConfigRule re-PUTs the whole rule and the exact clearing payload (omit vs empty {}) needs live confirmation; clear it manually'
+    );
   const client = new ConfigServiceClient({ region: ctx.region });
   const got = await client.send(new DescribeConfigRulesCommand({ ConfigRuleNames: [name] }));
   const rule = got.ConfigRules?.[0];
@@ -1520,13 +1554,22 @@ const writeDaxCluster: SdkWriter = async (ctx, ops) => {
     const top = op.path.replace(/^\//, '').split('/')[0] ?? '';
     const apiKey = DAX_CLUSTER_MODIFY_PARAMS[top];
     if (!apiKey) continue;
-    // A revert that CLEARS a value (op removed it, e.g. NotificationTopicARN back to none) sends
-    // the empty string DAX accepts to detach the topic; otherwise send the desired value.
-    const val = desired[top] ?? (apiKey === 'NotificationTopicArn' ? '' : undefined);
-    if (val !== undefined) {
-      input[apiKey] = val;
-      any = true;
+    let val = desired[top];
+    if (val === undefined) {
+      // A `remove` op (the desired value is now ABSENT) needs an EXPLICIT clearing value, or
+      // UpdateCluster — a selective modify — keeps the live value and the revert silently
+      // non-converges (#913). NotificationTopicARN / Description clear with '' (detach / unset);
+      // PreferredMaintenanceWindow / ParameterGroupName / SecurityGroupIds have NO selective clear
+      // (their unset state is an AWS-assigned window / the default param group / the default VPC
+      // security group — not expressible here), so bar them honestly.
+      if (top === 'NotificationTopicARN' || top === 'Description') val = '';
+      else
+        throw new Error(
+          `DAX Cluster ${top} cannot be cleared via UpdateCluster (its unset state is AWS-assigned, not expressible in a selective modify); update it manually`
+        );
     }
+    input[apiKey] = val;
+    any = true;
   }
   if (!any) return;
   await new DAXClient({ region: ctx.region }).send(new UpdateClusterCommand(input));
