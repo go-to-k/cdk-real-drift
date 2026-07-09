@@ -1,3 +1,10 @@
+## [0.4.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.8...v0.4.9) (2026-07-09)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band IAM Condition operators — gate emitNested's aws:* map drop ([#863](https://github.com/go-to-k/cdk-real-drift/issues/863)) ([#1039](https://github.com/go-to-k/cdk-real-drift/issues/1039)) ([e061f41](https://github.com/go-to-k/cdk-real-drift/commit/e061f41b94e6e137137fcd8fb64aa849a3732413))
+
 ## [0.4.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.7...v0.4.8) (2026-07-09)
 
 
