@@ -2762,17 +2762,21 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   MaxCapacity — a Python-shell job — goes through the declared loop, compared). Observed live
   //   first-run on my-app-Exporter (five G.1X ETL jobs + one G.025X streaming job), no edit.
   'AWS::Glue::Job': new Set(['MaxCapacity', 'AllocatedCapacity']),
-  //   AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress.SourceSecurityGroupName — a rule that
-  //   references its peer group by id (`SourceSecurityGroupId`, the CDK default) declares no
-  //   `SourceSecurityGroupName`; AWS DERIVES and reads back the referenced group's NAME
-  //   ("my-app-Exporter-Glue-sg") from that id. It can never be a constant we pin (it embeds the
-  //   per-group name), and when undeclared it is a pure reflection of the declared
-  //   SourceSecurityGroupId, not user intent — a real change to the peer surfaces on
-  //   `SourceSecurityGroupId` in the declared loop. Fold value-independent. (A user who references
-  //   a peer by name — EC2-Classic style — DECLARES SourceSecurityGroupName, compared.) Observed
-  //   live first-run on my-app-Exporter's self-referencing Glue SG ingress, no edit.
+  //   AWS::EC2::SecurityGroupIngress.SourceSecurityGroupName / ::SecurityGroupEgress
+  //   .DestinationSecurityGroupName — a rule that references its peer group by id
+  //   (`SourceSecurityGroupId` / `DestinationSecurityGroupId`, the CDK default) declares no peer
+  //   NAME; AWS DERIVES and reads back the referenced group's NAME (a CFn-minted
+  //   `<stack>-<logicalId>-<random>` or a user-set name like "my-app-Exporter-Glue-sg") from that
+  //   id. It can never be a constant we pin (it embeds the per-group name), and when undeclared it
+  //   is a pure reflection of the declared peer-group id, not user intent — a real change to the
+  //   peer surfaces on `SourceSecurityGroupId` / `DestinationSecurityGroupId` in the declared loop.
+  //   Fold value-independent so it folds even when the peer group lives in ANOTHER stack (its name
+  //   carries a different `<stack>-` prefix, so isCfnGeneratedName misses it). (A user who
+  //   references a peer by name — EC2-Classic style — DECLARES the name, compared.) The egress key
+  //   is `DestinationSecurityGroupName`, NOT `SourceSecurityGroupName` (#888). Observed live first-
+  //   run on my-app-Exporter's self-referencing Glue SG ingress and #717's Aurora/DBProxy egress.
   'AWS::EC2::SecurityGroupIngress': new Set(['SourceSecurityGroupName']),
-  'AWS::EC2::SecurityGroupEgress': new Set(['SourceSecurityGroupName']),
+  'AWS::EC2::SecurityGroupEgress': new Set(['DestinationSecurityGroupName']),
   //   The RDS-family + cache engines all mirror the RDS precedent above: a cluster/instance
   //   that declares no maintenance / backup / snapshot window reads back a window AWS
   //   RANDOMLY ASSIGNED at creation (e.g. "sat:03:00-sat:04:00", "03:10-03:40"). It is not a

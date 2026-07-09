@@ -750,7 +750,7 @@ function isCfnGeneratedName(
   // The bare physical-id echo (value === physicalId) is a STRUCTURAL drop handled separately
   // — never fold it into a `generated` finding here, or a resource whose physical id IS its
   // CFn-generated name gains a phantom finding.
-  if (typeof value !== 'string' || !constructPath || value === physicalId) return false;
+  if (typeof value !== 'string' || value === physicalId) return false;
   // A bare LOGICAL-ID echo: for some types CloudFormation mints an auto-generated physical
   // name equal to the resource's LOGICAL ID verbatim — no `<stack>-` prefix, no extra random
   // suffix beyond the CDK hash already baked into the logical id (a BucketDeployment's
@@ -759,6 +759,24 @@ function isCfnGeneratedName(
   // already carries an 8-hex-char construct hash, so a user-chosen value coinciding is
   // effectively impossible — fold it. (aws-s3-deployment is a very common construct.)
   if (logicalId && value === logicalId) return true;
+  // The full CFn form `<stackName>-<logicalId>-<random>` anchored on the LOGICAL ID alone — the
+  // logical id is a WHOLE segment sitting between a `<prefix>-` and CFn's random suffix. This does
+  // NOT need the construct path: an implicitly-created resource (an RDS cluster's / DBProxy's
+  // auto-made AWS::EC2::SecurityGroup) can lose its `aws:cdk:path` metadata in the deployed
+  // template, so `constructPath` is undefined and the stack-prefix branches below never run — yet
+  // its undeclared GroupName still reads back `<stack>-<logicalId>-<random>` and floods the first
+  // run (#888). Requires a NON-EMPTY prefix segment before the logical id (`<prefix>-<logicalId>-
+  // <random>`, never a bare `<logicalId>-<random>` — that no-prefix form is over-broad for short
+  // raw-CFn logical ids, e.g. a WAFv2 WebACL "Edge-<random>", and stays scoped per type+path via
+  // GENERATED_LOGICALID_PREFIX_PATHS). A CDK logical id carries an 8-hex construct hash, so a
+  // user-chosen name ending in `-<thisLogicalId>-<random>` is effectively impossible — value-
+  // DEPENDENT, so a real user name (e.g. "my-custom-sg") still surfaces. Runs before the
+  // constructPath gate so it folds regardless of whether the path survived.
+  if (logicalId && CFN_RANDOM_SUFFIX.test(value)) {
+    const base = value.replace(CFN_RANDOM_SUFFIX, '');
+    if (base.length > logicalId.length && base.endsWith(`-${logicalId}`)) return true;
+  }
+  if (!constructPath) return false;
   const stackName = constructPath.split('/')[0];
   if (!stackName || !CFN_RANDOM_SUFFIX.test(value)) return false;
   if (value.startsWith(`${stackName}-`)) return true;
