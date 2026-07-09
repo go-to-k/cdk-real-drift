@@ -1417,6 +1417,88 @@ describe('buildRevertPlan', () => {
     expect(plan.items).toHaveLength(1);
   });
 
+  // #908 — a type whose CFn schema has a `handlers` block but NO `update` handler
+  // (create/read/delete only, shaped like AWS::CloudFront::MonitoringSubscription) can never
+  // be patched via Cloud Control UpdateResource — the apply fails with a raw
+  // UnsupportedActionException. buildRevertPlan must bar the doomed cc-kind item at plan
+  // time, driven by parseSchema reading handlers.update presence into SchemaInfo.updatable.
+  describe('handlers.update guard (#908)', () => {
+    // A mutable non-createOnly / non-readOnly prop (Foo) + a real handlers block.
+    const withHandlers = (type: string, ...names: string[]): Map<string, SchemaInfo> =>
+      new Map([
+        [
+          type,
+          parseSchema(
+            JSON.stringify({
+              properties: { Foo: { type: 'string' } },
+              handlers: Object.fromEntries(names.map((n) => [n, {}])),
+            })
+          ),
+        ],
+      ]);
+    const NO_UPDATE = ['create', 'read', 'delete'];
+    const WITH_UPDATE = ['create', 'read', 'update', 'delete'];
+    const CF_MONSUB = 'AWS::CloudFront::MonitoringSubscription';
+    const drift = (type: string): Finding =>
+      F({ tier: 'declared', resourceType: type, path: 'Foo', desired: 'a', actual: 'b' });
+
+    it('parseSchema.updatable: false with no update handler, true with one, undefined when no handlers block', () => {
+      expect(parseSchema(JSON.stringify({ handlers: { create: {}, read: {} } })).updatable).toBe(
+        false
+      );
+      expect(parseSchema(JSON.stringify({ handlers: { create: {}, update: {} } })).updatable).toBe(
+        true
+      );
+      // NO handlers block at all -> unknown updatability -> undefined (must not bar)
+      expect(parseSchema(JSON.stringify({ properties: { Foo: {} } })).updatable).toBeUndefined();
+    });
+
+    it('BARS a cc revert on a no-update-handler type; notRevertable reason names the missing handler', () => {
+      const plan = buildRevertPlan([drift(CF_MONSUB)], undefined, {
+        schemas: withHandlers(CF_MONSUB, ...NO_UPDATE),
+      });
+      expect(plan.items).toHaveLength(0);
+      expect(plan.notRevertable).toHaveLength(1);
+      expect(plan.notRevertable[0]!.reason).toContain('no update handler');
+    });
+
+    it('a type WITH an update handler still produces the cc item (no regression)', () => {
+      const plan = buildRevertPlan([drift(CF_MONSUB)], undefined, {
+        schemas: withHandlers(CF_MONSUB, ...WITH_UPDATE),
+      });
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items).toHaveLength(1);
+      expect(plan.items[0]!.kind).toBe('cc');
+    });
+
+    it('an unknown-updatability schema (no handlers block) is NOT barred — schema-unavailable degradation stays revertable (#858)', () => {
+      const type = 'AWS::Some::Type';
+      const schemas = new Map([[type, parseSchema(JSON.stringify({ properties: { Foo: {} } }))]]);
+      const plan = buildRevertPlan([drift(type)], undefined, { schemas });
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items[0]!.kind).toBe('cc');
+    });
+
+    it('an SDK_WRITERS type stays revertable (kind sdk) even with no update handler — exempt', () => {
+      const type = 'AWS::DAX::Cluster'; // has an SDK_WRITERS entry
+      const plan = buildRevertPlan([drift(type)], undefined, {
+        schemas: withHandlers(type, ...NO_UPDATE),
+      });
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items[0]!.kind).toBe('sdk');
+    });
+
+    it('a delete-kind (out-of-band added) item stays offered even for a no-update-handler type', () => {
+      const plan = buildRevertPlan(
+        [F({ tier: 'added', resourceType: CF_MONSUB, path: '', physicalId: 'phys-1' })],
+        undefined,
+        { schemas: withHandlers(CF_MONSUB, ...NO_UPDATE) }
+      );
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items[0]!.kind).toBe('delete');
+    });
+  });
+
   it('a NESTED create-only path (parent mutable) is notRevertable, not a doomed in-place patch', () => {
     // ECR EncryptionConfiguration is mutable but EncryptionConfiguration.KmsKey is
     // create-only; the top-level-only check missed it and built a patch AWS rejects at

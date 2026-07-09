@@ -134,6 +134,15 @@ export interface SchemaInfo {
   // is surfaced in the report rather than folded into the `undeclared-subkey` count (R96).
   // Optional like the above; classify reads it with `?.`.
   freeFormMapPaths?: string[];
+  // True when the CFn resource schema's `handlers` block declares an `update` handler;
+  // false when handlers ARE present but `update` is absent — the type is create/read/delete
+  // only (e.g. AWS::CloudFront::MonitoringSubscription), so a Cloud Control UpdateResource
+  // always fails at apply with a raw UnsupportedActionException, and revert must bar the
+  // cc-kind item instead of emitting a patch that can never succeed (#908). UNDEFINED when
+  // the schema had NO handlers block at all (unknown updatability — e.g. a DescribeType
+  // failure returning EMPTY): revert must NOT bar on unknown, to avoid regressing on
+  // schema-unavailable degradation (#858 handles that separately). Optional like the above.
+  updatable?: boolean | undefined;
 }
 
 export interface ResolverContext {

@@ -446,6 +446,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     conditionalCreateOnlyProperties?: string[];
     properties?: Record<string, SchemaNode>;
     definitions?: Record<string, SchemaNode>;
+    handlers?: Record<string, unknown>;
   };
   const dotted = (arr: string[] | undefined): string[] => (arr ?? []).map(pointerToDotted);
   const topLevel = (paths: string[]): Set<string> => new Set(paths.filter((p) => !p.includes('.')));
@@ -475,6 +476,11 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     schema.definitions ?? {},
     schema.properties ?? {}
   );
+  // A type is `updatable` when its schema's `handlers` block declares an `update` handler.
+  // ONLY decide when handlers are PRESENT: an absent handlers block is unknown updatability
+  // (leave `updatable` undefined), so revert never bars on a schema-unavailable degradation.
+  const updatable =
+    schema.handlers === undefined ? undefined : Object.hasOwn(schema.handlers, 'update');
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
@@ -487,5 +493,6 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     unorderedScalarPaths: unorderedArrayPaths.scalar,
     unorderedObjectArrayPaths: unorderedArrayPaths.object,
     freeFormMapPaths,
+    updatable,
   };
 }
