@@ -180,6 +180,9 @@ import {
   ListIntentsCommand,
   ListSlotsCommand,
   ListSlotTypesCommand,
+  type IntentSummary,
+  type SlotSummary,
+  type SlotTypeSummary,
   type SlotValueElicitationSetting,
   UpdateBotLocaleCommand,
   type UpdateBotLocaleCommandInput,
@@ -1790,9 +1793,22 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
     if (!localeId) throw new Error('Lex BotLocales revert: a declared locale has no LocaleId');
 
     // --- slot types: name<->id (custom only; AMAZON.* are built-in), create missing / update ---
-    const liveSlotTypes = await c.send(new ListSlotTypesCommand({ botId, botVersion, localeId }));
+    // PAGINATE (lowercase `nextToken`): a locale with more slot types than one page would omit
+    // page-2+ entities from the map — create-missing would then Create* an existing name (fails
+    // mid-revert) and the delete-extra pass would never see extras beyond page 1 (#753).
+    const slotTypeSummaries: SlotTypeSummary[] = [];
+    {
+      let nextToken: string | undefined;
+      do {
+        const r = await c.send(
+          new ListSlotTypesCommand({ botId, botVersion, localeId, ...(nextToken && { nextToken }) })
+        );
+        slotTypeSummaries.push(...(r.slotTypeSummaries ?? []));
+        nextToken = r.nextToken;
+      } while (nextToken);
+    }
     const slotTypeNameToId = new Map<string, string>();
-    for (const s of liveSlotTypes.slotTypeSummaries ?? []) {
+    for (const s of slotTypeSummaries) {
       const id = lexStr(s.slotTypeId);
       const name = lexStr(s.slotTypeName);
       if (id && name && !id.startsWith('AMAZON.')) slotTypeNameToId.set(name, id);
@@ -1866,9 +1882,21 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
 
     // --- intents: name<->id, create missing / delete extra (skip AMAZON.FallbackIntent-style
     // built-ins), then update each ---
-    const liveIntents = await c.send(new ListIntentsCommand({ botId, botVersion, localeId }));
+    // PAGINATE (see slot-type note above, #753): an intent beyond page 1 must be in the map or
+    // create-missing recreates it (Create fails on the existing name) and delete-extra misses it.
+    const intentSummaries: IntentSummary[] = [];
+    {
+      let nextToken: string | undefined;
+      do {
+        const r = await c.send(
+          new ListIntentsCommand({ botId, botVersion, localeId, ...(nextToken && { nextToken }) })
+        );
+        intentSummaries.push(...(r.intentSummaries ?? []));
+        nextToken = r.nextToken;
+      } while (nextToken);
+    }
     const intentNameToId = new Map<string, string>();
-    for (const i of liveIntents.intentSummaries ?? []) {
+    for (const i of intentSummaries) {
       const id = lexStr(i.intentId);
       const name = lexStr(i.intentName);
       if (id && name) intentNameToId.set(name, id);
@@ -1915,12 +1943,28 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
       const intentId = iName ? intentNameToId.get(iName) : undefined;
       if (!intentId || !iName || isBuiltinIntent(iName)) continue;
 
-      // slots for this intent: name<->id, create missing / delete extra, then update each
-      const liveSlots = await c.send(
-        new ListSlotsCommand({ botId, botVersion, localeId, intentId })
-      );
+      // slots for this intent: name<->id, create missing / delete extra, then update each.
+      // PAGINATE (see slot-type note above, #753): a slot beyond page 1 must be in the map or
+      // create-missing recreates it (Create fails on the existing name) and delete-extra misses it.
+      const slotSummaries: SlotSummary[] = [];
+      {
+        let nextToken: string | undefined;
+        do {
+          const r = await c.send(
+            new ListSlotsCommand({
+              botId,
+              botVersion,
+              localeId,
+              intentId,
+              ...(nextToken && { nextToken }),
+            })
+          );
+          slotSummaries.push(...(r.slotSummaries ?? []));
+          nextToken = r.nextToken;
+        } while (nextToken);
+      }
       const slotNameToId = new Map<string, string>();
-      for (const s of liveSlots.slotSummaries ?? []) {
+      for (const s of slotSummaries) {
         const id = lexStr(s.slotId);
         const name = lexStr(s.slotName);
         if (id && name) slotNameToId.set(name, id);

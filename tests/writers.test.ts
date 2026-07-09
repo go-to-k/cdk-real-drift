@@ -2948,6 +2948,130 @@ describe('Lex BotLocales writer (revert-by-rebuild via lexv2-models Update* APIs
       )
     ).rejects.toThrow(/Lex Bot id/);
   });
+
+  it('PAGINATES ListIntents: a declared intent on page 2 is found (not recreated) (#753)', async () => {
+    // live has two intents split across two pages (OrderFlowers on page 1, AddOns on page 2);
+    // both are declared. Without following nextToken, AddOns is invisible → the writer would
+    // CreateIntent an already-existing name (fails mid-revert). With pagination it is found and
+    // only updated.
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex
+      .on(ListIntentsCommand)
+      .resolvesOnce({
+        intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+        nextToken: 'page2',
+      })
+      .resolvesOnce({ intentSummaries: [{ intentId: 'I2', intentName: 'AddOns' }] });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(CreateIntentCommand).resolves({ intentId: 'INEW' });
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    const twoIntents = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Intents: [
+            { Name: 'OrderFlowers', SampleUtterances: [{ Utterance: 'order' }] },
+            { Name: 'AddOns', SampleUtterances: [{ Utterance: 'add ons' }] },
+          ],
+        },
+      ],
+    };
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(twoIntents), [utteranceOp]);
+    // both pages were listed
+    expect(lex.commandCalls(ListIntentsCommand)).toHaveLength(2);
+    // page-2 AddOns was found → NOT recreated, both intents converged via UpdateIntent
+    expect(lex.commandCalls(CreateIntentCommand)).toHaveLength(0);
+    expect(lex.commandCalls(DeleteIntentCommand)).toHaveLength(0);
+    expect(lex.commandCalls(UpdateIntentCommand)).toHaveLength(2);
+  });
+
+  it('PAGINATES ListSlotTypes: a declared slot type on page 2 is found (not recreated) (#753)', async () => {
+    lex
+      .on(ListSlotTypesCommand)
+      .resolvesOnce({
+        slotTypeSummaries: [{ slotTypeId: 'ST1', slotTypeName: 'Flavor' }],
+        nextToken: 'page2',
+      })
+      .resolvesOnce({ slotTypeSummaries: [{ slotTypeId: 'ST2', slotTypeName: 'Size' }] });
+    lex.on(DescribeSlotTypeCommand).resolves({ slotTypeId: 'ST1' } as never);
+    lex.on(CreateSlotTypeCommand).resolves({ slotTypeId: 'STNEW' });
+    lex.on(UpdateSlotTypeCommand).resolves({});
+    lex.on(DeleteSlotTypeCommand).resolves({});
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+    });
+    lex.on(ListSlotsCommand).resolves({ slotSummaries: [] });
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    const withSlotTypes = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          SlotTypes: [{ Name: 'Flavor' }, { Name: 'Size' }],
+          Intents: [{ Name: 'OrderFlowers', SampleUtterances: [{ Utterance: 'order' }] }],
+        },
+      ],
+    };
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(withSlotTypes), [utteranceOp]);
+    expect(lex.commandCalls(ListSlotTypesCommand)).toHaveLength(2);
+    // page-2 Size was found → NOT recreated, both slot types converged via UpdateSlotType
+    expect(lex.commandCalls(CreateSlotTypeCommand)).toHaveLength(0);
+    expect(lex.commandCalls(DeleteSlotTypeCommand)).toHaveLength(0);
+    expect(lex.commandCalls(UpdateSlotTypeCommand)).toHaveLength(2);
+  });
+
+  it('PAGINATES ListSlots: a declared slot on page 2 is found (not recreated) (#753)', async () => {
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({
+      intentSummaries: [{ intentId: 'I1', intentName: 'OrderFlowers' }],
+    });
+    lex
+      .on(ListSlotsCommand)
+      .resolvesOnce({
+        slotSummaries: [{ slotId: 'S1', slotName: 'FlavorSlot' }],
+        nextToken: 'page2',
+      })
+      .resolvesOnce({ slotSummaries: [{ slotId: 'S2', slotName: 'SizeSlot' }] });
+    lex.on(DescribeSlotCommand).resolves({ slotId: 'S1' } as never);
+    lex.on(CreateSlotCommand).resolves({ slotId: 'SNEW' });
+    lex.on(UpdateSlotCommand).resolves({});
+    lex.on(DeleteSlotCommand).resolves({});
+    lex.on(DescribeIntentCommand).resolves({ intentId: 'I1' } as never);
+    lex.on(DescribeBotLocaleCommand).resolves({ botLocaleStatus: 'Built' } as never);
+    lex.on(UpdateIntentCommand).resolves({});
+    lex.on(UpdateBotLocaleCommand).resolves({});
+    lex.on(BuildBotLocaleCommand).resolves({});
+    const withSlots = {
+      BotLocales: [
+        {
+          LocaleId: 'en_US',
+          Intents: [
+            {
+              Name: 'OrderFlowers',
+              SampleUtterances: [{ Utterance: 'order' }],
+              Slots: [
+                { Name: 'FlavorSlot', ValueElicitationSetting: { SlotConstraint: 'Optional' } },
+                { Name: 'SizeSlot', ValueElicitationSetting: { SlotConstraint: 'Optional' } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await SDK_NESTED_WRITERS['AWS::Lex::Bot']!.writer(lexCtx(withSlots), [utteranceOp]);
+    expect(lex.commandCalls(ListSlotsCommand)).toHaveLength(2);
+    // page-2 SizeSlot was found → NOT recreated, both slots converged via UpdateSlot
+    expect(lex.commandCalls(CreateSlotCommand)).toHaveLength(0);
+    expect(lex.commandCalls(DeleteSlotCommand)).toHaveLength(0);
+    expect(lex.commandCalls(UpdateSlotCommand)).toHaveLength(2);
+  });
 });
 
 describe('ApiGatewayV2 Stage writer (autoDeploy — bypass CC UpdateStage, issue #667)', () => {
