@@ -1,3 +1,10 @@
+## [0.3.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.12...v0.3.13) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold GuardDuty Detector first-run defaults ([#879](https://github.com/go-to-k/cdk-real-drift/issues/879)) + Cognito UserPoolClient sorted attribute lists ([#875](https://github.com/go-to-k/cdk-real-drift/issues/875)) ([#1021](https://github.com/go-to-k/cdk-real-drift/issues/1021)) ([309ecf6](https://github.com/go-to-k/cdk-real-drift/commit/309ecf6f54a37e12ba88d77283567b39fd4b42d4))
+
 ## [0.3.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.11...v0.3.12) (2026-07-09)
 
 
