@@ -300,10 +300,18 @@ export interface RevertPlan {
 // FAILING the revert of the unrelated property (#641 symptom 2). Emit `remove` ops that drop
 // the husk from CC's model too. Restricted to a PURE-null array (every element null): remove
 // the WHOLE property (absent = valid, and it dodges any minItems constraint an empty `[]`
-// would trip). Removing a KEY never shifts an array index, so the ops are order-independent
-// and safe to prepend to the real revert op. A REAL out-of-band edit produces non-null
-// objects (a mixed array is left untouched — not the observed husk shape), so detection and
-// legitimate reverts are unaffected.
+// would trip). A pure-null array usually sits under an OBJECT key (`.../TagFilters`), whose
+// remove never shifts an array index — but it can ALSO be an ARRAY ELEMENT itself
+// (`{ Rules: [[null], [null], { Keep: 1 }] }` -> `/Rules/0`, `/Rules/1`), whose remove IS
+// positional: RFC6902 `remove` splices the array, so applying `/Rules/0` first shifts every
+// later index left and `/Rules/1` would then delete the real-data element (#968). Every op
+// emitted here removes a DISJOINT pure-null subtree (the walk returns without recursing once
+// a pure-null array is found, so no op is an ancestor of another), so sorting them into
+// DESCENDING document order makes each remove address a position at or after every op still
+// to be applied — removing it can never shift a not-yet-applied array index. This keeps the
+// ops safe to prepend to the real revert op AND safe among themselves. A REAL out-of-band
+// edit produces non-null objects (a mixed array is left untouched — not the observed husk
+// shape), so detection and legitimate reverts are unaffected.
 function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
   const ops: PatchOp[] = [];
   const walk = (value: unknown, pointer: string): void => {
@@ -320,7 +328,29 @@ function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
     }
   };
   walk(model, '');
+  ops.sort((a, b) => compareDocOrderDescending(a.path, b.path));
   return ops;
+}
+
+// Total-order comparator putting two JSON pointers into DESCENDING document order: at the
+// first differing segment, larger index / lexically-greater key first (a numeric-vs-numeric
+// pair compares numerically so `/Rules/10` sorts before `/Rules/2`); if one pointer is a
+// prefix of the other, the deeper one first. Used to order `remove` ops so an earlier op
+// never splices an array position out from under a later op (#968).
+function compareDocOrderDescending(a: string, b: string): number {
+  const as = a.split('/').slice(1);
+  const bs = b.split('/').slice(1);
+  const n = Math.min(as.length, bs.length);
+  for (let i = 0; i < n; i++) {
+    if (as[i] === bs[i]) continue;
+    const ai = Number(as[i]);
+    const bi = Number(bs[i]);
+    const bothNumeric =
+      as[i] !== '' && bs[i] !== '' && Number.isInteger(ai) && Number.isInteger(bi);
+    if (bothNumeric) return bi - ai;
+    return as[i]! < bs[i]! ? 1 : -1;
+  }
+  return bs.length - as.length;
 }
 
 // dotted finding path ("A.B.0.C") -> RFC6902 JSON pointer ("/A/B/0/C"). Split on dots at

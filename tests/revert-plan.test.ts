@@ -2674,16 +2674,18 @@ describe('#641 symptom 2 — CC revert strips bare-null array husks from the mod
     });
     expect(plan.items).toHaveLength(1);
     const ops = plan.items[0]!.ops;
-    // the husk removals lead, then the unrelated-property revert
+    // the husk removals lead (in DESCENDING document order — #968: these are both object-key
+    // removes so order is immaterial to correctness, but the sort emits Metrics before
+    // IntelligentTiering), then the unrelated-property revert
     expect(ops.map((o) => ({ op: o.op, path: o.path }))).toEqual([
-      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
       { op: 'remove', path: '/MetricsConfigurations/1/TagFilters' },
+      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
       { op: 'remove', path: '/VersioningConfiguration' },
     ]);
     // and they serialize to Cloud Control as pure remove ops (no value)
     expect(JSON.parse(toPatchDocument(plan.items[0]!))).toEqual([
-      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
       { op: 'remove', path: '/MetricsConfigurations/1/TagFilters' },
+      { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
       { op: 'remove', path: '/VersioningConfiguration' },
     ]);
   });
@@ -2735,6 +2737,71 @@ describe('#641 symptom 2 — CC revert strips bare-null array husks from the mod
     expect(plan.items).toHaveLength(1);
     expect(plan.items[0]!.kind).toBe('sdk');
     expect(plan.items[0]!.ops.every((o) => o.path !== '/Foo')).toBe(true);
+  });
+});
+
+describe('#968 — pure-null array husks nested INSIDE an array emit descending positional removes', () => {
+  // The husk walk recurses into array ELEMENTS, so a pure-null array that is itself an array
+  // element gets a `remove` at a NUMERIC pointer (a positional element removal). Cloud
+  // Control applies RFC6902 `remove` with SPLICE semantics, so emitting these ascending
+  // (`/Rules/0` then `/Rules/1`) shifts the array left and deletes the WRONG (real-data)
+  // element. The fix emits them in DESCENDING index order so no earlier remove shifts a
+  // later one. (Model CC's splice here — the repo's own applyOps uses non-splicing `delete`.)
+  const rfc6902Apply = (
+    model: Record<string, unknown>,
+    ops: readonly { op: string; path: string }[]
+  ): Record<string, unknown> => {
+    const out = structuredClone(model);
+    for (const op of ops) {
+      const segs = op.path
+        .split('/')
+        .slice(1)
+        .map((s) => s.replace(/~1/g, '/').replace(/~0/g, '~'));
+      let node: unknown = out;
+      for (let i = 0; i < segs.length - 1; i++) node = (node as Record<string, unknown>)[segs[i]!];
+      const last = segs[segs.length - 1]!;
+      if (Array.isArray(node))
+        node.splice(Number(last), 1); // SPLICE — shifts subsequent indices (as CC does)
+      else delete (node as Record<string, unknown>)[last];
+    }
+    return out;
+  };
+  const rulesRemoval = (): Finding =>
+    F({
+      tier: 'undeclared',
+      path: 'VersioningConfiguration',
+      actual: { Status: 'Enabled' },
+      unrecorded: true,
+    });
+
+  it('emits the sibling positional removes in DESCENDING index order', () => {
+    const plan = buildRevertPlan([rulesRemoval()], undefined, {
+      removeUnrecorded: true,
+      liveByLogical: new Map([['R', { Rules: [[null], [null], { Keep: 1 }] }]]),
+    });
+    const huskPaths = plan.items[0]!.ops.filter((o) => o.human.includes('husk')).map((o) => o.path);
+    expect(huskPaths).toEqual(['/Rules/1', '/Rules/0']);
+  });
+
+  it('applying the emitted husk ops (splice semantics) drops both husks and KEEPS the real element', () => {
+    const live = { Rules: [[null], [null], { Keep: 1 }] };
+    const plan = buildRevertPlan([rulesRemoval()], undefined, {
+      removeUnrecorded: true,
+      liveByLogical: new Map([['R', live]]),
+    });
+    const huskOps = plan.items[0]!.ops.filter((o) => o.human.includes('husk'));
+    // apply IN THE ORDER EMITTED — must not delete the real-data element
+    expect(rfc6902Apply(live, huskOps)).toEqual({ Rules: [{ Keep: 1 }] });
+  });
+
+  it('a guard: applying the SAME removes ascending WOULD delete the real element (documents the bug)', () => {
+    const live = { Rules: [[null], [null], { Keep: 1 }] };
+    // pre-fix emission order was ascending — prove that order corrupts the array
+    const ascending = [
+      { op: 'remove', path: '/Rules/0' },
+      { op: 'remove', path: '/Rules/1' },
+    ];
+    expect(rfc6902Apply(live, ascending)).toEqual({ Rules: [[null]] });
   });
 });
 
