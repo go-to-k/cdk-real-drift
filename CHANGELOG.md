@@ -1,3 +1,13 @@
+## [0.2.62](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.61...v0.2.62) (2026-07-09)
+
+
+### Bug Fixes
+
+* **desired:** resolve Fn::GetAtt Nested.Outputs.X against the CC Outputs array ([#782](https://github.com/go-to-k/cdk-real-drift/issues/782)) ([#824](https://github.com/go-to-k/cdk-real-drift/issues/824)) ([6e05aa2](https://github.com/go-to-k/cdk-real-drift/commit/6e05aa2123a263b4b4328f9203dc9b2985c44070))
+* **diff:** emit whole map for undeclared path-unsafe keys, mirroring the declared side ([#747](https://github.com/go-to-k/cdk-real-drift/issues/747)) ([#828](https://github.com/go-to-k/cdk-real-drift/issues/828)) ([ec145ba](https://github.com/go-to-k/cdk-real-drift/commit/ec145bae3dda921303b51cfa4d075ac82bda68b1))
+* **ignore:** key added-tier ignore rules on the unique logicalId, not the label ([#802](https://github.com/go-to-k/cdk-real-drift/issues/802)) ([#826](https://github.com/go-to-k/cdk-real-drift/issues/826)) ([1e15d78](https://github.com/go-to-k/cdk-real-drift/commit/1e15d78017dad7d082894287cf5da90194e7c94d))
+* **schema:** warn + do not cache an empty schema on DescribeType failure ([#751](https://github.com/go-to-k/cdk-real-drift/issues/751)) ([#825](https://github.com/go-to-k/cdk-real-drift/issues/825)) ([f6fe61e](https://github.com/go-to-k/cdk-real-drift/commit/f6fe61ed34240c90982464aba3ac4a6779bb58a3))
+
 ## [0.2.61](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.60...v0.2.61) (2026-07-09)
 
 
