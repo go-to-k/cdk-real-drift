@@ -219,10 +219,19 @@ node_modules` to borrow `aws-cdk-lib` (rm any existing dir first — `ln -sfn` i
 
 **Fresh deploys: UNIQUE hunt-style stack names only** (`Cdkrd<issue>Verify`), never
 a shared fixed name and never a real prod stack — the account may hold the
-maintainer's production stacks. **Tear down with `delstack`, never `cdk destroy`**
-(`delstack cdk -a cdk.out -r <region> -f -y` reads the existing synth), then SWEEP
-orphans it can't reach (auto-created `/aws/lambda/*` log groups, RETAIN resources,
-KMS pending-deletion). Confirm the stacks are gone.
+maintainer's production stacks. **Tag every ephemeral deploy `cdkrd:ephemeral=1`**
+(`Tags.of(app).add('cdkrd:ephemeral','1')`, or `aws cloudformation deploy --tags
+cdkrd:ephemeral=1`) so the generic sweep net can find it whatever its type.
+
+**Cleanup is enforced, not optional.** The `deploy-autoarm-gate` hook ARMS the
+bughunt-clean sentinel the moment you run any deploy command, so a commit / PR is
+BLOCKED until you release it — even if you deployed from a throwaway `/tmp` app.
+After the live-test, run **`/sweep-resources`** (the cleanup phase): it tears down
+with `delstack` (never `cdk destroy`), sweeps the stack-EXTERNAL orphans `delstack`
+can't reach (auto-created `/aws/lambda/*` + API-GW CloudWatch **IAM roles**, RETAIN
+resources, KMS pending-deletion, any `cdkrd:ephemeral`-tagged type), verifies
+`SWEEP CLEAN`, and releases the gate (`bughunt-track verify` + `clear`, incl. the
+`autoarm` owner). Confirm the stacks are gone.
 
 `/verify-pr` sets the `check` + `docs` + `verify-pr` markers, which unblock
 `gh pr merge`. Docs/tooling-only PRs (no `src/**`) are EXEMPT from the live-test —
