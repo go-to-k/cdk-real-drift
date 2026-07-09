@@ -152,6 +152,11 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   'AWS::Cognito::UserPoolClient': { EnableTokenRevocation: () => true },
   // A composite alarm is created with its actions ON; an undeclared `false` silences them.
   'AWS::CloudWatch::CompositeAlarm': { ActionsEnabled: () => true },
+  // A minimal ApplicationInsights application always reads back CWEMonitorEnabled=true (AWS
+  // enables CloudWatch Events monitoring at creation even though the CFn schema annotates the
+  // default as false — the KNOWN_DEFAULTS pin), so an OFF state (a live/declared `false`) is an
+  // out-of-band DISABLE of that monitoring toggle and is meaningful. Live-confirmed (#841/#925).
+  'AWS::ApplicationInsights::Application': { CWEMonitorEnabled: () => true },
 };
 
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
@@ -2288,10 +2293,20 @@ export function classifyResource(
       // gated on BOTH sides: the declared side must be empty (a real declared
       // value mismatch is never muted) and the live side must EQUAL the listed
       // default (any out-of-band change still surfaces).
+      //
+      // #929: EXCEPT when the path is meaningful-when-off. `isTrivialEmpty(false)` is
+      // true, so a user who DECLARES a boolean `false` against a truthy KNOWN_DEFAULTS
+      // pin (e.g. ApplicationInsights CWEMonitorEnabled, pinned `true`) would have that
+      // declared `false` silently folded here whenever AWS shows the pinned `true` — an
+      // out-of-band ENABLE of a monitoring/security toggle masked as "not drift". Reuse
+      // the SAME MEANINGFUL_WHEN_OFF predicate the undeclared loop consults (#632): when
+      // it flags this (type, path) as meaningful-when-off, skip the fold so the declared
+      // divergence surfaces. Paths NOT in the table keep folding (R74 precedent intact).
       if (
         isTrivialEmpty(d.stateValue) &&
         d.path in knownDef &&
-        deepEqual(d.awsValue, knownDef[d.path])
+        deepEqual(d.awsValue, knownDef[d.path]) &&
+        !(MEANINGFUL_WHEN_OFF[resourceType]?.[d.path]?.({ declared, live }) ?? false)
       )
         continue;
       // An UNORDERED_OBJECT_ARRAY element drift: the array was sorted on BOTH sides before
