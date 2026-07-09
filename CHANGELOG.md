@@ -1,3 +1,10 @@
+## [0.4.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.7...v0.4.8) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cli:** honor AWS_DEFAULT_PROFILE so SDK clients match the synth identity ([#953](https://github.com/go-to-k/cdk-real-drift/issues/953)) ([#1038](https://github.com/go-to-k/cdk-real-drift/issues/1038)) ([1f62745](https://github.com/go-to-k/cdk-real-drift/commit/1f627456a1f5031c8c7f4434864e421aac4b0404))
+
 ## [0.4.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.6...v0.4.7) (2026-07-09)
 
 
