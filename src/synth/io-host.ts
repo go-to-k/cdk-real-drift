@@ -64,6 +64,19 @@ export function planIoMessage(msg: Pick<IoMessage<unknown>, 'code' | 'level'>): 
 }
 
 export class QuietIoHost extends NonInteractiveIoHost {
+  constructor() {
+    // Pin isCI:false so synth passthrough (re-tagged to info/warn below) ALWAYS goes to
+    // STDERR, never stdout. The base NonInteractiveIoHost routes ALL non-error output to
+    // STDOUT when it detects CI mode (`process.env.CI`, which GitHub Actions sets to
+    // 'true') — that would prepend bundler chatter ("Bundling asset …"), the app's own
+    // console.logs, and re-tagged synth warnings to the single JSON.parse-able value
+    // `check --json` promises, in exactly the CI environment where `check --json --fail`
+    // is scripted (and would pollute the `^result:` grep in text mode the same way).
+    // cdkrd owns its own stdout (the drift report / the JSON document); a toolkit-lib
+    // message is never cdkrd's machine "result", so it must never reach stdout. (#867)
+    super({ isCI: false });
+  }
+
   override async notify(msg: IoMessage<unknown>): Promise<void> {
     const plan = planIoMessage(msg);
     if (plan.action === 'drop') return;
