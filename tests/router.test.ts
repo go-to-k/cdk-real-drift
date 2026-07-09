@@ -232,6 +232,75 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('arn:aws:ecs:us-east-1:111111111111:service/my-cluster/my-svc');
   });
 
+  // #973: Events::Rule on a CUSTOM event bus has physical id `<busName>|<ruleName>`,
+  // which is NOT the CC primaryIdentifier (the single-segment rule ARN) — the raw
+  // composite ValidationException-skips. The adapter must build the full rule ARN, NOT
+  // strip to the bare name (a bare name resolves against the DEFAULT bus → false deleted).
+  it('Events::Rule (custom bus): derives the rule ARN from the declared bus ARN', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Events::Rule',
+        physicalId: 'myBus|myRule',
+        declared: { EventBusName: 'arn:aws:events:us-east-1:111111111111:event-bus/myBus' },
+      }),
+      'us-east-1',
+      '111111111111'
+    );
+    // NOT the raw `myBus|myRule` composite (which is what an unadapted read would send).
+    expect(sent()).toBe('arn:aws:events:us-east-1:111111111111:rule/myBus/myRule');
+  });
+
+  it('Events::Rule (custom bus): constructs the rule ARN from region+account when EventBusName is a bare name', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::Events::Rule',
+        physicalId: 'myBus|myRule',
+        declared: { EventBusName: 'myBus' },
+      }),
+      'us-east-1',
+      '111111111111'
+    );
+    expect(sent()).toBe('arn:aws:events:us-east-1:111111111111:rule/myBus/myRule');
+  });
+
+  it('Events::Rule (custom bus): honors the region partition (aws-us-gov)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Events::Rule', physicalId: 'myBus|myRule', declared: {} }),
+      'us-gov-west-1',
+      '111111111111'
+    );
+    expect(sent()).toBe('arn:aws-us-gov:events:us-gov-west-1:111111111111:rule/myBus/myRule');
+  });
+
+  it('Events::Rule (default bus): a bare-name physical id passes through UNCHANGED', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Events::Rule', physicalId: 'myRule', declared: {} }),
+      'us-east-1',
+      '111111111111'
+    );
+    expect(sent()).toBe('myRule');
+  });
+
+  it('Events::Rule: an already-ARN physical id passes through UNCHANGED', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    const arn = 'arn:aws:events:us-east-1:111111111111:rule/myRule';
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Events::Rule', physicalId: arn, declared: {} }),
+      'us-east-1',
+      '111111111111'
+    );
+    expect(sent()).toBe(arn);
+  });
+
   it('types without an adapter keep the physical id as the identifier', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(cc as unknown as CloudControlClient, res(), 'us-east-1', '1');

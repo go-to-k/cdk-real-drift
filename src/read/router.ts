@@ -20,7 +20,12 @@ export interface ReadResult {
 // falls back to the physical id unchanged.
 export const CC_IDENTIFIER_ADAPTERS: Record<
   string,
-  (physicalId: string, declared: Record<string, unknown>) => string | undefined
+  (
+    physicalId: string,
+    declared: Record<string, unknown>,
+    region?: string,
+    account?: string
+  ) => string | undefined
 > = {
   // physical id = the API ARN (arn:...:apis/<apiId>); CC wants the bare ApiId.
   'AWS::AppSync::GraphQLApi': (pid) => (pid.startsWith('arn:') ? pid.split('/').pop() : pid),
@@ -342,6 +347,41 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // prop (a Ref to the detector, resolvable). Verified live (#878, stack CdkrdHuntUGd,
   // us-east-1): `<DetectorId>|<FilterName>` reads; the reverse order returns NotFound.
   'AWS::GuardDuty::Filter': compositeWith('DetectorId'),
+  // Events::Rule on a CUSTOM event bus has the CFn physical id `<busName>|<ruleName>`
+  // (child-enumerators.ts:1306-1317 confirms the composite shape), but the CC
+  // primaryIdentifier is the single-segment rule ARN (`/properties/Arn`). Passing the
+  // raw `bus|name` composite → ValidationException → the rule is silently `skipped` on
+  // every check (#973, live-confirmed), so undeclared drift AND an out-of-band change to
+  // a declared prop (State/EventPattern/ScheduleExpression/Targets) are invisible. CC
+  // ALSO accepts the bare rule NAME, but it resolves that only against the DEFAULT bus —
+  // so naively stripping the `bus|` prefix would 404 a custom-bus rule → false `deleted`
+  // (the issue's explicit warning). The adapter therefore builds the FULL rule ARN
+  // `arn:<partition>:events:<region>:<account>:rule/<busName>/<ruleName>`. A default-bus
+  // rule (bare-name id, no `|`) and an already-ARN id pass through UNCHANGED (rule names
+  // and bus names cannot contain `|`, so the pipe unambiguously marks the composite).
+  // region/account come from readLive on the check path; on the revert-side call (no
+  // region/account) derive the ARN from the resolved declared EventBusName when CDK set
+  // it to the bus ARN (`:event-bus/<bus>` → `:rule/<bus>/<rule>`), else fall back to
+  // undefined (honest skip — no worse than today).
+  'AWS::Events::Rule': (pid, declared, region, account) => {
+    const bar = pid.lastIndexOf('|');
+    if (bar < 0) return pid; // default-bus bare name, or already the rule ARN
+    const busName = pid.slice(0, bar);
+    const ruleName = pid.slice(bar + 1);
+    // Prefer the resolved bus ARN — works even without region/account (revert-side).
+    const busArn = declared.EventBusName;
+    if (typeof busArn === 'string' && busArn.includes(':event-bus/'))
+      return `${busArn.replace(':event-bus/', ':rule/')}/${ruleName}`;
+    if (region && account) {
+      const partition = region.startsWith('cn-')
+        ? 'aws-cn'
+        : region.startsWith('us-gov-')
+          ? 'aws-us-gov'
+          : 'aws';
+      return `arn:${partition}:events:${region}:${account}:rule/${busName}/${ruleName}`;
+    }
+    return undefined;
+  },
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
@@ -442,7 +482,9 @@ export async function readLive(
   }
   try {
     const identifier =
-      CC_IDENTIFIER_ADAPTERS[resourceType]?.(physicalId ?? '', declared) ?? physicalId ?? '';
+      CC_IDENTIFIER_ADAPTERS[resourceType]?.(physicalId ?? '', declared, region, accountId) ??
+      physicalId ??
+      '';
     const g = await cc.send(
       new GetResourceCommand({ TypeName: resourceType, Identifier: identifier })
     );
