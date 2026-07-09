@@ -12,19 +12,97 @@
 //   <stack>... positional → exact names must exist in the app; a name with a glob
 //                           char (`*`/`?`) is matched against the app's stack names
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
+import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import type { CommonArgs } from '../cli-args.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { discoverStacks } from '../synth/synth.js';
 import { isGlob, matchesGlob } from './glob-match.js';
 
-// Resolve the region the AWS SDK would use for the active profile (the `region`
-// set for that profile in ~/.aws/config). Used as the LAST region fallback for an
-// env-agnostic CDK stack — one with no `env` on the stack and no --region /
-// $AWS_REGION — so it still has a region to query instead of erroring. Reads the
-// shared config only (no network call) and returns undefined if the profile sets
-// no region. AWS_PROFILE is already exported into the environment by the calling
-// command, so the SDK's region provider chain selects the right profile even when
-// `profile` is undefined here (e.g. $AWS_PROFILE was used instead of --profile).
+// Read the `region` of a named section from an AWS shared-config-style ini file. Minimal
+// parser: locate the `[<section>]` header, then the first `region = <value>` before the
+// next header. Returns undefined on any miss / unreadable file. (#955.)
+function regionFromIniFile(path: string, section: string): string | undefined {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch {
+    return undefined; // no such file / unreadable
+  }
+  let inSection = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || line.startsWith(';')) continue; // blank / comment
+    const header = /^\[([^\]]+)\]$/.exec(line);
+    if (header) {
+      inSection = header[1]!.trim() === section;
+      continue;
+    }
+    if (inSection) {
+      const m = /^region\s*=\s*(\S+)/.exec(line);
+      if (m) return m[1];
+    }
+  }
+  return undefined;
+}
+
+// The `[default]` profile's region from the shared config, mirroring the AWS CLI / cdk
+// (toolkit-lib) fallback the raw SDK region chain skips: when the SELECTED profile has no
+// region, they fall back to the `default` profile's ini region. Credentials file before
+// config file ("credentials before config"); the default section is `[default]` in BOTH
+// (config uses `[profile x]` only for NAMED profiles). Pure file read, no network.
+// Exported for tests.
+export function defaultProfileRegionFromIni(): string | undefined {
+  const home = homedir();
+  const credPath = process.env.AWS_SHARED_CREDENTIALS_FILE || join(home, '.aws', 'credentials');
+  const cfgPath = process.env.AWS_CONFIG_FILE || join(home, '.aws', 'config');
+  return regionFromIniFile(credPath, 'default') ?? regionFromIniFile(cfgPath, 'default');
+}
+
+// The EC2 instance-identity region via IMDS — the toolkit-lib fallback for an
+// instance-role box with no env vars and no ini files at all. Guarded by
+// AWS_EC2_METADATA_DISABLED exactly like toolkit-lib, best-effort with a short timeout so
+// a non-EC2 host (where the link-local IMDS address blackholes) never hangs the CLI.
+// IMDSv2: fetch a token, then placement/region. Any error → undefined. Exported for tests.
+export async function regionFromImds(): Promise<string | undefined> {
+  if (process.env.AWS_EC2_METADATA_DISABLED === 'true') return undefined;
+  const base = 'http://169.254.169.254';
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 1000);
+  try {
+    const tokenRes = await fetch(`${base}/latest/api/token`, {
+      method: 'PUT',
+      headers: { 'x-aws-ec2-metadata-token-ttl-seconds': '60' },
+      signal: ac.signal,
+    });
+    const headers: Record<string, string> = {};
+    if (tokenRes.ok) headers['x-aws-ec2-metadata-token'] = (await tokenRes.text()).trim();
+    const regionRes = await fetch(`${base}/latest/meta-data/placement/region`, {
+      headers,
+      signal: ac.signal,
+    });
+    if (!regionRes.ok) return undefined;
+    const region = (await regionRes.text()).trim();
+    return region.length > 0 ? region : undefined;
+  } catch {
+    return undefined; // not on EC2 / IMDS unreachable / timed out
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Resolve the region the AWS SDK / cdk would use for the active profile. Used as the LAST
+// region fallback for an env-agnostic CDK stack — one with no `env` on the stack and no
+// --region / $AWS_REGION — so it still has a region to query instead of erroring. Mirrors
+// the AWS CLI / toolkit-lib chain the raw SDK region provider omits (#955): the selected
+// profile's region (env AWS_REGION / that profile's ini region), then the `default`
+// profile's ini region (a common layout: credentials in a named profile, region under
+// `[default]`), then the EC2 IMDS instance region. Returns undefined only when NONE
+// resolve (the caller keeps the loud "no region" error as the true last resort — never a
+// silent us-east-1). AWS_PROFILE is already exported into the environment by the calling
+// command, so the SDK's provider chain selects the right profile even when `profile` is
+// undefined here (e.g. $AWS_PROFILE was used instead of --profile).
 export async function resolveProfileRegion(
   profile: string | undefined
 ): Promise<string | undefined> {
@@ -32,10 +110,12 @@ export async function resolveProfileRegion(
     const client = new CloudControlClient(profile ? { profile } : {});
     const region = await client.config.region();
     client.destroy();
-    return typeof region === 'string' && region.length > 0 ? region : undefined;
+    if (typeof region === 'string' && region.length > 0) return region;
   } catch {
-    return undefined; // the SDK throws "Region is missing" when nothing resolves
+    // the SDK throws "Region is missing" when nothing resolves — fall through to the
+    // richer fallbacks the AWS CLI / cdk (toolkit-lib) also apply.
   }
+  return defaultProfileRegionFromIni() ?? (await regionFromImds());
 }
 
 export interface ResolvedStack {

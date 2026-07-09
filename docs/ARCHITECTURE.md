@@ -194,7 +194,9 @@ its own exit-0-on-abort behaviour (R30).
 
 Flags (all parsed in [src/cli-args.ts](../src/cli-args.ts)): `--region` (no silent
 default — per stack: explicit `env.region`, else `--region` / `$AWS_REGION`, else
-the `--profile`'s configured region from `~/.aws/config`; errors if all absent),
+the AWS-CLI/cdk region chain (`resolveProfileRegion`): the active profile's
+configured region from `~/.aws/config`, then the `[default]` profile's region,
+then the EC2 IMDS instance region; errors if all absent),
 `--profile`, `-a/--app <cmd|cdk.out>`
 (+ `$CDKRD_APP` / cdk.json `"app"`), `-c/--context key=value` (repeatable),
 `--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53),
