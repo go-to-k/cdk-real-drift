@@ -1,3 +1,10 @@
+# [0.4.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.14...v0.4.0) (2026-07-09)
+
+
+### Features
+
+* **read:** SDK read override for ACM Certificate ([#974](https://github.com/go-to-k/cdk-real-drift/issues/974)) ([#1024](https://github.com/go-to-k/cdk-real-drift/issues/1024)) ([cdd4910](https://github.com/go-to-k/cdk-real-drift/commit/cdd4910b2a5652447b7b714368b3683ffe02f90e))
+
 ## [0.3.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.13...v0.3.14) (2026-07-09)
 
 
