@@ -3,9 +3,15 @@
 #
 # Stop hook. Closes hole B — "deployed real AWS resources, then ended the session
 # WITHOUT committing" — which the commit/PR gate (bughunt-clean-gate) never sees
-# because no commit/PR is attempted. At session end, if the bughunt-clean sentinel
-# is armed (a tracked stack, or the generic autoarm token from deploy-autoarm-gate),
-# print a prominent reminder to clean up.
+# because no commit/PR is attempted. At session end, if THIS session/owner's
+# bughunt-clean sentinel is armed, print a prominent reminder to clean up.
+#
+# PER-SESSION scope (mirrors bughunt-clean-gate exactly): warn only about resources
+# THIS session/owner is responsible for — (a) the cwd worktree's owner file (per-stack
+# tracking) and (b) this session's autoarm-<session> token — NOT a peer session's live
+# hunt (its stacks are uniquely named; its own gate/warn covers them). Warning about a
+# peer's resources here would be a false "you forgot to clean up". The legacy flat
+# sentinel stays global for back-compat.
 #
 # WARN ONLY (exit 0): a /hunt-bugs session legitimately keeps resources live between
 # turns, so this must NOT hard-block stopping (that is the commit/PR gate's job).
@@ -30,13 +36,24 @@ fi
 pending_dir="${main_root}/.markgate-bughunt-pending.d"
 legacy="${main_root}/.markgate-bughunt-pending"
 
-count=0
-if [ -d "$pending_dir" ]; then
-  while IFS= read -r f; do
-    [ -s "$f" ] && count=$((count + $(grep -cvE '^[[:space:]]*$' "$f" 2>/dev/null || echo 0)))
-  done < <(find "$pending_dir" -type f 2>/dev/null)
+# This owner (cwd worktree toplevel, mirrors bughunt-track.sh / bughunt-clean-gate).
+owner_raw="${CDKRD_BUGHUNT_OWNER:-}"
+if [ -z "$owner_raw" ]; then
+  owner_raw="$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || echo "$target_dir")"
 fi
-[ -s "$legacy" ] && count=$((count + $(grep -cvE '^[[:space:]]*$' "$legacy" 2>/dev/null || echo 0)))
+owner_key="$(printf '%s' "$owner_raw" | sed 's#[^A-Za-z0-9._-]#_#g')"
+owner_file="${pending_dir}/${owner_key}"
+
+# This session's deploy-autoarm token (mirrors bughunt-clean-gate / deploy-autoarm).
+sid="${CLAUDE_CODE_SESSION_ID:-}"
+[ -z "$sid" ] && sid=$(printf '%s' "$input" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+sid_key="$(printf '%s' "$sid" | sed 's#[^A-Za-z0-9._-]#_#g')"
+autoarm_file="${pending_dir}/autoarm-${sid_key:-shared}"
+
+count=0
+for f in "$owner_file" "$autoarm_file" "$legacy"; do
+  [ -s "$f" ] && count=$((count + $(grep -cvE '^[[:space:]]*$' "$f" 2>/dev/null || echo 0)))
+done
 
 [ "$count" -gt 0 ] || exit 0
 
