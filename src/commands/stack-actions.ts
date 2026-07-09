@@ -60,6 +60,18 @@ const unrecordedCount = (findings: Finding[]): number =>
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * The per-stack label shown in a DECISION prompt — the SAME `Name (region)` form the
+ * report header uses (`check.ts` `${stackName} (${region})`). After #899 exact-name
+ * selection targets EVERY same-named region instance, so a bare `stackName` in a
+ * record/ignore/revert prompt is indistinguishable across regions (a wrong-region
+ * record/ignore/revert hazard, #947). Naming the region disambiguates them. Pure +
+ * exported so the wording is unit-tested.
+ */
+export function stackLabel(stackName: string, region: string): string {
+  return `${stackName} (${region})`;
+}
+
+/**
  * The revert confirm message (R52). When NOT-revertable findings exist (e.g. a
  * no-baseline first check with one declared drift and 100+ undeclared values),
  * users read "This WRITES to AWS" as "everything I just saw gets written" —
@@ -68,6 +80,7 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  */
 export function revertConfirmMessage(
   stackName: string,
+  region: string,
   opCount: number,
   notRevertableCount: number
 ): string {
@@ -75,7 +88,7 @@ export function revertConfirmMessage(
     notRevertableCount > 0
       ? ` Only the ${opCount} selected op(s) are written — the ${notRevertableCount} NOT-revertable finding(s) are untouched.`
       : '';
-  return `Apply ${opCount} revert op(s) to ${stackName}? This WRITES to AWS.${scope}`;
+  return `Apply ${opCount} revert op(s) to ${stackLabel(stackName, region)}? This WRITES to AWS.${scope}`;
 }
 
 /**
@@ -105,12 +118,12 @@ export function formatSurvivingDrift(remaining: Finding[], stackName = '', cap =
  * (the folded would just nag forever), whereas deselecting a standout to "record the rest"
  * IS useful — so standouts toggle, the folded always record. Pure + exported.
  */
-export function recordSelectMessage(stackName: string, foldedCount = 0): string {
+export function recordSelectMessage(stackName: string, region: string, foldedCount = 0): string {
   const fold =
     foldedCount > 0
       ? `; +${foldedCount} folded sub-key(s) ALWAYS recorded too (--verbose to itemize)`
       : '';
-  return `${stackName}: select undeclared value(s) to record (unselected stay reported)${fold}`;
+  return `${stackLabel(stackName, region)}: select undeclared value(s) to record (unselected stay reported)${fold}`;
 }
 
 /**
@@ -225,8 +238,8 @@ export function filterRevertPlan(plan: RevertPlan, picked: Set<string>): RevertP
   return { items, notRevertable: plan.notRevertable };
 }
 
-export function revertSelectMessage(stackName: string): string {
-  return `${stackName}: select the op(s) to revert (unselected are not written)`;
+export function revertSelectMessage(stackName: string, region: string): string {
+  return `${stackLabel(stackName, region)}: select the op(s) to revert (unselected are not written)`;
 }
 
 // ---- record ----
@@ -296,7 +309,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   if (existing) checkBaselineAccount(existing, desired.accountId, stackName);
   if (!yes && existing)
     console.error(
-      `note: ${stackName}: will overwrite the existing baseline file on confirm (nothing written yet; it is git-tracked — review the diff afterwards). Pass --yes to silence.`
+      `note: ${stackLabel(stackName, region)}: will overwrite the existing baseline file on confirm (nothing written yet; it is git-tracked — review the diff afterwards). Pass --yes to silence.`
     );
   // Seed with this run's observed entries, then carry forward any prior baseline
   // entries for resources this run could NOT read (skipped / model-read-failed) so a
@@ -344,7 +357,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
           // Nothing to itemize (every changed value is a folded nested sub-key — the common
           // all-nested first run). A Yes/No commit replaces the empty multiselect.
           const proceed = await confirm({
-            message: `${stackName}: record ${folded.length} undeclared sub-key value(s)? (--verbose to itemize each)`,
+            message: `${stackLabel(stackName, region)}: record ${folded.length} undeclared sub-key value(s)? (--verbose to itemize each)`,
             initialValue: true,
           });
           if (isCancel(proceed) || !proceed) {
@@ -354,7 +367,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
           picked = changed.map((e) => recordedKey(e));
         } else {
           const fromPrompt = await bulkMultiselect(
-            recordSelectMessage(stackName, folded.length),
+            recordSelectMessage(stackName, region, folded.length),
             // default = all selected (→/← bulk-toggle from there)
             standout.map((e) => ({
               value: recordedKey(e),
@@ -382,7 +395,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       // Skipped on the per-finding path: the picker is the decision, no extra confirm.
       if (recorded.length === 0 && !preselectedKeys) {
         const proceed = await confirm({
-          message: `${stackName}: record nothing? This writes an EMPTY baseline — every undeclared value stays reported as unrecorded.`,
+          message: `${stackLabel(stackName, region)}: record nothing? This writes an EMPTY baseline — every undeclared value stays reported as unrecorded.`,
           initialValue: false,
         });
         if (isCancel(proceed) || !proceed) {
@@ -457,8 +470,8 @@ export interface IgnoreResult {
 
 /** Header for ignore's multiselect. The key hints are rendered by `bulkMultiselect`
  *  itself, so this is just the one-line prompt. Pure + exported for unit tests. */
-export function ignoreSelectMessage(stackName: string): string {
-  return `${stackName}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
+export function ignoreSelectMessage(stackName: string, region: string): string {
+  return `${stackLabel(stackName, region)}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
 }
 
 // Unique per-finding key for the multiselect (logicalId+path is unique within a stack;
@@ -517,7 +530,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
       return { wrote: false, refused: true, added: 0 };
     }
     const picked = await bulkMultiselect(
-      ignoreSelectMessage(stackName),
+      ignoreSelectMessage(stackName, region),
       ignoreSelectOptions(ignorable, stackName)
     );
     if (picked === undefined) {
@@ -868,7 +881,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // the findings, so revert every op of the plan — but still confirm the AWS write.
     if (!autoSelectAll) {
       const picked = await bulkMultiselect(
-        revertSelectMessage(stackName),
+        revertSelectMessage(stackName, region),
         revertSelectOptions(plan)
       );
       if (picked === undefined) {
@@ -883,7 +896,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     }
     const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
     const ok = await confirm({
-      message: revertConfirmMessage(stackName, opCount, plan.notRevertable.length),
+      message: revertConfirmMessage(stackName, region, opCount, plan.notRevertable.length),
     });
     if (isCancel(ok) || !ok) {
       out(style.note('aborted.'));

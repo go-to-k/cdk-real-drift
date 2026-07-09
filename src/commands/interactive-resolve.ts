@@ -38,6 +38,7 @@ import {
   includeUnrecordedRemovals,
   recordStack,
   revertStack,
+  stackLabel,
 } from './stack-actions.js';
 
 export interface ResolveParams {
@@ -289,15 +290,20 @@ export function buildResolveOptions(
  *  (issue #539) — empty for a lone stack. Pure + exported. */
 export function resolveMenuMessage(
   stackName: string,
+  region: string,
   code: number,
   establishOnly = false,
   prefix = ''
 ): string {
+  // Name the region the same way the report header does (#947): after #899 exact-name
+  // selection iterates every same-named region instance, so a bare stackName here is
+  // indistinguishable across regions right at the top decision menu.
+  const label = stackLabel(stackName, region);
   if (establishOnly)
-    return `${prefix}${stackName}: no .cdkrd baseline yet — record the current state as your baseline?`;
+    return `${prefix}${label}: no .cdkrd baseline yet — record the current state as your baseline?`;
   return code === 1
-    ? `${prefix}${stackName}: drift found — what do you want to do?`
-    : `${prefix}${stackName}: potential drift found (live-only, no baseline yet) — what do you want to do?`;
+    ? `${prefix}${label}: drift found — what do you want to do?`
+    : `${prefix}${label}: potential drift found (live-only, no baseline yet) — what do you want to do?`;
 }
 
 export async function resolveInteractively(p: ResolveParams): Promise<number> {
@@ -343,7 +349,13 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
     const options = buildResolveOptions(actions, decidable.length, recordLabel);
 
     const choice = await select({
-      message: resolveMenuMessage(p.stackName, code, establishOnly, p.positionPrefix ?? ''),
+      message: resolveMenuMessage(
+        p.stackName,
+        p.region,
+        code,
+        establishOnly,
+        p.positionPrefix ?? ''
+      ),
       options,
       initialValue: 'nothing',
     });
