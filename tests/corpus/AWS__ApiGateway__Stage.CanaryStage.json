@@ -62,7 +62,7 @@
   },
   "expected": [
     {
-      "tier": "generated",
+      "tier": "atDefault",
       "logicalId": "ApiDeploymentStageprod3EB9684E",
       "resourceType": "AWS::ApiGateway::Stage",
       "path": "CanarySetting.DeploymentId",

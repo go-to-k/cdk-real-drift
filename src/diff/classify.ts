@@ -1647,6 +1647,47 @@ export function classifyResource(
       knownDef = { ...knownDef, SecondaryPrivateIpAddressCount: Math.max(0, ips.length - 1) };
     }
   }
+  // #894: a Stage that declares a CanarySetting reads back an undeclared
+  // `CanarySetting.DeploymentId` AWS materializes at creation — the canary starts pointed at the
+  // stage's CURRENT deployment, so it EQUALS the stage's own `DeploymentId` (declared, or the live
+  // value when omitted). Previously folded value-INDEPENDENT via GENERATED_NESTED_PATHS, which hid
+  // an out-of-band canary re-point (`update-stage /canarySettings/deploymentId`) — re-aiming the
+  // canary at an old/vulnerable deployment serves that code to the canary % of prod traffic,
+  // invisibly. Promote to a tier-2 derived equality gate against the stage's own DeploymentId
+  // (declared wins; else the live top-level value). The value-independent GENERATED_NESTED_PATHS
+  // branch in emitNested is suppressed for any nested path that has a knownDefPaths gate this run,
+  // so a re-pointed canary now surfaces while a clean deploy stays atDefault.
+  if (resourceType === 'AWS::ApiGateway::Stage') {
+    const stageDeploymentId = declared['DeploymentId'] ?? live['DeploymentId'];
+    if (typeof stageDeploymentId === 'string') {
+      knownDefPaths = { ...knownDefPaths, 'CanarySetting.DeploymentId': stageDeploymentId };
+    }
+  }
+  // #894: a VPCEndpoint that declares no `DnsOptions` reads back an AWS-assigned default object
+  // whose `DnsRecordIpType` is a DETERMINISTIC function of the declared `VpcEndpointType`
+  // ("ipv4" for an Interface endpoint, "service-defined" for a Gateway one); the other sub-keys
+  // are stable constants. Previously folded value-INDEPENDENT (whole object) via
+  // VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS, which hid an out-of-band `ModifyVpcEndpoint` edit of
+  // any sub-key. Derive the full default object from VpcEndpointType and equality-gate it (fold
+  // tier 2, subset-tolerant): a clean deploy stays atDefault, an out-of-band change to any sub-key
+  // (e.g. a DnsRecordIpType flip) surfaces. A user who configures DNS DECLARES DnsOptions and is
+  // compared in the declared loop, never reaching here.
+  if (resourceType === 'AWS::EC2::VPCEndpoint') {
+    const epType = declared['VpcEndpointType'];
+    const dnsRecordIpType =
+      epType === 'Interface' ? 'ipv4' : epType === 'Gateway' ? 'service-defined' : undefined;
+    if (dnsRecordIpType !== undefined) {
+      knownDef = {
+        ...knownDef,
+        DnsOptions: {
+          DnsRecordIpType: dnsRecordIpType,
+          PrivateDnsOnlyForInboundResolverEndpoint: 'NotSpecified',
+          PrivateDnsSpecifiedDomains: ['*'],
+          PrivateDnsPreference: 'VERIFIED_DOMAINS_ONLY',
+        },
+      };
+    }
+  }
   // R140: nested paths that are always an AWS-assigned generated id (value-independent),
   // folded as `generated` like the top-level isGeneratedName/GENERATED_DEFAULTS cases.
   const generatedPaths = GENERATED_PATHS[resourceType] ?? [];
@@ -2473,8 +2514,13 @@ export function classifyResource(
       // AWS's choice, not user intent. A trivially-empty value ([] / "" / {}) is NOT an
       // AWS-assigned default — it is just absent — so let it fall through to the shared
       // trivial-empty drop rather than surfacing a spurious atDefault (e.g. an NLB's empty
-      // SecurityGroups []).
-      (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) && !isTrivialEmpty(v)) ||
+      // SecurityGroups []). But NOT when the key has a knownDef equality gate this run
+      // (#894 VPCEndpoint DnsOptions, derived from VpcEndpointType above): the gate already
+      // folded the AWS-default value via the `k in knownDef` branch, so a value reaching here
+      // is a real out-of-band change that must surface, not be value-independent-folded.
+      (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) &&
+        !isTrivialEmpty(v) &&
+        !(k in knownDef)) ||
       // #705: a Classic ELB's undeclared Policies folds atDefault ONLY when it is exactly the
       // AWS default SSL negotiation policy (by PolicyName); a downgrade / added policy surfaces.
       clbDefaultSslPoliciesAtDefault(resourceType, k, v)
