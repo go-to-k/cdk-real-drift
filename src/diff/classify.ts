@@ -70,6 +70,7 @@ import {
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
   isEpochHourEqual,
   KNOWN_DEFAULT_ONE_OF,
+  KNOWN_DEFAULT_ONE_OF_PATHS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   ORDER_SIGNIFICANT_ARRAY_KEYS,
@@ -1724,6 +1725,13 @@ export function classifyResource(
       (schemaPath in schema.defaultPaths &&
         matchesKnownDefault(value, schema.defaultPaths[schemaPath])) ||
       (schemaPath in knownDefPaths && matchesKnownDefault(value, knownDefPaths[schemaPath])) ||
+      // #979: a nested undeclared value equal to ONE OF a small closed set of stable-constant
+      // AWS defaults (the EKS ServiceIpv4Cidr's two documented CIDRs) — the nested twin of the
+      // top-level KNOWN_DEFAULT_ONE_OF, still equality-gated (a value outside the set surfaces).
+      (KNOWN_DEFAULT_ONE_OF_PATHS[resourceType]?.[schemaPath]?.some((d) =>
+        matchesKnownDefault(value, d)
+      ) ??
+        false) ||
       // #627: a GSI's undeclared WarmThroughput echoing that GSI's effective capacity
       // (on-demand constant or its own ProvisionedThroughput) — a per-GSI derived default.
       dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live);

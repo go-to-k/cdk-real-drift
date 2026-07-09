@@ -323,10 +323,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     },
   },
   // A fresh EKS cluster reads back several whole-object service defaults the template never
-  // declares. Constants (equality-gated) — an out-of-band change to any surfaces. The
-  // per-deploy-variable bits (KubernetesNetworkConfig.ServiceIpv4Cidr is 10.100 OR 172.20,
-  // Version tracks the service default) are deliberately NOT folded — they stay record-worthy.
-  // Observed live (hunt 2026-07-03 round E).
+  // declares. Constants (equality-gated) — an out-of-band change to any surfaces. Observed
+  // live (hunt 2026-07-03 round E). The two per-deploy-variable bits DO fold (#979, per the
+  // zero-first-run invariant): KubernetesNetworkConfig.ServiceIpv4Cidr is one of two
+  // documented constants (10.100.0.0/16 / 172.20.0.0/16) → KNOWN_DEFAULT_ONE_OF_PATHS below;
+  // the undeclared Version is the moving service-default Kubernetes GA → value-independent.
   'AWS::EKS::Cluster': {
     ControlPlaneScalingConfig: { Tier: 'standard' },
     UpgradePolicy: { SupportType: 'EXTENDED' },
@@ -336,7 +337,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AccessConfig: { AuthenticationMode: 'CONFIG_MAP' },
   },
   // A vpc-cni (and other) addon reads back the kube-system namespace it installs into when
-  // the template declares no NamespaceConfig. AddonVersion is per-cluster-version → record-worthy.
+  // the template declares no NamespaceConfig. (An undeclared AddonVersion — the default
+  // compatible version EKS picks, which moves per cluster version and over time — folds
+  // value-independent, #979.)
   'AWS::EKS::Addon': { NamespaceConfig: { Namespace: 'kube-system' } },
   // A WebACL that declares no on-source DDoS protection reads back AWS's default
   // OnSourceDDoSProtectionConfig — ALBLowReputationMode=ACTIVE_UNDER_DDOS (the first
@@ -1538,6 +1541,24 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
   // are folded as PEERS here — neither masks the other, and neither masks a custom value.
   'AWS::ApiGatewayV2::Integration': {
     TimeoutInMillis: [29000, 30000],
+  },
+};
+
+// The NESTED-path twin of KNOWN_DEFAULT_ONE_OF (#979): a nested undeclared value whose AWS
+// default is one of a small, stable, closed set of constants (the discriminator is off the
+// resource's own model). Keyed BY DOTTED PATH with `*` for array elements — the same shape
+// the classify nested loop (`emitNested`) computes and `schema.defaultPaths` /
+// KNOWN_DEFAULT_PATHS use. A live value that deep-equals ANY listed constant folds to
+// `atDefault`; a declared value or anything outside the set still surfaces (equality-gated,
+// tier-1 — NOT a value-independent blanket fold).
+export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly unknown[]>> = {
+  // An EKS cluster that declares no ServiceIpv4Cidr has EKS pick ONE OF TWO documented
+  // constants for the Kubernetes service CIDR — 10.100.0.0/16 or 172.20.0.0/16 (chosen to
+  // avoid overlapping the VPC CIDR). Both are stable constants and the value is create-only
+  // (never drifts out of band), so folding the SET keeps every clean cluster at zero
+  // first-run drift while an out-of-band value outside the set still surfaces.
+  'AWS::EKS::Cluster': {
+    'KubernetesNetworkConfig.ServiceIpv4Cidr': ['10.100.0.0/16', '172.20.0.0/16'],
   },
 };
 
@@ -2851,6 +2872,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   when undeclared — a user who sets a custom Username declares it (compared in the declared
   //   loop). Fold value-independent. Observed live first-run (hunt 2026-07-03 round E).
   'AWS::EKS::AccessEntry': new Set(['Username']),
+  //   AWS::EKS::Cluster.Version — a cluster that declares no Version is provisioned at the
+  //   CURRENT default Kubernetes version (the canonical moving-GA-version tier-3 case), which
+  //   also MOVES afterward under EKS auto-upgrade — so a recorded baseline value re-drifts and
+  //   record never converges long-term. Undeclared → whatever GA EKS provisioned/upgraded to
+  //   is its default, not user intent; a pinned Version is compared in the declared loop. (#979)
+  'AWS::EKS::Cluster': new Set(['Version']),
+  //   AWS::EKS::Addon.AddonVersion — an addon that declares no version reads back the default
+  //   compatible version EKS picks, which moves per cluster version AND over time (auto-minor
+  //   bumps). Same moving-versioned-default tier-3 shape as Cluster.Version. (#979)
+  'AWS::EKS::Addon': new Set(['AddonVersion']),
   //   AWS::Glue::Job.MaxCapacity / .AllocatedCapacity — a job that sizes itself with the modern
   //   `WorkerType` + `NumberOfWorkers` pair (a glueetl / gluestreaming job on Glue 2.0+) declares
   //   NEITHER capacity field; AWS DERIVES both from the worker sizing and reads them back
