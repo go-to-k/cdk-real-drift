@@ -434,7 +434,14 @@ const CC_ALT_REPRESENTATION: Record<string, Record<string, string>> = {
   // An ALB reads back `SubnetMappings` (`[{SubnetId}]`) — the object-array echo of the
   // declared scalar `Subnets` list. Drop it when `Subnets` is declared so it is not
   // reported as a live-only property (the subnets ARE compared via `Subnets`).
-  'AWS::ElasticLoadBalancingV2::LoadBalancer': { SubnetMappings: 'Subnets' },
+  // #845: the mirror runs BOTH ways — an NLB declared with `SubnetMappings` reads back an
+  // undeclared scalar `Subnets` list echoing the same SubnetIds. Add the symmetric rule so
+  // that live-only `Subnets` is dropped when `SubnetMappings` is declared (the subnets ARE
+  // compared via the declared `SubnetMappings`).
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': {
+    SubnetMappings: 'Subnets',
+    Subnets: 'SubnetMappings',
+  },
 };
 
 // #652/#643 SHAPE-MISMATCH SIBLING ECHO: a resource type offers two declarable shapes for
@@ -1456,6 +1463,43 @@ export function classifyResource(
       if (name) knownDefPaths = { ...knownDefPaths, 'Registry.Name': name };
     }
   }
+  // #845: a CodeBuild Project's undeclared `Artifacts.Name` echoes the declared project
+  // `Name` (AWS default-fills the artifact name to the project name when the template's
+  // Artifacts block declares no Name). Derive it from the declared top-level `Name` and
+  // equality-gate it (fold tier 2): an out-of-band change of the artifact name still surfaces.
+  if (resourceType === 'AWS::CodeBuild::Project') {
+    const name = declared['Name'];
+    if (typeof name === 'string') {
+      knownDefPaths = { ...knownDefPaths, 'Artifacts.Name': name };
+    }
+  }
+  // #845: a SecretsManager RotationSchedule declaring `RotationRules.ScheduleExpression`
+  // "rate(N days)" reads back an undeclared `RotationRules.AutomaticallyAfterDays: N` — AWS
+  // mirrors the rate-day count into the legacy scalar. Parse the declared rate and equality-
+  // gate the derived day count (fold tier 2): a re-scheduled rotation still surfaces.
+  if (resourceType === 'AWS::SecretsManager::RotationSchedule') {
+    const expr = (declared['RotationRules'] as Record<string, unknown> | undefined)?.[
+      'ScheduleExpression'
+    ];
+    const m = typeof expr === 'string' ? /^rate\((\d+)\s+days?\)$/.exec(expr.trim()) : null;
+    if (m) {
+      knownDefPaths = {
+        ...knownDefPaths,
+        'RotationRules.AutomaticallyAfterDays': Number(m[1]),
+      };
+    }
+  }
+  // #845: an AmazonMQ ACTIVEMQ broker that declares no `StorageType` reads back the AWS
+  // default `EFS` (ActiveMQ brokers default to EFS storage; RabbitMQ supports only EBS).
+  // Derive the default from the declared `EngineType` and equality-gate it (fold tier 2):
+  // an ActiveMQ broker pinned to EBS declares StorageType and is compared, and an out-of-band
+  // change away from the derived default still surfaces.
+  if (resourceType === 'AWS::AmazonMQ::Broker') {
+    const engineType = declared['EngineType'];
+    if (typeof engineType === 'string' && engineType.toUpperCase() === 'ACTIVEMQ') {
+      knownDef = { ...knownDef, StorageType: 'EFS' };
+    }
+  }
   // #701: an EventSourceMapping's default BatchSize depends on the source service — 10 for
   // SQS, 100 for Kinesis / DynamoDB streams / MSK / Kafka. Derive the expected default from
   // the declared EventSourceArn's service segment (arn:<p>:<service>:...) and equality-gate
@@ -2084,11 +2128,23 @@ export function classifyResource(
         const liveOnly = alignNameValueSubset(d.stateValue, d.awsValue, nvSubsetSpec);
         if (liveOnly) {
           for (const lo of liveOnly) {
+            const loRec = lo as Record<string, unknown>;
+            const loName = String(loRec[nvSubsetSpec.nameField]);
+            const loValue = loRec[nvSubsetSpec.valueField];
+            // #845: a Firehose Lambda processor whose declared Parameters omit `NumberOfRetries`
+            // reads back the AWS default `NumberOfRetries: "3"` — a service-filled first-run
+            // default, not user intent. Equality-gate the constant default so a clean stream
+            // stays clean; a processor that pins a different retry count declares it (compared)
+            // or, once recorded, an out-of-band change away from "3" still surfaces as undeclared.
+            const isFirehoseRetriesDefault =
+              resourceType === 'AWS::KinesisFirehose::DeliveryStream' &&
+              loName === 'NumberOfRetries' &&
+              loValue === '3';
             findings.push({
-              tier: 'undeclared',
+              tier: isFirehoseRetriesDefault ? 'atDefault' : 'undeclared',
               logicalId,
               resourceType,
-              path: `${d.path}[${String((lo as Record<string, unknown>)[nvSubsetSpec.nameField])}]`,
+              path: `${d.path}[${loName}]`,
               actual: lo,
               nested: true,
             });

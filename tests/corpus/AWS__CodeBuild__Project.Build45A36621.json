@@ -119,7 +119,7 @@
       "constructPath": "CdkRealDriftIntegCodepipelineRich/Build"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Build45A36621",
       "resourceType": "AWS::CodeBuild::Project",
       "path": "Artifacts.Name",

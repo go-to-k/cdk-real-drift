@@ -201,15 +201,6 @@
       "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
     },
     {
-      "tier": "undeclared",
-      "logicalId": "Nlb",
-      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
-      "path": "Subnets",
-      "actual": ["subnet-06375aa74c4098557", "subnet-09675102dd2b4e7d1"],
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkRealD-Nlb-NB5U8c26yJm1/dba9c61ba1aa1fcb",
-      "constructPath": "CdkRealDriftIntegNlbSubnetMappings/Nlb"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "Nlb",
       "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
