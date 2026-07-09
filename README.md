@@ -683,7 +683,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 <summary>Minimal read permissions (check / record)</summary>
 
 - `cloudformation:GetTemplate`, `ListStackResources`, `DescribeStacks`,
-  `DescribeType`; `ListExports` (only for templates using `Fn::ImportValue`)
+  `DescribeType`; `DescribeStackResources` (the sibling-ownership check for the
+  `added` tier — see the `added`-tier entry below); `ListExports` (only for
+  templates using `Fn::ImportValue`)
 - `cloudcontrol:GetResource`: Cloud Control invokes each type's own read handler,
   so it needs that type's read permissions (this is why `ReadOnlyAccess` is the
   simple answer)
@@ -760,6 +762,49 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the
   swap would otherwise go undetected), so the reduced coverage is never silent.
+- **`added` tier (out-of-band resource detection).** The `added` tier — cdkrd's
+  detection of live child resources that exist in AWS but were never declared in
+  your template (a headline differentiator) — enumerates each declared parent's
+  live children with per-service list/describe calls. **These are NOT covered by
+  the entries above; a scoped policy that omits them silently degrades every
+  `added` finding to `skipped` and makes `--strict` exit 1 permanently.** If you
+  want this differentiator, include them; if not, that is the tradeoff. By
+  declared parent type:
+  - `AWS::ApiGateway::RestApi` + `AWS::ApiGatewayV2::Api`: `apigateway:GET`
+    (REST `GetResources` / `GetAuthorizers` / `GetModels` /
+    `GetRequestValidators` / `GetGatewayResponses`; HTTP `GetRoutes` /
+    `GetIntegrations` / `GetAuthorizers` / `GetStages` — every API Gateway read
+    resolves to the single `apigateway:GET` action)
+  - `AWS::SNS::Topic`: `sns:ListSubscriptionsByTopic`
+  - `AWS::Lambda::Function`: `lambda:ListEventSourceMappings`,
+    `lambda:ListFunctionUrlConfigs`, `lambda:ListAliases`,
+    `lambda:ListVersionsByFunction`
+  - `AWS::Events::EventBus`: `events:ListRules`
+  - `AWS::Cognito::UserPool`: `cognito-idp:ListUserPoolClients`,
+    `cognito-idp:ListGroups`, `cognito-idp:ListResourceServers`
+  - `AWS::AppSync::GraphQLApi`: `appsync:ListDataSources`, `appsync:ListResolvers`,
+    `appsync:ListFunctions`, `appsync:ListTypes`
+  - `AWS::Logs::LogGroup`: `logs:DescribeSubscriptionFilters` (plus
+    `logs:DescribeMetricFilters`, already listed above)
+  - `AWS::ElasticLoadBalancingV2::LoadBalancer` + `::Listener`:
+    `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeRules`
+  - `AWS::EC2::VPC` + `AWS::EC2::RouteTable`: `ec2:DescribeSubnets`,
+    `ec2:DescribeRouteTables`
+  - `AWS::ECS::Cluster`: `ecs:ListServices` (distinct from the
+    `ecs:DescribeServices` override reader listed above)
+  - `AWS::KMS::Key`: `kms:ListAliases` (the same action listed as optional
+    above — here it enumerates a key's aliases as child resources, so it is
+    required, not optional, for the `added` tier)
+  - `AWS::AppConfig::Application`: `appconfig:ListEnvironments`,
+    `appconfig:ListConfigurationProfiles`
+  - `AWS::EFS::FileSystem`: `elasticfilesystem:DescribeMountTargets`
+  - `AWS::RDS::DBCluster`: `rds:DescribeDBClusters`, `rds:DescribeDBInstances`
+
+  The `added` tier also needs `cloudformation:DescribeStackResources` (grouped with
+  the other CloudFormation actions above): before flagging a live child as
+  out-of-band `added` — which offers a destructive `DeleteResource` revert — cdkrd
+  confirms the child is not owned by a DIFFERENT (sibling) stack. Without it a
+  cross-stack child is false-flagged `added`.
 
 </details>
 
