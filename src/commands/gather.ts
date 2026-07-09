@@ -13,7 +13,7 @@ import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import {
   fetchManagedAliasTargets,
-  kmsListAliasesDeniedWarning,
+  kmsWarnDecision,
   usesManagedKmsAlias,
 } from '../read/kms-aliases.js';
 import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
@@ -45,6 +45,11 @@ function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string
 // (a multi-stack run in the same region should not repeat it). Process-lifetime (matches
 // the per-region alias cache in kms-aliases.ts).
 const kmsDeniedWarned = new Set<string>();
+// Regions already warned about a TRANSIENT kms:ListAliases failure (#963). A SEPARATE set
+// from kmsDeniedWarned so a transient blip's dedupe never masks a later stack's GENUINE
+// denial in the same region — the transient failure is not cached (kms-aliases.ts), so the
+// next stack re-queries and a real denial then still surfaces.
+const kmsTransientWarned = new Set<string>();
 
 // Bounded-concurrency live-read pool (pull-next-when-free): serial reads cost
 // ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
@@ -551,10 +556,19 @@ export async function gatherFindings(
   if (desired.resources.some((r) => usesManagedKmsAlias(r.declared))) {
     const resolved = await fetchManagedAliasTargets(region);
     kmsAliasTargets = resolved.targets;
-    if (resolved.denied && !kmsDeniedWarned.has(region)) {
-      kmsDeniedWarned.add(region);
-      console.error(kmsListAliasesDeniedWarning(region));
-    }
+    // A denied read is either a genuine IAM denial (permanent — grant kms:ListAliases) or
+    // a TRANSIENT blip (throttle/network/5xx; no action needed, retried next stack). Emit
+    // the RIGHT message and stamp the RIGHT dedupe set — a transient blip must NOT poison
+    // kmsDeniedWarned, or a later stack's real denial in this region would go unexplained (#963).
+    const decision = kmsWarnDecision(
+      region,
+      resolved,
+      kmsDeniedWarned.has(region),
+      kmsTransientWarned.has(region)
+    );
+    if (decision.stampDenied) kmsDeniedWarned.add(region);
+    if (decision.stampTransient) kmsTransientWarned.add(region);
+    if (decision.warning) console.error(decision.warning);
   }
   const classifyOpts = {
     accountId: desired.accountId,
