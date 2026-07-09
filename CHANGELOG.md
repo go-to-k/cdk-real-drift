@@ -1,3 +1,10 @@
+## [0.4.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.3...v0.4.4) (2026-07-09)
+
+
+### Bug Fixes
+
+* **diff:** fold derivable tier-3 policy residue ([#894](https://github.com/go-to-k/cdk-real-drift/issues/894)) ([#1034](https://github.com/go-to-k/cdk-real-drift/issues/1034)) ([4c2db62](https://github.com/go-to-k/cdk-real-drift/commit/4c2db62a1bc0cc67ea99512a163026ed3b5038a8))
+
 ## [0.4.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.2...v0.4.3) (2026-07-09)
 
 
