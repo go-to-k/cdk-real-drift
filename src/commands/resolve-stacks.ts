@@ -118,10 +118,16 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
           `glob "${name}" matched no stacks defined by the CDK app (found: ${known()})`
         );
     } else {
-      const hit = discovered.find((s) => s.stackName === name);
-      if (!hit)
+      // Collect ALL discovered stacks with this exact name, NOT just the first
+      // (#884). A multi-REGION app can define the same stackName in two envs
+      // (e.g. `Dup` in us-east-1 AND us-west-2); `add` dedups on name+region so
+      // the two distinct-region instances are both kept while a same-name
+      // same-region duplicate still collapses. `find` silently dropped every
+      // instance but the first, so `check Dup --fail` greenlit the other region.
+      const hits = discovered.filter((s) => s.stackName === name);
+      if (hits.length === 0)
         throw new Error(`stack "${name}" is not defined by the CDK app (found: ${known()})`);
-      add(hit.stackName, hit.region ?? fallbackRegion, hit.template);
+      for (const hit of hits) add(hit.stackName, hit.region ?? fallbackRegion, hit.template);
     }
   }
   if (out.length === 0) {
