@@ -1,3 +1,10 @@
+## [0.4.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.1...v0.4.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cli:** interrupt during the gather spinner exits 130, never 0 ([#950](https://github.com/go-to-k/cdk-real-drift/issues/950)) ([#1029](https://github.com/go-to-k/cdk-real-drift/issues/1029)) ([180ab88](https://github.com/go-to-k/cdk-real-drift/commit/180ab88c24582479f699a8e4c22842e87c5cf2b1))
+
 ## [0.4.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.0...v0.4.1) (2026-07-09)
 
 
