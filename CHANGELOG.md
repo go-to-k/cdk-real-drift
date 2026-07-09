@@ -1,3 +1,10 @@
+## [0.4.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.4...v0.4.5) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold RedshiftServerless ([#958](https://github.com/go-to-k/cdk-real-drift/issues/958)) + MSK::Cluster ([#977](https://github.com/go-to-k/cdk-real-drift/issues/977)) first-run defaults ([#1035](https://github.com/go-to-k/cdk-real-drift/issues/1035)) ([8e18834](https://github.com/go-to-k/cdk-real-drift/commit/8e18834820341923a2abc25aeb812cd83c098bb1))
+
 ## [0.4.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.3...v0.4.4) (2026-07-09)
 
 
