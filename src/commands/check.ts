@@ -243,8 +243,16 @@ export function hasBaselineForStack(stackName: string): boolean {
   } catch {
     return false; // no `.cdkrd/baselines/` directory at all → nothing was ever recorded
   }
-  const prefix = `${stackName}.`;
-  return entries.some((f) => f.startsWith(prefix) && f.endsWith('.json'));
+  // #986: match the `<stackName>.` prefix CASE-INSENSITIVELY. `loadBaseline`'s `readFile`
+  // resolves case-insensitively on macOS/Windows (the dev default), where `mystack` and
+  // `MyStack` map to ONE on-disk baseline file — so a case-SENSITIVE `startsWith` here
+  // disagreed with it, missing a case-differing baseline and downgrading a truly deleted
+  // stack back to a benign "never deployed" skip (exit 0). Lowercasing both sides mirrors
+  // #870's case-insensitive collision semantics; a case-insensitive existence probe can
+  // only make the deleted-out-of-band detector MORE cautious (never a false positive: the
+  // `.json` suffix + `<stackName>.` separator still guard against bare-prefix collisions).
+  const prefix = `${stackName}.`.toLowerCase();
+  return entries.some((f) => f.toLowerCase().startsWith(prefix) && f.endsWith('.json'));
 }
 
 export async function runCheck(args: string[]): Promise<number> {

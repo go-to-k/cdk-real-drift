@@ -74,6 +74,24 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       expect(hasBaselineForStack(STACK)).toBe(true);
     });
 
+    it('#986: matches a baseline whose on-disk name differs only in CASE', async () => {
+      // On a case-insensitive FS (macOS/Windows) `mystack` and `MyStack` map to ONE
+      // baseline file; `loadBaseline`'s `readFile` opens it either way. The existence probe
+      // must agree — a case-SENSITIVE prefix match missed the file and silently downgraded a
+      // truly deleted stack to a benign skip (exit 0). Baseline recorded as `MyStack.…json`,
+      // probed as `mystack`, must count. Passes on case-sensitive Linux CI too: the compare
+      // is case-insensitive in the code, independent of the FS's own case behavior.
+      await writeBaseline(STACK, ACCOUNT, REGION);
+      expect(hasBaselineForStack('mystack')).toBe(true);
+    });
+
+    it('#986: the case-insensitive match still guards against a bare-prefix collision', async () => {
+      // `MyStackExtra.<...>.json` must NOT satisfy hasBaselineForStack('mystack') even with
+      // the case-folded compare — the `<stackName>.` separator still bounds the prefix.
+      await writeBaseline('MyStackExtra', ACCOUNT, REGION);
+      expect(hasBaselineForStack('mystack')).toBe(false);
+    });
+
     it('does not match a DIFFERENT stack whose name shares no prefix', async () => {
       await writeBaseline('OtherStack', ACCOUNT, REGION);
       expect(hasBaselineForStack(STACK)).toBe(false);
