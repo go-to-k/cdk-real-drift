@@ -1,3 +1,10 @@
+## [0.3.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.13...v0.3.14) (2026-07-09)
+
+
+### Bug Fixes
+
+* **diff:** fold derived first-run echoes (CodeBuild/Secrets/NLB/MQ/Firehose) ([#845](https://github.com/go-to-k/cdk-real-drift/issues/845)) ([#1027](https://github.com/go-to-k/cdk-real-drift/issues/1027)) ([c845192](https://github.com/go-to-k/cdk-real-drift/commit/c845192757aff578c0fac16792b2e89c20bae4ab))
+
 ## [0.3.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.12...v0.3.13) (2026-07-09)
 
 
