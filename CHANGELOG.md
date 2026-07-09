@@ -1,3 +1,12 @@
+## [0.3.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.8...v0.3.9) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** Events::Rule on a custom event bus is silently skipped ([#973](https://github.com/go-to-k/cdk-real-drift/issues/973)) ([#1003](https://github.com/go-to-k/cdk-real-drift/issues/1003)) ([93be820](https://github.com/go-to-k/cdk-real-drift/commit/93be8201ee9948877a16c1648b648b014e50a5fe))
+* **read:** out-of-band deleted IAM AccessKey / AppSync ApiKey reach the deleted tier ([#965](https://github.com/go-to-k/cdk-real-drift/issues/965)) ([#1001](https://github.com/go-to-k/cdk-real-drift/issues/1001)) ([8d95a26](https://github.com/go-to-k/cdk-real-drift/commit/8d95a26395e17a78ad141e64ef5bf70e1cea2cc4))
+* **revert:** DocDB + ClientVpn selective writers drop remove ops ([#984](https://github.com/go-to-k/cdk-real-drift/issues/984)) ([#1002](https://github.com/go-to-k/cdk-real-drift/issues/1002)) ([02b2886](https://github.com/go-to-k/cdk-real-drift/commit/02b2886aef69213aa192ad868e1118c01b8f79cf))
+
 ## [0.3.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.7...v0.3.8) (2026-07-09)
 
 
