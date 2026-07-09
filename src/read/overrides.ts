@@ -2521,8 +2521,16 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
 // carry no user-authored values) are skipped: an intent Slot that points at a built-in
 // keeps its slotTypeId AS the SlotTypeName (built-in signatures ARE the CFn name), and a
 // built-in slot type never appears in the reconstructed SlotTypes array (CFn declares
-// only custom slot types). Non-fatal: ANY thrown error aborts the whole reconstruction
-// and returns undefined (keep the CC model) rather than a partial/false model.
+// only custom slot types). Failure handling: a genuine "no locales" bot returns undefined
+// (nothing to supplement — an empty ListBotLocales is a valid success, NOT an error), but a
+// real lexv2 API failure (a missing read permission, a transient throttle) is NOT swallowed —
+// it PROPAGATES to the router, which catches it and runs the #752 readGap degrade
+// (restoreSupplementReadGaps mirrors the declared BotLocales into live + warns on stderr).
+// Swallowing it here (returning undefined on error) was indistinguishable from "nothing to
+// add" at the router, so BotLocales — exempted from the writeOnly strip on the assumption this
+// supplement fills it — compared against an ABSENT live value and false-flagged the WHOLE
+// declared model as red drift, silently, on every check for a principal short one permission
+// (#964). Built-in slot types are skipped BEFORE any describe, so no built-in Describe throws.
 type Rec = Record<string, unknown>;
 function projectLexPrompt(p: unknown): Rec | undefined {
   const ps = p as {
@@ -2555,212 +2563,206 @@ const supplementLexBot: SupplementReader = async ({ physicalId, region }) => {
   if (!botId) return undefined;
   const botVersion = 'DRAFT';
   const c = new LexModelsV2Client({ region, ...READ_RETRY });
-  try {
-    // PAGINATE every LexModelsV2 list call (all use lowercase `nextToken`): reading only
-    // page 1 of locales / slot types / intents / slots would silently DROP later-page
-    // elements → a PARTIAL BotLocales model (a false-confidence FN — an out-of-band intent
-    // / slot on page 2 stays invisible). Accumulate all pages before use.
-    const localeSummaries: BotLocaleSummary[] = [];
+  // PAGINATE every LexModelsV2 list call (all use lowercase `nextToken`): reading only
+  // page 1 of locales / slot types / intents / slots would silently DROP later-page
+  // elements → a PARTIAL BotLocales model (a false-confidence FN — an out-of-band intent
+  // / slot on page 2 stays invisible). Accumulate all pages before use.
+  const localeSummaries: BotLocaleSummary[] = [];
+  {
+    let nextToken: string | undefined;
+    do {
+      const r = await c.send(
+        new ListBotLocalesCommand({ botId, botVersion, ...(nextToken && { nextToken }) })
+      );
+      localeSummaries.push(...(r.botLocaleSummaries ?? []));
+      nextToken = r.nextToken;
+    } while (nextToken);
+  }
+  const botLocales: Rec[] = [];
+  for (const ls of localeSummaries) {
+    const localeId = str(ls.localeId);
+    if (!localeId) continue;
+
+    const loc = await c.send(new DescribeBotLocaleCommand({ botId, botVersion, localeId }));
+    const cfnLocale: Rec = { LocaleId: localeId };
+    const desc = str(loc.description);
+    if (desc !== undefined) cfnLocale.Description = desc;
+    if (typeof loc.nluIntentConfidenceThreshold === 'number') {
+      cfnLocale.NluConfidenceThreshold = loc.nluIntentConfidenceThreshold;
+    }
+    const voiceId = str(loc.voiceSettings?.voiceId);
+    if (voiceId !== undefined) {
+      const vs: Rec = { VoiceId: voiceId };
+      const engine = str(loc.voiceSettings?.engine);
+      if (engine !== undefined) vs.Engine = engine;
+      cfnLocale.VoiceSettings = vs;
+    }
+
+    // SlotTypes — custom slot types only; build id→name for slot resolution.
+    const slotTypeNames = new Map<string, string>();
+    const slotTypeSummaries: SlotTypeSummary[] = [];
     {
       let nextToken: string | undefined;
       do {
         const r = await c.send(
-          new ListBotLocalesCommand({ botId, botVersion, ...(nextToken && { nextToken }) })
+          new ListSlotTypesCommand({
+            botId,
+            botVersion,
+            localeId,
+            ...(nextToken && { nextToken }),
+          })
         );
-        localeSummaries.push(...(r.botLocaleSummaries ?? []));
+        slotTypeSummaries.push(...(r.slotTypeSummaries ?? []));
         nextToken = r.nextToken;
       } while (nextToken);
     }
-    const botLocales: Rec[] = [];
-    for (const ls of localeSummaries) {
-      const localeId = str(ls.localeId);
-      if (!localeId) continue;
-
-      const loc = await c.send(new DescribeBotLocaleCommand({ botId, botVersion, localeId }));
-      const cfnLocale: Rec = { LocaleId: localeId };
-      const desc = str(loc.description);
-      if (desc !== undefined) cfnLocale.Description = desc;
-      if (typeof loc.nluIntentConfidenceThreshold === 'number') {
-        cfnLocale.NluConfidenceThreshold = loc.nluIntentConfidenceThreshold;
+    const cfnSlotTypes: Rec[] = [];
+    for (const sts of slotTypeSummaries) {
+      const slotTypeId = str(sts.slotTypeId);
+      if (!slotTypeId) continue;
+      // Built-in slot types (AMAZON.*) carry no describe-able user model; skip them.
+      if (slotTypeId.startsWith('AMAZON.')) {
+        slotTypeNames.set(slotTypeId, slotTypeId);
+        continue;
       }
-      const voiceId = str(loc.voiceSettings?.voiceId);
-      if (voiceId !== undefined) {
-        const vs: Rec = { VoiceId: voiceId };
-        const engine = str(loc.voiceSettings?.engine);
-        if (engine !== undefined) vs.Engine = engine;
-        cfnLocale.VoiceSettings = vs;
+      const st = await c.send(
+        new DescribeSlotTypeCommand({ botId, botVersion, localeId, slotTypeId })
+      );
+      const name = str(st.slotTypeName);
+      if (name !== undefined) slotTypeNames.set(slotTypeId, name);
+      const cfnSt: Rec = {};
+      if (name !== undefined) cfnSt.Name = name;
+      const stDesc = str(st.description);
+      if (stDesc !== undefined) cfnSt.Description = stDesc;
+      if (Array.isArray(st.slotTypeValues)) {
+        cfnSt.SlotTypeValues = st.slotTypeValues.map((v) => {
+          const entry: Rec = {};
+          const sv = str(v.sampleValue?.value);
+          if (sv !== undefined) entry.SampleValue = { Value: sv };
+          if (Array.isArray(v.synonyms)) {
+            const syns = v.synonyms
+              .map((s) => str(s.value))
+              .filter((x): x is string => x !== undefined)
+              .map((x) => ({ Value: x }));
+            if (syns.length > 0) entry.Synonyms = syns;
+          }
+          return entry;
+        });
+      }
+      // The lexv2 API enum is PascalCase (OriginalValue/TopResolution/Concatenation) while
+      // CFn's ResolutionStrategy is SCREAMING_SNAKE (ORIGINAL_VALUE/TOP_RESOLUTION/
+      // CONCATENATION) — translate, else EVERY custom slot type false-drifts. Fall back to the
+      // raw value for any future enum member so an unknown value surfaces rather than mangles.
+      const strategy = str(st.valueSelectionSetting?.resolutionStrategy);
+      if (strategy !== undefined) {
+        cfnSt.ValueSelectionSetting = {
+          ResolutionStrategy: LEX_RESOLUTION_STRATEGY_TO_CFN[strategy] ?? strategy,
+        };
+      }
+      cfnSlotTypes.push(cfnSt);
+    }
+
+    // Intents — with their slots + slot-priority name resolution.
+    const intentSummaries: IntentSummary[] = [];
+    {
+      let nextToken: string | undefined;
+      do {
+        const r = await c.send(
+          new ListIntentsCommand({ botId, botVersion, localeId, ...(nextToken && { nextToken }) })
+        );
+        intentSummaries.push(...(r.intentSummaries ?? []));
+        nextToken = r.nextToken;
+      } while (nextToken);
+    }
+    const cfnIntents: Rec[] = [];
+    for (const is of intentSummaries) {
+      const intentId = str(is.intentId);
+      if (!intentId) continue;
+      const intent = await c.send(
+        new DescribeIntentCommand({ botId, botVersion, localeId, intentId })
+      );
+      const cfnIntent: Rec = {};
+      const iName = str(intent.intentName);
+      if (iName !== undefined) cfnIntent.Name = iName;
+      const iDesc = str(intent.description);
+      if (iDesc !== undefined) cfnIntent.Description = iDesc;
+      const parentSig = str(intent.parentIntentSignature);
+      if (parentSig !== undefined) cfnIntent.ParentIntentSignature = parentSig;
+      if (Array.isArray(intent.sampleUtterances)) {
+        const utterances = intent.sampleUtterances
+          .map((u) => str(u.utterance))
+          .filter((x): x is string => x !== undefined)
+          .map((x) => ({ Utterance: x }));
+        if (utterances.length > 0) cfnIntent.SampleUtterances = utterances;
       }
 
-      // SlotTypes — custom slot types only; build id→name for slot resolution.
-      const slotTypeNames = new Map<string, string>();
-      const slotTypeSummaries: SlotTypeSummary[] = [];
+      // Slots — build id→name for the SlotPriorities resolution.
+      const slotNames = new Map<string, string>();
+      const cfnSlots: Rec[] = [];
+      const slotSummaries: SlotSummary[] = [];
       {
         let nextToken: string | undefined;
         do {
           const r = await c.send(
-            new ListSlotTypesCommand({
+            new ListSlotsCommand({
               botId,
               botVersion,
               localeId,
+              intentId,
               ...(nextToken && { nextToken }),
             })
           );
-          slotTypeSummaries.push(...(r.slotTypeSummaries ?? []));
+          slotSummaries.push(...(r.slotSummaries ?? []));
           nextToken = r.nextToken;
         } while (nextToken);
       }
-      const cfnSlotTypes: Rec[] = [];
-      for (const sts of slotTypeSummaries) {
-        const slotTypeId = str(sts.slotTypeId);
-        if (!slotTypeId) continue;
-        // Built-in slot types (AMAZON.*) carry no describe-able user model; skip them.
-        if (slotTypeId.startsWith('AMAZON.')) {
-          slotTypeNames.set(slotTypeId, slotTypeId);
-          continue;
-        }
-        const st = await c.send(
-          new DescribeSlotTypeCommand({ botId, botVersion, localeId, slotTypeId })
+      for (const ss of slotSummaries) {
+        const slotId = str(ss.slotId);
+        if (!slotId) continue;
+        const slot = await c.send(
+          new DescribeSlotCommand({ botId, botVersion, localeId, intentId, slotId })
         );
-        const name = str(st.slotTypeName);
-        if (name !== undefined) slotTypeNames.set(slotTypeId, name);
-        const cfnSt: Rec = {};
-        if (name !== undefined) cfnSt.Name = name;
-        const stDesc = str(st.description);
-        if (stDesc !== undefined) cfnSt.Description = stDesc;
-        if (Array.isArray(st.slotTypeValues)) {
-          cfnSt.SlotTypeValues = st.slotTypeValues.map((v) => {
-            const entry: Rec = {};
-            const sv = str(v.sampleValue?.value);
-            if (sv !== undefined) entry.SampleValue = { Value: sv };
-            if (Array.isArray(v.synonyms)) {
-              const syns = v.synonyms
-                .map((s) => str(s.value))
-                .filter((x): x is string => x !== undefined)
-                .map((x) => ({ Value: x }));
-              if (syns.length > 0) entry.Synonyms = syns;
-            }
-            return entry;
-          });
+        const slotName = str(slot.slotName);
+        if (slotName !== undefined) slotNames.set(slotId, slotName);
+        const cfnSlot: Rec = {};
+        if (slotName !== undefined) cfnSlot.Name = slotName;
+        const slotTypeId = str(slot.slotTypeId);
+        if (slotTypeId !== undefined) {
+          // Built-in slotTypeIds (AMAZON.*) map to themselves; custom ones resolve via
+          // the slot-type name map (fall back to the raw id if unresolved).
+          cfnSlot.SlotTypeName = slotTypeNames.get(slotTypeId) ?? slotTypeId;
         }
-        // The lexv2 API enum is PascalCase (OriginalValue/TopResolution/Concatenation) while
-        // CFn's ResolutionStrategy is SCREAMING_SNAKE (ORIGINAL_VALUE/TOP_RESOLUTION/
-        // CONCATENATION) — translate, else EVERY custom slot type false-drifts. Fall back to the
-        // raw value for any future enum member so an unknown value surfaces rather than mangles.
-        const strategy = str(st.valueSelectionSetting?.resolutionStrategy);
-        if (strategy !== undefined) {
-          cfnSt.ValueSelectionSetting = {
-            ResolutionStrategy: LEX_RESOLUTION_STRATEGY_TO_CFN[strategy] ?? strategy,
-          };
+        const elic = slot.valueElicitationSetting;
+        if (elic && typeof elic === 'object') {
+          const cfnElic: Rec = {};
+          const constraint = str(elic.slotConstraint);
+          if (constraint !== undefined) cfnElic.SlotConstraint = constraint;
+          const prompt = projectLexPrompt(elic.promptSpecification);
+          if (prompt !== undefined) cfnElic.PromptSpecification = prompt;
+          if (Object.keys(cfnElic).length > 0) cfnSlot.ValueElicitationSetting = cfnElic;
         }
-        cfnSlotTypes.push(cfnSt);
+        cfnSlots.push(cfnSlot);
       }
 
-      // Intents — with their slots + slot-priority name resolution.
-      const intentSummaries: IntentSummary[] = [];
-      {
-        let nextToken: string | undefined;
-        do {
-          const r = await c.send(
-            new ListIntentsCommand({ botId, botVersion, localeId, ...(nextToken && { nextToken }) })
-          );
-          intentSummaries.push(...(r.intentSummaries ?? []));
-          nextToken = r.nextToken;
-        } while (nextToken);
+      if (Array.isArray(intent.slotPriorities)) {
+        const priorities = intent.slotPriorities
+          .map((p) => {
+            const slotName = str(p.slotId) ? slotNames.get(str(p.slotId) as string) : undefined;
+            if (typeof p.priority !== 'number' || slotName === undefined) return undefined;
+            return { Priority: p.priority, SlotName: slotName };
+          })
+          .filter((x): x is { Priority: number; SlotName: string } => x !== undefined);
+        if (priorities.length > 0) cfnIntent.SlotPriorities = priorities;
       }
-      const cfnIntents: Rec[] = [];
-      for (const is of intentSummaries) {
-        const intentId = str(is.intentId);
-        if (!intentId) continue;
-        const intent = await c.send(
-          new DescribeIntentCommand({ botId, botVersion, localeId, intentId })
-        );
-        const cfnIntent: Rec = {};
-        const iName = str(intent.intentName);
-        if (iName !== undefined) cfnIntent.Name = iName;
-        const iDesc = str(intent.description);
-        if (iDesc !== undefined) cfnIntent.Description = iDesc;
-        const parentSig = str(intent.parentIntentSignature);
-        if (parentSig !== undefined) cfnIntent.ParentIntentSignature = parentSig;
-        if (Array.isArray(intent.sampleUtterances)) {
-          const utterances = intent.sampleUtterances
-            .map((u) => str(u.utterance))
-            .filter((x): x is string => x !== undefined)
-            .map((x) => ({ Utterance: x }));
-          if (utterances.length > 0) cfnIntent.SampleUtterances = utterances;
-        }
-
-        // Slots — build id→name for the SlotPriorities resolution.
-        const slotNames = new Map<string, string>();
-        const cfnSlots: Rec[] = [];
-        const slotSummaries: SlotSummary[] = [];
-        {
-          let nextToken: string | undefined;
-          do {
-            const r = await c.send(
-              new ListSlotsCommand({
-                botId,
-                botVersion,
-                localeId,
-                intentId,
-                ...(nextToken && { nextToken }),
-              })
-            );
-            slotSummaries.push(...(r.slotSummaries ?? []));
-            nextToken = r.nextToken;
-          } while (nextToken);
-        }
-        for (const ss of slotSummaries) {
-          const slotId = str(ss.slotId);
-          if (!slotId) continue;
-          const slot = await c.send(
-            new DescribeSlotCommand({ botId, botVersion, localeId, intentId, slotId })
-          );
-          const slotName = str(slot.slotName);
-          if (slotName !== undefined) slotNames.set(slotId, slotName);
-          const cfnSlot: Rec = {};
-          if (slotName !== undefined) cfnSlot.Name = slotName;
-          const slotTypeId = str(slot.slotTypeId);
-          if (slotTypeId !== undefined) {
-            // Built-in slotTypeIds (AMAZON.*) map to themselves; custom ones resolve via
-            // the slot-type name map (fall back to the raw id if unresolved).
-            cfnSlot.SlotTypeName = slotTypeNames.get(slotTypeId) ?? slotTypeId;
-          }
-          const elic = slot.valueElicitationSetting;
-          if (elic && typeof elic === 'object') {
-            const cfnElic: Rec = {};
-            const constraint = str(elic.slotConstraint);
-            if (constraint !== undefined) cfnElic.SlotConstraint = constraint;
-            const prompt = projectLexPrompt(elic.promptSpecification);
-            if (prompt !== undefined) cfnElic.PromptSpecification = prompt;
-            if (Object.keys(cfnElic).length > 0) cfnSlot.ValueElicitationSetting = cfnElic;
-          }
-          cfnSlots.push(cfnSlot);
-        }
-
-        if (Array.isArray(intent.slotPriorities)) {
-          const priorities = intent.slotPriorities
-            .map((p) => {
-              const slotName = str(p.slotId) ? slotNames.get(str(p.slotId) as string) : undefined;
-              if (typeof p.priority !== 'number' || slotName === undefined) return undefined;
-              return { Priority: p.priority, SlotName: slotName };
-            })
-            .filter((x): x is { Priority: number; SlotName: string } => x !== undefined);
-          if (priorities.length > 0) cfnIntent.SlotPriorities = priorities;
-        }
-        if (cfnSlots.length > 0) cfnIntent.Slots = cfnSlots;
-        cfnIntents.push(cfnIntent);
-      }
-
-      if (cfnSlotTypes.length > 0) cfnLocale.SlotTypes = cfnSlotTypes;
-      if (cfnIntents.length > 0) cfnLocale.Intents = cfnIntents;
-      botLocales.push(cfnLocale);
+      if (cfnSlots.length > 0) cfnIntent.Slots = cfnSlots;
+      cfnIntents.push(cfnIntent);
     }
-    return botLocales.length > 0 ? { BotLocales: botLocales } : undefined;
-  } catch {
-    // Non-fatal: any failure (a describe on a built-in, a transient, a missing DRAFT
-    // version) keeps the CC model rather than emitting a partial/false BotLocales.
-    return undefined;
+
+    if (cfnSlotTypes.length > 0) cfnLocale.SlotTypes = cfnSlotTypes;
+    if (cfnIntents.length > 0) cfnLocale.Intents = cfnIntents;
+    botLocales.push(cfnLocale);
   }
+  return botLocales.length > 0 ? { BotLocales: botLocales } : undefined;
 };
 
 // AWS::ElasticBeanstalk::Environment — OptionSettings is writeOnly in the registry schema, so
