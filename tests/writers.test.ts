@@ -518,6 +518,17 @@ describe('DLM LifecyclePolicy writer (UpdateLifecyclePolicy, issue #468)', () =>
       SDK_WRITERS['AWS::DLM::LifecyclePolicy'](ctx({ physicalId: '', declared: {} }), [])
     ).rejects.toThrow(/DLM lifecycle policy/);
   });
+
+  it('bars a top-level State remove honestly instead of silently dropping it (#913)', async () => {
+    // no clearing value is safe for a top-level `remove` (Update always requires a State) — fail
+    // honestly rather than omit the field and non-converge; the throw precedes any live read.
+    await expect(
+      SDK_WRITERS['AWS::DLM::LifecyclePolicy'](dlmCtx({}), [
+        { op: 'remove', path: '/State', human: 'State -> (none)' },
+      ])
+    ).rejects.toThrow(/State cannot be cleared/);
+    expect(dlm.commandCalls(UpdateLifecyclePolicyCommand)).toHaveLength(0);
+  });
 });
 
 describe('ECS ServiceConnect writer (re-supplies the whole writeOnly config via UpdateService)', () => {
@@ -1026,6 +1037,43 @@ describe('Glue Workflow writer (CC UnsupportedActionException)', () => {
     // the other live fields are re-sent so UpdateWorkflow's whole-object overwrite never wipes them
     expect(input.Description).toBe('etl');
     expect(input.DefaultRunProperties).toEqual({ env: 'test' });
+  });
+
+  it('clears an OOB-added Description / DefaultRunProperties on a remove, not a silent drop (#913)', async () => {
+    glue.on(GetWorkflowCommand).resolves({
+      Workflow: {
+        Name: 'w',
+        Description: 'oob',
+        DefaultRunProperties: { env: 'oob' },
+        MaxConcurrentRuns: 7,
+      },
+    } as never);
+    glue.on(UpdateWorkflowCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: 'w', declared: { Name: 'w' } }), [
+      { op: 'remove', path: '/Description', human: 'Description -> (none)' },
+      { op: 'remove', path: '/DefaultRunProperties', human: 'DefaultRunProperties -> (none)' },
+    ]);
+    const input = glue.commandCalls(UpdateWorkflowCommand)[0]!.args[0].input as unknown as Record<
+      string,
+      unknown
+    >;
+    // explicit clearing values — a selective UpdateWorkflow would keep the live value if omitted
+    expect(input.Description).toBe('');
+    expect(input.DefaultRunProperties).toEqual({});
+    // the untouched live value is still re-sent so the whole-object overwrite never wipes it
+    expect(input.MaxConcurrentRuns).toBe(7);
+  });
+
+  it('bars a MaxConcurrentRuns remove honestly ("no limit" is not expressible, #913)', async () => {
+    glue
+      .on(GetWorkflowCommand)
+      .resolves({ Workflow: { Name: 'w', MaxConcurrentRuns: 7 } } as never);
+    await expect(
+      SDK_WRITERS['AWS::Glue::Workflow'](ctx({ physicalId: 'w', declared: { Name: 'w' } }), [
+        { op: 'remove', path: '/MaxConcurrentRuns', human: 'MaxConcurrentRuns -> (none)' },
+      ])
+    ).rejects.toThrow(/MaxConcurrentRuns cannot be cleared/);
+    expect(glue.commandCalls(UpdateWorkflowCommand)).toHaveLength(0);
   });
 
   it('throws when the workflow name is unresolvable', async () => {
@@ -1699,6 +1747,28 @@ describe('DAX Cluster writer (NON_PROVISIONABLE; UpdateCluster partial modify, i
     await SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [
       { op: 'add', path: '/NodeType', value: 'dax.r5.xlarge', human: 'x' },
     ]);
+    expect(dax.commandCalls(UpdateClusterCommand)).toHaveLength(0);
+  });
+
+  it('clears a Description remove with "" instead of silently dropping it (#913)', async () => {
+    stubRead();
+    dax.on(UpdateClusterCommand).resolves({});
+    await SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [
+      { op: 'remove', path: '/Description', human: 'Description -> (none)' },
+    ]);
+    expect(dax.commandCalls(UpdateClusterCommand)[0]!.args[0].input).toEqual({
+      ClusterName: CN,
+      Description: '',
+    });
+  });
+
+  it('bars a ParameterGroupName remove honestly (AWS-assigned unset, not expressible, #913)', async () => {
+    stubRead();
+    await expect(
+      SDK_WRITERS['AWS::DAX::Cluster'](ctx({ physicalId: CN }), [
+        { op: 'remove', path: '/ParameterGroupName', human: 'ParameterGroupName -> (none)' },
+      ])
+    ).rejects.toThrow(/ParameterGroupName cannot be cleared/);
     expect(dax.commandCalls(UpdateClusterCommand)).toHaveLength(0);
   });
 });
@@ -2515,6 +2585,20 @@ describe('writeConfigRuleInputParameters (AWS::Config::ConfigRule, JSON-string p
     expect(
       configService.commandCalls(PutConfigRuleCommand)[0].args[0].input.ConfigRule!.InputParameters
     ).toBe('{"a":"1"}');
+  });
+
+  it('bars a remove (clear) honestly — the clearing payload needs a live probe (#913)', async () => {
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/InputParameters',
+      human: 'InputParameters -> (none)',
+    };
+    const writer = resolveSdkWriter('AWS::Config::ConfigRule', [removeOp])!;
+    // the bar precedes DescribeConfigRules, so no silent PutConfigRule drop
+    await expect(writer(ctx({ physicalId: 'r' }), [removeOp])).rejects.toThrow(
+      /InputParameters cannot be cleared/
+    );
+    expect(configService.commandCalls(PutConfigRuleCommand)).toHaveLength(0);
   });
 
   it('throws when the rule cannot be found (no silent no-op)', async () => {
