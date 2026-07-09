@@ -482,16 +482,31 @@ export function carryForwardUnreadable(
 /**
  * The single source of truth for "is this baseline value equal to the current
  * value?". `applyBaseline` (suppress vs surface) and `splitRecordedByBaseline`
- * (unchanged vs changed) MUST share this exact predicate. The baseline value is
+ * (unchanged vs changed) MUST share this exact predicate. BOTH sides are
  * re-canonicalized through the CURRENT pipeline so a baseline written under older
- * normalization rules still matches today's canonical live value (R6) — the
- * `currentCanonicalValue` side is expected to be already canonical.
+ * normalization rules still matches today's canonical live value (R6).
+ *
+ * #807: canonicalize the CURRENT side too, not just the baseline side. The caller's
+ * `currentCanonicalValue` is only canonical at the OUTER value — a free-form-map
+ * ENTRY (a Lambda env var, a Glue `Parameters` value, a Docker label) whose value is
+ * a JSON- or policy-shaped STRING keeps its ancestry-lost RAW string. Canonicalizing
+ * just the baseline side then policy-parses / JSON-minifies / key-sorts that bare
+ * string on the recorded side while the live side stays raw, so `deepEqual` is false
+ * forever — the predicate is not reflexive (`baselineValueMatches(v, v)` is false)
+ * and a re-record never converges. Running the SAME `canonicalizeForCompare` on both
+ * sides restores reflexivity for the whole free-form-string class (and composes
+ * cleanly with #767's identity-sort case). Idempotency of the pipeline means an
+ * already-canonical live value is unchanged, so this never weakens real change
+ * detection: two values that differ after canonicalization still compare unequal.
  */
 export function baselineValueMatches(
   baselineValue: unknown,
   currentCanonicalValue: unknown
 ): boolean {
-  return deepEqual(canonicalizeForCompare(baselineValue), currentCanonicalValue);
+  return deepEqual(
+    canonicalizeForCompare(baselineValue),
+    canonicalizeForCompare(currentCanonicalValue)
+  );
 }
 
 // Identity fields for the ELEMENT-LEVEL DELTA display only (R128) — deliberately
