@@ -195,6 +195,50 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::GetAtt': ['IdPool', 'Name'] }, c)).toBe('auto-generated');
   });
 
+  // A parent stack consuming a NESTED stack's output uses
+  // `Fn::GetAtt [Nested, "Outputs.<key>"]` / `Fn::Sub ${Nested.Outputs.<key>}`.
+  // The live Cloud Control model for AWS::CloudFormation::Stack stores `Outputs` as
+  // an ARRAY of { OutputKey, OutputValue }, so a naive path descent indexes the array
+  // by the string key -> permanently UNRESOLVED (issue #782). Resolve via an
+  // OutputKey -> OutputValue lookup, scoped to AWS::CloudFormation::Stack.
+  it('Fn::GetAtt Outputs.<key> resolves against a nested Stacks OutputKey/OutputValue array', () => {
+    const c = ctx({
+      typeOf: { Nested: 'AWS::CloudFormation::Stack' },
+      liveAttrs: {
+        Nested: {
+          Outputs: [
+            { OutputKey: 'BucketArn', OutputValue: 'arn:aws:s3:::my-nested-bucket' },
+            { OutputKey: 'QueueUrl', OutputValue: 'https://sqs/q' },
+          ],
+        },
+      },
+    });
+    expect(resolve({ 'Fn::GetAtt': ['Nested', 'Outputs.BucketArn'] }, c)).toBe(
+      'arn:aws:s3:::my-nested-bucket'
+    );
+    expect(resolve({ 'Fn::GetAtt': ['Nested', 'Outputs.QueueUrl'] }, c)).toBe('https://sqs/q');
+    // the Fn::Sub ${Nested.Outputs.<key>} form goes through the same resolveGetAtt path
+    expect(resolve({ 'Fn::Sub': 'b=${Nested.Outputs.BucketArn}' }, c)).toBe(
+      'b=arn:aws:s3:::my-nested-bucket'
+    );
+    // an unknown output key fails closed (never fabricates a value)
+    expect(resolve({ 'Fn::GetAtt': ['Nested', 'Outputs.Nope'] }, c)).toBe(UNRESOLVED);
+  });
+
+  // The Outputs-array special case is scoped to AWS::CloudFormation::Stack — for every
+  // other type getPath's general behavior is unchanged (a non-Stack type with an
+  // Outputs array indexed by key still fails closed, i.e. no accidental widening).
+  it('Outputs-array lookup is confined to AWS::CloudFormation::Stack', () => {
+    const c = ctx({
+      typeOf: { Other: 'AWS::Some::Other' },
+      liveAttrs: {
+        Other: { Outputs: [{ OutputKey: 'BucketArn', OutputValue: 'arn:aws:s3:::x' }] },
+      },
+    });
+    // not a Stack -> array indexed by key -> undefined -> UNRESOLVED (unchanged)
+    expect(resolve({ 'Fn::GetAtt': ['Other', 'Outputs.BucketArn'] }, c)).toBe(UNRESOLVED);
+  });
+
   it('resolveProperties prunes NoValue keys', () => {
     const out = resolveProperties({ A: 'x', B: { Ref: 'AWS::NoValue' } }, ctx());
     expect(out).toEqual({ A: 'x' });
