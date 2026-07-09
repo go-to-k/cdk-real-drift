@@ -1,3 +1,10 @@
+## [0.2.70](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.69...v0.2.70) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** GuardDuty::Filter composite CC identifier [DetectorId, Name] ([#878](https://github.com/go-to-k/cdk-real-drift/issues/878)) ([#924](https://github.com/go-to-k/cdk-real-drift/issues/924)) ([0e5e124](https://github.com/go-to-k/cdk-real-drift/commit/0e5e124ff98940765c6d1a5c4e4db507129cbc70))
+
 ## [0.2.69](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.68...v0.2.69) (2026-07-09)
 
 
