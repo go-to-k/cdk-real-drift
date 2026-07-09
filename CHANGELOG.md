@@ -1,3 +1,10 @@
+## [0.3.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.11...v0.3.12) (2026-07-09)
+
+
+### Bug Fixes
+
+* **commands:** region in per-stack decision prompts ([#947](https://github.com/go-to-k/cdk-real-drift/issues/947)) ([#1023](https://github.com/go-to-k/cdk-real-drift/issues/1023)) ([f254242](https://github.com/go-to-k/cdk-real-drift/commit/f25424297e2c67d4e7bb829284dfb57235a12700))
+
 ## [0.3.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.10...v0.3.11) (2026-07-09)
 
 
