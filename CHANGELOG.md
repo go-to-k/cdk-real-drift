@@ -1,3 +1,10 @@
+## [0.3.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.5...v0.3.6) (2026-07-09)
+
+
+### Bug Fixes
+
+* **ci:** build before test so the json-empty dist-spawn test finds dist/cli.js ([#1004](https://github.com/go-to-k/cdk-real-drift/issues/1004)) ([57ec1c8](https://github.com/go-to-k/cdk-real-drift/commit/57ec1c8ca0d73d2ae9b820109937848f948b9483))
+
 ## [0.3.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.4...v0.3.5) (2026-07-09)
 
 
