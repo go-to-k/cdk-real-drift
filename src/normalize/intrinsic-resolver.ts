@@ -162,6 +162,12 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         // unresolved / mistyped / out-of-range arg (IPv6 is not resolved).
         if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
         const [ipBlock, count, cidrBits] = v.slice(0, 3).map((x) => resolve(x, ctx));
+        // Any arg still UNRESOLVED (a first-pass Fn::GetAtt, a missing Fn::ImportValue,
+        // an unresolvable Fn::If) is the UNRESOLVED Symbol — Number() on it throws, so
+        // guard first, exactly as the Fn::Select case above does for its index.
+        if (ipBlock === UNRESOLVED || count === UNRESOLVED || cidrBits === UNRESOLVED) {
+          return UNRESOLVED;
+        }
         return resolveCidr(ipBlock, count, cidrBits);
       }
       case 'Fn::ImportValue': {
@@ -375,13 +381,17 @@ function resolveCidr(ipBlock: unknown, count: unknown, cidrBits: unknown): unkno
   if (maskLen < prefix) return UNRESOLVED;
   const step = 2 ** bits; // addresses per subnet
   const blockSize = 2 ** (32 - prefix); // addresses in the whole block
-  // The base is aligned to its own prefix; the first subnet starts there.
-  const alignedBase = Math.floor(base / step) * step;
+  // Fail closed on a non-canonical block: if the ipBlock carries host bits (its base is not
+  // the network address for its own prefix) we cannot know which address AWS canonicalizes
+  // to, and generating from the host address both starts at the wrong place and can run past
+  // the block. AWS always stores the network address, so a real Fn::Cidr input is aligned.
+  if (base % blockSize !== 0) return UNRESOLVED;
+  // The base is the block's network address; subnets tile from there.
   // `count` subnets of `step` addresses each must fit inside the block.
   if (cnt * step > blockSize) return UNRESOLVED;
   const out: string[] = [];
   for (let i = 0; i < cnt; i++) {
-    const addr = alignedBase + i * step;
+    const addr = base + i * step;
     if (addr > 0xffffffff) return UNRESOLVED;
     out.push(`${intToIpv4(addr)}/${maskLen}`);
   }

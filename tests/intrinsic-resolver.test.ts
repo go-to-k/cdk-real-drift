@@ -489,6 +489,41 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', 6] }, ctx())).toBe(UNRESOLVED);
   });
 
+  // #902: hardening — an UNRESOLVED count/cidrBits must not reach Number() (it throws on the
+  // Symbol and killed the whole check with exit 2), and a non-network-aligned ipBlock must
+  // fail closed rather than fabricate wrong CIDRs.
+  it('#902: an UNRESOLVED count/cidrBits/ipBlock fails closed, never throws', () => {
+    // count as a first-pass Fn::GetAtt (Fn.cidr(vpc.attrCidrBlock, ...) count from a GetAtt):
+    // resolve() returns the UNRESOLVED Symbol; Number(Symbol) would throw TypeError.
+    expect(() =>
+      resolve({ 'Fn::Cidr': ['10.0.0.0/16', { 'Fn::GetAtt': ['X', 'Y'] }, 8] }, ctx())
+    ).not.toThrow();
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', { 'Fn::GetAtt': ['X', 'Y'] }, 8] }, ctx())).toBe(
+      UNRESOLVED
+    );
+    // cidrBits UNRESOLVED
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', 6, { 'Fn::GetAtt': ['X', 'Y'] }] }, ctx())).toBe(
+      UNRESOLVED
+    );
+    // ipBlock UNRESOLVED (a GetAtt that yields a Symbol rather than a non-string scalar)
+    expect(resolve({ 'Fn::Cidr': [{ 'Fn::GetAtt': ['X', 'Y'] }, 6, 8] }, ctx())).toBe(UNRESOLVED);
+  });
+
+  it('#902: a non-network-aligned ipBlock (host bits set) fails closed', () => {
+    // base starts at a host address, not the /24 network address → fail closed, do not
+    // fabricate ["10.0.0.128/28", ...].
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.128/24', 2, 4] }, ctx())).toBe(UNRESOLVED);
+    // 16 /28 subnets from a host base would run past the /24 → fail closed.
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.128/24', 16, 4] }, ctx())).toBe(UNRESOLVED);
+    // any host bits set are rejected (not silently aligned down to 10.0.0.0/28).
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.3/24', 2, 4] }, ctx())).toBe(UNRESOLVED);
+    // a correctly network-aligned block still resolves.
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/24', 2, 4] }, ctx())).toEqual([
+      '10.0.0.0/28',
+      '10.0.0.16/28',
+    ]);
+  });
+
   it('R130: isDynamicReference matches only real dynamic-reference tokens', () => {
     expect(isDynamicReference('{{resolve:secretsmanager:my-secret:SecretString:user::}}')).toBe(
       true
