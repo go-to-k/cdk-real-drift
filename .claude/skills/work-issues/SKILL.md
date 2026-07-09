@@ -223,15 +223,16 @@ maintainer's production stacks. **Tag every ephemeral deploy `cdkrd:ephemeral=1`
 (`Tags.of(app).add('cdkrd:ephemeral','1')`, or `aws cloudformation deploy --tags
 cdkrd:ephemeral=1`) so the generic sweep net can find it whatever its type.
 
-**Cleanup is enforced, not optional.** The `deploy-autoarm-gate` hook ARMS the
-bughunt-clean sentinel the moment you run any deploy command, so a commit / PR is
-BLOCKED until you release it — even if you deployed from a throwaway `/tmp` app.
-After the live-test, run **`/sweep-resources`** (the cleanup phase): it tears down
-with `delstack` (never `cdk destroy`), sweeps the stack-EXTERNAL orphans `delstack`
-can't reach (auto-created `/aws/lambda/*` + API-GW CloudWatch **IAM roles**, RETAIN
-resources, KMS pending-deletion, any `cdkrd:ephemeral`-tagged type), verifies
-`SWEEP CLEAN`, and releases the gate (`bughunt-track verify` + `clear`, incl. the
-`autoarm` owner). Confirm the stacks are gone.
+**Cleanup is enforced, not optional.** The `deploy-autoarm-gate` hook ARMS this
+session's own bughunt-clean token the moment you run any deploy command, so YOUR
+commit / PR is BLOCKED until you release it — even if you deployed from a throwaway
+`/tmp` app (a peer session's commits are not blocked). After the live-test, run
+**`/sweep-resources`** (the cleanup phase): it tears down with `delstack` (never `cdk
+destroy`), sweeps the stack-EXTERNAL orphans `delstack` can't reach (auto-created
+`/aws/lambda/*` + API-GW CloudWatch **IAM roles**, RETAIN resources, KMS
+pending-deletion, any `cdkrd:ephemeral`-tagged type), verifies `SWEEP CLEAN`, and
+releases the gate (`bughunt-track verify` + `clear`, incl. this session's
+`autoarm-<session>` owner). Confirm the stacks are gone.
 
 `/verify-pr` sets the `check` + `docs` + `verify-pr` markers, which unblock
 `gh pr merge`. Docs/tooling-only PRs (no `src/**`) are EXEMPT from the live-test —

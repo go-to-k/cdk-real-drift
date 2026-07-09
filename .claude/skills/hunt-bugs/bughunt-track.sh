@@ -36,12 +36,14 @@
 # gate while live AWS resources remained (the exact accident the gate prevents).
 # Instead each owner writes ONLY its own file under
 # `.markgate-bughunt-pending.d/<owner-key>`, so a clear can never release another
-# owner's pending resources. The gate AGGREGATES across all owner files (+ the
-# legacy flat file for back-compat): it blocks while ANY owner is pending — the safe
-# direction (cross-owner contention over-blocks; it never premature-releases).
-# Destructive ops (clear) are per-owner; the block decision is repo-wide. No file
-# locking is needed (each owner appends only to its own file; append is atomic),
-# which also dodges macOS's missing `flock`.
+# owner's pending resources. The gate scopes the block to the COMMITTING owner: it
+# blocks a `git commit` / `gh pr create` / `gh pr merge` only while the owner that
+# RUNS it still has pending stacks — one session's live hunt does NOT block an
+# unrelated session's clean commit (bug-hunt stacks are uniquely named, so there is
+# no cross-session resource contention). The legacy flat file stays a GLOBAL block
+# for back-compat. Both destructive ops (clear) and the block decision are per-owner.
+# No file locking is needed (each owner appends only to its own file; append is
+# atomic), which also dodges macOS's missing `flock`.
 #
 # Everything is resolved at the SHARED main-tree root (via --git-common-dir) so the
 # deploy-time tracker and the gate hook — which may run from different worktrees —

@@ -13,9 +13,22 @@
 # runs ONLY after delete + orphan-zero verification. The rule says "always delete
 # bug-hunt resources"; this hook enforces it.
 #
-# The sentinel is resolved at the SHARED main-tree root (via --git-common-dir) so a
-# fix committed from a feature worktree still sees a sentinel armed from the main
-# tree.
+# The sentinel dir is resolved at the SHARED main-tree root (via --git-common-dir) so
+# the deploy-time tracker and this gate — which may run from different worktrees —
+# agree on one location.
+#
+# PER-OWNER scoping: the block is decided against the COMMITTING owner ONLY, not the
+# repo-wide aggregate. Bug-hunt stacks are uniquely named, so one session's live hunt
+# creates no resource contention for an unrelated session's clean commit — blocking
+# it would be pure friction. Each owner (a worktree, or an explicit
+# $CDKRD_BUGHUNT_OWNER) tracks its own file under `.markgate-bughunt-pending.d/<key>`,
+# and this gate blocks a `git commit` / `gh pr create` / `gh pr merge` only while the
+# owner that RUNS it still has un-deleted stacks — enforcing cleanup per-worktree
+# (the owner stays blocked in ITS own worktree until it clears) without over-blocking
+# peers. The owner key mirrors bughunt-track.sh exactly ($CDKRD_BUGHUNT_OWNER, else
+# the committing worktree's toplevel path, sanitized). The legacy flat sentinel
+# `.markgate-bughunt-pending` remains a GLOBAL block for back-compat (a session armed
+# before the per-owner port, or a stray hand-written file).
 
 set -u
 
@@ -56,40 +69,53 @@ if [ -n "$git_common" ]; then
 else
   main_root="$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || echo "$target_dir")"
 fi
-# Parallel-safe aggregation: each owner tracks ONLY its own file under
-# .markgate-bughunt-pending.d/<owner-key> (bughunt-track.sh), so one owner's `clear`
-# can never release another's pending resources. The gate blocks while ANY owner has
-# pending stacks — the safe direction. The legacy flat file is still honored for
-# back-compat (a session armed before this change, or a stray hand-written file).
+# Per-owner block: a commit/PR is gated only by the identities that RUN it, so a peer
+# session's live hunt never blocks it. Two owner identities are checked:
+#   1. the committing worktree owner — mirror bughunt-track.sh ($CDKRD_BUGHUNT_OWNER if
+#      exported, else the committing worktree's toplevel path), the per-STACK tracking.
+#   2. this SESSION's deploy-autoarm token "autoarm-<session>" — deploy-autoarm-gate arms
+#      it on any deploy; the session id is $CLAUDE_CODE_SESSION_ID (or the payload's
+#      session_id), the SAME value that hook and /sweep-resources use.
+# The legacy flat file stays a GLOBAL block for back-compat.
 pending_dir="${main_root}/.markgate-bughunt-pending.d"
 legacy="${main_root}/.markgate-bughunt-pending"
 
-sources=()
-if [ -d "$pending_dir" ]; then
-  while IFS= read -r f; do
-    [ -s "$f" ] && sources+=("$f")
-  done < <(find "$pending_dir" -type f 2>/dev/null)
+owner_raw="${CDKRD_BUGHUNT_OWNER:-}"
+if [ -z "$owner_raw" ]; then
+  owner_raw="$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || echo "$target_dir")"
 fi
+owner_key="$(printf '%s' "$owner_raw" | sed 's#[^A-Za-z0-9._-]#_#g')"
+owner_file="${pending_dir}/${owner_key}"
+
+sid="${CLAUDE_CODE_SESSION_ID:-}"
+[ -z "$sid" ] && sid=$(printf '%s' "$input" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+sid_key="$(printf '%s' "$sid" | sed 's#[^A-Za-z0-9._-]#_#g')"
+autoarm_file="${pending_dir}/autoarm-${sid_key:-shared}"
+
+sources=()
+[ -s "$owner_file" ] && sources+=("$owner_file")
+[ -s "$autoarm_file" ] && sources+=("$autoarm_file")
 [ -s "$legacy" ] && sources+=("$legacy")
 
-# No owner files (and no legacy file) with content → nothing pending → pass.
+# None of this owner/session's files (nor the legacy flat file) have content → pass.
 [ "${#sources[@]}" -gt 0 ] || exit 0
 
 pending=$(cat "${sources[@]}" 2>/dev/null | grep -cvE '^[[:space:]]*$' || echo 0)
 [ "$pending" -gt 0 ] || exit 0
 
 {
-  echo "Blocked by bughunt-clean-gate: a /hunt-bugs session still has"
-  echo "${pending} un-deleted stack(s) tracked under:"
-  echo "  ${pending_dir}/ (per-owner)"
+  echo "Blocked by bughunt-clean-gate: THIS session/owner still has ${pending}"
+  echo "un-deleted bug-hunt stack(s)/deploy(s) tracked under:"
+  [ -s "$owner_file" ] && echo "  ${owner_file} (worktree owner)"
+  [ -s "$autoarm_file" ] && echo "  ${autoarm_file} (this session's deploy-autoarm token)"
+  [ -s "$legacy" ] && echo "  ${legacy} (legacy global sentinel)"
   echo
   echo "Pending stacks:"
   cat "${sources[@]}" 2>/dev/null | grep -vE '^[[:space:]]*$' | sed 's/^/  - /'
   echo
-  echo "Required action — from the SAME worktree you armed from (or with the same"
-  echo "\$CDKRD_BUGHUNT_OWNER), delete every tracked stack, verify zero orphans,"
-  echo "then release the gate for your owner:"
-  echo "  delstack cdk -a cdk.out -r <region> -f -y          # from each fixture dir"
+  echo "Required action — delete every tracked stack, verify zero orphans, then release:"
+  echo "  /sweep-resources          # discovers + deletes cdkrd test resources, then clears"
+  echo "  # or manually, per owner shown above (verify + clear as separate commands):"
   echo "  .claude/skills/hunt-bugs/bughunt-track.sh verify --region <region>"
   echo "  .claude/skills/hunt-bugs/bughunt-track.sh clear"
   echo
