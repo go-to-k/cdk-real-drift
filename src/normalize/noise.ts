@@ -133,6 +133,43 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       ],
     },
   },
+  // An S3 Access Point that declares no PublicAccessBlockConfiguration reads back the
+  // same all-four-true block the AWS::S3::Bucket type already folds (the AccessPoint
+  // type just had no entry) — the secure AWS default, not user intent. Equality-gated
+  // (subset-tolerant): an out-of-band relaxation of any block (e.g. BlockPublicAcls=false)
+  // no longer matches, so it re-surfaces as real undeclared drift (security-relevant, so
+  // NOT value-independent). Observed live on a fresh s3objectlambda-rich AccessPoint (#919).
+  'AWS::S3::AccessPoint': {
+    PublicAccessBlockConfiguration: {
+      RestrictPublicBuckets: true,
+      BlockPublicPolicy: true,
+      BlockPublicAcls: true,
+      IgnorePublicAcls: true,
+    },
+  },
+  // An ImageBuilder InfrastructureConfiguration that declares no TerminateInstanceOnFailure
+  // reads back the constant documented default `true` (AWS terminates the build instance on
+  // failure). Equality-gated: the fold applies ONLY to the `true` default, so a different
+  // materialized value never folds. (A later `false` disable is an undeclared boolean that the
+  // classify undeclared loop drops as trivially-empty upstream — surfacing that disable would
+  // need a MEANINGFUL_WHEN_OFF entry in diff/classify.ts, out of scope for this first-run-FP
+  // fold; this entry only mutes the AWS-assigned `true`.) Live-confirmed on a fresh
+  // imagebuilder-rich deploy (#911).
+  'AWS::ImageBuilder::InfrastructureConfiguration': { TerminateInstanceOnFailure: true },
+  // An ImageBuilder ImagePipeline that declares neither EnhancedImageMetadataEnabled nor
+  // ImageTestsConfiguration reads both back with AWS's constant documented defaults: enhanced
+  // image metadata ON, and image tests ENABLED with a 720-minute timeout (the whole object is
+  // what AWS materializes on a fresh minimal pipeline, both keys together). Equality-gated
+  // (subset-tolerant): disabling image tests reads back ImageTestsConfiguration as a non-empty
+  // OBJECT ({ImageTestsEnabled:false, TimeoutMinutes:720}) that no longer matches the default,
+  // so it re-surfaces as real undeclared drift (detection preserved). (EnhancedImageMetadata
+  // ENABLED=false is a bare undeclared boolean the classify loop drops as trivially-empty
+  // upstream, same as TerminateInstanceOnFailure above.) Live-confirmed on a fresh
+  // imagebuilder-rich pipeline (#911).
+  'AWS::ImageBuilder::ImagePipeline': {
+    EnhancedImageMetadataEnabled: true,
+    ImageTestsConfiguration: { ImageTestsEnabled: true, TimeoutMinutes: 720 },
+  },
   // S3 Tables table buckets materialize three constant service defaults on read:
   // Standard storage class, table-level metrics off, and SSE-S3 encryption.
   // Observed live on a fresh s3express-s3tables-rich deploy; equality-gated like
@@ -2103,6 +2140,11 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
   // account id; equality-gated, so a Tag pointed at another account's catalog still surfaces.
   // Live-confirmed (#914).
   'AWS::LakeFormation::Tag': { CatalogId: '{accountId}' },
+  // An S3 Access Point that declares no BucketAccountId reads back the deploying account id —
+  // the default bucket-owner account. The bare `{accountId}` placeholder substitutes to the
+  // account id; equality-gated, so an AccessPoint pointed at a cross-account bucket owner still
+  // surfaces. Live-confirmed on a fresh s3objectlambda-rich AccessPoint (#919).
+  'AWS::S3::AccessPoint': { BucketAccountId: '{accountId}' },
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
@@ -3412,6 +3454,23 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
     'Listeners.*.Protocol',
     'Listeners.*.InstanceProtocol',
   ]),
+  // An EC2 SecurityGroup rule's IpProtocol — a raw-CFn / L1 template may declare it
+  // UPPERCASE (`TCP`/`UDP`), which CloudFormation accepts, but EC2 stores and echoes it
+  // LOWERCASE (`tcp`/`udp`) on the live read, so a case-sensitive compare false-flags
+  // DECLARED drift on every check of a freshly deployed group — and a revert re-writes
+  // `TCP` which EC2 lowercases again, so it never converges (CDK always emits lowercase,
+  // so only raw-template users hit it). The `*` matches the array index (the path arrives
+  // as `SecurityGroupIngress.0.IpProtocol`). The protocol values differ beyond case
+  // (tcp/udp/icmp/-1), so case-insensitive equality hides no real change — a genuine
+  // tcp->udp still surfaces. Live-confirmed (#877).
+  'AWS::EC2::SecurityGroup': new Set([
+    'SecurityGroupIngress.*.IpProtocol',
+    'SecurityGroupEgress.*.IpProtocol',
+  ]),
+  // The standalone ingress/egress rule types echo IpProtocol the same lowercased way
+  // (same EC2 canonicalization as the inline SecurityGroup rules above). Live-confirmed (#877).
+  'AWS::EC2::SecurityGroupIngress': new Set(['IpProtocol']),
+  'AWS::EC2::SecurityGroupEgress': new Set(['IpProtocol']),
 };
 export function isCaseInsensitiveScalarEqual(a: unknown, b: unknown): boolean {
   return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
