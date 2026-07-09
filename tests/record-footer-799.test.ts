@@ -32,8 +32,11 @@ vi.mock('../src/config/config-file.js', () => ({
   applyIgnores: (findings: unknown) => findings,
 }));
 
+// json:false — this suite tests the TEXT-mode "commit …" footer. Under --json (#868) the
+// footer is intentionally suppressed (the JSON array is stdout), so text mode is the
+// correct fixture for the footer-gating behavior.
 vi.mock('../src/cli-args.js', () => ({
-  parseCommonArgs: () => ({ profile: undefined, json: true, yes: true, verbose: false }),
+  parseCommonArgs: () => ({ profile: undefined, json: false, yes: true, verbose: false }),
   isInteractive: () => false,
 }));
 
