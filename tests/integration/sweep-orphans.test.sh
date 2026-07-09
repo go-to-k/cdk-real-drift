@@ -30,7 +30,7 @@ case "$svc/$op" in
   cloudformation/list-stacks)   echo "Cdkrd717Verify" ;;            # the only ACTIVE stack (mixed case)
   rds/describe-db-instances)    echo "cdkrd717verify-writer-abc123" ;;  # lowercased -> backed by Cdkrd717Verify
   rds/describe-db-clusters)     : ;;
-  iam/list-roles)               echo "CdkRealDriftGone-ApiCloudWatchRole-xyz" ;; # stack gone -> ORPHAN
+  iam/list-roles)               printf '%s\t%s\n' "CdkRealDriftGone-ApiCloudWatchRole-xyz" "2020-01-01T00:00:00+00:00" ;; # stack gone + old -> ORPHAN
   iam/list-instance-profiles)   : ;;
   resourcegroupstaggingapi/get-resources) echo "arn:aws:sqs:us-east-1:123456789012:CdkrdGoneQueue" ;;
   kinesis/list-streams|dynamodb/list-tables|efs/describe-file-systems|secretsmanager/list-secrets|logs/describe-log-groups) : ;;
@@ -40,8 +40,10 @@ MOCK
 chmod +x "$tmp/aws"
 
 # The sweep exits 1 when it reports unresolved orphans (keeps verify RED) — expected
-# here (the tagged resource), so tolerate it; we assert on the OUTPUT.
-out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+# here (the tagged resource), so tolerate it; we assert on the OUTPUT. MIN_AGE_HOURS=0
+# turns the age guard off for these (they test the name/IAM/tag logic; the age guard
+# has its own test below).
+out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 CDKRD_SWEEP_MIN_AGE_HOURS=0 bash "$SWEEP" 2>&1 || true)"
 
 assert "case-insensitive active-stack protection (lowercased RDS backed by mixed-case stack -> SKIP)" "$out" "SKIP \(active-stack member\): RDS-instance cdkrd717verify-writer-abc123"
 assert "IAM role orphan is found (the leaked class)" "$out" "ORPHAN \(dry-run\): IAM-role CdkRealDriftGone-ApiCloudWatchRole-xyz"
@@ -56,6 +58,39 @@ MOCK
 chmod +x "$tmp/aws"
 clean_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1)"
 assert "SWEEP CLEAN when nothing token-matches" "$clean_out" "SWEEP CLEAN"
+
+# age guard: a RECENT, name-UNBACKED role (the ImageBuilder truncation/hyphen case that
+# name-substring misses) must be PROTECTED as too-young, never swept. Dynamic recent ts.
+RECENT="$(date -u -v-1M +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%S 2>/dev/null)"
+cat > "$tmp/aws" <<MOCK
+#!/usr/bin/env bash
+case "\$1/\${2:-}" in
+  cloudformation/list-stacks) echo "SomeUnrelatedStack" ;;
+  iam/list-roles) printf '%s\t%s\n' "CdkRealDriftIntegImageBuilderRi-BuilderRole-abc" "$RECENT" ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+age_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+assert "age guard PROTECTS a recent name-unbacked role (ImageBuilder truncation case)" "$age_out" "SKIP \(younger than.*IAM-role CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
+refute "the protected recent role is NOT reported as an orphan" "$age_out" "ORPHAN.*CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
+
+# layer 1 (authoritative membership): a name-UNBACKED, OLD role (age guard off) is still
+# PROTECTED because list-stack-resources reports it as a member of the active stack —
+# the truncation case the name-substring guard alone would delete.
+cat > "$tmp/aws" <<'MOCK'
+#!/usr/bin/env bash
+case "$1/${2:-}" in
+  cloudformation/list-stacks)          echo "CdkRealDriftIntegImageBuilderRich" ;;
+  cloudformation/list-stack-resources) echo "CdkRealDriftIntegImageBuilderRi-BuilderRole-abc" ;; # 64-char truncated member
+  iam/list-roles)                      printf '%s\t%s\n' "CdkRealDriftIntegImageBuilderRi-BuilderRole-abc" "2020-01-01T00:00:00+00:00" ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+mem_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 CDKRD_SWEEP_MIN_AGE_HOURS=0 bash "$SWEEP" 2>&1 || true)"
+assert "layer 1 membership PROTECTS a truncated-name member even when OLD + name-unbacked" "$mem_out" "SKIP \(active-stack member.*IAM-role CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
+refute "the member role is NOT reported as an orphan" "$mem_out" "ORPHAN.*IAM-role CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
 
 rm -rf "$tmp"
 echo "----"
