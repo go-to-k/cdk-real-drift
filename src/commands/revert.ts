@@ -17,6 +17,7 @@ import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { revertStack } from './stack-actions.js';
+import { emitJsonArray, type RevertJson, stackLabel } from './verb-json.js';
 
 export async function runRevert(args: string[]): Promise<number> {
   const a = parseCommonArgs(args, 'revert');
@@ -36,22 +37,34 @@ export async function runRevert(args: string[]): Promise<number> {
     stacks = await resolveStacks(a);
   } catch (e) {
     console.error(`error: ${(e as Error).message}`);
+    if (a.json) emitJsonArray([]); // keep stdout a valid (empty) JSON array on a top-level error (#868)
     return 2;
   }
   if (stacks.length === 0) {
     console.error('note: the CDK app defines no stacks — nothing to revert');
+    if (a.json) emitJsonArray([]);
     return 0;
   }
 
+  const jsonReports: RevertJson[] = []; // #868: collected per stack, printed once after the loop
   let worst = 0;
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only. The revert
   // confirm prompt fires AFTER the gather, so the spinner never overlaps it.
   const showProgress = !a.json && isInteractive();
   for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
-      console.error(
-        `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
-      );
+      const msg =
+        'no region — set env on the stack, pass --region, or set a region for the AWS profile';
+      console.error(`error: ${stackName}: ${msg}`);
+      if (a.json)
+        jsonReports.push({
+          stack: stackName,
+          reverted: 0,
+          failed: 0,
+          aborted: false,
+          exit: 2,
+          error: msg,
+        });
       worst = Math.max(worst, 2);
       continue;
     }
@@ -73,7 +86,7 @@ export async function runRevert(args: string[]): Promise<number> {
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
       // standalone revert: an aborted confirm means nothing changed → exit 0 (the
       // outcome's `exit` already encodes that; `aborted` is only consulted by check).
-      const { exit } = await revertStack({
+      const outcome = await revertStack({
         stackName,
         region,
         gathered,
@@ -83,22 +96,62 @@ export async function runRevert(args: string[]): Promise<number> {
         yes: a.yes,
         removeUnrecorded: a.removeUnrecorded,
         verbose: a.verbose,
-        interactive: isInteractive(),
+        // --json is a scripting/non-TTY contract: never show the op multiselect / confirm.
+        // Without --yes this makes revert refuse the AWS write (exit 2 in the JSON). (#868)
+        interactive: a.json ? false : isInteractive(),
         ...(a.waitMs !== undefined && { waitMs: a.waitMs }),
+        json: a.json,
       });
-      worst = Math.max(worst, exit);
+      worst = Math.max(worst, outcome.exit);
+      if (a.json)
+        jsonReports.push({
+          stack: stackLabel(stackName, region),
+          reverted: outcome.reverted ?? 0,
+          failed: outcome.failed ?? 0,
+          aborted: outcome.aborted,
+          exit: outcome.exit,
+        });
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed — skipped`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            reverted: 0,
+            failed: 0,
+            aborted: false,
+            exit: 0,
+            error: 'not deployed — skipped',
+          });
         continue;
       }
       if (e instanceof StackNotCheckableError) {
         console.error(`note: ${stackName}: ${e.message} — skipped`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            reverted: 0,
+            failed: 0,
+            aborted: false,
+            exit: 0,
+            error: `${e.message} — skipped`,
+          });
         continue;
       }
-      console.error(`error: ${stackName}: ${(e as Error).message}`);
+      const msg = (e as Error).message;
+      console.error(`error: ${stackName}: ${msg}`);
+      if (a.json)
+        jsonReports.push({
+          stack: stackLabel(stackName, region),
+          reverted: 0,
+          failed: 0,
+          aborted: false,
+          exit: 2,
+          error: msg,
+        });
       worst = Math.max(worst, 2);
     }
   }
+  if (a.json) emitJsonArray(jsonReports);
   return worst;
 }

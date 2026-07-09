@@ -637,7 +637,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     cc.on(GetResourceCommand).resolves(liveRead('Enabled'));
 
     const { outcome, logs } = await run();
-    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(outcome).toMatchObject({ exit: 0, aborted: false });
     expect(logs).toContain('verifying convergence (re-reading 1 resource(s))...');
     expect(logs).toContain('s: CLEAN after revert.');
     // scoped: the single touched resource was read once — no full-stack re-gather,
@@ -652,7 +652,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     cc.on(GetResourceCommand).callsFake(() => liveRead(++reads === 1 ? 'Suspended' : 'Enabled'));
 
     const { outcome, logs } = await run();
-    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(outcome).toMatchObject({ exit: 0, aborted: false });
     expect(logs).toContain('s: CLEAN after revert.');
     expect(cc.commandCalls(GetResourceCommand)).toHaveLength(2);
   });
@@ -663,7 +663,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
     cc.on(GetResourceCommand).resolves(liveRead('Suspended'));
 
     const { outcome, logs } = await run();
-    expect(outcome).toEqual({ exit: 1, aborted: false });
+    expect(outcome).toMatchObject({ exit: 1, aborted: false });
     expect(logs).toContain('s: 1 drift(s) remain.');
     // R46: each surviving drift is listed (id.path + tier) so the user does not
     // have to re-run `check` just to learn what failed to converge.
@@ -810,7 +810,7 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
       waitNow: () => 0, // constant clock < deadline → keep retrying (waitSleep is a no-op)
       waitSleep: () => Promise.resolve(),
     });
-    expect(outcome).toEqual({ exit: 0, aborted: false });
+    expect(outcome).toMatchObject({ exit: 0, aborted: false });
     expect(cc.commandCalls(UpdateResourceCommand).length).toBe(5); // 4 fails + 1 success
     expect(logs).toMatch(/↻ .*retry 1/); // per-retry progress line printed
     expect(logs).toContain('s: CLEAN after revert.');
@@ -888,7 +888,7 @@ describe('recordStack non-interactive refusal (R38)', () => {
         yes: true,
         interactive: false, // ignored when yes:true — --yes records all regardless
       });
-      expect(result).toEqual({ wrote: true, refused: false });
+      expect(result).toMatchObject({ wrote: true, refused: false });
       expect(existsSync(path)).toBe(true);
       const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
       // the full undeclared set is recorded (no selective multiselect under --yes)
@@ -974,7 +974,7 @@ describe('recordStack preselectedKeys (R121 — per-finding path skips the multi
         interactive: true,
         preselectedKeys: new Set([keyA]),
       });
-      expect(result).toEqual({ wrote: true, refused: false });
+      expect(result).toMatchObject({ wrote: true, refused: false });
       const written = JSON.parse(readFileSync(path, 'utf8')) as BaselineFile;
       // only `a` recorded; `b` stays unrecorded (was not preselected)
       expect(written.recorded.map((e) => e.path)).toEqual(['AccelerateConfiguration']);

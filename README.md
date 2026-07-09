@@ -629,6 +629,23 @@ Optional per-finding fields, present only when they apply:
   the live one (so a recorded `added` resource that changed shows the delta), and
   `unrecorded` marks a never-recorded one as potential drift.
 
+`record` / `ignore` / `revert` also honor `--json` (for scripting / non-TTY use),
+each emitting the same **one-array-per-invocation** shape — one element per stack,
+all notes on stderr, `[]` on a top-level error. `--json` forces non-interactive
+mode: a `record` / `ignore` that would need the selection prompt refuses without
+`--yes` (`"refused": true`), and `revert` refuses the AWS write without `--yes`
+(`"exit": 2`). Per-verb element:
+
+- `record` → `{ "stack", "recorded": <n>, "wrote": <bool>, "baseline"?: "<path>",
+"refused"?: true, "error"?: "<reason>" }` — `recorded` is how many undeclared
+  value(s) were written.
+- `ignore` → `{ "stack", "added": <n>, "wrote": <bool>, "config"?:
+".cdkrd/ignore.yaml", "refused"?: true, "error"?: "<reason>" }` — `added` is how
+  many new rules were appended.
+- `revert` → `{ "stack", "reverted": <n>, "failed": <n>, "aborted": <bool>, "exit":
+<n>, "error"?: "<reason>" }` — `reverted` / `failed` count resources; `exit` is
+  that stack's contribution (0 clean / 1 drift remains / 2 failure).
+
 After publication this shape is a backward-compatible API.
 
 ## IAM permissions

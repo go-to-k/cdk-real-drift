@@ -249,6 +249,10 @@ export interface RecordStackParams {
   // value individually (mirrors the report's --verbose fold-expansion; --show-all is the
   // separate inventory mode and suppresses the interactive prompt, so it never reaches here).
   expandNested?: boolean;
+  // #868: under `record --json` the human success line is suppressed (the caller emits a
+  // machine JSON element instead); notes/warnings still go to stderr. Defaults to text mode,
+  // so check's interactive path is unaffected.
+  json?: boolean;
 }
 
 /**
@@ -262,6 +266,8 @@ export interface RecordStackParams {
 export interface RecordResult {
   wrote: boolean;
   refused: boolean;
+  count?: number; // #868: how many undeclared value(s) were recorded (for --json)
+  path?: string; // #868: the baseline file written (for --json)
 }
 
 /**
@@ -394,12 +400,15 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       physicalIdByLogical: physicalIdsByLogical(desired.resources),
     }
   );
-  console.log(style.ok(recordOutcomeMessage(stackName, path, count, refreshedOnly, !!existing)));
+  // #868: suppress the human success line under --json (the caller prints a JSON element);
+  // notes/warnings below still go to stderr, so stdout stays pure JSON.
+  if (!p.json)
+    console.log(style.ok(recordOutcomeMessage(stackName, path, count, refreshedOnly, !!existing)));
   // record's scope excludes declared/deleted: if such drift is present, say so —
   // it was NOT approved by this record and still stands (R117).
   const scopeNote = recordScopeNote(stackName, findings);
   if (scopeNote) console.error(scopeNote);
-  return { wrote: true, refused: false };
+  return { wrote: true, refused: false, count, path };
 }
 
 // ---- ignore ----
@@ -417,6 +426,9 @@ export interface IgnoreStackParams {
   // callers that cannot resolve them; a missing field is omitted from the rule (match-any).
   accountId?: string | undefined;
   region?: string | undefined;
+  // #868: under `ignore --json` the human lines are suppressed (the caller emits a JSON
+  // element); notes/errors still go to stderr. Defaults to text mode (check's path unaffected).
+  json?: boolean;
 }
 
 /**
@@ -432,6 +444,7 @@ export interface IgnoreResult {
   wrote: boolean;
   refused: boolean;
   added: number;
+  path?: string; // #868: the .cdkrd/ignore.yaml written (for --json)
 }
 
 /** Header for ignore's multiselect. The key hints are rendered by `bulkMultiselect`
@@ -484,7 +497,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
     (f) => f.tier === 'declared' || f.tier === 'undeclared' || f.tier === 'added'
   );
   if (ignorable.length === 0) {
-    console.log(style.clean(`${stackName}: no ignorable drift to ignore.`));
+    if (!p.json) console.log(style.clean(`${stackName}: no ignorable drift to ignore.`));
     return { wrote: false, refused: false, added: 0 };
   }
   let chosen = ignorable;
@@ -513,17 +526,19 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
   const { path, added, alreadyPresent } = await addIgnoreRules(
     chosen.map((f) => ignoreRuleFor(f, stackName, accountId, region))
   );
-  if (added.length > 0) {
-    const dup = alreadyPresent.length > 0 ? `, ${alreadyPresent.length} already present` : '';
-    console.log(style.ok(`ignore rule(s) added: ${path} (${added.length} new${dup})`));
-  } else {
-    console.log(
-      style.note(
-        `${stackName}: all ${alreadyPresent.length} selected rule(s) already present — config unchanged`
-      )
-    );
+  if (!p.json) {
+    if (added.length > 0) {
+      const dup = alreadyPresent.length > 0 ? `, ${alreadyPresent.length} already present` : '';
+      console.log(style.ok(`ignore rule(s) added: ${path} (${added.length} new${dup})`));
+    } else {
+      console.log(
+        style.note(
+          `${stackName}: all ${alreadyPresent.length} selected rule(s) already present — config unchanged`
+        )
+      );
+    }
   }
-  return { wrote: added.length > 0, refused: false, added: added.length };
+  return { wrote: added.length > 0, refused: false, added: added.length, path };
 }
 
 // ---- revert ----
@@ -689,6 +704,10 @@ export interface RevertStackParams {
   // Injected clock/sleep for the wait path so deadline-mode unit tests don't sleep.
   waitNow?: () => number;
   waitSleep?: (ms: number) => Promise<void>;
+  // #868: under `revert --json` all human output (the plan, per-op result lines, the
+  // convergence verdict) is suppressed; the caller emits a machine JSON element from the
+  // returned outcome. Notes/warnings still go to stderr. Defaults to text mode.
+  json?: boolean;
 }
 
 const CONVERGE_RETRY_DELAY_MS = 3000;
@@ -707,6 +726,8 @@ const CONVERGE_RETRY_DELAY_MS = 3000;
 export interface RevertOutcome {
   exit: number;
   aborted: boolean;
+  reverted?: number; // #868: resources successfully reverted (for --json); absent = 0
+  failed?: number; // #868: resources whose revert op failed (for --json); absent = 0
 }
 
 /**
@@ -746,6 +767,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     waitNow,
     waitSleep,
   } = p;
+  // #868: human stdout sink — silenced under --json so stdout carries only the JSON the
+  // caller prints. console.error (notes/warnings) is left untouched (stderr stays informative).
+  const out = p.json ? () => {} : console.log;
   let worst = 0;
   // R113: a standout undeclared value is surfaced to the user as [Potential Drift] (it is
   // NOT a folded default — we deliberately show it), so, like declared drift, it
@@ -789,16 +813,17 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
-    console.log(style.clean(`${stackName} (${region}): no drift to revert.`));
+    out(style.clean(`${stackName} (${region}): no drift to revert.`));
     return { exit: 0, aborted: false };
   }
-  printPlan(stackName, region, plan, {
-    verbose,
-    // Only when the unrecorded guard actually fires: with removals included the plan
-    // REMOVES those values, so a "no revert target — record first" note would
-    // contradict the plan printed right below it (R35 review).
-    unrecordedGuidance: !includeRemovals && drifted.some((f) => f.unrecorded === true),
-  });
+  if (!p.json)
+    printPlan(stackName, region, plan, {
+      verbose,
+      // Only when the unrecorded guard actually fires: with removals included the plan
+      // REMOVES those values, so a "no revert target — record first" note would
+      // contradict the plan printed right below it (R35 review).
+      unrecordedGuidance: !includeRemovals && drifted.some((f) => f.unrecorded === true),
+    });
   if (plan.items.length === 0) {
     // Findings exist but none are revertable (R35). That is NOT the clean
     // "no drift to revert" case — the findings still stand, so exit 1 (the same
@@ -810,13 +835,13 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       ...(dc > 0 ? [`${dc} drift(s)`] : []),
       ...(uc > 0 ? [`${uc} unrecorded value(s)`] : []),
     ];
-    console.log('\n' + style.drift(`nothing revertable — ${parts.join(' + ')} remain.`));
+    out('\n' + style.drift(`nothing revertable — ${parts.join(' + ')} remain.`));
     return { exit: 1, aborted: false };
   }
 
   if (dryRun) {
     const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
-    console.log(
+    out(
       `\n(dry-run) would apply ${opCount} op(s) to ${plan.items.length} resource(s). No changes made.`
     );
     return { exit: 0, aborted: false };
@@ -839,12 +864,12 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         revertSelectOptions(plan)
       );
       if (picked === undefined) {
-        console.log(style.note('aborted.'));
+        out(style.note('aborted.'));
         return { exit: 0, aborted: true };
       }
       plan = filterRevertPlan(plan, new Set(picked));
       if (plan.items.length === 0) {
-        console.log(style.note('nothing selected — aborted.'));
+        out(style.note('nothing selected — aborted.'));
         return { exit: 0, aborted: true };
       }
     }
@@ -853,7 +878,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       message: revertConfirmMessage(stackName, opCount, plan.notRevertable.length),
     });
     if (isCancel(ok) || !ok) {
-      console.log(style.note('aborted.'));
+      out(style.note('aborted.'));
       return { exit: 0, aborted: true };
     }
   }
@@ -889,9 +914,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     onRetry: ({ attempt, delayMs, hint }) => {
       const reason = (hint ?? 'transient error').split(' — ')[0];
       const secs = Math.max(1, Math.round(delayMs / 1000));
-      console.log(
-        style.note(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`)
-      );
+      out(style.note(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`));
     },
   });
   // Partition `delete`-kind items out of the main loop: they are applied as a batch AFTER
@@ -994,18 +1017,23 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
   // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
   // produced two results) so a fully reverted resource never prints `reverted:` twice.
-  for (const s of summarizeRevertResults(applied)) {
+  // #868: per-resource revert tallies for the --json element (summarize collapses a
+  // resource that split into cc + sdk items so it is counted once).
+  const summarized = summarizeRevertResults(applied);
+  const revertedCount = summarized.filter((s) => s.ok).length;
+  const failedCount = summarized.filter((s) => !s.ok).length;
+  for (const s of summarized) {
     if (s.ok) {
-      console.log(style.ok(`  reverted: ${s.displayId}`));
+      out(style.ok(`  reverted: ${s.displayId}`));
     } else {
-      console.log(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
+      out(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
       // Transient "resource is mid-update" failure that survived the retries: add a
       // targeted hint so the user knows this is retry-later, not a real failure. When we
       // did NOT already wait (`--wait` off), point at it as the one-command settle path.
       if (s.hint) {
         const suffix =
           waitMs === undefined ? ' (or re-run with --wait to block until it settles)' : '';
-        console.log(style.note(`    ↳ ${s.hint}${suffix}`));
+        out(style.note(`    ↳ ${s.hint}${suffix}`));
       }
     }
   }
@@ -1015,9 +1043,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // scaled with stack size, not with the revert); regatherTouched re-reads only
   // plan.items and carries every other finding forward from the original gather.
   const touched = new Set(plan.items.map((i) => i.logicalId));
-  console.log(
-    '\n' + style.note(`verifying convergence (re-reading ${touched.size} resource(s))...`)
-  );
+  out('\n' + style.note(`verifying convergence (re-reading ${touched.size} resource(s))...`));
   const reconcile = (findings: Finding[]): Finding[] =>
     applyIgnores(
       applyBaseline(findings, baseline, baselineOpts),
@@ -1088,13 +1114,13 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // Print the no-op removals FIRST so the "did not converge" verdict below has visible
   // evidence above it, mirroring the FAILED: lines' relationship to the unconfirmed count.
   for (const n of noOpRemovals)
-    console.log(
+    out(
       style.fail(
         `  NOT reverted: ${n.displayId}.${n.path} — removal was a no-op (the provider ignored the omitted property; it needs an explicit default write — see #597 / REVERT_SET_DEFAULT_PATHS)`
       )
     );
   const notConverged = unconfirmed + noOpRemovals.length;
-  console.log(
+  out(
     converged
       ? style.clean(`${stackName}: CLEAN after revert.`)
       : remaining > 0
@@ -1107,7 +1133,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // as "all good" when a decision is still pending — one dim pointer line (R62).
   const unrecordedLeft = unrecordedCount(post);
   if (unrecordedLeft > 0)
-    console.log(
+    out(
       style.note(
         `  (${unrecordedLeft} unrecorded value(s) still await a baseline — run cdkrd record)`
       )
@@ -1116,7 +1142,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // user at a re-run rather than implying success. (A failed delete already printed its
   // own `FAILED:` line above and bumped the exit to 2 in the apply loop.)
   if (unverified > 0)
-    console.log(
+    out(
       style.note(
         `  (${unverified} resource(s) could not be re-read to verify — re-run cdkrd check to confirm)`
       )
@@ -1124,12 +1150,12 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // Say WHICH drift survived — without this the user must re-run `check` just to
   // learn what didn't converge (R46). A terse id-per-line pointer, not a report;
   // capped so a no-baseline partial revert doesn't re-list 100+ lines (R52).
-  for (const line of formatSurvivingDrift(remainingDrift, stackName)) console.log(line);
+  for (const line of formatSurvivingDrift(remainingDrift, stackName)) out(line);
   // remaining drift, an unverifiable re-read, OR a no-op removal all mean "not confirmed
   // clean" → exit 1 (a failed delete/update already set 2). Never return 0 ("converged")
   // when we could not verify convergence.
   if (remaining > 0 || unverified > 0 || noOpRemovals.length > 0) worst = Math.max(worst, 1);
-  return { exit: worst, aborted: false };
+  return { exit: worst, aborted: false, reverted: revertedCount, failed: failedCount };
 }
 
 /**

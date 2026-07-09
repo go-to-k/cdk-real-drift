@@ -18,6 +18,7 @@ import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
 import { ignoreStack } from './stack-actions.js';
+import { emitJsonArray, type IgnoreJson, stackLabel } from './verb-json.js';
 
 export async function runIgnore(args: string[]): Promise<number> {
   const a = parseCommonArgs(args, 'ignore');
@@ -36,22 +37,26 @@ export async function runIgnore(args: string[]): Promise<number> {
     stacks = await resolveStacks(a);
   } catch (e) {
     console.error(`error: ${(e as Error).message}`);
+    if (a.json) emitJsonArray([]); // keep stdout a valid (empty) JSON array on a top-level error (#868)
     return 2;
   }
   if (stacks.length === 0) {
     console.error('note: the CDK app defines no stacks — nothing to ignore');
+    if (a.json) emitJsonArray([]);
     return 0;
   }
 
+  const jsonReports: IgnoreJson[] = []; // #868: collected per stack, printed once after the loop
   let worst = 0;
   let wroteAny = false;
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
   const showProgress = !a.json && isInteractive();
   for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
-      console.error(
-        `error: ${stackName}: no region — set env on the stack, pass --region, or set a region for the AWS profile`
-      );
+      const msg =
+        'no region — set env on the stack, pass --region, or set a region for the AWS profile';
+      console.error(`error: ${stackName}: ${msg}`);
+      if (a.json) jsonReports.push({ stack: stackName, added: 0, wrote: false, error: msg });
       worst = Math.max(worst, 2);
       continue;
     }
@@ -80,16 +85,33 @@ export async function runIgnore(args: string[]): Promise<number> {
         stackName,
         findings: reconciled,
         yes: a.yes,
-        interactive: isInteractive(),
+        // --json is a scripting/non-TTY contract: never show the multiselect. (#868)
+        interactive: a.json ? false : isInteractive(),
         accountId: desired.accountId,
         region,
+        json: a.json,
       });
       if (result.wrote) wroteAny = true;
       // a non-interactive ignore that needed a decision but had no --yes refuses (R38)
       if (result.refused) worst = Math.max(worst, 2);
+      if (a.json)
+        jsonReports.push({
+          stack: stackLabel(stackName, region),
+          added: result.added,
+          wrote: result.wrote,
+          ...(result.refused && { refused: true }),
+          ...(result.path !== undefined && { config: result.path }),
+        });
     } catch (e) {
       if (isStackNotDeployed(e)) {
         console.error(`note: ${stackName}: not deployed yet — nothing to ignore`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            added: 0,
+            wrote: false,
+            error: 'not deployed yet — nothing to ignore',
+          });
         continue;
       }
       // A stack that exists but has no meaningful deployed state (REVIEW_IN_PROGRESS /
@@ -97,11 +119,30 @@ export async function runIgnore(args: string[]): Promise<number> {
       // ignore, so one un-checkable stack must not drag the whole run to exit 2.
       if (e instanceof StackNotCheckableError) {
         console.error(`note: ${stackName}: ${e.message} — nothing to ignore`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            added: 0,
+            wrote: false,
+            error: `${e.message} — nothing to ignore`,
+          });
         continue;
       }
-      console.error(`error: ${stackName}: ${(e as Error).message}`);
+      const msg = (e as Error).message;
+      console.error(`error: ${stackName}: ${msg}`);
+      if (a.json)
+        jsonReports.push({
+          stack: stackLabel(stackName, region),
+          added: 0,
+          wrote: false,
+          error: msg,
+        });
       worst = Math.max(worst, 2);
     }
+  }
+  if (a.json) {
+    emitJsonArray(jsonReports);
+    return worst;
   }
   if (worst === 0 && wroteAny)
     console.log('commit .cdkrd/ignore.yaml so the ignore rules apply for everyone going forward.');
