@@ -30,8 +30,10 @@ import {
   includeUnrecordedRemovals,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
+  revertSelectMessage,
   revertSelectOptions,
   revertStack,
+  stackLabel,
   summarizeRevertResults,
 } from '../src/commands/stack-actions.js';
 
@@ -1034,14 +1036,26 @@ describe('recordStack preselectedKeys (R121 — per-finding path skips the multi
 
 describe('revertConfirmMessage (R52 — the confirm must scope what gets written)', () => {
   it('with NOT-revertable findings present, states ONLY the selected ops are written', () => {
-    const msg = revertConfirmMessage('s', 1, 113);
-    expect(msg).toContain('Apply 1 revert op(s) to s? This WRITES to AWS.');
+    const msg = revertConfirmMessage('s', 'us-east-1', 1, 113);
+    expect(msg).toContain('Apply 1 revert op(s) to s (us-east-1)? This WRITES to AWS.');
     expect(msg).toContain('Only the 1 selected op(s) are written');
     expect(msg).toContain('113 NOT-revertable finding(s) are untouched');
   });
 
   it('without NOT-revertable findings, no scope clause (nothing to disclaim)', () => {
-    expect(revertConfirmMessage('s', 2, 0)).toBe('Apply 2 revert op(s) to s? This WRITES to AWS.');
+    expect(revertConfirmMessage('s', 'us-west-2', 2, 0)).toBe(
+      'Apply 2 revert op(s) to s (us-west-2)? This WRITES to AWS.'
+    );
+  });
+
+  it('names the region (#947 — the AWS-write confirm must say WHICH region it mutates)', () => {
+    expect(revertConfirmMessage('Dup', 'eu-west-1', 1, 0)).toContain('to Dup (eu-west-1)?');
+  });
+
+  it('two same-named different-region instances produce DISTINCT confirm strings (#947)', () => {
+    expect(revertConfirmMessage('Dup', 'us-east-1', 1, 0)).not.toBe(
+      revertConfirmMessage('Dup', 'us-west-2', 1, 0)
+    );
   });
 });
 
@@ -1221,8 +1235,8 @@ describe('ignoreSelectOptions', () => {
 
 describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hints now)', () => {
   it('is the one-line prompt header only (the space/→/←/enter hints live in bulkMultiselect)', () => {
-    const msg = recordSelectMessage('ApiStack');
-    expect(msg).toContain('ApiStack: select undeclared value(s) to record');
+    const msg = recordSelectMessage('ApiStack', 'us-east-1');
+    expect(msg).toContain('ApiStack (us-east-1): select undeclared value(s) to record');
     expect(msg).toContain('unselected stay reported');
     // the hint line moved into bulkMultiselect's render — the header is now single-line
     expect(msg).not.toContain('\n');
@@ -1230,7 +1244,7 @@ describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hin
   });
 
   it('discloses that folded sub-keys are ALWAYS recorded when foldedCount > 0', () => {
-    const msg = recordSelectMessage('ApiStack', 23);
+    const msg = recordSelectMessage('ApiStack', 'us-east-1', 23);
     expect(msg).toContain('23 folded sub-key(s) ALWAYS recorded');
     expect(msg).toContain('--verbose');
     expect(msg).not.toContain('--show-all'); // --show-all is the separate inventory mode
@@ -1238,8 +1252,16 @@ describe('recordSelectMessage (R49, R116 — bulkMultiselect renders the key hin
   });
 
   it('no folded disclosure when there is nothing folded', () => {
-    expect(recordSelectMessage('ApiStack', 0)).not.toContain('folded');
-    expect(recordSelectMessage('ApiStack')).not.toContain('folded');
+    expect(recordSelectMessage('ApiStack', 'us-east-1', 0)).not.toContain('folded');
+    expect(recordSelectMessage('ApiStack', 'us-east-1')).not.toContain('folded');
+  });
+
+  it('names the region so a same-named multi-region record is not misendorsed (#947)', () => {
+    expect(recordSelectMessage('Dup', 'us-west-2')).toContain('Dup (us-west-2):');
+    // two same-named different-region pickers must present DISTINCT headers
+    expect(recordSelectMessage('Dup', 'us-east-1')).not.toBe(
+      recordSelectMessage('Dup', 'us-west-2')
+    );
   });
 });
 
@@ -1299,10 +1321,40 @@ describe('recordOutcomeMessage (R142 — day-1 init is not a cold "0 recorded")'
 
 describe('ignoreSelectMessage', () => {
   it('is a one-line header naming the stack + that it writes ignore.yaml', () => {
-    const msg = ignoreSelectMessage('ApiStack');
-    expect(msg).toContain('ApiStack');
+    const msg = ignoreSelectMessage('ApiStack', 'us-east-1');
+    expect(msg).toContain('ApiStack (us-east-1)');
     expect(msg).toContain('ignore.yaml');
     expect(msg).not.toContain('\n');
+  });
+
+  it('names the region so a same-named multi-region ignore is not misapplied (#947)', () => {
+    expect(ignoreSelectMessage('Dup', 'us-east-1')).not.toBe(
+      ignoreSelectMessage('Dup', 'us-west-2')
+    );
+  });
+});
+
+describe('revertSelectMessage (#947 — name the region in the op picker)', () => {
+  it('is a one-line header naming the stack + region', () => {
+    const msg = revertSelectMessage('ApiStack', 'us-east-1');
+    expect(msg).toContain('ApiStack (us-east-1): select the op(s) to revert');
+    expect(msg).not.toContain('\n');
+  });
+
+  it('two same-named different-region pickers produce DISTINCT headers', () => {
+    expect(revertSelectMessage('Dup', 'us-east-1')).not.toBe(
+      revertSelectMessage('Dup', 'us-west-2')
+    );
+  });
+});
+
+describe('stackLabel (#947 — the report-matching `Name (region)` decision label)', () => {
+  it('matches the report header format', () => {
+    expect(stackLabel('Dup', 'us-west-2')).toBe('Dup (us-west-2)');
+  });
+
+  it('two same-named different-region labels differ', () => {
+    expect(stackLabel('Dup', 'us-east-1')).not.toBe(stackLabel('Dup', 'us-west-2'));
   });
 });
 

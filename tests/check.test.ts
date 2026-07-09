@@ -174,29 +174,42 @@ describe('buildResolveOptions (R133 — the chain menu surface)', () => {
 
 describe('resolveMenuMessage (R133 — worded by remaining exit state)', () => {
   it('code 1 (drift remains) says drift found', () => {
-    expect(resolveMenuMessage('S', 1)).toContain('drift found');
+    expect(resolveMenuMessage('S', 'us-east-1', 1)).toContain('drift found');
   });
   it('code 0 (only unrecorded) says potential drift found', () => {
-    expect(resolveMenuMessage('S', 0)).toContain('potential drift found');
+    expect(resolveMenuMessage('S', 'us-east-1', 0)).toContain('potential drift found');
   });
   it('R141: establishOnly says "no .cdkrd baseline yet"', () => {
-    expect(resolveMenuMessage('S', 0, true)).toContain('no .cdkrd baseline yet');
+    expect(resolveMenuMessage('S', 'us-east-1', 0, true)).toContain('no .cdkrd baseline yet');
   });
 
   // issue #539: the multi-stack [i/N] position cue is carried into the interactive prompt.
   it('prefixes the [i/N] position cue before the stack name (drift)', () => {
-    expect(resolveMenuMessage('S', 1, false, '[2/3] ')).toBe(
-      '[2/3] S: drift found — what do you want to do?'
+    expect(resolveMenuMessage('S', 'us-east-1', 1, false, '[2/3] ')).toBe(
+      '[2/3] S (us-east-1): drift found — what do you want to do?'
     );
   });
   it('prefixes the [i/N] cue for the potential-drift and establish wordings too', () => {
-    expect(resolveMenuMessage('S', 0, false, '[2/3] ')).toMatch(
-      /^\[2\/3\] S: potential drift found/
+    expect(resolveMenuMessage('S', 'us-east-1', 0, false, '[2/3] ')).toMatch(
+      /^\[2\/3\] S \(us-east-1\): potential drift found/
     );
-    expect(resolveMenuMessage('S', 0, true, '[2/3] ')).toMatch(/^\[2\/3\] S: no \.cdkrd baseline/);
+    expect(resolveMenuMessage('S', 'us-east-1', 0, true, '[2/3] ')).toMatch(
+      /^\[2\/3\] S \(us-east-1\): no \.cdkrd baseline/
+    );
   });
   it('adds nothing when the prefix is empty (lone stack — default)', () => {
-    expect(resolveMenuMessage('S', 1)).toBe('S: drift found — what do you want to do?');
+    expect(resolveMenuMessage('S', 'us-east-1', 1)).toBe(
+      'S (us-east-1): drift found — what do you want to do?'
+    );
+  });
+
+  // #947: after #899 exact-name selection targets every same-named region instance, so the
+  // top decision menu must name the region the way the report header does.
+  it('names the region so two same-named different-region menus are DISTINCT (#947)', () => {
+    expect(resolveMenuMessage('Dup', 'us-east-1', 1)).toContain('Dup (us-east-1):');
+    expect(resolveMenuMessage('Dup', 'us-east-1', 1)).not.toBe(
+      resolveMenuMessage('Dup', 'us-west-2', 1)
+    );
   });
 });
 
