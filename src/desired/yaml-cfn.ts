@@ -3,7 +3,15 @@
 // resolving each to its long-form object ({Ref:...} / {Fn::Foo:...}) so the rest
 // of cdk-real-drift reads one canonical (JSON-equivalent) representation.
 
-import type { CollectionTag, ScalarTag, YAMLMap, YAMLSeq } from 'yaml';
+import type {
+  CollectionTag,
+  ParseOptions,
+  ScalarTag,
+  SchemaOptions,
+  Tags,
+  YAMLMap,
+  YAMLSeq,
+} from 'yaml';
 import { parse as yamlParse } from 'yaml';
 
 export type TemplateFormat = 'json' | 'yaml';
@@ -102,6 +110,62 @@ function buildCustomTags(): Array<ScalarTag | CollectionTag> {
 
 const CUSTOM_TAGS = buildCustomTags();
 
+// The stock `yaml@2` YAML-1.1 schema over-resolves two plain-scalar shapes that
+// CloudFormation itself does NOT resolve (CFn deploys both as strings), producing
+// declared-tier false positives that survive `record` and corrupt `revert` (#850):
+//   1. Implicit timestamps — an unquoted `2026-01-01` / `2010-09-09` /
+//      `2001-12-14 21:59:43.10 -5` resolves to a JS `Date` OBJECT via the
+//      `tag:yaml.org,2002:timestamp` tag.
+//   2. Single-letter booleans — the 1.1 `bool` test regexes include `Y|y` and
+//      `N|n`, so `N` -> `false` and `Y` -> `true` (an AttributeType, a flag, ...).
+// These regexes exclude the single-letter `Y/y/N/n` forms while KEEPING the
+// `yes/no/on/off/true/false` forms — matching CFn and preserving the #785 fix.
+const TRUE_BOOL_TEST = /^(?:[Yy]es|YES|[Tt]rue|TRUE|[Oo]n|ON)$/;
+const FALSE_BOOL_TEST = /^(?:[Nn]o|NO|[Ff]alse|FALSE|[Oo]ff|OFF)$/;
+const BOOL_TAG = 'tag:yaml.org,2002:bool';
+// The `Date`-producing tag. The sexagesimal `intTime`/`floatTime` tags share the
+// int/float tag URIs (they yield NUMBERS like `1:30` -> 90, which #785 needs), so
+// only THIS tag URI is dropped — the sexagesimal number resolution is preserved.
+const TIMESTAMP_TAG = 'tag:yaml.org,2002:timestamp';
+
+// Take the resolved YAML-1.1 core tags and (a) drop the implicit `timestamp`
+// resolver so a date-like plain scalar stays a string, and (b) swap the two `bool`
+// tags for copies whose `test` excludes single-letter `Y/y/N/n`. The CFn short-form
+// tags (`!Ref`/`!GetAtt`/...) are appended so they still layer on top.
+function restrictYaml11Tags(baseTags: Tags): Tags {
+  const restricted: Tags = [];
+  for (const tag of baseTags) {
+    // A resolved schema's tags are objects, but the `Tags` element type also admits
+    // `TagId` string aliases — leave any such entry untouched (it is not a bool/timestamp).
+    if (typeof tag === 'string') {
+      restricted.push(tag);
+      continue;
+    }
+    if (tag.tag === TIMESTAMP_TAG) continue; // no implicit Date resolution
+    if (tag.tag === BOOL_TAG) {
+      // The 1.1 schema carries a separate tag for `true` and for `false`; each
+      // `identify`s only its own boolean. Use that to pick the matching narrowed
+      // `test`, so the swap is robust regardless of the tag array's order. Rebuild it
+      // as an explicit ScalarTag (a spread of the tag union widens `test` and loses
+      // the ScalarTag discriminant).
+      const scalar = tag as ScalarTag;
+      const isTrueTag = scalar.identify?.(true) === true;
+      restricted.push({
+        ...scalar,
+        test: isTrueTag ? TRUE_BOOL_TEST : FALSE_BOOL_TEST,
+      } as ScalarTag);
+      continue;
+    }
+    restricted.push(tag);
+  }
+  return restricted.concat(CUSTOM_TAGS as Tags);
+}
+
+const CFN_YAML_PARSE_OPTIONS: ParseOptions & SchemaOptions = {
+  schema: 'yaml-1.1',
+  customTags: restrictYaml11Tags,
+};
+
 export function detectTemplateFormat(text: string): TemplateFormat {
   const stripped = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const trimmed = stripped.trimStart();
@@ -122,11 +186,13 @@ export function parseCfnTemplate(text: string): Record<string, unknown> {
     // and `0755` parses as decimal 755 — diverging from what CFn actually deployed
     // (1.1 folds those to boolean / octal 493, and `1:30` to sexagesimal 90),
     // producing first-run declared false positives and silent revert corruption
-    // (#785). Pinning `version: '1.1'` selects the `yaml-1.1` base schema so implicit
-    // scalar resolution matches CFn. CUSTOM_TAGS (the CFn short forms) still layer on
-    // top as additional tags; the YAML-1.1-only `!!binary`/`!!timestamp`/... tags only
-    // fire on explicit `!!` markers a CFn template never carries, so no regression.
-    parsed = yamlParse(body, { version: '1.1', customTags: CUSTOM_TAGS });
+    // (#785). But the STOCK 1.1 schema also over-resolves plain date-like scalars to
+    // `Date` and single-letter `Y/N` to boolean, which CFn does NOT do (#850) — so we
+    // use a RESTRICTED yaml-1.1 schema (`restrictYaml11Tags`): 1.1 semantics minus
+    // implicit timestamps minus single-letter bools, composed with the CFn short
+    // forms. The YAML-1.1 `!!binary`/... tags only fire on explicit `!!` markers a
+    // CFn template never carries, so no regression.
+    parsed = yamlParse(body, CFN_YAML_PARSE_OPTIONS);
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('Template root is not an object.');
