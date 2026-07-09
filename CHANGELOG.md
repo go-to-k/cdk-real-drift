@@ -1,3 +1,10 @@
+## [0.2.71](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.70...v0.2.71) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold first-run FP defaults for ServerCertificate Path, ApiGwV2 Route AuthType, ApplicationInsights CWEMonitorEnabled, LakeFormation Tag CatalogId ([#925](https://github.com/go-to-k/cdk-real-drift/issues/925)) ([87559a5](https://github.com/go-to-k/cdk-real-drift/commit/87559a5516684443cf89be31582cc12cbd7a6661))
+
 ## [0.2.70](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.69...v0.2.70) (2026-07-09)
 
 
