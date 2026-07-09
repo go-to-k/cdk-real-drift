@@ -1,3 +1,10 @@
+## [0.2.72](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.71...v0.2.72) (2026-07-09)
+
+
+### Bug Fixes
+
+* **normalize:** harden Fn::Cidr — UNRESOLVED-arg crash + non-aligned ipBlock mis-resolution ([#926](https://github.com/go-to-k/cdk-real-drift/issues/926)) ([eb6c93a](https://github.com/go-to-k/cdk-real-drift/commit/eb6c93a14befeae2cd0a4abfc814a196fce447d0))
+
 ## [0.2.71](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.70...v0.2.71) (2026-07-09)
 
 
