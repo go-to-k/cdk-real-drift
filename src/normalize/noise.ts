@@ -1275,6 +1275,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::RedshiftServerless::Namespace': {
     AdminUsername: 'admin',
     KmsKeyId: 'AWS_OWNED_KMS_KEY',
+    // A namespace that declares no DbName reads back the service-hardcoded initial database
+    // "dev" (observed live 2026-07-09, us-east-1; #958). A stable constant, equality-gated —
+    // a namespace that pins its own DbName reads a non-matching value and surfaces.
+    DbName: 'dev',
   },
   'AWS::RedshiftServerless::Workgroup': {
     Port: 5439,
@@ -1953,6 +1957,33 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::MSK::Cluster': {
     // Brokers spread across AZs read back the DEFAULT distribution when unspecified.
     'BrokerNodeGroupInfo.BrokerAZDistribution': 'DEFAULT',
+    // A cluster that declares no ConnectivityInfo reads back AWS's whole default connectivity
+    // block: IPV4, every VPC-connectivity auth mechanism off, public access DISABLED (#977).
+    // Every leaf is the documented stable constant, so pin the whole object — matchesKnownDefault
+    // is recursively subset-tolerant, so a newer AWS shape carrying extra sub-keys still folds,
+    // while an out-of-band enable (e.g. PublicAccess.Type -> SERVICE_PROVIDED_EIPS, a real
+    // security-relevant change, or a Sasl/Iam enable) breaks the match and surfaces.
+    'BrokerNodeGroupInfo.ConnectivityInfo': {
+      NetworkType: 'IPV4',
+      VpcConnectivity: {
+        ClientAuthentication: {
+          Sasl: { Iam: { Enabled: false }, Scram: { Enabled: false } },
+          Tls: { Enabled: false },
+        },
+      },
+      PublicAccess: { Type: 'DISABLED' },
+    },
+    // A cluster that declares no EncryptionInfo reads back the documented in-transit defaults:
+    // TLS client-broker + in-cluster true (#977). The EncryptionInfo object is descended
+    // leaf-by-leaf (DESCEND_UNDECLARED_OBJECT_PATHS above), so this pins the EncryptionInTransit
+    // sub-block as a stable constant — an out-of-band downgrade (ClientBroker -> PLAINTEXT /
+    // TLS_PLAINTEXT, or InCluster -> false) breaks the match and surfaces. (The sibling
+    // EncryptionAtRest holds only the per-account alias/aws/kafka key ARN, folded value-
+    // independent via GENERATED_NESTED_PATHS below.)
+    'EncryptionInfo.EncryptionInTransit': {
+      ClientBroker: 'TLS',
+      InCluster: true,
+    },
   },
   'AWS::Batch::JobDefinition': {
     // A Fargate job definition reads back the documented runtime-platform defaults
@@ -2381,6 +2412,14 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
   // folds via schema.defaultPaths and only a non-default residue (a WARM tier set out of band)
   // would surface. Live, hunt 2026-07-08 round E (#624).
   'AWS::KinesisVideo::Stream': new Set(['StreamStorageConfiguration']),
+  // An MSK cluster that declares no EncryptionInfo reads back AWS's whole default object on
+  // every clean first check (#977). Descend it so its two sub-blocks fold independently:
+  // `EncryptionInTransit` is a stable constant ({ClientBroker:"TLS",InCluster:true}, folded via
+  // KNOWN_DEFAULT_PATHS below), while `EncryptionAtRest.DataVolumeKMSKeyId` is the account's
+  // AWS-managed alias/aws/kafka key ARN (a per-account AWS-assigned id — folded value-
+  // independent via GENERATED_NESTED_PATHS below). A single whole-object KNOWN_DEFAULTS entry
+  // can't cover both (the per-account KMS ARN can't be pinned), so descend + split.
+  'AWS::MSK::Cluster': new Set(['EncryptionInfo']),
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value
@@ -2482,6 +2521,23 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // AWS-assigned identifier, never user intent when undeclared. Fold value-independent. Live,
   // hunt 2026-07-08 #639.
   'AWS::AutoScaling::AutoScalingGroup': new Set(['LaunchTemplate.LaunchTemplateName']),
+  // An MSK cluster that declares no EncryptionInfo reads back EncryptionAtRest holding the
+  // account's AWS-managed `alias/aws/kafka` key ARN (a per-account AWS-assigned key id embedding
+  // a GUID — never a constant, never user intent when undeclared, the RDS/DynamoDB KmsKeyId echo
+  // class). The EncryptionInfo object is descended (DESCEND_UNDECLARED_OBJECT_PATHS), so the
+  // whole EncryptionAtRest sub-object (which only ever carries DataVolumeKMSKeyId) is emitted
+  // here and folded value-independent — a user who wants a customer-managed CMK DECLARES
+  // EncryptionInfo.EncryptionAtRest.DataVolumeKMSKeyId, which is then compared in the declared
+  // loop. (kmsAliasTargets is empty here because the stack declares no alias/aws/* to resolve;
+  // an equality-gated alias-resolution fold would need that map populated, so value-independent
+  // is the right tier for the undeclared case.)
+  // A cluster that declares no SecurityGroups gets the VPC's DEFAULT security group attached
+  // (["sg-…"], AWS-assigned per-account id) — the AmazonMQ / ELBv2 default-SG value-independent
+  // class, nested under the declared BrokerNodeGroupInfo. #977.
+  'AWS::MSK::Cluster': new Set([
+    'EncryptionInfo.EncryptionAtRest',
+    'BrokerNodeGroupInfo.SecurityGroups',
+  ]),
 };
 
 // Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
@@ -2986,6 +3042,29 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   folded as an equality-gated tier-1 KNOWN_DEFAULTS entry instead — a real out-of-band EndTime
   //   timestamp then surfaces rather than folding to any value (#946). Live, hunt 2026-07-09 (#847).
   'AWS::AutoScaling::ScheduledAction': new Set(['StartTime']),
+  //   AWS::RedshiftServerless::Workgroup.SecurityGroupIds / .SubnetIds — a workgroup that
+  //   declares neither is placed by the service into the account's DEFAULT VPC: it reads back
+  //   the default VPC's default security group (["sg-…"]) and ALL of that VPC's subnets
+  //   (["subnet-…", …]). These are per-account AWS-assigned ids, not constants and not
+  //   derivable from the workgroup's own declared inputs. Undeclared → whatever placement AWS
+  //   chose is its default, never user intent; a user who cares about network placement
+  //   DECLARES SecurityGroupIds/SubnetIds, which is then compared in the declared loop.
+  //   AWS::RedshiftServerless::Workgroup.ConfigParameters — a workgroup that declares no
+  //   ConfigParameters reads back AWS's full default effective-parameter set
+  //   ([{ParameterKey:"auto_mv",ParameterValue:"true"},{ParameterKey:"datestyle",…}, …]). The
+  //   documented default set is not fully enumerated in the evidence and AWS extends it over
+  //   time (a pinned whole-array constant would rot into a false positive the moment AWS adds a
+  //   parameter — the #653 recursive-subset lesson). A per-element equality gate (keyed by
+  //   ParameterKey) would preserve out-of-band-parameter detection but needs an
+  //   IDENTITY_KEYED_SUBSET_ARRAYS registration in classify.ts; until that follow-up lands, fold
+  //   value-independent: undeclared, so the whole AWS default parameter set is its choice, not
+  //   user intent (a user who pins a parameter DECLARES ConfigParameters, compared in the
+  //   declared loop). Live-confirmed on a fresh minimal workgroup (2026-07-09, us-east-1; #958).
+  'AWS::RedshiftServerless::Workgroup': new Set([
+    'ConfigParameters',
+    'SecurityGroupIds',
+    'SubnetIds',
+  ]),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
