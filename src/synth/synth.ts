@@ -35,6 +35,28 @@ export interface SynthStack {
 // discarded, so the stack is read against the wrong region (#742).
 export const CONCRETE_REGION = /^[a-z]{2}(-[a-z]+)+-\d+$/;
 
+/**
+ * Build the stderr message body (no `warning:` prefix — the caller adds it) for the case where
+ * `--app` points at a pre-synthesized cloud-assembly DIRECTORY (`cdk.out`) yet the user also
+ * passed `-c/--context`. There is no CDK app subprocess to feed context to — the assembly's
+ * templates were frozen at synth time — so the `-c` values are silently dropped. Returns `null`
+ * when it does NOT apply (a real CDK app command, or no context given), so the caller warns only
+ * on the ignored case (#956). Advisory only (a warning, not a refusal): the frozen assembly is
+ * still a valid drift source, the user is just misled into thinking their `-c` mattered.
+ */
+export function contextIgnoredWarning(
+  isDir: boolean,
+  context: Record<string, string>
+): string | null {
+  const keys = Object.keys(context);
+  if (!isDir || keys.length === 0) return null;
+  return (
+    `ignoring -c/--context (${keys.join(', ')}): --app points at a pre-synthesized cloud-assembly ` +
+    'directory, whose context was baked in at synth time — there is no CDK app to re-run with new ' +
+    'context. To apply new context, point --app at the CDK app itself (not its cdk.out).'
+  );
+}
+
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
   const toolkit = new Toolkit({
@@ -51,7 +73,10 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
   const isDir = existsSync(p) && statSync(p).isDirectory();
   let source;
   if (isDir) {
-    // pre-synthesized assembly: no subprocess to feed region/profile/context to
+    // pre-synthesized assembly: no subprocess to feed region/profile/context to. Any
+    // -c/--context the user passed is therefore dropped; warn so they are not misled (#956).
+    const ignored = contextIgnoredWarning(isDir, context);
+    if (ignored) console.error(`warning: ${ignored}`);
     source = await toolkit.fromAssemblyDirectory(p, { failOnMissingContext: false });
   } else {
     const hasOverrides = Object.keys(context).length > 0;
