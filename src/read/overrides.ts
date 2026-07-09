@@ -6,6 +6,11 @@
 // differ from the underlying target. Returns CFn-shaped properties for the
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
+import {
+  ACMClient,
+  DescribeCertificateCommand,
+  ListTagsForCertificateCommand,
+} from '@aws-sdk/client-acm';
 import { type ApiKey, AppSyncClient, ListApiKeysCommand } from '@aws-sdk/client-appsync';
 import { BudgetsClient, DescribeBudgetCommand } from '@aws-sdk/client-budgets';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
@@ -2074,7 +2079,86 @@ const readSesReceiptFilter: OverrideReader = async ({ physicalId, declared, regi
   };
 };
 
+// AWS::CertificateManager::Certificate — Cloud Control GetResource throws
+// UnsupportedActionException (the registry type exists but ships NO read handler), so
+// every ACM certificate was silently `skipped` on EVERY check (#974): undeclared drift,
+// an out-of-band flip of Options.CertificateTransparencyLoggingPreference (via
+// acm:update-certificate-options), a tag change, and — worst — an out-of-band DELETION of
+// a cert an ALB/CloudFront/API-domain still references were all invisible. Read via
+// acm:DescribeCertificate (physical id IS the cert ARN) + acm:ListTagsForCertificate.
+//
+// A ResourceNotFoundException from DescribeCertificate (the cert was deleted out of band)
+// is in NOT_FOUND_ERROR_NAMES, so letting it propagate makes the router map it to the
+// `deleted` tier — the whole point of adding a reader for a type whose skip previously
+// hid deletion.
+//
+// Fold care (core invariant — a clean deploy must produce ZERO first-run drift):
+//   - DomainName / SubjectAlternativeNames / KeyAlgorithm are createOnly and echo the
+//     declared values (KeyAlgorithm folds to its declared value, or to the RSA_2048 default
+//     when undeclared). SANs: AWS ALWAYS includes DomainName as the first SAN even when the
+//     template declares none; projecting the live SAN list then false-flagged an undeclared
+//     drift on every single-domain cert. So project SANs ONLY when the template declares
+//     them (a declared change is still detected; an undeclared, AWS-implied list stays quiet).
+//   - Options.CertificateTransparencyLoggingPreference defaults to ENABLED when undeclared.
+//     Since this reader cannot reach the noise.ts fold table, fold the default IN-READER:
+//     project Options only when the template DECLARES Options, OR when the live preference
+//     has moved AWAY from the ENABLED default (an out-of-band DISABLE). A clean cert with no
+//     declared Options and the live ENABLED default projects nothing here -> zero first-run
+//     drift; a DISABLE (out of band, or a declared value) still surfaces. This preserves
+//     out-of-band detection of the one meaningful, mutable Certificate property.
+//   - DomainValidationOptions is a createOnly write-time INPUT (ValidationDomain /
+//     HostedZoneId) that DescribeCertificate does not echo back verbatim (it returns
+//     resolved DomainValidation records with runtime CNAME/status), so it stays a readGap
+//     rather than a fabricated projection — projecting the runtime shape against the declared
+//     input shape would false-flag every cert.
+const ACM_DEFAULT_TRANSPARENCY = 'ENABLED';
+const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region }) => {
+  const arn = str(physicalId);
+  // The CFn physical id of an ACM certificate IS its ARN; without it we cannot address it.
+  if (!arn || !arn.startsWith('arn:')) return undefined;
+  const c = new ACMClient({ region, ...READ_RETRY });
+  // ResourceNotFoundException (cert deleted out of band) propagates -> router maps `deleted`.
+  const cert = (await c.send(new DescribeCertificateCommand({ CertificateArn: arn }))).Certificate;
+  if (!cert) return undefined;
+  const model: Record<string, unknown> = {};
+  if (str(cert.DomainName)) model.DomainName = cert.DomainName;
+  if (str(cert.KeyAlgorithm)) model.KeyAlgorithm = cert.KeyAlgorithm;
+  // SANs only when declared — AWS always folds DomainName in as an implied SAN, so an
+  // undeclared live list would false-flag every single-domain cert (see note above).
+  const declaresSans =
+    Array.isArray(declared.SubjectAlternativeNames) && declared.SubjectAlternativeNames.length > 0;
+  const sans = (cert.SubjectAlternativeNames ?? []).filter(
+    (s): s is string => str(s) !== undefined
+  );
+  if (declaresSans && sans.length > 0) model.SubjectAlternativeNames = sans;
+  // CertificateTransparencyLoggingPreference: project only when declared OR moved away from
+  // the ENABLED default, so a clean undeclared cert folds to nothing (zero first-run drift)
+  // while an out-of-band DISABLE still surfaces.
+  const pref = str(cert.Options?.CertificateTransparencyLoggingPreference);
+  const declaresOptions =
+    declared.Options !== undefined &&
+    declared.Options !== null &&
+    typeof declared.Options === 'object';
+  if (pref && (declaresOptions || pref !== ACM_DEFAULT_TRANSPARENCY)) {
+    model.Options = { CertificateTransparencyLoggingPreference: pref };
+  }
+  // Tags — a separate ACM call. Absent/empty stays absent (FP-safe) on both sides.
+  try {
+    const t = await c.send(new ListTagsForCertificateCommand({ CertificateArn: arn }));
+    const tags = (t.Tags ?? [])
+      .filter((tag) => str(tag.Key) !== undefined)
+      .map((tag) => ({ Key: tag.Key as string, Value: tag.Value ?? '' }));
+    if (tags.length > 0) model.Tags = tags;
+  } catch {
+    // A ListTagsForCertificate failure (a narrow acm:ListTagsForCertificate permission gap
+    // or a transient throttle) must not drop the whole cert read to skipped — keep the
+    // certificate model without Tags rather than losing the DomainName/Options coverage.
+  }
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::CertificateManager::Certificate': readAcmCertificate,
   'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
   'AWS::SES::ReceiptRule': readSesReceiptRule,
   'AWS::SES::ReceiptFilter': readSesReceiptFilter,
