@@ -1,3 +1,10 @@
+## [0.4.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.10...v0.4.11) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** fold EKS first-run defaults (ServiceIpv4Cidr / Version / AddonVersion) ([#979](https://github.com/go-to-k/cdk-real-drift/issues/979)) ([#1041](https://github.com/go-to-k/cdk-real-drift/issues/1041)) ([1687677](https://github.com/go-to-k/cdk-real-drift/commit/1687677b44514878b0e1e0a76550fc5f999e69ec))
+
 ## [0.4.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.9...v0.4.10) (2026-07-09)
 
 
