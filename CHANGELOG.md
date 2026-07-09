@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.79...v0.3.0) (2026-07-09)
+
+
+### Features
+
+* **report:** implement the --json output contract for record/ignore/revert ([#868](https://github.com/go-to-k/cdk-real-drift/issues/868)) ([#983](https://github.com/go-to-k/cdk-real-drift/issues/983)) ([f20b210](https://github.com/go-to-k/cdk-real-drift/commit/f20b21079b5bc67c10c7d258605a7f6c65ee3c31))
+
 ## [0.2.79](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.78...v0.2.79) (2026-07-09)
 
 
