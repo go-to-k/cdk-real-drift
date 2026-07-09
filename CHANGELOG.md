@@ -1,3 +1,12 @@
+## [0.3.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.2...v0.3.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* **config:** re-validate rules in addIgnoreRules before writing ([#991](https://github.com/go-to-k/cdk-real-drift/issues/991)) ([#997](https://github.com/go-to-k/cdk-real-drift/issues/997)) ([c1a1801](https://github.com/go-to-k/cdk-real-drift/commit/c1a1801ec32610cf107b99b34ddcca74a812233a))
+* **read:** ClientVPN endpoint-not-found → deleted tier ([#966](https://github.com/go-to-k/cdk-real-drift/issues/966)) ([#994](https://github.com/go-to-k/cdk-real-drift/issues/994)) ([f06a560](https://github.com/go-to-k/cdk-real-drift/commit/f06a560c4cc789f421355f09e69e6c1902a81e62))
+* **synth:** recursive nested-assembly missing-context aggregation ([#987](https://github.com/go-to-k/cdk-real-drift/issues/987)) ([#998](https://github.com/go-to-k/cdk-real-drift/issues/998)) ([d4a9cf7](https://github.com/go-to-k/cdk-real-drift/commit/d4a9cf7c08d7faa3ac1f3230110ac37cd3f37b6b))
+
 ## [0.3.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.1...v0.3.2) (2026-07-09)
 
 
