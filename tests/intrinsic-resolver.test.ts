@@ -405,6 +405,90 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'Env' }]] }, ctx())).toBe('a-prod');
   });
 
+  // #851: a malformed Fn::Sub argument (non-string / non-`[string, map]` array) must
+  // fail closed to UNRESOLVED, never throw a TypeError on `.replace` of a non-string
+  // template. Every branch of the resolver is fail-closed; these shapes were the gap.
+  it('#851: malformed Fn::Sub shapes → UNRESOLVED (no throw)', () => {
+    expect(resolve({ 'Fn::Sub': 5 }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Sub': null }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Sub': {} }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Sub': [] }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Sub': [5, {}] }, ctx())).toBe(UNRESOLVED);
+    // a well-formed [string, map] still resolves (regression guard)
+    expect(resolve({ 'Fn::Sub': ['x-${V}', { V: 'ok' }] }, ctx())).toBe('x-ok');
+  });
+
+  // #851: the Fn::Join delimiter is used raw via `parts.join(delim)`. CFn requires a
+  // LITERAL string delimiter; a non-string delimiter FABRICATES a declared value
+  // (`join({Ref:…})` → "a[object Object]b", `join(0)` → "a0b") — worse than UNRESOLVED.
+  it('#851: non-string Fn::Join delimiter → UNRESOLVED (no fabricated value)', () => {
+    expect(resolve({ 'Fn::Join': [{ Ref: 'AWS::Region' }, ['a', 'b']] }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Join': [0, ['a', 'b']] }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Join': [null, ['a', 'b']] }, ctx())).toBe(UNRESOLVED);
+    // a literal-string delimiter still resolves (regression guard)
+    expect(resolve({ 'Fn::Join': ['-', ['a', 'b']] }, ctx())).toBe('a-b');
+  });
+
+  // #852: Fn::GetAtt has a long-form STRING argument in JSON (`{"Fn::GetAtt": "Bucket.Arn"}`),
+  // split on the FIRST dot into [logicalId, attrPath]; attribute names may contain dots
+  // (Outputs.X). A no-dot string has no attribute → UNRESOLVED.
+  it('#852: Fn::GetAtt long-form STRING argument resolves against live attrs', () => {
+    const c = ctx({
+      liveAttrs: { Bucket: { Arn: 'arn:aws:s3:::b' }, Db: { Endpoint: { Address: 'h' } } },
+    });
+    expect(resolve({ 'Fn::GetAtt': 'Bucket.Arn' }, c)).toBe('arn:aws:s3:::b');
+    // dotted attribute (split only on the FIRST dot)
+    expect(resolve({ 'Fn::GetAtt': 'Db.Endpoint.Address' }, c)).toBe('h');
+    // a no-dot string has no attribute → UNRESOLVED
+    expect(resolve({ 'Fn::GetAtt': 'Bucket' }, c)).toBe(UNRESOLVED);
+    // string form + nested Stack Outputs.<key> path
+    const nested = ctx({
+      typeOf: { Nested: 'AWS::CloudFormation::Stack' },
+      liveAttrs: { Nested: { Outputs: [{ OutputKey: 'BucketArn', OutputValue: 'arn:x' }] } },
+    });
+    expect(resolve({ 'Fn::GetAtt': 'Nested.Outputs.BucketArn' }, nested)).toBe('arn:x');
+  });
+
+  // #854: Fn::Cidr [ipBlock, count, cidrBits] is a deterministic pure IPv4 function.
+  // cidrBits is subnet bits from the RIGHT: block size 2^cidrBits, mask = 32 - cidrBits.
+  it('#854: Fn::Cidr splits a block into the documented subnet array', () => {
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', 6, 8] }, ctx())).toEqual([
+      '10.0.0.0/24',
+      '10.0.1.0/24',
+      '10.0.2.0/24',
+      '10.0.3.0/24',
+      '10.0.4.0/24',
+      '10.0.5.0/24',
+    ]);
+    // a single /28 subnet (cidrBits=4 → 16 addresses → mask /28)
+    expect(resolve({ 'Fn::Cidr': ['192.168.0.0/24', 1, 4] }, ctx())).toEqual(['192.168.0.0/28']);
+  });
+
+  it('#854: Fn::Cidr nests inside Fn::Select (a subnet CidrBlock declaration)', () => {
+    expect(resolve({ 'Fn::Select': [0, { 'Fn::Cidr': ['10.0.0.0/16', 6, 8] }] }, ctx())).toBe(
+      '10.0.0.0/24'
+    );
+    expect(resolve({ 'Fn::Select': [3, { 'Fn::Cidr': ['10.0.0.0/16', 6, 8] }] }, ctx())).toBe(
+      '10.0.3.0/24'
+    );
+  });
+
+  it('#854: Fn::Cidr fails closed on out-of-range / malformed / IPv6 / unresolved args', () => {
+    // count too large for the block (256 /24 subnets is the max in a /16; 300 overflows)
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', 300, 8] }, ctx())).toBe(UNRESOLVED);
+    // subnet mask coarser than the block prefix (a /16 subnet inside a /24 block)
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/24', 1, 16] }, ctx())).toBe(UNRESOLVED);
+    // invalid CIDR / octet out of range / no slash
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.999/16', 1, 8] }, ctx())).toBe(UNRESOLVED);
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0', 1, 8] }, ctx())).toBe(UNRESOLVED);
+    // IPv6 not resolved
+    expect(resolve({ 'Fn::Cidr': ['2001:db8::/32', 1, 64] }, ctx())).toBe(UNRESOLVED);
+    // an unresolved arg propagates (a Ref to a missing param)
+    expect(resolve({ 'Fn::Cidr': [{ Ref: 'Ghost' }, 6, 8] }, ctx())).toBe(UNRESOLVED);
+    // malformed shape (not a 3-arg array)
+    expect(resolve({ 'Fn::Cidr': ['10.0.0.0/16', 6] }, ctx())).toBe(UNRESOLVED);
+  });
+
   it('R130: isDynamicReference matches only real dynamic-reference tokens', () => {
     expect(isDynamicReference('{{resolve:secretsmanager:my-secret:SecretString:user::}}')).toBe(
       true
