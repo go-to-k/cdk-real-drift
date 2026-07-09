@@ -7,6 +7,7 @@ import {
   addIgnoreRules,
   applyIgnores,
   type CdkrdConfig,
+  escapeGlobLiterals,
   type IgnoreRuleObject,
   type IgnoreScope,
   ignoreRuleFor,
@@ -629,6 +630,50 @@ describe('ignoreRuleFor', () => {
     const rule = ignoreRuleFor(addedFinding);
     expect(rule.path).toBe('Topic/arn:aws:sns:us-east-1:111111111111:T:sub-uuid');
     expect(rule.path).not.toContain('?');
+  });
+
+  it('escapes a LITERAL `*` in the finding path so the rule matches ONLY that finding (#776)', () => {
+    // An API Gateway MethodSettings key from `HttpMethod: "*"` — the `[*]` is a REAL bracket
+    // key, not a wildcard. Written verbatim the rule would glob every HTTP method's sibling;
+    // ignoreRuleFor must escape the `*` so the rule matches this finding and no other.
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Stage0661E8F1',
+      resourceType: 'AWS::ApiGateway::Stage',
+      path: 'MethodSettings[*].CacheTtlInSeconds',
+      actual: 300,
+    };
+    const rule = ignoreRuleFor(f);
+    expect(rule.path).toBe('Stage0661E8F1.MethodSettings[\\*].CacheTtlInSeconds');
+    // it ignores the exact finding it came from (round-trip)...
+    expect(ign([f], 'S', cfg([rule]))[0]?.tier).toBe('ignored');
+    // ...but NOT a sibling method key that the un-escaped `*` would have swallowed
+    const sibling: Finding = { ...f, path: 'MethodSettings[GET].CacheTtlInSeconds' };
+    expect(ign([sibling], 'S', cfg([rule]))[0]?.tier).toBe('undeclared');
+  });
+
+  it('escapes a literal `*` in a free-form key (S3 lifecycle Id) so the rule is not over-broad (#776)', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'B',
+      resourceType: 'AWS::S3::Bucket',
+      path: 'Rules[clean*tmp].Status',
+      actual: 'Enabled',
+    };
+    const rule = ignoreRuleFor(f);
+    expect(rule.path).toBe('B.Rules[clean\\*tmp].Status');
+    expect(ign([f], 'S', cfg([rule]))[0]?.tier).toBe('ignored');
+    const sibling: Finding = { ...f, path: 'Rules[cleanXYZtmp].Status' };
+    expect(ign([sibling], 'S', cfg([rule]))[0]?.tier).toBe('undeclared');
+  });
+});
+
+describe('escapeGlobLiterals (#776)', () => {
+  it('escapes `*`, `?`, and `\\` (backslash first) and leaves separators alone', () => {
+    expect(escapeGlobLiterals('a*b?c')).toBe('a\\*b\\?c');
+    expect(escapeGlobLiterals('a\\b')).toBe('a\\\\b'); // `\` doubled — escaped first
+    expect(escapeGlobLiterals('a\\*b')).toBe('a\\\\\\*b'); // `\` then `*`, not `\\*`
+    expect(escapeGlobLiterals('X.Y[key]/Z')).toBe('X.Y[key]/Z'); // separators untouched
   });
 });
 

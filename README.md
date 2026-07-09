@@ -484,7 +484,12 @@ ignore:
   `?` is **unbounded within that bracket** (the brackets delimit the key, so a `.`
   between them is data): `Alb.LoadBalancerAttributes[*]` and
   `Alb.LoadBalancerAttributes[routing.*]` both match the dotted key
-  `[routing.http2.enabled]`. On **stack / account / region**, `*` / `?` are unbounded
+  `[routing.http2.enabled]`. To match a **literal** `*` / `?` in a `path`
+  (e.g. an API Gateway `MethodSettings[*]` key from `HttpMethod: '*'`, or an S3
+  lifecycle `Id` like `clean*tmp`), backslash-escape it — `\*` / `\?` (and `\\`
+  for a literal backslash). The `ignore` verb writes such paths pre-escaped, so
+  a machine-written rule matches only the finding it came from; hand-copied rules
+  need the escape added. On **stack / account / region**, `*` / `?` are unbounded
   (those names carry no `.`). The three scope axes are exactly the
   baseline file's identity axes; each is **omitted to leave that axis unscoped**
   (match-all) — a present-but-empty `""` is rejected (it would match nothing),

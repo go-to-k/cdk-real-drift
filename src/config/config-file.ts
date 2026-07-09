@@ -224,13 +224,34 @@ export function ignoreRuleFor(
     finding.constructPath && finding.tier !== 'added'
       ? withinStackPath(finding.constructPath, stackName)
       : finding.logicalId;
-  const rule: IgnoreRuleObject = { path: finding.path ? `${id}.${finding.path}` : id };
+  // A finding path can legitimately CONTAIN a literal `*` / `?`: an API Gateway
+  // `MethodSettings[*]` bracket key (from `HttpMethod: '*'`), an S3 lifecycle `Id`
+  // like `clean*tmp`, a free-form Glue/ECS map key. Written verbatim, the glob matcher
+  // would reinterpret each `*` / `?` as a wildcard and silently widen the rule to every
+  // sibling (issue #776). Escape them (and any pre-existing `\`) so the rule matches ONLY
+  // the finding it came from — `escapeGlobLiterals` is the inverse of the grammar's
+  // `\`-escape in glob-match.ts. Escape `\` FIRST so the `*` / `?` escapes we add are not
+  // themselves re-escaped.
+  const rawPath = finding.path ? `${id}.${finding.path}` : id;
+  const rule: IgnoreRuleObject = { path: escapeGlobLiterals(rawPath) };
   // Only stamp a scope field when the value is actually known — an empty string would
   // write `stack: ""`, a glob that matches nothing (silently disabling the rule).
   if (stackName) rule.stack = stackName;
   if (accountId) rule.account = accountId;
   if (region) rule.region = region;
   return rule;
+}
+
+/**
+ * Backslash-escape the glob metacharacters (`\`, `*`, `?`) in a literal path so the glob
+ * matcher treats them as literals, not wildcards. The inverse of the `\`-escape grammar in
+ * glob-match.ts. `\` is escaped FIRST so the `*` / `?` escapes we add are not re-escaped
+ * (otherwise `\*` would become `\\*` = a literal `\` + a wildcard). Structural separators
+ * (`.` `[` `]` `/`) are intentionally left alone — they are the rule's segment grammar, not
+ * data. Exported for tests.
+ */
+export function escapeGlobLiterals(literal: string): string {
+  return literal.replace(/\\/g, '\\\\').replace(/[*?]/g, '\\$&');
 }
 
 /** Canonical identity of a rule (path + the three optional scopes), for dedupe. */
