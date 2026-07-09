@@ -4,6 +4,7 @@
 // writes only .cdkrd/ignore.yaml); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
 import { flushAndExit } from './exit.js';
+import { installInterruptGuard } from './interrupt.js';
 import { runRecord } from './commands/record.js';
 import { runIgnore } from './commands/ignore.js';
 import { runCheck } from './commands/check.js';
@@ -84,6 +85,7 @@ EXIT CODES
   record: 0 = written   2 = error/refused
   ignore: 0 = rule(s) written / nothing to ignore   2 = error/refused
   revert: 0 = converged/aborted   1 = drift remains   2 = error/apply failure
+  all:    130 = interrupted (Ctrl-C / ESC) during the gather/read phase — never mistaken for clean
 
 The baseline lives at .cdkrd/baselines/<stack>.<accountId>.<region>.json — commit it; review
 its diff in PRs. Ignore rules live in .cdkrd/ignore.yaml — also git-committed.`;
@@ -127,6 +129,10 @@ async function main(argv: string[]): Promise<number> {
       return 2;
   }
 }
+
+// #950: rewrite the gather-phase spinner's hard exit(0) on Ctrl-C / ESC to 130 and give
+// the non-raw-mode phases real SIGINT/SIGTERM handlers. Install before anything runs.
+installInterruptGuard();
 
 const argv = process.argv.slice(2);
 main(argv)
