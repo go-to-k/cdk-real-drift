@@ -6,7 +6,11 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BaseCredentials, CdkAppMultiContext, Toolkit } from '@aws-cdk/toolkit-lib';
 import { QuietIoHost } from './io-host.js';
-import { missingContextKeys, missingContextWarning } from './missing-context.js';
+import {
+  collectMissingRecursively,
+  missingContextKeys,
+  missingContextWarning,
+} from './missing-context.js';
 
 export interface SynthOptions {
   region?: string | undefined;
@@ -75,7 +79,12 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
     // placeholders does not reflect real infrastructure. Always warn on discovery; under
     // `--pre-deploy` (synth template = declared source) REFUSE, because the fabricated
     // values would drive false declared drift and a revert would write them back to AWS.
-    const missingKeys = missingContextKeys(cached.cloudAssembly.manifest.missing);
+    // Aggregate `missing` RECURSIVELY across nested-Stage assemblies (mirroring the
+    // `stacksRecursively` descent below): a stack nested inside a CDK `Stage` records its
+    // unresolved lookups in its OWN nested manifest, not the top-level one, so a
+    // top-level-only read would let a dummy `vpc-12345` inside a staged stack slip past
+    // `--pre-deploy` — reintroducing exactly the false declared drift #907 blocks (#987).
+    const missingKeys = missingContextKeys(collectMissingRecursively(cached.cloudAssembly));
     if (missingKeys.length > 0) {
       const msg = missingContextWarning(missingKeys, { preDeploy: opts.preDeploy });
       if (opts.preDeploy) throw new Error(msg ?? 'unresolved CDK context lookups');

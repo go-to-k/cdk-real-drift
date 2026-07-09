@@ -14,6 +14,33 @@ export interface MissingContextEntry {
   readonly key: string;
 }
 
+/**
+ * Minimal structural shape of a cx-api `CloudAssembly` for missing-context aggregation. A CDK
+ * app that nests stacks inside a `Stage` synthesizes each Stage into its OWN nested assembly
+ * (`assembly-<Stage>/manifest.json`) carrying its own `missing` array; the top-level manifest's
+ * `missing` does NOT include them. We only need the per-assembly `manifest.missing` plus the
+ * recursion edge into nested assemblies (each `NestedCloudAssemblyArtifact.nestedAssembly`).
+ */
+export interface CloudAssemblyLike {
+  readonly manifest: { readonly missing?: readonly MissingContextEntry[] | undefined };
+  readonly nestedAssemblies: readonly { readonly nestedAssembly: CloudAssemblyLike }[];
+}
+
+/**
+ * Collect `missing` context entries across the top-level assembly AND every nested assembly
+ * (recursively — a Stage-in-Stage app nests arbitrarily deep). Mirrors how `stacksRecursively`
+ * descends `nestedAssemblies` so a dummy `vpc-12345` lookup inside a staged stack is not missed
+ * (#987 — the top-level-only read in #907 let one slip past `--pre-deploy`). Concatenates each
+ * assembly's raw entries; dedup/sort is left to `missingContextKeys`.
+ */
+export function collectMissingRecursively(assembly: CloudAssemblyLike): MissingContextEntry[] {
+  const out: MissingContextEntry[] = [...(assembly.manifest.missing ?? [])];
+  for (const nested of assembly.nestedAssemblies) {
+    out.push(...collectMissingRecursively(nested.nestedAssembly));
+  }
+  return out;
+}
+
 /** Unique, sorted missing-context keys (dedup by key). Empty array when nothing is missing. */
 export function missingContextKeys(missing: readonly MissingContextEntry[] | undefined): string[] {
   if (!missing || missing.length === 0) return [];
