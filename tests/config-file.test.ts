@@ -149,6 +149,9 @@ describe('applyIgnores', () => {
   it('a `Parent/*` rule matches a DIRECT construct-path child but NOT a deeper descendant (#842)', () => {
     // A `/` is a real construct-path segment boundary; `Parent/*` means "a direct child",
     // so it must not leak to arbitrarily deep descendants (`Parent/Child/Grandchild`).
+    // The rule is LEAF-PINNED (`Parent/*.Policies`): even after the ancestor walk crosses
+    // `/` (#903), no `/`-sliced ancestor of `Parent/Child/Grandchild.Policies` ever ends in
+    // `.Policies`, so the grandchild still stays drift — like the `*.DesiredCount` bound.
     const child: Finding = {
       tier: 'undeclared',
       logicalId: 'ChildAAAA',
@@ -169,6 +172,67 @@ describe('applyIgnores', () => {
     expect(ign([child], 'MyStack', cfg([p('Parent/*.Policies')]))[0]?.tier).toBe('ignored');
     // …but the deeper `Parent/Child/Grandchild` must stay drift (no cross-slash leak)
     expect(ign([grandchild], 'MyStack', cfg([p('Parent/*.Policies')]))[0]?.tier).toBe('undeclared');
+  });
+
+  it('an explicit parent rule covers a `/`-subtree leaf finding (#903 exact repro)', () => {
+    // The ancestor walk now trims at `/` too, so `MyApi/Res` covers `MyApi/Res/Method.Prop`
+    // — symmetric with the `.` behavior. Before #903 the walk never crossed `/`, so a rule
+    // on an explicit construct-path parent could not ignore a deeper child.
+    const leaf: Finding = {
+      tier: 'undeclared',
+      logicalId: 'MethodCCCC',
+      constructPath: 'MyStack/MyApi/Res/Method',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'Prop',
+      actual: { x: 1 },
+    };
+    expect(ign([leaf], 'MyStack', cfg([p('MyApi/Res')]))[0]?.tier).toBe('ignored');
+  });
+
+  it('a bare parent rule covers a deeper `/`-subtree finding', () => {
+    // `MyApi` (no wildcard) covers its whole construct-path subtree via the walk.
+    const deep: Finding = {
+      tier: 'undeclared',
+      logicalId: 'DeepDDDD',
+      constructPath: 'MyStack/MyApi/Res/Method/Sub',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'Prop',
+      actual: { x: 1 },
+    };
+    expect(ign([deep], 'MyStack', cfg([p('MyApi')]))[0]?.tier).toBe('ignored');
+  });
+
+  it('an `added` child whose id is an ARN with `/` is ignorable by its parent rule (#903)', () => {
+    // An `added` finding keys on the constructPath `<parent>/<CC-identifier>` with an EMPTY
+    // path; a load balancer listener's CC identifier is an ARN full of `/`. Before #903 the
+    // `/`-bounded `*` plus the never-cross-`/` walk left it un-ignorable by ANY wildcard.
+    const arnChild: Finding = {
+      tier: 'added',
+      logicalId:
+        'MyLb/arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-lb/50dc6c495c0c9188/f2f7dc8efc522ab2',
+      constructPath:
+        'MyStack/MyLb/arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-lb/50dc6c495c0c9188/f2f7dc8efc522ab2',
+      resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+      path: '',
+    };
+    // ignorable by the bare parent rule…
+    expect(ign([arnChild], 'MyStack', cfg([p('MyLb')]))[0]?.tier).toBe('ignored');
+    // …and by the `*`-suffixed parent rule (deep coverage comes via the walk, like `.`)
+    expect(ign([arnChild], 'MyStack', cfg([p('MyLb/*')]))[0]?.tier).toBe('ignored');
+  });
+
+  it('a leaf-pinned `MyApi/*.Prop` rule does NOT ignore a grandchild `.Prop` (#842 spirit)', () => {
+    // Symmetric with `*.DesiredCount`: a wildcard with a `.Prop` leaf only matches a DIRECT
+    // child's `.Prop`, never a deeper `/`-descendant's — even after the walk crosses `/`.
+    const grandchild: Finding = {
+      tier: 'undeclared',
+      logicalId: 'GrandEEEE',
+      constructPath: 'MyStack/MyApi/Res/Method',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: 'Prop',
+      actual: { x: 1 },
+    };
+    expect(ign([grandchild], 'MyStack', cfg([p('MyApi/*.Prop')]))[0]?.tier).toBe('undeclared');
   });
 
   it('a parent rule still covers a deep same-named leaf via the ancestor walk (no under-match)', () => {

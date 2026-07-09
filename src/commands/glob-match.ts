@@ -95,8 +95,8 @@ export function matchesGlob(pattern: string, name: string): boolean {
  * construct paths (`MyApi/Resource/Method`), so `MyApi/*` means "a direct child of
  * MyApi" — bounding `*` at `/` keeps it from leaking to arbitrarily deep descendants
  * (`MyApi/Resource/Method`). Deep-subtree coverage of a `/`-parent rule is still
- * handled by the ancestor walk in `pathMatches` (which trims at `.` / `[`; a rule that
- * means the whole subtree ends at the parent segment). Inside a `[...]` bracket a `/`
+ * handled by the ancestor walk in `pathMatches` (which trims at `.`, `[`, OR `/`, so a
+ * `/`-parent rule's whole subtree is covered — symmetric with `.`). Inside a `[...]` bracket a `/`
  * is DATA, not a boundary — the brackets already delimit the key — so it stays literal
  * there, exactly like `.`.
  *

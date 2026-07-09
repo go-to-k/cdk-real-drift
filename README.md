@@ -488,8 +488,11 @@ ignore:
   segment, bounded by `.`, `/`, and `[` (`*.DesiredCount` matches
   `<anyId>.DesiredCount`, not a deeper `Tbl.Config.DesiredCount`; `MyApi/*`
   matches a direct construct-path child but not a grandchild
-  `MyApi/Resource/Method`) — a parent `path` still covers child paths via the
-  subtree walk, so the segment bound does not under-match. Inside a `[...]`
+  `MyApi/Resource/Method`) — but an explicit parent `path` (e.g. `MyApi/Resource`)
+  still covers its whole `/`-subtree (`MyApi/Resource/Method.Prop`) via the
+  ancestor walk, symmetric with the `.` case, so the segment bound does not
+  under-match. A leaf-pinned wildcard like `MyApi/*.Prop` still does NOT cross
+  segments (it only matches a direct child's `.Prop`). Inside a `[...]`
   bracket key a `*` /
   `?` is **unbounded within that bracket** (the brackets delimit the key, so a `.`
   between them is data): `Alb.LoadBalancerAttributes[*]` and

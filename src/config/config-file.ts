@@ -376,23 +376,26 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
 }
 
 /**
- * True when `pattern` matches `target` (= "<logicalId>.<path>"), either exactly or
- * as a PARENT path: a rule "X.Policies" also ignores child paths like
- * "X.Policies.0.PolicyName" AND "X.Policies[MyPol].PolicyName" (so ignoring a
- * structured property covers its leaves, including array / identity-keyed elements).
- * Parent matching walks ancestors at each `.` OR `[` boundary, combined with the glob.
+ * True when `pattern` matches `target` (= "<logicalId>.<path>" / a `/`-joined construct
+ * path), either exactly or as a PARENT path: a rule "X.Policies" also ignores child paths
+ * like "X.Policies.0.PolicyName" AND "X.Policies[MyPol].PolicyName" (so ignoring a
+ * structured property covers its leaves, including array / identity-keyed elements), and a
+ * rule "MyApi/Res" covers its whole construct-path subtree "MyApi/Res/Method.Prop".
+ * Parent matching walks ancestors at each `.`, `[`, OR `/` boundary, combined with the glob.
  */
 function pathMatches(pattern: string, target: string): boolean {
   if (matchesPathGlob(pattern, target)) return true;
   // A rule on a PARENT property ignores its whole subtree — including array / identity-
   // keyed children whose path glues the index to its key inside ONE dot-segment
-  // (`Policies[MyPol].PolicyName`, `Statement[0].Condition`, `Tags[env]`). Walk ancestor
-  // paths by trimming at each `.` OR `[` boundary (not just `.`), so a rule `X.Policies`
-  // covers `X.Policies[MyPol].PolicyName` and `X.Statement` covers
-  // `X.Statement[0].Condition` — the dot-only split silently failed for bracket children.
+  // (`Policies[MyPol].PolicyName`, `Statement[0].Condition`, `Tags[env]`) AND deeper
+  // construct-path descendants across `/` (`MyApi/Res/Method.Prop` under `MyApi/Res`, or
+  // an `added` child whose id is an ARN full of `/`). Walk ancestor paths by trimming at
+  // each `.`, `[`, OR `/` boundary, so a rule `X.Policies` covers `X.Policies[MyPol].Name`,
+  // `X.Statement` covers `X.Statement[0].Condition`, and `MyApi/Res` covers its `/`-subtree
+  // — symmetric with the `.` case (the dot/bracket-only split silently failed across `/`).
   let t = target;
   while (true) {
-    const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['));
+    const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['), t.lastIndexOf('/'));
     if (cut <= 0) break;
     t = t.slice(0, cut);
     if (matchesPathGlob(pattern, t)) return true;
