@@ -1,3 +1,10 @@
+## [0.2.76](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.75...v0.2.76) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** fold RDS Multi-AZ DB cluster implicit member instances, not 'added' ([#896](https://github.com/go-to-k/cdk-real-drift/issues/896)) ([#935](https://github.com/go-to-k/cdk-real-drift/issues/935)) ([2f6cf54](https://github.com/go-to-k/cdk-real-drift/commit/2f6cf540ad194064c7ae0253682a45f72aa00e7c))
+
 ## [0.2.75](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.74...v0.2.75) (2026-07-09)
 
 
