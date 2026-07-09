@@ -1,3 +1,10 @@
+## [0.3.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.1...v0.3.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* **noise:** move ScheduledAction EndTime fold from tier-3 to tier-1 constant ([#946](https://github.com/go-to-k/cdk-real-drift/issues/946)) ([#996](https://github.com/go-to-k/cdk-real-drift/issues/996)) ([84156b2](https://github.com/go-to-k/cdk-real-drift/commit/84156b2bcecd4769ab287d06c8775691befbf6b1))
+
 ## [0.3.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.0...v0.3.1) (2026-07-09)
 
 
