@@ -81,6 +81,8 @@ export function classifyStackStatus(status: string | undefined): {
 //   EC2 EIP             : InvalidAllocationID.NotFound / InvalidAddress.NotFound
 //   EC2 LaunchTemplate  : InvalidLaunchTemplateId.NotFound (deleted launch template)
 //   EC2 NetworkAcl      : InvalidNetworkAclID.NotFound (NACL of a NetworkAclEntry deleted)
+//   EC2 ClientVPN       : InvalidClientVpnEndpointId.NotFound (endpoint of a deleted
+//                         Client VPN endpoint — its Describe{AuthorizationRules,TargetNetworks} children)
 //   Glue                : EntityNotFoundException (GetTable on a deleted table/db)
 //   DMS                 : ResourceNotFoundFault (Describe{Endpoints,ReplicationSubnetGroups})
 //   DAX                 : ClusterNotFoundFault / ParameterGroupNotFoundFault /
@@ -109,6 +111,11 @@ const NOT_FOUND_ERROR_NAMES = new Set([
   'InvalidLaunchTemplateId.NotFound',
   // EC2 DescribeNetworkAcls on a deleted NACL (readEc2NetworkAclEntry's parent NACL).
   'InvalidNetworkAclID.NotFound',
+  // EC2 ClientVPN DescribeClientVpnAuthorizationRules / DescribeClientVpnTargetNetworks on a
+  // deleted Client VPN endpoint (#534 added the readers, #966 folds their not-found → deleted).
+  // The association code (InvalidClientVpnAssociationId.NotFound) is a live-probe follow-up:
+  // unconfirmed against the AWS docs, so left out until a real probe surfaces it.
+  'InvalidClientVpnEndpointId.NotFound',
   'EntityNotFoundException',
   // DocumentDB describe-db-clusters / describe-db-instances on a deleted target.
   'DBClusterNotFoundFault',

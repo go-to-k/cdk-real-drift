@@ -23,6 +23,7 @@ describe('isResourceNotFoundError', () => {
       'InvalidAddress.NotFound', // EC2 EIP
       'InvalidLaunchTemplateId.NotFound', // EC2 DescribeLaunchTemplateVersions (deleted template)
       'InvalidNetworkAclID.NotFound', // EC2 DescribeNetworkAcls (deleted NACL of a NetworkAclEntry)
+      'InvalidClientVpnEndpointId.NotFound', // EC2 ClientVPN Describe{AuthorizationRules,TargetNetworks} (deleted endpoint) (#966)
       'EntityNotFoundException', // Glue GetTable on a deleted table/db
       'DBClusterNotFoundFault', // DocumentDB describe-db-clusters
       'DBInstanceNotFoundFault', // DocumentDB describe-db-instances
