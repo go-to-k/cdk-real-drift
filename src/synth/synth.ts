@@ -6,11 +6,17 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BaseCredentials, CdkAppMultiContext, Toolkit } from '@aws-cdk/toolkit-lib';
 import { QuietIoHost } from './io-host.js';
+import { missingContextKeys, missingContextWarning } from './missing-context.js';
 
 export interface SynthOptions {
   region?: string | undefined;
   profile?: string | undefined;
   context?: Record<string, string>;
+  // When the caller uses the synth template as the DECLARED source (`--pre-deploy`), an
+  // assembly synthesized with unresolved context lookups is fabricated (CDK's dummy
+  // `vpc-12345` placeholders). Escalate the missing-context surface from a warning to a
+  // hard refusal (throw) in that mode (#907). Discovery (default) only warns.
+  preDeploy?: boolean;
 }
 
 export interface SynthStack {
@@ -63,6 +69,19 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 
   const cached = await toolkit.synth(source);
   try {
+    // A CDK app whose context lookups are unresolved still synthesizes — CDK fills every
+    // gap with a well-known DUMMY value (`vpc-12345`, ...) and records the gap in the
+    // manifest's `missing` array. Surface that loudly (#907): a template carrying those
+    // placeholders does not reflect real infrastructure. Always warn on discovery; under
+    // `--pre-deploy` (synth template = declared source) REFUSE, because the fabricated
+    // values would drive false declared drift and a revert would write them back to AWS.
+    const missingKeys = missingContextKeys(cached.cloudAssembly.manifest.missing);
+    if (missingKeys.length > 0) {
+      const msg = missingContextWarning(missingKeys, { preDeploy: opts.preDeploy });
+      if (opts.preDeploy) throw new Error(msg ?? 'unresolved CDK context lookups');
+      console.error(`warning: ${msg}`);
+    }
+
     // `stacksRecursively` (NOT `stacks`): `stacks` returns only the TOP-LEVEL
     // assembly's stacks, so every stack nested inside a CDK `Stage` (the CDK
     // Pipelines / multi-env pattern) is silently invisible — never discovered, never
