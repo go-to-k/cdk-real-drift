@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { IoMessage } from '@aws-cdk/toolkit-lib';
 import { planIoMessage, QuietIoHost } from '../src/synth/io-host.js';
 
 describe('planIoMessage (QuietIoHost routing)', () => {
@@ -44,6 +45,22 @@ describe('planIoMessage (QuietIoHost routing)', () => {
     });
   });
 
+  it('surfaces the context-lookup FETCH (I0241, debug) as an info one-liner (#906)', () => {
+    // toolkit-lib registers I0241 at DEBUG, so it would otherwise be dropped, leaving the
+    // read-only `check` to hit AWS silently. Note it as a concise info line.
+    expect(planIoMessage({ code: 'CDK_ASSEMBLY_I0241', level: 'debug' })).toMatchObject({
+      action: 'note',
+      level: 'info',
+    });
+  });
+
+  it('surfaces the cdk.context.json WRITE (I0042, debug) as an info one-liner (#906)', () => {
+    expect(planIoMessage({ code: 'CDK_ASSEMBLY_I0042', level: 'debug' })).toMatchObject({
+      action: 'note',
+      level: 'info',
+    });
+  });
+
   it('drops toolkit info / debug / trace chatter', () => {
     expect(planIoMessage({ code: 'CDK_ASSEMBLY_I0010', level: 'info' })).toEqual({
       action: 'drop',
@@ -52,6 +69,80 @@ describe('planIoMessage (QuietIoHost routing)', () => {
       action: 'drop',
     });
     expect(planIoMessage({ code: undefined, level: 'trace' })).toEqual({ action: 'drop' });
+  });
+});
+
+describe('QuietIoHost surfaces context-lookup + cdk.context.json write (#906)', () => {
+  // Build a minimal IoMessage. code/level are the only fields planIoMessage inspects;
+  // message is what the base host renders.
+  const msg = (
+    code: string | undefined,
+    level: string,
+    message = 'toolkit body'
+  ): IoMessage<unknown> =>
+    ({
+      code,
+      level,
+      message,
+      time: new Date(),
+    }) as unknown as IoMessage<unknown>;
+
+  it('emits ONE info line to stderr for I0241 (fetching), de-duped across repeats', async () => {
+    const host = new QuietIoHost();
+    const writes: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: unknown) => {
+      writes.push(String(chunk));
+      return true;
+    });
+    try {
+      await host.notify(msg('CDK_ASSEMBLY_I0241', 'debug'));
+      // fires again in a later resolution round — must NOT print a second line
+      await host.notify(msg('CDK_ASSEMBLY_I0241', 'debug'));
+    } finally {
+      spy.mockRestore();
+    }
+    const lines = writes.join('').trim().split('\n').filter(Boolean);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('context lookups');
+    expect(lines[0]).not.toContain('toolkit body'); // our concise text, not the verbose debug body
+  });
+
+  it('emits an info line to stderr for I0042 (cdk.context.json write)', async () => {
+    const host = new QuietIoHost();
+    const writes: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: unknown) => {
+      writes.push(String(chunk));
+      return true;
+    });
+    try {
+      await host.notify(msg('CDK_ASSEMBLY_I0042', 'debug'));
+    } finally {
+      spy.mockRestore();
+    }
+    expect(writes.join('')).toContain('cdk.context.json');
+  });
+
+  it('still DROPS a below-warn message with a different code (no stderr write)', async () => {
+    const host = new QuietIoHost();
+    const stderrWrites: string[] = [];
+    const stdoutWrites: string[] = [];
+    const eSpy = vi.spyOn(process.stderr, 'write').mockImplementation((c: unknown) => {
+      stderrWrites.push(String(c));
+      return true;
+    });
+    const oSpy = vi.spyOn(process.stdout, 'write').mockImplementation((c: unknown) => {
+      stdoutWrites.push(String(c));
+      return true;
+    });
+    try {
+      await host.notify(msg('CDK_ASSEMBLY_I0010', 'debug'));
+      await host.notify(msg('CDK_TOOLKIT_I0001', 'info'));
+    } finally {
+      eSpy.mockRestore();
+      oSpy.mockRestore();
+    }
+    expect(stderrWrites.join('')).toBe('');
+    expect(stdoutWrites.join('')).toBe('');
   });
 });
 
