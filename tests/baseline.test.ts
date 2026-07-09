@@ -665,6 +665,17 @@ describe('baseline', () => {
       ).toEqual(['Clean', 'Covered']); // sorted; Uncovered/Unread/Gone excluded
     });
 
+    it('a resource with a readGap finding is NOT complete (#795 — part of its model was unread)', () => {
+      // a readGap means some of the resource's live state could not be read this run,
+      // so undeclared values hidden behind the gap were never snapshotted — the
+      // resource must not be stamped complete (else a later cdkrd that closes the gap
+      // surfaces the newly-visible values as false "appeared since record" drift).
+      const findings: Finding[] = [
+        { tier: 'readGap', logicalId: 'Gap', resourceType: 'T', path: 'P' },
+      ];
+      expect(computeCompleteResources(['Gap'], findings, [])).toEqual([]);
+    });
+
     it('a resource with one of two values recorded is NOT complete', () => {
       const findings = [undeclared('A', 'P', 1), undeclared('A', 'Q', 2)];
       const recorded = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];
