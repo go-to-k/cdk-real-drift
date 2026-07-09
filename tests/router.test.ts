@@ -375,6 +375,36 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('cdkrd-readgap-dg');
   });
 
+  it('GuardDuty Filter: builds the DetectorId|Name composite — PARENT first (#878)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::GuardDuty::Filter',
+        physicalId: 'my-filter',
+        declared: { DetectorId: 'abc123detector' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('abc123detector|my-filter');
+  });
+
+  it('GuardDuty Filter: an unresolved DetectorId falls back to the raw physical id', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::GuardDuty::Filter',
+        physicalId: 'my-filter',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('my-filter');
+  });
+
   it('AutoScaling ScheduledAction: builds the ScheduledActionName|AutoScalingGroupName composite — CHILD first (reverse of LifecycleHook)', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(
