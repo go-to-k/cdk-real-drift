@@ -397,8 +397,19 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
  * structured property covers its leaves, including array / identity-keyed elements), and a
  * rule "MyApi/Res" covers its whole construct-path subtree "MyApi/Res/Method.Prop".
  * Parent matching walks ancestors at each `.`, `[`, OR `/` boundary, combined with the glob.
+ *
+ * `wholeResource` marks an atomic, whole-resource target (an `added` finding — empty property
+ * path, so the target is just `<parentLogicalId>/<CC-identifier>`). Such a target has NO
+ * property subtree: the `.` / `[` inside it are DATA within the CC identifier
+ * (`example.com`, an ARN, `a[0]`), never property separators. Trimming there would walk into
+ * a DIFFERENT sibling resource whose identifier is this one extended by `.` / `[`
+ * (`MyApi/a` wrongly swallowing `MyApi/a.b`, `MyApi/a[0]`) — a silent over-suppression of the
+ * `added` out-of-band feature (issue #990). So in this mode the ancestor walk trims ONLY at
+ * `/` boundaries, which alone mark a resource boundary: a bare PARENT-resource rule (`MyLb`)
+ * still covers its added children across `/` (e.g. a listener child whose id is an ARN full
+ * of `/`, issue #903), while a rule for one whole resource can no longer reach a sibling.
  */
-function pathMatches(pattern: string, target: string): boolean {
+function pathMatches(pattern: string, target: string, wholeResource = false): boolean {
   if (matchesPathGlob(pattern, target)) return true;
   // A rule on a PARENT property ignores its whole subtree — including array / identity-
   // keyed children whose path glues the index to its key inside ONE dot-segment
@@ -408,9 +419,13 @@ function pathMatches(pattern: string, target: string): boolean {
   // each `.`, `[`, OR `/` boundary, so a rule `X.Policies` covers `X.Policies[MyPol].Name`,
   // `X.Statement` covers `X.Statement[0].Condition`, and `MyApi/Res` covers its `/`-subtree
   // — symmetric with the `.` case (the dot/bracket-only split silently failed across `/`).
+  // For a whole-resource (`added`) target the identifier is atomic, so trim ONLY at `/`
+  // (parent-RESOURCE coverage) — never at `.` / `[`, which would reach a sibling (#990).
   let t = target;
   while (true) {
-    const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['), t.lastIndexOf('/'));
+    const cut = wholeResource
+      ? t.lastIndexOf('/')
+      : Math.max(t.lastIndexOf('.'), t.lastIndexOf('['), t.lastIndexOf('/'));
     if (cut <= 0) break;
     t = t.slice(0, cut);
     if (matchesPathGlob(pattern, t)) return true;
@@ -470,6 +485,12 @@ export function applyIgnores(
     // the rule target is then just the id, matching ignoreRuleFor's empty-path form
     // (a trailing dot would only match via the parent-segment fallback — fragile).
     const suffix = f.path ? `.${f.path}` : '';
+    // An `added` finding is an atomic whole resource (`<parent>/<CC-identifier>`, empty
+    // path): its identifier's `.` / `[` are data, not a property subtree, so the ancestor
+    // walk must trim ONLY at `/` (parent-resource coverage) — otherwise a rule for one
+    // added resource over-suppresses a sibling whose id is this one extended by `.`/`[`
+    // (`P/a` swallowing `P/a.b.c`, `P/a[0]`) — a silent detection hole in `added` (#990).
+    const wholeResource = f.tier === 'added';
     const targets = [`${f.logicalId}${suffix}`];
     if (f.constructPath) {
       // The within-stack path is what the report shows and what `ignoreRuleFor` now writes;
@@ -484,7 +505,7 @@ export function applyIgnores(
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&
         (r.accountGlob === undefined || matchesGlob(r.accountGlob, accountId)) &&
         (r.regionGlob === undefined || matchesGlob(r.regionGlob, region)) &&
-        targets.some((t) => pathMatches(r.pathPattern, t))
+        targets.some((t) => pathMatches(r.pathPattern, t, wholeResource))
     );
     if (!hit) return f;
     // Clear the `unrecorded` flag (set by applyBaseline for a not-yet-recorded

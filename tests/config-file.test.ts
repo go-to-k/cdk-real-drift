@@ -311,6 +311,64 @@ describe('applyIgnores', () => {
     expect(f?.tier).toBe('ignored');
   });
 
+  it('an `added` rule for `P/a` ignores EXACTLY that resource, never a `.`/`[`-extended sibling (#990)', () => {
+    // A whole-resource `added` target is atomic — its identifier's `.` / `[` are DATA, not a
+    // property subtree. The ancestor walk must NOT trim there, else a rule for one added
+    // resource silently over-suppresses a DIFFERENT added resource whose CC identifier is the
+    // first's extended by `.` or `[` (`example` vs `example.com`, `a` vs `a[0]`) — a silent
+    // detection hole in the `added` out-of-band feature, created by the user's own `ignore`.
+    const added = (parent: string, id: string): Finding => ({
+      tier: 'added',
+      logicalId: `${parent}/${id}`,
+      constructPath: `MyStack/${parent} ▸ ${id}`,
+      resourceType: 'AWS::ApiGateway::Resource',
+      path: '',
+    });
+    // the rule the verb writes for added('P','a') is the full literal identifier `P/a`
+    const rule = ignoreRuleFor(added('P', 'a'), 'S');
+    expect(rule.path).toBe('P/a');
+    // it ignores EXACTLY its own resource (WRITE→MATCH round-trip preserved)…
+    expect(ign([added('P', 'a')], 'S', cfg([rule]))[0]?.tier).toBe('ignored');
+    // …but NOT a distinct sibling whose id extends `P/a` by `.` or `[` (BUG on main: ignored)
+    expect(ign([added('P', 'a.b.c')], 'S', cfg([rule]))[0]?.tier).toBe('added');
+    expect(ign([added('P', 'a[0]')], 'S', cfg([rule]))[0]?.tier).toBe('added');
+    // …nor a plain hyphen-extended sibling (already correct on main; guard against regression)
+    expect(ign([added('P', 'a-x')], 'S', cfg([rule]))[0]?.tier).toBe('added');
+    // a dotted-identifier example (apex vs subdomain): a rule for `CDN/example` must not
+    // swallow the distinct added resource `CDN/example.com`
+    const cdnRule = ignoreRuleFor(added('CDN', 'example'), 'S');
+    expect(ign([added('CDN', 'example')], 'S', cfg([cdnRule]))[0]?.tier).toBe('ignored');
+    expect(ign([added('CDN', 'example.com')], 'S', cfg([cdnRule]))[0]?.tier).toBe('added');
+  });
+
+  it('a bare PARENT-resource rule still covers its added children across `/` (#903 not regressed)', () => {
+    // The `/`-boundary walk (parent-RESOURCE coverage) survives the #990 fix — only the
+    // `.`/`[` within-identifier trim is dropped. A rule on the parent `MyLb` still ignores an
+    // added listener child whose CC identifier is an ARN full of `/`.
+    const arnChild: Finding = {
+      tier: 'added',
+      logicalId:
+        'MyLb/arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-lb/50dc6c495c0c9188/f2f7dc8efc522ab2',
+      constructPath:
+        'MyStack/MyLb/arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/my-lb/50dc6c495c0c9188/f2f7dc8efc522ab2',
+      resourceType: 'AWS::ElasticLoadBalancingV2::Listener',
+      path: '',
+    };
+    expect(ign([arnChild], 'MyStack', cfg([p('MyLb')]))[0]?.tier).toBe('ignored');
+    expect(ign([arnChild], 'MyStack', cfg([p('MyLb/*')]))[0]?.tier).toBe('ignored');
+  });
+
+  it('the NON-added property subtree walk is unchanged by the #990 fix (`.`/`[` still trims)', () => {
+    // A real property path keeps its subtree coverage: a parent-property rule `Role.Policies`
+    // still ignores `Role.Policies[0].X` (the `.`/`[` walk that #990 only disables for added).
+    expect(
+      ign([undeclared('Role', 'Policies[0].X')], 'S', cfg([p('Role.Policies')]))[0]?.tier
+    ).toBe('ignored');
+    expect(
+      ign([declared('Role', 'Policies.0.PolicyName')], 'S', cfg([p('Role.Policies')]))[0]?.tier
+    ).toBe('ignored');
+  });
+
   it('matches the friendly constructPath too (CDK stacks; same id cdk-local targets)', () => {
     const f: Finding = {
       tier: 'undeclared',
