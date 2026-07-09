@@ -6,6 +6,7 @@
 // where the user has no cue anything is happening. Show a spinner while it runs so it is
 // clear cdkrd is working, not hung.
 import { spinner } from '@clack/prompts';
+import { setGatherActive } from '../interrupt.js';
 
 // TTY + text mode only: a spinner would corrupt --json's machine stdout and is noise in
 // a non-TTY / CI pipe, so callers pass `show=false` there and this is a plain
@@ -20,6 +21,12 @@ export async function gatherWithProgress<T>(
 ): Promise<T> {
   if (!show) return run();
   const s = spinner();
+  // #950: mark the window where @clack's spinner owns stdin in raw mode — a Ctrl-C / ESC
+  // here reaches the vendored `block()` handler's hard `process.exit(0)`, which the
+  // interrupt guard rewrites to 130 so an aborted gather never reads as a clean/success
+  // exit. Cleared in `finally` so a normal stop OR a read failure both restore the flag
+  // before the exit path (clean 0 / drift 1 / error 2) runs.
+  setGatherActive(true);
   s.start(`${label}: reading live AWS state & computing drift…`);
   try {
     const gathered = await run();
@@ -28,6 +35,8 @@ export async function gatherWithProgress<T>(
   } catch (e) {
     s.error(`${label}: read failed`);
     throw e;
+  } finally {
+    setGatherActive(false);
   }
 }
 
