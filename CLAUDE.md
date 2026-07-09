@@ -219,8 +219,15 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   use `delstack cdk -a cdk.out` (it was `cdk destroy`). Pinned in `.mise.toml`
   (`ubi:go-to-k/delstack`). `delstack` only sees stack members — after deleting,
   still SWEEP for stack-EXTERNAL orphans it can't reach: auto-created
-  `/aws/lambda/*` and access-log groups, RETAIN-policy stateful resources,
-  Secrets in their recovery window, KMS keys pending deletion.
+  `/aws/lambda/*` and access-log groups, **orphaned IAM roles / instance
+  profiles** (an API-GW CloudWatch or Lambda service role left when a stack is
+  force-deleted), RETAIN-policy stateful resources, Secrets in their recovery
+  window, KMS keys pending deletion. Use **`/sweep-resources`** — it drives
+  `tests/integration/sweep-orphans.sh` (token-scoped + a `cdkrd:ephemeral=1`
+  generic tag net), which protects active-stack members (case-insensitively,
+  across regions for global IAM) AND anything younger than
+  `CDKRD_SWEEP_MIN_AGE_HOURS` (default 2h — a name-match can miss a live resource
+  whose CFn physical name was truncated / hyphen-derived).
 - **markgate gates** (see `.markgate.yml`) — each has a companion skill that sets
   its marker:
   - `/check` → `check` marker (typecheck / lint+format / build / unit tests).
@@ -240,7 +247,11 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     peer's live hunt does not block an unrelated commit) — released by
     `bughunt-track.sh clear` only after every tracked stack is deleted (via
     `delstack`) and `sweep-orphans.sh` reports SWEEP CLEAN. A deployed stack can
-    never be forgotten.
+    never be forgotten. As a backstop (even for a live-test that never called
+    `add`), the `deploy-autoarm-gate` hook arms a generic token on ANY
+    deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
+    end if the sentinel is still armed. Run **`/sweep-resources`** to do the
+    cleanup + release the gate.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session.** Sessions that believed
   they were alone have collided twice: a README clobber, and a branch created in

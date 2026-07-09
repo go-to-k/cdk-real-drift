@@ -64,6 +64,38 @@ ACTIVE_STACKS_GLOBAL="$(
   done
 )"
 
+# Layer 2 — the bughunt SENTINEL lists peers' IN-FLIGHT stacks (they explicitly declared
+# "I'm deploying these"). Protect those too — covers a stack mid-CREATE and the strongest
+# cross-agent coordination signal. Best-effort: resolve the shared main-tree root via git;
+# degrade silently if unavailable. Skip the generic AUTODEPLOY token (not a stack name).
+SENTINEL_STACKS=""
+_gc="$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [ -n "$_gc" ]; then
+  _root="$(dirname "$_gc")"
+  SENTINEL_STACKS="$(cat "$_root"/.markgate-bughunt-pending.d/* "$_root/.markgate-bughunt-pending" 2>/dev/null \
+    | grep -vE '^[[:space:]]*$' | grep -viF 'AUTODEPLOY' || true)"
+fi
+
+# Layer 1 — AUTHORITATIVE stack membership. Name-substring MISSES a live resource whose
+# CFn physical name was truncated to 64 chars or hyphen-derived by a service (an active
+# ImageBuilder role/pipeline was mis-flagged this way). Enumerate the actual members
+# (PhysicalResourceId) of every active + sentinel-tracked stack across the IAM regions and
+# protect anything whose id is a member — immune to name mangling AND to age. Best-effort
+# (list-stack-resources per stack); empty result → the name + age guards still apply.
+PROTECTED_STACKS="$(printf '%s\n%s\n' "$ACTIVE_STACKS_GLOBAL" "$SENTINEL_STACKS" | grep -vE '^[[:space:]]*$' | sort -u)"
+MEMBER_IDS="$(
+  printf '%s\n' "${_iam_regions[@]}" | sort -u | while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    printf '%s\n' "$PROTECTED_STACKS" | while IFS= read -r s; do
+      [ -n "$s" ] || continue
+      aws cloudformation list-stack-resources --stack-name "$s" --region "$r" \
+        --query 'StackResourceSummaries[].PhysicalResourceId' --output text 2>/dev/null | tr '\t' '\n'
+    done
+  done | grep -vE '^[[:space:]]*$' | sort -u
+)"
+# is_member <name> — the resource IS a member of a protected stack (exact physical-id match).
+is_member() { [ -n "$MEMBER_IDS" ] && printf '%s\n' "$MEMBER_IDS" | grep -qFx "$1"; }
+
 # A cdkrd-token resource is an orphan unless its name embeds an active stack name.
 # `stacks` selects the guard set: the region-local set for regional resources, the
 # all-regions set for global (IAM) ones. Match is CASE-INSENSITIVE: AWS lowercases
@@ -80,8 +112,41 @@ _name_backed_by() {
   done
   return 1
 }
-is_backed()        { _name_backed_by "$1" "$ACTIVE_STACKS"; }
-is_backed_global() { _name_backed_by "$1" "$ACTIVE_STACKS_GLOBAL"; }
+# Backed = an actual stack MEMBER (authoritative, layer 1) OR its name embeds an active
+# stack name (cheap fallback). Membership is checked first — it is immune to name mangling.
+is_backed()        { is_member "$1" || _name_backed_by "$1" "$ACTIVE_STACKS"; }
+is_backed_global() { is_member "$1" || _name_backed_by "$1" "$ACTIVE_STACKS_GLOBAL"; }
+
+# --- age guard: protect a peer's IN-FLIGHT resources from a name-match miss ---------
+# is_backed's name-substring test MISSES a live resource when CloudFormation TRUNCATES
+# the physical name to 64 chars (dropping the stack-name suffix) or a service derives a
+# HYPHENATED name that no longer embeds the mixed-case stack name (ImageBuilder pipelines
+# / roles / instance profiles). A dogfood run flagged 3 ACTIVE peer hunt resources as
+# orphans exactly this way. An active peer's resources are RECENT, so ALSO refuse to
+# sweep anything younger than CDKRD_SWEEP_MIN_AGE_HOURS (default 2) — a belt to
+# is_backed's braces. Genuine orphans are hours/days/weeks old and still swept.
+MIN_AGE_HOURS="${CDKRD_SWEEP_MIN_AGE_HOURS:-2}"
+NOW_EPOCH="$(date -u +%s)"
+# Portable timestamp -> epoch seconds: ISO-8601 (IAM CreateDate) or epoch millis
+# (log-group creationTime). Unparseable/absent -> 0.
+to_epoch() {
+  local ts="$1" core e
+  case "$ts" in ''|None|null) echo 0; return ;; esac
+  printf '%s' "$ts" | grep -qE '^[0-9]{13}$' && { echo $(( ts / 1000 )); return; }
+  printf '%s' "$ts" | grep -qE '^[0-9]{10}$' && { echo "$ts"; return; }
+  e=$(date -u -d "$ts" +%s 2>/dev/null) && { echo "$e"; return; }   # GNU (Linux/CI)
+  core="${ts%%.*}"; core="${core%%+*}"; core="${core%Z}"
+  e=$(date -u -j -f "%Y-%m-%dT%H:%M:%S" "$core" +%s 2>/dev/null) && { echo "$e"; return; }  # BSD (macOS)
+  echo 0
+}
+# too_young <timestamp> -> true (protect) if younger than MIN_AGE_HOURS. FAIL-SAFE: an
+# unparseable/absent timestamp is treated as YOUNG (protect) so a bad clock never deletes
+# a live resource — a genuine orphan with no readable age is left for manual handling.
+too_young() {
+  local created; created="$(to_epoch "$1")"
+  [ "$created" -eq 0 ] && return 0
+  [ $(( NOW_EPOCH - created )) -lt $(( MIN_AGE_HOURS * 3600 )) ]
+}
 
 # delete <kind> <name> <delete-cmd...>
 sweep_one() {
@@ -138,9 +203,15 @@ for s in $(aws secretsmanager list-secrets --include-planned-deletion --region "
 done
 
 note "--- CloudWatch log groups ---"
-for g in $(aws logs describe-log-groups --region "$REGION" --query 'logGroups[].logGroupName' --output text 2>/dev/null | tr '\t' '\n' | grep -Ei "$TOKEN"); do
+while IFS=$'\t' read -r g created; do
+  [ -n "$g" ] || continue
+  printf '%s' "$g" | grep -Eqi "$TOKEN" || continue
+  if too_young "$created"; then
+    note "  SKIP (younger than ${MIN_AGE_HOURS}h — likely an in-flight deploy): LogGroup $g"
+    continue
+  fi
   sweep_one LogGroup "$g" aws logs delete-log-group --log-group-name "$g" --region "$REGION"
-done
+done < <(aws logs describe-log-groups --region "$REGION" --query 'logGroups[].[logGroupName,creationTime]' --output text 2>/dev/null)
 
 # --- IAM roles (GLOBAL) --------------------------------------------------------
 # CloudFormation-created roles (e.g. an API Gateway account CloudWatch role, a
@@ -164,9 +235,15 @@ iam_role_teardown() {
 }
 
 note "--- IAM roles (global) ---"
-for r in $(aws iam list-roles --query 'Roles[].RoleName' --output text 2>/dev/null | tr '\t' '\n' | grep -Ei "$TOKEN"); do
+while IFS=$'\t' read -r r created; do
+  [ -n "$r" ] || continue
+  printf '%s' "$r" | grep -Eqi "$TOKEN" || continue
   if is_backed_global "$r"; then
     note "  SKIP (active-stack member, any region): IAM-role $r"
+    continue
+  fi
+  if too_young "$created"; then
+    note "  SKIP (younger than ${MIN_AGE_HOURS}h — likely an in-flight deploy): IAM-role $r"
     continue
   fi
   hit
@@ -175,12 +252,18 @@ for r in $(aws iam list-roles --query 'Roles[].RoleName' --output text 2>/dev/nu
   else
     note "  ORPHAN (dry-run): IAM-role $r"
   fi
-done
+done < <(aws iam list-roles --query 'Roles[].[RoleName,CreateDate]' --output text 2>/dev/null)
 
 note "--- IAM instance profiles (global) ---"
-for ipf in $(aws iam list-instance-profiles --query 'InstanceProfiles[].InstanceProfileName' --output text 2>/dev/null | tr '\t' '\n' | grep -Ei "$TOKEN"); do
+while IFS=$'\t' read -r ipf created; do
+  [ -n "$ipf" ] || continue
+  printf '%s' "$ipf" | grep -Eqi "$TOKEN" || continue
   if is_backed_global "$ipf"; then
     note "  SKIP (active-stack member, any region): InstanceProfile $ipf"
+    continue
+  fi
+  if too_young "$created"; then
+    note "  SKIP (younger than ${MIN_AGE_HOURS}h — likely an in-flight deploy): InstanceProfile $ipf"
     continue
   fi
   hit
@@ -196,7 +279,7 @@ for ipf in $(aws iam list-instance-profiles --query 'InstanceProfiles[].Instance
   else
     note "  ORPHAN (dry-run): InstanceProfile $ipf"
   fi
-done
+done < <(aws iam list-instance-profiles --query 'InstanceProfiles[].[InstanceProfileName,CreateDate]' --output text 2>/dev/null)
 
 # --- Generic tag-based net (catches TYPES this script has no per-type rule for) --
 # The per-type sweeps above are an allowlist — an ephemeral resource of a type not
