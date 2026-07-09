@@ -25,6 +25,28 @@ const EMPTY: SchemaInfo = {
   freeFormMapPaths: [],
 };
 
+// Types whose DescribeType has already emitted a failure warning THIS process, keyed
+// on `${region}\0${resourceType}` (the same axis as the cache — a rollout / permission
+// can differ per region). The warning is one-per-type-per-region so N resources of the
+// same type do not each print it (mirrors the KMS ListAliases one-per-region warning at
+// commands/gather.ts). A repeated failure stays silent, but is STILL not cached (below),
+// so the schema is re-fetched on the next occurrence rather than poisoned with EMPTY.
+const failureWarned = new Set<string>();
+
+// The one-line warning emitted when cloudformation:DescribeType fails (denied / throttled
+// / network) for a resourceType. Without the schema, readOnly live attributes are not
+// stripped (first-run [Potential Drift] noise) and declared writeOnly props are not routed
+// to readGap (false declared drift → `--fail` exits 1 on an untouched stack). Pure +
+// exported so the wording is unit-tested. Mirrors kmsListAliasesDeniedWarning.
+export function describeTypeFailedWarning(resourceType: string, region: string): string {
+  return (
+    `warning: ${region}: cloudformation:DescribeType failed for ${resourceType} — schema-based ` +
+    `drift suppression is degraded for this type. Undeclared read-only attributes may surface as ` +
+    `[Potential Drift] and declared write-only properties may report false drift. Grant ` +
+    `cloudformation:DescribeType (and retry if throttled) for full coverage.`
+  );
+}
+
 export async function getSchemaInfo(
   client: CloudFormationClient,
   resourceType: string
@@ -33,9 +55,23 @@ export async function getSchemaInfo(
   const cacheKey = `${region}\0${resourceType}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
-  const info = await fetch(client, resourceType);
-  cache.set(cacheKey, info);
-  return info;
+  const result = await fetch(client, resourceType);
+  if (result.ok) {
+    // Only cache a REAL schema. A DescribeType failure must NOT be persisted as if it
+    // were a successful empty schema (#751) — caching EMPTY would poison every later read
+    // of this type in this region with an unrecoverable "no schema" state (readOnly not
+    // stripped, writeOnly not readGap'd) even after the permission is granted / the
+    // throttle clears. Leaving it uncached lets the next occurrence re-fetch.
+    cache.set(cacheKey, result.info);
+    return result.info;
+  }
+  // Failure: warn once per type+region, then return EMPTY for THIS call (best-effort — a
+  // missing schema means no strip, never a crash) WITHOUT caching it.
+  if (!failureWarned.has(cacheKey)) {
+    failureWarned.add(cacheKey);
+    console.error(describeTypeFailedWarning(resourceType, region));
+  }
+  return result.info;
 }
 
 // Top-level writeOnly properties that an SDK_OVERRIDES reader (read/overrides.ts) CAN
@@ -185,20 +221,28 @@ export function exemptOverrideReadable(info: SchemaInfo, resourceType: string): 
   };
 }
 
-async function fetch(client: CloudFormationClient, resourceType: string): Promise<SchemaInfo> {
+// A DescribeType outcome: `ok` distinguishes a real schema (safe to cache) from a
+// DescribeType failure (must NOT be cached as a successful empty schema — #751). On
+// failure `info` is EMPTY so callers degrade gracefully (no strip) without a crash.
+type FetchResult = { ok: true; info: SchemaInfo } | { ok: false; info: SchemaInfo };
+
+async function fetch(client: CloudFormationClient, resourceType: string): Promise<FetchResult> {
   try {
     const r = await client.send(
       new DescribeTypeCommand({ Type: 'RESOURCE', TypeName: resourceType })
     );
-    return injectReaderGaps(
-      exemptOverrideReadable(
-        supplementReadOnly(parseSchema(r.Schema ?? '{}'), resourceType),
+    return {
+      ok: true,
+      info: injectReaderGaps(
+        exemptOverrideReadable(
+          supplementReadOnly(parseSchema(r.Schema ?? '{}'), resourceType),
+          resourceType
+        ),
         resourceType
       ),
-      resourceType
-    );
+    };
   } catch {
-    return EMPTY;
+    return { ok: false, info: EMPTY };
   }
 }
 
