@@ -513,8 +513,14 @@ export async function runCheck(args: string[]): Promise<number> {
       // stale-baseline warning (pre-deploy already returned above, so always safe here)
       if (baseline) warnTemplateHashDrift(baseline, desired.rawTemplate, stackName);
       // schema-v1 baseline: no completeResources — appeared-since-record values
-      // read as unrecorded until the next record upgrades the file (R62)
-      if (baseline && !a.json) warnBaselineSchemaV1(baseline, stackName);
+      // read as unrecorded until the next record upgrades the file (R62). Emitted
+      // UNCONDITIONALLY to stderr (matching the two sibling warnings above, post-#921):
+      // under --json a schema-v1 baseline SHIFTS the classification semantics
+      // (appeared-since-record values read as `unrecorded`, excluded from `drifted`), so
+      // the --json consumer is exactly who must see it. warnBaselineSchemaV1's sink is
+      // `console.error`, so JSON stdout stays pure. The old `!a.json` gate dropped it
+      // NOWHERE under --json (#944).
+      if (baseline) warnBaselineSchemaV1(baseline, stackName);
       // First run (no baseline): R110 removed the pre-report "Record ALL sight-unseen"
       // prompt (R45/R52). It buried the very values it flagged as possible out-of-band
       // edits — pressing Enter recorded them into the baseline BEFORE the user ever saw
