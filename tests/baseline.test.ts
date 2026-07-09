@@ -1290,6 +1290,49 @@ describe('baseline', () => {
       });
     });
 
+    it('#870: throws on a NON-NUMBER schemaVersion (a string "3" bypasses the > 2 future-guard)', async () => {
+      // A merge-damaged / hand-edited string version must not slip past `typeof === number`
+      // and be silently treated as ≤ v2.
+      await withBaselineFile(
+        JSON.stringify({ schemaVersion: '3', recorded: [], stackName: 's' }),
+        async () => {
+          await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+            /non-numeric schemaVersion/
+          );
+        }
+      );
+    });
+
+    it('#870: throws when the stored stackName disagrees with the loaded path (wrong-stack / case-collision)', async () => {
+      // The file lives at the path for stack `s`, but its stored stackName is another
+      // stack — a hand-copy / rename, or a case-insensitive-FS collision (MyStack vs mystack).
+      await withBaselineFile(
+        JSON.stringify({ schemaVersion: 2, recorded: [], stackName: 'OtherStack', region: 'r' }),
+        async () => {
+          await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+            /captured for stack OtherStack.*loaded as stack s/s
+          );
+        }
+      );
+    });
+
+    it('#870: throws when the stored region disagrees with the loaded path', async () => {
+      await withBaselineFile(
+        JSON.stringify({ schemaVersion: 2, recorded: [], stackName: 's', region: 'other-region' }),
+        async () => {
+          await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+            /captured in region other-region.*current region is r/s
+          );
+        }
+      );
+    });
+
+    it('#870: tolerates an older/partial file with no stackName/region (next record stamps it)', async () => {
+      await withBaselineFile(JSON.stringify({ schemaVersion: 2, recorded: [] }), async () => {
+        expect((await loadBaseline('s', '111122223333', 'r'))?.recorded).toEqual([]);
+      });
+    });
+
     it('still loads a valid v1/v2 baseline (no false rejection)', async () => {
       await withBaselineFile(
         JSON.stringify({ schemaVersion: 2, recorded: [], stackName: 's' }),

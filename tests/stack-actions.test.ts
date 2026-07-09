@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
   CloudControlClient,
   GetResourceCommand,
@@ -900,6 +900,53 @@ describe('recordStack non-interactive refusal (R38)', () => {
           value: { AccelerationStatus: 'Enabled' },
         },
       ]);
+    } finally {
+      if (existsSync(path)) rmSync(path);
+    }
+  });
+});
+
+describe('recordStack identity guard (#870 — account mismatch throws before consuming existing)', () => {
+  it('throws (does not launder) when the existing baseline was captured in another account', async () => {
+    // An existing baseline whose stored accountId differs from the current run's account.
+    // Without the guard, recordStack would consume it and re-stamp the CURRENT accountId,
+    // silently laundering the mismatch. The stack/region match (guarded on load), so only
+    // the account axis diverges here.
+    const desired = {
+      stackName: 'AcctGuardStack',
+      region: 'acct-guard-region',
+      accountId: '999988887777',
+      resources: [],
+      rawTemplate: '{}',
+      ctx: {},
+    } as unknown as Desired;
+    const path = baselinePath(desired.stackName, desired.accountId, desired.region);
+    mkdirSync(dirname(path), { recursive: true });
+    // File at the CURRENT account's path, but its stored accountId is a DIFFERENT account.
+    writeFileSync(
+      path,
+      JSON.stringify({
+        schemaVersion: 2,
+        stackName: desired.stackName,
+        region: desired.region,
+        accountId: '111122223333',
+        capturedAt: '',
+        templateHash: '',
+        recorded: [],
+      }),
+      'utf8'
+    );
+    try {
+      await expect(
+        recordStack({
+          stackName: desired.stackName,
+          region: desired.region,
+          desired,
+          findings: [undeclared()],
+          yes: true,
+          interactive: false,
+        })
+      ).rejects.toThrow(/account 111122223333.*current account is 999988887777/s);
     } finally {
       if (existsSync(path)) rmSync(path);
     }
