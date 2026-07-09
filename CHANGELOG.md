@@ -1,3 +1,11 @@
+## [0.3.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.7...v0.3.8) (2026-07-09)
+
+
+### Bug Fixes
+
+* **record,ignore:** commit-nudge footer under a partial multi-stack failure ([#949](https://github.com/go-to-k/cdk-real-drift/issues/949)) ([#1009](https://github.com/go-to-k/cdk-real-drift/issues/1009)) ([09232d0](https://github.com/go-to-k/cdk-real-drift/commit/09232d0c29654df7e64be1765fd609d0e015ec48))
+* **synth:** warn on ignored -c/--context for an assembly-dir --app ([#956](https://github.com/go-to-k/cdk-real-drift/issues/956)) ([#1008](https://github.com/go-to-k/cdk-real-drift/issues/1008)) ([a9a8c01](https://github.com/go-to-k/cdk-real-drift/commit/a9a8c01d0dc950c141355d7ec342e119fea720d6))
+
 ## [0.3.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.6...v0.3.7) (2026-07-09)
 
 
