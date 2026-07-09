@@ -7,6 +7,8 @@ import {
 } from '@aws-sdk/client-api-gateway';
 import {
   ApiGatewayV2Client,
+  DeleteAccessLogSettingsCommand,
+  DeleteRouteSettingsCommand,
   UpdateStageCommand as UpdateApiGatewayV2StageCommand,
 } from '@aws-sdk/client-apigatewayv2';
 import {
@@ -3349,6 +3351,144 @@ describe('ApiGatewayV2 Stage writer (autoDeploy — bypass CC UpdateStage, issue
         [op]
       )
     ).rejects.toThrow(/ApiId\|StageName/);
+  });
+});
+
+describe('ApiGatewayV2 Stage writer — clearing payloads for remove ops (issue #806)', () => {
+  // A stage whose only DECLARED intent is the identity + AutoDeploy; every other field is
+  // undeclared and was set out of band, so reverting to intent CLEARS it.
+  const clearCtx = (over: Partial<OverrideCtx> = {}): OverrideCtx =>
+    ctx({
+      physicalId: 'prod',
+      identifier: 'abc123|prod',
+      declared: { ApiId: 'abc123', StageName: 'prod', AutoDeploy: true },
+      ...over,
+    });
+
+  it('clears a whole StageVariables map via empty-string tombstones (NOT omission)', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    // whole-field remove: `prior` carries the live keys the revert drops.
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/StageVariables',
+      prior: { env: 'hunt', owner: 'oob' },
+      human: 'StageVariables -> remove (undeclared, not in baseline)',
+    };
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(clearCtx(), [removeOp]);
+    const calls = apigwv2.commandCalls(UpdateApiGatewayV2StageCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input;
+    // every dropped key is sent with an empty-string value (the only way UpdateStage removes
+    // a key; an empty/omitted map is a no-op and MERGE keeps unlisted live keys).
+    expect(input.StageVariables).toEqual({ env: '', owner: '' });
+    expect(input).not.toHaveProperty('DeploymentId');
+  });
+
+  it('clears a single StageVariables key via an empty-string tombstone', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    // per-key remove: `/StageVariables/owner`.
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/StageVariables/owner',
+      prior: 'oob',
+      human: 'StageVariables.owner -> remove (undeclared, not in baseline)',
+    };
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(clearCtx(), [removeOp]);
+    const input = apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)[0]!.args[0].input;
+    expect(input.StageVariables).toEqual({ owner: '' });
+  });
+
+  it('clears AccessLogSettings via the dedicated DeleteAccessLogSettings API', async () => {
+    apigwv2.on(DeleteAccessLogSettingsCommand).resolves({});
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/AccessLogSettings',
+      prior: { DestinationArn: 'arn:aws:logs:...:lg', Format: '$context.requestId' },
+      human: 'AccessLogSettings -> remove (undeclared, not in baseline)',
+    };
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(clearCtx(), [removeOp]);
+    const del = apigwv2.commandCalls(DeleteAccessLogSettingsCommand);
+    expect(del).toHaveLength(1);
+    expect(del[0]!.args[0].input).toEqual({ ApiId: 'abc123', StageName: 'prod' });
+    // UpdateStage is NOT called with an (ineffective) empty AccessLogSettings object.
+    expect(apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)).toHaveLength(0);
+  });
+
+  it('clears RouteSettings overrides via DeleteRouteSettings per dropped route key', async () => {
+    apigwv2.on(DeleteRouteSettingsCommand).resolves({});
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/RouteSettings',
+      prior: {
+        'GET /a': { ThrottlingBurstLimit: 10 },
+        'POST /b': { ThrottlingRateLimit: 5 },
+      },
+      human: 'RouteSettings -> remove (undeclared, not in baseline)',
+    };
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(clearCtx(), [removeOp]);
+    const del = apigwv2.commandCalls(DeleteRouteSettingsCommand);
+    expect(del).toHaveLength(2);
+    expect(del.map((c) => c.args[0].input.RouteKey).sort()).toEqual(['GET /a', 'POST /b']);
+    del.forEach((c) => {
+      expect(c.args[0].input.ApiId).toBe('abc123');
+      expect(c.args[0].input.StageName).toBe('prod');
+    });
+    // no UpdateStage: an empty RouteSettings object is a no-op, so the clear is delete-only.
+    expect(apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)).toHaveLength(0);
+  });
+
+  it('leaves an unclearable Description untouched (no UpdateStage payload for it)', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    const removeOp: PatchOp = {
+      op: 'remove',
+      path: '/Description',
+      prior: 'hunt-oob-description',
+      human: 'Description -> remove (undeclared, not in baseline)',
+    };
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(clearCtx(), [removeOp]);
+    // Description has no API clearing path; no UpdateStage is issued for it alone.
+    expect(apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)).toHaveLength(0);
+  });
+
+  it('clears one field while SETTING another, leaving unrelated live fields untouched', async () => {
+    apigwv2.on(UpdateApiGatewayV2StageCommand).resolves({});
+    const ops: PatchOp[] = [
+      // set DefaultRouteSettings back to the declared value
+      {
+        op: 'add',
+        path: '/DefaultRouteSettings/ThrottlingRateLimit',
+        value: 100,
+        human: 'DefaultRouteSettings.ThrottlingRateLimit -> deployed-template value',
+      },
+      // clear an out-of-band StageVariables key
+      {
+        op: 'remove',
+        path: '/StageVariables/owner',
+        prior: 'oob',
+        human: 'StageVariables.owner -> remove (undeclared, not in baseline)',
+      },
+    ];
+    await SDK_WRITERS['AWS::ApiGatewayV2::Stage']!(
+      clearCtx({
+        declared: {
+          ApiId: 'abc123',
+          StageName: 'prod',
+          AutoDeploy: true,
+          DefaultRouteSettings: { ThrottlingRateLimit: 100 },
+        },
+      }),
+      ops
+    );
+    const input = apigwv2.commandCalls(UpdateApiGatewayV2StageCommand)[0]!.args[0].input;
+    // the SET field carries the desired value...
+    expect(input.DefaultRouteSettings).toEqual({ ThrottlingRateLimit: 100 });
+    // ...and the CLEAR field carries the empty-string tombstone.
+    expect(input.StageVariables).toEqual({ owner: '' });
+    // unrelated live fields (RouteSettings/AccessLogSettings) are not re-sent.
+    expect(input).not.toHaveProperty('RouteSettings');
+    expect(input).not.toHaveProperty('AccessLogSettings');
+    expect(input).not.toHaveProperty('DeploymentId');
   });
 });
 

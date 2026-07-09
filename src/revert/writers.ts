@@ -31,6 +31,8 @@ import {
 } from '@aws-sdk/client-api-gateway';
 import {
   ApiGatewayV2Client,
+  DeleteAccessLogSettingsCommand,
+  DeleteRouteSettingsCommand,
   type RouteSettings,
   UpdateStageCommand as UpdateApiGatewayV2StageCommand,
 } from '@aws-sdk/client-apigatewayv2';
@@ -2398,6 +2400,23 @@ const writeKinesisVideoStreamStorage: SdkWriter = async (ctx, ops) => {
 // — a partial update that leaves every other live stage setting untouched. Applies to WebSocket
 // AND HTTP API stages. The composite identifier is `ApiId|StageName` (ctx.identifier, resolved
 // by CC_IDENTIFIER_ADAPTERS on the read side); the bare CFn physical id is only the StageName.
+//
+// #806 — CLEARING a field cannot be expressed by omission (an absent value in the
+// UpdateStage input is dropped by the serializer, so the live value SURVIVES — the
+// revert never converges). Each field needs a DISTINCT clearing mechanism, all
+// live-verified in the issue:
+//   - StageVariables: UpdateStage MERGES the map, and an empty map is a NO-OP. A key is
+//     removed ONLY by sending it with an empty-string value. So a clear sends every
+//     to-be-removed key (the live `prior` keys the revert drops) as `""`.
+//   - AccessLogSettings: an empty object is a no-op; the ONLY clearing path is the
+//     dedicated DeleteAccessLogSettings API.
+//   - RouteSettings (per-route overrides): cleared via DeleteRouteSettings per route key.
+//   - Description: the API has NO clearing path (`""` leaves the old value); a removed
+//     Description is left untouched (documented API limitation).
+// A `remove` op (revert-to-absent) carries `prior` = the live value being cleared. An
+// `add` op carries the desired value to SET. We inspect the ops per field to tell a
+// clear apart from a set — the desired-model reconstruction alone cannot (a cleared
+// field and an untouched-and-absent field both look absent).
 const APIGWV2_STAGE_UPDATE_FIELDS = new Set([
   'DefaultRouteSettings',
   'RouteSettings',
@@ -2416,25 +2435,84 @@ const writeApiGatewayV2Stage: SdkWriter = async (ctx, ops) => {
     str(stageFromComposite) ?? str(ctx.physicalId) ?? str(ctx.declared['StageName']);
   if (!apiId || !stageName)
     throw new Error('cannot resolve ApiId|StageName for ApiGatewayV2 Stage revert');
-  // Reconstruct the desired model = declared intent + revert ops. `remove` back to a
+  // Reconstruct the desired model = declared intent + revert ops. A `remove` back to a
   // default is expressed by the declared value's absence (the field is simply omitted).
   const desired = applyOps({ ...ctx.declared }, ops);
   const touched = new Set(
     ops.map((o) => o.path.replace(/^\//, '').split('/')[0]).filter((p): p is string => !!p)
   );
+  // A field is being CLEARED (reverted to absent) when the desired value is absent AND at
+  // least one op under that field is a `remove`. It is being SET otherwise. We compute the
+  // exact keys/routes to clear from the `remove` ops (whole-field remove: the live `prior`
+  // keys; per-key remove: the key from the op path).
+  const isCleared = (field: string): boolean =>
+    desired[field as keyof typeof desired] === undefined &&
+    ops.some((o) => o.op === 'remove' && o.path.replace(/^\//, '').split('/')[0] === field);
+  // The keys of a StageVariables/RouteSettings clear: the live keys the revert drops.
+  const clearedSubKeys = (field: string): string[] => {
+    const keys = new Set<string>();
+    for (const o of ops) {
+      if (o.op !== 'remove') continue;
+      const segs = o.path.replace(/^\//, '').split('/');
+      if (segs[0] !== field) continue;
+      if (segs.length >= 2 && segs[1]) {
+        // per-key remove: `/StageVariables/<key>`
+        keys.add(segs[1]);
+      } else {
+        // whole-field remove: every live key (from `prior`).
+        for (const k of Object.keys(asRecord(o.prior))) keys.add(k);
+      }
+    }
+    return [...keys];
+  };
+
+  const client = new ApiGatewayV2Client({ region: ctx.region });
+
+  // AccessLogSettings clear -> DeleteAccessLogSettings (empty object is a no-op).
+  if (touched.has('AccessLogSettings') && isCleared('AccessLogSettings')) {
+    await client.send(new DeleteAccessLogSettingsCommand({ ApiId: apiId, StageName: stageName }));
+  }
+  // RouteSettings clear -> DeleteRouteSettings per dropped route key.
+  if (touched.has('RouteSettings') && isCleared('RouteSettings')) {
+    for (const routeKey of clearedSubKeys('RouteSettings')) {
+      await client.send(
+        new DeleteRouteSettingsCommand({ ApiId: apiId, StageName: stageName, RouteKey: routeKey })
+      );
+    }
+  }
+
+  // Build the UpdateStage input for the SET fields + the StageVariables clear (empty-string
+  // tombstones). Fields with a dedicated clearing API above are NOT re-sent here.
   const input: Record<string, unknown> = { ApiId: apiId, StageName: stageName };
   for (const p of touched) {
     if (!APIGWV2_STAGE_UPDATE_FIELDS.has(p)) continue;
-    // Send the desired value (or `null`/absent -> the API clears it). NEVER DeploymentId.
+    if (p === 'AccessLogSettings' && isCleared('AccessLogSettings')) continue; // handled above.
+    if (p === 'RouteSettings' && isCleared('RouteSettings')) continue; // handled above.
+    if (p === 'StageVariables' && isCleared('StageVariables')) {
+      // Clear each dropped key with an empty-string tombstone (an empty/omitted map is a
+      // no-op; MERGE semantics mean unlisted live keys survive, so we must name them).
+      const tombstones: Record<string, string> = {};
+      for (const k of clearedSubKeys('StageVariables')) tombstones[k] = '';
+      if (Object.keys(tombstones).length > 0) input.StageVariables = tombstones;
+      continue;
+    }
+    if (isCleared(p)) {
+      // Description (and any other field with no clearing path): omission leaves the live
+      // value. Skip it rather than send an ineffective payload — the API cannot clear it.
+      continue;
+    }
+    // Send the desired value to SET. NEVER DeploymentId.
     input[p] = desired[p as keyof typeof desired] as unknown;
   }
-  // Nothing settable touched (e.g. only DeploymentId drifted, which is never revertable) — no-op.
-  if (Object.keys(input).length <= 2) return;
-  await new ApiGatewayV2Client({ region: ctx.region }).send(
-    new UpdateApiGatewayV2StageCommand(
-      input as { ApiId: string; StageName: string; DefaultRouteSettings?: RouteSettings }
-    )
-  );
+  // Only issue UpdateStage if it carries a settable field (beyond the identity pair). A
+  // clear-only revert (AccessLogSettings/RouteSettings) may have already converged above.
+  if (Object.keys(input).length > 2) {
+    await client.send(
+      new UpdateApiGatewayV2StageCommand(
+        input as { ApiId: string; StageName: string; DefaultRouteSettings?: RouteSettings }
+      )
+    );
+  }
 };
 
 // AWS::ApiGateway::RestApi `Policy` — the RestApi resource policy is held in the Cloud
