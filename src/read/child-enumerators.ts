@@ -108,6 +108,7 @@ import {
 } from '@aws-sdk/client-lambda';
 import {
   type DBInstance as RdsDBInstance,
+  DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
@@ -2628,13 +2629,22 @@ async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<A
 export interface RdsClusterChildInput {
   declaredInstanceIds: string[]; // physical ids (DBInstanceIdentifiers) of AWS::RDS::DBInstance
   liveInstances: { id: string; label?: string | undefined }[];
+  // DBInstanceIdentifiers the PARENT cluster reports as its own members (DBClusterMembers).
+  // These are AWS-managed cluster membership, NOT out-of-band additions: a Multi-AZ DB cluster
+  // (non-Aurora, DBClusterInstanceClass set) implicitly materializes its writer + reader
+  // instances (`<cluster>-instance-1/2/3`) that the template never declares, so they must fold
+  // (else 3 false `[Added]` on every clean deploy — the #801-class ZERO-drift violation, #896).
+  // The cluster itself is the authoritative source of truth for membership, so this needs no
+  // name-marker guess and still surfaces a genuinely out-of-band instance (one NOT a member).
+  clusterMemberIds: string[];
 }
 
 export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[] {
   const declared = new Set(input.declaredInstanceIds);
+  const clusterMembers = new Set(input.clusterMemberIds);
   const added: AddedChild[] = [];
   for (const i of input.liveInstances) {
-    if (declared.has(i.id)) continue;
+    if (declared.has(i.id) || clusterMembers.has(i.id)) continue;
     added.push({
       resourceType: 'AWS::RDS::DBInstance',
       identifier: i.id, // DBInstanceIdentifier IS the CC primaryIdentifier
@@ -2661,7 +2671,18 @@ async function pageDbInstances(client: RDSClient, clusterId: string): Promise<Rd
   return out;
 }
 
-async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+// The cluster's OWN live description authoritatively lists its members (each DBClusterMembers
+// entry carries a DBInstanceIdentifier). Instances it claims are AWS-managed membership, not
+// out-of-band additions — folded by diffRdsClusterChildren (see #896).
+async function describeClusterMemberIds(client: RDSClient, clusterId: string): Promise<string[]> {
+  const res = await client.send(new DescribeDBClustersCommand({ DBClusterIdentifier: clusterId }));
+  const cluster = res.DBClusters?.[0];
+  return (cluster?.DBClusterMembers ?? [])
+    .map((m) => m.DBInstanceIdentifier)
+    .filter((id): id is string => typeof id === 'string');
+}
+
+export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const clusterId = parent.physicalId; // a DBCluster's physical id IS its DBClusterIdentifier
   if (!clusterId) return [];
@@ -2680,7 +2701,10 @@ async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<Adde
   }
 
   const client = new RDSClient({ region, ...READ_RETRY });
-  const instances = await pageDbInstances(client, clusterId);
+  const [instances, clusterMemberIds] = await Promise.all([
+    pageDbInstances(client, clusterId),
+    describeClusterMemberIds(client, clusterId),
+  ]);
   const liveInstances = instances
     .filter(
       (i): i is RdsDBInstance & { DBInstanceIdentifier: string } =>
@@ -2688,5 +2712,5 @@ async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<Adde
     )
     .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
 
-  return diffRdsClusterChildren({ declaredInstanceIds, liveInstances });
+  return diffRdsClusterChildren({ declaredInstanceIds, liveInstances, clusterMemberIds });
 }
