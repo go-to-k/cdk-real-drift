@@ -1,3 +1,11 @@
+## [0.2.73](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.72...v0.2.73) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** ApiGatewayV2 Model/Deployment/IntegrationResponse composite CC ids ([#872](https://github.com/go-to-k/cdk-real-drift/issues/872)) ([#927](https://github.com/go-to-k/cdk-real-drift/issues/927)) ([f48c4b9](https://github.com/go-to-k/cdk-real-drift/commit/f48c4b91852d9a447e2666fa25b94f0a500e0866))
+* **revert:** selective-update writers converge remove ops or bar honestly, not silently drop ([#913](https://github.com/go-to-k/cdk-real-drift/issues/913)) ([#928](https://github.com/go-to-k/cdk-real-drift/issues/928)) ([32e8bb2](https://github.com/go-to-k/cdk-real-drift/commit/32e8bb2bbb1d0a680ecb9732528c67aab1b98fbc))
+
 ## [0.2.72](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.71...v0.2.72) (2026-07-09)
 
 
