@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vite-plus/test';
-import { planIoMessage } from '../src/synth/io-host.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { planIoMessage, QuietIoHost } from '../src/synth/io-host.js';
 
 describe('planIoMessage (QuietIoHost routing)', () => {
   it('re-tags CDK app stderr passthrough (E1002, error) to info so it is not red', () => {
@@ -52,5 +52,37 @@ describe('planIoMessage (QuietIoHost routing)', () => {
       action: 'drop',
     });
     expect(planIoMessage({ code: undefined, level: 'trace' })).toEqual({ action: 'drop' });
+  });
+});
+
+describe('QuietIoHost pins non-error output to stderr even under CI (#867)', () => {
+  const saved = process.env.CI;
+  beforeEach(() => {
+    // GitHub Actions sets CI=true; the base NonInteractiveIoHost would then route all
+    // non-error messages to STDOUT, polluting `check --json`. Simulate that environment.
+    process.env.CI = 'true';
+  });
+  afterEach(() => {
+    if (saved === undefined) delete process.env.CI;
+    else process.env.CI = saved;
+  });
+
+  it('isCI is false regardless of process.env.CI', () => {
+    expect(new QuietIoHost().isCI).toBe(false);
+  });
+
+  it('info / warn (synth passthrough) select stderr, not stdout, under CI', () => {
+    const host = new QuietIoHost();
+    // selectStreamFromLevel is the base method the CI redirect lives in; cast to reach it.
+    const select = (level: string): unknown =>
+      (host as unknown as { selectStreamFromLevel: (l: string) => unknown }).selectStreamFromLevel(
+        level
+      );
+    expect(select('info')).toBe(process.stderr);
+    expect(select('warn')).toBe(process.stderr);
+    // a real error still goes to stderr (unchanged), and the toolkit's own `result`
+    // level still goes to stdout — but cdkrd never emits `result` through this host.
+    expect(select('error')).toBe(process.stderr);
+    expect(select('result')).toBe(process.stdout);
   });
 });
