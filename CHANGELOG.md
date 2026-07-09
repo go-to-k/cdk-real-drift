@@ -1,3 +1,10 @@
+## [0.2.63](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.62...v0.2.63) (2026-07-09)
+
+
+### Bug Fixes
+
+* **read:** suppress added-tier findings for Body-defined (SpecRestApi) RestApis ([#714](https://github.com/go-to-k/cdk-real-drift/issues/714)) ([#827](https://github.com/go-to-k/cdk-real-drift/issues/827)) ([f3151c6](https://github.com/go-to-k/cdk-real-drift/commit/f3151c659ebcbc5d60e948c890b65989788cafdd))
+
 ## [0.2.62](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.61...v0.2.62) (2026-07-09)
 
 
