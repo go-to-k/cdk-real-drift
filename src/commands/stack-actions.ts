@@ -10,6 +10,7 @@ import {
   type BaselineFile,
   buildRecorded,
   carryForwardUnreadable,
+  checkBaselineAccount,
   constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
@@ -280,6 +281,13 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   const { stackName, region, desired, findings, yes, interactive, preselectedKeys, expandNested } =
     p;
   const existing = await loadBaseline(stackName, desired.accountId, region);
+  // Identity guard BEFORE consuming `existing`: record reads the prior baseline
+  // (carryForwardUnreadable, completeResources monotonicity, prior physical-id fallback)
+  // and then `writeBaseline` re-stamps the CURRENT accountId — so without this a baseline
+  // captured in another account would be silently consumed and re-stamped, laundering the
+  // mismatch. `loadBaseline` already guards the stack/region axes; this covers the account
+  // axis, matching the check/ignore/revert callers (throws → caller surfaces exit 2).
+  if (existing) checkBaselineAccount(existing, desired.accountId, stackName);
   if (!yes && existing)
     console.error(
       `note: ${stackName}: will overwrite the existing baseline file on confirm (nothing written yet; it is git-tracked — review the diff afterwards). Pass --yes to silence.`

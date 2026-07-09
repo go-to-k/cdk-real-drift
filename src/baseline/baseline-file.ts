@@ -92,6 +92,29 @@ export async function loadBaseline(
   }
   if (parsed === null || typeof parsed !== 'object')
     throw new Error(`baseline file ${path} is malformed: root is not an object`);
+  // Identity guard (load side): the baseline is keyed on three axes —
+  // stackName.accountId.region — encoded in BOTH the filename and the stored fields.
+  // The account axis is checked by the secondary `checkBaselineAccount` guard the
+  // callers invoke; this checks the OTHER two, so a file whose stored `stackName`/
+  // `region` disagrees with the path it was loaded from (hand-copied / renamed to the
+  // wrong path, or a case-insensitive-FS collision like `MyStack` vs `mystack` sharing
+  // one on-disk file) fails LOUDLY here (caller surfaces exit 2) instead of silently
+  // applying another env's recorded state. Only checked when the field is PRESENT — an
+  // older/partial file with no `stackName`/`region` is tolerated (the next `record`
+  // stamps it), mirroring `checkBaselineAccount`'s leniency for a missing accountId.
+  if (parsed.stackName && parsed.stackName !== stackName)
+    throw new Error(
+      `baseline file ${path} was captured for stack ${parsed.stackName}, but it was loaded as stack ${stackName} ` +
+        '(the file was likely copied or renamed to the wrong path, or a case-insensitive filesystem collided two ' +
+        "stacks onto one file). Baselines are per-stack — run `cdkrd record` to write this stack's own baseline " +
+        'file, or restore the correct file from git.'
+    );
+  if (parsed.region && parsed.region !== region)
+    throw new Error(
+      `baseline file ${path} was captured in region ${parsed.region}, but the current region is ${region} ` +
+        '(the file was likely copied or renamed to the wrong region path). Baselines are per-region — ' +
+        "run `cdkrd record` to write this region's own baseline file, or restore the correct file from git."
+    );
   // Back-compat: baselines written before `accept` was renamed to `record` stored the
   // entries under `accepted`; the field is now `recorded`. Read the old key so a
   // committed baseline keeps loading — the next `record` rewrites it under `recorded`.
@@ -102,6 +125,14 @@ export async function loadBaseline(
   // artifact): a newer schemaVersion must error CLEARLY rather than be silently
   // mis-applied as v2, and a missing/non-array `recorded` must error here rather than
   // crash later with an opaque TypeError inside applyBaseline (`recorded.find`).
+  // A PRESENT schemaVersion must be a number: reject a non-number (e.g. a string "3"
+  // from a bad merge or hand-edit) rather than let it slip past the `> 2` future-guard
+  // below (which only fires for numbers) and be silently mis-applied as ≤v2. An ABSENT
+  // schemaVersion is tolerated (a very old file with no field reads as v1).
+  if (parsed.schemaVersion !== undefined && typeof parsed.schemaVersion !== 'number')
+    throw new Error(
+      `baseline file ${path} has a non-numeric schemaVersion (${JSON.stringify(parsed.schemaVersion)}); it is malformed (corrupt or hand-edited)`
+    );
   if (typeof parsed.schemaVersion === 'number' && parsed.schemaVersion > 2)
     throw new Error(
       `baseline file ${path} was written by a newer cdkrd (schemaVersion ${parsed.schemaVersion}); upgrade cdkrd`
