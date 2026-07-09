@@ -1,3 +1,12 @@
+## [0.3.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.9...v0.3.10) (2026-07-09)
+
+
+### Bug Fixes
+
+* **check:** make hasBaselineForStack region-aware ([#942](https://github.com/go-to-k/cdk-real-drift/issues/942)) ([#1006](https://github.com/go-to-k/cdk-real-drift/issues/1006)) ([f0616c1](https://github.com/go-to-k/cdk-real-drift/commit/f0616c196b261b2edba7611d589881f65ad01864))
+* **config:** an added-tier ignore rule must not subtree-walk over a sibling resource ([#990](https://github.com/go-to-k/cdk-real-drift/issues/990)) ([#1007](https://github.com/go-to-k/cdk-real-drift/issues/1007)) ([b4ba0d3](https://github.com/go-to-k/cdk-real-drift/commit/b4ba0d3ccd0cfe20fdfb072e34d7e8cd429f0ca3))
+* **noise:** fold CFn-generated SecurityGroup GroupName as generated ([#888](https://github.com/go-to-k/cdk-real-drift/issues/888)) ([#1010](https://github.com/go-to-k/cdk-real-drift/issues/1010)) ([988000b](https://github.com/go-to-k/cdk-real-drift/commit/988000bead07259e856fe2ec72b3641b24fbd714))
+
 ## [0.3.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.8...v0.3.9) (2026-07-09)
 
 
