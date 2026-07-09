@@ -1,3 +1,10 @@
+## [0.4.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.5...v0.4.6) (2026-07-09)
+
+
+### Bug Fixes
+
+* **commands:** mirror the AWS-CLI/cdk region fallbacks in resolveProfileRegion ([#955](https://github.com/go-to-k/cdk-real-drift/issues/955)) ([#1036](https://github.com/go-to-k/cdk-real-drift/issues/1036)) ([cda55dc](https://github.com/go-to-k/cdk-real-drift/commit/cda55dc0ce89b647bec91d95102fb3bf52b3090f))
+
 ## [0.4.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.4...v0.4.5) (2026-07-09)
 
 
