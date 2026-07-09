@@ -273,3 +273,32 @@ describe('#678 PRIVATE RestApi derives TLS_1_2 + dualstack from the declared end
     expect(pathsByTier(surfaces, 'undeclared')).toContain('SecurityPolicy');
   });
 });
+
+describe('#847 AutoScaling ScheduledAction StartTime / EndTime (undeclared, time-varying)', () => {
+  const res: DesiredResource = {
+    logicalId: 'Schedule',
+    resourceType: 'AWS::AutoScaling::ScheduledAction',
+    physicalId: 'CdkRea-Sched-Y8TVCVCJA9P3',
+    declared: {
+      AutoScalingGroupName: 'Asg',
+      DesiredCapacity: 1,
+      MaxSize: 2,
+      MinSize: 1,
+      Recurrence: '0 9 * * MON-FRI',
+      TimeZone: 'UTC',
+    },
+  };
+  it('folds the AWS-computed next-occurrence StartTime value-independent', () => {
+    // Time-varying: each read yields a fresh next-occurrence, so any value must fold.
+    for (const t of ['2026-06-22T09:00:00Z', '2026-07-13T09:00:00Z']) {
+      const f = classifyResource(res, { StartTime: t }, emptySchema);
+      expect(pathsByTier(f, 'atDefault')).toContain('StartTime');
+      expect(pathsByTier(f, 'undeclared')).not.toContain('StartTime');
+    }
+  });
+  it('folds the serialized-null EndTime="null" artifact', () => {
+    const f = classifyResource(res, { EndTime: 'null' }, emptySchema);
+    expect(pathsByTier(f, 'atDefault')).toContain('EndTime');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('EndTime');
+  });
+});

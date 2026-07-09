@@ -2863,6 +2863,19 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   the ARN carries the machine's generated name segment). Not user intent when undeclared —
   //   fold value-independent. Live, hunt 2026-07-08 (#628).
   'AWS::StepFunctions::StateMachineAlias': new Set(['StateMachineArn']),
+  //   AWS::AutoScaling::ScheduledAction.StartTime / .EndTime — a scheduled action that declares
+  //   a `Recurrence` (a cron expression) but no explicit `StartTime` reads back the concrete
+  //   timestamp of the NEXT occurrence AWS computed from that recurrence (e.g. declared
+  //   "0 9 * * MON-FRI" → live StartTime "2026-06-22T09:00:00Z"). It is UNDECLARED and
+  //   TIME-VARYING: each later read yields a fresh next-occurrence, so it does NOT converge under
+  //   `record` — a constant cannot pin it and it is not a stable function of the declared inputs
+  //   (it depends on the wall-clock time of the read). Fold value-independent: whatever AWS
+  //   computes is not user intent; a user who wants a specific StartTime DECLARES it, and it is
+  //   then compared in the declared loop. `EndTime` reads back the literal string "null" when no
+  //   end time is set (a serialized-null artifact from the SDK/CC read) — folding it here strips
+  //   that cosmetic stringified null. A DECLARED EndTime goes through the declared loop, compared.
+  //   Live, hunt 2026-07-09 (#847).
+  'AWS::AutoScaling::ScheduledAction': new Set(['StartTime', 'EndTime']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
