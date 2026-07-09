@@ -803,6 +803,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     TargetConnectionNetworkType: 'IPV4',
     DefaultAuthScheme: 'NONE',
     EndpointNetworkType: 'IPV4',
+    // RDS Proxy's documented default idle client connection timeout — 1800 seconds
+    // (30 minutes), surfaced as undeclared first-run noise whenever a template omits it.
+    // Equality-gated: a shorter/longer timeout the user sets (or later changes out of
+    // band) is not 1800, so it still surfaces.
+    IdleClientTimeout: 1800,
   },
   // R-noise-sweep (offline audit of the golden corpus via scripts/measure-noise.sh):
   // constant, documented service defaults common stateful/streaming types report as
@@ -854,6 +859,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // era behind the restore-date ClusterCreateTime, so it is not a constant KNOWN_DEFAULTS value.
     NetworkType: 'IPV4',
     EngineMode: 'provisioned', // default; serverless/parallelquery are explicit opt-ins
+    // Aurora's documented default backup retention (1 day) — surfaced as undeclared
+    // first-run noise whenever a template omits it. The twin AWS::DocDB::DBCluster folds
+    // the same BackupRetentionPeriod: 1. Equality-gated: a longer retention the user sets
+    // (or later changes out of band) is not 1, so it still surfaces.
+    BackupRetentionPeriod: 1,
   },
   'AWS::Neptune::DBInstance': {
     AutoMinorVersionUpgrade: true,
