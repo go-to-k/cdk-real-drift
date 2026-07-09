@@ -193,6 +193,21 @@ export interface ApiGatewayChildInput {
   // resourceId -> live methods on it. Keyed so an added resource's methods are not
   // double-reported (we skip method scanning on a resource that is itself added).
   liveMethodsByResource: Record<string, { httpMethod: string; live?: Record<string, unknown> }[]>;
+  // The RestApi declares a `Body` / `BodyS3Location` (OpenAPI / SpecRestApi) — its paths,
+  // methods, and integrations are materialized by CloudFormation FROM that spec, not from
+  // sibling AWS::ApiGateway::Resource / Method template resources. There is therefore no
+  // per-child template declaration to diff against, so every Body-materialized resource /
+  // method would otherwise flag as an out-of-band `added` on a clean deploy (issue #714).
+  // When set, resource/method diffing is skipped entirely (returns []).
+  bodyDefined?: boolean | undefined;
+}
+
+// A Body-defined (OpenAPI / SpecRestApi) RestApi declares its paths/methods inline via the
+// `Body` (or `BodyS3Location`) property instead of as separate AWS::ApiGateway::Resource /
+// Method template resources. Detect it from the declared Properties so child enumeration can
+// be suppressed for it (issue #714).
+export function isBodyDefinedRestApi(declared: Record<string, unknown>): boolean {
+  return declared.Body != null || declared.BodyS3Location != null;
 }
 
 export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[] {
@@ -203,7 +218,12 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
     declaredMethodKeys,
     liveResources,
     liveMethodsByResource,
+    bodyDefined,
   } = input;
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: paths/methods come from the `Body`, not
+  // from sibling template resources, so there is nothing to diff them against. Suppress the
+  // `added` classification for every Body-materialized resource/method (issue #714).
+  if (bodyDefined) return [];
   // Declared = template resources + the implicit root. The root `/` resource is ALWAYS
   // created with the RestApi and is never an "added" out-of-band resource. Identify it
   // by its LIVE path '/' (authoritative) IN ADDITION to rootResourceId — the latter
@@ -284,6 +304,15 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const rootResourceId =
     typeof restApiLive.RootResourceId === 'string' ? restApiLive.RootResourceId : undefined;
 
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: CloudFormation materializes its
+  // resources/methods FROM the declared `Body` / `BodyS3Location`, with no sibling
+  // AWS::ApiGateway::Resource / Method template resources to diff against. Skip enumerating
+  // (and flagging) them as `added` — otherwise every Body-materialized path/method is a
+  // first-run false positive on a clean deploy (issue #714). Authorizers / Models /
+  // RequestValidators / GatewayResponses that ARE declared as separate template resources
+  // still enumerate below.
+  const bodyDefined = isBodyDefinedRestApi(parent.declared);
+
   // Declared children of THIS api (Ref/GetAtt already resolved to physical ids by gather).
   const declaredResourceIds: string[] = [];
   const declaredMethodKeys: string[] = [];
@@ -336,7 +365,9 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   }
 
   const client = new APIGatewayClient({ region, ...READ_RETRY });
-  const items = await getAllResources(client, apiId);
+  // Skip the GetResources sweep entirely for a Body-defined api — every live resource/method
+  // it returns is spec-materialized (not template-declared), so diffing would be pure noise.
+  const items = bodyDefined ? [] : await getAllResources(client, apiId);
   const liveResources = items
     .filter((i): i is ApiGwResource & { id: string } => typeof i.id === 'string')
     .map((i) => ({ id: i.id, path: i.path, live: { Path: i.path, PathPart: i.pathPart } }));
@@ -359,6 +390,7 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredMethodKeys,
     liveResources,
     liveMethodsByResource,
+    bodyDefined,
   });
 
   const authorizers = await getAllAuthorizers(client, apiId);
