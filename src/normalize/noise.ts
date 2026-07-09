@@ -3719,11 +3719,17 @@ export function isPropertiesFileEqual(a: unknown, b: unknown): boolean {
 // reports false declared drift on every check. Compared case- AND order-
 // insensitively (a CORS header list is an unordered set); a genuine header
 // add/remove still differs. Observed live on a fresh apigwv2-http-rich deploy.
+// AWS::Lambda::Url exhibits the identical platform behavior (#874): its
+// `Cors.AllowHeaders` / `Cors.ExposeHeaders` are stored/echoed lowercased, so a
+// declared `["Content-Type","Authorization"]` reads back
+// `["content-type","authorization"]`. `Cors.AllowMethods` is deliberately NOT
+// listed — methods echo back verbatim, with no observed divergence.
 export const CASE_INSENSITIVE_ARRAY_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::ApiGatewayV2::Api': new Set([
     'CorsConfiguration.AllowHeaders',
     'CorsConfiguration.ExposeHeaders',
   ]),
+  'AWS::Lambda::Url': new Set(['Cors.AllowHeaders', 'Cors.ExposeHeaders']),
 };
 // True when both values are string arrays holding the same multiset of values
 // modulo ASCII case (order- and case-insensitive). Non-string-array inputs never
