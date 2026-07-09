@@ -1521,15 +1521,17 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
         ).declared
       ).toEqual(['ExplicitAuthFlows']);
       // the rule is per-type+per-prop: the same shape on an UNLISTED prop still reports
+      // (SomeOrderedProp is not in the UserPoolClient set; ReadAttributes/WriteAttributes
+      // are now folded — see the dedicated #875 test below).
       expect(
         tiers(
           classifyResource(
-            client({ ReadAttributes: ['email', 'name'] }),
-            { ReadAttributes: ['name', 'email'] },
+            client({ SomeOrderedProp: ['a', 'b'] }),
+            { SomeOrderedProp: ['b', 'a'] },
             emptySchema
           )
         ).declared
-      ).toEqual(['ReadAttributes']);
+      ).toEqual(['SomeOrderedProp']);
     });
 
     // Live-observed FP (cognito-callbackurls fixture): Cognito reorders the
@@ -1557,6 +1559,39 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
             classifyResource(
               client({ [prop]: ['https://z.example', 'https://a.example'] }),
               { [prop]: ['https://a.example', 'https://NEW.example'] },
+              emptySchema
+            )
+          ).declared
+        ).toEqual([prop]);
+      }
+    });
+
+    // #875: Cognito ALPHABETICALLY SORTS the attribute lists it echoes back — declared
+    // ReadAttributes ["phone_number","email","name"] reads back sorted ["email","name",
+    // "phone_number"], a permanent declared FP that survives record and churns on revert.
+    // Set-semantic, same class as the OAuth/URL siblings. SupportedIdentityProviders too.
+    it('UNORDERED_ARRAY_PROPS: Cognito ReadAttributes/WriteAttributes/SupportedIdentityProviders sort is NOT drift (#875)', () => {
+      const client = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Client',
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        physicalId: 'client123',
+        declared,
+      });
+      for (const prop of ['ReadAttributes', 'WriteAttributes', 'SupportedIdentityProviders']) {
+        // declared in natural order, read back service-sorted -> no drift
+        expect(
+          classifyResource(
+            client({ [prop]: ['phone_number', 'email', 'name', 'family_name', 'birthdate'] }),
+            { [prop]: ['birthdate', 'email', 'family_name', 'name', 'phone_number'] },
+            emptySchema
+          )
+        ).toEqual([]);
+        // a genuine attribute add/remove still changes the multiset -> reports
+        expect(
+          tiers(
+            classifyResource(
+              client({ [prop]: ['phone_number', 'email', 'name'] }),
+              { [prop]: ['email', 'name', 'address'] },
               emptySchema
             )
           ).declared
