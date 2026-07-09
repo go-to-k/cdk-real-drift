@@ -29,6 +29,7 @@ export async function runIgnore(args: string[]): Promise<number> {
     config = await loadConfig();
   } catch (e) {
     console.error(`error: ${(e as Error).message}`);
+    if (a.json) emitJsonArray([]); // keep stdout a valid (empty) JSON array on a top-level error (#988)
     return 2;
   }
 

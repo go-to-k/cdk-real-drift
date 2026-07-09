@@ -128,7 +128,8 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-main(process.argv.slice(2))
+const argv = process.argv.slice(2);
+main(argv)
   .then((code) => flushAndExit(code))
   .catch((e: unknown) => {
     const msg = (e as { message?: string })?.message ?? String(e);
@@ -145,5 +146,11 @@ main(process.argv.slice(2))
     } else {
       console.error(`error: ${msg}`);
     }
+    // A throw that escapes a verb BEFORE it could emit its JSON — e.g. parseCommonArgs
+    // rejecting a bad flag at the top of run*, or check's --pre-deploy second synth — must
+    // still leave --json stdout a single JSON.parse-able value (`[]`), never empty bytes.
+    // The caught loadConfig/resolveStacks paths return a code (they don't reach here), so
+    // this central guard and those per-verb emits are mutually exclusive. (#943, #989)
+    if (argv.includes('--json')) console.log('[]');
     return flushAndExit(2);
   });
