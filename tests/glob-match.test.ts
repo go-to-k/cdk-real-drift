@@ -106,4 +106,21 @@ describe('matchesPathGlob (segment-aware — does not cross . or [ boundaries)',
     expect(matchesPathGlob('****X', 'aaaaaX')).toBe(true);
     expect(matchesPathGlob('**********X', 'a'.repeat(60))).toBe(false);
   });
+
+  it('* / ? do NOT cross a `/` construct-path segment boundary (#842)', () => {
+    // `Parent/*` = a DIRECT child of Parent, not an arbitrarily deep descendant.
+    expect(matchesPathGlob('Parent/*', 'Parent/Child')).toBe(true); // direct child still matches
+    expect(matchesPathGlob('Parent/*', 'Parent/Child/Grandchild')).toBe(false); // no cross-slash leak
+    expect(matchesPathGlob('MyApi/*', 'MyApi/Resource/Method')).toBe(false);
+    expect(matchesPathGlob('MyApi/?', 'MyApi/A')).toBe(true);
+    expect(matchesPathGlob('MyApi/?', 'MyApi/A/B')).toBe(false);
+    // a `*` also can't cross `/` on the way to a trailing `.property`
+    expect(matchesPathGlob('MyApi/*.Prop', 'MyApi/Child.Prop')).toBe(true);
+    expect(matchesPathGlob('MyApi/*.Prop', 'MyApi/Child/Sub.Prop')).toBe(false);
+  });
+
+  it('inside a bracket key `/` stays literal (data, not a boundary)', () => {
+    expect(matchesPathGlob('Tags[*]', 'Tags[a/b]')).toBe(true); // `/` is data within the bracket
+    expect(matchesPathGlob('Tags[a/*]', 'Tags[a/b]')).toBe(true);
+  });
 });

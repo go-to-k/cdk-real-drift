@@ -474,17 +474,22 @@ ignore:
   form still match. Widening a stamped scope to a `*` glob (to intentionally ignore a
   path across every stack/account/region) stays a hand-edit.
 - All four fields accept `*` / `?` globs, but the `path` axis is **segment-aware**
-  while the scope axes are not. In `path`, `*` / `?` match within a single `.`-delimited
-  segment (`*.DesiredCount` matches `<anyId>.DesiredCount`, not a deeper
-  `Tbl.Config.DesiredCount`) — a parent `path` still covers child paths via the subtree
-  walk, so the segment bound does not under-match. Inside a `[...]` bracket key a `*` /
+  while the scope axes are not. In `path`, `*` / `?` match within a single
+  segment, bounded by `.`, `/`, and `[` (`*.DesiredCount` matches
+  `<anyId>.DesiredCount`, not a deeper `Tbl.Config.DesiredCount`; `MyApi/*`
+  matches a direct construct-path child but not a grandchild
+  `MyApi/Resource/Method`) — a parent `path` still covers child paths via the
+  subtree walk, so the segment bound does not under-match. Inside a `[...]`
+  bracket key a `*` /
   `?` is **unbounded within that bracket** (the brackets delimit the key, so a `.`
   between them is data): `Alb.LoadBalancerAttributes[*]` and
   `Alb.LoadBalancerAttributes[routing.*]` both match the dotted key
   `[routing.http2.enabled]`. On **stack / account / region**, `*` / `?` are unbounded
   (those names carry no `.`). The three scope axes are exactly the
   baseline file's identity axes; each is **omitted to leave that axis unscoped**
-  (match-all) — a present-but-empty `""` is rejected (it would match nothing).
+  (match-all) — a present-but-empty `""` is rejected (it would match nothing),
+  as is an all-wildcard `path` (`*`, `**`, `*.*`) — it would silence _every_
+  finding, so a rule must name at least one literal segment.
   **Account** keeps a `stack: "Prod*"` rule from
   leaking into a same-named stack in another account (stack-name uniqueness only
   holds within one account / App); **region** is independent the same way — the same
