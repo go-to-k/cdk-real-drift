@@ -1,3 +1,13 @@
+## [0.2.68](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.67...v0.2.68) (2026-07-09)
+
+
+### Bug Fixes
+
+* **check:** --json signals deleted-stack drift, keeps warnings on stderr, never empties stdout on error ([#871](https://github.com/go-to-k/cdk-real-drift/issues/871)) ([#921](https://github.com/go-to-k/cdk-real-drift/issues/921)) ([1e241ad](https://github.com/go-to-k/cdk-real-drift/commit/1e241adc300b8ca840e30de80c0ba1d3e5128067))
+* **config:** escape literal */? when the ignore verb writes a finding path ([#917](https://github.com/go-to-k/cdk-real-drift/issues/917)) ([e06f52f](https://github.com/go-to-k/cdk-real-drift/commit/e06f52f220fda5f102ef494875c7a53308a20e3c))
+* **noise:** fold AutoScaling ScheduledAction StartTime/EndTime first-run FPs ([#918](https://github.com/go-to-k/cdk-real-drift/issues/918)) ([f1f054c](https://github.com/go-to-k/cdk-real-drift/commit/f1f054cebdd9b743af9af616329cab42fa5ddc92))
+* **synth:** pin QuietIoHost off CI-stdout so check --json stays pure JSON in CI ([#867](https://github.com/go-to-k/cdk-real-drift/issues/867)) ([#920](https://github.com/go-to-k/cdk-real-drift/issues/920)) ([aad5048](https://github.com/go-to-k/cdk-real-drift/commit/aad5048774887140ed7b2915ee461aeb87f2f156))
+
 ## [0.2.67](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.66...v0.2.67) (2026-07-09)
 
 
