@@ -1,3 +1,10 @@
+## [0.3.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.4...v0.3.5) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cli:** close empty-JSON-on-error holes across all 4 verbs ([#943](https://github.com/go-to-k/cdk-real-drift/issues/943), [#988](https://github.com/go-to-k/cdk-real-drift/issues/988), [#989](https://github.com/go-to-k/cdk-real-drift/issues/989)) ([#1000](https://github.com/go-to-k/cdk-real-drift/issues/1000)) ([d8a8f51](https://github.com/go-to-k/cdk-real-drift/commit/d8a8f519e43efa081345253687f28c16058773d7))
+
 ## [0.3.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.3...v0.3.4) (2026-07-09)
 
 
