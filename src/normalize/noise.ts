@@ -2242,6 +2242,18 @@ export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => 
   'AWS::ElastiCache::CacheCluster': {
     Port: (e) => (/memcached/i.test(e) ? 11211 : /redis|valkey/i.test(e) ? 6379 : undefined),
   },
+  // A ReplicationGroup (the only node-based Valkey form) that declares no Port / no
+  // AtRestEncryptionEnabled reads back the engine defaults (#818): the same 6379 listener
+  // port (RGs are redis/valkey only, never memcached), and at-rest encryption which AWS
+  // enables BY DEFAULT for valkey (true) but not redis (false — an explicit equality gate
+  // rather than the accidental trivial-false drop). Both engine-derived from the live
+  // Engine and equality-gated, so an out-of-band port change or an encryption DISABLE still
+  // surfaces. (EngineVersion moves per GA release → value-independent, see below.)
+  'AWS::ElastiCache::ReplicationGroup': {
+    Port: (e) => (/redis|valkey/i.test(e) ? 6379 : undefined),
+    AtRestEncryptionEnabled: (e) =>
+      /valkey/i.test(e) ? true : /redis/i.test(e) ? false : undefined,
+  },
 };
 
 // RDS engine-family default listener port. Only families with a single well-known default
@@ -2891,7 +2903,17 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'SnapshotWindow',
     'PreferredAvailabilityZones',
   ]),
-  'AWS::ElastiCache::ReplicationGroup': new Set(['PreferredMaintenanceWindow', 'SnapshotWindow']),
+  //   AWS::ElastiCache::ReplicationGroup.EngineVersion — a RG that declares no EngineVersion
+  //   reads back the current GA patch AWS assigned (valkey "9.1.0" today), which AWS moves
+  //   over time as it ships new GA versions — not a constant we can pin. Undeclared → whatever
+  //   GA AWS assigned is its default, never user intent; a user who pins a version DECLARES it
+  //   and it is then compared (VERSION_PREFIX_PATHS tolerates the declared partial-vs-concrete
+  //   echo). Undeclared-only, like the sibling GA-version folds (#818).
+  'AWS::ElastiCache::ReplicationGroup': new Set([
+    'PreferredMaintenanceWindow',
+    'SnapshotWindow',
+    'EngineVersion',
+  ]),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
   'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow']),
   //   AWS::Redshift::Cluster.AvailabilityZone — AWS places an undeclared cluster in an AZ it picks
