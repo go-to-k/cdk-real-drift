@@ -32,8 +32,16 @@ function isScalarInterpolant(v: unknown): boolean {
   return t === 'string' || t === 'number' || t === 'boolean';
 }
 
-export function resolve(node: unknown, ctx: ResolverContext): unknown {
-  if (Array.isArray(node)) return node.map((n) => resolve(n, ctx));
+// `inCondition` marks resolution that is happening in CONDITION-EVALUATION context
+// (a `Conditions`-section body reached via evalCondition, or a nested condition
+// operand), as opposed to PROPERTY-VALUE context. It is threaded so a bare single-key
+// `{Condition: <name>}` object is honored as the condition-reference intrinsic ONLY in
+// condition context — in property position it is literal data (a one-key map named
+// `Condition` inside a free-form JSON document), so evaluating it there would corrupt
+// the declared value (`{Foo: {Condition: 'IsProd'}}` -> `Foo: false`, an unknown name ->
+// UNRESOLVED). See #783.
+export function resolve(node: unknown, ctx: ResolverContext, inCondition = false): unknown {
+  if (Array.isArray(node)) return node.map((n) => resolve(n, ctx, inCondition));
   // A CloudFormation DYNAMIC REFERENCE (`{{resolve:ssm:…}}`,
   // `{{resolve:ssm-secure:…}}`, `{{resolve:secretsmanager:…}}`) is a deploy-time
   // string substitution: CFn replaces it with the live SSM parameter / secret value
@@ -202,7 +210,14 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
         return r === UNRESOLVED ? UNRESOLVED : !r;
       }
       case 'Condition':
-        return evalCondition(String(v), ctx);
+        // A bare `{Condition: <name>}` object is the condition-reference intrinsic ONLY
+        // when it appears in condition-evaluation context (an operand inside
+        // Fn::And/Or/Not, or a Conditions-section body). In PROPERTY position it is
+        // literal data — a one-key map that happens to be named `Condition` inside a
+        // free-form JSON document — so fall through to the data object-walk below rather
+        // than evaluate it (which would corrupt the declared value). See #783.
+        if (inCondition) return evalCondition(String(v), ctx);
+        break;
       default:
         // Any intrinsic we don't fully resolve → UNRESOLVED, so the declared
         // path is skipped (never reported as false drift).
@@ -211,7 +226,7 @@ export function resolve(node: unknown, ctx: ResolverContext): unknown {
     }
   }
   const out: Record<string, unknown> = {};
-  for (const [kk, vv] of Object.entries(obj)) out[kk] = resolve(vv, ctx);
+  for (const [kk, vv] of Object.entries(obj)) out[kk] = resolve(vv, ctx, inCondition);
   return out;
 }
 
@@ -240,7 +255,7 @@ function condVal(node: unknown, ctx: ResolverContext): boolean | typeof UNRESOLV
     const r = evalCondition(String((node as Record<string, unknown>)['Condition']), ctx);
     return r === UNRESOLVED ? UNRESOLVED : r === true;
   }
-  const r = resolve(node, ctx);
+  const r = resolve(node, ctx, true);
   if (r === true) return true;
   if (r === false) return false;
   return UNRESOLVED;
@@ -256,7 +271,7 @@ export function evalCondition(name: string, ctx: ResolverContext): boolean | typ
   // could. Failing closed to UNRESOLVED on the cycle is the safe direction (the
   // dependent Fn::If branch is then skipped, never mis-evaluated).
   ctx.condCache.set(name, UNRESOLVED);
-  const r = resolve(ctx.conditions[name], ctx);
+  const r = resolve(ctx.conditions[name], ctx, true);
   const val = r === true ? true : r === false ? false : UNRESOLVED;
   ctx.condCache.set(name, val);
   return val;
