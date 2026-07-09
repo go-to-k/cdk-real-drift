@@ -267,18 +267,23 @@ describe('SDK overrides', () => {
     expect(out).toEqual({ UserName: 'svc', Status: 'Inactive' });
   });
 
-  it('IAM AccessKey (#716): undefined when no declared UserName or the key is not found', async () => {
+  it('IAM AccessKey (#716): undefined when no declared UserName', async () => {
+    // no UserName -> cannot resolve the owning user -> skipped, not a wrong deleted claim
+    expect(await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({}, 'AKIATARGET'))).toBeUndefined();
+  });
+
+  it('IAM AccessKey (#965): the user exists but the exact key id is absent -> ResourceGoneError (deleted, not skipped)', async () => {
+    // ListAccessKeys succeeds (the user is present — a deleted user throws NoSuchEntity)
+    // yet the physical id (the AccessKeyId) is absent = the key was deleted out of band
+    // (credential rotation). The single page is authoritative (<=2 keys per user).
     iam.on(ListAccessKeysCommand).resolves({
       AccessKeyMetadata: [
         { UserName: 'svc', AccessKeyId: 'AKIAOTHER', Status: 'Active', CreateDate: new Date(0) },
       ],
     });
-    // no UserName -> cannot resolve the owning user
-    expect(await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({}, 'AKIATARGET'))).toBeUndefined();
-    // the physical id is not among the user's keys -> undefined (falls back to skipped, no wrong read)
-    expect(
-      await SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({ UserName: 'svc' }, 'AKIATARGET'))
-    ).toBeUndefined();
+    await expect(
+      SDK_OVERRIDES['AWS::IAM::AccessKey'](ctx({ UserName: 'svc' }, 'AKIATARGET'))
+    ).rejects.toBeInstanceOf(ResourceGoneError);
   });
 
   it('Lambda Permission: matches statement by Action + Principal', async () => {
@@ -2268,9 +2273,20 @@ describe('SDK overrides', () => {
       expect(out).toMatchObject({ ApiId: 'fallback-api' });
     });
 
-    it('undefined when the keyed key is absent (deleted out of band -> skipped)', async () => {
+    it('#965: keyId parsed from the ARN but absent from all pages -> ResourceGoneError (deleted, not skipped)', async () => {
       appsync.on(ListApiKeysCommand).resolves({ apiKeys: [{ id: 'da2-different' }] });
-      expect(await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN))).toBeUndefined();
+      await expect(SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({}, ARN))).rejects.toBeInstanceOf(
+        ResourceGoneError
+      );
+    });
+
+    it('#965: the no-keyId best-effort branch stays undefined (not a definitive deletion)', async () => {
+      // physical id is not an ARN -> no keyId to look up. An empty key list here is NOT
+      // "this declared key is gone" (there was no exact id) -> undefined -> skipped.
+      appsync.on(ListApiKeysCommand).resolves({ apiKeys: [] });
+      expect(
+        await SDK_OVERRIDES['AWS::AppSync::ApiKey'](ctx({ ApiId: 'fallback-api' }, 'not-an-arn'))
+      ).toBeUndefined();
     });
 
     it('undefined when no apiId can be resolved', async () => {

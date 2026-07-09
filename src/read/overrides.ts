@@ -257,7 +257,12 @@ const readIamAccessKey: OverrideReader = async ({ declared, physicalId, region }
   // A user has at most 2 access keys, so a single ListAccessKeys page always suffices.
   const r = await c.send(new ListAccessKeysCommand({ UserName: userName }));
   const meta = (r.AccessKeyMetadata ?? []).find((m) => m.AccessKeyId === physicalId);
-  if (!meta) return undefined;
+  // The user exists (a deleted user throws NoSuchEntity above -> `deleted`) and the
+  // physical id IS the exact AccessKeyId, yet it is absent from the (authoritative,
+  // single-page) key list -> the key itself was deleted out of band (the common
+  // credential-rotation case). Throw ResourceGoneError so the router maps it to
+  // `deleted`, not `skipped`.
+  if (!meta) throw new ResourceGoneError(`AccessKey ${physicalId} absent from user ${userName}`);
   return { UserName: userName, Status: meta.Status };
 };
 
@@ -1934,8 +1939,20 @@ const readAppSyncApiKey: OverrideReader = async ({ physicalId, declared, region 
     if (keyId) k = keys.find((x) => x.id === keyId);
     nextToken = r.nextToken;
   } while (!k && nextToken);
-  if (!keyId) k = keys[0];
-  if (!k) return undefined; // key deleted out of band -> router maps undefined to skipped
+  if (keyId) {
+    // keyId was parsed from the ARN physical id and ALL ListApiKeys pages were
+    // accumulated (the loop only exits with no nextToken), yet the exact id is absent
+    // -> the key was deleted out of band. Throw ResourceGoneError so the router maps
+    // it to `deleted`, not `skipped`.
+    if (!k) throw new ResourceGoneError(`AppSync ApiKey ${keyId} absent from API ${apiId}`);
+  } else {
+    // Best-effort branch: no keyId in the physical id, so fall back to the first key.
+    // An empty list here is NOT definitively "this declared key is gone" (there was no
+    // exact id to look up) -> return undefined -> skipped (same rationale as
+    // readLambdaPermission's documented best-effort branch).
+    k = keys[0];
+    if (!k) return undefined;
+  }
   const model: Record<string, unknown> = { ApiId: apiId };
   if (k.description !== undefined && k.description !== '') model.Description = k.description;
   if (k.expires !== undefined) model.Expires = k.expires;
