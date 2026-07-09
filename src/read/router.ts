@@ -304,6 +304,14 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
       ? `${apiId}|${routeId}|${pid}`
       : undefined;
   },
+  // GuardDuty Filter primaryIdentifier is [DetectorId, Name] — parent-first. The CFn
+  // physical id (Ref) is the bare filter Name, so a bare-id CC GetResource
+  // ValidationException-skips it (read-gap) on every check — a security-tooling stack
+  // (detector + finding filters) never sees an out-of-band filter change (e.g. a
+  // weakened severity criterion hiding findings). DetectorId is a required declared
+  // prop (a Ref to the detector, resolvable). Verified live (#878, stack CdkrdHuntUGd,
+  // us-east-1): `<DetectorId>|<FilterName>` reads; the reverse order returns NotFound.
+  'AWS::GuardDuty::Filter': compositeWith('DetectorId'),
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
