@@ -645,6 +645,20 @@ describe('ignoreRuleFor', () => {
     expect(ignoreRuleFor(declared('ApiRole', 'Policies'))).toEqual({ path: 'ApiRole.Policies' });
   });
 
+  it('falls back to logicalId when the within-stack path strips to empty (stack-root construct path) (#991)', () => {
+    // `withinStackPath('MyStack/', 'MyStack')` returns '' — with an empty finding path that
+    // would strip the id to '' and produce `rule.path === ''`, the empty-path poison pill.
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'ApiRole1234ABCD',
+      constructPath: 'MyStack/',
+      resourceType: 'AWS::IAM::Role',
+      path: '',
+    };
+    // the id falls back to the always-present logicalId, so the path is never empty
+    expect(ignoreRuleFor(f, 'MyStack')).toEqual({ path: 'ApiRole1234ABCD', stack: 'MyStack' });
+  });
+
   it('omits the trailing dot for a resource-level (empty path) finding', () => {
     const f: Finding = {
       tier: 'declared',
@@ -844,6 +858,29 @@ describe('addIgnoreRules', () => {
     expect(r.alreadyPresent).toEqual([p('A.y')]);
     // not rewritten — the original bytes survive (comments + layout intact)
     expect(await readFile('.cdkrd/ignore.yaml', 'utf8')).toBe(original);
+  });
+
+  it('REJECTS a universal ("*/*") rule before writing — no poison pill, next loadConfig stays clean (#991)', async () => {
+    await expect(addIgnoreRules([p('*/*', { stack: 'MyStack' })])).rejects.toThrow(/all-wildcard/);
+    // the write-side guard fired BEFORE writeFile, so the file was never created / bricked
+    await expect(loadConfig()).resolves.toEqual({ ignore: [] });
+  });
+
+  it('REJECTS an empty-path ("") rule before writing — no poison pill (#991)', async () => {
+    await expect(addIgnoreRules([p('', { stack: 'MyStack' })])).rejects.toThrow(
+      /must not be empty/
+    );
+    await expect(loadConfig()).resolves.toEqual({ ignore: [] });
+  });
+
+  it('a bad rule does not clobber an existing valid config (rejected before writeFile) (#991)', async () => {
+    await mkdir('.cdkrd', { recursive: true });
+    const original = 'ignore:\n  - path: Good.x\n';
+    await writeFile('.cdkrd/ignore.yaml', original, 'utf8');
+    await expect(addIgnoreRules([p('**')])).rejects.toThrow(/all-wildcard/);
+    // original bytes untouched, config still loads
+    expect(await readFile('.cdkrd/ignore.yaml', 'utf8')).toBe(original);
+    expect((await loadConfig()).ignore).toEqual([{ path: 'Good.x' }]);
   });
 
   it('writes the scope keys in canonical order (path, stack, account, region)', async () => {
