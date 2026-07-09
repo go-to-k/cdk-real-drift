@@ -88,6 +88,28 @@ describe('yaml-cfn parse', () => {
     expect(p.Ts instanceof Date).toBe(false);
   });
 
+  it('keeps an EXPLICIT !!timestamp scalar a string, not a Date (#909)', () => {
+    // #860 dropped the implicit timestamp resolver, but yaml@2 still resolved the
+    // EXPLICIT `!!timestamp` form through its `knownTags` fallback — `P: !!timestamp
+    // 2026-01-01` produced a JS `Date`, not a string. CloudFormation deploys the scalar
+    // verbatim as a string; a `Date` compared against the live string is a declared
+    // false positive that survives `record` and corrupts `revert`. It must stay a string.
+    const t = parseCfnTemplate(`Resources:
+  R:
+    Type: AWS::Fake::Type
+    Properties:
+      ExpirationDate: !!timestamp 2026-01-01
+      Ver: !!timestamp 2010-09-09
+      Ts: !!timestamp 2001-12-14T21:59:43.10-05:00`);
+    const p = (t as any).Resources.R.Properties;
+    expect(p.ExpirationDate).toBe('2026-01-01');
+    expect(p.ExpirationDate instanceof Date).toBe(false);
+    expect(p.Ver).toBe('2010-09-09');
+    expect(p.Ver instanceof Date).toBe(false);
+    expect(p.Ts).toBe('2001-12-14T21:59:43.10-05:00');
+    expect(p.Ts instanceof Date).toBe(false);
+  });
+
   it('keeps a single-letter Y/N plain scalar a string, not a boolean (#850)', () => {
     // The YAML 1.1 `bool` regex includes single letters `Y|y|N|n`, so a bare
     // `AttributeType: N` resolves to boolean `false` and `Y` to `true`. CloudFormation

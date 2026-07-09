@@ -125,13 +125,13 @@ const FALSE_BOOL_TEST = /^(?:[Nn]o|NO|[Ff]alse|FALSE|[Oo]ff|OFF)$/;
 const BOOL_TAG = 'tag:yaml.org,2002:bool';
 // The `Date`-producing tag. The sexagesimal `intTime`/`floatTime` tags share the
 // int/float tag URIs (they yield NUMBERS like `1:30` -> 90, which #785 needs), so
-// only THIS tag URI is dropped — the sexagesimal number resolution is preserved.
+// only THIS tag URI is neutralized — the sexagesimal number resolution is preserved.
 const TIMESTAMP_TAG = 'tag:yaml.org,2002:timestamp';
 
-// Take the resolved YAML-1.1 core tags and (a) drop the implicit `timestamp`
-// resolver so a date-like plain scalar stays a string, and (b) swap the two `bool`
-// tags for copies whose `test` excludes single-letter `Y/y/N/n`. The CFn short-form
-// tags (`!Ref`/`!GetAtt`/...) are appended so they still layer on top.
+// Take the resolved YAML-1.1 core tags and (a) neutralize the `timestamp` tag so a
+// date-like scalar stays a string, and (b) swap the two `bool` tags for copies whose
+// `test` excludes single-letter `Y/y/N/n`. The CFn short-form tags (`!Ref`/`!GetAtt`/...)
+// are appended so they still layer on top.
 function restrictYaml11Tags(baseTags: Tags): Tags {
   const restricted: Tags = [];
   for (const tag of baseTags) {
@@ -141,7 +141,23 @@ function restrictYaml11Tags(baseTags: Tags): Tags {
       restricted.push(tag);
       continue;
     }
-    if (tag.tag === TIMESTAMP_TAG) continue; // no implicit Date resolution
+    if (tag.tag === TIMESTAMP_TAG) {
+      // #860 merely DROPPED this tag so a date-like PLAIN scalar stays a string. But
+      // omitting the tag leaves yaml@2's `knownTags` fallback intact, so the EXPLICIT
+      // form `!!timestamp 2026-01-01` still resolved through the base schema's tag to a
+      // JS `Date` — a declared-tier false positive that survives `record` and corrupts
+      // `revert` (#909). Instead of dropping the tag, KEEP it but override `resolve` to
+      // return the raw source string. That kills the `Date` for BOTH the implicit and
+      // the explicit form, so a date-like scalar (however tagged) stays the string
+      // CloudFormation deployed. Rebuild it as an explicit ScalarTag (a spread of the
+      // tag union widens the shape and loses the ScalarTag discriminant).
+      const scalar = tag as ScalarTag;
+      restricted.push({
+        ...scalar,
+        resolve: (value: string) => value,
+      } as ScalarTag);
+      continue;
+    }
     if (tag.tag === BOOL_TAG) {
       // The 1.1 schema carries a separate tag for `true` and for `false`; each
       // `identify`s only its own boolean. Use that to pick the matching narrowed
@@ -189,7 +205,7 @@ export function parseCfnTemplate(text: string): Record<string, unknown> {
     // (#785). But the STOCK 1.1 schema also over-resolves plain date-like scalars to
     // `Date` and single-letter `Y/N` to boolean, which CFn does NOT do (#850) — so we
     // use a RESTRICTED yaml-1.1 schema (`restrictYaml11Tags`): 1.1 semantics minus
-    // implicit timestamps minus single-letter bools, composed with the CFn short
+    // timestamps (implicit AND explicit) minus single-letter bools, composed with the CFn short
     // forms. The YAML-1.1 `!!binary`/... tags only fire on explicit `!!` markers a
     // CFn template never carries, so no regression.
     parsed = yamlParse(body, CFN_YAML_PARSE_OPTIONS);
