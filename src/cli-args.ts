@@ -114,9 +114,18 @@ export interface CommonArgs {
  * non-TTY (real CI/cron/pipes). The single source of truth — command code threads this
  * in rather than reading `process.stdin.isTTY` directly. Optional prompts skip when
  * false; required-decision prompts error (exit 2) when false.
+ *
+ * #869: gate on BOTH stdin AND stdout being a TTY — the interactive UI (the @clack
+ * spinner + resolve prompt) WRITES to stdout, so `cdkrd check > out.txt` (or `| tee`)
+ * from a terminal has a TTY stdin but a redirected stdout: gating on stdin alone RAN the
+ * prompt into the file, deadlocking the run on a prompt the user cannot see, and leaked
+ * the spinner's ANSI erase-frames into the text report (polluting the `^result:` grep
+ * contract). Requiring stdout too matches the color gate (`style.ts`, `process.stdout.isTTY`)
+ * so the two interactivity axes are consistent: a redirected/piped stdout is report-only,
+ * never prompts, never hangs.
  */
 export function isInteractive(): boolean {
-  return Boolean(process.stdin.isTTY);
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
 }
 
 export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {

@@ -383,7 +383,12 @@ the line) are errors (exit `2`): a typo'd flag never silently becomes a stack na
 Every option runs exactly the same code as the standalone commands. Prompts are
 skipped under `--json`, `--show-all`, `--pre-deploy`, and `--fail`. A non-TTY run
 never prompts: a required write decision without `--yes` errors with exit 2 (the
-safe side); `--yes` in a TTY skips the write confirmation AND each verb's selection
+safe side). "Interactive" requires **both** a TTY stdin and a TTY stdout — so
+**redirecting or piping the output** (`cdkrd check > report.txt`, `| tee`) is also
+treated as non-interactive: the report is written cleanly with no prompt (which
+would otherwise deadlock, waiting on stdin for a prompt written into the file) and
+no spinner frames leaking into the text. `--yes` in a TTY skips the write
+confirmation AND each verb's selection
 multiselect — `record` records ALL, `ignore` ignores ALL, `revert` applies the full
 plan. Only `check`'s action menu (Record / Revert / Ignore / …) still shows under
 `--yes`.
