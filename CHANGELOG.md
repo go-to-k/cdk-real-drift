@@ -1,3 +1,10 @@
+## [0.2.69](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.68...v0.2.69) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cleanup:** back sweep protection with authoritative stack membership + sentinel (age guard backstop) ([#900](https://github.com/go-to-k/cdk-real-drift/issues/900) follow-up) ([#922](https://github.com/go-to-k/cdk-real-drift/issues/922)) ([efd556a](https://github.com/go-to-k/cdk-real-drift/commit/efd556a1cc626091323c731c79aec2e92ebca664))
+
 ## [0.2.68](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.67...v0.2.68) (2026-07-09)
 
 
