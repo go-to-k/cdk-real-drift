@@ -200,6 +200,7 @@ import {
 } from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
@@ -313,12 +314,15 @@ const writeEventBusPolicy: SdkWriter = async (ctx) => {
     const principal = str(ctx.declared['Principal']);
     if (action === undefined || principal === undefined)
       throw new Error('EventBusPolicy revert needs a Statement (or Action + Principal)');
+    // Partition is a function of the region — GovCloud (`aws-us-gov`) / China (`aws-cn`)
+    // need their own ARN prefix, else the reverted statement never matches / is rejected (#865).
+    const { partition } = partitionForRegion(ctx.region);
     desiredStatement = {
       Sid: statementId,
       Effect: 'Allow',
-      Principal: principal === '*' ? '*' : { AWS: `arn:aws:iam::${principal}:root` },
+      Principal: principal === '*' ? '*' : { AWS: `arn:${partition}:iam::${principal}:root` },
       Action: action,
-      Resource: `arn:aws:events:${ctx.region}:${ctx.accountId}:event-bus/${eventBusName}`,
+      Resource: `arn:${partition}:events:${ctx.region}:${ctx.accountId}:event-bus/${eventBusName}`,
       ...(ctx.declared['Condition'] !== undefined ? { Condition: ctx.declared['Condition'] } : {}),
     };
   }

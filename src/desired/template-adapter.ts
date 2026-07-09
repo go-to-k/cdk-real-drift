@@ -41,7 +41,7 @@ export function parseTemplateBody(body: string): Record<string, unknown> {
 // Ordering note: `us-isob-` / `us-isof-` do not start with `us-iso-` (the char after `us-iso`
 // is a letter, not `-`), so the `us-iso-` test does not swallow them; still, keep the more
 // specific ISO prefixes listed for clarity.
-function partitionForRegion(region: string): { partition: string; urlSuffix: string } {
+export function partitionForRegion(region: string): { partition: string; urlSuffix: string } {
   if (region.startsWith('us-gov-')) return { partition: 'aws-us-gov', urlSuffix: 'amazonaws.com' };
   if (region.startsWith('cn-')) return { partition: 'aws-cn', urlSuffix: 'amazonaws.com.cn' };
   if (region.startsWith('us-iso-')) return { partition: 'aws-iso', urlSuffix: 'c2s.ic.gov' };
