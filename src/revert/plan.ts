@@ -187,6 +187,43 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::EC2::Subnet\0AssignIpv6AddressOnCreation',
   'AWS::EC2::Subnet\0PrivateDnsNameOptionsOnLaunch',
   'AWS::EC2::Subnet\0EnableDns64',
+  // EC2 ModifyClientVpnEndpoint is a SELECTIVE-update API routed through an SDK writer
+  // (CLIENT_VPN_SCALAR_PARAMS): a `remove` deletes the key from the desired model, the
+  // writer skips the now-undefined param, and nothing is sent — Cloud Control-style
+  // "converge on omit" never applies (#912). Write the KNOWN_DEFAULTS defaults back
+  // explicitly so an out-of-band change converges. VpnPort (443) and
+  // DisconnectOnSessionTimeout (true) pull their values from KNOWN_DEFAULTS. SplitTunnel
+  // folds `atDefault` as a trivial-empty `false` (no KNOWN_DEFAULTS value), so an OOB
+  // `true` is otherwise unrevertable — its `false` default comes from
+  // REVERT_SET_DEFAULT_VALUES below, the EnableDns64 pattern.
+  'AWS::EC2::ClientVpnEndpoint\0VpnPort',
+  'AWS::EC2::ClientVpnEndpoint\0DisconnectOnSessionTimeout',
+  'AWS::EC2::ClientVpnEndpoint\0SplitTunnel',
+  // DocDB ModifyDBCluster / ModifyDBInstance are SELECTIVE-update APIs routed through SDK
+  // writers whose allowlists include these props: a `remove` empties the desired model and
+  // the writer sends nothing (`if (!any) return`) — a silent no-op (#912). Write the
+  // KNOWN_DEFAULTS defaults back explicitly. Port (27017) and BackupRetentionPeriod (1)
+  // pull from KNOWN_DEFAULTS; DeletionProtection folds `atDefault` as trivial-empty `false`
+  // (no KNOWN_DEFAULTS value — an OOB `true` is a real blocking mutation), so its `false`
+  // default comes from REVERT_SET_DEFAULT_VALUES below. DBInstance CACertificateIdentifier
+  // ('rds-ca-rsa2048-g1') pulls from KNOWN_DEFAULTS (explicit write reboots the instance
+  // with ApplyImmediately).
+  'AWS::DocDB::DBCluster\0Port',
+  'AWS::DocDB::DBCluster\0BackupRetentionPeriod',
+  'AWS::DocDB::DBCluster\0DeletionProtection',
+  'AWS::DocDB::DBInstance\0CACertificateIdentifier',
+  // OpenSearch UpdateDomainConfig is a documented SELECTIVE API routed through an SDK
+  // writer (OS_UPDATABLE_OPTIONS): a `remove` makes the option undefined, the writer omits
+  // it, and the API fired with only {DomainName} is a successful no-op (#912) — omit can
+  // NEVER converge, only an explicit set-default can. All four fold `atDefault` from the
+  // top-level KNOWN_DEFAULTS, so the set-default value comes from there. (DeploymentStrategyOptions
+  // is additionally absent from OS_UPDATABLE_OPTIONS — the writer allowlist gap #804 does
+  // not name — so its convergence still depends on that writer table; this entry ensures
+  // revert PLANS the correct set-default rather than a bare `remove`.)
+  'AWS::OpenSearchService::Domain\0SnapshotOptions',
+  'AWS::OpenSearchService::Domain\0AdvancedOptions',
+  'AWS::OpenSearchService::Domain\0IPAddressType',
+  'AWS::OpenSearchService::Domain\0DeploymentStrategyOptions',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
@@ -195,6 +232,11 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
 // the path — KNOWN_DEFAULTS stays the primary source. Keyed `${resourceType}\0${path}`.
 const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
   'AWS::EC2::Subnet\0EnableDns64': false,
+  // ClientVpnEndpoint SplitTunnel and DocDB DBCluster DeletionProtection both fold
+  // `atDefault` as a trivial-empty `false` (no KNOWN_DEFAULTS value source), so their
+  // revert set-default value is the plain constant `false` here — the EnableDns64 pattern.
+  'AWS::EC2::ClientVpnEndpoint\0SplitTunnel': false,
+  'AWS::DocDB::DBCluster\0DeletionProtection': false,
 };
 
 /**
