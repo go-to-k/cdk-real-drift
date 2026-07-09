@@ -698,6 +698,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `ses:DescribeReceiptRuleSet`, `ses:DescribeReceiptRule`, `ses:ListReceiptFilters`
   (the SES inbound receipt-rule family — `ReceiptRuleSet` / `ReceiptRule` /
   `ReceiptFilter` — has no Cloud Control handlers),
+  `acm:DescribeCertificate` + `acm:ListTagsForCertificate` (read an
+  `AWS::CertificateManager::Certificate` — the ACM registry type ships no Cloud
+  Control read handler, so every cert was silently skipped, including an
+  out-of-band `Options.CertificateTransparencyLoggingPreference` flip or an
+  out-of-band deletion of a cert an ALB / CloudFront / API domain still references),
   `glue:GetTable`, `logs:DescribeMetricFilters`, `scheduler:GetSchedule`,
   `cloudwatch:DescribeAnomalyDetectors` (reads an
   `AWS::CloudWatch::AnomalyDetector` — NON_PROVISIONABLE, no Cloud Control
