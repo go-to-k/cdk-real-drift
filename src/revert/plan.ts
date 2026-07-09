@@ -708,6 +708,29 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // A resource type whose CFn schema declares a `handlers` block but NO `update` handler
+    // (create/read/delete only — e.g. AWS::CloudFront::MonitoringSubscription) can never be
+    // patched via Cloud Control UpdateResource: the apply fails with a raw
+    // UnsupportedActionException (#908). Bar the doomed cc-kind revert here with a clear
+    // reason instead of emitting a patch that always fails. EXEMPT: a type with a
+    // type-specific SDK writer (SDK_WRITERS / prop- / nested-scoped) reverts via its own API,
+    // and a `delete`-kind out-of-band-added item already `continue`d far above. `updatable`
+    // is `false` ONLY when handlers ARE present and `update` is absent — an `undefined`
+    // (schema unavailable / no handlers block) is NOT barred (that degradation is #858).
+    if (
+      schema?.updatable === false &&
+      !SDK_WRITERS[f.resourceType] &&
+      !propScoped &&
+      !nestedScoped
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason: 'type has no update handler — detect/record only',
+      });
+      continue;
+    }
     const kind: RevertItem['kind'] =
       SDK_WRITERS[f.resourceType] || propScoped || nestedScoped ? 'sdk' : 'cc';
 
