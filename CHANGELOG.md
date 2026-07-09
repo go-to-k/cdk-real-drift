@@ -1,3 +1,10 @@
+## [0.4.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.2...v0.4.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* **cli:** gate interactivity on both stdin AND stdout being a TTY ([#869](https://github.com/go-to-k/cdk-real-drift/issues/869)) ([#1033](https://github.com/go-to-k/cdk-real-drift/issues/1033)) ([ea69785](https://github.com/go-to-k/cdk-real-drift/commit/ea6978503cf98ace25ccee22bf768756545a97c3))
+
 ## [0.4.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.1...v0.4.2) (2026-07-09)
 
 
