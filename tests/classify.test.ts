@@ -10765,6 +10765,87 @@ describe('#632 follow-up: unconditional boolean disables surface (undeclared)', 
   }
 });
 
+// #929: the DECLARED-side twin of #632. The declared trivially-empty husk fold
+// (classify.ts ~2291) mutes a declared value when it is trivially-empty AND its live
+// side equals a KNOWN_DEFAULTS pin. Because `isTrivialEmpty(false) === true`, a user who
+// DECLARES a boolean `false` against a TRUTHY pin (ApplicationInsights CWEMonitorEnabled,
+// pinned `true`) had that declared `false` silently folded whenever AWS showed the pinned
+// `true` — an out-of-band ENABLE of a monitoring toggle masked as "not drift". Gate the
+// husk fold with the SAME MEANINGFUL_WHEN_OFF predicate the undeclared loop uses so the
+// declared divergence surfaces, while a genuinely-empty default (R74 CloudTrail
+// EventSelectors, a path NOT in the table) keeps folding.
+describe('#929 declared boolean false vs truthy KNOWN_DEFAULTS pin is not masked', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const classify = (
+    type: string,
+    declared: Record<string, unknown>,
+    live: Record<string, unknown>
+  ) =>
+    classifyResource({ logicalId: 'R', resourceType: type, physicalId: 'p', declared }, live, bare);
+
+  it('mask-lifted: declared CWEMonitorEnabled=false vs live pinned true surfaces as declared', () => {
+    const f = classify(
+      'AWS::ApplicationInsights::Application',
+      { CWEMonitorEnabled: false },
+      { CWEMonitorEnabled: true }
+    );
+    const hit = f.find((x) => x.path === 'CWEMonitorEnabled');
+    expect(hit?.tier).toBe('declared');
+    expect(hit?.desired).toBe(false);
+    expect(hit?.actual).toBe(true);
+  });
+
+  it('natural direction still works: declared true vs live false surfaces as declared', () => {
+    const f = classify(
+      'AWS::ApplicationInsights::Application',
+      { CWEMonitorEnabled: true },
+      { CWEMonitorEnabled: false }
+    );
+    const hit = f.find((x) => x.path === 'CWEMonitorEnabled');
+    expect(hit?.tier).toBe('declared');
+    expect(hit?.desired).toBe(true);
+    expect(hit?.actual).toBe(false);
+  });
+
+  it('agree: declared true == live pinned true is not drift', () => {
+    const f = classify(
+      'AWS::ApplicationInsights::Application',
+      { CWEMonitorEnabled: true },
+      { CWEMonitorEnabled: true }
+    );
+    expect(f.find((x) => x.path === 'CWEMonitorEnabled')).toBeUndefined();
+  });
+
+  it('still-folds (no over-lift): declared EventSelectors [] materialized to the CloudTrail default folds', () => {
+    // R74 precedent — EventSelectors is a KNOWN_DEFAULTS pin NOT listed in MEANINGFUL_WHEN_OFF,
+    // so a genuinely-empty declared [] that AWS materialized to the documented management
+    // selector must STILL fold (no declared finding).
+    const defaultSelector = [
+      {
+        IncludeManagementEvents: true,
+        ReadWriteType: 'All',
+        ExcludeManagementEventSources: [],
+        DataResources: [],
+      },
+    ];
+    const f = classify(
+      'AWS::CloudTrail::Trail',
+      { EventSelectors: [] },
+      { EventSelectors: defaultSelector }
+    );
+    expect(f.find((x) => x.path === 'EventSelectors')).toBeUndefined();
+  });
+});
+
 // #747: a live-only (out-of-band-added) map key containing a `.` / `[` / `]` must NOT be
 // appended verbatim as a `${path}.${key}` nested finding path — `toPointer` (and the
 // baseline `topSegment` / ignore-rule glob) re-split on `.`/`[`, corrupting the location

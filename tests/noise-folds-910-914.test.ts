@@ -71,17 +71,16 @@ describe('#841 ApplicationInsights undeclared CWEMonitorEnabled=true', () => {
     expect(pathsByTier(f, 'atDefault')).toContain('CWEMonitorEnabled');
     expect(pathsByTier(f, 'undeclared')).not.toContain('CWEMonitorEnabled');
   });
-  // A later-disabled CWEMonitorEnabled=false does NOT surface: the undeclared loop drops any
-  // `false`/`""` via isTrivialEmpty BEFORE the fold table ("false does not stay meaningful"),
-  // and detecting a true->false out-of-band disable would require a curated MEANINGFUL_WHEN_OFF
-  // entry (in diff/classify.ts) — which that table's own rule admits ONLY after a live confirm
-  // that OFF is meaningful in EVERY clean-deploy config. We have a single live observation
-  // (true on a minimal app), not that cross-config proof, so surfacing the disable is out of
-  // scope for this first-run-FP fold and is left for a live-verified follow-up. The fold here
-  // only mutes the AWS-assigned `true`, restoring the ZERO-potential-drift invariant.
-  it('drops an undeclared CWEMonitorEnabled=false as trivially-empty (not surfaced)', () => {
+  // #929/#925: a later-disabled CWEMonitorEnabled=false NOW surfaces. AWS always creates the
+  // application with CloudWatch Events monitoring ON (pinned `true`), so an OFF state is an
+  // out-of-band DISABLE of that monitoring toggle — meaningful in every clean-deploy config
+  // (live-confirmed). CWEMonitorEnabled is a curated MEANINGFUL_WHEN_OFF entry (in
+  // diff/classify.ts), so the undeclared loop's #632 guard keeps the diverging `false` from
+  // being swallowed by the trivial-empty drop and surfaces it as undeclared drift (the
+  // AWS-assigned `true` still folds atDefault above — see the previous case).
+  it('surfaces an undeclared CWEMonitorEnabled=false (out-of-band disable) as undeclared', () => {
     const f = classifyResource(res, { CWEMonitorEnabled: false }, emptySchema);
-    expect(pathsByTier(f, 'undeclared')).not.toContain('CWEMonitorEnabled');
+    expect(pathsByTier(f, 'undeclared')).toContain('CWEMonitorEnabled');
     expect(pathsByTier(f, 'atDefault')).not.toContain('CWEMonitorEnabled');
   });
 });
