@@ -290,6 +290,20 @@ export interface StackJsonReport {
   // pre-#755 behavior printed nothing for an errored stack). Never set on a
   // successfully-checked stack.
   error?: string;
+  // Set ONLY on a stack whose committed baseline proves it was once deployed but which is
+  // now GONE from CloudFormation (deleted out of band). This is the STRONGEST drift, not a
+  // pre-check error, so it carries `drifted: 1` (never `error`): a consumer summing
+  // `drifted` across stacks must see it. Absent on every other stack. (#871)
+  stackDeleted?: boolean;
+}
+
+// The --json element for a stack DELETED out of band (#871): the STRONGEST drift, so
+// `drifted: 1` + `stackDeleted: true` — never the `drifted: 0` + `error` shape (`error`
+// is reserved for a stack that failed BEFORE it could be checked). A consumer summing
+// `drifted` across stacks must see the deleted stack. Used by check.ts's not-deployed
+// catch when a committed baseline proves the stack was once deployed.
+export function deletedStackReport(label: string): StackJsonReport {
+  return { stack: label, drifted: 1, findings: [], stackDeleted: true };
 }
 
 export function buildStackJson(

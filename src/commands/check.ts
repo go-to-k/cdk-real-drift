@@ -25,7 +25,14 @@ import {
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
-import { buildStackJson, report, type StackJsonReport, stackSeparator } from '../report/report.js';
+import {
+  buildStackJson,
+  deletedStackReport,
+  report,
+  type StackJsonReport,
+  stackSeparator,
+} from '../report/report.js';
+import { style } from '../report/style.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
@@ -246,11 +253,21 @@ export async function runCheck(args: string[]): Promise<number> {
 
   // .cdkrd/ignore.yaml ignore rules, loaded once (cwd-relative). A malformed config
   // fails the whole run fast — a silently-ineffective ignore rule is the dangerous case.
+  // A whole-run failure BEFORE any stack is known (bad config, un-synthesizable app, a
+  // zero-stack app) still exits non-zero — but under --json it must leave stdout a single
+  // JSON.parse-able value, not empty. Emit `[]` (no stacks reached) so a consumer's
+  // JSON.parse(stdout) succeeds and it reads the failure from the exit code + stderr,
+  // instead of throwing on '' (#871 — the top-level twin of the #885 zero-stack fix).
+  const emitEmptyJsonOnError = (): void => {
+    if (a.json) console.log('[]');
+  };
+
   let config;
   try {
     config = await loadConfig();
   } catch (e) {
     console.error(`error: ${(e as Error).message}`);
+    emitEmptyJsonOnError();
     return 2;
   }
 
@@ -259,6 +276,7 @@ export async function runCheck(args: string[]): Promise<number> {
     stacks = await resolveStacks(a);
   } catch (e) {
     console.error(`error: ${(e as Error).message}`);
+    emitEmptyJsonOnError();
     return 2;
   }
   if (stacks.length === 0) {
@@ -290,6 +308,7 @@ export async function runCheck(args: string[]): Promise<number> {
     const app = resolveApp(a.app);
     if (!app) {
       console.error('error: --pre-deploy needs a CDK app (--app or a cdk.json in the cwd)');
+      emitEmptyJsonOnError();
       return 2;
     }
     const synthed = await synthApp(app, {
@@ -502,9 +521,11 @@ export async function runCheck(args: string[]): Promise<number> {
             // #675: current template's logical-id set so recorded entries for a resource
             // removed from the template fold into a nudge (not phantom "removed" drift).
             allLogicalIds: desired.resources.map((r) => r.logicalId),
-            warn: (s: string) => {
-              if (!a.json) console.error(s);
-            },
+            // Baseline nudges (removed-entry / stale-baseline) go to STDERR unconditionally
+            // — under --json stdout stays pure JSON, but these warnings must NOT vanish
+            // entirely (they did under the old `if (!a.json)`). README: all note/warning
+            // lines go to stderr; ignore.ts passes console.error unconditionally too. (#871)
+            warn: (s: string) => console.error(s),
           },
         }),
         { stackName, accountId: desired.accountId, region },
@@ -586,8 +607,22 @@ export async function runCheck(args: string[]): Promise<number> {
         // (and `--strict`) exit 0 on a deleted stack, indistinguishable from never-deployed.
         if (hasBaselineForStack(stackName)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
-          console.error(`[Drift] ${stackName} (${region}): ${msg}`);
-          jsonError(stackName, region, msg);
+          const label = `${stackName} (${region})`;
+          console.error(`[Drift] ${label}: ${msg}`);
+          if (a.json) {
+            // A deleted stack is the STRONGEST drift, not a pre-check error: emit
+            // drifted:1 + stackDeleted:true (NOT the jsonError shape, which is
+            // drifted:0 + `error` reserved for stacks that failed BEFORE being checked).
+            // Without this a consumer summing `drifted` sees ZERO on an exit-1 run. (#871)
+            jsonReports.push(deletedStackReport(label));
+          } else {
+            // Text mode: a stdout `result:` line so the documented `^result:` grep catches
+            // the deleted stack too (the [Drift] detail above is on stderr like other
+            // notes). Without it, `check | grep '^result:'` misses the deleted stack. (#871)
+            console.log(
+              `${style.resultLabel('result:')} ${style.drift('1 drift(s)')} — ${label}: stack deleted out of band`
+            );
+          }
           // Drift, not an error: gate on --fail exactly like a per-stack drift code (R53), and
           // make --strict fail regardless (a missing whole stack is the ultimate coverage gap).
           worst = Math.max(worst, finalCheckExit(1, a.fail), a.strict ? 1 : 0);

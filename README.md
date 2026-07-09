@@ -579,8 +579,19 @@ element so a consumer sees which stacks ran: it carries `"error": "<reason>"` al
 `"drifted": 0` and an empty `"findings": []`. (`error` is absent on a
 successfully-checked stack.)
 
+A **stack deleted out of band** — its committed baseline proves it was once deployed but
+it is now gone from CloudFormation — is the strongest drift, so it carries
+`"drifted": 1` and `"stackDeleted": true` (never `"error"`, which is reserved for a
+pre-check failure). A consumer summing `drifted` across stacks therefore sees the
+deletion instead of a misleading zero.
+
+If the whole invocation fails before any stack is reached (bad config, an
+un-synthesizable app, or a zero-stack app), stdout is still a valid empty array
+`[]` (exit code non-zero, the reason on stderr) — never empty bytes.
+
 Each stack element is `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`
-(`error` added only on failure). Each **finding** has a stable shape:
+(`error` added only on a pre-check failure; `stackDeleted: true` only on a deleted
+stack). Each **finding** has a stable shape:
 
 - Always present: `tier`, `logicalId`, `resourceType`, `path`.
 - Usually present: `desired`, `actual`, `note`, `physicalId`, `constructPath` (any of
