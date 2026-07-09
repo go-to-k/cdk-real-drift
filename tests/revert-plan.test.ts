@@ -461,6 +461,214 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#912: undeclared ClientVpnEndpoint VpnPort -> add op writing the 443 KNOWN_DEFAULTS default, not a no-op remove', () => {
+    // AWS::EC2::ClientVpnEndpoint VpnPort is a CLIENT_VPN_SCALAR_PARAMS writer prop: a bare
+    // `remove` deletes the key from the desired model, the selective ModifyClientVpnEndpoint
+    // writer skips the now-undefined param, and nothing is sent (#912). Revert must write the
+    // 443 KNOWN_DEFAULTS default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::ClientVpnEndpoint',
+      path: 'VpnPort',
+      actual: 1194,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/VpnPort',
+      value: 443,
+      prior: 1194,
+    });
+  });
+
+  it('#912: undeclared ClientVpnEndpoint DisconnectOnSessionTimeout -> add op writing the true KNOWN_DEFAULTS default', () => {
+    // Same selective-writer no-op class as VpnPort; write the `true` KNOWN_DEFAULTS default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::ClientVpnEndpoint',
+      path: 'DisconnectOnSessionTimeout',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DisconnectOnSessionTimeout',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#912: undeclared ClientVpnEndpoint SplitTunnel -> add op writing the false default (REVERT_SET_DEFAULT_VALUES)', () => {
+    // SplitTunnel folds atDefault as a trivial-empty `false` (no KNOWN_DEFAULTS value), so an
+    // out-of-band `true` is otherwise unrevertable — a bare `remove` is dropped by the
+    // selective writer. The `false` default is sourced from REVERT_SET_DEFAULT_VALUES (the
+    // EnableDns64 pattern). Revert must write `false` explicitly (#912).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::ClientVpnEndpoint',
+      path: 'SplitTunnel',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SplitTunnel',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#912: undeclared DocDB DBCluster Port -> add op writing the 27017 KNOWN_DEFAULTS default, not a no-op remove', () => {
+    // AWS::DocDB::DBCluster Port is inside the ModifyDBCluster writer allowlist: a `remove`
+    // empties the desired model, the writer sends nothing (`if (!any) return`) — a silent
+    // no-op (#912). Revert must write the 27017 KNOWN_DEFAULTS default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::DocDB::DBCluster',
+      path: 'Port',
+      actual: 27018,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Port',
+      value: 27017,
+      prior: 27018,
+    });
+  });
+
+  it('#912: undeclared DocDB DBCluster BackupRetentionPeriod -> add op writing the 1 KNOWN_DEFAULTS default', () => {
+    // Same ModifyDBCluster selective-writer no-op class as Port; write the 1-day default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::DocDB::DBCluster',
+      path: 'BackupRetentionPeriod',
+      actual: 7,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/BackupRetentionPeriod',
+      value: 1,
+      prior: 7,
+    });
+  });
+
+  it('#912: undeclared DocDB DBCluster DeletionProtection -> add op writing the false default (REVERT_SET_DEFAULT_VALUES)', () => {
+    // DeletionProtection folds atDefault as a trivial-empty `false` (no KNOWN_DEFAULTS value),
+    // so an out-of-band `true` — a real blocking mutation — is otherwise unrevertable. The
+    // `false` default is sourced from REVERT_SET_DEFAULT_VALUES. Revert must write `false`
+    // explicitly (#912).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::DocDB::DBCluster',
+      path: 'DeletionProtection',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DeletionProtection',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#912: undeclared DocDB DBInstance CACertificateIdentifier -> add op writing the default CA, not a no-op remove', () => {
+    // AWS::DocDB::DBInstance CACertificateIdentifier is inside the ModifyDBInstance writer
+    // allowlist: a `remove` empties the desired model, the writer sends nothing — a silent
+    // no-op (#912). Revert must write the default CA ('rds-ca-rsa2048-g1') explicitly (which
+    // reboots the instance with ApplyImmediately).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::DocDB::DBInstance',
+      path: 'CACertificateIdentifier',
+      actual: 'rds-ca-2019',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/CACertificateIdentifier',
+      value: 'rds-ca-rsa2048-g1',
+      prior: 'rds-ca-2019',
+    });
+  });
+
+  it('#912: undeclared OpenSearch Domain IPAddressType -> add op writing the ipv4 KNOWN_DEFAULTS default, not a no-op remove', () => {
+    // AWS::OpenSearchService::Domain IPAddressType folds atDefault from KNOWN_DEFAULTS. The
+    // UpdateDomainConfig writer is a documented SELECTIVE API — a `remove` fires it with only
+    // {DomainName} (successful no-op, #912) so remove-by-omission can never converge. Revert
+    // must write the 'ipv4' default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::OpenSearchService::Domain',
+      path: 'IPAddressType',
+      actual: 'dualstack',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/IPAddressType',
+      value: 'ipv4',
+      prior: 'dualstack',
+    });
+  });
+
+  it('#912: undeclared OpenSearch Domain SnapshotOptions -> add op writing the whole KNOWN_DEFAULTS default object', () => {
+    // Same UpdateDomainConfig selective no-op class; write the whole KNOWN_DEFAULTS default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::OpenSearchService::Domain',
+      path: 'SnapshotOptions',
+      actual: { AutomatedSnapshotStartHour: 3 },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SnapshotOptions',
+      value: { AutomatedSnapshotStartHour: 0 },
+      prior: { AutomatedSnapshotStartHour: 3 },
+    });
+  });
+
+  it('#912: undeclared OpenSearch Domain AdvancedOptions -> add op writing the whole KNOWN_DEFAULTS default object', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::OpenSearchService::Domain',
+      path: 'AdvancedOptions',
+      actual: { override_main_response_version: 'true' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AdvancedOptions',
+      value: {
+        override_main_response_version: 'false',
+        'rest.action.multi.allow_explicit_index': 'true',
+      },
+      prior: { override_main_response_version: 'true' },
+    });
+  });
+
+  it('#912: undeclared OpenSearch Domain DeploymentStrategyOptions -> add op writing the whole KNOWN_DEFAULTS default object', () => {
+    // DeploymentStrategyOptions is additionally absent from OS_UPDATABLE_OPTIONS (a #804
+    // allowlist gap); this entry ensures revert PLANS the correct set-default rather than a
+    // bare `remove`.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::OpenSearchService::Domain',
+      path: 'DeploymentStrategyOptions',
+      actual: { DeploymentStrategy: 'Custom' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DeploymentStrategyOptions',
+      value: { DeploymentStrategy: 'CapacityOptimized' },
+      prior: { DeploymentStrategy: 'Custom' },
+    });
+  });
+
   it('Transfer Server SecurityPolicyName (SET-DEFAULT) -> add op writing the default policy, not a no-op remove', () => {
     // AWS::Transfer::Server SecurityPolicyName is in REVERT_SET_DEFAULT_PATHS: UpdateServer
     // leaves the policy UNCHANGED when it is OMITTED, so a bare `remove` of an out-of-band
