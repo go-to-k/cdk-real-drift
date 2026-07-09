@@ -1,3 +1,12 @@
+## [0.2.78](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.77...v0.2.78) (2026-07-09)
+
+
+### Bug Fixes
+
+* **diff:** unmask declared-false/live-true drift for truthy-boolean KNOWN_DEFAULTS pins ([#929](https://github.com/go-to-k/cdk-real-drift/issues/929)) ([#934](https://github.com/go-to-k/cdk-real-drift/issues/934)) ([0a41d9f](https://github.com/go-to-k/cdk-real-drift/commit/0a41d9fb2a511aac590e068403defd4eb8f1e95e))
+* **noise:** fold Lambda Function URL Cors AllowHeaders/ExposeHeaders case-insensitively ([#874](https://github.com/go-to-k/cdk-real-drift/issues/874)) ([#933](https://github.com/go-to-k/cdk-real-drift/issues/933)) ([b77b18b](https://github.com/go-to-k/cdk-real-drift/commit/b77b18bc3ccd064086331eb7d53831225589dcaf))
+* **revert:** bar Cloud Control update revert for types with no update handler ([#908](https://github.com/go-to-k/cdk-real-drift/issues/908)) ([#937](https://github.com/go-to-k/cdk-real-drift/issues/937)) ([768a0cb](https://github.com/go-to-k/cdk-real-drift/commit/768a0cba6656e3733f01b1945dd6b6d50ae60cf3))
+
 ## [0.2.77](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.76...v0.2.77) (2026-07-09)
 
 
