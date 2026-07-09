@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { baselineValueMatches } from '../src/baseline/baseline-file.js';
 
 // #807: `baselineValueMatches` must be REFLEXIVE — `baselineValueMatches(v, v)`
