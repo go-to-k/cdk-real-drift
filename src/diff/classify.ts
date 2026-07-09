@@ -1700,7 +1700,20 @@ export function classifyResource(
   const underFreeFormMap = (schemaPath: string): boolean =>
     freeFormMapPaths.some((ff) => schemaPath.startsWith(`${ff}.`));
   const emitNested = (path: string, value: unknown): void => {
-    if (isAllAwsTags(value) || isTrivialEmpty(value)) return;
+    if (isTrivialEmpty(value)) return;
+    // #863: `isAllAwsTags` matches two shapes — an ARRAY of `{Key:'aws:*'}` (an unambiguous
+    // tag LIST: AWS-managed system tags, always safe to drop) and an OBJECT whose keys are
+    // all `aws:*` (a MAP-shaped tag, e.g. UserPoolTags — BUT ALSO an IAM policy Condition
+    // OPERATOR map like `{aws:SourceAccount: ...}`). Dropping the object form unconditionally
+    // (no parent-key gate — the R69 confusion `stripAwsTagsDeep` already fixed) hid an
+    // out-of-band Condition operator added under a declared statement: a security FN that
+    // survived `record`. Gate the object form on the parent key being a tag property
+    // (`*Tags`); the array form still drops unconditionally.
+    if (isAllAwsTags(value)) {
+      const isObjectForm = value !== null && typeof value === 'object' && !Array.isArray(value);
+      const parentKey = (path.split('.').pop() ?? '').replace(/\[.*$/, '');
+      if (!isObjectForm || /tags$/i.test(parentKey)) return;
+    }
     const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
     // Same subset-tolerant default match as the top-level atDefault compare: an
     // OBJECT-valued nested default (CloudFront GeoRestriction, Scheduler RetryPolicy,
