@@ -225,6 +225,12 @@ this arms the cleanup gate:**
 .claude/skills/hunt-bugs/bughunt-track.sh add CdkRealDriftIntegS3Rich CdkRealDriftIntegVpcCommon ...
 ```
 
+(The `deploy-autoarm-gate` hook also arms a generic `autoarm` token on any deploy as
+a backstop, but `add` with the real stack names gives the clearer gate message.) **Tag
+every fixture `cdkrd:ephemeral=1`** (`Tags.of(app).add('cdkrd:ephemeral','1')` in
+`app.ts`) so the generic tag net in `sweep-orphans.sh` catches any resource type it has
+no per-type rule for.
+
 ### 3. Deploy (parallel, capped) + check
 
 Run the `verify.sh` set in parallel (≤3–4). Each `verify.sh` MUST have a cleanup
@@ -370,8 +376,11 @@ Then fix it:
 
 ### 7. Cleanup — non-negotiable (see below), then ship
 
-Delete every tracked stack, run `bughunt-track.sh verify`, then `clear`. Then
-`/check` + `/check-docs` markers → commit → push → `/verify-pr` → `gh pr create`.
+Run **`/sweep-resources`** — the shared cleanup phase: it deletes every tracked stack
+with `delstack`, sweeps the stack-external orphans (IAM roles, log groups, RETAIN
+resources, tagged-any-type), verifies `SWEEP CLEAN`, and releases the gate
+(`bughunt-track.sh verify` → `clear`, incl. the `autoarm` owner). Then `/check` +
+`/check-docs` markers → commit → push → `/verify-pr` → `gh pr create`.
 
 ### 8. Merge + remove the worktree
 
