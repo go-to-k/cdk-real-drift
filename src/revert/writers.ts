@@ -588,10 +588,23 @@ const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
   let any = false;
   for (const op of ops) {
     const top = op.path.replace(/^\//, '').split('/')[0];
-    if (top && DOCDB_CLUSTER_MODIFY_PARAMS.has(top) && desired[top] !== undefined) {
+    if (!top || !DOCDB_CLUSTER_MODIFY_PARAMS.has(top)) continue;
+    if (desired[top] !== undefined) {
       input[top] = desired[top];
-      any = true;
+    } else {
+      // A `remove` op (the desired value is now ABSENT) needs an EXPLICIT clearing value, or
+      // ModifyDBCluster — a selective/partial modify — keeps the live value and the revert
+      // silently non-converges (#913). DeletionProtection clears with an explicit `false`
+      // (ModifyDBCluster accepts DeletionProtection=false); BackupRetentionPeriod /
+      // PreferredBackupWindow / PreferredMaintenanceWindow / Port have NO expressible selective
+      // clear (AWS-assigned / required), so bar them honestly.
+      if (top === 'DeletionProtection') input.DeletionProtection = false;
+      else
+        throw new Error(
+          `DocDB DBCluster ${top} cannot be cleared via ModifyDBCluster (its unset state is AWS-assigned/required, not expressible in a selective modify); update it manually`
+        );
     }
+    any = true;
   }
   if (!any) return;
   await new DocDBClient({ region: ctx.region }).send(new ModifyDBClusterCommand(input));
@@ -624,10 +637,22 @@ const writeDocDbInstance: SdkWriter = async (ctx, ops) => {
   let any = false;
   for (const op of ops) {
     const top = op.path.replace(/^\//, '').split('/')[0];
-    if (top && DOCDB_INSTANCE_MODIFY_PARAMS.has(top) && desired[top] !== undefined) {
+    if (!top || !DOCDB_INSTANCE_MODIFY_PARAMS.has(top)) continue;
+    if (desired[top] !== undefined) {
       input[top] = desired[top];
-      any = true;
+    } else {
+      // A `remove` op needs an EXPLICIT clearing value, or ModifyDBInstance — a selective/partial
+      // modify — keeps the live value and the revert silently non-converges (#913).
+      // EnablePerformanceInsights clears with an explicit `false` (ModifyDBInstance accepts it);
+      // DBInstanceClass / PreferredMaintenanceWindow / CACertificateIdentifier have NO expressible
+      // selective clear (AWS-assigned / required), so bar them honestly.
+      if (top === 'EnablePerformanceInsights') input.EnablePerformanceInsights = false;
+      else
+        throw new Error(
+          `DocDB DBInstance ${top} cannot be cleared via ModifyDBInstance (its unset state is AWS-assigned/required, not expressible in a selective modify); update it manually`
+        );
     }
+    any = true;
   }
   if (!any) return;
   await new DocDBClient({ region: ctx.region }).send(new ModifyDBInstanceCommand(input));
@@ -1725,15 +1750,41 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
   const input: { ClientVpnEndpointId: string; [k: string]: unknown } = { ClientVpnEndpointId: id };
   let any = false;
   const tops = new Set(ops.map((op) => op.path.replace(/^\//, '').split('/')[0] ?? ''));
+  // A `remove` op (revert of an OOB-added value back to unset) must send an EXPLICIT clearing value
+  // — ModifyClientVpnEndpoint is a selective modify, so an omitted field keeps the live value and
+  // the revert silently non-converges (#913). Some clears are expressible, some are not.
+  const removed = (field: string): boolean =>
+    ops.some((o) => o.op === 'remove' && (o.path.replace(/^\//, '').split('/')[0] ?? '') === field);
   for (const top of tops) {
-    if (CLIENT_VPN_SCALAR_PARAMS.has(top) && desired[top] !== undefined) {
-      input[top] = desired[top];
-      any = true;
-    } else if (top === 'ConnectionLogOptions' && desired.ConnectionLogOptions !== undefined) {
-      input.ConnectionLogOptions = desired.ConnectionLogOptions;
-      any = true;
+    if (CLIENT_VPN_SCALAR_PARAMS.has(top)) {
+      if (desired[top] !== undefined) {
+        input[top] = desired[top];
+        any = true;
+      } else if (removed(top)) {
+        // ModifyClientVpnEndpoint expresses a clear for Description ('') and the booleans
+        // (SplitTunnel=false, DisconnectOnSessionTimeout=false); VpnPort / SessionTimeoutHours are
+        // numbers with NO expressible unset, so bar them honestly.
+        if (top === 'Description') input.Description = '';
+        else if (top === 'SplitTunnel') input.SplitTunnel = false;
+        else if (top === 'DisconnectOnSessionTimeout') input.DisconnectOnSessionTimeout = false;
+        else
+          throw new Error(
+            `EC2 ClientVpnEndpoint ${top} cannot be cleared via ModifyClientVpnEndpoint (its unset state is not expressible in a selective modify); update it manually`
+          );
+        any = true;
+      }
+    } else if (top === 'ConnectionLogOptions') {
+      if (desired.ConnectionLogOptions !== undefined) {
+        input.ConnectionLogOptions = desired.ConnectionLogOptions;
+        any = true;
+      } else if (removed('ConnectionLogOptions'))
+        throw new Error(
+          'EC2 ClientVpnEndpoint ConnectionLogOptions cannot be cleared via ModifyClientVpnEndpoint (its unset state is not expressible in a selective modify); update it manually'
+        );
     } else if (top === 'DnsServers') {
       const list = desired.DnsServers as string[] | undefined;
+      // An empty/absent desired list is itself an expressible clear ({Enabled:false}), so a
+      // DnsServers `remove` converges honestly here — no bar needed.
       input.DnsServers =
         Array.isArray(list) && list.length > 0
           ? { CustomDnsServers: list, Enabled: true }
@@ -1746,7 +1797,10 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
         input.SecurityGroupIds = list;
         input.VpcId = vpcId;
         any = true;
-      }
+      } else if (removed('SecurityGroupIds'))
+        throw new Error(
+          'EC2 ClientVpnEndpoint SecurityGroupIds cannot be cleared via ModifyClientVpnEndpoint (an endpoint cannot revert to no security group in a selective modify); update it manually'
+        );
     }
   }
   if (!any) return;

@@ -1511,6 +1511,34 @@ describe('DocDB DBCluster writer (CC read+write gap)', () => {
     expect(docdb.commandCalls(ModifyDBClusterCommand)).toHaveLength(0);
   });
 
+  it('clears an OOB-added DeletionProtection on a remove (explicit false), not a silent drop (#984)', async () => {
+    stubClusterRead({ DeletionProtection: true });
+    docdb.on(ModifyDBClusterCommand).resolves({});
+    await SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [
+      { op: 'remove', path: '/DeletionProtection', human: 'DeletionProtection -> (none)' },
+    ]);
+    const calls = docdb.commandCalls(ModifyDBClusterCommand);
+    expect(calls).toHaveLength(1);
+    // an omitted DeletionProtection would keep the live `true` (selective ModifyDBCluster) — the
+    // revert must send an explicit `false` so protection actually clears
+    expect(calls[0]!.args[0].input).toEqual({
+      DBClusterIdentifier: CLID,
+      ApplyImmediately: true,
+      DeletionProtection: false,
+    });
+  });
+
+  it('bars a BackupRetentionPeriod remove honestly (AWS-assigned unset, not expressible, #984)', async () => {
+    stubClusterRead();
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [
+        { op: 'remove', path: '/BackupRetentionPeriod', human: 'BackupRetentionPeriod -> (none)' },
+      ])
+    ).rejects.toThrow(/BackupRetentionPeriod cannot be cleared/);
+    // never a silent no-op that reports success
+    expect(docdb.commandCalls(ModifyDBClusterCommand)).toHaveLength(0);
+  });
+
   it('throws when the cluster identifier is unresolvable', async () => {
     await expect(
       SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: '', declared: {} }), [retentionOp(3)])
@@ -1556,6 +1584,39 @@ describe('DocDB DBInstance writer (CC read+write gap; mirror of the cluster writ
     await SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
       { op: 'add', path: '/AutoMinorVersionUpgrade', value: false, human: 'x' },
     ]);
+    expect(docdb.commandCalls(ModifyDBInstanceCommand)).toHaveLength(0);
+  });
+
+  it('clears an OOB-added EnablePerformanceInsights on a remove (explicit false), not a silent drop (#984)', async () => {
+    stubInstanceRead({ EnablePerformanceInsights: true });
+    docdb.on(ModifyDBInstanceCommand).resolves({});
+    await SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
+      {
+        op: 'remove',
+        path: '/EnablePerformanceInsights',
+        human: 'EnablePerformanceInsights -> (none)',
+      },
+    ]);
+    const calls = docdb.commandCalls(ModifyDBInstanceCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      DBInstanceIdentifier: IID,
+      ApplyImmediately: true,
+      EnablePerformanceInsights: false,
+    });
+  });
+
+  it('bars a PreferredMaintenanceWindow remove honestly (AWS-assigned unset, not expressible, #984)', async () => {
+    stubInstanceRead();
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
+        {
+          op: 'remove',
+          path: '/PreferredMaintenanceWindow',
+          human: 'PreferredMaintenanceWindow -> (none)',
+        },
+      ])
+    ).rejects.toThrow(/PreferredMaintenanceWindow cannot be cleared/);
     expect(docdb.commandCalls(ModifyDBInstanceCommand)).toHaveLength(0);
   });
 
@@ -2012,6 +2073,48 @@ describe('EC2 ClientVpnEndpoint writer (NON_PROVISIONABLE; ModifyClientVpnEndpoi
       SecurityGroupIds: ['sg-111'],
       VpcId: 'vpc-abc',
     });
+  });
+
+  it('clears OOB-added scalar props on a remove (Description="", SplitTunnel/DisconnectOnSessionTimeout=false), not a silent drop (#984)', async () => {
+    stubRead({ Description: 'oob', SplitTunnel: true, DisconnectOnSessionTimeout: true });
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+      { op: 'remove', path: '/Description', human: 'Description -> (none)' },
+      { op: 'remove', path: '/SplitTunnel', human: 'SplitTunnel -> (none)' },
+      {
+        op: 'remove',
+        path: '/DisconnectOnSessionTimeout',
+        human: 'DisconnectOnSessionTimeout -> (none)',
+      },
+    ]);
+    // omitting these from a selective ModifyClientVpnEndpoint would keep the live values — the
+    // revert must send explicit clears so they actually converge
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)[0]!.args[0].input).toEqual({
+      ClientVpnEndpointId: CVID,
+      Description: '',
+      SplitTunnel: false,
+      DisconnectOnSessionTimeout: false,
+    });
+  });
+
+  it('bars a VpnPort remove honestly (numeric unset not expressible, #984)', async () => {
+    stubRead();
+    await expect(
+      SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+        { op: 'remove', path: '/VpnPort', human: 'VpnPort -> (none)' },
+      ])
+    ).rejects.toThrow(/VpnPort cannot be cleared/);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)).toHaveLength(0);
+  });
+
+  it('bars a SecurityGroupIds remove honestly (cannot revert to no SG, #984)', async () => {
+    stubRead({ SecurityGroupIds: ['sg-111'] });
+    await expect(
+      SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+        { op: 'remove', path: '/SecurityGroupIds', human: 'SecurityGroupIds -> (none)' },
+      ])
+    ).rejects.toThrow(/SecurityGroupIds cannot be cleared/);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)).toHaveLength(0);
   });
 
   it('throws when the endpoint id is unresolvable', async () => {
