@@ -1,3 +1,10 @@
+## [0.2.67](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.66...v0.2.67) (2026-07-09)
+
+
+### Bug Fixes
+
+* **revert:** derive EventBusPolicy ARN partition from region (GovCloud/China) ([#916](https://github.com/go-to-k/cdk-real-drift/issues/916)) ([b11b281](https://github.com/go-to-k/cdk-real-drift/commit/b11b281fd19b6ddff9e1e1a335557641ee7a4522))
+
 ## [0.2.66](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.65...v0.2.66) (2026-07-09)
 
 
