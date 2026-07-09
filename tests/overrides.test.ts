@@ -3292,9 +3292,36 @@ describe('SDK supplements', () => {
     expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).toBeUndefined();
   });
 
-  it('Lex::Bot: a reconstruction error (ListBotLocales rejects) is non-fatal → undefined', async () => {
-    lex.on(ListBotLocalesCommand).rejects(new Error('AccessDenied'));
-    expect(await SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).toBeUndefined();
+  it('Lex::Bot: a lexv2 API failure PROPAGATES (throws) so the router #752 readGap degrade fires (#964)', async () => {
+    // A principal missing lex:ListBotLocales (or any of the 8 read perms) makes the FIRST
+    // list call reject. supplementLexBot must NOT swallow it to undefined (indistinguishable
+    // from "nothing to add" at the router → BotLocales, exempted from the writeOnly strip,
+    // false-flags the whole model as declared drift). It must THROW so router.ts catches it
+    // and runs restoreSupplementReadGaps (+ the loud stderr warning).
+    lex.on(ListBotLocalesCommand).rejects(new Error('AccessDeniedException'));
+    await expect(SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).rejects.toThrow(
+      'AccessDeniedException'
+    );
+  });
+
+  it('Lex::Bot: a DEEP-walk failure (DescribeSlot rejects) also propagates, not a partial model (#964)', async () => {
+    // A failure mid-reconstruction (here a missing lex:DescribeSlot) must also throw rather
+    // than swallow to a PARTIAL/undefined model — same #752 degrade, deeper in the N+1 walk.
+    lex.on(ListBotLocalesCommand).resolves({ botLocaleSummaries: [{ localeId: 'en_US' }] });
+    lex.on(DescribeBotLocaleCommand).resolves({ localeId: 'en_US' });
+    lex.on(ListSlotTypesCommand).resolves({ slotTypeSummaries: [] });
+    lex.on(ListIntentsCommand).resolves({ intentSummaries: [{ intentId: 'I_ORDER' }] });
+    lex.on(DescribeIntentCommand, { intentId: 'I_ORDER' }).resolves({
+      intentId: 'I_ORDER',
+      intentName: 'CdkrdOrder',
+    });
+    lex.on(ListSlotsCommand, { intentId: 'I_ORDER' }).resolves({
+      slotSummaries: [{ slotId: 'SL_SIZE' }],
+    });
+    lex.on(DescribeSlotCommand, { slotId: 'SL_SIZE' }).rejects(new Error('AccessDeniedException'));
+    await expect(SDK_SUPPLEMENTS['AWS::Lex::Bot'](ctx({}, 'I3PRF2VKMG'))).rejects.toThrow(
+      'AccessDeniedException'
+    );
   });
 
   it('Lex::Bot: undefined (skipped) when the physical id is empty', async () => {
