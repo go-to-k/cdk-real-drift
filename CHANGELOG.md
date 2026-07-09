@@ -1,3 +1,10 @@
+## [0.2.64](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.63...v0.2.64) (2026-07-09)
+
+
+### Bug Fixes
+
+* **revert:** paginate Lex structural-revert list calls (slot types / intents / slots) ([#753](https://github.com/go-to-k/cdk-real-drift/issues/753)) ([#838](https://github.com/go-to-k/cdk-real-drift/issues/838)) ([15415f1](https://github.com/go-to-k/cdk-real-drift/commit/15415f15756b26d768ccc965e223e037325086f3))
+
 ## [0.2.63](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.62...v0.2.63) (2026-07-09)
 
 
