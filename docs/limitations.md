@@ -68,11 +68,8 @@ the full design.
   Known CC-unreadable common types with no SDK override yet (all surface as
   `skipped`, never false drift): ACM `Certificate` and ELBv2
   `ListenerCertificate` (also impractical to live-test — ACM validation blocks
-  the create); CloudWatch `AnomalyDetector` and `InsightRule` (SDK-override
-  candidates); and `AWS::EC2::VPCCidrBlock` (composite `[Id, VpcId]` id whose
-  CFn physical id is only the child segment — an adapter candidate, though it is
-  an immutable association, so nothing can drift). Coverage gaps, not false
-  negatives.
+  the create); and CloudWatch `InsightRule` (an SDK-override candidate). Coverage
+  gaps, not false negatives.
 - **Non-ASCII template literals.** CloudFormation's `GetTemplate` (cdkrd's
   declared source) returns every non-ASCII character in a stored string literal
   as a literal `?` — so a declared value like an `AWS::SSM::Parameter`
