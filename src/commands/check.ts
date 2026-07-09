@@ -262,7 +262,13 @@ export async function runCheck(args: string[]): Promise<number> {
     return 2;
   }
   if (stacks.length === 0) {
-    console.error('note: the CDK app defines no stacks — nothing to check');
+    // Under --json the whole stdout stream is a single JSON.parse-able value (an
+    // array of per-stack reports, printed once at the end). The zero-stack early
+    // return happens BEFORE that print, so without this a consumer's
+    // JSON.parse(stdout) throws on '' while the exit code reads success (#885).
+    // Emit the empty array to keep the contract; the human note stays on stderr.
+    if (a.json) console.log('[]');
+    else console.error('note: the CDK app defines no stacks — nothing to check');
     return 0;
   }
 
