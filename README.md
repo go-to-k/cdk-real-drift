@@ -345,7 +345,7 @@ CI (with `--yes`).
 
 | option                     | meaning                                                                                                                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--region <r>`             | AWS region (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`); else `env.region` per stack, else the `--profile`'s region                                                                          |
+| `--region <r>`             | a stack's own `env.region` ALWAYS wins; for an env-AGNOSTIC stack (no `env`) it falls back to `--region` (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`), else the `--profile`'s region         |
 | `--profile <p>`            | AWS profile (or `$AWS_PROFILE`)                                                                                                                                                            |
 | `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                                                               |
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                                                                 |
@@ -353,14 +353,14 @@ CI (with `--yes`).
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                                                                       |
 | `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                                                                      |
 | `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`                                               |
-| `--show-all`               | inventory mode: show all current undeclared state, ignoring the baseline                                                                                                                   |
-| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the per-reason not-revertable summary to full lists                                                                              |
+| `--show-all`               | (check) inventory mode: show all current undeclared state, ignoring the baseline                                                                                                           |
+| `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the not-revertable summary to full lists; (record) itemizes nested sub-keys in the multiselect                                   |
 | `--pre-deploy`             | (check) compare live vs the LOCAL synth template: the declared drift your next `cdk deploy` would silently overwrite                                                                       |
 | `--undeclared-only`        | (check) undeclared drift only: pair cdkrd with `cdk drift` for the declared side                                                                                                           |
 | `--declared-only`          | (check) declared drift vs the deployed template only (undeclared tier skipped; baseline untouched). Not `--pre-deploy`                                                                     |
 | `--dry-run`                | (revert) print the plan; make no changes                                                                                                                                                   |
 | `--wait[=DURATION]`        | (revert) on a transient "resource is mid-update" error (e.g. Route53Resolver `RSLVR-00705`) keep retrying until it settles, up to DURATION (default `10m`; e.g. `--wait=5m`, `--wait=90s`) |
-| `--remove-unrecorded`      | (revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them                                            |
+| `--remove-unrecorded`      | (revert, and check for its inline revert) REMOVE unrecorded values + DELETE unrecorded added resources in a no-prompt run (`--yes`/CI); an interactive revert already lists them           |
 | `--yes` / `-y`             | skip confirmations (revert apply; record records all without the multiselect)                                                                                                              |
 
 Unknown options (`--apq`) and options missing their value (`--app` at the end of
@@ -371,8 +371,10 @@ the line) are errors (exit `2`): a typo'd flag never silently becomes a stack na
 Every option runs exactly the same code as the standalone commands. Prompts are
 skipped under `--json`, `--show-all`, `--pre-deploy`, and `--fail`. A non-TTY run
 never prompts: a required write decision without `--yes` errors with exit 2 (the
-safe side); `--yes` alone in a TTY auto-approves confirmations only (select prompts
-still show).
+safe side); `--yes` in a TTY skips the write confirmation AND each verb's selection
+multiselect — `record` records ALL, `ignore` ignores ALL, `revert` applies the full
+plan. Only `check`'s action menu (Record / Revert / Ignore / …) still shows under
+`--yes`.
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
 Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
@@ -577,7 +579,9 @@ valid JSON value nor JSONL; multi-stack `--json` was unparseable — issue #755.
 A **stack that errored or was skipped** before it could be checked still appears as an
 element so a consumer sees which stacks ran: it carries `"error": "<reason>"` alongside
 `"drifted": 0` and an empty `"findings": []`. (`error` is absent on a
-successfully-checked stack.)
+successfully-checked stack.) Its `stack` is `"<name> (<region>)"` as usual, EXCEPT
+when the failure is that no region could be resolved for the stack — then `stack`
+is the bare `"<name>"` (no ` (<region>)` suffix), since there is no region to name.
 
 A **stack deleted out of band** — its committed baseline proves it was once deployed but
 it is now gone from CloudFormation — is the strongest drift, so it carries
@@ -625,6 +629,17 @@ Optional per-finding fields, present only when they apply:
 - `modelReadFailed` (`true`) — an `added` resource whose full live model could not be
   read this run (`actual` is only the enumerator's identity snippet); it exists but is
   not change-watchable until the next check.
+- `wholeArrayRevert` (`{ path, value }`) — **internal, revert-only** metadata on a
+  `declared` per-element finding inside an unordered object-array (a set the
+  service reorders — SecurityGroup rules, PrefixList entries, …): it carries the
+  WHOLE declared array so `revert` replaces the array as a unit instead of
+  index-patching a sorted position that does not map to the live index.
+  Display-only for the report; a consumer can ignore it.
+- `siblingPolicyNames` (`"unresolved"`) — **internal, revert-only** sentinel on a
+  `declared` IAM Role `Policies` finding whose sibling `AWS::IAM::Policy` names
+  could not be resolved; `revert` reads it and refuses to act (a per-entry revert
+  could delete a managed inline policy). The only emitted value is the
+  `"unresolved"` string; a consumer can ignore it.
 - On an `added` finding, `desired` carries the **recorded baseline model** and `actual`
   the live one (so a recorded `added` resource that changed shows the delta), and
   `unrecorded` marks a never-recorded one as potential drift.

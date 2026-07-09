@@ -69,8 +69,10 @@ OPTIONS
   --remove-unrecorded         (revert) REMOVE unrecorded values + DELETE unrecorded
                               added resources (never recorded; default: refuse —
                               record the ones that are right)
-  --yes, -y                   skip confirmation (revert) / overwrite notice (record) /
-                              ignore ALL shown drift without the multiselect (ignore)
+  --yes, -y                   skip the write confirm AND the op multiselect — apply the
+                              FULL plan (revert) / skip the selection multiselect +
+                              overwrite notice, record ALL (record) / ignore ALL shown
+                              drift without the multiselect (ignore)
   --help, -h    --version, -v
 
   Automation: check --fail / record --yes / ignore --yes / revert --yes (or
