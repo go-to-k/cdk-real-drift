@@ -15,6 +15,10 @@ import { parse as parseYaml } from 'yaml';
 // entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // A server certificate declared without a Path reads back "/" (the IAM default),
+  // exactly like Role/kin above. Equality-gated, so an out-of-band UpdateServerCertificate
+  // path move still surfaces. Live-confirmed (#910).
+  'AWS::IAM::ServerCertificate': { Path: '/' },
   // An App Runner service that declares neither HealthCheckConfiguration nor
   // NetworkConfiguration reads both back fully materialized with AWS's constant
   // first-run defaults — a TCP health check and a public IPV4 DEFAULT-egress network.
@@ -1129,8 +1133,18 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ApiGateway::Method': {
     ApiKeyRequired: false,
   },
+  // A minimal ApplicationInsights application (only ResourceGroupName declared) reads back
+  // CWEMonitorEnabled=true even though the CFn schema annotates its default as false — AWS
+  // assigns true at creation. Equality-gated, so disabling it (false) still surfaces.
+  // Live-confirmed (#841); sibling AutoConfigurationEnabled/OpsCenterEnabled=false already
+  // fold via schema defaults.
+  'AWS::ApplicationInsights::Application': { CWEMonitorEnabled: true },
   'AWS::ApiGatewayV2::Route': {
     ApiKeyRequired: false,
+    // A route declared without an authorizer reads back AuthorizationType="NONE" (the
+    // majority of WebSocket/HTTP-API routes). Equality-gated, so switching to
+    // AWS_IAM/CUSTOM/JWT still surfaces. Live-confirmed (#873).
+    AuthorizationType: 'NONE',
   },
   'AWS::ElasticLoadBalancingV2::ListenerRule': {
     IsDefault: false, // a declared rule is never the listener's default rule
@@ -2084,6 +2098,11 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
     ServiceLinkedRoleARN:
       'arn:{partition}:iam::{accountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling',
   },
+  // A LakeFormation Tag that declares no CatalogId reads back the deploying account id — the
+  // default (own-account) Data Catalog. The bare `{accountId}` placeholder substitutes to the
+  // account id; equality-gated, so a Tag pointed at another account's catalog still surfaces.
+  // Live-confirmed (#914).
+  'AWS::LakeFormation::Tag': { CatalogId: '{accountId}' },
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
