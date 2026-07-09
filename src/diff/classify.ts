@@ -990,6 +990,22 @@ function collectNestedUndeclared(
     return;
   }
   if (!isNestedObject(declaredVal) || !isNestedObject(liveVal)) return;
+  // A free-form map (Glue Table `Parameters`, API Gateway Method `RequestParameters`,
+  // map Tags, ECS `DockerLabels`, parameter-group entries) can hold live-only keys that
+  // contain the path grammar's separators — an Athena `projection.enabled`, a
+  // `method.request.querystring.x`, a `app.kubernetes.io/name` tag, a key with `[`/`]`.
+  // Descending would build a child path like `Parameters.projection.enabled` that every
+  // downstream consumer (`toPointer` for the revert JSON-pointer, the baseline
+  // `topSegment`, the ignore-rule glob) RE-SPLITS on `.`/`[`, landing on the WRONG
+  // location — a misdirected revert write and a silently ineffective ignore/baseline
+  // rule. Mirror the declared-side guard (drift-calculator `hasPathUnsafeKey`): when any
+  // key would corrupt the path, don't descend — emit the whole map at the current (safe)
+  // path so the revert rewrites the map as a unit and the finding path carries no
+  // ambiguous segment.
+  if (Object.keys(liveVal).some((k) => PATH_UNSAFE_KEY.test(k))) {
+    emit(path, liveVal);
+    return;
+  }
   for (const [k, val] of Object.entries(liveVal)) {
     const childPath = `${path}.${k}`;
     if (k in declaredVal)
@@ -997,6 +1013,12 @@ function collectNestedUndeclared(
     else emit(childPath, val);
   }
 }
+
+// A key that contains the path grammar's separators (`.`, `[`, `]`). Descending into
+// such a key would produce a finding path that downstream consumers re-split into the
+// wrong location — so a map holding one is emitted whole at its parent path. Mirrors
+// drift-calculator's declared-side `PATH_UNSAFE_KEY` guard for the undeclared side.
+const PATH_UNSAFE_KEY = /[.[\]]/;
 
 // Bring a raw Cloud Control live model into the SAME canonical, noise-subtracted form
 // classify's live side uses: strip AWS-managed fields + `aws:*` tags, reconcile OAI
