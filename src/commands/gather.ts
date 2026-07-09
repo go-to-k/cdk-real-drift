@@ -14,6 +14,8 @@ import { READ_RETRY } from '../read/client-config.js';
 import {
   fetchManagedAliasTargets,
   kmsListAliasesDeniedWarning,
+  kmsListAliasesTransientWarning,
+  type ManagedAliasTargets,
   usesManagedKmsAlias,
 } from '../read/kms-aliases.js';
 import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
@@ -45,6 +47,37 @@ function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string
 // (a multi-stack run in the same region should not repeat it). Process-lifetime (matches
 // the per-region alias cache in kms-aliases.ts).
 const kmsDeniedWarned = new Set<string>();
+
+/**
+ * Decide + emit the kms:ListAliases degradation warning for a stack that declares an
+ * AWS-managed alias (R115 / #963). Two outcomes must NOT be conflated:
+ *   - DEFINITIVE denial (missing kms:ListAliases, cached by fetchManagedAliasTargets):
+ *     print the permanent "grant IAM for full coverage" warning ONCE per region (dedupe
+ *     via `deniedWarned`), because the whole region is degraded for the rest of the run.
+ *   - TRANSIENT failure (throttle / 5xx / network, NOT cached): print the "this is NOT an
+ *     IAM problem; no action needed" warning per stack and — critically — do NOT stamp
+ *     `deniedWarned`. The region is not poisoned, so the next stack in it re-queries and
+ *     may succeed silently (or surface a genuine denial that must still be reported).
+ * #789 stopped CACHING the transient result but left this WARNING half on the wrong
+ * branch (it printed the permanent-denied warning and poisoned the dedupe). `log` is
+ * injectable so both branches are unit-tested without running the whole gather.
+ */
+export function warnKmsAliasResolution(
+  resolved: ManagedAliasTargets,
+  region: string,
+  deniedWarned: Set<string>,
+  log: (msg: string) => void = console.error
+): void {
+  if (!resolved.denied) return;
+  if (resolved.transient) {
+    log(kmsListAliasesTransientWarning(region));
+    return;
+  }
+  if (!deniedWarned.has(region)) {
+    deniedWarned.add(region);
+    log(kmsListAliasesDeniedWarning(region));
+  }
+}
 
 // Bounded-concurrency live-read pool (pull-next-when-free): serial reads cost
 // ~300ms each, so 200+ resources took >1min; the SDK's adaptive retry handles
@@ -551,10 +584,7 @@ export async function gatherFindings(
   if (desired.resources.some((r) => usesManagedKmsAlias(r.declared))) {
     const resolved = await fetchManagedAliasTargets(region);
     kmsAliasTargets = resolved.targets;
-    if (resolved.denied && !kmsDeniedWarned.has(region)) {
-      kmsDeniedWarned.add(region);
-      console.error(kmsListAliasesDeniedWarning(region));
-    }
+    warnKmsAliasResolution(resolved, region, kmsDeniedWarned);
   }
   const classifyOpts = {
     accountId: desired.accountId,
