@@ -301,4 +301,11 @@ describe('#847 AutoScaling ScheduledAction StartTime / EndTime (undeclared, time
     expect(pathsByTier(f, 'atDefault')).toContain('EndTime');
     expect(pathsByTier(f, 'undeclared')).not.toContain('EndTime');
   });
+  it('surfaces a real out-of-band EndTime timestamp (not value-independent) (#946)', () => {
+    // A real end time set out of band (the scheduled action silently expires) must NOT fold:
+    // EndTime is a tier-1 equality-gated "null" constant, so any other value surfaces.
+    const f = classifyResource(res, { EndTime: '2026-07-10T00:00:00Z' }, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('EndTime');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('EndTime');
+  });
 });
