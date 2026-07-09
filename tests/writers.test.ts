@@ -759,6 +759,30 @@ describe('EventBusPolicy writer (CC RFC6902 patch fails on a singular-object Sta
       )
     ).rejects.toThrow(/StatementId/);
   });
+
+  it('uses the region partition for the legacy Action+Principal ARNs (GovCloud aws-us-gov, #865)', async () => {
+    eventbridge.on(DescribeEventBusCommand).resolves({
+      Policy: JSON.stringify({ Version: '2012-10-17', Statement: [] }),
+    });
+    await SDK_WRITERS['AWS::Events::EventBusPolicy'](
+      ebpCtx({
+        region: 'us-gov-west-1',
+        declared: {
+          EventBusName: 'mybus',
+          StatementId: 'AllowSelfPutEvents',
+          Action: 'events:PutEvents',
+          Principal: '123456789012',
+        },
+      }),
+      []
+    );
+    const policy = JSON.parse(
+      eventbridge.commandCalls(PutPermissionCommand)[0].args[0].input.Policy as string
+    );
+    const stmt = policy.Statement[0];
+    expect(stmt.Principal.AWS).toBe('arn:aws-us-gov:iam::123456789012:root');
+    expect(stmt.Resource).toBe('arn:aws-us-gov:events:us-gov-west-1:123456789012:event-bus/mybus');
+  });
 });
 
 describe('OpenSearch Domain writer (CC UpdateResource rejects on override_main_response_version)', () => {
