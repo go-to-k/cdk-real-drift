@@ -1,3 +1,12 @@
+## [0.2.65](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.64...v0.2.65) (2026-07-09)
+
+
+### Bug Fixes
+
+* **config:** reject all-wildcard ignore paths and bound path globs at '/' ([#861](https://github.com/go-to-k/cdk-real-drift/issues/861)) ([25ec0ff](https://github.com/go-to-k/cdk-real-drift/commit/25ec0ff74f54a1c2a217164205a62159527ba66a))
+* **desired:** restrict YAML 1.1 schema — no implicit Date, no single-letter Y/N booleans ([#860](https://github.com/go-to-k/cdk-real-drift/issues/860)) ([750c9fc](https://github.com/go-to-k/cdk-real-drift/commit/750c9fcf1ade8ce99056d1d5e73fa6fe05b103cf))
+* **normalize:** harden intrinsic resolver (Fn::Sub/Fn::Join guards, Fn::GetAtt long-form string, Fn::Cidr) ([#859](https://github.com/go-to-k/cdk-real-drift/issues/859)) ([671397e](https://github.com/go-to-k/cdk-real-drift/commit/671397eb0fed909fd70a7dcf50a4a0d2cf85a6ef))
+
 ## [0.2.64](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.63...v0.2.64) (2026-07-09)
 
 
