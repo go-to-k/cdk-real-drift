@@ -1,3 +1,10 @@
+## [0.3.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.3.0...v0.3.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **config:** ignore-rule '/'-subtree coverage (parent rule + added ARN ids) ([#903](https://github.com/go-to-k/cdk-real-drift/issues/903)) ([#993](https://github.com/go-to-k/cdk-real-drift/issues/993)) ([4ca9040](https://github.com/go-to-k/cdk-real-drift/commit/4ca90408417c49ba3ff3770894bd6bc25a4df54a))
+
 # [0.3.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.79...v0.3.0) (2026-07-09)
 
 
