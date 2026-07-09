@@ -1,3 +1,12 @@
+## [0.2.77](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.76...v0.2.77) (2026-07-09)
+
+
+### Bug Fixes
+
+* **baseline:** complete identity guards (stackName/region/record-account/schemaVersion) ([#870](https://github.com/go-to-k/cdk-real-drift/issues/870)) ([#940](https://github.com/go-to-k/cdk-real-drift/issues/940)) ([de96d4a](https://github.com/go-to-k/cdk-real-drift/commit/de96d4aea36972918f19b6d48830534e5b68df3d))
+* **noise:** fold first-run FP defaults — SG IpProtocol, S3 AccessPoint, ImageBuilder ([#877](https://github.com/go-to-k/cdk-real-drift/issues/877), [#919](https://github.com/go-to-k/cdk-real-drift/issues/919), [#911](https://github.com/go-to-k/cdk-real-drift/issues/911)) ([#939](https://github.com/go-to-k/cdk-real-drift/issues/939)) ([c334b48](https://github.com/go-to-k/cdk-real-drift/commit/c334b4818ecdec413ed4076f48b14f10ecad4304))
+* **synth:** surface missing-context dummy lookup values (--pre-deploy) ([#907](https://github.com/go-to-k/cdk-real-drift/issues/907)) ([#938](https://github.com/go-to-k/cdk-real-drift/issues/938)) ([0940535](https://github.com/go-to-k/cdk-real-drift/commit/0940535742fe7e77b6c7dabf3cacc53d880fb3d4))
+
 ## [0.2.76](https://github.com/go-to-k/cdk-real-drift/compare/v0.2.75...v0.2.76) (2026-07-09)
 
 
