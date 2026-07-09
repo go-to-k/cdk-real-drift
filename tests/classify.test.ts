@@ -10319,14 +10319,17 @@ describe('#531 EKS + Athena first-run default folds', () => {
       // #555: KubernetesNetworkConfig is fully undeclared but DESCENDED — its constant IpFamily
       // folds here (ElasticLoadBalancing {Enabled:false} drops as trivially-empty).
       'KubernetesNetworkConfig.IpFamily',
+      // #979: ServiceIpv4Cidr is one of two documented constants (KNOWN_DEFAULT_ONE_OF_PATHS).
+      'KubernetesNetworkConfig.ServiceIpv4Cidr',
       'ResourcesVpcConfig.ControlPlaneEgressMode',
       'ResourcesVpcConfig.EndpointPublicAccess',
       'ResourcesVpcConfig.PublicAccessCidrs',
       'UpgradePolicy',
+      // #979: the undeclared Version is the moving service-default GA (value-independent).
+      'Version',
     ]);
-    // The per-deploy-variable bits are deliberately still surfaced (record-worthy). #555:
-    // only the residue ServiceIpv4Cidr surfaces now, not the whole KubernetesNetworkConfig.
-    expect(t.undeclared).toEqual(['KubernetesNetworkConfig.ServiceIpv4Cidr', 'Version']);
+    // #979: both per-deploy-variable bits now fold per the zero-first-run invariant.
+    expect(t.undeclared).toEqual([]);
   });
 
   it('EKS Cluster: an out-of-band-narrowed PublicAccessCidrs still surfaces (equality-gated)', () => {
@@ -10347,7 +10350,7 @@ describe('#531 EKS + Athena first-run default folds', () => {
     expect(t.atDefault).toEqual([]);
   });
 
-  it('EKS Addon: kube-system NamespaceConfig folds; AddonVersion stays record-worthy', () => {
+  it('EKS Addon: kube-system NamespaceConfig folds; AddonVersion folds value-independent (#979)', () => {
     const res: DesiredResource = {
       logicalId: 'Addon',
       resourceType: 'AWS::EKS::Addon',
@@ -10366,8 +10369,8 @@ describe('#531 EKS + Athena first-run default folds', () => {
         emptySchema
       )
     );
-    expect(t.atDefault).toEqual(['NamespaceConfig']);
-    expect(t.undeclared).toEqual(['AddonVersion']);
+    expect(t.atDefault).toEqual(['AddonVersion', 'NamespaceConfig']);
+    expect(t.undeclared).toEqual([]);
   });
 
   it('EKS AccessEntry: derived Username folds value-independent; a declared Username is compared', () => {
@@ -10635,7 +10638,7 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
     declared: {},
   });
 
-  it('EKS KubernetesNetworkConfig: fold IpFamily default + drop empty ELB, surface only the CIDR residue', () => {
+  it('EKS KubernetesNetworkConfig: fold IpFamily + ServiceIpv4Cidr defaults, drop empty ELB (#979)', () => {
     const t = tiers(
       classifyResource(
         bare('AWS::EKS::Cluster'),
@@ -10649,12 +10652,16 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
         emptySchema
       )
     );
-    // the whole object is NO LONGER one undeclared finding — it is split leaf-by-leaf
-    expect(t.undeclared).toEqual(['KubernetesNetworkConfig.ServiceIpv4Cidr']);
-    expect(t.atDefault).toEqual(['KubernetesNetworkConfig.IpFamily']);
+    // #979: the whole object is split leaf-by-leaf; both the IpFamily constant AND the
+    // ServiceIpv4Cidr two-constant default now fold (zero first-run residue).
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual([
+      'KubernetesNetworkConfig.IpFamily',
+      'KubernetesNetworkConfig.ServiceIpv4Cidr',
+    ]);
   });
 
-  it('equality-gated: a non-default IpFamily (ipv6) surfaces as undeclared, not folded', () => {
+  it('equality-gated: a non-default IpFamily (ipv6) surfaces; the CIDR still folds (#979)', () => {
     const t = tiers(
       classifyResource(
         bare('AWS::EKS::Cluster'),
@@ -10662,11 +10669,9 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
         emptySchema
       )
     );
-    expect(t.undeclared.sort()).toEqual([
-      'KubernetesNetworkConfig.IpFamily',
-      'KubernetesNetworkConfig.ServiceIpv4Cidr',
-    ]);
-    expect(t.atDefault).toEqual([]);
+    // ipv6 is a real opt-in (surfaces); the CIDR 10.100.0.0/16 is one of the two folded constants.
+    expect(t.undeclared).toEqual(['KubernetesNetworkConfig.IpFamily']);
+    expect(t.atDefault).toEqual(['KubernetesNetworkConfig.ServiceIpv4Cidr']);
   });
 
   it('a fully-undeclared object NOT in the allowlist stays ONE whole undeclared finding (no fragmentation)', () => {

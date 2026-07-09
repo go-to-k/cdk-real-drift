@@ -147,7 +147,7 @@
       "constructPath": "CdkRealDriftIntegDogfoodEks/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::EKS::Cluster",
       "path": "KubernetesNetworkConfig.ServiceIpv4Cidr",

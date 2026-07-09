@@ -77,7 +77,7 @@
       "constructPath": "CdkRealDriftIntegEksRich/Addon"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Addon",
       "resourceType": "AWS::EKS::Addon",
       "path": "AddonVersion",
