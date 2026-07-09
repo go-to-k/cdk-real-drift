@@ -220,10 +220,16 @@ export function ignoreRuleFor(
   accountId = '',
   region = ''
 ): IgnoreRuleObject {
-  const id =
+  const withinStack =
     finding.constructPath && finding.tier !== 'added'
       ? withinStackPath(finding.constructPath, stackName)
       : finding.logicalId;
+  // `withinStackPath` returns '' when the construct path is the stack root itself
+  // (`'MyStack/'` -> ''); with an empty `finding.path` that would strip the id to '' and
+  // yield `rule.path === ''` — the exact empty-path poison pill `loadConfig` rejects
+  // (issue #991). Fall back to `logicalId` (the CloudFormation key, ALWAYS present and
+  // non-empty) so the id — and thus the rule path — can never be empty.
+  const id = withinStack || finding.logicalId;
   // A finding path can legitimately CONTAIN a literal `*` / `?`: an API Gateway
   // `MethodSettings[*]` bracket key (from `HttpMethod: '*'`), an S3 lifecycle `Id`
   // like `clean*tmp`, a free-form Glue/ECS map key. Written verbatim, the glob matcher
@@ -331,6 +337,15 @@ export async function addIgnoreRules(
 ): Promise<{ path: string; added: IgnoreRuleObject[]; alreadyPresent: IgnoreRuleObject[] }> {
   const config = await loadConfig(); // validates first — a malformed file throws, not overwritten
   const { added, alreadyPresent } = mergeIgnoreRules(config.ignore, newRules);
+  // Re-validate the rules we are ABOUT to write with the SAME guards `loadConfig` applies
+  // on read (`validateIgnoreEntry`: empty-path + `isUniversalPath` + typed keys). This is
+  // the write-side twin of the read-side fail-fast: without it, a rule whose `path` is
+  // empty (`""`) or an all-wildcard universal pattern (`"*/*"`, `"**"`) would be written
+  // silently, then detonate (exit 2) on the NEXT `loadConfig` — which every verb calls —
+  // permanently bricking the file, i.e. the user's own `ignore` silently disables the
+  // tool (issue #991). Fail fast BEFORE writeFile so `ignore` can never write a poison
+  // pill (also self-guards a hand-authored bad rule appended through the verb).
+  added.forEach((rule, i) => validateIgnoreEntry(rule, i));
   // Only touch disk when something actually changed — an all-already-present run leaves
   // the file (and its git status) untouched.
   if (added.length > 0) {
