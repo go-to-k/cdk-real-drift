@@ -300,7 +300,7 @@ Full design and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | --------------------- | ------------------------------------------------------------- |
 | `cdkrd check`         | every stack the CDK app defines, each in its own `env.region` |
 | `cdkrd check 'Dev*'`  | glob, matched against the app's stack names                   |
-| `cdkrd check MyStack` | one stack, selected by name from the app                      |
+| `cdkrd check MyStack` | every same-named stack (a name can repeat across regions)     |
 
 cdkrd resolves your CDK app to discover which stacks exist and to label findings by
 construct path. The app comes from `cdk.json` (when run in the project directory) or
