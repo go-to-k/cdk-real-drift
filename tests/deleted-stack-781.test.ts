@@ -130,6 +130,62 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
     });
   });
 
+  // #1046: when the CURRENT account id is known (resolved from any successfully-checked
+  // sibling stack in the same `check` run), the `<accountId>` segment is PINNED — the
+  // account-axis twin of the #942 region gate. A baseline for the same stack+region but a
+  // DIFFERENT account must NOT match, or a stack never deployed in the current account is
+  // falsely reported "deleted out of band" merely because ANOTHER account's baseline exists.
+  describe('#1046 hasBaselineForStack pins the account segment when the account is known', () => {
+    const CURRENT = ACCOUNT; // 111122223333 — the account this run operates in
+    const OTHER = '999988887777'; // a DIFFERENT account with a same-name+region baseline
+
+    it('does NOT match a DIFFERENT account baseline when the current account is known', async () => {
+      // Multi-account pattern: account A recorded a baseline; we now `check` in account B
+      // where the stack was never deployed. Wildcarding the account falsely matches A.
+      await writeBaseline(STACK, OTHER, REGION);
+      expect(hasBaselineForStack(STACK, REGION, CURRENT)).toBe(false); // pinned → no false drift
+      expect(hasBaselineForStack(STACK, REGION)).toBe(true); // account unknown → #942 wildcard
+    });
+
+    it('DOES match the CURRENT account baseline (genuine deleted-out-of-band drift)', async () => {
+      await writeBaseline(STACK, CURRENT, REGION);
+      expect(hasBaselineForStack(STACK, REGION, CURRENT)).toBe(true);
+    });
+
+    it('with a known account, still requires the REGION to match too (#942 stays intact)', async () => {
+      await writeBaseline(STACK, CURRENT, 'us-east-1');
+      expect(hasBaselineForStack(STACK, 'eu-west-1', CURRENT)).toBe(false); // wrong region
+      expect(hasBaselineForStack(STACK, 'us-east-1', CURRENT)).toBe(true); // right region+account
+    });
+
+    it('with a known account, matches a case-differing on-disk baseline (#986 stays intact)', async () => {
+      // The account+region tail is compared case-insensitively alongside the stack prefix.
+      await writeBaseline('mystack', CURRENT, REGION);
+      expect(hasBaselineForStack('MyStack', REGION, CURRENT)).toBe(true);
+    });
+
+    it('with a known account, when ONLY the other account baseline exists → no match', async () => {
+      // Both baselines absent for CURRENT: only OTHER present. Pinned probe answers false.
+      await writeBaseline(STACK, OTHER, 'us-east-1');
+      await writeBaseline(STACK, OTHER, 'eu-west-1');
+      expect(hasBaselineForStack(STACK, REGION, CURRENT)).toBe(false);
+    });
+
+    it('with a known account, still guards against a bare-prefix collision', async () => {
+      // `MyStackExtra.<current>.<region>.json` must NOT satisfy the `MyStack` probe.
+      await writeBaseline('MyStackExtra', CURRENT, REGION);
+      expect(hasBaselineForStack(STACK, REGION, CURRENT)).toBe(false);
+    });
+
+    it('an empty-string account id is treated as unknown (falls back to region-only)', async () => {
+      // `desired.accountId` derives from a stackId ARN split — a malformed ARN yields ''.
+      // Guard against pinning `..<region>` (which would match nothing): '' is falsy so it
+      // takes the #942 wildcard path, preserving the pre-#1046 signal rather than breaking.
+      await writeBaseline(STACK, ACCOUNT, REGION);
+      expect(hasBaselineForStack(STACK, REGION, '')).toBe(true);
+    });
+  });
+
   describe('exit-code contract of the not-deployed catch (#781)', () => {
     it('baseline present + --fail → exit 1 (deleted-out-of-band drift fails)', async () => {
       await writeBaseline(STACK, ACCOUNT, REGION);

@@ -225,16 +225,25 @@ export function finalCheckExit(code: number, fail: boolean): number {
 }
 
 /**
- * #781: does a committed baseline exist for this stack IN THE REGION being checked?
- * A committed baseline is named `<stackName>.<accountId>.<region>.json` under
- * `.cdkrd/baselines/`. The gone stack's ACCOUNT is unknown without an STS call, so it
- * stays wildcarded; but the REGION being checked IS known (the loop's `region`), and a
+ * #781: does a committed baseline exist for this stack IN THE ACCOUNT + REGION being
+ * checked? A committed baseline is named `<stackName>.<accountId>.<region>.json` under
+ * `.cdkrd/baselines/`. The REGION being checked IS known (the loop's `region`), and a
  * baseline recorded for THIS stack in THIS region carries exactly that region in its
- * filename — so we require the `.<region>.json` suffix. A prior baseline in this region
- * is PROOF the stack was once deployed THERE, which distinguishes "deleted out of band"
- * (real drift) from "never deployed yet" (a benign skip). Without the region gate, a
- * same-named stack that was never deployed in region B but has a baseline in region A is
- * falsely reported "deleted out of band" (#942).
+ * filename — so we require the `.<region>.json` suffix. A prior baseline in this
+ * account+region is PROOF the stack was once deployed THERE, which distinguishes
+ * "deleted out of band" (real drift) from "never deployed yet" (a benign skip). Without
+ * the region gate, a same-named stack that was never deployed in region B but has a
+ * baseline in region A is falsely reported "deleted out of band" (#942).
+ *
+ * #1046: the ACCOUNT segment is pinned too when the current account id is known. Under
+ * the documented multi-account pattern, a same-named stack that was never deployed in
+ * account B but has a baseline in account A (same region) was falsely reported "deleted
+ * out of band" — the account-axis twin of #942. The gone stack's own account is unknown
+ * without an STS call, but every stack in a single `check` run shares the SAME
+ * credentials/account, so the caller threads the account id resolved from any
+ * successfully-described sibling stack. When it is genuinely unknown (this is the only
+ * stack in the run and it failed to describe), `accountId` is undefined and the account
+ * segment stays wildcarded — the #942 region gate is still the best available signal.
  *
  * #986: the match is CASE-INSENSITIVE (both sides lowercased) so it answers consistently
  * with `loadBaseline`, whose `readFile` opens the file case-insensitively on macOS/Windows.
@@ -244,7 +253,11 @@ export function finalCheckExit(code: number, fail: boolean): number {
  * The baselines directory is derived from `baselinePath` so the layout stays single-sourced.
  * Pure (filesystem-only, no AWS) + exported for unit tests. Missing dir → false.
  */
-export function hasBaselineForStack(stackName: string, region: string): boolean {
+export function hasBaselineForStack(
+  stackName: string,
+  region: string,
+  accountId?: string
+): boolean {
   const dir = dirname(baselinePath(stackName, 'a', 'r'));
   let entries: string[];
   try {
@@ -253,7 +266,10 @@ export function hasBaselineForStack(stackName: string, region: string): boolean 
     return false; // no `.cdkrd/baselines/` directory at all → nothing was ever recorded
   }
   const prefix = `${stackName}.`.toLowerCase();
-  const suffix = `.${region}.json`.toLowerCase();
+  // #1046: pin the `.<accountId>.<region>.json` tail when the account is known so a
+  // baseline for the SAME stack+region but a DIFFERENT account no longer matches. When
+  // unknown, fall back to the #942 `.<region>.json` region-only suffix.
+  const suffix = (accountId ? `.${accountId}.${region}.json` : `.${region}.json`).toLowerCase();
   return entries.some((f) => {
     const lower = f.toLowerCase();
     return lower.startsWith(prefix) && lower.endsWith(suffix);
@@ -383,6 +399,12 @@ export async function runCheck(args: string[]): Promise<number> {
 
   let worst = 0;
   let anyDrift = false; // for the report-only hint (R53)
+  // #1046: the current account id, captured from the FIRST successfully-described stack
+  // in this run. Every stack in a single `check` shares the same credentials/account, so
+  // once any stack resolves it, a LATER stack that fails to describe (deleted out of band)
+  // can pin the `<accountId>` segment of its baseline filename — instead of wildcarding it
+  // and falsely matching another account's baseline for the same stack+region.
+  let currentAccountId: string | undefined;
   // #755: in --json mode each stack's report object is COLLECTED here and a single
   // top-level JSON ARRAY (one element per stack) is printed once, after the loop —
   // instead of each stack's report() printing its own pretty-printed object inline,
@@ -441,6 +463,9 @@ export async function runCheck(args: string[]): Promise<number> {
         () => gatherFindings(stackName, region, synthTemplates?.get(sKey), template)
       );
       const { desired, schemas, liveByLogical } = gathered;
+      // #1046: remember the account this run is operating in (same for every stack) so a
+      // later deleted-out-of-band stack can pin its baseline filename's account segment.
+      currentAccountId ??= desired.accountId;
       let findings = gathered.findings;
 
       // Loudly flag incomplete coverage — a CLEAN verdict must never silently hide an
@@ -674,7 +699,7 @@ export async function runCheck(args: string[]): Promise<number> {
         // proof the stack was once deployed, so its presence promotes this from a benign skip
         // (exit 0) to real drift: the deployed state is GONE. Without this, `check --fail`
         // (and `--strict`) exit 0 on a deleted stack, indistinguishable from never-deployed.
-        if (hasBaselineForStack(stackName, region)) {
+        if (hasBaselineForStack(stackName, region, currentAccountId)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
           const label = `${stackName} (${region})`;
           console.error(`[Drift] ${label}: ${msg}`);
