@@ -1,3 +1,10 @@
+# [0.10.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.14...v0.10.0) (2026-07-10)
+
+
+### Features
+
+* **revert:** add --force to override the [#786](https://github.com/go-to-k/cdk-real-drift/issues/786) mid-operation stack-stability refusal ([#1175](https://github.com/go-to-k/cdk-real-drift/issues/1175)) ([#1233](https://github.com/go-to-k/cdk-real-drift/issues/1233)) ([1a69536](https://github.com/go-to-k/cdk-real-drift/commit/1a69536bcee3dda3c5223a5a3925db2aa5aaf1ae))
+
 ## [0.9.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.13...v0.9.14) (2026-07-10)
 
 
