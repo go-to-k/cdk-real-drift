@@ -1700,6 +1700,37 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       }
     });
 
+    // #1093: Cognito reconstructs a UserPool's EnabledMfas list in its own canonical order
+    // (SetUserPoolMfaConfig takes per-method config objects, not a list) — declared
+    // ["SOFTWARE_TOKEN_MFA","SMS_MFA"] reads back ["SMS_MFA","SOFTWARE_TOKEN_MFA"], a false
+    // declared-tier drift. Set-semantic; a genuine method add/remove still changes the multiset.
+    it('UNORDERED_ARRAY_PROPS: Cognito UserPool EnabledMfas reorder is NOT drift (#1093)', () => {
+      const pool = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Pool',
+        resourceType: 'AWS::Cognito::UserPool',
+        physicalId: 'us-east-1_abc123',
+        declared,
+      });
+      // same MFA-method set, echoed in the service's canonical order -> no drift
+      expect(
+        classifyResource(
+          pool({ EnabledMfas: ['SOFTWARE_TOKEN_MFA', 'SMS_MFA'] }),
+          { EnabledMfas: ['SMS_MFA', 'SOFTWARE_TOKEN_MFA'] },
+          emptySchema
+        )
+      ).toEqual([]);
+      // a genuine added MFA method still changes the multiset -> reports declared drift
+      expect(
+        tiers(
+          classifyResource(
+            pool({ EnabledMfas: ['SMS_MFA'] }),
+            { EnabledMfas: ['SMS_MFA', 'SOFTWARE_TOKEN_MFA'] },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['EnabledMfas']);
+    });
+
     it('UNORDERED_ARRAY_PROPS: WAFv2 IPSet Addresses in a different order is NOT drift (R84)', () => {
       const ipset = (declared: Record<string, unknown>): DesiredResource => ({
         logicalId: 'IpSet',

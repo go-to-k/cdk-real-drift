@@ -4541,6 +4541,19 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   'AWS::CloudFront::Distribution': new Set([
     'DistributionConfig.Restrictions.GeoRestriction.Locations',
   ]),
+  // #1093: Cognito does NOT store a UserPool's EnabledMfas as a list — SetUserPoolMfaConfig
+  // takes per-method config objects (SmsMfaConfiguration / SoftwareTokenMfaConfiguration /
+  // EmailMfaConfiguration) and the read handler RECONSTRUCTS the EnabledMfas list in its own
+  // canonical order, so template order cannot round-trip: a clean UserPool declaring
+  // EnabledMfas ["SOFTWARE_TOKEN_MFA","SMS_MFA"] reads back ["SMS_MFA","SOFTWARE_TOKEN_MFA"],
+  // a false declared-tier drift with identical elements. The registry schema marks EnabledMfas
+  // insertionOrder:None so neither the schema fold nor the uniqueItems heuristic catches it.
+  // Set-semantic (each MFA method is present-or-not), so a positional compare false-drifts the
+  // identical method set; a genuine method add/remove still changes the multiset. Same set-
+  // reorder class as the sibling UserPoolClient lists below (#875). NOTE: scoped STRICTLY to
+  // EnabledMfas — UsernameAttributes / AutoVerifiedAttributes / AliasAttributes are genuine
+  // stored-list create-params that were live-proven ORDER-PRESERVING and are NOT folded.
+  'AWS::Cognito::UserPool': new Set(['EnabledMfas']),
   'AWS::Cognito::UserPoolClient': new Set([
     'AllowedOAuthFlows',
     'AllowedOAuthScopes',
