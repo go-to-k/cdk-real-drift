@@ -286,6 +286,53 @@ const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
 };
 
 /**
+ * #1072 — the staleness WATCH-LIST for REVERT_SET_DEFAULT_PATHS entries whose set-default
+ * WRITE value is a MOVING AWS default (a create-time default AWS advances over time), not a
+ * stable constant. Failure mode: when AWS moves the default and our pin lags, reverting an
+ * undeclared out-of-band change WRITES yesterday's default to AWS — and because the written
+ * value still equals the (also-stale) fold pin, the post-revert `check` folds it `atDefault`
+ * and reports CLEAN, so the wrong write is INVISIBLE. For a security-typed path that is a
+ * silent DOWNGRADE write (e.g. an old TLS policy). Unlike a fold-only pin (whose rot
+ * self-surfaces as a returning first-run FP via the #581 note), a revert-write pin's rot is
+ * NOT self-surfacing — hence this explicit list.
+ *
+ * This is a REVIEW artifact, not a runtime check (staleness can only be confirmed against
+ * live AWS): the guard test `revert-pin-staleness-1072` asserts every key here is a real
+ * REVERT_SET_DEFAULT_PATHS entry (so a rename/removal of a pin can't silently drop it from
+ * tracking) and that the resolved write value still matches. RE-VERIFY CADENCE: re-check each
+ * `value` against a fresh live deploy on the noted `moveAxis` at least quarterly, and
+ * whenever AWS announces a move; bump `lastVerified` when confirmed. Fold-only moving pins
+ * (ApiGateway RestApi SecurityPolicy, Logs::Delivery RecordFields, Cognito IdP token_url,
+ * EKS SupportType, Bedrock Guardrail tier configs) live in noise.ts / KNOWN_DEFAULT_PATHS and
+ * are self-surfacing (failure mode 1) — tracked there, not here.
+ */
+export interface MovingRevertPin {
+  value: unknown; // the current pinned write value (must equal the KNOWN_DEFAULTS/VALUES source)
+  lastVerified: string; // ISO date the value was last confirmed against a fresh live deploy
+  moveAxis: string; // why/how AWS may move this default (what to watch for)
+}
+export const MOVING_REVERT_PINS: Record<string, MovingRevertPin> = {
+  'AWS::Transfer::Server\0SecurityPolicyName': {
+    value: 'TransferSecurityPolicy-2018-11',
+    lastVerified: '2026-07-07',
+    moveAxis:
+      'AWS ships newer named TLS policies (2020-06 … 2024-01) and pushes TLS 1.2+ floors; a create-default bump would make revert write a TLS 1.0/1.1-era policy — a security downgrade.',
+  },
+  'AWS::Cognito::UserPool\0UserPoolTier': {
+    value: 'ESSENTIALS',
+    lastVerified: '2026-07-10',
+    moveAxis:
+      'AWS repriced/renamed the pool feature plans once already (advanced-security → feature plans, Nov 2024); a rename/re-default makes revert write a stale billing tier.',
+  },
+  'AWS::DocDB::DBInstance\0CACertificateIdentifier': {
+    value: 'rds-ca-rsa2048-g1',
+    lastVerified: '2026-07-10',
+    moveAxis:
+      'RDS/DocDB rotate the default server CA on a published schedule; a bump makes revert write a superseded CA identifier (reboots the instance onto an old cert).',
+  },
+};
+
+/**
  * A nested undeclared value (a live sub-key inside a declared object, R96/R98) — a dotted
  * path (`Conf.Destination`) or an identity-keyed array element (`Prop[<id>].sub`). Pure +
  * exported. Detected by PATH SHAPE, not just `Finding.nested`: a baseline value removed
