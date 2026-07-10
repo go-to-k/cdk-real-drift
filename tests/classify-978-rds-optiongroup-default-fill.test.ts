@@ -162,3 +162,112 @@ describe('#978 RDS OptionGroup default-fill folds to atDefault via the live cata
     expect(atDefault).toContain(p('SERVER_AUDIT_FILE_ROTATIONS'));
   });
 });
+
+// #1318 — a group declaring TWO+ options whose TEMPLATE order differs from the canonical SORT
+// order. `OptionConfigurations` is `insertionOrder:false`, so classify sorts BOTH sides by
+// canonical JSON before the positional diff — the drift record's index is the SORTED index. The
+// fold must resolve each option's NAME from the array the diff index actually refers to (the sorted
+// live element's `OptionName`), NOT the raw declared model — else the wrong catalog entry is
+// consulted and every value-bearing default of the misaligned option surfaces as first-run
+// undeclared drift. Reverse-sorted repro: raw order [MARIADB_AUDIT_PLUGIN, A_DUMMY_PLUGIN] with
+// A_DUMMY_PLUGIN sorting BEFORE MARIADB_AUDIT_PLUGIN.
+describe('#1318 multi-option group whose template order differs from canonical sort order', () => {
+  // Declared in raw order [MARIADB_AUDIT_PLUGIN, A_DUMMY_PLUGIN]; A_DUMMY_PLUGIN sorts first.
+  const declaredTwo = {
+    EngineName: 'mariadb',
+    MajorEngineVersion: '10.11',
+    OptionConfigurations: [
+      {
+        OptionName: 'MARIADB_AUDIT_PLUGIN',
+        OptionSettings: [
+          { Name: 'SERVER_AUDIT_EVENTS', Value: 'CONNECT,QUERY' },
+          { Name: 'SERVER_AUDIT_QUERY_LOG_LIMIT', Value: '2048' },
+        ],
+      },
+      {
+        OptionName: 'A_DUMMY_PLUGIN',
+        OptionSettings: [{ Name: 'DUMMY_MODE', Value: 'STRICT' }],
+      },
+    ],
+  };
+
+  // Live reads both options back with RDS's default-fill (raw live order also differs from sort).
+  const liveTwo = () => ({
+    EngineName: 'mariadb',
+    MajorEngineVersion: '10.11',
+    OptionConfigurations: [
+      {
+        OptionName: 'MARIADB_AUDIT_PLUGIN',
+        VpcSecurityGroupMemberships: [],
+        OptionSettings: [
+          { Name: 'SERVER_AUDIT_EVENTS', Value: 'CONNECT,QUERY' },
+          { Name: 'SERVER_AUDIT_QUERY_LOG_LIMIT', Value: '2048' },
+          { Name: 'SERVER_AUDIT_LOGGING', Value: 'ON' },
+          { Name: 'SERVER_AUDIT', Value: 'FORCE_PLUS_PERMANENT' },
+          { Name: 'SERVER_AUDIT_INCL_USERS' },
+        ],
+      },
+      {
+        OptionName: 'A_DUMMY_PLUGIN',
+        VpcSecurityGroupMemberships: [],
+        OptionSettings: [
+          { Name: 'DUMMY_MODE', Value: 'STRICT' },
+          { Name: 'DUMMY_LEVEL', Value: '5' },
+          { Name: 'DUMMY_FLAG', Value: 'OFF' },
+          { Name: 'DUMMY_UNSET' },
+        ],
+      },
+    ],
+  });
+
+  const catalogTwo = () => ({
+    rdsOptionSettingDefaults: {
+      [PHYS]: {
+        MARIADB_AUDIT_PLUGIN: {
+          SERVER_AUDIT_EVENTS: 'CONNECT,QUERY',
+          SERVER_AUDIT_QUERY_LOG_LIMIT: '1024',
+          SERVER_AUDIT_LOGGING: 'ON',
+          SERVER_AUDIT: 'FORCE_PLUS_PERMANENT',
+          SERVER_AUDIT_INCL_USERS: null,
+        },
+        A_DUMMY_PLUGIN: {
+          DUMMY_MODE: 'LENIENT',
+          DUMMY_LEVEL: '5',
+          DUMMY_FLAG: 'OFF',
+          DUMMY_UNSET: null,
+        },
+      },
+    },
+  });
+
+  it('folds every catalog default of BOTH options despite raw-order != sort-order (#1318)', () => {
+    const f = classifyResource(mk(declaredTwo), liveTwo(), emptySchema, catalogTwo());
+    // Both options full-fold: zero first-run undeclared drift.
+    expect(tier(f, 'undeclared')).toEqual([]);
+    const atDefault = tier(f, 'atDefault');
+    // MARIADB_AUDIT_PLUGIN default-fills.
+    for (const name of ['SERVER_AUDIT_LOGGING', 'SERVER_AUDIT', 'SERVER_AUDIT_INCL_USERS']) {
+      expect(atDefault.some((path) => path.endsWith(`[${name}]`))).toBe(true);
+    }
+    // A_DUMMY_PLUGIN default-fills (the misaligned option — the one that regressed pre-fix).
+    for (const name of ['DUMMY_LEVEL', 'DUMMY_FLAG', 'DUMMY_UNSET']) {
+      expect(atDefault.some((path) => path.endsWith(`[${name}]`))).toBe(true);
+    }
+  });
+
+  it('control: raw order == sort order (single option) still folds', () => {
+    const f = classifyResource(mk(declared), liveOptionSettings(), emptySchema, catalogOpts());
+    expect(tier(f, 'undeclared')).toEqual([]);
+  });
+
+  it('preserves out-of-band detection on the misaligned option — equality gating unchanged', () => {
+    // A_DUMMY_PLUGIN.DUMMY_FLAG flipped OFF -> ON diverges from its catalog default.
+    const live = liveTwo();
+    (live.OptionConfigurations[1].OptionSettings as Record<string, unknown>[]).find(
+      (s) => s.Name === 'DUMMY_FLAG'
+    )!.Value = 'ON';
+    const f = classifyResource(mk(declaredTwo), live, emptySchema, catalogTwo());
+    expect(tier(f, 'undeclared').some((path) => path.endsWith('[DUMMY_FLAG]'))).toBe(true);
+    expect(tier(f, 'atDefault').some((path) => path.endsWith('[DUMMY_FLAG]'))).toBe(false);
+  });
+});
