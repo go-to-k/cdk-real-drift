@@ -1,3 +1,10 @@
+## [0.5.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.1...v0.5.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** perFinding state bugs — cancelled revert mis-reported + record ran with stale config ([#761](https://github.com/go-to-k/cdk-real-drift/issues/761)) ([#1176](https://github.com/go-to-k/cdk-real-drift/issues/1176)) ([dc76b4d](https://github.com/go-to-k/cdk-real-drift/commit/dc76b4d66c889620f4b63fd5700fc715840ec01e))
+
 ## [0.5.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.0...v0.5.1) (2026-07-10)
 
 
