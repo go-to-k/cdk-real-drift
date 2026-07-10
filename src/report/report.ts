@@ -24,6 +24,7 @@ import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
 import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
+import { redactFinding, redactValue } from './redact.js';
 import { style } from './style.js';
 
 // The report header is `<stackName> (<region>)`; recover the bare stack name (used to
@@ -142,23 +143,32 @@ export function formatFinding(f: Finding, stackName = ''): string {
   const pathDisplay = f.attributeKey ? `${f.path}[${sanitizeForTerminal(f.attributeKey)}]` : f.path;
   let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${sanitizeForTerminal(f.note)}`;
+  // #798: mask a secret-bearing VALUE before it is rendered — a Lambda/CodeBuild env var, an
+  // EC2 LaunchTemplate UserData blob, an EB env-var OptionSetting. The masking is applied to
+  // the DISPLAY value only, AFTER any comparison (so a rotated secret still SURFACES as
+  // drift — detection is preserved); the path/key stays visible, only the plaintext is
+  // hidden. `redactValue` is a no-op for every non-secret path (see report/redact.ts).
+  const rt = f.resourceType;
+  const rd = (v: unknown): unknown => redactValue(rt, f.path, v);
   if (f.tier === 'declared') {
     // A map-valued drift (both sides objects) is shown as a per-KEY delta, not a truncated
     // whole-object dump (see formatMapDelta) — the user's case: one ResponseParameters
     // header value changed but the raw pair-truncation windowed on the template-vs-live key
     // ORDER and hid it. A scalar drift keeps the plain desired/actual lines.
-    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, false);
+    if (isRecord(f.desired) && isRecord(f.actual))
+      s += formatMapDelta(f.desired, f.actual, false, rt, f.path);
     else {
-      const { a: d, b: act } = jPair(f.desired, f.actual);
+      const { a: d, b: act } = jPair(rd(f.desired), rd(f.actual));
       s += `\n      desired=${style.desired(d)}\n      actual =${style.actual(act)}`;
     }
   } else if (f.tier === 'added' && f.desired !== undefined) {
     // PR4: a recorded `added` resource whose live model CHANGED since record — show the
     // recorded baseline model vs the live one so the user sees WHAT changed. Both are full
     // models (objects), so the same per-key delta applies (baseline-vs-actual labels).
-    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, true);
+    if (isRecord(f.desired) && isRecord(f.actual))
+      s += formatMapDelta(f.desired, f.actual, true, rt, f.path);
     else {
-      const { a: base, b: act } = jPair(f.desired, f.actual);
+      const { a: base, b: act } = jPair(rd(f.desired), rd(f.actual));
       s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
     }
   } else if (f.tier === 'added' && f.actual !== undefined) {
@@ -168,11 +178,11 @@ export function formatFinding(f: Finding, stackName = ''): string {
     // of a bare id+type line (the live model was previously only visible under --json). The
     // `f.actual !== undefined` guard keeps a degraded read (identity-only, no model) rendering
     // as its bare id+type line rather than a stray `actual =undefined`.
-    s += `\n      actual =${style.actual(j(f.actual))}`;
+    s += `\n      actual =${style.actual(j(rd(f.actual)))}`;
   } else if (f.tier === 'undeclared' && f.arrayDelta)
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).
-    s += formatArrayDelta(f.arrayDelta);
+    s += formatArrayDelta(f.arrayDelta, rt, f.path);
   else if (f.tier === 'undeclared' && f.desired !== undefined) {
     // #758 follow-up: a RECORDED undeclared value that CHANGED out of band since record —
     // applyBaseline (baseline-file.ts) threads the recorded baseline value onto `f.desired`
@@ -180,9 +190,10 @@ export function formatFinding(f: Finding, stackName = ''): string {
     // value changed FROM, not just the (possibly attacker-set) live value. Same `baseline`-vs-
     // `actual` wording as the recorded `added` tier: a per-key delta for maps (both objects),
     // stacked `baseline=`/`actual  =` lines for scalars.
-    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, true);
+    if (isRecord(f.desired) && isRecord(f.actual))
+      s += formatMapDelta(f.desired, f.actual, true, rt, f.path);
     else {
-      const { a: base, b: act } = jPair(f.desired, f.actual);
+      const { a: base, b: act } = jPair(rd(f.desired), rd(f.actual));
       s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
     }
   } else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
@@ -190,7 +201,7 @@ export function formatFinding(f: Finding, stackName = ''): string {
     // column — a long ARN/JSON list crammed inline after the id was unreadable, and it read
     // inconsistently next to a declared drift's stacked desired/actual. An undeclared value
     // has only the live side, so it's a single `actual =` line (no desired to contrast).
-    s += `\n      actual =${style.actual(j(f.actual))}`;
+    s += `\n      actual =${style.actual(j(rd(f.actual)))}`;
   // A non-classifying origin hint (diff/hints.ts) — the finding is still real drift; this
   // just names where the live value likely came from. Readable (style.note) trailing line
   // below the values — it is meant to be read, so NOT dim.
@@ -215,24 +226,38 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 function formatMapDelta(
   desired: Record<string, unknown>,
   actual: Record<string, unknown>,
-  baselineLabels: boolean
+  baselineLabels: boolean,
+  // #798: the finding's resourceType + the map's base path, so a per-KEY value that is
+  // secret-bearing (e.g. a Lambda `Environment.Variables` map emitted WHOLE at
+  // `Environment.Variables` — each key's effective path is `Environment.Variables.<KEY>`)
+  // is masked in its DISPLAY. Masking is applied AFTER the deepEqual compare below (which
+  // runs on the RAW value), so a changed secret still surfaces — only the printed value is
+  // hidden. Omitted (undefined) by direct unit callers → no redaction, byte-identical output.
+  resourceType?: string,
+  basePath?: string
 ): string {
   const lhs = baselineLabels ? 'baseline' : 'desired';
   const rhs = baselineLabels ? 'actual  ' : 'actual ';
   const keys = [...new Set([...Object.keys(desired), ...Object.keys(actual)])].sort();
+  // Redact the DISPLAY value for key `k` (effective path `<basePath>.<k>`) — a no-op when
+  // no resourceType/basePath is threaded, or the path is not secret-bearing.
+  const rd = (k: string, v: unknown): unknown =>
+    resourceType !== undefined && basePath !== undefined
+      ? redactValue(resourceType, `${basePath}.${k}`, v)
+      : v;
   let s = '';
   for (const k of keys) {
     const inD = Object.hasOwn(desired, k);
     const inA = Object.hasOwn(actual, k);
     if (inD && inA) {
       if (deepEqual(desired[k], actual[k])) continue;
-      const { a, b } = jPair(desired[k], actual[k]);
+      const { a, b } = jPair(rd(k, desired[k]), rd(k, actual[k]));
       const sk = sanitizeForTerminal(k);
       s += `\n      ~ ${sk}\n          ${lhs}=${style.desired(a)}\n          ${rhs}=${style.actual(b)}`;
     } else if (inD) {
-      s += `\n      - ${sanitizeForTerminal(k)} (in ${baselineLabels ? 'baseline' : 'template'}, absent in live)\n          ${lhs}=${style.desired(j(desired[k]))}`;
+      s += `\n      - ${sanitizeForTerminal(k)} (in ${baselineLabels ? 'baseline' : 'template'}, absent in live)\n          ${lhs}=${style.desired(j(rd(k, desired[k])))}`;
     } else {
-      s += `\n      + ${sanitizeForTerminal(k)} (in live, not in ${baselineLabels ? 'baseline' : 'template'})\n          ${rhs}=${style.actual(j(actual[k]))}`;
+      s += `\n      + ${sanitizeForTerminal(k)} (in live, not in ${baselineLabels ? 'baseline' : 'template'})\n          ${rhs}=${style.actual(j(rd(k, actual[k])))}`;
     }
   }
   // A whole-object swap with NO per-key difference shouldn't happen (deepEqual gates the
@@ -251,15 +276,20 @@ function formatMapDelta(
 // follow on their own indented lines (mirrors the declared tier's desired/actual
 // layout — `baseline`/`actual` are padded so the `=` aligns), so two long policy
 // documents are read top-to-bottom instead of wrapping on one line (R130).
-function formatArrayDelta(d: ArrayDelta): string {
+function formatArrayDelta(d: ArrayDelta, resourceType?: string, path?: string): string {
+  // #798: mask a secret-bearing element value in its DISPLAY (a no-op when no
+  // resourceType/path is threaded or the path is not secret-bearing). The element id
+  // (identity key) stays visible.
+  const rd = (v: unknown): unknown =>
+    resourceType !== undefined && path !== undefined ? redactValue(resourceType, path, v) : v;
   // 8 = len('baseline'); pad 'actual' to match so the '=' column lines up.
-  const baseline = (v: unknown): string => `\n          baseline=${style.desired(j(v))}`;
-  const actual = (v: unknown): string => `\n          actual  =${style.actual(j(v))}`;
+  const baseline = (v: unknown): string => `\n          baseline=${style.desired(j(rd(v)))}`;
+  const actual = (v: unknown): string => `\n          actual  =${style.actual(j(rd(v)))}`;
   let s = ` — ${sanitizeForTerminal(d.identityField)}-keyed element(s) changed vs .cdkrd baseline:`;
   for (const a of d.added) s += `\n      + [${sanitizeForTerminal(a.id)}]${actual(a.value)}`;
   for (const c of d.changed) {
     // pair-aware truncation so a long recorded-vs-live element shows WHERE it diverges
-    const { a: base, b: act } = jPair(c.recorded, c.actual);
+    const { a: base, b: act } = jPair(rd(c.recorded), rd(c.actual));
     s += `\n      ~ [${sanitizeForTerminal(c.id)}]\n          baseline=${style.desired(base)}\n          actual  =${style.actual(act)}`;
   }
   for (const r of d.removed) s += `\n      - [${sanitizeForTerminal(r.id)}]${baseline(r.value)}`;
@@ -366,8 +396,15 @@ export function buildStackJson(
   // never counted toward the verdict/exit.
   const isDriftHere = (f: Finding): boolean => DRIFT_TIERS.includes(f.tier) && !f.unrecorded;
   const drifted = findings.filter(isDriftHere).length;
+  // #798: mask secret-bearing VALUES in the --json findings (a Lambda/CodeBuild env var,
+  // an EC2 LaunchTemplate UserData blob, an EB env-var OptionSetting) BEFORE they are
+  // serialized — the raw text-path 200-char cap does not apply to --json, so an unmasked
+  // value would ship the full plaintext to a CI log. `redactFinding` preserves tier/count
+  // (detection unchanged), masking only the VALUE — so `drifted` above (counted on the raw
+  // findings) is identical either way; every non-secret finding is returned unchanged.
+  const redacted = findings.map((f) => redactFinding(f));
   return {
-    json: { stack: header, drifted, findings, baseline: hasBaseline === true },
+    json: { stack: header, drifted, findings: redacted, baseline: hasBaseline === true },
     code: drifted === 0 ? 0 : 1,
   };
 }
