@@ -712,7 +712,17 @@ const ebOptionSettingsEntryTier: NonNullable<CompositeSubsetSpec['entryTier']> =
   const arr = Array.isArray(liveArray) ? (liveArray as Record<string, unknown>[]) : [];
   const envEntry = arr.find((e) => e && e.OptionName === 'EnvironmentType');
   const envType = typeof envEntry?.Value === 'string' ? envEntry.Value : 'LoadBalanced';
-  return ebOptionSettingTier(entry.Namespace, entry.OptionName, entry.Value, envType);
+  // #893: expose the sibling option lookup so a derived default (InstanceType = the first
+  // element of the InstanceTypes option) can be computed and equality-gated.
+  const siblingOption = (ns: string, opt: string): unknown =>
+    arr.find((e) => e && e.Namespace === ns && e.OptionName === opt)?.Value;
+  return ebOptionSettingTier(
+    entry.Namespace,
+    entry.OptionName,
+    entry.Value,
+    envType,
+    siblingOption
+  );
 };
 const ebOptionSettingsSubsetSpec: CompositeSubsetSpec = {
   re: /(^|\.)OptionSettings$/,
