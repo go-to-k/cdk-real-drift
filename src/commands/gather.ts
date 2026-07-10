@@ -6,6 +6,7 @@ import {
   DescribeStackResourcesCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
+import { DescribeSecurityGroupsCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { DescribeOptionGroupOptionsCommand, RDSClient } from '@aws-sdk/client-rds';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
@@ -41,6 +42,49 @@ function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string
   const out = new Map<string, Record<string, unknown>>();
   for (const [logicalId, read] of reads) if (read.live) out.set(logicalId, read.live);
   return out;
+}
+
+// #889: resource types whose UNDECLARED default security-group list (ALB SecurityGroups / ENI
+// GroupSet) is gated in classify against the VPC-default SG ids — mirror of
+// typeNeedsManagedKeyResolution. When a stack declares one, prefetch the account/region default
+// SGs so the classifier can DERIVE-gate the fold (single default SG folds; an append/swap surfaces).
+const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
+  'AWS::ElasticLoadBalancingV2::LoadBalancer',
+  'AWS::EC2::NetworkInterface',
+]);
+
+// #889: fetch the account/region VPC-default security-group ids — one `DescribeSecurityGroups`
+// filtered by group-name=default returns exactly one default SG per VPC. Mirrors the
+// fetchManagedAliasTargets prefetch pattern: cached per region, FAIL OPEN (return an empty set on
+// ANY error — missing ec2:DescribeSecurityGroups, throttle, network) so classify keeps folding the
+// undeclared SG list and a clean deploy never gains a first-run false positive. The derived
+// swap/append detection is therefore best-effort and requires ec2:DescribeSecurityGroups.
+const defaultSgIdsCache = new Map<string, Set<string>>();
+async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
+  const cached = defaultSgIdsCache.get(region);
+  if (cached) return cached;
+  const ids = new Set<string>();
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    let token: string | undefined;
+    do {
+      const r = await c.send(
+        new DescribeSecurityGroupsCommand({
+          Filters: [{ Name: 'group-name', Values: ['default'] }],
+          NextToken: token,
+          MaxResults: 1000,
+        })
+      );
+      for (const g of r.SecurityGroups ?? []) if (g.GroupId) ids.add(g.GroupId);
+      token = r.NextToken;
+    } while (token);
+  } catch {
+    // Fail open: leave the set empty so classify keeps folding (no new first-run false positive).
+    // Not cached on error, so the next stack in the region retries (mirrors the transient path).
+    return ids;
+  }
+  defaultSgIdsCache.set(region, ids);
+  return ids;
 }
 
 // Regions already warned about a denied kms:ListAliases — the warning is one-per-region
@@ -999,10 +1043,20 @@ export async function gatherFindings(
     if (decision.stampTransient) kmsTransientWarned.add(region);
     if (decision.warning) console.error(decision.warning);
   }
+  // #889: prefetch the VPC-default security-group ids once (per region) when the stack declares an
+  // ALB or ENI, so classify can DERIVE-gate the undeclared default-SG-list fold (ALB SecurityGroups
+  // / ENI GroupSet) instead of value-independent folding it (which hid an out-of-band SG swap/append).
+  // Fail open: an empty set on missing ec2:DescribeSecurityGroups / lookup failure → classify keeps
+  // folding (no new first-run false positive). Mirrors the kmsAliasTargets prefetch above.
+  let defaultSgIds: ReadonlySet<string> = new Set();
+  if (desired.resources.some((r) => DEFAULT_SG_LIST_TYPES.has(r.resourceType))) {
+    defaultSgIds = await fetchDefaultSgIds(region);
+  }
   const classifyOpts = {
     accountId: desired.accountId,
     region,
     kmsAliasTargets,
+    defaultSgIds,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
@@ -1092,10 +1146,18 @@ export async function regatherTouched(
   // Built from desired.ctx.liveAttrs (populated by the original gather), so the OAI
   // map is complete even though regather only re-reads the touched resources.
   const oaiCanonicalIds = buildOaiCanonicalIds(desired);
+  // #889: mirror the primary gather's VPC-default-SG prefetch on the regather (revert re-check) path
+  // so the derived SG-list gate is applied identically. Cached per region, so this is a no-op read
+  // when the primary gather already resolved it. Fail open (empty set) → classify keeps folding.
+  let defaultSgIds: ReadonlySet<string> = new Set();
+  if (targets.some((r) => DEFAULT_SG_LIST_TYPES.has(r.resourceType))) {
+    defaultSgIds = await fetchDefaultSgIds(region);
+  }
   const classifyOpts = {
     accountId: desired.accountId,
     region,
     kmsAliasTargets,
+    defaultSgIds,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),

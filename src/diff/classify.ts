@@ -201,6 +201,53 @@ function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
   return features.every(atDefault);
 }
 
+// #889: UNDECLARED, MUTABLE security-group lists whose AWS first-run default is exactly the
+// resource's VPC default security group — one group. These were folded VALUE-INDEPENDENT
+// (tier 3), which HID an out-of-band SG swap/attach (`elbv2 set-security-groups`,
+// `ec2 modify-network-interface-attribute --groups`): an attacker replacing or APPENDING a
+// wide-open SG on an undeclared-SG ALB/ENI read CLEAN forever and survived record. The default
+// is a single group and DERIVABLE (tier 2): gather.ts prefetches the account/region VPC-default
+// SG ids (one `DescribeSecurityGroups(group-name=default)` call) into `opts.defaultSgIds`.
+//   `AWS::ElasticLoadBalancingV2::LoadBalancer` `SecurityGroups`
+//   `AWS::EC2::NetworkInterface` `GroupSet`
+// The gate folds ONLY when the live list is exactly ONE element AND that element is a known VPC
+// default SG id — a 2+-element list (APPEND) or a single NON-default SG (SWAP) SURFACES. We key
+// the fold on the SET of default SG ids rather than a VpcId lookup because the ALB Cloud Control
+// model carries no `VpcId` (an ENI does, but a set is uniform and needs no per-resource VpcId);
+// every VPC's default SG is an equally legitimate "AWS default", so a single-element list that is
+// any VPC default folds. Fail OPEN — when the prefetch is unavailable (missing
+// ec2:DescribeSecurityGroups / lookup failed → `defaultSgIds` undefined or empty) KEEP folding, so
+// a clean deploy never gains a first-run false positive; the derived detection is best-effort and
+// requires the DescribeSecurityGroups permission.
+const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
+  'AWS::ElasticLoadBalancingV2::LoadBalancer': 'SecurityGroups',
+  'AWS::EC2::NetworkInterface': 'GroupSet',
+};
+/** #889 fold decision for an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet).
+ *  Returns whether the value-independent fold should still apply for this live value:
+ *   - `true`  → FOLD (atDefault): the live list is a single VPC-default SG id, OR the prefetch is
+ *               unavailable (fail OPEN — no ec2:DescribeSecurityGroups / lookup failed / empty).
+ *   - `false` → SURFACE (undeclared): the live list has 2+ elements (an out-of-band SG APPEND) or
+ *               a single NON-default SG (an out-of-band SWAP) — a real, security-relevant drift.
+ *  Pure; `defaultSgIds` is the resolved set of VPC-default SG ids (undefined/empty when unresolved).*/
+export function shouldFoldDefaultSgList(
+  resourceType: string,
+  key: string,
+  liveValue: unknown,
+  defaultSgIds?: ReadonlySet<string>
+): boolean {
+  if (DEFAULT_SG_LIST_PATHS[resourceType] !== key) return false; // not a gated SG-list path
+  // Fail OPEN: no resolved default-SG ids (prefetch missing / denied / empty) → keep folding,
+  // preserving today's value-independent behavior (no new first-run false positive).
+  if (!defaultSgIds || defaultSgIds.size === 0) return true;
+  if (!Array.isArray(liveValue)) return true; // non-array live value → fold (unchanged behavior)
+  // Strict: fold ONLY a single-element list whose one SG is a known VPC default. A 2+-element
+  // list (APPEND) or a single non-default SG (SWAP) falls through to the undeclared tier.
+  return (
+    liveValue.length === 1 && typeof liveValue[0] === 'string' && defaultSgIds.has(liveValue[0])
+  );
+}
+
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
 // AWS always returns — keyed by the property -> the element's identity field. Cognito
 // UserPool `Schema` is the case: AWS returns all ~21 standard attributes (sub, email,
@@ -1610,6 +1657,11 @@ export function classifyResource(
     accountId?: string;
     region?: string;
     kmsAliasTargets?: Record<string, string>; // alias/aws/* -> target key id, for strict KMS match
+    // #889: the account/region VPC-default security-group ids (one per VPC), prefetched by
+    // gather.ts so the UNDECLARED default-SG-list fold (ALB SecurityGroups / ENI GroupSet) is a
+    // DERIVED equality gate rather than a value-independent one: a single default SG folds, a
+    // 2+-element APPEND or a single non-default SG SWAP surfaces. Undefined/empty → fail open (fold).
+    defaultSgIds?: ReadonlySet<string>;
     oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
     // Rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
@@ -3321,6 +3373,22 @@ export function classifyResource(
     if (resourceType === 'AWS::GuardDuty::Detector' && k === 'Features' && Array.isArray(v)) {
       findings.push({
         tier: guardDutyFeaturesAllAtDefault(v) ? 'atDefault' : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
+    // #889: an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet) — replaces the old
+    // value-independent fold, which hid an out-of-band SG swap/append. Fold atDefault ONLY when the
+    // live list is the single VPC-default SG (or the prefetch is unavailable → fail open); a 2+-element
+    // APPEND or a single non-default SG SWAP falls through to the undeclared tier and surfaces.
+    if (DEFAULT_SG_LIST_PATHS[resourceType] === k && !isTrivialEmpty(v)) {
+      findings.push({
+        tier: shouldFoldDefaultSgList(resourceType, k, v, opts.defaultSgIds)
+          ? 'atDefault'
+          : 'undeclared',
         logicalId,
         resourceType,
         path: k,
