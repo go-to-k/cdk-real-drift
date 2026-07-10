@@ -57,6 +57,7 @@ import {
   diffVpcChildren,
   isBodyDefinedRestApi,
   isEnumerableRoute,
+  routeDestination,
 } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
@@ -1737,14 +1738,83 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
       ).toBe(false);
     });
 
-    it('excludes an IPv6-only route (no DestinationCidrBlock)', () => {
+    // #1081: an IPv6 route (DestinationIpv6CidrBlock, e.g. a rogue `::/0`) IS a user-declarable
+    // AWS::EC2::Route and a real traffic-redirection vector — it must be enumerable. Previously
+    // dropped (the filter required a string DestinationCidrBlock), a silent FN on dual-stack VPCs.
+    it('includes an IPv6 route (DestinationIpv6CidrBlock) — #1081', () => {
       expect(
         isEnumerableRoute({
           DestinationIpv6CidrBlock: '::/0',
           Origin: 'CreateRoute',
           GatewayId: 'igw-123',
         })
+      ).toBe(true);
+    });
+
+    it('includes a managed-prefix-list route (DestinationPrefixListId) — #1081', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationPrefixListId: 'pl-0abc123',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        })
+      ).toBe(true);
+    });
+
+    it('still excludes a route with no user-declarable destination', () => {
+      expect(isEnumerableRoute({ Origin: 'CreateRoute', GatewayId: 'igw-123' })).toBe(false);
+    });
+
+    it('still excludes the auto-created VPC-local route even on the IPv6 destination', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationIpv6CidrBlock: 'fd00::/8',
+          Origin: 'CreateRouteTable',
+          GatewayId: 'local',
+        })
       ).toBe(false);
+    });
+  });
+
+  describe('routeDestination (#1081)', () => {
+    it('returns the IPv4 DestinationCidrBlock', () => {
+      expect(routeDestination({ DestinationCidrBlock: '10.0.0.0/16' })).toBe('10.0.0.0/16');
+    });
+    it('returns the IPv6 DestinationIpv6CidrBlock', () => {
+      expect(routeDestination({ DestinationIpv6CidrBlock: '::/0' })).toBe('::/0');
+    });
+    it('returns the DestinationPrefixListId', () => {
+      expect(routeDestination({ DestinationPrefixListId: 'pl-0abc123' })).toBe('pl-0abc123');
+    });
+    it('returns undefined when no destination is set (propagated/local route)', () => {
+      expect(routeDestination({ Origin: 'CreateRouteTable', GatewayId: 'local' })).toBeUndefined();
+    });
+  });
+
+  describe('diffRouteTableChildren across destination shapes (#1081)', () => {
+    it('flags an out-of-band IPv6 route with the RouteTableId|<v6-cidr> identifier', () => {
+      const added = diffRouteTableChildren({
+        routeTableId: RT,
+        declaredCidrs: [],
+        liveRoutes: [{ cidr: '::/0' }],
+      });
+      expect(added).toEqual([
+        {
+          resourceType: 'AWS::EC2::Route',
+          identifier: `${RT}|::/0`,
+          label: '::/0',
+          live: { RouteTableId: RT, CidrBlock: '::/0' },
+        },
+      ]);
+    });
+
+    it('flags a rogue prefix-list route but NOT a DECLARED one (both sides now see prefix lists)', () => {
+      const added = diffRouteTableChildren({
+        routeTableId: RT,
+        declaredCidrs: ['pl-declared'],
+        liveRoutes: [{ cidr: 'pl-declared' }, { cidr: 'pl-rogue' }],
+      });
+      expect(added.map((a) => a.identifier)).toEqual([`${RT}|pl-rogue`]);
     });
   });
 });
