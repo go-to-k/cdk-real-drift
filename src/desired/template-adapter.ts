@@ -21,6 +21,13 @@ export interface Desired {
   region: string;
   accountId: string;
   resources: DesiredResource[];
+  // CloudFormation STACK-level tags (`cdk deploy --tags`, `create-stack --tags`, StackSets,
+  // Service Catalog) as key->value — from DescribeStacks. CFN propagates these onto every
+  // taggable resource without them appearing in the template, so classify subtracts them from
+  // each resource's live `Tags` to avoid a first-run / declared-tier tag FP (#683). Optional +
+  // post-assigned below to keep loadDesired's return object literal small (a tsgolint budget
+  // quirk cascades false lint errors when that literal grows — see #683).
+  stackTags?: Record<string, string>;
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
   ctx: ResolverContext; // exposed so gather can re-resolve GetAtt once live attrs are read
   // set when the stack's StackStatus is mid-operation / failed (a comparison still runs
@@ -508,6 +515,13 @@ export async function loadDesired(
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';
 
+  // #683 — the stack's own tags (from `cdk deploy --tags` etc.). CFN propagates these onto
+  // every taggable resource without them appearing in the template; classify subtracts them.
+  const stackTags: Record<string, string> = {};
+  for (const t of stack?.Tags ?? []) {
+    if (typeof t.Key === 'string' && typeof t.Value === 'string') stackTags[t.Key] = t.Value;
+  }
+
   const stackParams: Record<string, string> = {};
   for (const p of stack?.Parameters ?? []) {
     if (!p.ParameterKey) continue;
@@ -701,7 +715,21 @@ export async function loadDesired(
           : undefined,
     });
   }
-  return { stackName, region, accountId, resources, rawTemplate, ctx, stackStatusWarning };
+  // POST-ASSIGN stackTags rather than adding it to the return literal: growing this 8-property
+  // literal trips tsgolint's whole-program type-aware pass into cascading false lint errors on
+  // UNRELATED files (tsgo typecheck is unaffected). Keeping the literal at 7 fields + a separate
+  // assignment sidesteps it. (#683.)
+  const desired: Desired = {
+    stackName,
+    region,
+    accountId,
+    resources,
+    rawTemplate,
+    ctx,
+    stackStatusWarning,
+  };
+  desired.stackTags = stackTags;
+  return desired;
 }
 
 // The IAM principal types an AWS::IAM::Policy can attach an inline policy to, via its
