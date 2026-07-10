@@ -8,13 +8,18 @@ import { describe, expect, it } from 'vite-plus/test';
 import { shouldOfferInteractiveResolve } from '../src/commands/check.js';
 import type { CommonArgs } from '../src/cli-args.js';
 
-type GateArgs = Pick<CommonArgs, 'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes'>;
+type GateArgs = Pick<
+  CommonArgs,
+  'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes' | 'declaredOnly' | 'undeclaredOnly'
+>;
 const args = (over: Partial<GateArgs> = {}): GateArgs => ({
   json: false,
   showAll: false,
   preDeploy: false,
   fail: false,
   yes: false,
+  declaredOnly: false,
+  undeclaredOnly: false,
   ...over,
 });
 // A TTY run that found drift on a baselined stack — the canonical "offer the menu" case.
