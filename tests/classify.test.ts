@@ -11486,3 +11486,105 @@ describe('#980 clean-deploy first-run folds', () => {
     expect(drifted.undeclared).toEqual(['DBSubnetGroupName']);
   });
 });
+
+describe('#975 derived-echo folds (deterministic function of declared inputs)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res = (resourceType: string, declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'R',
+    resourceType,
+    physicalId: (declared.ReplicationGroupId as string) ?? 'phys',
+    declared,
+  });
+
+  it('CE AnomalySubscription ThresholdExpression derives from the declared Threshold', () => {
+    // The service canonicalizes the JSON-string prop to compact + alphabetically-sorted keys.
+    const canonical =
+      '{"Dimensions":{"Key":"ANOMALY_TOTAL_IMPACT_ABSOLUTE","MatchOptions":["GREATER_THAN_OR_EQUAL"],"Values":["5.0"]}}';
+    const t = tiers(
+      classifyResource(
+        res('AWS::CE::AnomalySubscription', { Threshold: 5 }),
+        { ThresholdExpression: canonical },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['ThresholdExpression']);
+    expect(t.undeclared).toEqual([]);
+    // An out-of-band expression edit (different Values) still surfaces.
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::CE::AnomalySubscription', { Threshold: 5 }),
+        {
+          ThresholdExpression:
+            '{"Dimensions":{"Key":"ANOMALY_TOTAL_IMPACT_ABSOLUTE","MatchOptions":["GREATER_THAN_OR_EQUAL"],"Values":["99.0"]}}',
+        },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['ThresholdExpression']);
+  });
+
+  it('ElastiCache TransitEncryptionMode + SnapshottingClusterId fold from declared inputs', () => {
+    const t = tiers(
+      classifyResource(
+        res('AWS::ElastiCache::ReplicationGroup', {
+          ReplicationGroupId: 'cdkrd-ec-rich',
+          TransitEncryptionEnabled: true,
+        }),
+        { TransitEncryptionMode: 'required', SnapshottingClusterId: 'cdkrd-ec-rich-001' },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['SnapshottingClusterId', 'TransitEncryptionMode']);
+    expect(t.undeclared).toEqual([]);
+    // Out of band: an explicit `preferred` mode + a snapshotting cluster for an UNRELATED group
+    // both surface.
+    const drifted = tiers(
+      classifyResource(
+        res('AWS::ElastiCache::ReplicationGroup', {
+          ReplicationGroupId: 'cdkrd-ec-rich',
+          TransitEncryptionEnabled: true,
+        }),
+        { TransitEncryptionMode: 'preferred', SnapshottingClusterId: 'other-group-001' },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['SnapshottingClusterId', 'TransitEncryptionMode']);
+  });
+
+  it('TGW Route / RouteTableAssociation Id fold from the underscore-joined declared props', () => {
+    const route = tiers(
+      classifyResource(
+        res('AWS::EC2::TransitGatewayRoute', {
+          TransitGatewayRouteTableId: 'tgw-rtb-1',
+          DestinationCidrBlock: '10.99.0.0/16',
+          TransitGatewayAttachmentId: 'tgw-attach-1',
+        }),
+        { Id: 'tgw-rtb-1_10.99.0.0/16' },
+        emptySchema
+      )
+    );
+    expect(route.atDefault).toEqual(['Id']);
+    expect(route.undeclared).toEqual([]);
+    const assoc = tiers(
+      classifyResource(
+        res('AWS::EC2::TransitGatewayRouteTableAssociation', {
+          TransitGatewayAttachmentId: 'tgw-attach-1',
+          TransitGatewayRouteTableId: 'tgw-rtb-1',
+        }),
+        { Id: 'tgw-attach-1_tgw-rtb-1' },
+        emptySchema
+      )
+    );
+    expect(assoc.atDefault).toEqual(['Id']);
+    expect(assoc.undeclared).toEqual([]);
+  });
+});

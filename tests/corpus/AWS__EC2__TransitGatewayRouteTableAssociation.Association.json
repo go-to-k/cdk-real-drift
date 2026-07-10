@@ -33,7 +33,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Association",
       "resourceType": "AWS::EC2::TransitGatewayRouteTableAssociation",
       "path": "Id",
