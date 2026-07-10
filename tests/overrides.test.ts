@@ -1827,6 +1827,48 @@ describe('SDK overrides', () => {
       expect(out.ApplyOnTransformedLogs).toBe(false);
     });
 
+    it('projects FieldSelectionCriteria + EmitSystemFieldDimensions when set (#1332)', async () => {
+      // Before the fix these two mutable, non-writeOnly CFn props were dropped: a declared
+      // EmitSystemFieldDimensions read back undefined (a `declared` FP every check) and a
+      // declared FieldSelectionCriteria was a permanent readGap — an out-of-band change to
+      // either was silently invisible.
+      logs.on(DescribeMetricFiltersCommand).resolves({
+        metricFilters: [
+          {
+            filterName: 'errs',
+            filterPattern: 'ERROR',
+            metricTransformations: [{ metricName: 'E', metricNamespace: 'App', metricValue: '1' }],
+            fieldSelectionCriteria: 'EventSource IN ["cloudtrail"]',
+            emitSystemFieldDimensions: ['@aws.account', '@aws.region'],
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/lg' }, 'errs')
+      )) as Record<string, unknown>;
+      expect(out.FieldSelectionCriteria).toBe('EventSource IN ["cloudtrail"]');
+      expect(out.EmitSystemFieldDimensions).toEqual(['@aws.account', '@aws.region']);
+    });
+
+    it('FP-safe: omits FieldSelectionCriteria + EmitSystemFieldDimensions when unset (a never-set filter stays CLEAN) (#1332)', async () => {
+      logs.on(DescribeMetricFiltersCommand).resolves({
+        metricFilters: [
+          {
+            filterName: 'errs',
+            filterPattern: 'ERROR',
+            metricTransformations: [{ metricName: 'E', metricNamespace: 'App', metricValue: '1' }],
+            // a never-set filter: AWS omits both — the reader must not emit undefined keys, or
+            // a clean deploy surfaces first-run noise
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Logs::MetricFilter'](
+        ctx({ LogGroupName: '/lg' }, 'errs')
+      )) as Record<string, unknown>;
+      expect('FieldSelectionCriteria' in out).toBe(false);
+      expect('EmitSystemFieldDimensions' in out).toBe(false);
+    });
+
     it('log group described but the named filter absent -> ResourceGoneError (deleted)', async () => {
       // The log group exists and was described; the exact-named filter is gone -> deleted
       // out of band. (Was a false `undefined`/skipped that hid the deletion.)
