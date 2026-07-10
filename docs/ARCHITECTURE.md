@@ -755,7 +755,10 @@ only when non-zero — unrecorded values are named as such, never folded into
     non-blocking + explanatory (issue #467's design call), and when `--wait` is off the
     hint points at it (`… or re-run with --wait to block until it settles`). Backoff is
     linear (3s, 6s, …) capped at `DEFAULT_MAX_DELAY_MS` (30s), and never sleeps past the
-    deadline.
+    deadline. The `delete`-kind batch (dependency-aware passes, #765) shares a SINGLE
+    deadline computed once for the run (#969) — `applyRevertDeletes` re-invokes the per-item
+    retry builder on each pass, so a per-pass `clock() + waitMs` would re-arm a fresh full
+    budget every pass; one hoisted deadline bounds the whole delete phase to a single DURATION.
 - **Write mechanism** (`plan.ts` chooses `kind`):
   - `kind: 'cc'` — generic Cloud Control `UpdateResource` RFC6902 PatchDocument,
     polled via `GetResourceRequestStatus` ([apply.ts](../src/revert/apply.ts)).

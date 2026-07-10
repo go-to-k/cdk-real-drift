@@ -1144,11 +1144,16 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }[] = [];
   // Per-item transient-retry options (issue #467). `--wait` turns the short default
   // backoff into a deadline-bounded wait so a minutes-long UPDATING window (RSLVR-00705)
-  // converges in one command; each item gets its OWN wait budget. `onRetry` prints a
-  // per-retry progress line so the wait never looks frozen (see #477's spinner ethos).
+  // converges in one command; a non-delete item runs ONCE so it gets its OWN wait budget.
+  // `onRetry` prints a per-retry progress line so the wait never looks frozen (see #477's
+  // spinner ethos). `deadlineMsOverride` pins a SHARED deadline for the delete batch (#969):
+  // `applyRevertDeletes` re-invokes this builder for the SAME item on every dependency-aware
+  // pass, so without a shared deadline a persistent throttle on a delete would re-arm a fresh
+  // full `--wait` budget each pass (a genuine spanning-throttle could wait N × waitMs). One
+  // deadline per revert run bounds the whole delete phase to a single budget.
   const clock = waitNow ?? Date.now;
-  const buildRetryOpts = (displayId: string): RetryOptions => ({
-    ...(waitMs !== undefined && { deadlineMs: clock() + waitMs }),
+  const buildRetryOpts = (displayId: string, deadlineMsOverride?: number): RetryOptions => ({
+    ...(waitMs !== undefined && { deadlineMs: deadlineMsOverride ?? clock() + waitMs }),
     ...(waitNow && { now: waitNow }),
     ...(waitSleep && { sleep: waitSleep }),
     onRetry: ({ attempt, delayMs, hint }) => {
@@ -1248,9 +1253,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // (issue #765): a delete that first fails on a DependencyViolation is retried once the
   // pass that frees its dependency has run. Fold each outcome back into applied / worst /
   // failedDeleteIds exactly as the old inline single-item delete path did.
+  // ONE deadline for the entire delete phase (#969): computed once here so every
+  // dependency-aware pass over the same item shares it, instead of re-arming a fresh
+  // `--wait` budget per pass. Undefined without `--wait` (falls back to the default
+  // fixed-attempt backoff, unaffected by the deadline).
+  const deleteDeadlineMs = waitMs !== undefined ? clock() + waitMs : undefined;
   const deleteOutcomes = await applyRevertDeletes(deleteItems, (item) =>
     // physicalId IS the CC identifier (the composite the finding carried); delete it.
-    applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId))
+    applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId, deleteDeadlineMs))
   );
   for (const { item, result: r } of deleteOutcomes) {
     if (!r.ok) failedDeleteIds.add(item.logicalId);
