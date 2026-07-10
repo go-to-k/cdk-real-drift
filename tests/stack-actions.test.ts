@@ -1278,7 +1278,7 @@ describe('revertStack stack-stability gate (#786 — refuse a write onto a mid-o
       liveByLogical: new Map(),
     }) as GatherResult;
 
-  const params = () => ({
+  const params = (over: Partial<Parameters<typeof revertStack>[0]> = {}) => ({
     stackName: 's',
     region: 'r',
     gathered: gathered(),
@@ -1290,9 +1290,10 @@ describe('revertStack stack-stability gate (#786 — refuse a write onto a mid-o
     verbose: false,
     interactive: false,
     convergeRetryDelayMs: 0,
+    ...over,
   });
 
-  const run = async () => {
+  const run = async (over: Partial<Parameters<typeof revertStack>[0]> = {}) => {
     const logs: string[] = [];
     const errs: string[] = [];
     const origLog = console.log;
@@ -1300,7 +1301,7 @@ describe('revertStack stack-stability gate (#786 — refuse a write onto a mid-o
     console.log = (s: unknown) => logs.push(String(s));
     console.error = (s: unknown) => errs.push(String(s));
     try {
-      const outcome = await revertStack(params());
+      const outcome = await revertStack(params(over));
       return { outcome, logs: logs.join('\n'), errs: errs.join('\n') };
     } finally {
       console.log = origLog;
@@ -1372,6 +1373,52 @@ describe('revertStack stack-stability gate (#786 — refuse a write onto a mid-o
     // not refused: the gather already succeeded, so a transient re-read failure must not block
     expect(outcome.exit).toBe(0);
     expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(1);
+    cc.restore();
+  });
+
+  it('PROCEEDS with the write when the pre-apply StackStatus is UPDATE_IN_PROGRESS but --force is set — still WARNS (#1175)', async () => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'UPDATE_IN_PROGRESS' } as never] });
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'b-phys',
+        Properties: JSON.stringify({ VersioningConfiguration: { Status: 'Enabled' } }),
+      },
+    });
+
+    const { outcome, errs } = await run({ force: true });
+    // --force overrides the #786 in-progress refusal: the write IS issued.
+    expect(outcome.exit).toBe(0);
+    expect(outcome.refusedReason).toBeUndefined();
+    expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(1);
+    // ...but the operator must STILL see the stack is mid-operation.
+    expect(errs).toContain('mid-operation (UPDATE_IN_PROGRESS)');
+    expect(errs).toContain('--force');
+    cc.restore();
+  });
+
+  it('STILL REFUSES (exit 2, NO write) on UPDATE_IN_PROGRESS when --force is NOT set — the #786 default stays fail-CLOSED (#1175)', async () => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'UPDATE_IN_PROGRESS' } as never] });
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+
+    const { outcome, errs } = await run({ force: false });
+    expect(outcome.exit).toBe(2);
+    expect(outcome.aborted).toBe(false);
+    expect(outcome.refusedReason).toContain('mid-operation (UPDATE_IN_PROGRESS)');
+    expect(errs).toContain('mid-operation (UPDATE_IN_PROGRESS)');
+    expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(0);
     cc.restore();
   });
 });
