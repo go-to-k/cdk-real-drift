@@ -1,3 +1,11 @@
+## [0.9.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.11...v0.9.12) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize+revert:** handle map-shaped tag properties under service-specific names ([#862](https://github.com/go-to-k/cdk-real-drift/issues/862)) ([#1226](https://github.com/go-to-k/cdk-real-drift/issues/1226)) ([82b003d](https://github.com/go-to-k/cdk-real-drift/commit/82b003d4792ec66b3289574418e080e35a68520e))
+* **revert:** verify op.prior against the fresh model before a whole-document SDK write ([#805](https://github.com/go-to-k/cdk-real-drift/issues/805)) ([#1225](https://github.com/go-to-k/cdk-real-drift/issues/1225)) ([a1c8f06](https://github.com/go-to-k/cdk-real-drift/commit/a1c8f06f2c881656a176f75870655881cc5b38e4))
+
 ## [0.9.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.10...v0.9.11) (2026-07-10)
 
 
