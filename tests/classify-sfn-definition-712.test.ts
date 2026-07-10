@@ -135,3 +135,74 @@ describe('#712 symptom B — DefinitionSubstitutions resolved into the declared 
     expect(tier(f, 'declared')).toContain('DefinitionString');
   });
 });
+
+describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not declared drift', () => {
+  // GetTemplate returns every non-ASCII char in a stored string literal as `?`, so a
+  // definition carrying e.g. a Japanese Fail-state Cause arrives masked on the declared
+  // side while the live read is intact. The SFN structural-compare branch must demote
+  // that to a readGap (declared-but-unverifiable) instead of pushing a false declared
+  // drift whose desired shows `????…` (observed live: two Japanese Cause runs of 13 and
+  // 24 chars masked 1:1 while CloudFormation's own drift detection reported IN_SYNC).
+  const LIVE_JP =
+    '{"StartAt":"Check","States":{"Check":{"Type":"Choice","Choices":[{"Condition":"{% $ok %}","Next":"Done"}],"Default":"Bad"},"Bad":{"Type":"Fail","Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass"},"Done":{"Type":"Pass","End":true}}}';
+  const mask = (s: string): string => s.replace(/[^\x00-\x7f]/gu, '?');
+
+  it('demotes to readGap when the declared definition differs from live ONLY at masked non-ASCII leaves', () => {
+    const res = mk({
+      DefinitionString: mask(LIVE_JP),
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    const live = { DefinitionString: LIVE_JP, RoleArn: 'arn:aws:iam::111111111111:role/r' };
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'declared')).not.toContain('DefinitionString');
+    const gap = f.find((x) => x.tier === 'readGap' && x.path === 'DefinitionString');
+    expect(gap?.note).toContain('masks non-ASCII');
+  });
+
+  it('demotes to readGap even when the live definition is re-serialized with a different key order (structural mask compare)', () => {
+    // Byte-alignment breaks (Cause/Error/Type reordered), so the raw-string mask check
+    // cannot fire — only the structural mask-tolerant compare can.
+    const liveReordered = LIVE_JP.replace(
+      '"Type":"Fail","Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass"',
+      '"Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass","Type":"Fail"'
+    );
+    const res = mk({
+      DefinitionString: mask(LIVE_JP),
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    const live = { DefinitionString: liveReordered, RoleArn: 'arn:aws:iam::111111111111:role/r' };
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'declared')).not.toContain('DefinitionString');
+    expect(tier(f, 'readGap')).toContain('DefinitionString');
+  });
+
+  it('still reports declared drift when a genuine ASCII edit exists alongside the masks (fail-toward-reporting)', () => {
+    // An out-of-band edit changed an ASCII leaf (Error code) — masks alone no longer
+    // explain the difference, so the finding must surface as declared drift.
+    const liveEdited = LIVE_JP.replace('"Error":"InvalidInstanceClass"', '"Error":"SomethingElse"');
+    const res = mk({
+      DefinitionString: mask(LIVE_JP),
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    const live = { DefinitionString: liveEdited, RoleArn: 'arn:aws:iam::111111111111:role/r' };
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'declared')).toContain('DefinitionString');
+    expect(tier(f, 'readGap')).not.toContain('DefinitionString');
+  });
+
+  it('does NOT demote a pure-ASCII genuine change even when the declared side contains a literal "?"', () => {
+    // A real `?` character in a definition (a regex, a message) must never excuse a diff:
+    // isCfnTemplateNonAsciiMask requires the live side to carry non-ASCII at the masked
+    // positions, so an ASCII-vs-ASCII difference always surfaces.
+    const declared =
+      '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected db.<family>.<size>?","Error":"E"}}}';
+    const live = {
+      DefinitionString:
+        '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected db.<family>.<size>!","Error":"E"}}}',
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    };
+    const res = mk({ DefinitionString: declared, RoleArn: 'arn:aws:iam::111111111111:role/r' });
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'declared')).toContain('DefinitionString');
+  });
+});
