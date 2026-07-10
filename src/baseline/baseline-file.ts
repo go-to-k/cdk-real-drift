@@ -604,9 +604,19 @@ export function carryForwardUnreadable(
   );
   if (unreadable.size === 0) return recorded;
   const present = new Set(recorded.map(recordedKey));
-  const preserved = prior.filter(
-    (e) => unreadable.has(e.logicalId) && !present.has(recordedKey(e))
-  );
+  // #791: a recorded `added` child entry is keyed on the synthesized child id
+  // `${parent.logicalId}/${identifier}` (baseline-file.ts / gather.ts), but an enumeration
+  // failure emits its `skipped` finding on the PARENT logicalId — so `unreadable.has(id)`
+  // never matches the child directly and ALL prior added entries under a throttled parent
+  // would be silently DROPPED from the full-replace write (defeating this function for the
+  // added tier). Match the child too when its PARENT is unreadable: the child could not be
+  // enumerated, so it is unread this run, not gone — carry it forward.
+  const isUnread = (e: RecordedEntry): boolean => {
+    if (unreadable.has(e.logicalId)) return true;
+    const parent = addedChildParentLogicalId(e.logicalId);
+    return parent !== undefined && unreadable.has(parent);
+  };
+  const preserved = prior.filter((e) => isUnread(e) && !present.has(recordedKey(e)));
   return preserved.length === 0 ? recorded : [...recorded, ...preserved];
 }
 
@@ -910,6 +920,17 @@ function pathSegments(path: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+// #791: the PARENT logicalId of an out-of-band `added` child entry. gather.ts synthesizes
+// the child's logicalId as `${parent.logicalId}/${identifier}` (an added child is not in the
+// template, so it has no logicalId of its own) — the CC identifier may be composite (e.g.
+// `RestApiId|ResourceId|HttpMethod`, pipe-joined, never `/`), and a CloudFormation logical id
+// is alphanumeric (never `/`), so the parent is the segment BEFORE the FIRST `/`. Returns
+// undefined for an id without a `/` (a top-level property entry, not an added child).
+function addedChildParentLogicalId(logicalId: string): string | undefined {
+  const slash = logicalId.indexOf('/');
+  return slash < 0 ? undefined : logicalId.slice(0, slash);
+}
+
 // Descend one segment into a declared node. Object: index by key. Array: index by the
 // element's identity-field value (the `[<id>]` grammar) when an element carries a matching
 // identity field, else fall back to a numeric index. Returns undefined when the segment
@@ -1170,6 +1191,27 @@ export function applyBaseline(
   const deletedLogical = new Set(
     findings.filter((f) => f.tier === 'deleted').map((f) => f.logicalId)
   );
+  // #791: the child ids STILL enumerated as `added` this run (the whole-resource `added`
+  // findings, keyed on the synthesized `${parent}/${identifier}` id). A recorded added
+  // entry whose id is in here still exists — reconciled in the loop above (suppressed or
+  // "changed since record"), never "removed". `modelReadFailed` added findings count as
+  // present too: the resource EXISTS (only its full model was unreadable this run), so it
+  // is unread, not gone.
+  const presentAddedLogical = new Set(
+    findings.filter((f) => f.tier === 'added').map((f) => f.logicalId)
+  );
+  // #791: logicalIds POSITIVELY proven READ this run — any finding that is NOT the
+  // unread/gone signal (`skipped`/`deleted`). A parent that was gathered and classified
+  // emits at least one such finding (undeclared / atDefault / generated / declared / added
+  // child …); a parent that was UNREAD emits only a `skipped`/`deleted`. Gap 1 (surfacing
+  // an endorsed added child DELETED out of band) fires only when the child's parent is in
+  // here — POSITIVE read-proof — so the ambiguous "no signal at all for the parent" case
+  // (a degenerate/empty findings input) folds to "unread → carry forward", never a false
+  // deletion. This is the precise guard the Gap 1 / Gap 2 interaction needs: a child under a
+  // THROTTLED parent (parent `skipped`, absent here) is carried forward, not reported gone.
+  const readParentLogical = new Set(
+    findings.filter((f) => f.tier !== 'skipped' && f.tier !== 'deleted').map((f) => f.logicalId)
+  );
   // A recorded nested undeclared value whose DECLARED parent property is itself
   // drifting this run is subsumed by that `declared` finding: the parent array/object
   // changed (e.g. CloudFront `DistributionConfig.Origins` -> []), so the nested value's
@@ -1194,11 +1236,43 @@ export function applyBaseline(
   const replacedStale: string[] = []; // #674
   const typeMismatchStale: string[] = []; // #793
   for (const a of recorded) {
-    // PR4: an `added`-resource entry has an empty path (the whole resource is the value)
-    // and is reconciled in the loop above, never here. If its live resource is gone the
-    // out-of-band addition was simply removed — nothing to "restore", so skip it (a
-    // property-removal note against a synthesized child id would be meaningless).
-    if (a.path === '') continue;
+    // #791: an `added`-resource entry has an empty path (the WHOLE resource is the value)
+    // and is reconciled in the loop above when its live child is still enumerated. When it
+    // is NOT — the user RECORDED (endorsed) an out-of-band child, and it has since been
+    // DELETED out of band — "record KEEPS watching" means that deletion is drift and must
+    // surface. But only when the resource is genuinely GONE, not merely UNREAD: an added
+    // child is enumerated under its PARENT, so if the parent was SKIPPED / DELETED /
+    // model-read-failed this run the enumeration never ran (or was incomplete), and the
+    // child is unread, not removed — carryForwardUnreadable preserves it (Gap 2) and we
+    // must NOT false-report it deleted here. So surface a DETECT-ONLY finding only when the
+    // child is absent from this run's `added` findings AND its parent WAS read. It rides
+    // the `deleted` tier so it counts as drift (--fail catches it) yet is NEVER given a
+    // restore op — an added resource cannot be "restored" by writing a value; revert routes
+    // every `deleted` finding to not-revertable (revert/plan.ts).
+    if (a.path === '') {
+      if (presentAddedLogical.has(a.logicalId)) continue; // still enumerated -> reconciled above
+      const parent = addedChildParentLogicalId(a.logicalId);
+      // Fire ONLY on POSITIVE proof the parent was READ this run (a non-skipped/deleted
+      // finding on it): the child was enumerable, yet is now absent from `added` -> it was
+      // deleted out of band. When the parent is `skipped`/`deleted` (unread/gone) OR gave NO
+      // signal at all (a degenerate empty-findings input), the child is unread, not removed —
+      // carryForwardUnreadable preserves it (Gap 2), so DO NOT report a false deletion here.
+      const parentRead = parent !== undefined && readParentLogical.has(parent);
+      if (!parentRead) continue; // unread / no-signal parent -> not "removed" (Gap 2 carries it)
+      kept.push({
+        tier: 'deleted',
+        logicalId: a.logicalId,
+        resourceType: a.resourceType,
+        ...(opts.constructPathByLogical?.get(a.logicalId) !== undefined && {
+          constructPath: opts.constructPathByLogical.get(a.logicalId),
+        }),
+        path: '',
+        // no `desired`/`actual` value and no physicalId reconstruction: this is a
+        // detect-only signal, never a revert target (the `deleted` tier is not-revertable).
+        note: 'recorded added resource removed since record',
+      });
+      continue;
+    }
     // #793: the logicalId now hosts a DIFFERENT resource type (id reused across a refactor),
     // so this entry belongs to the old type. Void it: without this the synthetic "removed
     // since record" finding below would pair the entry's OLD resourceType with the new
