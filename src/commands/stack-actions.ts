@@ -37,6 +37,7 @@ import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
 import { applyRevertDelete, applyRevertDeletes, applyRevertItem } from '../revert/apply.js';
 import {
   buildRevertPlan,
+  isContractOp,
   rejectedEmptyStripOps,
   type RevertItem,
   type RevertPlan,
@@ -323,6 +324,12 @@ export function revertSelectOptions(
   const options: { value: string; label: string; selected: boolean }[] = [];
   for (const item of plan.items) {
     for (const op of item.ops) {
+      // #967: a CONTRACT op (null-husk strip) is plumbing coupled to a real op, not a
+      // user-chosen write — never offer it as its own selectable row. filterRevertPlan
+      // always carries it through for any item that keeps ≥1 real op, and drops the
+      // whole item (contract op included) when the user selected none of its real ops,
+      // so a bucket can never be written a contract-only patch.
+      if (isContractOp(op)) continue;
       // `delete` items delete a whole out-of-band resource — the loudest destructive
       // action, marked (DELETE); a property REMOVE keeps its (REMOVE) marker.
       const marker = item.kind === 'delete' ? ' (DELETE)' : op.op === 'remove' ? ' (REMOVE)' : '';
@@ -345,16 +352,47 @@ function revertOpKey(item: RevertItem, op: RevertItem['ops'][number]): string {
   return `${item.logicalId}${item.kind}${op.path}${attr}`;
 }
 
-/** Keep only the selected ops; items left with no ops drop out. Pure + exported. */
+/**
+ * Keep only the selected ops; items left with no REAL op drop out. Pure + exported.
+ *
+ * #967: a CONTRACT op (null-husk strip) is never a selectable row, so it is never in
+ * `picked` — but it is coupled to its item's real revert ops (without the strip, the CC
+ * patch hard-fails model validation, #641). So it is NOT filtered by the pick set: it
+ * ALWAYS rides along an item that retains ≥1 real (non-contract) selected op, and is
+ * DROPPED with the whole item when the user selected none of that item's real ops.
+ * This keeps both invariants: a real revert op can never be sent without its coupled
+ * husk strip, and a husk strip can never be sent alone as a user-chosen write.
+ */
 export function filterRevertPlan(plan: RevertPlan, picked: Set<string>): RevertPlan {
   const items = plan.items
-    .map((item) => ({ ...item, ops: item.ops.filter((op) => picked.has(revertOpKey(item, op))) }))
+    .map((item) => {
+      const realSelected = item.ops.filter(
+        (op) => !isContractOp(op) && picked.has(revertOpKey(item, op))
+      );
+      // No real op survived the pick → drop the whole item (contract ops included), so a
+      // bucket the user chose nothing for is never written a contract-only patch.
+      if (realSelected.length === 0) return { ...item, ops: [] };
+      // At least one real op is kept → carry EVERY contract op through with it.
+      const contract = item.ops.filter(isContractOp);
+      return { ...item, ops: [...contract, ...realSelected] };
+    })
     .filter((item) => item.ops.length > 0);
   return { items, notRevertable: plan.notRevertable };
 }
 
 export function revertSelectMessage(stackName: string, region: string): string {
   return `${stackLabel(stackName, region)}: select the op(s) to revert (unselected are not written)`;
+}
+
+/**
+ * #967: the op count SHOWN to the user (confirm prompt + --dry-run preview) counts only
+ * REAL revert ops — a CONTRACT op (null-husk strip) is plumbing coupled to a real op,
+ * not a distinct write the user chose, so counting it would inflate the number the user
+ * consents to. The full augmented patch (contract ops included) is still what is SENT to
+ * AWS; this is purely the user-facing intent count. Pure + exported for unit tests.
+ */
+export function realOpCount(plan: RevertPlan): number {
+  return plan.items.reduce((n, i) => n + i.ops.filter((op) => !isContractOp(op)).length, 0);
 }
 
 // ---- record ----
@@ -788,7 +826,10 @@ export function formatPlan(
   >();
   for (const item of plan.items) {
     const g = planByResource.get(item.logicalId);
-    const humans = item.ops.map((op) => op.human);
+    // #967: a CONTRACT op (null-husk strip) is plumbing, not a user-chosen revert — omit
+    // it from the itemized plan (it is not counted or selectable either). A resource whose
+    // only ops are contract ops never reaches here: filterRevertPlan drops such an item.
+    const humans = item.ops.filter((op) => !isContractOp(op)).map((op) => op.human);
     if (g) g.humans.push(...humans);
     else
       planByResource.set(item.logicalId, {
@@ -1151,7 +1192,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // real revert would SEND, including the tag-preserve / write-only-reinclude / empty-strip
     // ops the apply loop adds. Resource count is unaffected (augmentation never adds items).
     const augmented = augment(plan);
-    const opCount = augmented.items.reduce((n, i) => n + i.ops.length, 0);
+    // #967: count only REAL revert ops — contract ops (null-husk strips) are plumbing,
+    // not writes the user chose, so they never inflate the count shown to the user.
+    const opCount = realOpCount(augmented);
     out(
       `\n(dry-run) would apply ${opCount} op(s) to ${augmented.items.length} resource(s). No changes made.`
     );
@@ -1197,7 +1240,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // survivors. The canonical `plan = augment(plan)` runs once just below (before apply),
     // so both this confirm count and the apply loop see the same augmented ops.
     const confirmPlan = augment(plan);
-    const opCount = confirmPlan.items.reduce((n, i) => n + i.ops.length, 0);
+    // #967: count only REAL revert ops for the confirm prompt (contract null-husk strips
+    // are plumbing, not user-chosen writes). The full augmented plan is still applied.
+    const opCount = realOpCount(confirmPlan);
     const deleteCount = confirmPlan.items.filter((i) => i.kind === 'delete').length;
     const ok = await confirm({
       message: revertConfirmMessage(
