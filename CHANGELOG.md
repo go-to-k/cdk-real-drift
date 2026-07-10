@@ -1,3 +1,10 @@
+## [0.12.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.0...v0.12.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** match alias/version-bound Lambda EventSourceMappings on unqualified function identity ([#803](https://github.com/go-to-k/cdk-real-drift/issues/803)) ([#1248](https://github.com/go-to-k/cdk-real-drift/issues/1248)) ([797d3e0](https://github.com/go-to-k/cdk-real-drift/commit/797d3e036f4b2df284bd1fad411c2bb1cfa2e797))
+
 # [0.12.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.2...v0.12.0) (2026-07-10)
 
 
