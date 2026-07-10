@@ -283,3 +283,36 @@ describe('#1048 loadBaseline unknown-key rejection', () => {
     ]);
   });
 });
+
+// #1137: loadBaseline JSON.parse diagnostics (the deferred JSON half of #1049). A corrupt /
+// merge-conflicted baseline must surface JSON.parse's position + a conflict/recovery hint, not
+// a bare "is not valid JSON".
+describe('#1137 loadBaseline JSON.parse diagnostics', () => {
+  let cwd: string;
+  let dir: string;
+  beforeEach(async () => {
+    cwd = process.cwd();
+    dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-1137-'));
+    process.chdir(dir);
+  });
+  afterEach(async () => {
+    process.chdir(cwd);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('an unresolved git merge-conflict marker surfaces the conflict hint + JSON.parse detail', async () => {
+    const raw =
+      '{\n<<<<<<< HEAD\n  "schemaVersion": 2,\n=======\n  "schemaVersion": 3,\n>>>>>>> branch\n}\n';
+    await expect(loadRaw(raw)).rejects.toThrow(/unresolved git merge conflict/);
+    // and it still carries JSON.parse's own diagnostic (not just the bare message)
+    await expect(loadRaw(raw)).rejects.toThrow(/is not valid JSON.*:/);
+  });
+
+  it('a trailing-comma corruption surfaces JSON.parse position + recovery hint', async () => {
+    const raw = '{ "schemaVersion": 2, "recorded": [], }';
+    await expect(loadRaw(raw)).rejects.toThrow(
+      /is not valid JSON \(corrupt or partially written\): .+/
+    );
+    await expect(loadRaw(raw)).rejects.toThrow(/git restore/);
+  });
+});
