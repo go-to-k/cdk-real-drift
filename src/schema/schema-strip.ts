@@ -47,14 +47,28 @@ export function describeTypeFailedWarning(resourceType: string, region: string):
   );
 }
 
-export async function getSchemaInfo(
+// The outcome of a getSchemaInfo call: the (possibly EMPTY-degraded) schema plus a
+// `failed` signal that a DescribeType failure produced the EMPTY fallback. The signal
+// lets a per-RUN caller (gather's `schemas` map) avoid re-caching that EMPTY — schema-strip's
+// own region cache already skips it (#751), but a caller with its own cache would otherwise
+// re-poison it, keeping every later resource of the type on the degraded EMPTY even after the
+// throttle clears / the permission is granted (#1067). `getSchemaInfo` below is the thin
+// SchemaInfo-only wrapper for callers that do not maintain a cache.
+export interface SchemaInfoResult {
+  info: SchemaInfo;
+  // True when DescribeType failed and `info` is the EMPTY degraded fallback (do NOT cache it);
+  // false when `info` is a real fetched (or already-cached) schema (safe to cache).
+  failed: boolean;
+}
+
+export async function getSchemaInfoResult(
   client: CloudFormationClient,
   resourceType: string
-): Promise<SchemaInfo> {
+): Promise<SchemaInfoResult> {
   const region = await client.config.region();
   const cacheKey = `${region}\0${resourceType}`;
   const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) return { info: cached, failed: false };
   const result = await fetch(client, resourceType);
   if (result.ok) {
     // Only cache a REAL schema. A DescribeType failure must NOT be persisted as if it
@@ -63,15 +77,23 @@ export async function getSchemaInfo(
     // stripped, writeOnly not readGap'd) even after the permission is granted / the
     // throttle clears. Leaving it uncached lets the next occurrence re-fetch.
     cache.set(cacheKey, result.info);
-    return result.info;
+    return { info: result.info, failed: false };
   }
   // Failure: warn once per type+region, then return EMPTY for THIS call (best-effort — a
-  // missing schema means no strip, never a crash) WITHOUT caching it.
+  // missing schema means no strip, never a crash) WITHOUT caching it. `failed: true` tells
+  // a per-run caller not to re-cache the EMPTY in its own map either (#1067).
   if (!failureWarned.has(cacheKey)) {
     failureWarned.add(cacheKey);
     console.error(describeTypeFailedWarning(resourceType, region));
   }
-  return result.info;
+  return { info: result.info, failed: true };
+}
+
+export async function getSchemaInfo(
+  client: CloudFormationClient,
+  resourceType: string
+): Promise<SchemaInfo> {
+  return (await getSchemaInfoResult(client, resourceType)).info;
 }
 
 // Top-level writeOnly properties that an SDK_OVERRIDES reader (read/overrides.ts) CAN
