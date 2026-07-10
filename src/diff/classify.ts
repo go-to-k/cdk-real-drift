@@ -1163,6 +1163,21 @@ const isPolicyStatementArray = (arr: unknown[]): boolean =>
 const isInlinePolicyArray = (arr: unknown[]): boolean =>
   arr.length > 0 && arr.every((el) => isNestedObject(el) && 'PolicyDocument' in el);
 
+// A `{Key,Value}` tag list — the shape canonicalizeTagLists (normalize/noise.ts) SORTS on
+// BOTH compare sides by its `Key` identity field, while the live side additionally has its
+// `aws:*` tags stripped. A per-element VALUE change then diffs at a `Tags.<sortedIdx>.Value`
+// path whose index is the SORTED+STRIPPED position — it does NOT map to the RAW live model
+// (raw order, aws:* tags present) Cloud Control patches, so a sub-path patch lands on the
+// WRONG element (silent corruption) or out of range (loud reject) (#750). The safe revert is
+// a WHOLE-ARRAY `/Tags` write of the declared list (revert then re-attaches aws:* managed
+// tags via tagPreservingOps), collapsed by the revert plan exactly like an UNORDERED_OBJECT_
+// ARRAY. Recognized by the Key identity field + a Value on every element (a plain identity-
+// keyed object array — CloudFront Origins, etc. — has no Value and is unaffected).
+const isKeyValueTagList = (arr: unknown[]): boolean =>
+  arr.length > 0 &&
+  identityField(arr) === 'Key' &&
+  arr.every((el) => isNestedObject(el) && 'Value' in el);
+
 // True when every key of `sub` is present in `sup` with an equal value (objects
 // recurse so a nested declared block must also be a subset; everything else is
 // deep-equal). Used to align a declared policy statement to the live statement it is
@@ -3196,6 +3211,22 @@ export function classifyResource(
         )
       )
         continue;
+      // A per-element drift INSIDE a `{Key,Value}` tag list (#750): canonicalizeTagLists
+      // sorted the list by `Key` on both compare sides (and stripped the live side's aws:*
+      // tags), so `d.path`'s index is the SORTED+STRIPPED position that does NOT map to the
+      // RAW live model Cloud Control patches — a sub-path `add /Tags/<i>/Value` patch would
+      // corrupt the wrong live element or go out of range. Carry the WHOLE declared tag list
+      // on wholeArrayRevert so the revert plan collapses these into ONE whole-array `/Tags`
+      // replacement (tagPreservingOps then re-attaches the live aws:* managed tags), never a
+      // per-element pointer against a sorted index that does not exist in the raw model.
+      // Only fires for a per-element (`${k}.` sub-path) drift; a whole-array drift already
+      // carries the right path. The unorderedObjArray branch above handles the type-/schema-
+      // opted-in unordered object arrays; this covers the identity-sorted tag lists it misses.
+      const tagListWhole =
+        !unorderedObjArray &&
+        Array.isArray(v) &&
+        isKeyValueTagList(v) &&
+        d.path.startsWith(`${k}.`);
       const unorderedExtra =
         unorderedObjArray && Array.isArray(declaredVal) && declaredRemapSource
           ? {
@@ -3206,7 +3237,9 @@ export function classifyResource(
               path: remapSortedIndexToDeclared(d.path, k, declaredVal, declaredRemapSource),
               wholeArrayRevert: { path: k, value: v },
             }
-          : {};
+          : tagListWhole
+            ? { wholeArrayRevert: { path: k, value: v } }
+            : {};
       findings.push({
         tier: 'declared',
         logicalId,

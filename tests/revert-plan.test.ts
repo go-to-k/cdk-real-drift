@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
+import { classifyResource } from '../src/diff/classify.js';
 import { type CorpusCase, reviveSchema } from '../src/corpus/record.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
@@ -205,6 +206,97 @@ describe('buildRevertPlan', () => {
     const plan = buildRevertPlan([f], undefined);
     expect(plan.items).toHaveLength(1);
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'add', path: '/SecurityGroupIngress' });
+  });
+
+  it('#750: a value change inside a canonicalize-SORTED tag list reverts as a WHOLE-ARRAY /Tags write, not a per-element /Tags/<i>/Value patch', () => {
+    // canonicalizeTagLists (normalize/noise.ts) sorts a {Key,Value} tag list by `Key` on
+    // BOTH compare sides, and the live side additionally has its aws:* tags stripped. So a
+    // per-element VALUE change diffs at a SORTED+STRIPPED index that does NOT map to the RAW
+    // live model (raw order, aws:* tags present) Cloud Control patches — a `add /Tags/<i>/Value`
+    // patch would land on the WRONG element or go out of range. The revert must be a whole-array
+    // /Tags write of the declared list (tagPreservingOps then re-attaches the aws:* tags).
+
+    // Tags declared in NON-sorted key order (b before a); tag `b`'s value drifted out of band.
+    const declaredTags = [
+      { Key: 'b', Value: 'want-b' }, // desired value (drifted live)
+      { Key: 'a', Value: 'val-a' },
+    ];
+    // RAW live model: aws:cloudformation:* managed tag PRESENT, raw (unsorted) order, and the
+    // out-of-band value on `b`. The managed tag sits at raw index 0 — exactly the index a
+    // sorted+stripped `/Tags/0/...` patch would collide with.
+    const liveRaw: Record<string, unknown> = {
+      Tags: [
+        { Key: 'aws:cloudformation:stack-name', Value: 'MyStack' },
+        { Key: 'b', Value: 'HACKED' },
+        { Key: 'a', Value: 'val-a' },
+      ],
+    };
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const findings = classifyResource(
+      {
+        logicalId: 'Bkt',
+        resourceType: 'AWS::S3::Bucket',
+        physicalId: 'my-bucket',
+        declared: { Tags: declaredTags },
+      },
+      liveRaw,
+      emptySchema
+    );
+    const drift = findings.find((f) => f.tier === 'declared');
+    expect(drift).toBeDefined();
+    // The finding's raw path is a per-element SORTED index (`Tags.<i>.Value`) — but it must
+    // carry a wholeArrayRevert hoisting to the whole /Tags array with the DECLARED list.
+    expect(drift!.wholeArrayRevert).toBeDefined();
+    expect(drift!.wholeArrayRevert!.path).toBe('Tags');
+    expect(drift!.wholeArrayRevert!.value).toEqual(
+      // canonicalizeForCompare sorted the declared list by Key (a before b); the revert value
+      // is the whole declared list, order-agnostic.
+      expect.arrayContaining([
+        { Key: 'a', Value: 'val-a' },
+        { Key: 'b', Value: 'want-b' },
+      ])
+    );
+
+    // The revert plan collapses it to ONE whole-array `add /Tags` op — never a
+    // `/Tags/<sortedIdx>/Value` patch against an index that does not exist in the raw model.
+    const plan = buildRevertPlan(findings, undefined, {
+      liveByLogical: new Map([['Bkt', liveRaw]]),
+    });
+    expect(plan.items).toHaveLength(1);
+    const ops = plan.items[0]!.ops;
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.path).toBe('/Tags');
+    expect(ops[0]!.op).toBe('add');
+    // No per-element pointer anywhere in the plan.
+    expect(ops.some((o) => /^\/Tags\/\d+\//.test(o.path))).toBe(false);
+
+    // The apply path re-attaches the live aws:* managed tags (tagPreservingOps) so the
+    // whole-array write does not drop them, and the final patch lands CORRECTLY on the raw
+    // model: exactly the declared user tags + the untouched aws:* tag.
+    const tagged = tagPreservingOps(ops, liveRaw);
+    const finalOp = tagged[0]!;
+    expect(finalOp.op).toBe('add');
+    expect(finalOp.path).toBe('/Tags');
+    const finalTags = finalOp.value as { Key: string; Value: string }[];
+    // The desired value for `b` is applied (drift reverted), `a` preserved, aws:* preserved.
+    expect(finalTags).toEqual(
+      expect.arrayContaining([
+        { Key: 'b', Value: 'want-b' },
+        { Key: 'a', Value: 'val-a' },
+        { Key: 'aws:cloudformation:stack-name', Value: 'MyStack' },
+      ])
+    );
+    // No aws:* tag was clobbered and no bogus element (the raw-model landing is correct).
+    expect(finalTags).toHaveLength(3);
   });
 
   it('ManagedPolicy attachment detach -> SDK item, op carries the member on attributeKey', () => {
