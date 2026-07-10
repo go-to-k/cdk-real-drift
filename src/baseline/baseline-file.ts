@@ -1036,6 +1036,41 @@ function addedChildParentLogicalId(logicalId: string): string | undefined {
   return slash < 0 ? undefined : logicalId.slice(0, slash);
 }
 
+// #1279: the IDENTIFIER portion of an out-of-band `added` child id — everything AFTER the
+// first `/` (the parent is everything before it, see `addedChildParentLogicalId`). For
+// `Api/res456` -> `res456`; for a COMPOSITE CC identifier `Api/RestApiId|ResourceId` ->
+// `RestApiId|ResourceId`. Returns undefined for a top-level property entry (no `/`).
+function addedChildIdentifier(logicalId: string): string | undefined {
+  const slash = logicalId.indexOf('/');
+  return slash < 0 ? undefined : logicalId.slice(slash + 1);
+}
+
+// #1279: was a recorded out-of-band `added` child ADOPTED into the template since record
+// (via `cdk import`, or re-declared + deployed)? Once adopted, the child enumerator sees it
+// in the template and stops emitting `added` for it while the parent reads clean — so the
+// #791 "removed since record" branch would wrongly fire a phantom `deleted` drift forever
+// for a resource that is alive and now IaC-managed. Adoption is proven when the child's
+// identifier matches a template resource's LIVE physical id: compare the FULL composite
+// identifier (`RestApiId|ResourceId`) AND its trailing segment (`ResourceId`, the resource's
+// own id within the composite) against every live physical id in `physicalIdByLogical`. A
+// match on either means the resource is now a template resource — fold it (join the
+// replacedStale / removedFromTemplate fold family), never report a phantom deletion. When
+// no physical-id map is passed (a caller without #674 wiring) this is a no-op, so today's
+// behavior is unchanged.
+function addedChildWasAdopted(
+  childLogicalId: string,
+  physicalIdByLogical: Map<string, string> | undefined
+): boolean {
+  if (physicalIdByLogical === undefined || physicalIdByLogical.size === 0) return false;
+  const identifier = addedChildIdentifier(childLogicalId);
+  if (identifier === undefined) return false;
+  const trailing = identifier.slice(identifier.lastIndexOf('|') + 1);
+  for (const livePhysicalId of physicalIdByLogical.values()) {
+    if (livePhysicalId === identifier || livePhysicalId === trailing) return true;
+  }
+  return false;
+}
+
 // Descend one segment into a declared node. Object: index by key. Array: index by the
 // element's identity-field value (the `[<id>]` grammar) when an element carries a matching
 // identity field, else fall back to a numeric index. Returns undefined when the segment
@@ -1343,6 +1378,7 @@ export function applyBaseline(
   const removedFromTemplate: string[] = []; // #675
   const replacedStale: string[] = []; // #674
   const typeMismatchStale: string[] = []; // #793
+  const adoptedStale: string[] = []; // #1279
   for (const a of recorded) {
     // #791: an `added`-resource entry has an empty path (the WHOLE resource is the value)
     // and is reconciled in the loop above when its live child is still enumerated. When it
@@ -1367,6 +1403,18 @@ export function applyBaseline(
       // carryForwardUnreadable preserves it (Gap 2), so DO NOT report a false deletion here.
       const parentRead = parent !== undefined && readParentLogical.has(parent);
       if (!parentRead) continue; // unread / no-signal parent -> not "removed" (Gap 2 carries it)
+      // #1279: a child disappears from the `added` enumeration for TWO reasons — it was
+      // DELETED out of band (#791, the deletion above) OR it was ADOPTED into the template
+      // (`cdk import`, or re-declared + deployed), which makes the enumerator stop emitting
+      // `added` for it while the parent reads clean. In the adoption case the resource is
+      // alive and now IaC-managed, so a synthetic `deleted` drift is a phantom. Distinguish
+      // by identifier: if the child's identifier matches a template resource's live physical
+      // id, it was adopted — fold it (like replacedStale / removedFromTemplate), never a
+      // phantom deletion. The next `record` prunes the entry via the drop-candidate flow.
+      if (addedChildWasAdopted(a.logicalId, opts.physicalIdByLogical)) {
+        adoptedStale.push(a.logicalId);
+        continue;
+      }
       kept.push({
         tier: 'deleted',
         logicalId: a.logicalId,
@@ -1447,6 +1495,7 @@ export function applyBaseline(
     opts.warn?.(formatRemovedFromTemplateNote(removedFromTemplate));
   if (replacedStale.length > 0) opts.warn?.(formatReplacedStaleNote(replacedStale));
   if (typeMismatchStale.length > 0) opts.warn?.(formatTypeMismatchStaleNote(typeMismatchStale));
+  if (adoptedStale.length > 0) opts.warn?.(formatAdoptedStaleNote(adoptedStale));
   return kept;
 }
 
@@ -1494,6 +1543,22 @@ export function formatTypeMismatchStaleNote(paths: string[]): string {
   const n = paths.length;
   const subject = n === 1 ? `baseline entry (${paths[0]}) was` : `${n} baseline entries were`;
   return `note: ${subject} recorded against a resource whose logicalId now has a DIFFERENT type — re-run \`cdkrd record\`.`;
+}
+
+/**
+ * #1279: the folded one-line note for recorded out-of-band `added` resources that have since
+ * been ADOPTED into the template (`cdk import`, or re-declared + deployed) — the child is no
+ * longer enumerated as `added`, but its identifier matches a template resource's live physical
+ * id, so it is alive and now IaC-managed, not deleted. Mirror of formatReplacedStaleNote. Pure
+ * + exported for unit tests.
+ */
+export function formatAdoptedStaleNote(logicalIds: string[]): string {
+  const n = logicalIds.length;
+  const subject =
+    n === 1
+      ? `recorded added resource (${logicalIds[0]}) was`
+      : `${n} recorded added resources were`;
+  return `note: ${subject} adopted into the template (now IaC-managed) — re-run \`cdkrd record\` to clean up the baseline.`;
 }
 
 /**

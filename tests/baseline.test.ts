@@ -12,6 +12,7 @@ import {
   carryForwardUnreadable,
   constructPathsByLogical,
   physicalIdsByLogical,
+  formatAdoptedStaleNote,
   formatPromotedStaleNote,
   formatRemovedFromTemplateNote,
   formatReplacedStaleNote,
@@ -606,6 +607,92 @@ describe('baseline', () => {
       ]);
       const out = applyBaseline([], b);
       expect(out).toHaveLength(0);
+    });
+  });
+
+  describe('#1279 — a recorded added resource ADOPTED into the template is not a phantom deletion', () => {
+    // gather.ts synthesizes an added child id as `${parent.logicalId}/${identifier}`. When the
+    // resource is later adopted (`cdk import` / re-declared + deployed) the child enumerator
+    // stops emitting `added` for it while the parent reads clean — so the #791 removed-since-
+    // record branch fires a phantom `deleted` drift. The fix: if the child's identifier matches
+    // a template resource's LIVE physical id (`physicalIdByLogical`, #674), it was adopted -> fold.
+    const parentRead = (): Finding => ({
+      tier: 'undeclared',
+      logicalId: 'Api',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      path: 'ApiKeySourceType',
+      actual: 'HEADER',
+    });
+    const recordedAddedChild = (childLogicalId: string): BaselineFile['recorded'] => [
+      {
+        logicalId: childLogicalId,
+        resourceType: 'AWS::ApiGateway::Resource',
+        path: '',
+        value: { PathPart: 'orders' },
+      },
+    ];
+
+    it('bare-id child now present as a template resource physical id -> folded, NO deleted finding', () => {
+      // Recorded added child `Api/res456`; the resource is now the template resource
+      // `OrdersResource` whose live physical id is `res456` -> adopted.
+      const b = baseline(recordedAddedChild('Api/res456'));
+      const warnings: string[] = [];
+      const out = applyBaseline([parentRead()], b, {
+        physicalIdByLogical: new Map([['OrdersResource', 'res456']]),
+        warn: (s) => warnings.push(s),
+      });
+      expect(out.find((f) => f.tier === 'deleted')).toBeUndefined();
+      expect(
+        out.find((f) => f.note === 'recorded added resource removed since record')
+      ).toBeUndefined();
+      expect(warnings.join('\n')).toContain('adopted into the template');
+    });
+
+    it('COMPOSITE-identifier child adopted (full composite OR trailing segment matches) -> folded', () => {
+      // Composite id `RestApiId|ResourceId`; the template resource physical id is the trailing
+      // segment `ResourceId` (the resource-Resource case where the composite includes its parent).
+      const b = baseline(recordedAddedChild('Api/RestApiId|res456'));
+      const out = applyBaseline([parentRead()], b, {
+        physicalIdByLogical: new Map([['OrdersResource', 'res456']]),
+      });
+      expect(out.find((f) => f.tier === 'deleted')).toBeUndefined();
+    });
+
+    it('full composite matches a live physical id -> folded', () => {
+      const b = baseline(recordedAddedChild('Api/RestApiId|res456'));
+      const out = applyBaseline([parentRead()], b, {
+        physicalIdByLogical: new Map([['Something', 'RestApiId|res456']]),
+      });
+      expect(out.find((f) => f.tier === 'deleted')).toBeUndefined();
+    });
+
+    it('regression (#791): a GENUINELY DELETED child (no matching physical id) STILL surfaces as deleted', () => {
+      // No template resource has the child identifier as its physical id -> genuine deletion.
+      const b = baseline(recordedAddedChild('Api/res456'));
+      const out = applyBaseline([parentRead()], b, {
+        physicalIdByLogical: new Map([['Unrelated', 'other-phys-id']]),
+      });
+      const removed = out.find(
+        (f) => f.tier === 'deleted' && f.note === 'recorded added resource removed since record'
+      );
+      expect(removed).toBeDefined();
+      expect(removed!.logicalId).toBe('Api/res456');
+    });
+
+    it('regression (#791): genuine deletion with NO physicalIdByLogical passed at all STILL surfaces', () => {
+      const b = baseline(recordedAddedChild('Api/res456'));
+      const out = applyBaseline([parentRead()], b);
+      expect(
+        out.find(
+          (f) => f.tier === 'deleted' && f.note === 'recorded added resource removed since record'
+        )
+      ).toBeDefined();
+    });
+
+    it('formatAdoptedStaleNote reads singular/plural and names the resource', () => {
+      expect(formatAdoptedStaleNote(['Api/res456'])).toContain('(Api/res456)');
+      expect(formatAdoptedStaleNote(['Api/res456'])).toContain('adopted into the template');
+      expect(formatAdoptedStaleNote(['a', 'b'])).toContain('2 recorded added resources');
     });
   });
 
