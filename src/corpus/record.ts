@@ -86,6 +86,10 @@ export interface CorpusCase {
     // cluster-echo strip. Without it a fresh-harvested reader/writer replays the un-folded echo
     // props as false undeclared drift. Optional for back-compat (pre-clusterEcho cases lack it).
     clusterEchoModel?: Record<string, Record<string, unknown>>;
+    // #978: this OptionGroup's option-default catalog keyed by its own physical id — present only
+    // on an AWS::RDS::OptionGroup case, so replay reproduces the default-fill fold. Optional for
+    // back-compat (pre-#978 cases and non-OptionGroup cases lack it).
+    rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -119,6 +123,7 @@ export function buildCorpusCase(
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
     bucketNotificationManaged?: Set<string>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
+    rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -137,6 +142,11 @@ export function buildCorpusCase(
   const echoModel =
     resource.physicalId && opts.clusterEchoModel?.[resource.physicalId]
       ? opts.clusterEchoModel[resource.physicalId]
+      : undefined;
+  // #978: carry ONLY this OptionGroup's catalog entry (keyed by its own physical id).
+  const rdsOptCatalog =
+    resource.physicalId && opts.rdsOptionSettingDefaults?.[resource.physicalId]
+      ? opts.rdsOptionSettingDefaults[resource.physicalId]
       : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
@@ -175,6 +185,9 @@ export function buildCorpusCase(
       ...(bucketNotif ? { bucketNotificationManaged: bucketNotif } : {}),
       ...(echoModel && resource.physicalId
         ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
+        : {}),
+      ...(rdsOptCatalog && resource.physicalId
+        ? { rdsOptionSettingDefaults: { [resource.physicalId]: rdsOptCatalog } }
         : {}),
     },
     expected: findings,

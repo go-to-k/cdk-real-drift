@@ -6,6 +6,7 @@ import {
   DescribeStackResourcesCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
+import { DescribeOptionGroupOptionsCommand, RDSClient } from '@aws-sdk/client-rds';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import { CLUSTER_ECHO_CHILD, classifyResource, normalizeLiveModel } from '../diff/classify.js';
@@ -254,6 +255,7 @@ interface ClassifyOpts {
   siblingUserGroups: Record<string, string[]>;
   bucketNotificationManaged: Set<string>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
+  rdsOptionSettingDefaults: Record<string, Record<string, Record<string, string | null>>>;
 }
 
 // Rules declared by standalone AWS::EC2::SecurityGroupIngress / ::SecurityGroupEgress
@@ -493,6 +495,80 @@ export function buildClusterEchoModels(desired: Desired): Record<string, Record<
     if (clusterLive) map[r.physicalId] = clusterLive;
   }
   return map;
+}
+
+// #978: resolve each AWS::RDS::OptionGroup's option-default catalog from
+// `describe-option-group-options` (per engine+version, cached and paginated), keyed
+// `physicalId -> optionName -> settingName -> DefaultValue|null`. classify folds a live-only
+// setting whose value equals its catalog default (or an unset `{Name}` husk) to atDefault, so a
+// clean OptionGroup shows zero first-run drift while an out-of-band change still surfaces. The
+// catalog is read LIVE (never pinned) so it cannot rot (#1072) and needs no per-plugin constant
+// table. Fail-soft: a denied/failed describe warns ONCE and leaves that group out of the map — its
+// value-bearing defaults then surface undeclared (the pre-#978 behavior), never a crash.
+export async function buildRdsOptionSettingDefaults(
+  desired: Desired,
+  region: string
+): Promise<Record<string, Record<string, Record<string, string | null>>>> {
+  const groups = desired.resources.filter(
+    (r) => r.resourceType === 'AWS::RDS::OptionGroup' && r.physicalId
+  );
+  if (groups.length === 0) return {};
+  const client = new RDSClient({ region, ...READ_RETRY });
+  const catalogCache = new Map<string, Record<string, Record<string, string | null>>>();
+  const out: Record<string, Record<string, Record<string, string | null>>> = {};
+  let warned = false;
+  for (const r of groups) {
+    const decl = r.declared as { EngineName?: unknown; MajorEngineVersion?: unknown } | undefined;
+    const engine = typeof decl?.EngineName === 'string' ? decl.EngineName : undefined;
+    const version = decl?.MajorEngineVersion != null ? String(decl.MajorEngineVersion) : undefined;
+    if (!engine || !version || !r.physicalId) continue;
+    const key = `${engine}:${version}`;
+    let catalog = catalogCache.get(key);
+    if (!catalog) {
+      try {
+        catalog = await fetchOptionCatalog(client, engine, version);
+        catalogCache.set(key, catalog);
+      } catch (e) {
+        if (!warned) {
+          console.error(
+            `warning: describe-option-group-options failed for ${engine} ${version} (${(e as Error).name}) — RDS OptionGroup default-fill settings may surface as first-run drift; grant rds:DescribeOptionGroupOptions`
+          );
+          warned = true;
+        }
+        continue;
+      }
+    }
+    out[r.physicalId] = catalog;
+  }
+  return out;
+}
+
+async function fetchOptionCatalog(
+  client: RDSClient,
+  engineName: string,
+  majorEngineVersion: string
+): Promise<Record<string, Record<string, string | null>>> {
+  const catalog: Record<string, Record<string, string | null>> = {};
+  let marker: string | undefined;
+  do {
+    const resp = await client.send(
+      new DescribeOptionGroupOptionsCommand({
+        EngineName: engineName,
+        MajorEngineVersion: majorEngineVersion,
+        Marker: marker,
+      })
+    );
+    for (const opt of resp.OptionGroupOptions ?? []) {
+      if (!opt.Name) continue;
+      const settings: Record<string, string | null> = catalog[opt.Name] ?? {};
+      for (const s of opt.OptionGroupOptionSettings ?? []) {
+        if (s.SettingName) settings[s.SettingName] = s.DefaultValue ?? null;
+      }
+      catalog[opt.Name] = settings;
+    }
+    marker = resp.Marker;
+  } while (marker);
+  return catalog;
 }
 
 // CloudFront legacy OAI id -> S3CanonicalUserId, harvested from the stack's own
@@ -782,6 +858,7 @@ export async function gatherFindings(
     siblingUserGroups: buildSiblingUserGroups(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
+    rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
@@ -872,6 +949,7 @@ export async function regatherTouched(
     siblingUserGroups: buildSiblingUserGroups(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
+    rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
   const fresh: Finding[] = [];

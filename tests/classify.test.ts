@@ -2705,12 +2705,29 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       // #978: the service-materialized default-fill settings (value-bearing AWS defaults +
       // value-less `{Name}`-only husks) are not user intent, so they fold `atDefault` (zero
       // first-run drift) instead of surfacing as undeclared — the undeclared-tier twin of the
-      // #480 declared-tier fold. Detection is preserved (a diverged value / a husk that gains a
+      // #480 declared-tier fold. The value-bearing defaults are confirmed against the live
+      // option-default catalog (opts.rdsOptionSettingDefaults, from describe-option-group-options);
+      // husks fold generically. Detection is preserved (a diverged value / a husk that gains a
       // value re-surfaces undeclared; covered in classify-978-rds-optiongroup-default-fill).
       const findings = classifyResource(
         res(T, declared),
         liveConfigs(liveDefaultFilled),
-        emptySchema
+        emptySchema,
+        {
+          rdsOptionSettingDefaults: {
+            phys: {
+              MARIADB_AUDIT_PLUGIN: {
+                SERVER_AUDIT: 'FORCE_PLUS_PERMANENT',
+                SERVER_AUDIT_LOGGING: 'ON',
+                SERVER_AUDIT_FILE_PATH: '/rdsdbdata/log/audit/',
+                SERVER_AUDIT_INCL_USERS: null,
+                SERVER_AUDIT_EXCL_USERS: null,
+                SERVER_AUDIT_FILE_ROTATE_SIZE: null,
+                SERVER_AUDIT_FILE_ROTATIONS: null,
+              },
+            },
+          },
+        }
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
       expect(findings.filter((f) => f.tier === 'undeclared')).toEqual([]);

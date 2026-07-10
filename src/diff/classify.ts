@@ -960,22 +960,28 @@ function isSelfEchoTrivialEmpty(v: unknown, physicalId: string | undefined): boo
   return rest.length < entries.length && rest.every(([, val]) => isTrivialEmpty(val));
 }
 
-// #978: AWS::RDS::OptionGroup default-fill — configuring an option (e.g. MARIADB_AUDIT_PLUGIN)
-// makes RDS materialize EVERY plugin setting the template did not declare, in two shapes:
-//   1. value-bearing AWS defaults (stable per plugin) — SERVER_AUDIT=FORCE_PLUS_PERMANENT, ...
+// #978: AWS::RDS::OptionGroup default-fill — configuring an option (e.g. MARIADB_AUDIT_PLUGIN,
+// Oracle NATIVE_NETWORK_ENCRYPTION, SQLServer SQLSERVER_AUDIT) makes RDS materialize EVERY plugin
+// setting the template did not declare, in two shapes:
+//   1. value-bearing AWS defaults — SERVER_AUDIT=FORCE_PLUS_PERMANENT,
+//      SQLNET.ENCRYPTION_CLIENT=REQUESTED, ... (the value equals the option's catalog default), and
 //   2. value-less `{Name}`-only husks — a listed-but-unset setting (no `Value` member).
-// Both are service-materialized first-run defaults, never user intent, so each folds
-// `atDefault` (the undeclared-tier twin of the closed #480 declared-tier fold). Equality-gated
-// so out-of-band detection survives: a husk that GAINS a Value, or a pinned default whose Value
-// CHANGES, no longer matches and surfaces as undeclared. Setting names are plugin-unique
-// (SERVER_AUDIT_* belong only to MARIADB_AUDIT_PLUGIN), so keying by Name alone carries no
-// cross-option collision. Values observed live (mariadb 10.11, us-east-1; corpus
-// AWS__RDS__OptionGroup.HuntOptionGroup).
-const RDS_OPTION_SETTING_DEFAULTS: Record<string, string> = {
-  SERVER_AUDIT: 'FORCE_PLUS_PERMANENT',
-  SERVER_AUDIT_LOGGING: 'ON',
-  SERVER_AUDIT_FILE_PATH: '/rdsdbdata/log/audit/',
-};
+// Both are service-materialized first-run defaults, never user intent, so each folds `atDefault`
+// (the undeclared-tier twin of the closed #480 declared-tier fold). Equality-gated so out-of-band
+// detection survives: a husk that GAINS a Value, or a default whose Value CHANGES, no longer
+// matches and surfaces undeclared.
+//
+// The value-bearing defaults are (engine, version, option, setting)-specific, so instead of
+// PINNING constants (which rot over time — the #1072 class — and collide across options, e.g.
+// SQLServer SSAS.MAX_MEMORY=45 vs SSRS.MAX_MEMORY=30) gather RESOLVES them LIVE from
+// `describe-option-group-options` into `opts.rdsOptionSettingDefaults[physicalId][option]`
+// (`{settingName: DefaultValue|null}`) — the same "what AWS assigns undeclared == the option's
+// catalog default" fact CFn drift detection leans on. Empirically the catalog DefaultValue equals
+// the value RDS materializes for an unset setting (verified live: mariadb audit + oracle
+// native-network-encryption). Keyed by (physicalId, OptionName, SettingName), so it is
+// collision-free across options and never rots (re-read every run); when the catalog is absent
+// (read denied / offline replay without it) the value-bearing fold simply does not apply
+// (fail-open — the setting surfaces undeclared, the pre-#978 behavior), while husks still fold.
 
 // A `{<idField>: X}` element whose ONLY non-trivial member is its identity field — an
 // identity-only husk (the #648 `Targets[].AvailabilityZone` in-element husk class). Carries no
@@ -985,17 +991,28 @@ function isIdentityOnlyHusk(el: Record<string, unknown>, idField: string): boole
   return Object.entries(el).every(([k, v]) => k === idField || isTrivialEmpty(v));
 }
 
-// True when a live-only RDS OptionGroup OptionSetting is a service-materialized default-fill
-// (value-bearing pinned default OR identity-only husk) that must fold `atDefault`.
-function isRdsOptionSettingDefault(
-  resourceType: string,
-  el: Record<string, unknown>,
-  name: string,
-  value: unknown
-): boolean {
-  if (resourceType !== 'AWS::RDS::OptionGroup') return false;
-  if (isIdentityOnlyHusk(el, 'Name')) return true;
-  return name in RDS_OPTION_SETTING_DEFAULTS && value === RDS_OPTION_SETTING_DEFAULTS[name];
+// The gather-resolved catalog default for `settingName` under the OptionConfiguration at `path`'s
+// array index (its OptionName read from the declared side). Returns the DefaultValue string, `null`
+// for a catalog husk, or `undefined` when unresolvable (no catalog, unknown option/setting) — in
+// which case the value-bearing fold does not apply.
+function rdsMaterializedDefault(
+  catalog: Record<string, Record<string, Record<string, string | null>>> | undefined,
+  physicalId: string | undefined,
+  declared: unknown,
+  path: string,
+  settingName: string
+): string | null | undefined {
+  if (!catalog || physicalId === undefined) return undefined;
+  const m = /OptionConfigurations\.(\d+)\.OptionSettings$/.exec(path);
+  if (!m) return undefined;
+  const configs = (declared as { OptionConfigurations?: unknown } | undefined)
+    ?.OptionConfigurations;
+  const optName = Array.isArray(configs)
+    ? (configs[Number(m[1])] as { OptionName?: unknown } | undefined)?.OptionName
+    : undefined;
+  if (typeof optName !== 'string') return undefined;
+  const perOption = catalog[physicalId]?.[optName];
+  return perOption && settingName in perOption ? perOption[settingName] : undefined;
 }
 
 // A live-only policy DOCUMENT whose statements were ALL subtracted as AWS-managed
@@ -1517,6 +1534,11 @@ export function classifyResource(
     // Per child physical id, the parent cluster's live model — for the CLUSTER_ECHO_CHILD
     // strip (an Aurora DBInstance echoing its DBCluster's cluster-level config).
     clusterEchoModel?: Record<string, Record<string, unknown>>;
+    // #978: per AWS::RDS::OptionGroup physical id, the option-default catalog resolved live from
+    // `describe-option-group-options` — `{ optionName: { settingName: DefaultValue | null } }`.
+    // Folds RDS-materialized value-bearing default-fill settings to atDefault (see
+    // rdsMaterializedDefault). Absent when the read was denied / on offline replay without it.
+    rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     // Top-level exempted props whose SDK_SUPPLEMENTS read FAILED (#849, from router.ts): they
     // are absent from the live model NOT because the resource lacks them, but because the read
     // could not verify them. Each is surfaced as a `readGap` (not a false declared removal, not
@@ -2622,14 +2644,24 @@ export function classifyResource(
               resourceType === 'AWS::KinesisFirehose::DeliveryStream' &&
               loName === 'NumberOfRetries' &&
               loValue === '3';
-            // #978: RDS OptionGroup materializes every unset plugin setting as a default-fill
-            // (value-bearing default or `{Name}`-only husk) — fold atDefault, equality-gated.
-            const isRdsOptionDefault = isRdsOptionSettingDefault(
-              resourceType,
-              loRec,
-              loName,
-              loValue
-            );
+            // #978: RDS OptionGroup materializes every unset plugin setting as a default-fill —
+            // an identity-only `{Name}` husk (unset), or a value equal to the option's catalog
+            // DefaultValue (gather-resolved live). Fold both atDefault, equality-gated.
+            let isRdsOptionDefault = false;
+            if (resourceType === 'AWS::RDS::OptionGroup') {
+              if (isIdentityOnlyHusk(loRec, nvSubsetSpec.nameField)) {
+                isRdsOptionDefault = true;
+              } else {
+                const matDefault = rdsMaterializedDefault(
+                  opts.rdsOptionSettingDefaults,
+                  physicalId,
+                  declaredIn,
+                  d.path,
+                  loName
+                );
+                isRdsOptionDefault = matDefault != null && matDefault === loValue;
+              }
+            }
             findings.push({
               tier: isFirehoseRetriesDefault || isRdsOptionDefault ? 'atDefault' : 'undeclared',
               logicalId,
