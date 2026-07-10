@@ -1,3 +1,11 @@
+## [0.12.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.7...v0.12.8) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** pin SSMContacts/Scheduler/AppSync order-significant arrays so an OOB reorder surfaces ([#880](https://github.com/go-to-k/cdk-real-drift/issues/880)) ([#1258](https://github.com/go-to-k/cdk-real-drift/issues/1258)) ([b253a2c](https://github.com/go-to-k/cdk-real-drift/commit/b253a2c75168cfdf5f8859a1b6ed6cf3d37f06ab))
+* **read:** fold RDS cluster implicit members by name signature so a rogue OOB instance surfaces ([#985](https://github.com/go-to-k/cdk-real-drift/issues/985)) ([#1257](https://github.com/go-to-k/cdk-real-drift/issues/1257)) ([19be820](https://github.com/go-to-k/cdk-real-drift/commit/19be8206461911bfa7fb084b11fb12761772475a))
+
 ## [0.12.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.6...v0.12.7) (2026-07-10)
 
 
