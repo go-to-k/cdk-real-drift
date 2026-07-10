@@ -52,6 +52,7 @@ import {
   DescribeParameterGroupsCommand,
   DescribeParametersCommand as DescribeDaxParametersCommand,
   DescribeSubnetGroupsCommand,
+  ListTagsCommand as DaxListTagsCommand,
 } from '@aws-sdk/client-dax';
 import {
   GetClassifierCommand,
@@ -59,6 +60,7 @@ import {
   GetJobCommand,
   GetSecurityConfigurationCommand,
   GetTableCommand,
+  GetTagsCommand as GlueGetTagsCommand,
   GetWorkflowCommand,
   GlueClient,
 } from '@aws-sdk/client-glue';
@@ -92,6 +94,7 @@ import {
   DescribeReplicationGroupsCommand,
   DescribeUsersCommand as DescribeCacheUsersCommand,
   ElastiCacheClient,
+  ListTagsForResourceCommand as ElastiCacheListTagsForResourceCommand,
 } from '@aws-sdk/client-elasticache';
 import {
   DescribeParameterGroupsCommand as DescribeMemoryDbParameterGroupsCommand,
@@ -121,6 +124,7 @@ import {
 import {
   GetJobTemplateCommand,
   GetQueueCommand,
+  ListTagsForResourceCommand as MediaConvertListTagsForResourceCommand,
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
 import {
@@ -166,6 +170,7 @@ import {
 import {
   GetNamespaceCommand,
   GetServiceCommand,
+  ListTagsForResourceCommand as ServiceDiscoveryListTagsForResourceCommand,
   ServiceDiscoveryClient,
 } from '@aws-sdk/client-servicediscovery';
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
@@ -243,6 +248,50 @@ function mirrorDeclaredTags(declaredTags: unknown): { Key: string; Value: string
     .filter((t) => str(t.Key) !== undefined)
     .map((t) => ({ Key: t.Key as string, Value: str(t.Value) ?? '' }));
   return out.length > 0 ? out : undefined;
+}
+
+// The map-shape twin of projectTagList: a live tag MAP ({ k: v }) — how DLM / DAX / Glue /
+// MediaConvert model tags — cleaned to a plain { k: v } for the CFn map-shape `Tags` those
+// types declare. Values are coerced to '' when null/missing (parity with projectTagList).
+// Returns undefined when there are no keys so the caller can OMIT `Tags` (absent stays
+// absent = FP-safe). Some SDKs (DAX ListTags) return the tags as a LIST even though CFn
+// declares the map shape — pass the tags through tagListToMap first.
+function projectTagMap(
+  tags: Record<string, string | undefined> | undefined
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(tags ?? {})) {
+    if (str(k) === undefined) continue;
+    out[k] = v ?? '';
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+// A live tag LIST ([{Key?, Value?}, ...]) folded to a { k: v } map — DAX ListTags returns a
+// list even though AWS::DAX::Cluster declares the map-shape `Tags`.
+function tagListToMap(
+  tags: { Key?: string | undefined; Value?: string | undefined }[] | undefined
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of tags ?? []) {
+    const k = str(t.Key);
+    if (k !== undefined) out[k] = t.Value ?? '';
+  }
+  return out;
+}
+
+// The map-shape twin of mirrorDeclaredTags: mirror a declared map-shape `Tags` ({ k: v })
+// on the degrade path when a map-shape type's tag fetch FAILS, so an omission does not
+// false-flag a `declared`-tier Tags drift. Returns undefined when nothing was declared.
+function mirrorDeclaredTagsMap(declaredTags: unknown): Record<string, string> | undefined {
+  if (typeof declaredTags !== 'object' || declaredTags === null || Array.isArray(declaredTags))
+    return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(declaredTags as Record<string, unknown>)) {
+    if (str(k) === undefined) continue;
+    out[k] = str(v) ?? '';
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 const readS3BucketPolicy: OverrideReader = async ({ declared, region }) => {
@@ -739,6 +788,15 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
   } else if (Object.keys(details).length > 0) {
     model.PolicyDetails = details;
   }
+  // Tags — AWS::DLM::LifecyclePolicy declares the LIST shape ([{Key, Value}]), but
+  // GetLifecyclePolicy already returns the policy's tags as a { k: v } MAP on `Policy.Tags`
+  // (no extra call / IAM perm). Convert to the CFn list shape so a declared `Tags` value has
+  // a live counterpart — without it a tagged policy false-flagged `Tags desired=[…]
+  // actual=undefined` on every check, surviving record (#1362 / #1056 class).
+  const dlmTags = projectTagList(
+    Object.entries(p.Tags ?? {}).map(([Key, Value]) => ({ Key, Value }))
+  );
+  if (dlmTags) model.Tags = dlmTags;
   return model;
 };
 
@@ -1018,7 +1076,34 @@ const readLakeFormationResource: OverrideReader = async ({ physicalId, region })
 // ReservationPlan/*JobsCount/ServiceOverrides/Type) are dropped — not user-declarable scalars,
 // pure noise. Read-ONLY (UpdateQueue deferred). A deleted queue surfaces as
 // NotFoundException → the router maps it to `deleted`.
-const readMediaConvertQueue: OverrideReader = async ({ physicalId, region }) => {
+// Fetch a MediaConvert resource's live tags via mediaconvert:ListTagsForResource (the Arn
+// is the tag address) and project them onto the map-shape `Tags` the CFn schema declares,
+// degrading — mirror declared Tags + warn — on failure so a tag-fetch permission gap /
+// throttle does not false-flag a `declared`-tier Tags drift (#1362 / #1056 class). GetQueue
+// / GetJobTemplate do NOT carry Tags, so without this any MediaConvert resource in a
+// `Tags.of(app)` app false-flagged `Tags desired={…} actual=undefined` on every check.
+async function attachMediaConvertTags(
+  c: MediaConvertClient,
+  arn: string,
+  declared: Record<string, unknown>,
+  model: Record<string, unknown>,
+  label: string
+): Promise<void> {
+  try {
+    const t = await c.send(new MediaConvertListTagsForResourceCommand({ Arn: arn }));
+    const tags = projectTagMap(t.ResourceTags?.Tags);
+    if (tags) model.Tags = tags;
+  } catch (err) {
+    const mirrored = mirrorDeclaredTagsMap(declared.Tags);
+    if (mirrored) model.Tags = mirrored;
+    const call = (err as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: MediaConvert ListTagsForResource for ${label} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant mediaconvert:ListTagsForResource to detect out-of-band tag changes\n`
+    );
+  }
+}
+
+const readMediaConvertQueue: OverrideReader = async ({ physicalId, declared, region }) => {
   const name = str(physicalId);
   if (!name) return undefined;
   const c = new MediaConvertClient({ region, ...READ_RETRY });
@@ -1029,6 +1114,8 @@ const readMediaConvertQueue: OverrideReader = async ({ physicalId, region }) => 
   if (str(q.Description)) model.Description = q.Description;
   if (str(q.PricingPlan)) model.PricingPlan = q.PricingPlan;
   if (str(q.Status)) model.Status = q.Status;
+  if (str(q.Arn))
+    await attachMediaConvertTags(c, q.Arn as string, declared, model, `Queue ${name}`);
   return model;
 };
 
@@ -1040,7 +1127,7 @@ const readMediaConvertQueue: OverrideReader = async ({ physicalId, region }) => 
 // AccelerationSettings/HopDestinations/StatusUpdateInterval/Category/Queue/Priority mirror the
 // CFn shape 1:1. Computed/managed fields (Arn/CreatedAt/LastUpdated/Type) are dropped. Read-ONLY
 // (UpdateJobTemplate deferred). A deleted template surfaces as NotFoundException → `deleted`.
-const readMediaConvertJobTemplate: OverrideReader = async ({ physicalId, region }) => {
+const readMediaConvertJobTemplate: OverrideReader = async ({ physicalId, declared, region }) => {
   const name = str(physicalId);
   if (!name) return undefined;
   const c = new MediaConvertClient({ region, ...READ_RETRY });
@@ -1060,6 +1147,8 @@ const readMediaConvertJobTemplate: OverrideReader = async ({ physicalId, region 
   // `Settings` object. Faithful passthrough so a console-side transcode-settings change is
   // detectable.
   if (t.Settings !== undefined) model.SettingsJson = t.Settings;
+  if (str(t.Arn))
+    await attachMediaConvertTags(c, t.Arn as string, declared, model, `JobTemplate ${name}`);
   return model;
 };
 
@@ -1337,7 +1426,7 @@ const readEc2ClientVpnTargetNetworkAssociation: OverrideReader = async ({
 // from ParameterGroup.ParameterGroupName, NotificationTopicARN from
 // NotificationConfiguration.TopicArn, SSESpecification from SSEDescription.Status). Read-ONLY.
 // Empty result -> ResourceGoneError so the router maps it to `deleted`.
-const readDaxCluster: OverrideReader = async ({ physicalId, region }) => {
+const readDaxCluster: OverrideReader = async ({ physicalId, declared, region }) => {
   const name = str(physicalId);
   if (!name) return undefined;
   const c = new DAXClient({ region, ...READ_RETRY });
@@ -1362,6 +1451,25 @@ const readDaxCluster: OverrideReader = async ({ physicalId, region }) => {
   if (cl.NotificationConfiguration && str(cl.NotificationConfiguration.TopicArn))
     model.NotificationTopicARN = cl.NotificationConfiguration.TopicArn;
   if (cl.SSEDescription?.Status === 'ENABLED') model.SSESpecification = { SSEEnabled: true };
+  // Tags — AWS::DAX::Cluster declares the map-shape `Tags`, but DAX ListTags returns a
+  // LIST; fold it to the map shape. DescribeClusters does NOT carry tags, so without this a
+  // tagged cluster false-flagged `Tags desired={…} actual=undefined` every check (#1362 /
+  // #1056 class). Degrade (mirror declared + warn) on a tag-fetch failure.
+  const daxArn = str(cl.ClusterArn);
+  if (daxArn) {
+    try {
+      const t = await c.send(new DaxListTagsCommand({ ResourceName: daxArn }));
+      const tags = projectTagMap(tagListToMap(t.Tags));
+      if (tags) model.Tags = tags;
+    } catch (err) {
+      const mirrored = mirrorDeclaredTagsMap(declared.Tags);
+      if (mirrored) model.Tags = mirrored;
+      const call = (err as Error)?.name || 'unknown error';
+      process.stderr.write(
+        `[cdkrd] warning: DAX ListTags for Cluster ${name} (${daxArn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant dax:ListTags to detect out-of-band tag changes\n`
+      );
+    }
+  }
   return model;
 };
 
@@ -1406,7 +1514,12 @@ const readDaxParameterGroup: OverrideReader = async ({ physicalId, region }) => 
 // divergence still surfaces — only the untouched inherited defaults fold away. The CFn
 // physical id (Ref) IS the CacheParameterGroupName. Read-ONLY. Empty group -> ResourceGoneError
 // so the router maps it to `deleted`.
-const readElastiCacheParameterGroup: OverrideReader = async ({ physicalId, region }) => {
+const readElastiCacheParameterGroup: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+  accountId,
+}) => {
   const name = str(physicalId);
   if (!name) return undefined;
   const c = new ElastiCacheClient({ region, ...READ_RETRY });
@@ -1437,6 +1550,26 @@ const readElastiCacheParameterGroup: OverrideReader = async ({ physicalId, regio
     marker = str(p.Marker);
   } while (marker !== undefined);
   if (Object.keys(values).length > 0) model.Properties = values;
+  // Tags — AWS::ElastiCache::ParameterGroup declares the LIST shape ([{Key, Value}]).
+  // DescribeCacheParameterGroups does NOT carry tags; fetch via ListTagsForResource on the
+  // group ARN (built from region/account) so a tagged group has a live counterpart —
+  // without it a declared `Tags` false-flagged `desired=[…] actual=undefined` every check
+  // (#1362 / #1056 class). Degrade (mirror declared + warn) on a tag-fetch failure.
+  if (accountId) {
+    const arn = `arn:${partitionForRegion(region).partition}:elasticache:${region}:${accountId}:parametergroup:${name}`;
+    try {
+      const t = await c.send(new ElastiCacheListTagsForResourceCommand({ ResourceName: arn }));
+      const tags = projectTagList(t.TagList);
+      if (tags) model.Tags = tags;
+    } catch (err) {
+      const mirrored = mirrorDeclaredTags(declared.Tags);
+      if (mirrored) model.Tags = mirrored;
+      const call = (err as Error)?.name || 'unknown error';
+      process.stderr.write(
+        `[cdkrd] warning: ElastiCache ListTagsForResource for ParameterGroup ${name} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant elasticache:ListTagsForResource to detect out-of-band tag changes\n`
+      );
+    }
+  }
   return model;
 };
 
@@ -1705,7 +1838,7 @@ const readGlueClassifier: OverrideReader = async ({ physicalId, declared, region
 // CFn physical id is the workflow name; project the CFn-modeled scalar/map props, dropping
 // AWS-managed run/graph state (CreatedOn / LastModifiedOn / LastRun / Graph) and `Tags`
 // (handled by the shared aws:* tag strip). MaxConcurrentRuns is a number CFn declares.
-const readGlueWorkflow: OverrideReader = async ({ physicalId, declared, region }) => {
+const readGlueWorkflow: OverrideReader = async ({ physicalId, declared, region, accountId }) => {
   const name = str(physicalId) ?? str(declared.Name);
   if (!name) return undefined;
   const c = new GlueClient({ region, ...READ_RETRY });
@@ -1716,6 +1849,26 @@ const readGlueWorkflow: OverrideReader = async ({ physicalId, declared, region }
   if (w.Description !== undefined) out.Description = w.Description;
   if (w.DefaultRunProperties !== undefined) out.DefaultRunProperties = w.DefaultRunProperties;
   if (w.MaxConcurrentRuns !== undefined) out.MaxConcurrentRuns = w.MaxConcurrentRuns;
+  // Tags — AWS::Glue::Workflow declares the map-shape `Tags`. GetWorkflow does NOT carry
+  // tags; fetch via glue:GetTags on the workflow ARN (built from region/account) so a
+  // declared `Tags` has a live counterpart — without it a tagged workflow false-flagged
+  // `Tags desired={…} actual=undefined` every check (#1362 / #1056 class). Degrade (mirror
+  // declared + warn) on a tag-fetch failure.
+  if (accountId) {
+    const arn = `arn:${partitionForRegion(region).partition}:glue:${region}:${accountId}:workflow/${name}`;
+    try {
+      const t = await c.send(new GlueGetTagsCommand({ ResourceArn: arn }));
+      const tags = projectTagMap(t.Tags);
+      if (tags) out.Tags = tags;
+    } catch (err) {
+      const mirrored = mirrorDeclaredTagsMap(declared.Tags);
+      if (mirrored) out.Tags = mirrored;
+      const call = (err as Error)?.name || 'unknown error';
+      process.stderr.write(
+        `[cdkrd] warning: Glue GetTags for Workflow ${name} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant glue:GetTags to detect out-of-band tag changes\n`
+      );
+    }
+  }
   return out;
 };
 
@@ -2241,7 +2394,34 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
 // type), so without the namespace's Arn in liveAttrs the whole ServiceConnect config
 // resolves to UNRESOLVED and its drift is never detected. (ServiceCount / CreateDate /
 // Properties / a DNS namespace's Vpc stay readGaps — not projected.)
-const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, region }) => {
+// Fetch a Cloud Map resource's live tags via servicediscovery:ListTagsForResource (the Arn
+// is the tag address) and project them onto the list-shape `Tags` the CFn schema declares,
+// degrading — mirror declared Tags + warn — on failure so a tag-fetch permission gap /
+// throttle does not false-flag a `declared`-tier Tags drift (#1362 / #1056 class). GetNamespace
+// / GetService do NOT carry Tags, so without this any ServiceDiscovery resource in a
+// `Tags.of(app)` app false-flagged `Tags desired=[…] actual=undefined` on every check.
+async function attachServiceDiscoveryTags(
+  c: ServiceDiscoveryClient,
+  arn: string,
+  declared: Record<string, unknown>,
+  model: Record<string, unknown>,
+  label: string
+): Promise<void> {
+  try {
+    const t = await c.send(new ServiceDiscoveryListTagsForResourceCommand({ ResourceARN: arn }));
+    const tags = projectTagList(t.Tags);
+    if (tags) model.Tags = tags;
+  } catch (err) {
+    const mirrored = mirrorDeclaredTags(declared.Tags);
+    if (mirrored) model.Tags = mirrored;
+    const call = (err as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: ServiceDiscovery ListTagsForResource for ${label} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant servicediscovery:ListTagsForResource to detect out-of-band tag changes\n`
+    );
+  }
+}
+
+const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
@@ -2253,6 +2433,8 @@ const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, regio
   if (ns.Description !== undefined) model.Description = ns.Description;
   if (ns.Arn !== undefined) model.Arn = ns.Arn; // readOnly: stripped from compare, kept for GetAtt
   if (ns.Id !== undefined) model.Id = ns.Id; // readOnly: ditto (a GetAtt [ns, Id] consumer)
+  if (str(ns.Arn))
+    await attachServiceDiscoveryTags(c, ns.Arn as string, declared, model, `Namespace ${id}`);
   return model;
 };
 
@@ -2262,7 +2444,7 @@ const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, regio
 // deprecated/read-only echo, deliberately not projected (a service in an HTTP
 // namespace has no DnsConfig at all). HealthCheck* are projected only when present
 // so an HTTP service stays CLEAN. Id / Arn / InstanceCount / CreateDate are noise.
-const readServiceDiscoveryService: OverrideReader = async ({ physicalId, region }) => {
+const readServiceDiscoveryService: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new ServiceDiscoveryClient({ region, ...READ_RETRY });
@@ -2297,6 +2479,8 @@ const readServiceDiscoveryService: OverrideReader = async ({ physicalId, region 
         FailureThreshold: s.HealthCheckCustomConfig.FailureThreshold,
       }),
     };
+  if (str(s.Arn))
+    await attachServiceDiscoveryTags(c, s.Arn as string, declared, model, `Service ${id}`);
   return model;
 };
 

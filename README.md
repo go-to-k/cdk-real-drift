@@ -802,7 +802,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   handlers),
   `dlm:GetLifecyclePolicy` (reads an `AWS::DLM::LifecyclePolicy` — a Data
   Lifecycle Manager EBS-snapshot / AMI backup-schedule policy, NON_PROVISIONABLE
-  with no Cloud Control handlers; the physical id IS the policy id),
+  with no Cloud Control handlers; the physical id IS the policy id, and the same
+  `GetLifecyclePolicy` response carries the policy's `Tags` — no extra call — so a
+  declared `Tags` is not false-flagged as drift),
   `dms:DescribeEndpoints` + `dms:DescribeReplicationSubnetGroups` +
   `dms:DescribeReplicationInstances` + `dms:DescribeReplicationTasks` +
   `dms:ListTagsForResource` (read an `AWS::DMS::Endpoint` /
@@ -815,21 +817,27 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   registered S3 data location whose Cloud Control `GetResource` returns
   `UnsupportedActionException`; the physical id IS the location `ResourceArn`, and
   the reader projects `RoleArn` / `WithFederation` / `HybridAccessEnabled`),
-  `mediaconvert:GetQueue` + `mediaconvert:GetJobTemplate` (read an
+  `mediaconvert:GetQueue` + `mediaconvert:GetJobTemplate` +
+  `mediaconvert:ListTagsForResource` (read an
   `AWS::MediaConvert::Queue` / `AWS::MediaConvert::JobTemplate` — a video-pipeline
   staple, NON_PROVISIONABLE with no Cloud Control handlers; the physical id IS the
-  resource name),
+  resource name, and `ListTagsForResource` reads each resource's tags, which the
+  `Get*` responses omit — without it a declared `Tags` false-flagged as drift on
+  every tagged MediaConvert resource),
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
   (supplement an `AWS::ElastiCache::ReplicationGroup` with its writeOnly
   `PreferredMaintenanceWindow` / `NotificationTopicArn` / `EngineVersion`, read
   from the member cache cluster),
-  `elasticache:DescribeCacheParameterGroups` + `elasticache:DescribeCacheParameters`
+  `elasticache:DescribeCacheParameterGroups` + `elasticache:DescribeCacheParameters` +
+  `elasticache:ListTagsForResource`
   (read an `AWS::ElastiCache::ParameterGroup`'s `Properties` as the `Source=user`
   MODIFIED set only — the Cloud Control read returns the full effective set, so the
   ~60 inherited engine defaults would otherwise surface as first-run drift; an
-  out-of-band parameter change is `Source=user` and still detected),
+  out-of-band parameter change is `Source=user` and still detected;
+  `ListTagsForResource` reads the group's tags, which the `Describe*` responses
+  omit — without it a declared `Tags` false-flagged as drift on every tagged group),
   `ecs:DescribeServices` (supplements an
   `AWS::ECS::Service` with its writeOnly `ServiceConnectConfiguration` /
   `VolumeConfigurations`, read from the PRIMARY deployment),
@@ -856,10 +864,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   full resolved option set; an out-of-band console edit to any environment option
   is otherwise invisible, and the service-filled default options fold to
   `atDefault`),
-  `servicediscovery:GetNamespace` + `servicediscovery:GetService` (read a Cloud Map
+  `servicediscovery:GetNamespace` + `servicediscovery:GetService` +
+  `servicediscovery:ListTagsForResource` (read a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against — and a Cloud Map
-  `Service`),
+  `Service`; `ListTagsForResource` reads each resource's tags, which the `Get*`
+  responses omit — without it a declared `Tags` false-flagged as drift on every
+  tagged Cloud Map resource),
   `docdb:DescribeDBClusters` + `docdb:DescribeDBInstances` +
   `rds:ListTagsForResource` (read an `AWS::DocDB::DBCluster` /
   `AWS::DocDB::DBInstance` — the whole DocumentDB family is a Cloud Control read
@@ -873,8 +884,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `codebuild:BatchGetProjects` (reads an `AWS::CodeBuild::Project`) +
   `codebuild:BatchGetReportGroups` (reads an `AWS::CodeBuild::ReportGroup`),
   `dax:DescribeClusters` + `dax:DescribeParameterGroups` + `dax:DescribeParameters` +
-  `dax:DescribeSubnetGroups` (read an `AWS::DAX::Cluster` / `ParameterGroup` /
-  `SubnetGroup` — the DynamoDB Accelerator family),
+  `dax:DescribeSubnetGroups` + `dax:ListTags` (read an `AWS::DAX::Cluster` /
+  `ParameterGroup` / `SubnetGroup` — the DynamoDB Accelerator family; `ListTags`
+  reads a cluster's tags, which `DescribeClusters` omits — without it a declared
+  `Tags` false-flagged as drift on every tagged DAX cluster),
   `ec2:DescribeClientVpnEndpoints` + `ec2:DescribeClientVpnAuthorizationRules` +
   `ec2:DescribeClientVpnTargetNetworks` (read an `AWS::EC2::ClientVpnEndpoint` /
   `ClientVpnAuthorizationRule` / `ClientVpnTargetNetworkAssociation`),
@@ -883,10 +896,12 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `appsync:ListApiKeys` (reads an `AWS::AppSync::ApiKey` — a Cloud Control gap),
   `cognito-sync:GetCognitoEvents` (enriches the Cloud Control read of an
   `AWS::Cognito::IdentityPool` with its writeOnly `CognitoEvents` Sync trigger),
-  `glue:GetClassifier` + `glue:GetWorkflow` + `glue:GetConnection`
+  `glue:GetClassifier` + `glue:GetWorkflow` + `glue:GetConnection` + `glue:GetTags`
   (`glue:GetConnection` is issued with `HidePassword` so NO credential enters the
   baseline — read an `AWS::Glue::Classifier` / `Workflow` / `Connection`, the rest
-  of the Glue family that has no Cloud Control handler),
+  of the Glue family that has no Cloud Control handler; `glue:GetTags` reads a
+  workflow's tags, which `GetWorkflow` omits — without it a declared `Tags`
+  false-flagged as drift on every tagged Glue workflow),
   `rds:DescribeOptionGroupOptions` (reads an `AWS::RDS::OptionGroup`'s option-default
   catalog — the `DefaultValue` AWS materializes for every plugin setting the template
   did not declare — so the service default-fill folds to `atDefault` instead of
