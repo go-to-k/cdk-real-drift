@@ -489,13 +489,31 @@ describe('report', () => {
       const infoIdx = lines.indexOf('info:');
       expect(infoIdx).toBeGreaterThan(-1);
       expect(lines[infoIdx + 1]).toBe(
-        "  - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)"
+        '  - readGap=1 (declared but unverifiable — not drift: 1 write-only)'
       );
       expect(lines[infoIdx + 2]).toMatch(
         /^ {2}- skipped=2 — NOT checked \(coverage incomplete: .*custom resource 1.*override target unresolved 1.*\)$/
       );
       expect(lines[infoIdx + 3]).toBe('  run with --verbose for the list');
       expect(text.match(/--verbose/g)).toHaveLength(1);
+    });
+
+    it('breaks GetTemplate-masked readGaps out of "not returned by AWS" in the info: summary', () => {
+      // A masked value IS returned on read — the DECLARED side is what GetTemplate
+      // corrupted — so it must not inflate the "not returned by AWS" count.
+      const findings: Finding[] = [
+        reason('readGap', 'declared but not returned by live read'),
+        reason('readGap', 'write-only — cannot be read back'),
+        reason(
+          'readGap',
+          'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"'
+        ),
+        reason('skipped', 'custom resource — no cloud-side model to read', 'Custom::Foo'),
+      ];
+      const { text } = run(findings);
+      expect(text).toContain(
+        '  - readGap=3 (declared but unverifiable — not drift: 1 not returned by AWS, 1 write-only, 1 non-ASCII masked by GetTemplate)'
+      );
     });
 
     it('result: appears ABOVE the info: footer', () => {
