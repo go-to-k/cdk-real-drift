@@ -1,3 +1,11 @@
+## [0.12.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.17...v0.12.18) (2026-07-10)
+
+
+### Bug Fixes
+
+* **config:** decode UTF-16/BOM ignore.yaml ([#1291](https://github.com/go-to-k/cdk-real-drift/issues/1291)) ([#1352](https://github.com/go-to-k/cdk-real-drift/issues/1352)) ([d2d203f](https://github.com/go-to-k/cdk-real-drift/commit/d2d203fb2362ed8be8e42eb0b9b49c74640cc791))
+* **schema:** pointerToDotted tolerates a no-leading-slash properties/ pointer ([#1311](https://github.com/go-to-k/cdk-real-drift/issues/1311)) ([#1353](https://github.com/go-to-k/cdk-real-drift/issues/1353)) ([65227cc](https://github.com/go-to-k/cdk-real-drift/commit/65227cc7672998fd8a0eb88dbdd42842426d5a46))
+
 ## [0.12.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.16...v0.12.17) (2026-07-10)
 
 
