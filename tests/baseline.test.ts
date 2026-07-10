@@ -853,7 +853,16 @@ describe('baseline', () => {
       // stays complete even while an ignore rule suppresses reporting it. Preserves the
       // intended behavior for recorded values.
       const findings: Finding[] = [
-        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+        // ignoredFrom (#1277): the demotion only applies to an ignored value that
+        // originated `undeclared`; applyIgnores stamps it. (Recovered via `recorded` here.)
+        {
+          tier: 'ignored',
+          ignoredFrom: 'undeclared',
+          logicalId: 'A',
+          resourceType: 'T',
+          path: 'P',
+          actual: 1,
+        },
       ];
       const recorded = [{ logicalId: 'A', resourceType: 'T', path: 'P', value: 1 }];
       expect(computeCompleteResources(['A'], findings, recorded)).toEqual(['A']);
@@ -864,14 +873,30 @@ describe('baseline', () => {
       // the value as known-absent, so deleting the rule (un-ignore) would false-surface the
       // untouched value as confirmed "appeared since record". It must stay INCOMPLETE.
       const findings: Finding[] = [
-        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+        // ignoredFrom 'undeclared' (#1277): the demotion is scoped to the undeclared origin.
+        {
+          tier: 'ignored',
+          ignoredFrom: 'undeclared',
+          logicalId: 'A',
+          resourceType: 'T',
+          path: 'P',
+          actual: 1,
+        },
       ];
       expect(computeCompleteResources(['A'], findings, [])).toEqual([]);
     });
 
     it('#1078: an ignored-and-unrecorded value DEMOTES a previously-complete resource', () => {
       const findings: Finding[] = [
-        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+        // ignoredFrom 'undeclared' (#1277): only the undeclared origin demotes.
+        {
+          tier: 'ignored',
+          ignoredFrom: 'undeclared',
+          logicalId: 'A',
+          resourceType: 'T',
+          path: 'P',
+          actual: 1,
+        },
       ];
       expect(computeCompleteResources(['A'], findings, [], ['A'])).toEqual([]);
     });
