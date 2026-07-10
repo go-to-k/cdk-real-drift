@@ -19,6 +19,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // exactly like Role/kin above. Equality-gated, so an out-of-band UpdateServerCertificate
   // path move still surfaces. Live-confirmed (#910).
   'AWS::IAM::ServerCertificate': { Path: '/' },
+  // An ACM Certificate declared without a KeyAlgorithm reads back "RSA_2048" (the ACM
+  // default) from DescribeCertificate, which the #974 SDK reader returns unconditionally.
+  // Equality-gated, so a user who declares a different algorithm (e.g. EC_prime256v1) pushes
+  // the property out of the undeclared tier and still surfaces any divergence (#1090).
+  'AWS::CertificateManager::Certificate': { KeyAlgorithm: 'RSA_2048' },
   // An App Runner service that declares neither HealthCheckConfiguration nor
   // NetworkConfiguration reads both back fully materialized with AWS's constant
   // first-run defaults — a TCP health check and a public IPV4 DEFAULT-egress network.
@@ -4492,6 +4497,15 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   // `SSESpecification` — the SSE config is reflected via other readOnly props, not echoed verbatim.
   'AWS::DynamoDB::GlobalTable': new Set(['SSESpecification']),
   'AWS::DynamoDB::Table': new Set(['SSESpecification']),
+  // `DomainValidationOptions` — a createOnly write-time INPUT collection
+  // ({DomainName, ValidationDomain, HostedZoneId}) that DescribeCertificate does NOT echo
+  // back verbatim; it returns resolved runtime `DomainValidation` records instead (CNAME/
+  // status), so the SDK reader deliberately never projects it (overrides.ts readAcmCertificate,
+  // "stays a readGap"). The live registry schema has no writeOnlyProperties, so schema-strip
+  // keeps it in the declared model → classify's removed-collection branch would false-flag
+  // every DNS-validated cert. It is a true readGap: AWS genuinely never returns the input
+  // shape (#1090).
+  'AWS::CertificateManager::Certificate': new Set(['DomainValidationOptions']),
 };
 
 // SCALAR_RETURNED_WHEN_SET is the ALLOWLIST inverse of the collection default in the

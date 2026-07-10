@@ -1464,14 +1464,17 @@ export function classifyResource(
       if (name) knownDefPaths = { ...knownDefPaths, 'Registry.Name': name };
     }
   }
-  // #845: a CodeBuild Project's undeclared `Artifacts.Name` echoes the declared project
-  // `Name` (AWS default-fills the artifact name to the project name when the template's
-  // Artifacts block declares no Name). Derive it from the declared top-level `Name` and
-  // equality-gate it (fold tier 2): an out-of-band change of the artifact name still surfaces.
+  // #845/#1094: a CodeBuild Project's undeclared `Artifacts.Name` echoes the project name —
+  // the declared top-level `Name` when the template declares one, else the AWS-GENERATED
+  // project name (= the physical id) when the template declares NO Name (the default CDK
+  // `codebuild.Project` without an explicit projectName). Derive from `Name` and fall back to
+  // `physicalId`, then equality-gate it (fold tier 2): an out-of-band change of the artifact
+  // name away from the project name still surfaces.
   if (resourceType === 'AWS::CodeBuild::Project') {
     const name = declared['Name'];
-    if (typeof name === 'string') {
-      knownDefPaths = { ...knownDefPaths, 'Artifacts.Name': name };
+    const artifactName = typeof name === 'string' ? name : physicalId;
+    if (typeof artifactName === 'string') {
+      knownDefPaths = { ...knownDefPaths, 'Artifacts.Name': artifactName };
     }
   }
   // #845: a SecretsManager RotationSchedule declaring `RotationRules.ScheduleExpression`
@@ -1490,15 +1493,21 @@ export function classifyResource(
       };
     }
   }
-  // #845: an AmazonMQ ACTIVEMQ broker that declares no `StorageType` reads back the AWS
-  // default `EFS` (ActiveMQ brokers default to EFS storage; RabbitMQ supports only EBS).
-  // Derive the default from the declared `EngineType` and equality-gate it (fold tier 2):
-  // an ActiveMQ broker pinned to EBS declares StorageType and is compared, and an out-of-band
-  // change away from the derived default still surfaces.
+  // #845/#1094: an AmazonMQ broker that declares no `StorageType` reads back the AWS default
+  // for its engine — ActiveMQ defaults to `EFS`; RabbitMQ supports ONLY `EBS` (DescribeBroker
+  // returns storageType unconditionally). Derive the default from the declared `EngineType`
+  // and equality-gate it (fold tier 2): a broker that pins a non-default StorageType declares
+  // it and is compared, and an out-of-band change away from the derived default still surfaces.
   if (resourceType === 'AWS::AmazonMQ::Broker') {
     const engineType = declared['EngineType'];
-    if (typeof engineType === 'string' && engineType.toUpperCase() === 'ACTIVEMQ') {
-      knownDef = { ...knownDef, StorageType: 'EFS' };
+    const engineStorageDefault: Record<string, string> = {
+      ACTIVEMQ: 'EFS',
+      RABBITMQ: 'EBS',
+    };
+    const storageDefault =
+      typeof engineType === 'string' ? engineStorageDefault[engineType.toUpperCase()] : undefined;
+    if (storageDefault !== undefined) {
+      knownDef = { ...knownDef, StorageType: storageDefault };
     }
   }
   // #701: an EventSourceMapping's default BatchSize depends on the source service — 10 for
