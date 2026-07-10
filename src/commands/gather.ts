@@ -643,7 +643,15 @@ export function buildSiblingListenerPorts(desired: Desired): Record<string, numb
     const first = Array.isArray(ranges) ? ranges[0] : undefined;
     const from =
       first && typeof first === 'object' ? (first as Record<string, unknown>).FromPort : undefined;
-    if (typeof from === 'number') map[r.physicalId] = from;
+    // A raw-CFn / YAML template can carry FromPort as a quoted all-digit string ("80") that CFn
+    // coerces to a number; accept it so the EndpointGroup HealthCheckPort still folds (#1268).
+    const port =
+      typeof from === 'number'
+        ? from
+        : typeof from === 'string' && /^\d+$/.test(from)
+          ? Number(from)
+          : undefined;
+    if (port !== undefined) map[r.physicalId] = port;
   }
   return map;
 }

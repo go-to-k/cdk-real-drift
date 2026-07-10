@@ -1316,7 +1316,12 @@ function collectNestedUndeclared(
   // it those arrays are identity-LESS to the generic check below and the descent is skipped —
   // hiding a live-only sub-key added to a declared element (a silent FN). See
   // NESTED_ARRAY_IDENTITY.
-  nestedArrayIdentity?: Record<string, string>
+  nestedArrayIdentity?: Record<string, string>,
+  // True only when this map/property has NO declared twin at all (the #555 fully-undeclared
+  // descend passes an empty `{}` sentinel). A DECLARED-empty `{}` (dv passed from the declared
+  // loop) is NOT absent — its whole-map compare already owns any unsafe-key divergence, so the
+  // path-unsafe emit below must fire on genuine ABSENCE, not zero-length (#1275).
+  declaredAbsent = false
 ): void {
   if (Array.isArray(declaredVal) && Array.isArray(liveVal)) {
     if (declaredVal.length === 0 || liveVal.length === 0) return;
@@ -1410,7 +1415,10 @@ function collectNestedUndeclared(
   // stringly-equal fold collapses the CDK typed-JSON vs AWS string coercion. Emitting it
   // here too false-flagged every declared dot-key map as first-run undeclared drift.
   if (Object.keys(liveVal).some((k) => PATH_UNSAFE_KEY.test(k))) {
-    if (Object.keys(declaredVal).length === 0) emit(path, liveVal);
+    // Emit only when the map is genuinely LIVE-ONLY (no declared twin). A DECLARED-empty `{}`
+    // (declaredAbsent === false, Object.keys length 0) is owned by the declared whole-map
+    // compare; emitting here too double-reported it as declared + undeclared (#1275).
+    if (declaredAbsent) emit(path, liveVal);
     return;
   }
   for (const [k, val] of Object.entries(liveVal)) {
@@ -3800,7 +3808,9 @@ export function classifyResource(
     // trivially-empty) and only the non-default residue surfaces (nested, at `k.sub`). Curated
     // per (type, path) so objects with no foldable defaults are never fragmented into noise.
     if (isNestedObject(v) && DESCEND_UNDECLARED_OBJECT_PATHS[resourceType]?.has(k)) {
-      collectNestedUndeclared({}, v, k, emitNested, NESTED_ARRAY_IDENTITY[resourceType]);
+      // Fully-undeclared property (no declared twin): pass declaredAbsent so an unsafe-key
+      // sub-map still surfaces whole here (the declared loop won't, #1275).
+      collectNestedUndeclared({}, v, k, emitNested, NESTED_ARRAY_IDENTITY[resourceType], true);
       continue;
     }
     // #629: a FULLY-undeclared identity-keyed SUBSET array (a bare Cognito UserPool's `Schema`

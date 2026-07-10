@@ -1766,4 +1766,32 @@ describe('buildSiblingListenerPorts (#975)', () => {
     );
     expect(map).toEqual({});
   });
+
+  it('coerces an all-digit string FromPort ("80") from a raw-CFn/YAML template (#1268)', () => {
+    const map = buildSiblingListenerPorts(
+      desiredWith([
+        {
+          logicalId: 'Listener',
+          resourceType: 'AWS::GlobalAccelerator::Listener',
+          physicalId: 'arn:...:listener/str',
+          declared: { PortRanges: [{ FromPort: '80', ToPort: '80' }] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['arn:...:listener/str']).toBe(80);
+  });
+
+  it('still skips a non-numeric-string FromPort (fail-open, #1268)', () => {
+    const map = buildSiblingListenerPorts(
+      desiredWith([
+        {
+          logicalId: 'Listener',
+          resourceType: 'AWS::GlobalAccelerator::Listener',
+          physicalId: 'arn:...:listener/bad',
+          declared: { PortRanges: [{ FromPort: '8x' }] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map).toEqual({});
+  });
 });
