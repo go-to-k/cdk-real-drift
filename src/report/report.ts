@@ -22,6 +22,7 @@
 import { withinStackPath } from '../construct-path.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
+import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import type { ArrayDelta, Finding, Tier } from '../types.js';
 import { style } from './style.js';
 
@@ -160,6 +161,14 @@ export function formatFinding(f: Finding, stackName = ''): string {
       const { a: base, b: act } = jPair(f.desired, f.actual);
       s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
     }
+  } else if (f.tier === 'added' && f.actual !== undefined) {
+    // #1057: an UNRECORDED `added` resource (no baseline `desired`) — there is no delta to
+    // show, so render its LIVE model (`f.actual`, the full out-of-band-created content) on
+    // its own indented line, so the text report reveals WHAT the rogue resource is instead
+    // of a bare id+type line (the live model was previously only visible under --json). The
+    // `f.actual !== undefined` guard keeps a degraded read (identity-only, no model) rendering
+    // as its bare id+type line rather than a stray `actual =undefined`.
+    s += `\n      actual =${style.actual(j(f.actual))}`;
   } else if (f.tier === 'undeclared' && f.arrayDelta)
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).
@@ -630,8 +639,29 @@ export function safeSlice(s: string, start: number, end: number): string {
   return out;
 }
 
+// #1059: JSON.stringify SILENTLY drops an object property whose VALUE is a symbol and
+// turns a symbol ARRAY ELEMENT into `null` — so a nested UNRESOLVED symbol (the
+// intrinsic-resolver marker a declared value may carry) VANISHES from a rendered diff,
+// producing a phantom "key appeared in live" / a wrong delta. Stringify through a replacer
+// that maps a symbol to a VISIBLE marker so it renders instead of being dropped. UNRESOLVED
+// gets its own `⟨unresolved⟩` label (matching how the footer names an unresolved intrinsic);
+// any other symbol falls back to its description. The replacer only sees object-property /
+// array-element values; a TOP-LEVEL symbol (`JSON.stringify(sym)` → undefined) is handled
+// by symbolMarker before the stringify.
+function symbolMarker(v: symbol): string {
+  return v === UNRESOLVED ? '⟨unresolved⟩' : `⟨${v.description ?? 'symbol'}⟩`;
+}
+const symbolReplacer = (_k: string, value: unknown): unknown =>
+  typeof value === 'symbol' ? symbolMarker(value) : value;
+// JSON.stringify with symbol defense: a top-level symbol stringifies to `undefined`, so
+// substitute its marker directly; nested symbols are caught by the replacer.
+function stringifySymbolSafe(v: unknown): string | undefined {
+  if (typeof v === 'symbol') return JSON.stringify(symbolMarker(v));
+  return JSON.stringify(v, symbolReplacer);
+}
+
 function j(v: unknown): string {
-  const s = JSON.stringify(v);
+  const s = stringifySymbolSafe(v);
   return s && s.length > VALUE_CAP ? safeSlice(s, 0, VALUE_CAP) + '…' : (s ?? String(v));
 }
 
@@ -688,8 +718,8 @@ function isBidiOrZeroWidth(code: number): boolean {
 // identical blobs, hiding the very change the report exists to show (common for long
 // inline-policy / bucket-policy documents). Pure + exported for tests.
 export function jPair(a: unknown, b: unknown): { a: string; b: string } {
-  const as = JSON.stringify(a) ?? String(a);
-  const bs = JSON.stringify(b) ?? String(b);
+  const as = stringifySymbolSafe(a) ?? String(a);
+  const bs = stringifySymbolSafe(b) ?? String(b);
   if (as.length <= VALUE_CAP && bs.length <= VALUE_CAP) return { a: as, b: bs };
   let i = 0;
   const min = Math.min(as.length, bs.length);
