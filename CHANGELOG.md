@@ -1,3 +1,11 @@
+## [0.12.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.30...v0.12.31) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** dot-key empty {} double-report + GA HealthCheckPort string FromPort ([#1275](https://github.com/go-to-k/cdk-real-drift/issues/1275), [#1268](https://github.com/go-to-k/cdk-real-drift/issues/1268)) ([#1379](https://github.com/go-to-k/cdk-real-drift/issues/1379)) ([7546a9a](https://github.com/go-to-k/cdk-real-drift/commit/7546a9ae15977d5405ac7ac1394cf980a6502239))
+* **read:** Lambda child matchers accept the partial-ARN FunctionName form ([#1281](https://github.com/go-to-k/cdk-real-drift/issues/1281)) ([#1380](https://github.com/go-to-k/cdk-real-drift/issues/1380)) ([fc38d4f](https://github.com/go-to-k/cdk-real-drift/commit/fc38d4f8195119a85f4c3b67d6aaa706e82f56c3))
+
 ## [0.12.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.29...v0.12.30) (2026-07-10)
 
 
