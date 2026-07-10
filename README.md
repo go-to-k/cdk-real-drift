@@ -309,6 +309,16 @@ from `--app`: a command (`--app "node bin/app.js"`) or a pre-synthesized assembl
 comparison still reads each stack's **deployed** template + live state from AWS;
 synth only tells cdkrd which stacks to look at.
 
+**Context lookups.** Resolving a CDK app that uses `fromLookup`
+(`Vpc.fromLookup`, `HostedZone.fromLookup`, …) runs the same live AWS context
+lookups as `cdk synth` and caches the results in `cdk.context.json` in your app
+directory — so an app with uncached lookups will make read-only AWS calls and
+create/update that file (a `git status` change is expected; the cache makes
+subsequent checks reproducible). cdkrd prints a one-liner when it does so. This
+matches `cdk synth` semantics and is the only file `check` writes; it never writes
+to AWS. If every lookup fails (leaving only an empty `{}`), cdkrd removes the file
+it just created rather than leave that noise in your tree.
+
 ## Commands & options
 
 | command                     | does                                                                   |

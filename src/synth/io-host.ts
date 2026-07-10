@@ -44,7 +44,20 @@ const APP_STDERR = 'CDK_ASSEMBLY_E1002';
 // WARN: a yellow wrap matches the yellow WARNING label, like every other cdkrd warning.
 const VALIDATION_REPORT = 'CDK_TOOLKIT_E9600';
 
-export type IoPlan = { action: 'drop' } | { action: 'emit'; level: Level };
+// Context-lookup lifecycle codes (toolkit-lib context-aware-source.ts). For an app with
+// `Vpc.fromLookup` / `HostedZone.fromLookup` / … and no cached `cdk.context.json`, synth
+// performs LIVE AWS lookups (I0241) and PERSISTS the results into `cdk.context.json`
+// (I0042), matching `cdk synth`. Both are registered at DEBUG level, so QuietIoHost would
+// otherwise drop them — leaving `check` (a read-only verb) to silently hit AWS and dirty
+// the user's git tree with zero output. We surface each as a concise info-level one-liner
+// to stderr so the side effect is visible (#906).
+const CONTEXT_FETCHING = 'CDK_ASSEMBLY_I0241';
+const CONTEXT_WRITING = 'CDK_ASSEMBLY_I0042';
+
+export type IoPlan =
+  | { action: 'drop' }
+  | { action: 'emit'; level: Level }
+  | { action: 'note'; level: Level; text: string };
 
 /**
  * Decide what QuietIoHost does with a message (pure, so it is unit-testable):
@@ -53,12 +66,29 @@ export type IoPlan = { action: 'drop' } | { action: 'emit'; level: Level };
  *  - the construct-annotation validation report -> emit at WARN so the whole block is
  *    yellow (matching its WARNING label) instead of the misleading ERROR-level red
  *    wrap; per-severity labels still survive (see file header);
+ *  - the context-lookup fetch / write codes -> `note` a fixed one-liner (replacing
+ *    toolkit-lib's verbose debug text) so the otherwise-silent live lookup + the
+ *    cdk.context.json write are visible (#906);
  *  - a real toolkit warning / error -> emit unchanged (still yellow / red);
  *  - everything else (toolkit info/debug/trace chatter) -> drop.
  */
 export function planIoMessage(msg: Pick<IoMessage<unknown>, 'code' | 'level'>): IoPlan {
   if (msg.code === APP_STDOUT || msg.code === APP_STDERR) return { action: 'emit', level: 'info' };
   if (msg.code === VALIDATION_REPORT) return { action: 'emit', level: 'warn' };
+  if (msg.code === CONTEXT_FETCHING) {
+    return {
+      action: 'note',
+      level: 'info',
+      text: 'performing context lookups (Vpc.fromLookup, …)…',
+    };
+  }
+  if (msg.code === CONTEXT_WRITING) {
+    return {
+      action: 'note',
+      level: 'info',
+      text: 'wrote cdk.context.json (cached context lookups)',
+    };
+  }
   if (msg.level === 'warn' || msg.level === 'error') return { action: 'emit', level: msg.level };
   return { action: 'drop' };
 }
@@ -77,9 +107,22 @@ export class QuietIoHost extends NonInteractiveIoHost {
     super({ isCI: false });
   }
 
+  // De-dupe the context-lookup notes: I0241 (fetching) can fire once per resolution round,
+  // so a single "performing context lookups…" line is enough — subsequent identical notes
+  // in the same synth are suppressed (#906).
+  private readonly seenNotes = new Set<string>();
+
   override async notify(msg: IoMessage<unknown>): Promise<void> {
     const plan = planIoMessage(msg);
     if (plan.action === 'drop') return;
+    if (plan.action === 'note') {
+      if (this.seenNotes.has(plan.text)) return;
+      this.seenNotes.add(plan.text);
+      // Replace toolkit-lib's verbose debug body with our concise one-liner (the caller's
+      // `notify` renders `message`), re-tagged to the plan's level so it prints like a
+      // normal cdkrd info line to stderr.
+      return super.notify({ ...msg, level: plan.level, message: `info: ${plan.text}` });
+    }
     return super.notify(plan.level === msg.level ? msg : { ...msg, level: plan.level });
   }
 }

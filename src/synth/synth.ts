@@ -2,7 +2,7 @@
 // uses) to discover stacks. Records a CDK app COMMAND (`node app.js`) or a
 // pre-synthesized cloud-assembly DIRECTORY (`cdk.out`). Drift detection itself
 // does not need this — it is used for stack auto-discovery (and later clobber).
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BaseCredentials, CdkAppMultiContext, Toolkit } from '@aws-cdk/toolkit-lib';
 import { QuietIoHost } from './io-host.js';
@@ -57,6 +57,53 @@ export function contextIgnoredWarning(
   );
 }
 
+/**
+ * Decide whether to remove a `cdk.context.json` that synth may have written (#906).
+ *
+ * For an app with context lookups but no cached context, toolkit-lib's default
+ * `CdkAppMultiContext` persists the resolved lookups into `<cwd>/cdk.context.json` — even
+ * when EVERY lookup FAILED, in which case it writes an empty `{}`. That empty file dirties
+ * the user's git tree for no benefit (it caches nothing). We remove it, but ONLY when it is
+ * safe: the file must NOT have pre-existed (so we never touch a user's committed context),
+ * AND it must be empty (`{}` / whitespace-only) now (so we never delete a file that captured
+ * real lookup results). Returns true iff the file at `file` should be deleted.
+ */
+export function shouldRemoveEmptyContextFile(existedBefore: boolean, existsNow: boolean): boolean {
+  return !existedBefore && existsNow;
+}
+
+/** An object with no own enumerable keys — a persisted `{}` context (an all-failed lookup). */
+function isEmptyContextJson(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (trimmed === '' || trimmed === '{}') return true;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      Object.keys(parsed).length === 0
+    );
+  } catch {
+    // Not valid JSON — leave it alone (never our empty-write; do not delete).
+    return false;
+  }
+}
+
+/**
+ * Remove a `cdk.context.json` at `file` iff synth JUST created it AND it is empty (an
+ * all-failed lookup that persisted `{}`). Guarded so a pre-existing or non-empty user file
+ * is NEVER touched (#906). No-op on any read/remove error — cleanup is best-effort.
+ */
+function cleanupEmptyContextFile(file: string, existedBefore: boolean): void {
+  if (!shouldRemoveEmptyContextFile(existedBefore, existsSync(file))) return;
+  try {
+    if (isEmptyContextJson(readFileSync(file, 'utf-8'))) rmSync(file);
+  } catch {
+    // best-effort: never fail a check because we could not tidy an empty context file.
+  }
+}
+
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
   const toolkit = new Toolkit({
@@ -71,6 +118,12 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 
   const p = resolve(app);
   const isDir = existsSync(p) && statSync(p).isDirectory();
+  // toolkit-lib's default CdkAppMultiContext persists resolved lookups into
+  // <cwd>/cdk.context.json on the fromCdkApp path (the dir path uses MemoryContext, no
+  // write). Snapshot whether that file already exists so we only ever clean up one WE
+  // caused, and only when it is empty (an all-failed `{}` lookup) (#906).
+  const contextFile = resolve(process.cwd(), 'cdk.context.json');
+  const contextFileExistedBefore = !isDir && existsSync(contextFile);
   let source;
   if (isDir) {
     // pre-synthesized assembly: no subprocess to feed region/profile/context to. Any
@@ -97,6 +150,10 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
   }
 
   const cached = await toolkit.synth(source);
+  // Best-effort: if synth just created an EMPTY cdk.context.json (every lookup failed → `{}`),
+  // remove it so a read-only `check` does not dirty the user's git tree with a useless file.
+  // Guarded to never touch a pre-existing or non-empty file (#906). Skipped on the dir path.
+  if (!isDir) cleanupEmptyContextFile(contextFile, contextFileExistedBefore);
   try {
     // A CDK app whose context lookups are unresolved still synthesizes — CDK fills every
     // gap with a well-known DUMMY value (`vpc-12345`, ...) and records the gap in the
