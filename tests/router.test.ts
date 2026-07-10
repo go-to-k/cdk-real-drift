@@ -278,6 +278,31 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('arn:aws-us-gov:events:us-gov-west-1:111111111111:rule/myBus/myRule');
   });
 
+  // #1062: the inline cn-/us-gov ternary fell through to the commercial `aws` partition
+  // for the four ISO partitions partitionForRegion supports — an ISO-region rule ARN was
+  // then rejected by UpdateResource. Now derived via partitionForRegion.
+  it('Events::Rule (custom bus): honors an ISO region partition (aws-iso)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Events::Rule', physicalId: 'myBus|myRule', declared: {} }),
+      'us-iso-east-1',
+      '111111111111'
+    );
+    expect(sent()).toBe('arn:aws-iso:events:us-iso-east-1:111111111111:rule/myBus/myRule');
+  });
+
+  it('Events::Rule (custom bus): honors the China region partition (aws-cn)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({ resourceType: 'AWS::Events::Rule', physicalId: 'myBus|myRule', declared: {} }),
+      'cn-north-1',
+      '111111111111'
+    );
+    expect(sent()).toBe('arn:aws-cn:events:cn-north-1:111111111111:rule/myBus/myRule');
+  });
+
   it('Events::Rule (default bus): a bare-name physical id passes through UNCHANGED', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(

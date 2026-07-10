@@ -3,6 +3,7 @@
 //   GetResource → skip + log. Declared/undeclared labeling happens later.
 import { type CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
 import { isResourceNotFoundError } from '../aws-errors.js';
+import { partitionForRegion } from '../desired/template-adapter.js';
 import { OVERRIDE_READABLE_WRITEONLY } from '../schema/schema-strip.js';
 import type { DesiredResource } from '../types.js';
 import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
@@ -406,11 +407,11 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     if (typeof busArn === 'string' && busArn.includes(':event-bus/'))
       return `${busArn.replace(':event-bus/', ':rule/')}/${ruleName}`;
     if (region && account) {
-      const partition = region.startsWith('cn-')
-        ? 'aws-cn'
-        : region.startsWith('us-gov-')
-          ? 'aws-us-gov'
-          : 'aws';
+      // Derive the partition from the region (GovCloud / China / the four ISO
+      // partitions), NOT a cn-/us-gov-only inline ternary — an ISO-region rule ARN
+      // otherwise gets the commercial `aws` partition and UpdateResource rejects it
+      // (#1062, the #945 residue; same fix as #730's partitionForRegion adoption).
+      const { partition } = partitionForRegion(region);
       return `arn:${partition}:events:${region}:${account}:rule/${busName}/${ruleName}`;
     }
     return undefined;
