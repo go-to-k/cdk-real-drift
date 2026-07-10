@@ -2443,12 +2443,14 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // AWS-minted identity, not user intent; a Secret that DECLARES a Name carries it in the
   // template and never reaches this loop.
   'AWS::SecretsManager::Secret': new Set(['Name']),
-  // A target group's `Targets` that the template does not declare holds the targets AWS/ECS
-  // registered at RUNTIME (dynamic task IPs) — not template intent, and they churn as tasks
-  // recycle, so surfacing them as recordable drift is non-actionable (a record snapshot
-  // immediately re-drifts). A group that DECLARES static Targets carries them in the template
-  // and is compared normally, so a removed/changed static target still surfaces.
-  'AWS::ElasticLoadBalancingV2::TargetGroup': new Set(['Targets']),
+  // NOTE: AWS::ElasticLoadBalancingV2::TargetGroup.Targets is NOT folded here (#891). A blanket
+  // fold hid an out-of-band `elbv2 register-targets` pointing a listener's production traffic at
+  // an attacker-controlled instance/IP — a live (non-empty) Targets membership read CLEAN and
+  // survived record. Dynamic runtime churn (ECS task IPs / ASG instances) is real, but it only
+  // applies when a DECLARED sibling dynamically registers into the group (an ECS Service, an ASG,
+  // or a lambda TargetType). classify folds `Targets` via the sibling-derived registrar gate
+  // (opts.siblingTargetGroupRegistrars) and SURFACES a non-empty membership no registrar explains;
+  // an EMPTY live `Targets: []` is dropped by the shared trivial-empty rule either way.
   // An Application Auto Scaling policy attached to a target via ScalingTargetId (the CDK
   // pattern) reads back the target's ResourceId / ServiceNamespace / ScalableDimension,
   // which AWS derives from the target and the template never declares. They echo the

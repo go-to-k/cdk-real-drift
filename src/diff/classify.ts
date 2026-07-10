@@ -1726,6 +1726,15 @@ export function classifyResource(
     // `associate-address` HIJACK of the static IP and SURFACES (#892). The ENI value is AWS-assigned
     // at association time, so the fold is presence-gated (a declaring sibling explains any binding).
     siblingEipAssociations?: Set<string>;
+    // Identities (logicalId + physicalId == the TG ARN) of every AWS::ElasticLoadBalancingV2::
+    // TargetGroup a DECLARED sibling dynamically registers into — an AWS::ECS::Service
+    // (LoadBalancers[].TargetGroupArn), an AWS::AutoScaling::AutoScalingGroup (TargetGroupARNs), or
+    // the group's own TargetType: lambda (see buildSiblingTargetGroupRegistrars). A TG's live
+    // `Targets` reflects the registered membership; a sibling-registered group's membership is
+    // IaC-driven runtime churn (task IPs / instances recycle) and folds `generated`, but a NON-EMPTY
+    // membership on a TG NO registrar explains is an out-of-band `elbv2 register-targets` — traffic
+    // interception — and SURFACES (#891). Presence-gated (a registrar explains any membership).
+    siblingTargetGroupRegistrars?: Set<string>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
@@ -3662,6 +3671,21 @@ export function classifyResource(
     // and un-settable. Folded as `generated` (never drift, recorded, or reverted) so it
     // does not churn into false undeclared drift after any out-of-band API edit.
     if (GENERATED_TOPLEVEL_PATHS[resourceType]?.has(k)) {
+      findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // A TargetGroup's undeclared live `Targets` is folded `generated` (runtime membership churn,
+    // never drift) ONLY when a DECLARED sibling dynamically registers into it — an ECS Service, an
+    // ASG, or its own lambda TargetType (see buildSiblingTargetGroupRegistrars). With NO such
+    // registrar the value is KEPT: a NON-EMPTY membership is an out-of-band `elbv2 register-targets`
+    // (traffic interception) and falls through to `undeclared` below; an EMPTY `Targets: []` is
+    // dropped by the shared trivial-empty rule. The old blanket generated fold hid both (#891).
+    if (
+      resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup' &&
+      k === 'Targets' &&
+      ((physicalId !== undefined && opts.siblingTargetGroupRegistrars?.has(physicalId)) ||
+        opts.siblingTargetGroupRegistrars?.has(logicalId))
+    ) {
       findings.push({ tier: 'generated', logicalId, resourceType, path: k, actual: v });
       continue;
     }

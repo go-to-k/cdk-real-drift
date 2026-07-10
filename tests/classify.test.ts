@@ -9946,7 +9946,7 @@ describe('real-stack false-positive folds', () => {
     expect(t.undeclared).toEqual(['LoadBalancerAttributes[access_logs.s3.enabled]']);
   });
 
-  it('SecretsManager Secret generated Name (no stack prefix) + TargetGroup runtime Targets fold to generated', () => {
+  it('SecretsManager Secret generated Name (no stack prefix) + TargetGroup registrar-gated Targets fold (#891)', () => {
     const secret: DesiredResource = {
       logicalId: 'Sec',
       resourceType: 'AWS::SecretsManager::Secret',
@@ -9964,15 +9964,26 @@ describe('real-stack false-positive folds', () => {
       physicalId: 'tg-1',
       declared: {},
     };
-    const t = tiers(
-      classifyResource(
-        tg,
-        { Targets: [{ Port: 80, AvailabilityZone: 'ap-northeast-1a', Id: '10.0.0.1' }] },
-        mkSchema()
-      )
+    const liveTargets = {
+      Targets: [{ Port: 80, AvailabilityZone: 'ap-northeast-1a', Id: '10.0.0.1' }],
+    };
+    // #891: with a DECLARED registrar (ECS/ASG/lambda) the runtime membership folds `generated`.
+    const withRegistrar = tiers(
+      classifyResource(tg, liveTargets, mkSchema(), {
+        siblingTargetGroupRegistrars: new Set(['Tg', 'tg-1']),
+      })
     );
-    expect(t.generated).toEqual(['Targets']);
-    expect(t.undeclared).toEqual([]);
+    expect(withRegistrar.generated).toEqual(['Targets']);
+    expect(withRegistrar.undeclared).toEqual([]);
+    // #891: with NO registrar the same non-empty membership is an out-of-band register-targets and
+    // must SURFACE as undeclared drift (the blanket generated fold hid this traffic-interception FN).
+    const noRegistrar = tiers(
+      classifyResource(tg, liveTargets, mkSchema(), {
+        siblingTargetGroupRegistrars: new Set<string>(),
+      })
+    );
+    expect(noRegistrar.generated).toEqual([]);
+    expect(noRegistrar.undeclared).toEqual(['Targets']);
   });
 });
 
