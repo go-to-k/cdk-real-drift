@@ -28,6 +28,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { canonicalizeBaselineForCompare, canonicalizeForCompare } from '../normalize/pipeline.js';
+import {
+  isRedactedHashSentinel,
+  isRedactedPath,
+  redactedHashOf,
+  redactedHashSentinel,
+} from '../report/redact.js';
 import type { ArrayDelta, Finding } from '../types.js';
 
 export interface RecordedEntry {
@@ -583,7 +589,16 @@ export function buildRecorded(findings: Finding[]): RecordedEntry[] {
         logicalId: f.logicalId,
         resourceType: f.resourceType,
         path: f.path,
-        value: f.actual,
+        // #798 persistence half: a secret-bearing value (a Lambda/CodeBuild env var, EC2
+        // LaunchTemplate UserData, EB env option) must NOT be written in plaintext into the
+        // git-committed baseline. Store a HASH SENTINEL of the CANONICALIZED value instead —
+        // `baselineValueMatches` re-hashes the canonicalized live value to compare, so an
+        // unchanged secret stays recorded (record→check clean) while a rotated one re-surfaces
+        // as drift. The plaintext never reaches `.cdkrd/baselines/*.json`. Hash the same
+        // canonical form the compare path derives so the two hashes align.
+        value: isRedactedPath(f.resourceType, f.path)
+          ? redactedHashSentinel(canonicalizeBaselineForCompare(f.actual, f.resourceType))
+          : f.actual,
       }))
   );
 }
@@ -732,6 +747,20 @@ export function baselineValueMatches(
   currentCanonicalValue: unknown,
   resourceType?: string
 ): boolean {
+  // #798 persistence half: a secret-bearing baseline value is a HASH SENTINEL (record stored
+  // the hash of the canonicalized live value, never the plaintext). When either side is a
+  // sentinel, compare by HASH: reduce each side to its hash (a sentinel yields its stored
+  // hash; a raw value is canonicalized then hashed the same way record did). An unchanged
+  // secret hashes equal in every mix — recorded-set-vs-recorded-set (re-record), sentinel-vs-
+  // live (check/applyBaseline), and old-plaintext-vs-new-sentinel (the first re-record after
+  // upgrade migrates without churn) — while a rotated secret hashes differently and surfaces.
+  if (isRedactedHashSentinel(baselineValue) || isRedactedHashSentinel(currentCanonicalValue)) {
+    const asHash = (v: unknown): string =>
+      redactedHashOf(
+        isRedactedHashSentinel(v) ? v : canonicalizeBaselineForCompare(v, resourceType)
+      );
+    return asHash(baselineValue) === asHash(currentCanonicalValue);
+  }
   return deepEqual(
     canonicalizeBaselineForCompare(baselineValue, resourceType),
     canonicalizeBaselineForCompare(currentCanonicalValue, resourceType)

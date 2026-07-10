@@ -637,7 +637,11 @@ Elastic Beanstalk env-namespace `OptionSettings`, EC2 LaunchTemplate `UserData` 
 are masked as `<redacted:NN chars>` in both text and `--json` output, so a rotated
 secret surfacing as drift does not leak its plaintext into CI logs. The finding
 still surfaces (detection is preserved) and the property/key name stays visible —
-only the value is hidden (#798).
+only the value is hidden. The same protection covers persistence: `record` writes a
+**hash** of these values into the git-committed baseline instead of the plaintext, so
+the secret never lands in a committed file while a later change still re-surfaces as
+drift (an unchanged one stays recorded). Older baselines holding a plaintext value keep
+comparing correctly and migrate to the hashed form on the next `record` (#798).
 
 A **stack that errored or was skipped** before it could be checked still appears as an
 element so a consumer sees which stacks ran: it carries `"error": "<reason>"` alongside
