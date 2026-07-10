@@ -1,3 +1,10 @@
+## [0.9.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.10...v0.9.11) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** stream each resource's revert outcome as it completes ([#952](https://github.com/go-to-k/cdk-real-drift/issues/952)) ([#1224](https://github.com/go-to-k/cdk-real-drift/issues/1224)) ([be1b1f6](https://github.com/go-to-k/cdk-real-drift/commit/be1b1f62618c91e82403e1ddc3bef94d2d4d6c63))
+
 ## [0.9.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.9...v0.9.10) (2026-07-10)
 
 
