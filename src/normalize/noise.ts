@@ -2929,18 +2929,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   without enumerating each. Both observed live first-run (LineLink cognito, my-app
   //   AimAssociation TOKEN "custom") with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
-  //   AWS::GuardDuty::Detector.Features — a detector declared with only `Enable: true`
-  //   reads back the full list of protection Features AWS materializes on a new detector
-  //   ([{Name:"CLOUD_TRAIL",Status:"ENABLED"}, {Name:"DNS_LOGS",...}, ...]). AWS EXTENDS
-  //   this list over time — new feature names appear as GuardDuty ships them (AI_ANALYST,
-  //   S3_DATA_EVENTS, RUNTIME_MONITORING, …), so a pinned constant would rot into a false
-  //   positive the moment AWS adds one. Fold value-independent: the property is undeclared,
-  //   so whatever feature set AWS enabled is its default, never user intent — a user who
-  //   cares about a specific feature's status DECLARES `Features`, which is then compared in
-  //   the declared loop (detected). (The legacy `DataSources` surface + the SIX_HOURS
-  //   publishing cadence are stable constants folded via KNOWN_DEFAULTS above.) Live-confirmed
-  //   on a fresh `Enable: true`-only detector (CdkrdHuntUGd, 2026-07-09; #879).
-  'AWS::GuardDuty::Detector': new Set(['Features']),
+  //   AWS::GuardDuty::Detector.Features is NO LONGER value-independent (#1092): folding any
+  //   Status hid an out-of-band disable of a Features-only protection (RUNTIME_MONITORING,
+  //   RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS — none have a legacy DataSources mirror) FOREVER,
+  //   and atDefault findings are never recorded, so `record` never started watching. It is
+  //   now folded by a name-independent, Status-gated per-element check in classify.ts (fold
+  //   atDefault only when every protection is ENABLED; any DISABLED surfaces). AWS still
+  //   EXTENDS the name set over time, but a new name is ENABLED at creation so it folds.
   //   AWS::RDS::DBCluster / ::DBInstance — an Aurora cluster/instance that declares no explicit
   //   KMS key, availability-zone placement, or maintenance/backup window reads back the values
   //   AWS ASSIGNED at creation: a specific `KmsKeyId` (the account/CDK key — create-only, so it
