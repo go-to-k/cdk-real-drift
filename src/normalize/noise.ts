@@ -2953,13 +2953,10 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'PreferredBackupWindow',
     'EngineLifecycleSupport',
   ]),
-  //   AWS::EKS::AccessEntry.Username — an access entry that declares no explicit Username reads
-  //   back the value EKS DERIVES from the declared PrincipalArn
-  //   ("arn:aws:sts::<acct>:assumed-role/<role>/{{SessionName}}" for an IAM role). It can never
-  //   be a constant we pin (it embeds the per-resource role name), and it is never user intent
-  //   when undeclared — a user who sets a custom Username declares it (compared in the declared
-  //   loop). Fold value-independent. Observed live first-run (hunt 2026-07-03 round E).
-  'AWS::EKS::AccessEntry': new Set(['Username']),
+  //   AWS::EKS::AccessEntry.Username is NO LONGER value-independent (#890): the undeclared
+  //   default is a DETERMINISTIC transform of the declared PrincipalArn, so it is folded by a
+  //   tier-2 derived equality gate in classify.ts (which STILL surfaces an out-of-band RBAC
+  //   identity re-map — a mutable, security-relevant change a value-independent fold hid forever).
   //   AWS::EKS::Cluster.Version — a cluster that declares no Version is provisioned at the
   //   CURRENT default Kubernetes version (the canonical moving-GA-version tier-3 case), which
   //   also MOVES afterward under EKS auto-upgrade — so a recorded baseline value re-drifts and
