@@ -5,6 +5,7 @@ import {
   redactFinding,
   redactValue,
 } from '../src/report/redact.js';
+import type { ArrayDelta } from '../src/types.js';
 import { buildStackJson, formatFinding, report } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
@@ -141,6 +142,136 @@ describe('#798 report redaction — --json output masks secret VALUES', () => {
     const out = lines.join('\n');
     expect(out).not.toContain(SECRET);
     expect(out).toContain('<redacted:');
+  });
+});
+
+// #1297 — the secret surfaces inside a CONTAINER-level finding (the highest undeclared
+// ancestor), where #1234's leaf/per-key matchers cannot fire, so the plaintext printed raw
+// in both text and --json. The canary is the exact value from the issue evidence.
+const CANARY = 'HUNTY_SECRET_CANARY_0123456789';
+
+// Lambda with no declared `Environment`: ONE undeclared finding at path `Environment` whose
+// value is the whole `{Variables:{API_TOKEN:<secret>}}` object.
+const lambdaEnvContainerFinding = (): Finding => ({
+  tier: 'undeclared',
+  logicalId: 'Fn',
+  resourceType: 'AWS::Lambda::Function',
+  path: 'Environment',
+  actual: { Variables: { API_TOKEN: CANARY } },
+  nested: true,
+});
+
+// CodeBuild with `Environment` declared but no `EnvironmentVariables`: finding at path
+// `Environment.EnvironmentVariables` whose value is the whole `[{Name,Value,Type}]` array.
+const codeBuildEnvVarsContainerFinding = (): Finding => ({
+  tier: 'undeclared',
+  logicalId: 'Proj',
+  resourceType: 'AWS::CodeBuild::Project',
+  path: 'Environment.EnvironmentVariables',
+  actual: [{ Name: 'API_TOKEN', Value: CANARY, Type: 'PLAINTEXT' }],
+  nested: true,
+});
+
+describe('#1297 report redaction — CONTAINER-level findings mask secret VALUES', () => {
+  it('a Lambda whole-Environment container finding masks the nested Variables value (text)', () => {
+    const text = runText([lambdaEnvContainerFinding()]);
+    expect(text).not.toContain(CANARY); // plaintext never printed
+    expect(text).toContain('<redacted:'); // masked placeholder present
+    expect(text).toContain('API_TOKEN'); // the env-var KEY name stays visible
+    expect(text).toContain('Environment'); // the path stays visible
+  });
+
+  it('a Lambda whole-Environment container finding masks the nested Variables value (--json)', () => {
+    const { json } = buildStackJson([lambdaEnvContainerFinding()], 'stack (us-east-1)');
+    const serialized = JSON.stringify(json);
+    expect(serialized).not.toContain(CANARY);
+    expect(serialized).toContain('<redacted:');
+    expect(serialized).toContain('API_TOKEN'); // key preserved
+    expect(json.findings.length).toBe(1); // detection preserved
+  });
+
+  it('redactValue masks the nested Variables value at container path `Environment`, keeps keys', () => {
+    const masked = redactValue('AWS::Lambda::Function', 'Environment', {
+      Variables: { API_TOKEN: CANARY, KEEP_KEY: 'plain' },
+    }) as { Variables: Record<string, unknown> };
+    expect(masked.Variables.API_TOKEN).toMatch(
+      new RegExp(`^<redacted:${CANARY.length} chars:[0-9a-f]{8}>$`)
+    );
+    // every value masked, but the KEY names stay visible
+    expect(Object.keys(masked.Variables).sort()).toEqual(['API_TOKEN', 'KEEP_KEY']);
+    expect(String(masked.Variables.KEEP_KEY)).not.toContain('plain');
+  });
+
+  it('a CodeBuild whole-EnvironmentVariables container finding masks each element Value (text)', () => {
+    const text = runText([codeBuildEnvVarsContainerFinding()]);
+    expect(text).not.toContain(CANARY);
+    expect(text).toContain('<redacted:');
+    expect(text).toContain('API_TOKEN'); // Name identity stays visible
+    expect(text).toContain('PLAINTEXT'); // Type identity stays visible
+  });
+
+  it('a CodeBuild whole-EnvironmentVariables container finding masks each element Value (--json)', () => {
+    const { json } = buildStackJson([codeBuildEnvVarsContainerFinding()], 'stack (us-east-1)');
+    const serialized = JSON.stringify(json);
+    expect(serialized).not.toContain(CANARY);
+    expect(serialized).toContain('<redacted:');
+    expect(serialized).toContain('API_TOKEN'); // Name preserved
+    expect(serialized).toContain('PLAINTEXT'); // Type preserved
+  });
+
+  it('redactValue masks each element Value at container path, keeps Name/Type', () => {
+    const masked = redactValue('AWS::CodeBuild::Project', 'Environment.EnvironmentVariables', [
+      { Name: 'API_TOKEN', Value: CANARY, Type: 'PLAINTEXT' },
+      { Name: 'DEBUG', Value: 'true', Type: 'PLAINTEXT' },
+    ]) as Record<string, unknown>[];
+    expect(masked[0]?.Value).toMatch(new RegExp(`^<redacted:${CANARY.length} chars:[0-9a-f]{8}>$`));
+    expect(masked[0]?.Name).toBe('API_TOKEN'); // identity preserved
+    expect(masked[0]?.Type).toBe('PLAINTEXT');
+    expect(masked[1]?.Value).toMatch(/^<redacted:4 chars:[0-9a-f]{8}>$/);
+    expect(masked[1]?.Name).toBe('DEBUG');
+  });
+
+  it('isRedactedPath is true for the container paths (so redactFinding descends)', () => {
+    expect(isRedactedPath('AWS::Lambda::Function', 'Environment')).toBe(true);
+    expect(isRedactedPath('AWS::CodeBuild::Project', 'Environment.EnvironmentVariables')).toBe(
+      true
+    );
+  });
+
+  it('redactArrayDelta masks each CodeBuild EnvironmentVariables element Value, keeps Name/Type', () => {
+    // scenario 3: a recorded env-var array drifts → array-delta whose elements carry the
+    // secret in `Value`. The delta path is the ARRAY path, so #1234 masked nothing per-element.
+    const arrayDelta: ArrayDelta = {
+      identityField: 'Name',
+      added: [{ id: 'NEW_TOKEN', value: { Name: 'NEW_TOKEN', Value: CANARY, Type: 'PLAINTEXT' } }],
+      removed: [
+        { id: 'OLD', value: { Name: 'OLD', Value: 'old-secret-value', Type: 'PLAINTEXT' } },
+      ],
+      changed: [
+        {
+          id: 'API_TOKEN',
+          recorded: { Name: 'API_TOKEN', Value: 'recorded-secret', Type: 'PLAINTEXT' },
+          actual: { Name: 'API_TOKEN', Value: CANARY, Type: 'PLAINTEXT' },
+        },
+      ],
+    };
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'Proj',
+      resourceType: 'AWS::CodeBuild::Project',
+      path: 'Environment.EnvironmentVariables',
+      arrayDelta,
+    };
+    const out = redactFinding(f);
+    const serialized = JSON.stringify(out.arrayDelta);
+    expect(serialized).not.toContain(CANARY);
+    expect(serialized).not.toContain('old-secret-value');
+    expect(serialized).not.toContain('recorded-secret');
+    // Name/Type identity fields stay visible on every entry
+    expect(serialized).toContain('NEW_TOKEN');
+    expect(serialized).toContain('API_TOKEN');
+    expect(serialized).toContain('PLAINTEXT');
+    expect(serialized).toContain('<redacted:');
   });
 });
 

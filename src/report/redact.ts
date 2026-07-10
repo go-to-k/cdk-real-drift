@@ -82,6 +82,47 @@ const maskMapValues = (value: unknown): unknown => {
   return maskPlaceholder(value);
 };
 
+// Mask the secret sub-tree of a CONTAINER-level value whose finding path is the highest
+// undeclared ANCESTOR of the secret (how classify emits the two most common leak scenarios,
+// #1297). #1234's leaf/per-key matchers cannot fire on such a container path (e.g. a Lambda
+// with no declared `Environment` surfaces ONE undeclared finding at path `Environment` whose
+// value is the whole `{Variables:{…}}` object), so the plaintext prints raw in text and
+// --json. These descend into the rendered value and mask at the remaining sub-path, keeping
+// every non-secret key/identity field visible. A shape that does not match falls through
+// unchanged (never whole-masks a container — that would hide non-secret siblings).
+
+// Lambda `Environment` container: mask every value inside a nested `Variables` map, keeping
+// the `Variables` key and each env-var KEY visible. Any sibling of `Variables` is untouched.
+const maskEnvironmentContainer = (value: unknown): unknown => {
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'Variables' in value) {
+    return {
+      ...(value as Record<string, unknown>),
+      Variables: maskMapValues((value as Record<string, unknown>).Variables),
+    };
+  }
+  return value;
+};
+
+// Mask the `Value` field of every element of an `[{Name,Value,Type}]` array (a CodeBuild
+// `Environment.EnvironmentVariables` container emitted whole, or an array-delta element),
+// keeping each `Name`/`Type` identity field visible. A non-array or a non-`{Value}` element
+// is left unchanged.
+const maskEnvVarArrayElement = (element: unknown): unknown => {
+  if (element && typeof element === 'object' && !Array.isArray(element) && 'Value' in element) {
+    return {
+      ...(element as Record<string, unknown>),
+      Value: maskPlaceholder((element as Record<string, unknown>).Value),
+    };
+  }
+  return element;
+};
+// Mask a CodeBuild `Environment.EnvironmentVariables` value at its container path. The value
+// is EITHER the whole `[{Name,Value,Type}]` array (whole-container finding) OR a SINGLE element
+// (the text-report `formatArrayDelta` renders per-element via `redactValue` at the array path,
+// #1297 scenario 3) — mask both shapes so neither leaks. A non-matching value falls through.
+const maskEnvVarArray = (value: unknown): unknown =>
+  Array.isArray(value) ? value.map(maskEnvVarArrayElement) : maskEnvVarArrayElement(value);
+
 // The curated table: resourceType -> secret-bearing path matchers. A finding whose
 // resourceType + path matches has its DISPLAYED value masked; everything else prints in
 // full (subject to the existing 200-char cap). The paths mirror the secret-bearing
@@ -94,11 +135,20 @@ const REDACTED_VALUE_PATHS: Record<string, RedactMatcher[]> = {
   'AWS::Lambda::Function': [
     { pathRe: /(^|\.)Environment\.Variables\./, redact: maskWhole },
     { pathRe: /(^|\.)Environment\.Variables$/, redact: maskMapValues },
+    // #1297 container case: no declared `Environment` → ONE undeclared finding at path
+    // `Environment` whose value is the whole `{Variables:{…}}` object. Descend + mask each
+    // `Variables` value, keeping the keys. Ordered AFTER the leaf matchers so a leaf/whole-map
+    // path (which also ends in `Variables`/`Variables.<k>`) takes its more-specific matcher.
+    { pathRe: /(^|\.)Environment$/, redact: maskEnvironmentContainer },
   ],
   // CodeBuild PLAINTEXT env var: the reader projects `[{Name,Value,Type}]`, so a per-value
   // drift path is `Environment.EnvironmentVariables.<idx>.Value` (dot-indexed array).
   'AWS::CodeBuild::Project': [
     { pathRe: /(^|\.)Environment\.EnvironmentVariables\.\d+\.Value$/, redact: maskWhole },
+    // #1297 container case: `Environment` declared without `EnvironmentVariables` → finding at
+    // `Environment.EnvironmentVariables` whose value is the whole `[{Name,Value,Type}]` array.
+    // Mask each element's `Value`, keeping `Name`/`Type`. Ordered AFTER the leaf matcher.
+    { pathRe: /(^|\.)Environment\.EnvironmentVariables$/, redact: maskEnvVarArray },
   ],
   // EC2 LaunchTemplate UserData (base64 bootstrap script — may embed secrets). The
   // writeOnly strip is lifted for LaunchTemplateData so it is comparable; the UserData leaf
@@ -189,6 +239,12 @@ interface ArrayDeltaShape {
 }
 
 function redactArrayDelta(resourceType: string, path: string, d: ArrayDeltaShape): ArrayDeltaShape {
+  // Each delta entry's value is a SINGLE array ELEMENT, not the whole array — but `path` is the
+  // ARRAY path (e.g. CodeBuild `Environment.EnvironmentVariables`), so before #1297 a
+  // `redactValue` at the array path never masked a per-element `Value`. A secret-bearing
+  // array-container matcher (`maskEnvVarArray`) now accepts a single element too, so a per-element
+  // `redactValue` at the array path masks the element's `Value` — matching the text-report
+  // `formatArrayDelta` path, which likewise redacts per-element at the array path.
   const mv = (v: unknown): unknown => redactValue(resourceType, path, v);
   return {
     identityField: d.identityField,
