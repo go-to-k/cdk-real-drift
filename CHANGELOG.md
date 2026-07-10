@@ -1,3 +1,10 @@
+## [0.12.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.34...v0.12.35) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** AppSync GraphQLApi child enumerator surfaces out-of-band ApiKey ([#1367](https://github.com/go-to-k/cdk-real-drift/issues/1367)) ([#1382](https://github.com/go-to-k/cdk-real-drift/issues/1382)) ([8597fb8](https://github.com/go-to-k/cdk-real-drift/commit/8597fb8fa9ce562ff5bc0af0bda35e5723d2410a))
+
 ## [0.12.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.33...v0.12.34) (2026-07-10)
 
 
