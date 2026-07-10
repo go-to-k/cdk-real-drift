@@ -1,3 +1,10 @@
+## [0.9.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.9...v0.9.10) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** fold 5 derived-echo first-run FPs computable from declared inputs ([#975](https://github.com/go-to-k/cdk-real-drift/issues/975)) ([#1223](https://github.com/go-to-k/cdk-real-drift/issues/1223)) ([3edf287](https://github.com/go-to-k/cdk-real-drift/commit/3edf287e67ff58f8a9e79e8e23472a8696f92d1d))
+
 ## [0.9.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.8...v0.9.9) (2026-07-10)
 
 
