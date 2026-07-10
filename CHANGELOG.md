@@ -1,3 +1,10 @@
+## [0.12.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.1...v0.12.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** demote non-ASCII-masked SFN DefinitionString to readGap, not declared drift ([#1247](https://github.com/go-to-k/cdk-real-drift/issues/1247)) ([44b554e](https://github.com/go-to-k/cdk-real-drift/commit/44b554e88d6c83bba5946da47117ea366ca26245))
+
 ## [0.12.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.0...v0.12.1) (2026-07-10)
 
 
