@@ -83,8 +83,47 @@ const KNOWN_BASELINE_KEYS = new Set<string>([
 // PRESENT (an intentional recorded `null` is expressible as `null`).
 const KNOWN_RECORDED_ENTRY_KEYS = new Set<string>(['logicalId', 'resourceType', 'path', 'value']);
 
+// #1077: Windows reserved DOS device names. On the Win32 namespace, ANY final path
+// component whose BASE NAME (the part before the FIRST dot, case-insensitively) equals
+// one of these resolves to a DEVICE, not a file — `nul.111.us-east-1.json` IS `\\.\NUL`.
+// So `record Nul` writes the baseline JSON into the NUL device (silent data loss with a
+// success exit code), `con.*` blocks/hangs, and a committed `con.<acct>.<region>.json`
+// breaks Windows teammates' `git clone`/checkout (git-for-Windows refuses reserved
+// names, bricking the whole clone). All of these ARE valid CloudFormation stack names.
+// The accountId (digits) and region are safe; only the stack-name component can collide.
+const RESERVED_DOS_DEVICE_NAMES = new Set<string>([
+  'CON',
+  'PRN',
+  'AUX',
+  'NUL',
+  ...Array.from({ length: 9 }, (_, i) => `COM${i + 1}`), // COM1..COM9
+  ...Array.from({ length: 9 }, (_, i) => `LPT${i + 1}`), // LPT1..LPT9
+]);
+
+// #1077: sanitize the stack-name component so it can never resolve to a Windows DOS
+// device. Only names whose base name (before the first dot, case-insensitively) IS a
+// reserved device are transformed — we append a single `_` right after the base name
+// (`nul` -> `nul_`, `con.foo` -> `con_.foo`, `NUL` -> `NUL_`). Every other stack name is
+// returned UNCHANGED (no migration for the 99.9% case).
+//
+// INJECTIVITY: a valid CloudFormation stack name is `[A-Za-z][-A-Za-z0-9]*` — letters,
+// digits, and hyphens ONLY, never an underscore. The transform inserts an `_`, so a
+// transformed reserved name (`nul_`, `con_`, `com1_`, …) can NEVER equal any real
+// (untransformed, `_`-free) stack name. Two distinct stack names therefore never map to
+// the same on-disk filename: reserved names get a `_`-bearing base name that no plain
+// name can produce, and every plain name maps to itself. The mapping is also stable and
+// deterministic (same input -> same output) and reversible enough that every caller of
+// `baselinePath` (read in loadBaseline, write in writeBaselineFile) computes the SAME path.
+export function sanitizeStackNameComponent(stackName: string): string {
+  const firstDot = stackName.indexOf('.');
+  const base = firstDot === -1 ? stackName : stackName.slice(0, firstDot);
+  const rest = firstDot === -1 ? '' : stackName.slice(firstDot); // includes the leading '.'
+  if (RESERVED_DOS_DEVICE_NAMES.has(base.toUpperCase())) return `${base}_${rest}`;
+  return stackName;
+}
+
 export function baselinePath(stackName: string, accountId: string, region: string): string {
-  return `.cdkrd/baselines/${stackName}.${accountId}.${region}.json`;
+  return `.cdkrd/baselines/${sanitizeStackNameComponent(stackName)}.${accountId}.${region}.json`;
 }
 
 export function hashTemplate(rawTemplate: string): string {
