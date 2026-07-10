@@ -682,11 +682,32 @@ describe('baseline', () => {
       expect(computeCompleteResources(['A'], findings, recorded)).toEqual([]);
     });
 
-    it('ignored-tier values do not block completeness (visible, deliberately ruled out)', () => {
+    it('#1078: an ignored value whose path IS recorded does not block completeness', () => {
+      // The value was carried into `recorded` (carryForwardIgnored) — an endorsed value
+      // stays complete even while an ignore rule suppresses reporting it. Preserves the
+      // intended behavior for recorded values.
       const findings: Finding[] = [
         { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
       ];
-      expect(computeCompleteResources(['A'], findings, [])).toEqual(['A']);
+      const recorded = [{ logicalId: 'A', resourceType: 'T', path: 'P', value: 1 }];
+      expect(computeCompleteResources(['A'], findings, recorded)).toEqual(['A']);
+    });
+
+    it('#1078: an ignored-and-UNRECORDED value blocks completeness (un-ignore must round-trip)', () => {
+      // No recorded entry for the ignored path: marking the resource complete would treat
+      // the value as known-absent, so deleting the rule (un-ignore) would false-surface the
+      // untouched value as confirmed "appeared since record". It must stay INCOMPLETE.
+      const findings: Finding[] = [
+        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+      ];
+      expect(computeCompleteResources(['A'], findings, [])).toEqual([]);
+    });
+
+    it('#1078: an ignored-and-unrecorded value DEMOTES a previously-complete resource', () => {
+      const findings: Finding[] = [
+        { tier: 'ignored', logicalId: 'A', resourceType: 'T', path: 'P', actual: 1 },
+      ];
+      expect(computeCompleteResources(['A'], findings, [], ['A'])).toEqual([]);
     });
 
     it('monotonic: a previously-complete resource stays complete when a new value is declined', () => {
