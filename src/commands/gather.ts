@@ -171,13 +171,47 @@ async function readAddedModel(
 // parent can enumerate the same live child under multiple declared parents).
 // 'managed' = a CFn stack owns it (sibling-managed, not out of band); 'notManaged' = no stack
 // owns it (genuinely out of band -> report as `added`); 'unverified' = the membership check
-// itself FAILED (throttle / AccessDenied / network), so we CANNOT say either way (#754).
+// itself FAILED (throttle / AccessDenied / network) OR could not reach the owning scope
+// (a cross-account / cross-region CFn-managed child), so we CANNOT say either way (#754, #959).
 export type SiblingCheck = 'managed' | 'notManaged' | 'unverified';
+
+// The sibling-membership probe (DescribeStackResources) runs on the check's OWN CloudFormation
+// client, scoped to the run's account+region. Its `ValidationError` ("Stack for <id> does not
+// exist") therefore only proves the child is not in a stack of THIS account+region — NOT that it
+// is unmanaged everywhere. A child fully CFn-managed by a stack in a DIFFERENT account or region
+// (the canonical case: an SNS cross-account / cross-region `AWS::SNS::Subscription` fan-out — the
+// subscription lives on the topic's account+region but is declared in the SUBSCRIBER's foreign
+// stack) is invisible to that call and would be false-flagged `added` with a DESTRUCTIVE
+// DeleteResource revert offer (#959). The child's physical id is an ARN carrying its own
+// account+region, so parse it: only when the ARN's account AND region MATCH the check's scope is
+// a `ValidationError` a DEFINITIVE not-managed (safe to report `added`); an ARN in a foreign
+// account or region is UNVERIFIABLE — the owning stack is simply unreachable from here. Returns
+// `true` (definitive) only for a same-account+region ARN (or an id we cannot parse as an ARN,
+// which is inherently local — a bare name/UUID minted in this account+region). Returns `false`
+// (unverifiable) for a foreign-scope ARN.
+export function isDefinitiveNotManaged(
+  physicalId: string,
+  accountId: string,
+  region: string
+): boolean {
+  // ARN form: arn:partition:service:region:account-id:resource — region at [3], account at [4].
+  if (!physicalId.startsWith('arn:')) return true;
+  const seg = physicalId.split(':');
+  const arnRegion = seg[3] ?? '';
+  const arnAccount = seg[4] ?? '';
+  // Some ARNs omit region and/or account (empty segment) — those carry no foreign signal and are
+  // treated as local (definitive). Only a NON-EMPTY segment that DIFFERS marks a foreign scope.
+  if (arnRegion !== '' && arnRegion !== region) return false;
+  if (arnAccount !== '' && arnAccount !== accountId) return false;
+  return true;
+}
 
 export async function isManagedBySiblingStack(
   cfn: CloudFormationClient,
   c: AddedChild,
-  cache: Map<string, SiblingCheck>
+  cache: Map<string, SiblingCheck>,
+  accountId: string,
+  region: string
 ): Promise<SiblingCheck> {
   // The sibling-stack lookup uses the CloudFormation PHYSICAL-ID form, which for most child
   // types IS the CC primaryIdentifier (`identifier`); it diverges only where CC's identifier
@@ -235,15 +269,26 @@ export async function isManagedBySiblingStack(
       }
     }
   } catch (e) {
-    // Distinguish a GENUINE not-found from a FAILED check (#754). CloudFormation answers
-    // DescribeStackResources for a physical id that belongs to no stack with a ValidationError
-    // ("Stack for <id> does not exist") — that is a definite "not managed", cacheable. Any other
-    // error (Throttling under an --all sweep, AccessDenied without cloudformation:DescribeStack-
-    // Resources, a network blip) means we could NOT determine membership: return 'unverified' and
-    // do NOT memoize it (so a transient throttle does not poison the whole run, and the caller can
-    // report coverage-incomplete instead of a false `added` whose revert offers a destructive
-    // DeleteResource on a possibly CFn-managed resource).
-    if ((e as { name?: string }).name === 'ValidationError') {
+    // Distinguish a GENUINE not-found from a FAILED / UNREACHABLE check (#754, #959).
+    // CloudFormation answers DescribeStackResources for a physical id that belongs to no stack of
+    // THIS account+region with a ValidationError ("Stack for <id> does not exist"). That is only a
+    // definite "not managed" when the child's own scope IS this account+region — a child managed
+    // by a stack in a DIFFERENT account/region is equally invisible to this scoped client and
+    // yields the SAME ValidationError, so treating every ValidationError as `notManaged` would
+    // false-flag a foreign-managed child `added` and offer a destructive DeleteResource on a
+    // resource another stack legitimately owns (#959, the SNS cross-account/region fan-out). Parse
+    // the physical-id ARN's account+region: only when it MATCHES the check's scope is this a
+    // definitive, cacheable `notManaged` (a real out-of-band addition — still reported `added`);
+    // a foreign-scope ARN is UNVERIFIABLE, so fall through to `unverified` (fail safe: reported as
+    // coverage-incomplete, NEVER a destructive delete). Any OTHER error (Throttling under an --all
+    // sweep, AccessDenied without cloudformation:DescribeStackResources, a network blip) is also
+    // 'unverified' and NOT memoized (a transient throttle must not poison the run). The foreign-
+    // scope determination IS deterministic per physical id, so caching it as 'notManaged' is not
+    // done — we leave it un-cached like the other unverifiable cases for uniform handling.
+    if (
+      (e as { name?: string }).name === 'ValidationError' &&
+      isDefinitiveNotManaged(physicalId, accountId, region)
+    ) {
       cache.set(physicalId, 'notManaged');
       return 'notManaged';
     }
@@ -795,7 +840,13 @@ export async function gatherFindings(
       for (const c of children) {
         // A child CDK placed in a SIBLING stack of the same app (cross-stack refs, #666)
         // is fully CloudFormation-managed — not out of band, so skip it.
-        const sibling = await isManagedBySiblingStack(cfn, c, siblingStackCache);
+        const sibling = await isManagedBySiblingStack(
+          cfn,
+          c,
+          siblingStackCache,
+          desired.accountId,
+          region
+        );
         if (sibling === 'managed') continue;
         if (sibling === 'unverified') {
           // The sibling-membership check FAILED (throttle / denied), so we cannot say whether this
