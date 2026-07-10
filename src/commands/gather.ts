@@ -250,6 +250,8 @@ interface ClassifyOpts {
   oaiCanonicalIds: Record<string, string>;
   siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   siblingEventBusPolicies: Record<string, unknown[]>;
+  siblingManagedPolicyAttachments: Record<string, string[]>;
+  siblingUserGroups: Record<string, string[]>;
   bucketNotificationManaged: Set<string>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
 }
@@ -367,6 +369,98 @@ export function buildBucketNotificationManaged(desired: Desired): Set<string> {
     }
   }
   return managed;
+}
+
+// A sibling AWS::IAM::ManagedPolicy declaring `Roles:[thisRole]` (/`Users`/`Groups`) attaches
+// ITSELF to the principal; the principal's live read (a ListAttached*Policies UNION) then echoes
+// that policy's ARN in its own `ManagedPolicyArns` — a value the principal never declared. Because
+// a Role/User/Group DECLARES `ManagedPolicyArns` (or is compared as an ordinary array when it
+// does), the sibling ARN reads as a DECLARED-tier drift that survives `record`, and a whole-array
+// revert would DETACH the sibling-managed policy (destructive collateral, #698). The sibling
+// ManagedPolicy is tracked + compared as its own resource, so classify subtracts its ARN from the
+// principal's reflected live `ManagedPolicyArns` (see subtractSiblingManagedPolicyArns). Keyed by
+// the principal identifier the classify finding uses (the principal's physical id == RoleName /
+// UserName / GroupName; a sibling's `Roles`/`Users`/`Groups` entry is that same name, or a `Ref`
+// that resolves to it). The attached value is the ManagedPolicy's physical id (== its ARN); if the
+// policy has no resolved physical id, its `ManagedPolicyName` is used so a name-form live entry
+// still matches. Fail-open: a principal reference that cannot be resolved, or a sibling policy with
+// neither an ARN nor a name, is skipped (the principal keeps the reflected ARN → a one-time visible
+// FP, never a hidden change); an out-of-band ARN matching NO sibling still surfaces.
+const MANAGED_POLICY_TYPE = 'AWS::IAM::ManagedPolicy';
+const MANAGED_POLICY_ATTACH_SIDES = ['Roles', 'Users', 'Groups'] as const;
+export function buildSiblingManagedPolicyAttachments(desired: Desired): Record<string, string[]> {
+  const byLogicalId = new Map<string, string>();
+  for (const r of desired.resources) if (r.physicalId) byLogicalId.set(r.logicalId, r.physicalId);
+  const map: Record<string, string[]> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== MANAGED_POLICY_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    // The attached value the principal's live ManagedPolicyArns echoes: the policy's ARN (==
+    // its physical id). Fall back to its declared ManagedPolicyName so a name-form live entry
+    // matches; skip the policy entirely if neither is resolvable (fail-open).
+    const attached =
+      r.physicalId ??
+      (typeof d.ManagedPolicyName === 'string' && d.ManagedPolicyName
+        ? d.ManagedPolicyName
+        : undefined);
+    if (!attached) continue;
+    for (const side of MANAGED_POLICY_ATTACH_SIDES) {
+      const list = d[side];
+      if (!Array.isArray(list)) continue;
+      for (const principal of list) {
+        const key = resolvePrincipalKey(principal, byLogicalId);
+        if (key) (map[key] ??= []).push(attached);
+      }
+    }
+  }
+  return map;
+}
+
+// A sibling AWS::IAM::UserToGroupAddition (`Users:[thisUser], GroupName:g`) adds the user to a
+// group; the user's live read echoes that group in an undeclared `Groups` list. The addition
+// resource itself is a CC-gap `skipped` type (UnsupportedActionException), so the membership is
+// verified nowhere and surfaces as a first-run undeclared FP on every such user (#698). Classify
+// subtracts these sibling-declared groups from the user's live `Groups` (see
+// subtractSiblingUserGroups), leaving any out-of-band group (matching no sibling) to still surface.
+// Keyed by the user identifier the classify finding uses (the user's physical id == UserName; a
+// `Users` entry is that name or a `Ref` resolving to it). The group value is the addition's
+// resolved `GroupName` (== the group's physical id, which the live `Groups` echoes), or a `Ref`
+// resolved via the logical-id map. Fail-open: an unresolved user or group reference is skipped.
+const USER_TO_GROUP_TYPE = 'AWS::IAM::UserToGroupAddition';
+export function buildSiblingUserGroups(desired: Desired): Record<string, string[]> {
+  const byLogicalId = new Map<string, string>();
+  for (const r of desired.resources) if (r.physicalId) byLogicalId.set(r.logicalId, r.physicalId);
+  const map: Record<string, string[]> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== USER_TO_GROUP_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    const group = resolvePrincipalKey(d.GroupName, byLogicalId);
+    if (!group) continue; // unresolved group name -> fail-open (the user keeps the reflected group)
+    const users = d.Users;
+    if (!Array.isArray(users)) continue;
+    for (const user of users) {
+      const key = resolvePrincipalKey(user, byLogicalId);
+      if (key) (map[key] ??= []).push(group);
+    }
+  }
+  return map;
+}
+
+// Resolve an IAM principal/group reference to the concrete identity the live read echoes: a plain
+// string is the resolved name (== physical id); a `{Ref: logicalId}` resolves via the logical-id ->
+// physical-id map. Any other shape (an unresolved intrinsic) yields undefined -> the caller skips
+// it (fail-open).
+function resolvePrincipalKey(ref: unknown, byLogicalId: Map<string, string>): string | undefined {
+  if (typeof ref === 'string' && ref) return ref;
+  if (ref && typeof ref === 'object' && 'Ref' in ref) {
+    const logicalId = (ref as { Ref: unknown }).Ref;
+    if (typeof logicalId === 'string') return byLogicalId.get(logicalId);
+  }
+  return undefined;
 }
 
 // Per Aurora DBInstance physical id, the parent DBCluster's live model — the source for the
@@ -684,6 +778,8 @@ export async function gatherFindings(
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
+    siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
+    siblingUserGroups: buildSiblingUserGroups(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
   };
@@ -772,6 +868,8 @@ export async function regatherTouched(
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
+    siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
+    siblingUserGroups: buildSiblingUserGroups(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
   };

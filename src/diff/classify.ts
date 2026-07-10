@@ -498,6 +498,67 @@ function subtractSiblingSgRules(
   if (arr.length === 0) delete live[prop]; // empty array == absent; don't introduce a []-vs-absent FP
 }
 
+// An IAM Role/User/Group reflects, in its live `ManagedPolicyArns` (a ListAttached*Policies
+// UNION), the ARNs of SIBLING AWS::IAM::ManagedPolicy resources that declare `Roles`/`Users`/
+// `Groups` pointing back at it — a policy the principal never declared in its OWN
+// `ManagedPolicyArns`. Because the principal compares `ManagedPolicyArns` (an ordinary array when
+// it declares only its own ARNs), the sibling ARN reads as a DECLARED-tier drift that survives
+// `record`, and a whole-array revert would DETACH the sibling-managed policy (#698). The sibling
+// ManagedPolicy is tracked + compared as its own resource, so subtract its ARN (/name) from the
+// principal's reflected live list. Match the live entry against the sibling value by exact equality
+// OR by ARN-tail == name (the sibling was resolved to a bare ManagedPolicyName while the live entry
+// is a full ARN, or vice versa). One removal per sibling. Any live ARN matching NO sibling — a
+// genuinely out-of-band attachment — stays and surfaces. Fail-open: an unmatched sibling is a no-op.
+const IAM_ATTACHMENT_REFLECTION_TYPES: ReadonlySet<string> = new Set([
+  'AWS::IAM::Role',
+  'AWS::IAM::User',
+  'AWS::IAM::Group',
+]);
+const MANAGED_POLICY_ARNS_PROP = 'ManagedPolicyArns';
+
+// True when a live `ManagedPolicyArns` entry denotes the same managed policy as a sibling value.
+// Exact match first; then tolerate the ARN-vs-name mismatch (the sibling was keyed by a bare
+// ManagedPolicyName, the live read returns the full ARN) by comparing an ARN's policy-name tail
+// (everything after the last `/`) — either side may be the ARN.
+function managedPolicyRefMatches(liveVal: unknown, sibVal: unknown): boolean {
+  if (typeof liveVal !== 'string' || typeof sibVal !== 'string') return false;
+  if (liveVal === sibVal) return true;
+  const tail = (s: string): string => (s.startsWith('arn:') ? (s.split('/').pop() ?? s) : s);
+  return tail(liveVal) === tail(sibVal);
+}
+
+// Remove from a principal's live `ManagedPolicyArns` each ARN attached by a declared sibling
+// ManagedPolicy. Only the principal's OWN declared ARNs (and any out-of-band ARN matching no
+// sibling) remain, so the sibling attachment is neither a declared FP nor a revert-detach hazard.
+function subtractSiblingManagedPolicyArns(
+  live: Record<string, unknown>,
+  siblingArns: string[]
+): void {
+  const arr = live[MANAGED_POLICY_ARNS_PROP];
+  if (!Array.isArray(arr) || siblingArns.length === 0) return;
+  for (const sib of siblingArns) {
+    const i = arr.findIndex((el) => managedPolicyRefMatches(el, sib));
+    if (i >= 0) arr.splice(i, 1);
+  }
+  if (arr.length === 0) delete live[MANAGED_POLICY_ARNS_PROP]; // empty == absent; no []-vs-absent FP
+}
+
+// An IAM User reflects, in an undeclared live `Groups`, the group memberships added by SIBLING
+// AWS::IAM::UserToGroupAddition resources — a value the user never declared, verified nowhere else
+// (the addition resource is a CC-gap `skipped` type). Subtract each sibling-added group so it is
+// not a first-run undeclared FP; a group added purely out of band (matching no sibling) stays and
+// surfaces. If `Groups` empties, drop it (empty == absent).
+const USER_GROUPS_PROP = 'Groups';
+function subtractSiblingUserGroups(live: Record<string, unknown>, siblingGroups: string[]): void {
+  const arr = live[USER_GROUPS_PROP];
+  if (!Array.isArray(arr) || siblingGroups.length === 0) return;
+  for (const sib of siblingGroups) {
+    const i = arr.findIndex((el) => el === sib);
+    if (i >= 0) arr.splice(i, 1);
+  }
+  if (arr.length === 0) delete live[USER_GROUPS_PROP]; // empty == absent; no []-vs-absent FP
+}
+
 // Cloud Control returns an ALTERNATIVE representation of a declared value as a separate
 // live-only field. Keyed resourceType -> { liveOnlyField: declaredSiblingField }: drop the
 // live-only field when its declared sibling is present (the template already pins the value
@@ -1435,6 +1496,19 @@ export function classifyResource(
     // from an AWS::Events::EventBus's reflected `Policy.Statement[]` so sibling-owned statements
     // are not double-counted; any out-of-band statement (matching no sibling) still surfaces.
     siblingEventBusPolicies?: Record<string, unknown[]>;
+    // Managed-policy ARNs (/names) attached by SIBLING AWS::IAM::ManagedPolicy resources whose
+    // `Roles`/`Users`/`Groups` reference this principal, keyed by the principal identifier (==
+    // physical id == RoleName/UserName/GroupName). Subtracted from an IAM Role/User/Group's
+    // reflected live `ManagedPolicyArns` (a ListAttached*Policies union) so a sibling-attached
+    // policy is not a declared-tier FP that survives record + a detach-hazard on revert (#698); an
+    // out-of-band attachment matching no sibling still surfaces.
+    siblingManagedPolicyAttachments?: Record<string, string[]>;
+    // Group names added by SIBLING AWS::IAM::UserToGroupAddition resources whose `Users` reference
+    // this user, keyed by the user identifier (== physical id == UserName). Subtracted from an IAM
+    // User's reflected live `Groups` so the sibling-added membership is not a first-run undeclared
+    // FP (the addition resource is itself a CC-gap skipped type, checked nowhere); an out-of-band
+    // group matching no sibling still surfaces.
+    siblingUserGroups?: Record<string, string[]>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
@@ -1529,6 +1603,25 @@ export function classifyResource(
       for (const [prop, side] of Object.entries(SG_RULE_REFLECTION)) {
         subtractSiblingSgRules(live, prop, sib[side]);
       }
+    }
+  }
+  // Subtract from an IAM Role/User/Group's reflected live `ManagedPolicyArns` (a
+  // ListAttached*Policies union) the ARNs attached by SIBLING AWS::IAM::ManagedPolicy resources
+  // (keyed by the principal's physical id in opts.siblingManagedPolicyAttachments). The siblings
+  // are tracked + compared as their own resources, so leaving their ARNs on the principal is a
+  // declared-tier FP that survives record + a whole-array-revert detach hazard (#698). Runs
+  // regardless of whether the principal declares `ManagedPolicyArns` — only sibling-OWNED ARNs are
+  // removed, so the principal's own declared ARNs still compare and a genuinely out-of-band ARN
+  // (matching no sibling) still surfaces.
+  if (IAM_ATTACHMENT_REFLECTION_TYPES.has(resourceType)) {
+    const sibArns = physicalId ? opts.siblingManagedPolicyAttachments?.[physicalId] : undefined;
+    if (sibArns) subtractSiblingManagedPolicyArns(live, sibArns);
+    // Subtract from an IAM User's undeclared live `Groups` the memberships added by sibling
+    // AWS::IAM::UserToGroupAddition resources (which are themselves CC-gap skipped). Any group
+    // added purely out of band (matching no sibling) still surfaces.
+    if (resourceType === 'AWS::IAM::User') {
+      const sibGroups = physicalId ? opts.siblingUserGroups?.[physicalId] : undefined;
+      if (sibGroups) subtractSiblingUserGroups(live, sibGroups);
     }
   }
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
