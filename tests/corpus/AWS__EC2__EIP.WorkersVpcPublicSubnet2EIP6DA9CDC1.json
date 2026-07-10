@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::EC2::EIP with deep declared config classifies as recorded (undeclared:NetworkBorderGroup, undeclared:NetworkInterfaceId). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): a NAT-gateway EIP. NetworkBorderGroup folds atDefault. NetworkInterfaceId folds atDefault too (#892): the blanket value-independent fold was removed so an out-of-band associate-address hijack surfaces, but this EIP's live association IS explained by a declared sibling (its NAT gateway consuming the allocation), so the reflected id is dropped via the sibling-derived gate (opts.siblingEipAssociations, carried here as this EIP's physical id so replay folds it exactly as the real check does). A change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "WorkersVpcPublicSubnet2EIP6DA9CDC1",
     "resourceType": "AWS::EC2::EIP",
@@ -67,7 +67,8 @@
       "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
       "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
       "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
-    }
+    },
+    "siblingEipAssociations": ["35.171.223.35"]
   },
   "expected": [
     {
@@ -76,15 +77,6 @@
       "resourceType": "AWS::EC2::EIP",
       "path": "NetworkBorderGroup",
       "actual": "us-east-1",
-      "physicalId": "35.171.223.35",
-      "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet2/EIP"
-    },
-    {
-      "tier": "atDefault",
-      "logicalId": "WorkersVpcPublicSubnet2EIP6DA9CDC1",
-      "resourceType": "AWS::EC2::EIP",
-      "path": "NetworkInterfaceId",
-      "actual": "eni-09d601326197ac598",
       "physicalId": "35.171.223.35",
       "constructPath": "CdkrdIntegHarvest2/Workers/Vpc/PublicSubnet2/EIP"
     }

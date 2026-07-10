@@ -3195,11 +3195,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::EC2::Volume': new Set(['KmsKeyId', 'AvailabilityZoneId']),
   'AWS::EC2::NatGateway': new Set(['PrivateIpAddress', 'VpcId']),
   'AWS::EFS::MountTarget': new Set(['IpAddress']),
-  //   AWS::EC2::EIP.NetworkInterfaceId — an EIP associated with an ENI (directly or via an
-  //   instance) reflects the eni-… it is bound to; the attachment is not user intent on the
-  //   EIP itself (a user who cares associates it explicitly / declares it), and the id is
-  //   AWS-assigned per-ENI, so fold value-independent.
-  'AWS::EC2::EIP': new Set(['NetworkBorderGroup', 'NetworkInterfaceId']),
+  //   AWS::EC2::EIP.NetworkBorderGroup — the address's border group, AWS-assigned per-region
+  //   and undeclared, so fold value-independent. NetworkInterfaceId is NOT folded here (#892):
+  //   a blanket fold hid an out-of-band `associate-address` hijacking a static IP onto an
+  //   arbitrary ENI. A LEGITIMATE association comes from a declared sibling
+  //   AWS::EC2::EIPAssociation (or a NAT gateway consuming the EIP); classify folds it via the
+  //   sibling-derived gate (opts.siblingEipAssociations) and SURFACES a sibling-less association.
+  'AWS::EC2::EIP': new Set(['NetworkBorderGroup']),
   //   AWS::EFS::FileSystem.KmsKeyId — an encrypted file system that declares no key reads
   //   back the account aws/elasticfilesystem managed-key ARN (per-account, AWS-assigned) —
   //   the exact twin of the RDS/OpenSearch AWS-assigned KmsKeyId folds (#533). Undeclared,
