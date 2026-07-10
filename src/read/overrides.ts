@@ -55,6 +55,7 @@ import {
 import {
   GetClassifierCommand,
   GetConnectionCommand,
+  GetSecurityConfigurationCommand,
   GetTableCommand,
   GetWorkflowCommand,
   GlueClient,
@@ -1532,6 +1533,48 @@ const readGlueConnection: OverrideReader = async ({ physicalId, declared, region
   return out;
 };
 
+// AWS::Glue::SecurityConfiguration — CC API GetResource throws UnsupportedActionException
+// (the registry type has `handlers: []` — NO read handler), so a Glue stack's encryption
+// posture was silently `skipped`: an out-of-band KMS-key swap or an encryption-mode
+// downgrade (e.g. CSE-KMS -> DISABLED on a bookmark / CloudWatch / S3 target) was invisible,
+// exactly the security-relevant drift a Glue user wants watched (#857). Read via Glue
+// GetSecurityConfiguration — the CFn physical id IS the configuration Name. Project the CFn
+// `EncryptionConfiguration` shape.
+//
+// KEY SHAPE MISMATCH: the SDK spells the S3 array `S3Encryption` (SINGULAR) inside
+// EncryptionConfiguration, while the CFn schema declares it `S3Encryptions` (PLURAL) — map
+// it across, or a declared S3Encryptions became a `readGap` and an undeclared one was wholly
+// invisible. The three member sub-fields (S3EncryptionMode / CloudWatchEncryptionMode /
+// JobBookmarksEncryptionMode + KmsKeyArn) match the CFn schema 1:1 and pass through verbatim.
+// DataQualityEncryption is dropped — the SDK returns it but the CFn schema does NOT model it
+// (verified against the live registry schema: EncryptionConfiguration has only
+// S3Encryptions / JobBookmarksEncryption / CloudWatchEncryption), so projecting it would be a
+// permanent undeclared false inventory. CreatedTimeStamp is an AWS-managed field, dropped.
+// Each member is projected ONLY when AWS returns it, so a config that declares (say) just an
+// S3 encryption stays absent on the other members (FP-safe). Read-ONLY: a SecurityConfiguration
+// is immutable in Glue (there is no UpdateSecurityConfiguration API — you delete + recreate),
+// so there is no meaningful in-place revert to offer. A deleted config surfaces as
+// EntityNotFoundException → the router maps it to `deleted`.
+const readGlueSecurityConfiguration: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.Name);
+  if (!name) return undefined;
+  const c = new GlueClient({ region, ...READ_RETRY });
+  const sc = (await c.send(new GetSecurityConfigurationCommand({ Name: name })))
+    .SecurityConfiguration;
+  if (!sc) throw new ResourceGoneError(`Glue SecurityConfiguration ${name} absent`);
+  const enc = sc.EncryptionConfiguration;
+  const ec: Record<string, unknown> = {};
+  // SDK S3Encryption (singular) -> CFn S3Encryptions (plural).
+  if (Array.isArray(enc?.S3Encryption) && enc.S3Encryption.length > 0)
+    ec.S3Encryptions = enc.S3Encryption;
+  if (enc?.CloudWatchEncryption !== undefined) ec.CloudWatchEncryption = enc.CloudWatchEncryption;
+  if (enc?.JobBookmarksEncryption !== undefined)
+    ec.JobBookmarksEncryption = enc.JobBookmarksEncryption;
+  const model: Record<string, unknown> = { Name: sc.Name ?? name };
+  if (Object.keys(ec).length > 0) model.EncryptionConfiguration = ec;
+  return model;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -2324,6 +2367,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Classifier': readGlueClassifier,
   'AWS::Glue::Workflow': readGlueWorkflow,
   'AWS::Glue::Connection': readGlueConnection,
+  'AWS::Glue::SecurityConfiguration': readGlueSecurityConfiguration,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };
