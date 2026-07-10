@@ -3004,7 +3004,27 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   Fold value-independent, exactly like AWS::RDS::* above. Found by the offline first-run-
   //   noise sweep across the DocDB / Neptune / ElastiCache / MemoryDB / Redshift corpus cases
   //   (undeclared on every one, no out-of-band edit). Equality is irrelevant — any window folds.
-  'AWS::DocDB::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
+  //   AWS::DocDB::DBCluster.EngineVersion — a cluster that declares no EngineVersion reads back the
+  //   current GA DocDB engine version AWS provisioned ("5.0.0" today), which AWS moves over time as
+  //   it ships new GA versions — not a constant we can pin. Undeclared → whatever GA AWS assigned is
+  //   its default, never user intent; a user who pins a version DECLARES it and is then compared
+  //   (VERSION_PREFIX_PATHS tolerates the declared partial-vs-concrete echo). The canonical moving-
+  //   GA-version tier-3 case, sibling of the Neptune / ElastiCache::ReplicationGroup EngineVersion
+  //   folds above. Closed #717 covered the DocDB BackupRetentionPeriod twin, NOT EngineVersion.
+  //   AWS::DocDB::DBCluster.KmsKeyId — a cluster declared with `StorageEncrypted: true` and no
+  //   explicit key reads back the account's AWS-managed `alias/aws/rds` key ARN. The ARN carries the
+  //   account-specific KMS key-ID (a per-account GUID, not a stable `alias/…`), so no constant/context
+  //   template can pin it; the storage key is set at creation and immutable (re-encryption requires
+  //   snapshot+recreate), so a value-independent fold can never hide a real out-of-band change.
+  //   Undeclared → whatever managed key AWS assigned is not user intent (a user who pins a CMK DECLARES
+  //   KmsKeyId, compared in the declared loop) — the exact twin of the RDS / EFS / EBS KmsKeyId folds
+  //   above. Corpus baked FP (#976).
+  'AWS::DocDB::DBCluster': new Set([
+    'PreferredMaintenanceWindow',
+    'PreferredBackupWindow',
+    'EngineVersion',
+    'KmsKeyId',
+  ]),
   'AWS::DocDB::DBInstance': new Set(['PreferredMaintenanceWindow']),
   //   AWS::Neptune::DBCluster.EngineVersion — a cluster that declares no EngineVersion reads
   //   back the current GA Neptune engine version AWS provisioned ("1.4.7.0" today), which AWS
@@ -3015,10 +3035,23 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   canonical moving-GA-version tier-3 case — sibling of the ElastiCache::ReplicationGroup /
   //   DocDB EngineVersion folds. Live-confirmed undeclared on a fresh no-version Neptune cluster
   //   (Cdkrd980Verify, us-east-1: "1.4.7.0"; #1186).
+  //   AWS::Neptune::DBCluster.AvailabilityZones — a cluster that declares no AvailabilityZones reads
+  //   back the region AZs AWS SPREAD it across (["ap-northeast-1a","ap-northeast-1c",…]), a per-deploy
+  //   AWS placement choice AWS picks from the subnet group. It is create-only (immutable — the spread
+  //   is fixed at creation and can never drift out of band without replacement), and never a constant
+  //   we can pin. Undeclared → whatever AZs AWS chose are its default, never user intent; a user who
+  //   pins placement DECLARES AvailabilityZones and is then compared in the declared loop. Same shape
+  //   as the RDS::DBCluster / Redshift::Cluster AvailabilityZone(s) folds above. Corpus baked FP (#976).
+  //   NOTE: `VpcSecurityGroupIds` is DELIBERATELY NOT folded here — it is MUTABLE out of band on a
+  //   Neptune cluster (`ModifyDBCluster --vpc-security-group-ids sg-…` swaps the SGs with no
+  //   replacement), so a value-independent fold would HIDE an OOB SG swap. It stays undeclared,
+  //   tracked by #889 (the sibling-reflection / default-SG-derivation fold) exactly like the EC2
+  //   Instance SecurityGroups carve-out below.
   'AWS::Neptune::DBCluster': new Set([
     'PreferredMaintenanceWindow',
     'PreferredBackupWindow',
     'EngineVersion',
+    'AvailabilityZones',
   ]),
   //   AWS::Neptune::DBInstance.AvailabilityZone — AWS places an undeclared instance in an AZ it
   //   picks (create-only, so it can never drift; never user intent when undeclared), exactly like
@@ -3167,6 +3200,21 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //       never user intent. First-run FP on every clean dual-stack VPC (#684, live 2026-07-08);
   //       mirrors EIP `NetworkBorderGroup` / `PrivateIpAddress`.
   'AWS::EC2::VPCCidrBlock': new Set(['Ipv6CidrBlock', 'Ipv6CidrBlockNetworkBorderGroup']),
+  //   AWS::EC2::TransitGateway.AssociationDefaultRouteTableId / .PropagationDefaultRouteTableId — a
+  //   TGW that declares `DefaultRouteTableAssociation` / `DefaultRouteTablePropagation: "enable"` (the
+  //   switches, not the ids) reads back the id of the default route table AWS MINTS at creation
+  //   ("tgw-rtb-…", the same id in both fields). It is a per-resource AWS-assigned identifier — never a
+  //   constant we can pin, and effectively read-only (the default route table is created with the TGW
+  //   and cannot be swapped out of band without replacing the TGW), so a value-independent fold can
+  //   never hide a real change. The registry schema's readOnly list omits these two ids (only
+  //   EncryptionSupportState / Id / TransitGatewayArn are marked), so schema-strip never drops them.
+  //   Undeclared → whatever id AWS minted is not user intent; a real change to the association/
+  //   propagation POLICY surfaces on the declared `DefaultRouteTableAssociation` / `…Propagation`
+  //   switches in the declared loop. Corpus baked FP (#976).
+  'AWS::EC2::TransitGateway': new Set([
+    'AssociationDefaultRouteTableId',
+    'PropagationDefaultRouteTableId',
+  ]),
   //   AWS::Grafana::Workspace.GrafanaVersion — a workspace that pins no explicit version reads
   //   back the concrete Grafana version AWS provisioned ("10.4" today). AWS assigns the current
   //   GA default at creation, and that default moves over time (a fresh deploy next year reads a
