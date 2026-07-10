@@ -1,3 +1,10 @@
+## [0.12.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.3...v0.12.4) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize:** strip managed-timestamp name variants ALWAYS_STRIPPED misses ([#915](https://github.com/go-to-k/cdk-real-drift/issues/915)) ([#1251](https://github.com/go-to-k/cdk-real-drift/issues/1251)) ([8ed0435](https://github.com/go-to-k/cdk-real-drift/commit/8ed0435f84253475c2caf8a998a042a494607823))
+
 ## [0.12.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.2...v0.12.3) (2026-07-10)
 
 

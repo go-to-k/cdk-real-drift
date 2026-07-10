@@ -1,6 +1,6 @@
 {
   "name": "cdk-real-drift",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "description": "Detect when real AWS resources drift from your AWS CDK app - including UNDECLARED properties that cdk drift / CloudFormation drift detection never see.",
   "bin": {
     "cdkrd": "dist/cli.js"
