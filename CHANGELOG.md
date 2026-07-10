@@ -1,3 +1,12 @@
+## [0.12.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.36...v0.12.37) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** rdsMaterializedDefault resolves the option name from the sorted diff index, not the raw declared array ([#1318](https://github.com/go-to-k/cdk-real-drift/issues/1318)) ([#1392](https://github.com/go-to-k/cdk-real-drift/issues/1392)) ([369d031](https://github.com/go-to-k/cdk-real-drift/commit/369d031718474eda38a3a78bccbe449b9b910263))
+* **read:** supplementTrustStore fetch honors the [#1066](https://github.com/go-to-k/cdk-real-drift/issues/1066) timeout contract via AbortSignal.timeout ([#1321](https://github.com/go-to-k/cdk-real-drift/issues/1321)) ([#1391](https://github.com/go-to-k/cdk-real-drift/issues/1391)) ([9db515c](https://github.com/go-to-k/cdk-real-drift/commit/9db515c4f3e437293078609bcea45789ee55882f))
+* **read:** suppress spec-materialized Authorizer/Model/RequestValidator/GatewayResponse added on Body-defined RestApi ([#1324](https://github.com/go-to-k/cdk-real-drift/issues/1324)) ([#1390](https://github.com/go-to-k/cdk-real-drift/issues/1390)) ([7fbc91f](https://github.com/go-to-k/cdk-real-drift/commit/7fbc91f90e76d14b53e1ec8efb39550e343a34f4))
+
 ## [0.12.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.35...v0.12.36) (2026-07-10)
 
 
