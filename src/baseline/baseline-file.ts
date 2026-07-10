@@ -107,8 +107,20 @@ export async function loadBaseline(
   let parsed: BaselineFile & { accepted?: RecordedEntry[] };
   try {
     parsed = JSON.parse(raw) as BaselineFile & { accepted?: RecordedEntry[] };
-  } catch {
-    throw new Error(`baseline file ${path} is not valid JSON (corrupt or partially written)`);
+  } catch (e) {
+    // Surface JSON.parse's own diagnostic (it names the offending token + position, e.g.
+    // `Unexpected token '<', "<<<<<<< HEAD"... is not valid JSON`) — the bare message dropped
+    // it, leaving the user no location. An unresolved git merge-conflict marker is the #1 way
+    // this committed file breaks; recognize it and point at the recovery (#1137, the deferred
+    // JSON half of #1049 — mirrors the ignore.yaml diagnostic in config-file.ts).
+    const detail = (e as Error).message;
+    const conflict = /^(<{7}|={7}|>{7})/m.test(raw)
+      ? ' — looks like an unresolved git merge conflict (resolve the <<<<<<< / ======= / >>>>>>> markers)'
+      : '';
+    throw new Error(
+      `baseline file ${path} is not valid JSON (corrupt or partially written): ${detail}${conflict} ` +
+        `(delete or \`git restore\` the file to reset, then re-run \`cdkrd record\`)`
+    );
   }
   if (parsed === null || typeof parsed !== 'object')
     throw new Error(`baseline file ${path} is malformed: root is not an object`);
