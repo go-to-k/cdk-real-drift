@@ -1720,7 +1720,20 @@ export function classifyResource(
     // service echoes back, so a clean private (or any) api with the documented shorthand policy
     // does not false-drift on every statement. Re-canonicalize so the expanded Resource arrays
     // sort identically to the live side. Needs the api id (physicalId) + account + region.
-    if (physicalId && opts.accountId !== undefined && declared['Policy']) {
+    // #839: only expand a RESOLVED policy. When declared['Policy'] is the UNRESOLVED symbol
+    // (an unresolved Fn::If / Fn::Sub / {{resolve:...}} dynamic reference) — or an object still
+    // carrying it — it is truthy but NOT a real policy. Running canonicalizePolicy on it spreads
+    // the symbol away (`{...symbol}` → `{ Statement: [null] }`), destroying the UNRESOLVED marker
+    // and manufacturing a false `declared` Policy.Statement drift (desired:[null]) plus a false
+    // `undeclared` Policy.Version — and a revert would write `[null]` to the live policy. Skip the
+    // expansion so the normal path yields the single benign `unresolved`-tier Policy finding.
+    if (
+      physicalId &&
+      opts.accountId !== undefined &&
+      declared['Policy'] &&
+      declared['Policy'] !== UNRESOLVED &&
+      !hasUnresolved(declared['Policy'])
+    ) {
       // Canonical partition helper (#945): folds ISO partitions too. Unknown region → `aws`.
       const partition =
         opts.region !== undefined ? partitionForRegion(opts.region).partition : 'aws';
