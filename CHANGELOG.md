@@ -1,3 +1,10 @@
+## [0.4.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.37...v0.4.38) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** re-fold declared CognitoEvents to a readGap when GetCognitoEvents fails ([#1085](https://github.com/go-to-k/cdk-real-drift/issues/1085)) ([#1165](https://github.com/go-to-k/cdk-real-drift/issues/1165)) ([f20b430](https://github.com/go-to-k/cdk-real-drift/commit/f20b43000c5b52d2a36b2a79d56233a399512779))
+
 ## [0.4.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.36...v0.4.37) (2026-07-10)
 
 
