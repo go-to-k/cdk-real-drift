@@ -1,5 +1,40 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { emitJsonArray, stackLabel } from '../src/commands/verb-json.js';
+import { emitJsonArray, type RevertJson, stackLabel } from '../src/commands/verb-json.js';
+
+// #1096: a revert --json element must carry the dry-run plan counts / the refused reason so a
+// scripted consumer can tell a would-apply-N-ops preview (or a refusal) from a clean no-op.
+// The interface's new fields are OPTIONAL, so a non-dry-run / non-refused element omits them.
+describe('RevertJson dry-run plan-info + refused reason (#1096)', () => {
+  it('a --dry-run element carries plannedOps / plannedResources', () => {
+    const el: RevertJson = {
+      stack: 'A (us-east-1)',
+      reverted: 0,
+      failed: 0,
+      aborted: false,
+      exit: 0,
+      plannedOps: 3,
+      plannedResources: 2,
+    };
+    expect(JSON.parse(JSON.stringify(el))).toMatchObject({ plannedOps: 3, plannedResources: 2 });
+  });
+
+  it('a refused element carries refusedReason; a clean element omits all three fields', () => {
+    const refused: RevertJson = {
+      stack: 'A (us-east-1)',
+      reverted: 0,
+      failed: 0,
+      aborted: false,
+      exit: 1,
+      refusedReason: 'nothing revertable — 1 drift(s) remain.',
+    };
+    expect(refused.refusedReason).toContain('nothing revertable');
+    const clean: RevertJson = { stack: 'A', reverted: 0, failed: 0, aborted: false, exit: 0 };
+    const keys = Object.keys(JSON.parse(JSON.stringify(clean)));
+    expect(keys).not.toContain('plannedOps');
+    expect(keys).not.toContain('plannedResources');
+    expect(keys).not.toContain('refusedReason');
+  });
+});
 
 // #868: record / ignore / revert now honor --json — one top-level JSON array, one element
 // per stack, symmetric with check. These tests pin the helpers + the top-level-error

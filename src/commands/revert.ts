@@ -111,6 +111,14 @@ export async function runRevert(args: string[]): Promise<number> {
           failed: outcome.failed ?? 0,
           aborted: outcome.aborted,
           exit: outcome.exit,
+          // #1096: a --dry-run element carries the would-apply counts, and a refusal element
+          // its reason — otherwise a would-apply-N-ops preview is indistinguishable from a
+          // clean no-op. Omitted (not `0`/empty) when not applicable.
+          ...(outcome.plannedOps !== undefined && { plannedOps: outcome.plannedOps }),
+          ...(outcome.plannedResources !== undefined && {
+            plannedResources: outcome.plannedResources,
+          }),
+          ...(outcome.refusedReason !== undefined && { refusedReason: outcome.refusedReason }),
         });
     } catch (e) {
       if (isStackNotDeployed(e)) {

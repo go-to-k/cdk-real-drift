@@ -30,6 +30,9 @@ export interface RevertJson {
   failed: number; // resources whose revert op failed
   aborted: boolean; // the confirm prompt was cancelled (no AWS write)
   exit: number; // this stack's exit contribution (0 clean / 1 drift remains / 2 failure)
+  plannedOps?: number; // #1096: --dry-run only — ops a real revert would apply
+  plannedResources?: number; // #1096: --dry-run only — resources those ops touch
+  refusedReason?: string; // #1096: why the revert refused (nothing revertable / needs --yes)
   error?: string; // set only on a pre-revert failure / skip
 }
 
