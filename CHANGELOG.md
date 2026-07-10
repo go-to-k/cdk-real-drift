@@ -1,3 +1,11 @@
+## [0.7.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.0...v0.7.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** do not open the interactive resolve menu under --yes ([#1054](https://github.com/go-to-k/cdk-real-drift/issues/1054)) ([#1185](https://github.com/go-to-k/cdk-real-drift/issues/1185)) ([1fa42c3](https://github.com/go-to-k/cdk-real-drift/commit/1fa42c32d8049c40be776119f5e29291a42bce49))
+* **noise:** fold RDS OptionGroup default-fill OptionSettings to atDefault ([#978](https://github.com/go-to-k/cdk-real-drift/issues/978)) ([#1184](https://github.com/go-to-k/cdk-real-drift/issues/1184)) ([51c8264](https://github.com/go-to-k/cdk-real-drift/commit/51c82641558f38bcacba4e48b2c0ee8acdba8606))
+
 # [0.7.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.2...v0.7.0) (2026-07-10)
 
 
