@@ -1,3 +1,15 @@
+# [0.5.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.44...v0.5.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** CodeBuild deleted-project -> deleted tier + ACM tag-read degrade ([#1083](https://github.com/go-to-k/cdk-real-drift/issues/1083), [#1086](https://github.com/go-to-k/cdk-real-drift/issues/1086)) ([#1139](https://github.com/go-to-k/cdk-real-drift/issues/1139)) ([b261d44](https://github.com/go-to-k/cdk-real-drift/commit/b261d441dc6fe982b5d5937e6357cb9d511ed287))
+
+
+### Features
+
+* **read:** Route53 HostedZone RecordSet child enumerator (added-tier) ([#1042](https://github.com/go-to-k/cdk-real-drift/issues/1042)) ([#1147](https://github.com/go-to-k/cdk-real-drift/issues/1147)) ([eaa1b47](https://github.com/go-to-k/cdk-real-drift/commit/eaa1b47eecd6534f28bb67f1ccfee01aa5e294d6))
+
 ## [0.4.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.43...v0.4.44) (2026-07-10)
 
 
