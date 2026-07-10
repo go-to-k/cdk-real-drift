@@ -346,6 +346,12 @@ export interface RevertItem {
   // delete = Cloud Control DeleteResource (revert of an `added` out-of-band resource).
   kind: 'cc' | 'sdk' | 'delete';
   ops: PatchOp[]; // for `delete`: a single pseudo-op carrying the human label (never serialized)
+  // #853: the RAW live model (read.live, pre-normalize) for this resource, attached to cc-kind
+  // items so toPatchDocument sources an index-bearing `test` op's value from the raw domain CC
+  // evaluates against — NOT the canonicalized `op.prior` (= f.actual), which mismatches CC's raw
+  // model whenever normalization transformed the tested subtree (sorted id arrays, canonicalized
+  // policy docs, base64-decoded WAF SearchString). Never serialized to Cloud Control.
+  liveRaw?: Record<string, unknown>;
 }
 
 export interface NotRevertable {
@@ -887,6 +893,9 @@ export function buildRevertPlan(
       if (item.kind !== 'cc') continue;
       const live = opts.liveByLogical.get(item.logicalId);
       if (!live) continue;
+      // #853: carry the raw live model onto the item so toPatchDocument can source an
+      // index-bearing `test` op's value from the RAW domain (not canonicalized `op.prior`).
+      item.liveRaw = live;
       const huskOps = nullHuskRemovalOps(live);
       if (huskOps.length > 0) item.ops.unshift(...huskOps);
     }
@@ -1261,27 +1270,79 @@ function hasArrayIndexSegment(pointer: string): boolean {
   return pointer.split('/').some((seg) => /^\d+$/.test(seg));
 }
 
+// Resolve the value at a concrete (wildcard-free) RFC6902 JSON pointer against a model,
+// returning a sentinel when the pointer does not resolve — so a genuine `null` value is
+// distinguished from an ABSENT one. Unlike expandPointer (which walks `*` wildcards and only
+// descends OBJECT keys), this walks LITERAL numeric array-index segments too, as an
+// index-bearing revert pointer (`/Rules/0/GroupSet`) requires. Each pointer segment is
+// RFC6901-unescaped (`~1` -> `/`, `~0` -> `~`).
+const POINTER_ABSENT = Symbol('pointer-absent');
+function rawValueAtPointer(model: Record<string, unknown>, pointer: string): unknown {
+  let node: unknown = model;
+  for (const rawSeg of pointer.split('/').slice(1)) {
+    const seg = rawSeg.replace(/~1/g, '/').replace(/~0/g, '~');
+    if (Array.isArray(node)) {
+      if (!/^\d+$/.test(seg)) return POINTER_ABSENT;
+      const idx = Number(seg);
+      if (idx >= node.length) return POINTER_ABSENT;
+      node = node[idx];
+    } else if (node !== null && typeof node === 'object') {
+      if (!Object.hasOwn(node as Record<string, unknown>, seg)) return POINTER_ABSENT;
+      node = (node as Record<string, unknown>)[seg];
+    } else {
+      return POINTER_ABSENT;
+    }
+  }
+  return node;
+}
+
 /**
  * Serialize a RevertItem's ops to an RFC6902 PatchDocument string for Cloud Control.
  *
  * #762: the Cloud Control path had no analogue of the SDK-writer guard (writers.ts
  * `desiredModel` re-reads + re-canonicalizes the live model so an indexed op lands on the
  * SAME element classify diffed). For an INDEX-BEARING pointer we emit a preceding RFC6902
- * `test` precondition asserting the addressed location still equals the value classify saw
- * (`op.prior` = the finding's live `actual`). Cloud Control accepts standard RFC6902 and
- * evaluates `test` atomically before the mutation, so a shifted index makes it REJECT the
- * whole patch instead of writing the wrong element — fail-closed, the same intent as the
- * writer-path re-read. Scalar non-indexed pointers carry no aliasing risk (a named property
- * is stable regardless of array order), so they get NO `test` op — the patch stays minimal.
+ * `test` precondition asserting the addressed location still equals the value classify saw.
+ * Cloud Control accepts standard RFC6902 and evaluates `test` atomically before the mutation,
+ * so a shifted index makes it REJECT the whole patch instead of writing the wrong element —
+ * fail-closed, the same intent as the writer-path re-read. Scalar non-indexed pointers carry
+ * no aliasing risk (a named property is stable regardless of array order), so they get NO
+ * `test` op — the patch stays minimal.
+ *
+ * #853: the `test` value must come from the RAW live model, NOT `op.prior` (= the finding's
+ * canonicalized `f.actual`). Findings are built from `normalizeLiveModel` output — aws:* tags
+ * stripped, readOnly/writeOnly paths stripped, `canonicalizeIdArraysDeep` sorts sg-/subnet-id
+ * arrays, policy documents canonicalized, WAF `SearchString` base64-decoded. Cloud Control,
+ * however, evaluates `test` against its RAW resource model. Whenever normalization transformed
+ * the value at (or under) the tested pointer, asserting the canonical value against the raw
+ * model fails though nothing raced (LIVE-confirmed on AWS::ECR::RegistryPolicy: the Action
+ * array is canonicalize-SORTED vs the raw model's append-last order) → the whole patch is
+ * rejected → revert of genuine drift always fails. So resolve the test value from the raw
+ * live model passed by the apply path (the same UN-stripped `liveByLogical` model the
+ * tag-preserving / empty-husk-strip paths already use). Fall back to `op.prior` only when the
+ * raw model is unavailable (offline / no gather) or the pointer does not resolve against it
+ * (then the index has genuinely shifted and the guard should still fire and fail-close).
  */
-export function toPatchDocument(item: RevertItem): string {
+export function toPatchDocument(
+  item: RevertItem,
+  // The RAW live model for this resource. Defaults to the model carried on the item by
+  // buildRevertPlan (from `opts.liveByLogical`), so the apply path calls `toPatchDocument(item)`
+  // unchanged; an explicit arg is only for tests / callers without a built plan.
+  liveRaw: Record<string, unknown> | undefined = item.liveRaw
+): string {
   const doc: { op: string; path: string; value?: unknown }[] = [];
   for (const { op, path, value, prior } of item.ops) {
     // Guard only index-bearing pointers, and only when we know the value classify diffed
     // against (`prior` = f.actual). A `test` with an `undefined` value is meaningless
     // (RFC6902 has no "undefined"): skip it rather than assert an absent value.
     if (hasArrayIndexSegment(path) && prior !== undefined) {
-      doc.push({ op: 'test', path, value: prior });
+      // Prefer the RAW value at the pointer; the canonicalized `prior` mismatches CC's raw
+      // model whenever normalization transformed the subtree (#853). If the raw model is
+      // absent, or the pointer doesn't resolve (index shifted away), keep `prior` so the
+      // precondition still fails-closed rather than silently dropping the guard.
+      const rawValue = liveRaw ? rawValueAtPointer(liveRaw, path) : POINTER_ABSENT;
+      const testValue = rawValue === POINTER_ABSENT ? prior : rawValue;
+      doc.push({ op: 'test', path, value: testValue });
     }
     doc.push(op === 'remove' ? { op, path } : { op, path, value });
   }
