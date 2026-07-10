@@ -447,6 +447,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     properties?: Record<string, SchemaNode>;
     definitions?: Record<string, SchemaNode>;
     handlers?: Record<string, unknown>;
+    propertyTransform?: Record<string, string>;
   };
   const dotted = (arr: string[] | undefined): string[] => (arr ?? []).map(pointerToDotted);
   const topLevel = (paths: string[]): Set<string> => new Set(paths.filter((p) => !p.includes('.')));
@@ -481,6 +482,16 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   // (leave `updatable` undefined), so revert never bars on a schema-unavailable degradation.
   const updatable =
     schema.handlers === undefined ? undefined : Object.hasOwn(schema.handlers, 'update');
+  // `propertyTransform` maps a JSON-pointer property path to a JSONata expression describing how
+  // the SERVICE transforms a declared value before storing it (so the live read differs from the
+  // template value without any real drift). Key it by the same dotted path convention as the other
+  // path fields (pointerToDotted turns `/properties/A/*/B` into `A.*.B`); classify equality-gates
+  // transform(declared)==live to fold the resulting false declared drift. Best-effort: an object
+  // with only string values is kept; anything malformed just leaves the field empty (no fold). (#881)
+  const propertyTransforms: Record<string, string> = {};
+  for (const [ptr, expr] of Object.entries(schema.propertyTransform ?? {})) {
+    if (typeof expr === 'string') propertyTransforms[pointerToDotted(ptr)] = expr;
+  }
   return {
     readOnly: topLevel(readOnlyPaths),
     writeOnly: topLevel(writeOnlyPaths),
@@ -493,6 +504,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     unorderedScalarPaths: unorderedArrayPaths.scalar,
     unorderedObjectArrayPaths: unorderedArrayPaths.object,
     freeFormMapPaths,
+    ...(Object.keys(propertyTransforms).length > 0 && { propertyTransforms }),
     updatable,
   };
 }

@@ -296,3 +296,7 @@ src/revert/plan.ts`). This is the issue-level twin of the worktree
 - `@aws-cdk/toolkit-lib` — CDK app synthesis for stack discovery + construct paths.
 - `@aws-sdk/client-*` — AWS SDK v3 (Cloud Control + per-service override readers).
 - `yaml` — CFn-aware YAML codec for deployed-template parsing.
+- `jsonata` (pinned `^1.8.7` for its SYNCHRONOUS `evaluate` — 2.x is async-only,
+  which would force `classifyResource` async) — evaluates a registry schema's
+  `propertyTransform` JSONata to fold service-transformed declared echoes (#881),
+  the same engine CloudFormation's own drift detection uses.

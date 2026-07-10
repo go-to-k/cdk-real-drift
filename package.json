@@ -109,6 +109,7 @@
     "@aws-sdk/client-wafv2": "^3.1073.0",
     "@clack/core": "^1.4.1",
     "@clack/prompts": "^1.5.1",
+    "jsonata": "^1.8.7",
     "picocolors": "^1.1.1",
     "yaml": "^2.9.0"
   },
