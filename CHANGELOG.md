@@ -1,3 +1,11 @@
+## [0.4.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.27...v0.4.28) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** reject unknown top-level + per-entry keys at load, require entry value ([#1048](https://github.com/go-to-k/cdk-real-drift/issues/1048)) ([#1136](https://github.com/go-to-k/cdk-real-drift/issues/1136)) ([92b0f69](https://github.com/go-to-k/cdk-real-drift/commit/92b0f694651843f51a90d97da349adc01714d3b6))
+* **revert:** writeDaxParameterGroup throws on an un-expressible remove op instead of false success ([#1124](https://github.com/go-to-k/cdk-real-drift/issues/1124)) ([039f319](https://github.com/go-to-k/cdk-real-drift/commit/039f319894e3e9383cf016065e97c8aba29793b9))
+
 ## [0.4.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.26...v0.4.27) (2026-07-10)
 
 
