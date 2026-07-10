@@ -123,10 +123,30 @@ const CUSTOM_TAGS = buildCustomTags();
 const TRUE_BOOL_TEST = /^(?:[Yy]es|YES|[Tt]rue|TRUE|[Oo]n|ON)$/;
 const FALSE_BOOL_TEST = /^(?:[Nn]o|NO|[Ff]alse|FALSE|[Oo]ff|OFF)$/;
 const BOOL_TAG = 'tag:yaml.org,2002:bool';
-// The `Date`-producing tag. The sexagesimal `intTime`/`floatTime` tags share the
-// int/float tag URIs (they yield NUMBERS like `1:30` -> 90, which #785 needs), so
-// only THIS tag URI is neutralized — the sexagesimal number resolution is preserved.
 const TIMESTAMP_TAG = 'tag:yaml.org,2002:timestamp';
+const INT_TAG = 'tag:yaml.org,2002:int';
+const FLOAT_TAG = 'tag:yaml.org,2002:float';
+
+// CloudFormation only treats PLAIN JSON-style numbers as numbers; the YAML-1.1-only
+// integer/float spellings (octal `0755`, hex `0x1A2B`, binary `0b…`, sexagesimal
+// `1:30`, float specials `.inf`/`.nan`, underscore digit-groups, leading-zero
+// decimals) it keeps as STRINGS (#1053). yaml@2's YAML-1.1 schema DOES resolve every
+// one of them to a number (or `Infinity`) — a declared-tier false positive that
+// survives `record` and, worse, makes `revert` write the corrupted number (a garbage
+// account id from an octal-parsed `012345670123`, or `null` from `Infinity`). So the
+// `int` and `float` tags are RESTRICTED to only the CFn-numeric plain forms; anything
+// else falls through to the string tag, matching what CFn deployed. The exotic-form
+// tags carry a `format` (`OCT`/`HEX`/`BIN`/`TIME`) or are `floatNaN` (no `format` but
+// matches only `.inf`/`.nan`), so they are droppable by that discriminant; the plain
+// `int`/`float`/`floatExp` tags (no exotic `format`) are kept but their `test` regexes
+// are narrowed to reject leading zeros and `_` grouping — leaving `5` / `-3.5` / `5e3`
+// resolving as numbers exactly as the stringly folds and known-defaults rely on.
+const EXOTIC_NUMBER_FORMATS = new Set(['OCT', 'HEX', 'BIN', 'TIME']);
+// Plain decimal integer, no leading zero (except a lone `0`), no `_` grouping.
+const CFN_INT_TEST = /^[-+]?(?:0|[1-9][0-9]*)$/;
+// Standard / scientific float, no leading zero, no `_` grouping. Covers `1.5`, `-3.5`,
+// `0.5`, `5e3`, `1.2E-4`, `.5` (a bare-fraction JSON-ish float CFn accepts numerically).
+const CFN_FLOAT_TEST = /^[-+]?(?:(?:0|[1-9][0-9]*)(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/;
 
 // Take the resolved YAML-1.1 core tags and (a) neutralize the `timestamp` tag so a
 // date-like scalar stays a string, and (b) swap the two `bool` tags for copies whose
@@ -156,6 +176,29 @@ function restrictYaml11Tags(baseTags: Tags): Tags {
         ...scalar,
         resolve: (value: string) => value,
       } as ScalarTag);
+      continue;
+    }
+    if (tag.tag === INT_TAG) {
+      const scalar = tag as ScalarTag;
+      // Drop the YAML-1.1-only integer spellings (octal / hex / binary / sexagesimal
+      // TIME) — they fall through to the string tag, matching CFn. The plain decimal
+      // `int` tag (no exotic `format`) is kept but re-tested to reject a leading zero
+      // (`0755`, `012345670123`) or `_` grouping, both of which CFn keeps as strings.
+      if (scalar.format && EXOTIC_NUMBER_FORMATS.has(scalar.format)) continue;
+      restricted.push({ ...scalar, test: CFN_INT_TEST } as ScalarTag);
+      continue;
+    }
+    if (tag.tag === FLOAT_TAG) {
+      const scalar = tag as ScalarTag;
+      // Drop the sexagesimal `floatTime` (format TIME) and the `floatNaN` special
+      // (`.inf`/`.nan`, identified by its test matching `.inf` — it carries no exotic
+      // `format`). The plain `float`/`floatExp` tags are kept but re-tested to the
+      // CFn-numeric form (no leading zero, no `_`); a `.inf`/`.nan` scalar then falls
+      // through to the string tag, matching CFn (and avoiding the `Infinity` -> null
+      // that `revert` would otherwise write).
+      const isNaNTag = scalar.test instanceof RegExp && scalar.test.test('.inf');
+      if ((scalar.format && EXOTIC_NUMBER_FORMATS.has(scalar.format)) || isNaNTag) continue;
+      restricted.push({ ...scalar, test: CFN_FLOAT_TEST } as ScalarTag);
       continue;
     }
     if (tag.tag === BOOL_TAG) {
@@ -198,16 +241,21 @@ export function parseCfnTemplate(text: string): Record<string, unknown> {
     parsed = JSON.parse(body);
   } else {
     // CloudFormation's service-side YAML parser resolves the YAML 1.1 schema, not
-    // yaml@2's default 1.2 core schema. Under 1.2 `yes`/`no`/`on`/`off` stay strings
-    // and `0755` parses as decimal 755 — diverging from what CFn actually deployed
-    // (1.1 folds those to boolean / octal 493, and `1:30` to sexagesimal 90),
-    // producing first-run declared false positives and silent revert corruption
-    // (#785). But the STOCK 1.1 schema also over-resolves plain date-like scalars to
-    // `Date` and single-letter `Y/N` to boolean, which CFn does NOT do (#850) — so we
-    // use a RESTRICTED yaml-1.1 schema (`restrictYaml11Tags`): 1.1 semantics minus
-    // timestamps (implicit AND explicit) minus single-letter bools, composed with the CFn short
-    // forms. The YAML-1.1 `!!binary`/... tags only fire on explicit `!!` markers a
-    // CFn template never carries, so no regression.
+    // yaml@2's default 1.2 core schema. Under 1.2 `yes`/`no`/`on`/`off` stay strings —
+    // diverging from what CFn actually deploys (1.1 folds those multi-letter forms to
+    // boolean), producing first-run declared false positives and silent revert
+    // corruption (#785). But the STOCK 1.1 schema goes the OTHER way for several plain
+    // scalars CFn keeps as STRINGS: it resolves date-like scalars to `Date` and
+    // single-letter `Y/N` to boolean (#850/#909), and it coerces the YAML-1.1-only
+    // NUMBER spellings — octal `0755`, hex `0x1A2B`, binary `0b…`, sexagesimal `1:30`,
+    // float specials `.inf`/`.nan`, underscore digit-groups, and leading-zero decimals
+    // (e.g. an account id `012345670123`) — to numbers / `Infinity`, which CFn does NOT
+    // (#1053). So we use a RESTRICTED yaml-1.1 schema (`restrictYaml11Tags`): 1.1
+    // semantics minus timestamps (implicit AND explicit), minus single-letter bools,
+    // and with `int`/`float` narrowed to only the plain JSON-style numbers CFn treats
+    // numerically (`5`, `-3.5`, `5e3`) — composed with the CFn short forms. The
+    // YAML-1.1 `!!binary`/... tags only fire on explicit `!!` markers a CFn template
+    // never carries, so no regression.
     parsed = yamlParse(body, CFN_YAML_PARSE_OPTIONS);
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
