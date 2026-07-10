@@ -384,6 +384,7 @@ interface ClassifyOpts {
   siblingEventBusPolicies: Record<string, unknown[]>;
   siblingManagedPolicyAttachments: Record<string, string[]>;
   siblingUserGroups: Record<string, string[]>;
+  siblingEipAssociations: Set<string>;
   bucketNotificationManaged: Set<string>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
   rdsOptionSettingDefaults: Record<string, Record<string, Record<string, string | null>>>;
@@ -653,6 +654,68 @@ function resolvePrincipalKey(ref: unknown, byLogicalId: Map<string, string>): st
     if (typeof logicalId === 'string') return byLogicalId.get(logicalId);
   }
   return undefined;
+}
+
+// An AWS::EC2::EIP's live `NetworkInterfaceId` reflects the ENI its address is associated with.
+// A LEGITIMATE association is DECLARED by a sibling resource — an AWS::EC2::EIPAssociation
+// (`AllocationId`/`EIP` referencing the EIP, `NetworkInterfaceId`/`InstanceId` naming the target)
+// or an AWS::EC2::NatGateway that consumes the EIP (`AllocationId` → the NAT owns the address, its
+// ENI is a legitimate binding). An association with NO declaring sibling is out of band — an
+// `ec2 associate-address` HIJACKING the allocated static IP onto an arbitrary ENI, which the old
+// blanket value-independent fold hid (#892). This set holds the identities (logicalId AND
+// physicalId == PublicIp) of every EIP a declared sibling associates, so classify FOLDS a
+// sibling-explained `NetworkInterfaceId` and SURFACES a sibling-less one. The ENI value itself is
+// AWS-assigned at association time (a NAT's ENI is created by AWS, not named in the template), so
+// the gate is PRESENCE-based: a declaring sibling explains ANY live association on that EIP. Fail-
+// open: an EIP reference that does not resolve to a known EIP is skipped (that EIP keeps the
+// reflected id → a one-time visible finding, never a hidden change).
+const EIP_ASSOCIATION_TYPE = 'AWS::EC2::EIPAssociation';
+const NAT_GATEWAY_TYPE = 'AWS::EC2::NatGateway';
+export function buildSiblingEipAssociations(desired: Desired): Set<string> {
+  // Map every EIP's logicalId to its own identities (logicalId + physicalId == PublicIp) so a
+  // sibling referencing the EIP by `{Ref: <eipLogicalId>}` (or by a GetAtt on it) can be resolved
+  // to the identities classify looks the EIP up by.
+  const eipIdentities = new Map<string, string[]>();
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::EC2::EIP') continue;
+    const ids = [r.logicalId];
+    if (r.physicalId) ids.push(r.physicalId);
+    eipIdentities.set(r.logicalId, ids);
+  }
+  const associated = new Set<string>();
+  const markEip = (ref: unknown): void => {
+    // A sibling names its EIP by `AllocationId`/`EIP`: a `{Ref: <eipLogicalId>}`, a
+    // `{Fn::GetAtt: [<eipLogicalId>, AllocationId]}`, or (for `EIP`) the resolved public-IP string.
+    // Resolve any of these to the EIP's identities and mark them all as sibling-explained.
+    let eipLogicalId: string | undefined;
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string') {
+        eipLogicalId = (ref as { Ref: string }).Ref;
+      } else if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') eipLogicalId = g[0];
+      }
+    }
+    if (eipLogicalId !== undefined) {
+      const ids = eipIdentities.get(eipLogicalId);
+      if (ids) for (const id of ids) associated.add(id);
+      return;
+    }
+    // A resolved public-IP string (the `EIP` form) — mark it directly (it == the EIP's physical id).
+    if (typeof ref === 'string' && ref) associated.add(ref);
+  };
+  for (const r of desired.resources) {
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    if (r.resourceType === EIP_ASSOCIATION_TYPE) {
+      markEip(d.AllocationId);
+      markEip(d.EIP);
+    } else if (r.resourceType === NAT_GATEWAY_TYPE) {
+      markEip(d.AllocationId); // the NAT owns the EIP → its ENI is a legitimate association
+    }
+  }
+  return associated;
 }
 
 // Per Aurora DBInstance physical id, the parent DBCluster's live model — the source for the
@@ -1064,6 +1127,7 @@ export async function gatherFindings(
     siblingUserGroups: buildSiblingUserGroups(desired),
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
+    siblingEipAssociations: buildSiblingEipAssociations(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
@@ -1165,6 +1229,7 @@ export async function regatherTouched(
     siblingUserGroups: buildSiblingUserGroups(desired),
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
+    siblingEipAssociations: buildSiblingEipAssociations(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),

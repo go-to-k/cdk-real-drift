@@ -81,6 +81,12 @@ export interface CorpusCase {
     // Custom::S3BucketNotifications CR, so replay reproduces the NotificationConfiguration drop.
     // Stored as an array (JSON has no Set); replay revives it to a Set. Optional for back-compat.
     bucketNotificationManaged?: string[];
+    // This EIP's own identity (physicalId, else logicalId), present only when a declared sibling
+    // (an AWS::EC2::EIPAssociation or an AWS::EC2::NatGateway consuming it) explains its live
+    // NetworkInterfaceId, so replay reproduces the reflected-association drop and the case folds
+    // atDefault exactly as a real check does. Stored as an array (JSON has no Set); replay revives
+    // it to a Set. Optional for back-compat (pre-#892 cases and non-EIP cases lack it).
+    siblingEipAssociations?: string[];
     // The parent DBCluster's live model keyed by THIS instance's physical id — present only on a
     // CLUSTER_ECHO_CHILD case (an Aurora DBInstance echoing its cluster), so replay reproduces the
     // cluster-echo strip. Without it a fresh-harvested reader/writer replays the un-folded echo
@@ -126,6 +132,7 @@ export function buildCorpusCase(
     oaiCanonicalIds: Record<string, string>;
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
     bucketNotificationManaged?: Set<string>;
+    siblingEipAssociations?: Set<string>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
@@ -144,6 +151,15 @@ export function buildCorpusCase(
     resource.physicalId && opts.bucketNotificationManaged?.has(resource.physicalId)
       ? [resource.physicalId]
       : undefined;
+  // Carry ONLY this EIP's own identity from the stack-wide sibling-association set. classify keys
+  // the reflected-NetworkInterfaceId drop on the physicalId first, else the logicalId — carry the
+  // same one that is present, so replay folds the same way the live check did.
+  const eipSiblingId =
+    resource.physicalId && opts.siblingEipAssociations?.has(resource.physicalId)
+      ? resource.physicalId
+      : opts.siblingEipAssociations?.has(resource.logicalId)
+        ? resource.logicalId
+        : undefined;
   const echoModel =
     resource.physicalId && opts.clusterEchoModel?.[resource.physicalId]
       ? opts.clusterEchoModel[resource.physicalId]
@@ -198,6 +214,7 @@ export function buildCorpusCase(
         ? { siblingSgRules: { [resource.physicalId]: sgSibling } }
         : {}),
       ...(bucketNotif ? { bucketNotificationManaged: bucketNotif } : {}),
+      ...(eipSiblingId ? { siblingEipAssociations: [eipSiblingId] } : {}),
       ...(echoModel && resource.physicalId
         ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
         : {}),
@@ -228,22 +245,24 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
   };
 }
 
-/** Revive a case's stored opts into the shape classifyResource expects: the JSON case
- *  stores `bucketNotificationManaged` as an array (JSON has no Set) but classify wants a
- *  Set, so convert it; every other opts field passes through unchanged. Both replay call
+/** Revive a case's stored opts into the shape classifyResource expects: the JSON case stores
+ *  `bucketNotificationManaged` / `siblingEipAssociations` as arrays (JSON has no Set) but classify
+ *  wants Sets, so convert them; every other opts field passes through unchanged. Both replay call
  *  sites (corpus-replay + measure-noise) go through here so they stay in lockstep. */
 export function reviveOpts(o: CorpusCase['opts']): Omit<
   CorpusCase['opts'],
-  'bucketNotificationManaged'
+  'bucketNotificationManaged' | 'siblingEipAssociations'
 > & {
   bucketNotificationManaged?: Set<string>;
+  siblingEipAssociations?: Set<string>;
 } {
-  const { bucketNotificationManaged, ...rest } = o;
+  const { bucketNotificationManaged, siblingEipAssociations, ...rest } = o;
   return {
     ...rest,
     ...(bucketNotificationManaged
       ? { bucketNotificationManaged: new Set(bucketNotificationManaged) }
       : {}),
+    ...(siblingEipAssociations ? { siblingEipAssociations: new Set(siblingEipAssociations) } : {}),
   };
 }
 

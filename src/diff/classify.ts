@@ -1693,6 +1693,14 @@ export function classifyResource(
     // record + a revert that would DELETE the sibling hook, and a standalone-only ASG is not an
     // undeclared FP; an out-of-band hook matching no sibling still surfaces (#700).
     siblingLifecycleHooks?: Record<string, string[]>;
+    // Identities (logicalId + physicalId == PublicIp) of every AWS::EC2::EIP that a DECLARED
+    // sibling associates — an AWS::EC2::EIPAssociation targeting it, or an AWS::EC2::NatGateway
+    // consuming it (see buildSiblingEipAssociations). An EIP's live `NetworkInterfaceId` reflects
+    // the ENI its address is bound to; a sibling-explained association is folded to atDefault (the
+    // binding is IaC intent), but an association with NO declaring sibling is an out-of-band
+    // `associate-address` HIJACK of the static IP and SURFACES (#892). The ENI value is AWS-assigned
+    // at association time, so the fold is presence-gated (a declaring sibling explains any binding).
+    siblingEipAssociations?: Set<string>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
@@ -1829,6 +1837,21 @@ export function classifyResource(
   if (resourceType === 'AWS::AutoScaling::AutoScalingGroup') {
     const sibHooks = physicalId ? opts.siblingLifecycleHooks?.[physicalId] : undefined;
     if (sibHooks) subtractSiblingLifecycleHooks(live, sibHooks);
+  }
+  // An AWS::EC2::EIP's live `NetworkInterfaceId` reflects the ENI its address is associated with.
+  // A LEGITIMATE association is DECLARED by a sibling AWS::EC2::EIPAssociation (or an
+  // AWS::EC2::NatGateway consuming the EIP), so drop the reflected id when such a sibling exists —
+  // the binding is IaC intent, not drift (the exact eni-… is AWS-assigned at association time, so
+  // the fold is presence-gated, keyed by the EIP's identity in opts.siblingEipAssociations). With
+  // NO declaring sibling the id is KEPT and surfaces: a live association on an EIP no sibling
+  // explains is an out-of-band `associate-address` HIJACK of the allocated static IP (#892), which
+  // the old blanket value-independent fold silenced. `NetworkInterfaceId` is only ever present when
+  // an association exists (an unassociated EIP has no such key), so no fold is needed when absent.
+  if (resourceType === 'AWS::EC2::EIP' && 'NetworkInterfaceId' in live) {
+    const explained =
+      (physicalId !== undefined && opts.siblingEipAssociations?.has(physicalId)) ||
+      opts.siblingEipAssociations?.has(logicalId);
+    if (explained) delete live.NetworkInterfaceId;
   }
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
   // the CR-applied NotificationConfiguration it never declares itself (CDK renders

@@ -284,7 +284,20 @@ describe('#653 value-independent / generated undeclared identifiers', () => {
       )
     ).toContain('KmsKeyId');
   });
-  it('EIP NetworkInterfaceId + GlobalAccelerator IpAddresses fold', () => {
+  it('EIP NetworkInterfaceId with a declared sibling folds; sibling-less surfaces (#892)', () => {
+    // A sibling-explained association (a declared EIPAssociation / NAT gateway consuming this EIP,
+    // recorded in opts.siblingEipAssociations by gather.buildSiblingEipAssociations) is IaC intent
+    // → the reflected id is dropped (no NetworkInterfaceId finding at all).
+    expect(
+      classifyResource(
+        mk('AWS::EC2::EIP', { Domain: 'vpc' }),
+        { NetworkInterfaceId: 'eni-123' },
+        emptySchema,
+        { siblingEipAssociations: new Set(['R']) } // 'R' == mk's logicalId
+      ).some((f) => f.path === 'NetworkInterfaceId')
+    ).toBe(false);
+    // With NO declaring sibling the live association is an out-of-band associate-address hijack of
+    // the allocated static IP and must SURFACE as undeclared drift (the blanket fold hid it).
     expect(
       tier(
         classifyResource(
@@ -292,9 +305,11 @@ describe('#653 value-independent / generated undeclared identifiers', () => {
           { NetworkInterfaceId: 'eni-123' },
           emptySchema
         ),
-        'atDefault'
+        'undeclared'
       )
     ).toContain('NetworkInterfaceId');
+  });
+  it('GlobalAccelerator IpAddresses fold', () => {
     expect(
       tier(
         classifyResource(
