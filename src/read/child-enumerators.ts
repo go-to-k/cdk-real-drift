@@ -1723,7 +1723,19 @@ export interface UserPoolGroupInput {
   // out-of-band detection: an auto-group for an IdP the template never declared still
   // surfaces.
   declaredProviderNames: string[];
-  liveGroups: { name: string; label?: string | undefined }[];
+  // `roleArn` carries the live group's ListGroups `Group.RoleArn`. The genuine
+  // Cognito-auto-created federated group is created BARE (no RoleArn). An attacker with
+  // cognito-idp:CreateGroup can pre-create the exact `<userPoolId>_<ProviderName>` name WITH
+  // a RoleArn → every federated user of that IdP is auto-added to it on sign-in → via
+  // identity-pool `preferred_role` resolution they assume the attached role (federated
+  // privilege escalation). So the #961 auto-group skip is GATED on `roleArn === undefined` —
+  // a name-matched group that carries a RoleArn is NOT the benign auto-group and surfaces as
+  // added (#1262).
+  liveGroups: {
+    name: string;
+    label?: string | undefined;
+    roleArn?: string | undefined;
+  }[];
 }
 
 export function diffUserPoolGroups(input: UserPoolGroupInput): AddedChild[] {
@@ -1741,12 +1753,20 @@ export function diffUserPoolGroups(input: UserPoolGroupInput): AddedChild[] {
   const added: AddedChild[] = [];
   for (const g of liveGroups) {
     if (declared.has(g.name)) continue;
-    if (autoGroupNames.has(g.name)) continue; // Cognito-auto-created federated group (#961)
+    // Skip the Cognito-auto-created federated group (#961) ONLY when it looks auto-created:
+    // the genuine lazy auto-group is BARE (no RoleArn). A `<userPoolId>_<ProviderName>`-named
+    // group WITH a RoleArn is an out-of-band privilege-escalation group, not the benign
+    // auto-group → surface it as added (#1262).
+    if (autoGroupNames.has(g.name) && g.roleArn === undefined) continue;
     added.push({
       resourceType: 'AWS::Cognito::UserPoolGroup',
       identifier: `${userPoolId}|${g.name}`, // CC composite UserPoolId|GroupName
       label: g.label ?? g.name,
-      live: { GroupName: g.name, UserPoolId: userPoolId },
+      live: {
+        GroupName: g.name,
+        UserPoolId: userPoolId,
+        ...(g.roleArn !== undefined ? { RoleArn: g.roleArn } : {}),
+      },
     });
   }
   return added;
@@ -1931,7 +1951,7 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   const groups = await pageUserPoolGroups(client, userPoolId);
   const liveGroups = groups
     .filter((g): g is GroupType & { GroupName: string } => typeof g.GroupName === 'string')
-    .map((g) => ({ name: g.GroupName }));
+    .map((g) => ({ name: g.GroupName, roleArn: g.RoleArn }));
   const groupAdded = diffUserPoolGroups({
     userPoolId,
     declaredGroupNames,

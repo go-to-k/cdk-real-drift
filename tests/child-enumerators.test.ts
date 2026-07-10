@@ -1464,6 +1464,55 @@ describe('diffUserPoolGroups (Cognito user pool groups)', () => {
       },
     ]);
   });
+
+  // #1262: the #961 skip is NAME-only, but the genuine Cognito lazy auto-group is created
+  // BARE (no RoleArn). An attacker with cognito-idp:CreateGroup can pre-create the exact
+  // `<poolId>_<Provider>` name WITH a RoleArn → every federated user of that IdP is
+  // auto-added → via identity-pool `preferred_role` they assume the attached role
+  // (federated privilege escalation). Gate the auto-group skip on `roleArn === undefined`.
+  describe('#1262: RoleArn-bearing auto-named group is not the benign auto-group', () => {
+    const ESCALATION_ROLE = 'arn:aws:iam::123456789012:role/AdminEscalation';
+
+    it('surfaces a <poolId>_MySAML group that carries a RoleArn (privilege-escalation OOB group)', () => {
+      const added = diffUserPoolGroups({
+        userPoolId: POOL,
+        declaredGroupNames: [],
+        declaredProviderNames: ['MySAML'], // MySAML IdP IS declared -> #961 would skip by name
+        liveGroups: [{ name: `${POOL}_MySAML`, roleArn: ESCALATION_ROLE }],
+      });
+      expect(added).toEqual([
+        {
+          resourceType: 'AWS::Cognito::UserPoolGroup',
+          identifier: `${POOL}|${POOL}_MySAML`,
+          label: `${POOL}_MySAML`,
+          live: { GroupName: `${POOL}_MySAML`, UserPoolId: POOL, RoleArn: ESCALATION_ROLE },
+        },
+      ]);
+    });
+
+    it('still skips the SAME name when the group is BARE (no RoleArn) — the benign auto-group (no #961 regression)', () => {
+      const added = diffUserPoolGroups({
+        userPoolId: POOL,
+        declaredGroupNames: [],
+        declaredProviderNames: ['MySAML'],
+        liveGroups: [{ name: `${POOL}_MySAML` }], // roleArn undefined -> genuine auto-group
+      });
+      expect(added).toEqual([]);
+    });
+
+    it('a genuinely declared group is still matched/excluded regardless of RoleArn', () => {
+      const added = diffUserPoolGroups({
+        userPoolId: POOL,
+        declaredGroupNames: ['declared-group'],
+        declaredProviderNames: ['MySAML'],
+        liveGroups: [
+          { name: 'declared-group', roleArn: 'arn:aws:iam::123456789012:role/DeclaredRole' },
+          { name: `${POOL}_MySAML` }, // bare auto-group -> skipped
+        ],
+      });
+      expect(added).toEqual([]);
+    });
+  });
 });
 
 describe('diffUserPoolIdentityProviders (Cognito user pool IdPs)', () => {
