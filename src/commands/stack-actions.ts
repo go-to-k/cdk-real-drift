@@ -3,6 +3,7 @@
 // the interactive flow and the single-verb commands behaviourally identical: both go
 // through exactly the same record / plan / apply / converge code.
 import { CloudControlClient } from '@aws-sdk/client-cloudcontrol';
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { confirm, isCancel } from '@clack/prompts';
 import {
   recordedKey,
@@ -70,6 +71,51 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  */
 export function stackLabel(stackName: string, region: string): string {
   return `${stackName} (${region})`;
+}
+
+/**
+ * Print the stack-state warning (#786) — a stack that is mid-operation (`*_IN_PROGRESS`)
+ * or in a failed state (`*_FAILED`) carries a `stackStatusWarning` from `loadDesired`
+ * (via `classifyStackStatus`). `check` prints it (`check.ts`), but the standalone
+ * `record` / `ignore` / `revert` verbs never consumed it — so a `record` mid-`cdk deploy`
+ * would snapshot transient values into the git baseline, and a `revert` would fight the
+ * in-flight deploy, all silently. This centralizes the SAME wording/stderr routing check
+ * uses so every verb surfaces the warning identically. No-op when the stack is stable.
+ */
+export function warnStackStatus(stackName: string, warning: string | undefined): void {
+  if (warning) console.error(`warning: ${stackName}: ${warning}`);
+}
+
+/**
+ * TOCTOU guard (#786): re-read the stack's live `StackStatus` immediately before a
+ * revert's Cloud Control / SDK write and REFUSE when it is mid-operation
+ * (`*_IN_PROGRESS`). A stack stable at gather time can enter a `cdk deploy` while the
+ * revert confirm prompt sits open — writing OLD values onto an updating stack fights the
+ * deploy. `revert` is the one AWS-mutating verb, so the gate must be right before the
+ * write, not only at gather time. Returns a refusal reason string when the write must be
+ * refused, or `undefined` when it is safe to proceed. A DescribeStacks read error is NOT
+ * treated as a refusal (fail-open: the gather already succeeded, so a transient re-read
+ * failure should not block a legitimate revert) — only a confirmed in-progress state does.
+ */
+export async function stackInProgressRefusal(
+  stackName: string,
+  region: string
+): Promise<string | undefined> {
+  let status: string | undefined;
+  try {
+    const cfn = new CloudFormationClient({ region, ...CLIENT_TIMEOUTS });
+    const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
+    status = res.Stacks?.[0]?.StackStatus;
+  } catch {
+    // Fail-open: the gather already read this stack successfully, so a transient
+    // re-read failure must not block a legitimate revert. Only a CONFIRMED in-progress
+    // state refuses.
+    return undefined;
+  }
+  if (status?.endsWith('_IN_PROGRESS')) {
+    return `refusing to write to AWS — ${stackName} is mid-operation (${status}). A revert now would fight the in-flight deploy/update. Wait for the stack to settle, then re-run.`;
+  }
+  return undefined;
 }
 
 /**
@@ -919,6 +965,17 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       out(style.note('aborted.'));
       return { exit: 0, aborted: true };
     }
+  }
+
+  // TOCTOU gate (#786): the stack was stable at gather time, but it may have entered a
+  // `cdk deploy` while the confirm prompt sat open. Re-read StackStatus RIGHT before the
+  // write and REFUSE when it is mid-operation — a revert now would fight the in-flight
+  // deploy, writing OLD values onto an updating stack. No override flag: this is the one
+  // AWS-mutating verb, so it fails CLOSED rather than risk a racing write.
+  const inProgress = await stackInProgressRefusal(stackName, region);
+  if (inProgress) {
+    console.error('\n' + inProgress);
+    return { exit: 2, aborted: false, refusedReason: inProgress };
   }
 
   const cc = new CloudControlClient({ region, ...CLIENT_TIMEOUTS });

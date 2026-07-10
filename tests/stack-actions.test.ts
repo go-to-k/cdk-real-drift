@@ -7,6 +7,7 @@ import {
   GetResourceCommand,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
+import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { BaselineFile } from '../src/baseline/baseline-file.js';
@@ -35,6 +36,7 @@ import {
   revertStack,
   stackLabel,
   summarizeRevertResults,
+  warnStackStatus,
 } from '../src/commands/stack-actions.js';
 
 describe('includeUnrecordedRemovals (R113 — surface undeclared REMOVE in a gated prompt)', () => {
@@ -633,6 +635,18 @@ describe('revertStack --json plan-info carriage (#1096 — dry-run counts + refu
 });
 
 describe('revertStack convergence re-check (R44 — scoped to touched resources)', () => {
+  // #786: revertStack now re-reads StackStatus right before the write (the TOCTOU gate).
+  // Mock CloudFormation to a stable state so these convergence tests exercise the apply path
+  // (the gate itself is covered by its own describe block below).
+  let cfnMock: ReturnType<typeof mockClient>;
+  beforeEach(() => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'CREATE_COMPLETE' } as never] });
+  });
+  afterEach(() => cfnMock.restore());
+
   const EMPTY_SCHEMA = {
     readOnly: new Set<string>(),
     writeOnly: new Set<string>(),
@@ -923,6 +937,16 @@ describe('revertStack custom-bus Events::Rule identifier (#1088 — revert must 
   // `?? item.physicalId` fallback sent the raw `myBus|myRule` composite to UpdateResource →
   // ValidationException → exit 2. The fix threads region + gathered.desired.accountId into
   // both revert call sites so the region/account branch fires and the ARN is built.
+  // #786: stub the pre-write StackStatus re-read to a stable state (see gate below).
+  let cfnMock: ReturnType<typeof mockClient>;
+  beforeEach(() => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'CREATE_COMPLETE' } as never] });
+  });
+  afterEach(() => cfnMock.restore());
+
   const EMPTY_SCHEMA = {
     readOnly: new Set<string>(),
     writeOnly: new Set<string>(),
@@ -1022,6 +1046,180 @@ describe('revertStack custom-bus Events::Rule identifier (#1088 — revert must 
     // → ValidationException. WITH the fix it is the full rule ARN.
     expect(ident).toBe('arn:aws:events:us-east-1:111111111111:rule/myBus/myRule');
     expect(ident).not.toBe('myBus|myRule');
+  });
+});
+
+describe('revertStack stack-stability gate (#786 — refuse a write onto a mid-operation stack)', () => {
+  const EMPTY_SCHEMA = {
+    readOnly: new Set<string>(),
+    writeOnly: new Set<string>(),
+    createOnly: new Set<string>(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  } as SchemaInfo;
+
+  // A declared VersioningConfiguration drift on one bucket — a real revertable item, so the
+  // run reaches the pre-apply StackStatus gate (dry-run / nothing-revertable return earlier).
+  const gathered = (): GatherResult =>
+    ({
+      desired: {
+        stackName: 's',
+        region: 'r',
+        accountId: '111122223333',
+        resources: [
+          {
+            logicalId: 'B',
+            resourceType: 'AWS::S3::Bucket',
+            physicalId: 'b-phys',
+            declared: { VersioningConfiguration: { Status: 'Enabled' } },
+          },
+        ],
+        rawTemplate: '{}',
+        ctx: {
+          params: {},
+          pseudo: {},
+          conditions: {},
+          physIds: {},
+          liveAttrs: {},
+          mappings: {},
+          exports: {},
+          condCache: new Map(),
+        },
+      },
+      findings: [declared()],
+      schemas: new Map([['AWS::S3::Bucket', EMPTY_SCHEMA]]),
+      liveByLogical: new Map(),
+    }) as GatherResult;
+
+  const params = () => ({
+    stackName: 's',
+    region: 'r',
+    gathered: gathered(),
+    baseline: undefined,
+    config: { ignore: [] },
+    dryRun: false,
+    yes: true,
+    removeUnrecorded: false,
+    verbose: false,
+    interactive: false,
+    convergeRetryDelayMs: 0,
+  });
+
+  const run = async () => {
+    const logs: string[] = [];
+    const errs: string[] = [];
+    const origLog = console.log;
+    const origErr = console.error;
+    console.log = (s: unknown) => logs.push(String(s));
+    console.error = (s: unknown) => errs.push(String(s));
+    try {
+      const outcome = await revertStack(params());
+      return { outcome, logs: logs.join('\n'), errs: errs.join('\n') };
+    } finally {
+      console.log = origLog;
+      console.error = origErr;
+    }
+  };
+
+  let cfnMock: ReturnType<typeof mockClient>;
+  afterEach(() => cfnMock?.restore());
+
+  it('REFUSES (exit 2, NO Cloud Control write) when the pre-apply StackStatus is UPDATE_IN_PROGRESS', async () => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'UPDATE_IN_PROGRESS' } as never] });
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+
+    const { outcome, errs } = await run();
+    expect(outcome.exit).toBe(2);
+    expect(outcome.aborted).toBe(false);
+    expect(outcome.refusedReason).toContain('mid-operation (UPDATE_IN_PROGRESS)');
+    expect(errs).toContain('mid-operation (UPDATE_IN_PROGRESS)');
+    // the write must NOT have been issued — the whole point of the TOCTOU gate
+    expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(0);
+    cc.restore();
+  });
+
+  it('PROCEEDS with the write when the pre-apply StackStatus is a stable *_COMPLETE', async () => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock
+      .on(DescribeStacksCommand)
+      .resolves({ Stacks: [{ StackStatus: 'UPDATE_COMPLETE' } as never] });
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'b-phys',
+        Properties: JSON.stringify({ VersioningConfiguration: { Status: 'Enabled' } }),
+      },
+    });
+
+    const { outcome } = await run();
+    expect(outcome.exit).toBe(0);
+    // the write WAS issued (the stable state let it through)
+    expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(1);
+    cc.restore();
+  });
+
+  it('FAILS OPEN on a DescribeStacks re-read error — a legitimate revert is not blocked by a transient re-read failure', async () => {
+    cfnMock = mockClient(CloudFormationClient);
+    cfnMock.on(DescribeStacksCommand).rejects(new Error('ThrottlingException'));
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'b-phys',
+        Properties: JSON.stringify({ VersioningConfiguration: { Status: 'Enabled' } }),
+      },
+    });
+
+    const { outcome } = await run();
+    // not refused: the gather already succeeded, so a transient re-read failure must not block
+    expect(outcome.exit).toBe(0);
+    expect(cc.commandCalls(UpdateResourceCommand)).toHaveLength(1);
+    cc.restore();
+  });
+});
+
+describe('warnStackStatus (#786 — record / ignore / revert surface the mid-operation warning like check)', () => {
+  const capture = (fn: () => void): string => {
+    const errs: string[] = [];
+    const orig = console.error;
+    console.error = (s: unknown) => errs.push(String(s));
+    try {
+      fn();
+    } finally {
+      console.error = orig;
+    }
+    return errs.join('\n');
+  };
+
+  it('prints the warning to stderr, matching check.ts wording, when a warning is present', () => {
+    const out = capture(() =>
+      warnStackStatus(
+        'MyStack',
+        'stack is mid-operation (UPDATE_IN_PROGRESS) — live state is in flux'
+      )
+    );
+    expect(out).toBe(
+      'warning: MyStack: stack is mid-operation (UPDATE_IN_PROGRESS) — live state is in flux'
+    );
+  });
+
+  it('is a no-op when the stack is stable (no warning)', () => {
+    const out = capture(() => warnStackStatus('MyStack', undefined));
+    expect(out).toBe('');
   });
 });
 
