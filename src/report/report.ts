@@ -644,15 +644,41 @@ function j(v: unknown): string {
 // or use CR + ANSI escapes to overwrite a real drift line on a TTY. Escape ASCII control
 // chars (C0 range + DEL) to a visible `\xNN` form so a hostile key can never emit a raw
 // newline / CR / ESC; printable text (incl. non-ASCII) is untouched. Pure + exported for tests.
+//
+// #1058: C0 + DEL is not enough — the Unicode bidi/format controls reorder or HIDE text on a
+// bidi-aware terminal without any C0 byte. A RIGHT-TO-LEFT OVERRIDE (U+202E) or a bidi isolate
+// (U+2066-U+2069) can cosmetically flip a key's rendered direction; a bidi embedding/override
+// (U+202A-U+202E); and the zero-width set (U+200B-U+200F, U+FEFF) can vanish characters
+// entirely — so a hostile key could still visually spoof a benign one. Escape those too, to a
+// visible `\u{XXXX}` form. Ordinary printable non-ASCII (CJK, accents, emoji) stays untouched.
 export function sanitizeForTerminal(s: string): string {
   let out = '';
   for (const ch of s) {
     const code = ch.charCodeAt(0);
     // C0 controls (\x00-\x1f) + DEL (\x7f) -> visible \xNN; a raw CR/LF/ESC could
     // else inject a spoofed `result:` line or overwrite a real drift line on a TTY.
-    out += code < 0x20 || code === 0x7f ? `\\x${code.toString(16).padStart(2, '0')}` : ch;
+    if (code < 0x20 || code === 0x7f) {
+      out += `\\x${code.toString(16).padStart(2, '0')}`;
+    } else if (isBidiOrZeroWidth(code)) {
+      // Unicode bidi/format controls -> visible \u{XXXX}; else they reorder/hide text.
+      out += `\\u{${code.toString(16).toUpperCase()}}`;
+    } else {
+      out += ch;
+    }
   }
   return out;
+}
+
+// #1058: the invisible/directional Unicode controls a hostile live key can carry —
+// bidi embeddings/overrides + isolates (U+202A-U+202E, U+2066-U+2069) and the
+// zero-width set (U+200B-U+200F, U+FEFF). All BMP, so a single charCode is the codepoint.
+function isBidiOrZeroWidth(code: number): boolean {
+  return (
+    (code >= 0x202a && code <= 0x202e) || // bidi embeddings/overrides (LRE/RLE/PDF/LRO/RLO)
+    (code >= 0x2066 && code <= 0x2069) || // bidi isolates (LRI/RLI/FSI/PDI)
+    (code >= 0x200b && code <= 0x200f) || // ZWSP/ZWNJ/ZWJ/LRM/RLM
+    code === 0xfeff // BOM / zero-width no-break space
+  );
 }
 
 // Truncate a desired/actual (or baseline/actual) PAIR so the FIRST point at which the
