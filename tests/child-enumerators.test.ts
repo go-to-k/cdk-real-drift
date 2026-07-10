@@ -56,6 +56,8 @@ import {
   diffUserPoolResourceServers,
   diffVpcChildren,
   diffVpcEndpointChildren,
+  diffVpcNaclChildren,
+  diffVpcRouteTableChildren,
   isBodyDefinedHttpApi,
   isBodyDefinedRestApi,
   isEnumerableRoute,
@@ -1647,6 +1649,84 @@ describe('diffVpcEndpointChildren (EC2 VPC endpoints) — #1045', () => {
           { id: EP('a'), label: 'com.amazonaws.us-east-1.s3' },
           { id: EP('b'), label: 'com.amazonaws.us-east-1.ssm' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcRouteTableChildren (EC2 VPC route tables) — #1045', () => {
+  const RT = (id: string) => `rtb-${id}`;
+
+  // The MAIN route table is filtered out upstream (in the enumerator, by its
+  // `Associations[].Main === true`), so the diff only ever sees non-main tables.
+  it('flags a rogue out-of-band route table (not in the template)', () => {
+    const added = diffVpcRouteTableChildren({
+      declaredRouteTableIds: [RT('declared')],
+      liveRouteTables: [{ id: RT('declared') }, { id: RT('rogue') }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::RouteTable',
+        identifier: RT('rogue'),
+        label: RT('rogue'),
+        live: { RouteTableId: RT('rogue') },
+      },
+    ]);
+  });
+
+  it('identifier + live.RouteTableId are the bare RouteTableId (CC primaryIdentifier)', () => {
+    const added = diffVpcRouteTableChildren({
+      declaredRouteTableIds: [],
+      liveRouteTables: [{ id: RT('x') }],
+    });
+    expect(added[0]!.identifier).toBe(RT('x'));
+    expect(added[0]!.live).toEqual({ RouteTableId: RT('x') });
+  });
+
+  it('no drift when every non-main route table is declared', () => {
+    expect(
+      diffVpcRouteTableChildren({
+        declaredRouteTableIds: [RT('a'), RT('b')],
+        liveRouteTables: [{ id: RT('a') }, { id: RT('b') }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcNaclChildren (EC2 VPC network ACLs) — #1045', () => {
+  const ACL = (id: string) => `acl-${id}`;
+
+  // The DEFAULT NACL is filtered out upstream (in the enumerator, by its
+  // `IsDefault === true`), so the diff only ever sees non-default ACLs.
+  it('flags a rogue out-of-band network ACL (not in the template)', () => {
+    const added = diffVpcNaclChildren({
+      declaredNaclIds: [ACL('declared')],
+      liveNacls: [{ id: ACL('declared') }, { id: ACL('rogue') }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::NetworkAcl',
+        identifier: ACL('rogue'),
+        label: ACL('rogue'),
+        live: { Id: ACL('rogue') },
+      },
+    ]);
+  });
+
+  it('identifier + live.Id are the bare NetworkAclId (CC primaryIdentifier /properties/Id)', () => {
+    const added = diffVpcNaclChildren({
+      declaredNaclIds: [],
+      liveNacls: [{ id: ACL('x') }],
+    });
+    expect(added[0]!.identifier).toBe(ACL('x'));
+    expect(added[0]!.live).toEqual({ Id: ACL('x') });
+  });
+
+  it('no drift when every non-default NACL is declared', () => {
+    expect(
+      diffVpcNaclChildren({
+        declaredNaclIds: [ACL('a'), ACL('b')],
+        liveNacls: [{ id: ACL('a') }, { id: ACL('b') }],
       })
     ).toEqual([]);
   });
