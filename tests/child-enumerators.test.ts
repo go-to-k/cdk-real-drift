@@ -10,6 +10,7 @@ import {
   DescribeDBInstancesCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
+import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
@@ -18,6 +19,7 @@ import type { EnumeratorContext } from '../src/read/child-enumerators.js';
 import {
   enumerateLambdaFunctionChildren,
   enumerateRdsClusterChildren,
+  enumerateRoute53HostedZoneChildren,
   enumerateSnsTopicChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
@@ -46,6 +48,7 @@ import {
   diffLogGroupChildren,
   diffLogGroupSubscriptionFilters,
   diffRdsClusterChildren,
+  diffRoute53HostedZoneChildren,
   diffRouteTableChildren,
   diffSnsTopicChildren,
   diffUserPoolChildren,
@@ -2015,5 +2018,219 @@ describe('child enumerators fail safe on an UNRESOLVED parent-ref (#962)', () =>
     const added = await enumerateSnsTopicChildren(ctx);
     expect(added).toEqual([]);
     sns.restore();
+  });
+});
+
+describe('diffRoute53HostedZoneChildren (Route53 hosted zone record sets, #1042)', () => {
+  const ZONE = 'Z1234567890ABC';
+  const APEX = 'example.com';
+
+  it('flags an out-of-band record (rogue CNAME/TXT) not in the template as `added`', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: APEX,
+      declaredRecords: [{ name: 'www.example.com', type: 'A' }],
+      liveRecords: [
+        // AWS-auto-created apex records — must be filtered.
+        { name: 'example.com.', type: 'SOA', live: { Name: 'example.com.', Type: 'SOA' } },
+        { name: 'example.com.', type: 'NS', live: { Name: 'example.com.', Type: 'NS' } },
+        // Declared record — must NOT be flagged.
+        { name: 'www.example.com.', type: 'A', live: { Name: 'www.example.com.', Type: 'A' } },
+        // Rogue out-of-band records — must be flagged.
+        {
+          name: 'login.example.com.',
+          type: 'CNAME',
+          live: {
+            Name: 'login.example.com.',
+            Type: 'CNAME',
+            ResourceRecords: ['evil.example.net'],
+          },
+        },
+        {
+          name: '_verify.example.com.',
+          type: 'TXT',
+          live: { Name: '_verify.example.com.', Type: 'TXT' },
+        },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Route53::RecordSet',
+        identifier: `${ZONE}_login.example.com._CNAME`,
+        label: 'CNAME login.example.com',
+        live: {
+          Name: 'login.example.com.',
+          Type: 'CNAME',
+          ResourceRecords: ['evil.example.net'],
+        },
+      },
+      {
+        resourceType: 'AWS::Route53::RecordSet',
+        identifier: `${ZONE}__verify.example.com._TXT`,
+        label: 'TXT _verify.example.com',
+        live: { Name: '_verify.example.com.', Type: 'TXT' },
+      },
+    ]);
+  });
+
+  it('filters the apex SOA + apex NS, but KEEPS a non-apex NS delegation record', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: APEX,
+      declaredRecords: [],
+      liveRecords: [
+        { name: 'example.com.', type: 'SOA', live: {} },
+        { name: 'example.com.', type: 'NS', live: {} }, // apex NS -> filtered
+        { name: 'sub.example.com.', type: 'NS', live: { Name: 'sub.example.com.', Type: 'NS' } }, // delegation -> kept
+      ],
+    });
+    expect(added.map((a) => a.label)).toEqual(['NS sub.example.com']);
+  });
+
+  it('matches declared vs live dot- and case-insensitively (trailing-dot / case normalization)', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: APEX,
+      // Template declares no trailing dot and mixed case; live is FQDN + AWS casing.
+      declaredRecords: [{ name: 'WWW.Example.COM', type: 'a' }],
+      liveRecords: [
+        { name: 'www.example.com.', type: 'A', live: { Name: 'www.example.com.', Type: 'A' } },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('distinguishes weighted variants by SetIdentifier (one declared, one rogue)', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: APEX,
+      declaredRecords: [{ name: 'api.example.com', type: 'A', setIdentifier: 'blue' }],
+      liveRecords: [
+        {
+          name: 'api.example.com.',
+          type: 'A',
+          setIdentifier: 'blue',
+          live: { Name: 'api.example.com.', Type: 'A' },
+        },
+        {
+          name: 'api.example.com.',
+          type: 'A',
+          setIdentifier: 'green',
+          live: { Name: 'api.example.com.', Type: 'A' },
+        },
+      ],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${ZONE}_api.example.com._A_green`]);
+  });
+
+  it('derives the apex from the live SOA when zoneApex is unresolved (still filters apex NS)', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: undefined,
+      declaredRecords: [],
+      liveRecords: [
+        { name: 'example.com.', type: 'SOA', live: {} },
+        { name: 'example.com.', type: 'NS', live: {} },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+});
+
+describe('enumerateRoute53HostedZoneChildren (#1042)', () => {
+  it('pages ListResourceRecordSets, filters apex SOA/NS, flags a rogue record', async () => {
+    const r53 = mockClient(Route53Client);
+    r53
+      .on(ListResourceRecordSetsCommand)
+      .resolvesOnce({
+        ResourceRecordSets: [
+          { Name: 'example.com.', Type: 'SOA' },
+          { Name: 'example.com.', Type: 'NS' },
+          {
+            Name: 'www.example.com.',
+            Type: 'A',
+            TTL: 300,
+            ResourceRecords: [{ Value: '1.2.3.4' }],
+          },
+        ],
+        IsTruncated: true,
+        NextRecordName: 'z.example.com.',
+        NextRecordType: 'A',
+      })
+      .resolves({
+        ResourceRecordSets: [
+          {
+            Name: 'rogue.example.com.',
+            Type: 'CNAME',
+            TTL: 60,
+            ResourceRecords: [{ Value: 'evil.net' }],
+          },
+        ],
+        IsTruncated: false,
+      });
+    const ctx = {
+      parent: {
+        physicalId: 'Z1234567890ABC',
+        logicalId: 'Zone',
+        declared: { Name: 'example.com.' },
+      },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Route53::RecordSet',
+            declared: { HostedZoneId: 'Z1234567890ABC', Name: 'www.example.com', Type: 'A' },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRoute53HostedZoneChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Route53::RecordSet',
+        identifier: 'Z1234567890ABC_rogue.example.com._CNAME',
+        label: 'CNAME rogue.example.com',
+        live: {
+          Name: 'rogue.example.com.',
+          Type: 'CNAME',
+          TTL: '60',
+          ResourceRecords: ['evil.net'],
+        },
+      },
+    ]);
+    r53.restore();
+  });
+
+  it('fail-safe: a declared RecordSet with an UNRESOLVED HostedZoneId is NOT flagged added (#962)', async () => {
+    const r53 = mockClient(Route53Client);
+    r53.on(ListResourceRecordSetsCommand).resolves({
+      ResourceRecordSets: [
+        { Name: 'example.com.', Type: 'SOA' },
+        { Name: 'example.com.', Type: 'NS' },
+        { Name: 'www.example.com.', Type: 'A' },
+      ],
+      IsTruncated: false,
+    });
+    const ctx = {
+      parent: {
+        physicalId: 'Z1234567890ABC',
+        logicalId: 'Zone',
+        declared: { Name: 'example.com.' },
+      },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Route53::RecordSet',
+            declared: { HostedZoneId: UNRESOLVED, Name: 'www.example.com', Type: 'A' },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRoute53HostedZoneChildren(ctx);
+    expect(added).toEqual([]);
+    r53.restore();
   });
 });
