@@ -1,3 +1,10 @@
+## [0.4.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.33...v0.4.34) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** bar cc-kind revert on a handler-less CFn-legacy type ([#1091](https://github.com/go-to-k/cdk-real-drift/issues/1091)) ([#1152](https://github.com/go-to-k/cdk-real-drift/issues/1152)) ([29cb662](https://github.com/go-to-k/cdk-real-drift/commit/29cb662dbe9014b12d1679c569dc90a821246ec4))
+
 ## [0.4.33](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.32...v0.4.33) (2026-07-10)
 
 
