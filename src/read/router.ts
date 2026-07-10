@@ -85,6 +85,22 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // read; the reverse orders return not-found.
   'AWS::ApiGatewayV2::Model': compositeWith('ApiId'),
   'AWS::ApiGatewayV2::Deployment': compositeWith('ApiId'),
+  // ApiGatewayV2::ApiMapping primaryIdentifier is [ApiMappingId, DomainName] — CHILD
+  // first (the ApiMappingId, then the custom DomainName), the REVERSE of the parent-first
+  // v2 siblings. The CFn Ref / physical id is the bare ApiMappingId; DomainName is a
+  // declared createOnly prop (the custom domain the mapping is attached to). Without the
+  // composite the bare ApiMappingId CC GetResource ValidationException-skips it (#855
+  // read-gap), so re-pointing a mapping to a different stage / changing its api-mapping key
+  // is invisible. Composite order follows the documented CC primaryIdentifier; built from
+  // physicalId (ApiMappingId) + declared.DomainName, joined with the map's `|` separator.
+  // Not `compositeWith` (parent-first); child-first like ApiGatewayV2::Authorizer.
+  'AWS::ApiGatewayV2::ApiMapping': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const domainName = declared.DomainName;
+    return typeof domainName === 'string' && domainName.length > 0
+      ? `${pid}|${domainName}`
+      : undefined;
+  },
   // ApiGatewayV2::Authorizer primaryIdentifier is [AuthorizerId, ApiId] — CHILD
   // first, the REVERSE of its v2 siblings (Stage/Route/Integration are [ApiId,
   // <child>] parent-first). The CFn physical id is the bare AuthorizerId; ApiId comes
@@ -213,6 +229,23 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     return typeof restApiId === 'string' && restApiId.length > 0
       ? `${pid}|${restApiId}`
       : undefined;
+  },
+  // ApiGateway::BasePathMapping primaryIdentifier is [DomainName, BasePath] —
+  // parent-first (the custom DomainName, then the BasePath key), and BOTH segments are
+  // declared createOnly props (the CFn physical id is only the DomainName). Without the
+  // composite the bare DomainName CC GetResource ValidationException-skips it (#855
+  // read-gap), so a base-path change or a stage re-point on the mapping is invisible.
+  // Composite order follows the documented CC primaryIdentifier; built directly from
+  // declared.DomainName + declared.BasePath, joined with the map's `|` separator.
+  // The "(none)" / root mapping declares no BasePath — the exact CC identifier shape for
+  // that empty-BasePath case is NOT live-confirmed here and may need adjustment; use an
+  // empty second segment (`<DomainName>|`) as the best-effort form when BasePath is absent.
+  'AWS::ApiGateway::BasePathMapping': (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const domainName = declared.DomainName;
+    if (typeof domainName !== 'string' || domainName.length === 0) return undefined;
+    const basePath = typeof declared.BasePath === 'string' ? declared.BasePath : '';
+    return `${domainName}|${basePath}`;
   },
   // ApplicationAutoScaling ScalingPolicy: primaryIdentifier is [Arn,
   // ScalableDimension]. The CFn physical id IS the PolicyARN, but ScalableDimension
