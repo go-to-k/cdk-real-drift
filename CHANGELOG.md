@@ -1,3 +1,10 @@
+## [0.10.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.0...v0.10.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** mask secret-bearing values in text + --json output ([#798](https://github.com/go-to-k/cdk-real-drift/issues/798)) ([#1234](https://github.com/go-to-k/cdk-real-drift/issues/1234)) ([0940a8d](https://github.com/go-to-k/cdk-real-drift/commit/0940a8d7bd4604101ff547127fb3ceb6ac46171e))
+
 # [0.10.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.14...v0.10.0) (2026-07-10)
 
 
