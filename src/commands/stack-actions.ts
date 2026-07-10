@@ -1359,6 +1359,50 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       out(style.note(`    ↻ ${displayId}: ${reason} — retry ${attempt} (next in ${secs}s)…`));
     },
   });
+  // #952: stream each resource's `reverted:`/`FAILED:` line the moment its last item
+  // resolves — instead of buffering the whole batch and printing only after every item
+  // completes. On a long (10-item) revert the user now sees progress as it happens, and a
+  // Ctrl-C mid-apply leaves a visible trace of what already succeeded/failed rather than
+  // nothing. To avoid double-printing (the end-of-batch summary still runs for the --json
+  // tallies), we track how many items each resource contributes and print its collapsed
+  // outcome once all of them have landed in `applied`. A resource that split into a `cc` +
+  // `sdk` item (two results, same logicalId) still prints exactly ONE line, identical to
+  // what summarizeRevertResults would render — the shared helper guarantees byte-for-byte
+  // parity. Streaming goes through `out`, so it is already suppressed under --json.
+  const itemsPerLogical = new Map<string, number>();
+  for (const item of plan.items)
+    itemsPerLogical.set(item.logicalId, (itemsPerLogical.get(item.logicalId) ?? 0) + 1);
+  const streamedLogical = new Set<string>();
+  const streamResultLine = (logicalId: string): void => {
+    if (streamedLogical.has(logicalId)) return;
+    const forResource = applied.filter((a) => a.logicalId === logicalId);
+    if (forResource.length < (itemsPerLogical.get(logicalId) ?? 0)) return;
+    streamedLogical.add(logicalId);
+    for (const s of summarizeRevertResults(forResource)) printRevertResultLine(s);
+  };
+  // Shared renderer for one collapsed per-resource outcome — used BOTH by the streaming
+  // path (as each resource finishes) and, for anything not yet streamed, by the
+  // end-of-batch pass below. Kept as one function so the two paths cannot drift in format.
+  const printRevertResultLine = (s: {
+    displayId: string;
+    ok: boolean;
+    error?: string;
+    hint?: string;
+  }): void => {
+    if (s.ok) {
+      out(style.ok(`  reverted: ${s.displayId}`));
+    } else {
+      out(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
+      // Transient "resource is mid-update" failure that survived the retries: add a
+      // targeted hint so the user knows this is retry-later, not a real failure. When we
+      // did NOT already wait (`--wait` off), point at it as the one-command settle path.
+      if (s.hint) {
+        const suffix =
+          waitMs === undefined ? ' (or re-run with --wait to block until it settles)' : '';
+        out(style.note(`    ↳ ${s.hint}${suffix}`));
+      }
+    }
+  };
   // Partition `delete`-kind items out of the main loop: they are applied as a batch AFTER
   // all non-delete items, with dependency-aware retry (issue #765). Non-deletes (plan.ts
   // already orders them first) keep their inline path and MUST run before the deletes.
@@ -1432,6 +1476,8 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // A failed NON-delete op (this loop no longer runs deletes) — feed the convergence
     // verdict so a FAILED update never rides under a CLEAN summary.
     if (!r.ok) failedUpdateIds.add(item.logicalId);
+    // #952: stream this resource's outcome now if this was its last item.
+    streamResultLine(item.logicalId);
   }
   // Apply the `delete`-kind items as a dependency-aware batch AFTER the non-deletes
   // (issue #765): a delete that first fails on a DependencyViolation is retried once the
@@ -1456,28 +1502,25 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       ...(r.hint !== undefined && { hint: r.hint }),
     });
     if (!r.ok) worst = Math.max(worst, 2);
+    // #952: stream this delete's outcome now if this was its resource's last item.
+    streamResultLine(item.logicalId);
   }
-  // Print ONE outcome per resource (a resource that split into a `cc` + `sdk` item
-  // produced two results) so a fully reverted resource never prints `reverted:` twice.
+  // Collapse per-item results into ONE outcome per resource (a resource that split into a
+  // `cc` + `sdk` item produced two results) — used here for the --json tallies AND as a
+  // BACKSTOP printer for any resource the streaming path did not already emit.
   // #868: per-resource revert tallies for the --json element (summarize collapses a
   // resource that split into cc + sdk items so it is counted once).
   const summarized = summarizeRevertResults(applied);
   const revertedCount = summarized.filter((s) => s.ok).length;
   const failedCount = summarized.filter((s) => !s.ok).length;
-  for (const s of summarized) {
-    if (s.ok) {
-      out(style.ok(`  reverted: ${s.displayId}`));
-    } else {
-      out(style.fail(`  FAILED: ${s.displayId} — ${s.error}`));
-      // Transient "resource is mid-update" failure that survived the retries: add a
-      // targeted hint so the user knows this is retry-later, not a real failure. When we
-      // did NOT already wait (`--wait` off), point at it as the one-command settle path.
-      if (s.hint) {
-        const suffix =
-          waitMs === undefined ? ' (or re-run with --wait to block until it settles)' : '';
-        out(style.note(`    ↳ ${s.hint}${suffix}`));
-      }
-    }
+  // #952: every resource whose items all landed was already streamed above the moment it
+  // finished, so we must NOT reprint it here (that would double every line). Print only the
+  // stragglers — a resource whose item count was never fully reached (should not happen on a
+  // normal run; this keeps output complete if it ever does) — mapped back to logicalId via
+  // its first applied item.
+  for (const item of plan.items) {
+    if (streamedLogical.has(item.logicalId)) continue;
+    streamResultLine(item.logicalId);
   }
 
   // Re-check convergence — scoped to the resources the revert just touched (R44).
