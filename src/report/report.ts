@@ -173,7 +173,19 @@ export function formatFinding(f: Finding, stackName = ''): string {
     // R128: a recorded identity-keyed array changed — show the element delta, not the
     // whole array dump (the property stays recorded; this is the WHICH-element view).
     s += formatArrayDelta(f.arrayDelta);
-  else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
+  else if (f.tier === 'undeclared' && f.desired !== undefined) {
+    // #758 follow-up: a RECORDED undeclared value that CHANGED out of band since record —
+    // applyBaseline (baseline-file.ts) threads the recorded baseline value onto `f.desired`
+    // (mirroring the `added` tier). Show the recorded-vs-live delta so the user sees WHAT the
+    // value changed FROM, not just the (possibly attacker-set) live value. Same `baseline`-vs-
+    // `actual` wording as the recorded `added` tier: a per-key delta for maps (both objects),
+    // stacked `baseline=`/`actual  =` lines for scalars.
+    if (isRecord(f.desired) && isRecord(f.actual)) s += formatMapDelta(f.desired, f.actual, true);
+    else {
+      const { a: base, b: act } = jPair(f.desired, f.actual);
+      s += `\n      baseline=${style.desired(base)}\n      actual  =${style.actual(act)}`;
+    }
+  } else if (f.tier === 'undeclared' || f.tier === 'atDefault' || f.tier === 'generated')
     // Put the live value on its OWN indented line, aligned with declared's `actual =`
     // column — a long ARN/JSON list crammed inline after the id was unreadable, and it read
     // inconsistently next to a declared drift's stacked desired/actual. An undeclared value
