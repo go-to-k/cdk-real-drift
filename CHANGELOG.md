@@ -1,3 +1,13 @@
+## [0.4.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.30...v0.4.31) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** sanitize Windows reserved DOS device stack names in baseline path ([#1077](https://github.com/go-to-k/cdk-real-drift/issues/1077)) ([#1145](https://github.com/go-to-k/cdk-real-drift/issues/1145)) ([a53188b](https://github.com/go-to-k/cdk-real-drift/commit/a53188b5174ff890e9a1cf896f391693d9c4b193))
+* **normalize:** re-check intrinsic-resolved strings for dynamic references (Ref/FindInMap/Select/ImportValue) ([#1073](https://github.com/go-to-k/cdk-real-drift/issues/1073)) ([#1146](https://github.com/go-to-k/cdk-real-drift/issues/1146)) ([8ee0f77](https://github.com/go-to-k/cdk-real-drift/commit/8ee0f77df16486fc143ded1d2fb93c3e9e1eb746))
+* **report:** render unrecorded added live model + defend nested UNRESOLVED symbol in value rendering ([#1057](https://github.com/go-to-k/cdk-real-drift/issues/1057), [#1059](https://github.com/go-to-k/cdk-real-drift/issues/1059)) ([#1142](https://github.com/go-to-k/cdk-real-drift/issues/1142)) ([9358538](https://github.com/go-to-k/cdk-real-drift/commit/93585388287e0446464a862ed065243a29141eb6))
+* **revert:** default the AWS-write confirm to No ([#1055](https://github.com/go-to-k/cdk-real-drift/issues/1055)) ([#1143](https://github.com/go-to-k/cdk-real-drift/issues/1143)) ([50923fb](https://github.com/go-to-k/cdk-real-drift/commit/50923fb5b977b43ee533021b32ce9b17d566c5c7))
+
 ## [0.4.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.29...v0.4.30) (2026-07-10)
 
 
