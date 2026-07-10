@@ -1,3 +1,10 @@
+## [0.12.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.4...v0.12.5) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** fold Neptune default-SG list via the [#889](https://github.com/go-to-k/cdk-real-drift/issues/889) derived gate + Cognito UserPoolUser sub ([#976](https://github.com/go-to-k/cdk-real-drift/issues/976), [#844](https://github.com/go-to-k/cdk-real-drift/issues/844)) ([#1252](https://github.com/go-to-k/cdk-real-drift/issues/1252)) ([4b32072](https://github.com/go-to-k/cdk-real-drift/commit/4b3207285e2cc2bd9b672b6f8969e4199269e5dd))
+
 ## [0.12.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.3...v0.12.4) (2026-07-10)
 
 
