@@ -115,6 +115,11 @@ import {
   RDSClient,
 } from '@aws-sdk/client-rds';
 import {
+  ListResourceRecordSetsCommand,
+  type ResourceRecordSet,
+  Route53Client,
+} from '@aws-sdk/client-route-53';
+import {
   ListSubscriptionsByTopicCommand,
   SNSClient,
   type Subscription as SnsSubscription,
@@ -169,7 +174,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
 // thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
 // v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
-// RDS DB clusters (DB instances) the seventeenth.
+// RDS DB clusters (DB instances) the seventeenth; Route53 hosted zones (record sets) the
+// eighteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -188,6 +194,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::AppConfig::Application': enumerateAppConfigApplicationChildren,
   'AWS::EFS::FileSystem': enumerateEfsFileSystemChildren,
   'AWS::RDS::DBCluster': enumerateRdsClusterChildren,
+  'AWS::Route53::HostedZone': enumerateRoute53HostedZoneChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -2897,4 +2904,200 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
     .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
 
   return diffRdsClusterChildren({ declaredInstanceIds, liveInstances, clusterMemberIds });
+}
+
+// ── Route53 ──────────────────────────────────────────────────────────────────
+// An `AWS::Route53::HostedZone` owns RecordSets (DNS records), each a SEPARATE
+// CloudFormation resource (`AWS::Route53::RecordSet`). The zone's own CC model does NOT
+// carry its records, so a console / CLI / SDK `change-resource-record-sets` that CREATEs a
+// record (a rogue CNAME / A / MX / NS / TXT — DNS is domain control, so a high-severity
+// out-of-band change) is invisible to cdk drift / CFn drift detection: it reads CLEAN and
+// survives `record`. This enumerator diffs the live `ListResourceRecordSets` inventory
+// against the declared AWS::Route53::RecordSet set and flags any live record with no
+// declared counterpart as `added`.
+//
+// IMPORTANT — revert limitation: AWS::Route53::RecordSet is NON_PROVISIONABLE in the Cloud
+// Control registry (CC GetResource / DeleteResource throw UnsupportedActionException — the
+// same CC gap SDK_OVERRIDES reads around). Its CC primaryIdentifier is the opaque composite
+// `/properties/Id`. So a CC DeleteResource `revert` CANNOT converge an added record — the
+// value here is DETECTION. Reverting a rogue record would need an SDK Route53
+// ChangeResourceRecordSets DELETE path, which is OUT OF SCOPE for this enumerator. Rather
+// than fabricate a revertible identifier that would fail raw at apply, the `identifier`
+// carries the best composite we can build from the CC identity fields (HostedZoneId + Name +
+// Type [+ SetIdentifier]) in the `<HostedZoneId>_<Name>_<Type>` shape the read override uses
+// — honest, not raw-revertible.
+//
+// Two AWS-auto-created apex records MUST be filtered: the zone's own apex `SOA` and the apex
+// `NS` record set. Both are created WITH the zone and are never template resources, so
+// without a filter every clean zone shows 2 false `[Added]` on the first `check` — the same
+// AWS-generated built-in pattern as the API GW `Empty`/`Error` models and the ELBv2 default
+// rule. A NON-apex NS (a real sub-domain delegation record) IS template-managed and is kept.
+
+// A record's identity is Name + Type (+ SetIdentifier for weighted/latency/geo/failover/
+// multivalue variants). Route53 stores names as FQDNs with a trailing `.` and the template
+// usually omits it, so compare dot- and case-insensitively.
+const canonRoute53Name = (s: string): string => s.replace(/\.$/, '').toLowerCase();
+const route53RecordKey = (name: string, type: string, setIdentifier?: string): string =>
+  `${canonRoute53Name(name)}|${type.toUpperCase()}${setIdentifier !== undefined ? `|${setIdentifier}` : ''}`;
+
+// Pure diff: declared record identities + live inventory -> the added (out-of-band) records.
+// Separated from the SDK calls so the matching + apex-filter logic is unit-tested offline.
+export interface Route53HostedZoneChildInput {
+  hostedZoneId: string;
+  // The zone apex domain (the HostedZone's Name), used to filter the apex NS record set.
+  // May be undefined (unresolved) — then the apex is derived from the live SOA record.
+  zoneApex?: string | undefined;
+  declaredRecords: { name: string; type: string; setIdentifier?: string | undefined }[];
+  liveRecords: {
+    name: string;
+    type: string;
+    setIdentifier?: string | undefined;
+    live?: Record<string, unknown> | undefined;
+  }[];
+}
+
+export function diffRoute53HostedZoneChildren(input: Route53HostedZoneChildInput): AddedChild[] {
+  const { hostedZoneId, zoneApex, declaredRecords, liveRecords } = input;
+  const declared = new Set(
+    declaredRecords.map((r) => route53RecordKey(r.name, r.type, r.setIdentifier))
+  );
+  // The apex used to filter the AWS-auto-created apex NS set. Prefer the passed zone apex;
+  // fall back to the SOA record's own Name (a zone has exactly one SOA and it always sits at
+  // the apex), so the NS filter still works when the apex could not be resolved.
+  const soaName = liveRecords.find((r) => r.type.toUpperCase() === 'SOA')?.name;
+  const apex =
+    zoneApex !== undefined
+      ? canonRoute53Name(zoneApex)
+      : soaName !== undefined
+        ? canonRoute53Name(soaName)
+        : undefined;
+
+  const added: AddedChild[] = [];
+  for (const r of liveRecords) {
+    const type = r.type.toUpperCase();
+    const name = canonRoute53Name(r.name);
+    // Skip the AWS-auto-created apex records: the zone's own SOA (only ever at the apex) and
+    // the apex NS delegation set. Never template resources; filtered before the declared check
+    // like the API GW `Empty`/`Error` built-in models. A non-apex NS is a real delegation and
+    // is NOT filtered.
+    if (type === 'SOA') continue;
+    if (type === 'NS' && apex !== undefined && name === apex) continue;
+    if (declared.has(route53RecordKey(r.name, r.type, r.setIdentifier))) continue;
+    // NON_PROVISIONABLE in the CC registry -> this identifier is NOT raw-revertible (see the
+    // block comment above); it is the best composite from the CC identity fields for display /
+    // record, not a CC DeleteResource target.
+    const identifier =
+      `${hostedZoneId}_${r.name}_${type}` +
+      (r.setIdentifier !== undefined ? `_${r.setIdentifier}` : '');
+    added.push({
+      resourceType: 'AWS::Route53::RecordSet',
+      identifier,
+      label: `${type} ${name}`,
+      live: r.live ?? { Name: r.name, Type: r.type },
+    });
+  }
+  return added;
+}
+
+// Page ListResourceRecordSets (name/type/identifier-cursor paginated: StartRecordName /
+// StartRecordType / StartRecordIdentifier -> NextRecordName / NextRecordType /
+// NextRecordIdentifier while IsTruncated).
+async function pageResourceRecordSets(
+  client: Route53Client,
+  hostedZoneId: string
+): Promise<ResourceRecordSet[]> {
+  const out: ResourceRecordSet[] = [];
+  let startName: string | undefined;
+  let startType: ResourceRecordSet['Type'] | undefined;
+  let startId: string | undefined;
+  for (;;) {
+    const res = await client.send(
+      new ListResourceRecordSetsCommand({
+        HostedZoneId: hostedZoneId,
+        StartRecordName: startName,
+        StartRecordType: startType,
+        ...(startId !== undefined && { StartRecordIdentifier: startId }),
+      })
+    );
+    out.push(...(res.ResourceRecordSets ?? []));
+    if (!res.IsTruncated) break;
+    startName = res.NextRecordName;
+    startType = res.NextRecordType;
+    startId = res.NextRecordIdentifier;
+  }
+  return out;
+}
+
+// Match a declared RecordSet's zone ref against THIS zone. CDK L2 emits `HostedZoneId` (Ref
+// to the zone); the alternative `HostedZoneName` is the apex domain (with or without the
+// trailing dot). parentRefMatches keeps a declared record whose ref is UNRESOLVED (fail-safe:
+// never offer to DeleteResource a record the template explicitly declares).
+function route53ZoneRefMatches(
+  declared: Record<string, unknown>,
+  hostedZoneId: string,
+  zoneApex: string | undefined
+): boolean {
+  if (
+    declared.HostedZoneId !== undefined &&
+    parentRefMatches(declared.HostedZoneId, hostedZoneId)
+  ) {
+    return true;
+  }
+  const hzName = declared.HostedZoneName;
+  if (hzName === undefined) return false;
+  if (hzName === UNRESOLVED || hasUnresolved(hzName)) return true;
+  return (
+    typeof hzName === 'string' &&
+    zoneApex !== undefined &&
+    canonRoute53Name(hzName) === canonRoute53Name(zoneApex)
+  );
+}
+
+export async function enumerateRoute53HostedZoneChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const hostedZoneId = parent.physicalId; // a HostedZone's physical id IS its zone id
+  if (!hostedZoneId) return [];
+
+  // The zone apex domain — the HostedZone's Name property (e.g. `example.com` / `example.com.`).
+  // Used to filter the AWS-auto-created apex NS set.
+  const zoneApex = typeof parent.declared.Name === 'string' ? parent.declared.Name : undefined;
+
+  // Declared RecordSets targeting THIS zone (by HostedZoneId or HostedZoneName). Each is a
+  // SEPARATE CloudFormation resource, so the template lists every declared one; a live record
+  // matching none is out of band.
+  const declaredRecords: { name: string; type: string; setIdentifier?: string | undefined }[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Route53::RecordSet') continue;
+    if (!route53ZoneRefMatches(r.declared, hostedZoneId, zoneApex)) continue;
+    const name = typeof r.declared.Name === 'string' ? r.declared.Name : undefined;
+    const type = typeof r.declared.Type === 'string' ? r.declared.Type : undefined;
+    if (name && type) {
+      declaredRecords.push({
+        name,
+        type,
+        setIdentifier:
+          typeof r.declared.SetIdentifier === 'string' ? r.declared.SetIdentifier : undefined,
+      });
+    }
+  }
+
+  const client = new Route53Client({ region, ...READ_RETRY });
+  const records = await pageResourceRecordSets(client, hostedZoneId);
+  const liveRecords = records
+    .filter(
+      (r): r is ResourceRecordSet & { Name: string; Type: string } =>
+        typeof r.Name === 'string' && typeof r.Type === 'string'
+    )
+    .map((r) => {
+      const live: Record<string, unknown> = { Name: r.Name, Type: r.Type };
+      if (r.TTL !== undefined) live.TTL = String(r.TTL); // CFn TTL is a string
+      const values = r.ResourceRecords?.map((rr) => rr.Value).filter((v): v is string => !!v);
+      if (values && values.length > 0) live.ResourceRecords = values;
+      if (r.AliasTarget) live.AliasTarget = r.AliasTarget;
+      return { name: r.Name, type: r.Type, setIdentifier: r.SetIdentifier, live };
+    });
+
+  return diffRoute53HostedZoneChildren({ hostedZoneId, zoneApex, declaredRecords, liveRecords });
 }
