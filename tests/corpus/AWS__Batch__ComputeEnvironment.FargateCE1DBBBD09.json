@@ -105,7 +105,7 @@
       "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "FargateCE1DBBBD09",
       "resourceType": "AWS::Batch::ComputeEnvironment",
       "path": "ServiceRole",

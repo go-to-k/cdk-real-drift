@@ -79,7 +79,7 @@
       "constructPath": "CdkrdIntegHarvest6/Build"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Build",
       "resourceType": "AWS::CodeBuild::Project",
       "path": "EncryptionKey",
