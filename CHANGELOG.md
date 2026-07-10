@@ -1,3 +1,10 @@
+## [0.12.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.18...v0.12.19) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** sha256 distinguisher for masked values + redacted json marker ([#1308](https://github.com/go-to-k/cdk-real-drift/issues/1308)) ([#1351](https://github.com/go-to-k/cdk-real-drift/issues/1351)) ([b72b1f1](https://github.com/go-to-k/cdk-real-drift/commit/b72b1f1354fcc8084cf67e5a6beb67cd575d8c18))
+
 ## [0.12.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.17...v0.12.18) (2026-07-10)
 
 
