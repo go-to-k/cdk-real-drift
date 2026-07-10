@@ -416,15 +416,39 @@ describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () =
   });
 });
 
-describe('synthKey (--pre-deploy template keyed by name + region, WAVE21)', () => {
+describe('synthKey (--pre-deploy template keyed by name + region + account, WAVE21 / #1320)', () => {
   it('distinguishes the same stack name across regions (no template collision)', () => {
-    expect(synthKey('MyStack', 'us-east-1')).not.toBe(synthKey('MyStack', 'eu-west-1'));
+    expect(synthKey('MyStack', 'us-east-1', undefined)).not.toBe(
+      synthKey('MyStack', 'eu-west-1', undefined)
+    );
   });
-  it('is stable for the same name + region', () => {
-    expect(synthKey('MyStack', 'us-east-1')).toBe(synthKey('MyStack', 'us-east-1'));
+  it('is stable for the same name + region + account', () => {
+    expect(synthKey('MyStack', 'us-east-1', '111111111111')).toBe(
+      synthKey('MyStack', 'us-east-1', '111111111111')
+    );
   });
   it('treats an undefined (env-agnostic) region as a distinct, stable key', () => {
-    expect(synthKey('MyStack', undefined)).toBe(synthKey('MyStack', undefined));
-    expect(synthKey('MyStack', undefined)).not.toBe(synthKey('MyStack', 'us-east-1'));
+    expect(synthKey('MyStack', undefined, undefined)).toBe(
+      synthKey('MyStack', undefined, undefined)
+    );
+    expect(synthKey('MyStack', undefined, undefined)).not.toBe(
+      synthKey('MyStack', 'us-east-1', undefined)
+    );
+  });
+  it('#1320: distinguishes the same name + SAME region across different accounts (no overwrite)', () => {
+    // the multi-account staple: a fixed stackName in one region, env.account per stage.
+    // Keyed by name+region alone these collided and the second synth template overwrote
+    // the first — both stacks then compared against the wrong account's template.
+    expect(synthKey('MyStack', 'us-east-1', '111111111111')).not.toBe(
+      synthKey('MyStack', 'us-east-1', '222222222222')
+    );
+  });
+  it('#1320: an env-agnostic (undefined account) key is distinct from a pinned one, and stable', () => {
+    expect(synthKey('MyStack', 'us-east-1', undefined)).not.toBe(
+      synthKey('MyStack', 'us-east-1', '111111111111')
+    );
+    expect(synthKey('MyStack', 'us-east-1', undefined)).toBe(
+      synthKey('MyStack', 'us-east-1', undefined)
+    );
   });
 });

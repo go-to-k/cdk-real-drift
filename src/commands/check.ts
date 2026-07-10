@@ -56,10 +56,19 @@ import { resolveInteractively } from './interactive-resolve.js';
 // synth (not deployed) declared set, so all three are excluded. --declared-only
 // reuses the same filter against the DEPLOYED template (R59) — its "undeclared
 // values are not compared" contract must hold for the `atDefault` footer too, else
-// Key a synth template by stack name + region (a CFn stack name is region-scoped, so
-// the same name can recur across regions in one app). Exported (pure) for unit testing.
-export function synthKey(stackName: string, region: string | undefined): string {
-  return `${stackName}\0${region ?? ''}`;
+// Key a synth template by stack name + region + account (a CFn stack name is
+// region-scoped, so the same name can recur across regions in one app; #1320: it can
+// also recur across ACCOUNTS — a #740 multi-account app defines a fixed stackName in
+// the SAME region with env.account varying per stage. Keyed by name+region alone, the
+// second-synthesized template would OVERWRITE the first and both stacks would compare
+// against the wrong account's synth template — false declared drift / masked real
+// drift). Exported (pure) for unit testing.
+export function synthKey(
+  stackName: string,
+  region: string | undefined,
+  account: string | undefined
+): string {
+  return `${stackName}\0${region ?? ''}\0${account ?? ''}`;
 }
 
 // Reconcile classified findings against the baseline for the report. Exported (pure)
@@ -529,13 +538,15 @@ export async function runCheck(args: string[]): Promise<number> {
       emitEmptyJsonOnError();
       return 2;
     }
-    // Key by stackName + region, NOT stackName alone: a stack name is region-scoped in
-    // CloudFormation, so an app can define two same-named stacks in different regions.
-    // Keyed by name alone, the second would overwrite the first and BOTH would then be
-    // compared against the wrong (last-synthesized) template. The region resolution
-    // mirrors resolveStacks (`s.region ?? a.region`) so the loop's lookup key matches.
+    // Key by stackName + region + account, NOT stackName alone: a stack name is
+    // region-scoped in CloudFormation, so an app can define two same-named stacks in
+    // different regions (#884) — AND #1320: a #740 multi-account app can define the same
+    // name in the SAME region for two accounts. Keyed by name (+region) alone, the second
+    // would overwrite the first and BOTH would then be compared against the wrong
+    // (last-synthesized) template. The region resolution mirrors resolveStacks
+    // (`s.region ?? a.region`) so the loop's lookup key matches.
     synthTemplates = new Map(
-      synthed.map((s) => [synthKey(s.stackName, s.region ?? a.region), s.template])
+      synthed.map((s) => [synthKey(s.stackName, s.region ?? a.region, s.account), s.template])
     );
     console.error('(--pre-deploy) comparing live state against the LOCAL synth template');
   }
@@ -616,7 +627,7 @@ export async function runCheck(args: string[]): Promise<number> {
         worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }
-      const sKey = synthKey(stackName, region);
+      const sKey = synthKey(stackName, region, account);
       if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         jsonError(stackName, region, 'not in the synth output — skipped (--pre-deploy)');

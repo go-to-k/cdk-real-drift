@@ -196,7 +196,15 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     account: string | undefined, // #740: the stack's own env.account (concrete, else undefined)
     template: Record<string, unknown>
   ): void => {
-    const key = `${stackName}\0${region ?? ''}`;
+    // #1320: dedup on name + region + ACCOUNT. #884 added the region axis but not
+    // the account axis, so a #740 multi-account app that defines the SAME stackName
+    // in the SAME region for TWO different accounts (a fixed stackName with env.account
+    // varying per stage — the multi-account CI staple) had its SECOND instance silently
+    // dropped when selected by name or glob, while --all (no dedup) returned both — the
+    // two selection forms then disagreed (the prod stack never checked by any named leg).
+    // A same-name/same-region/same-account duplicate (or env-agnostic account undefined)
+    // still collapses, so #884's behavior is unchanged.
+    const key = `${stackName}\0${region ?? ''}\0${account ?? ''}`;
     if (seen.has(key)) return;
     seen.add(key);
     out.push({ stackName, region, account, template });
