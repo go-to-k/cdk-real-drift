@@ -23,6 +23,9 @@ import {
   recordSelectMessage,
   recordStack,
   splitFoldedNested,
+  attributeOpFailure,
+  augmentCcItemOps,
+  augmentRevertPlan,
   availableActions,
   filterRevertPlan,
   formatPlan,
@@ -402,6 +405,104 @@ describe('summarizeRevertResults (one outcome per resource even when it split in
   });
 });
 
+describe('augmentRevertPlan (#760 — the previewed/confirmed plan reflects the ops actually SENT)', () => {
+  // A cc-kind item whose resource declares a WRITE-ONLY property: the Cloud Control
+  // read-modify-write UpdateResource would DROP that property, so writeOnlyReincludeOps
+  // re-sends it. Before #760 this op was appended only at APPLY time — the previewed /
+  // confirmed / --dry-run op count omitted it, and the user never saw the extra
+  // write-only (secret/password-class) value re-sent to AWS.
+  const schemaWithWriteOnly = (writeOnlyPaths: string[]): SchemaInfo => ({
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths,
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  });
+
+  const ccItem = (): RevertPlan['items'][number] => ({
+    logicalId: 'U',
+    displayId: 'Stack/User',
+    resourceType: 'AWS::IAM::User',
+    physicalId: 'u-phys',
+    kind: 'cc',
+    ops: [{ op: 'add', path: '/Path', value: '/team/', human: 'Path -> /team/' }],
+  });
+
+  it('appends the write-only-reinclude op so the augmented plan carries what is SENT', () => {
+    const plan: RevertPlan = { items: [ccItem()], notRevertable: [] };
+    const schemas = new Map([['AWS::IAM::User', schemaWithWriteOnly(['LoginProfile.Password'])]]);
+    // declared carries the write-only value the read-modify-write would drop.
+    const declaredFor = (id: string) =>
+      id === 'U' ? { LoginProfile: { Password: 'hunter2' } } : undefined;
+
+    const augmented = augmentRevertPlan(plan, schemas, new Map(), declaredFor);
+    const ops = augmented.items[0]!.ops;
+    // the real revert op is preserved AND the write-only-reinclude op is now present.
+    expect(ops).toHaveLength(2);
+    expect(ops.map((o) => o.path)).toContain('/Path');
+    const reinclude = ops.find((o) => o.path === '/LoginProfile/Password');
+    expect(reinclude).toBeDefined();
+    expect(reinclude!.value).toBe('hunter2');
+    // the confirmed/previewed op COUNT (Σ item.ops.length) now equals the applied count.
+    const previewCount = augmented.items.reduce((n, i) => n + i.ops.length, 0);
+    expect(previewCount).toBe(2);
+  });
+
+  it('augmentCcItemOps leaves a sdk / delete item untouched (augmentation is cc-only)', () => {
+    const sdkItem: RevertPlan['items'][number] = { ...ccItem(), kind: 'sdk' };
+    const schemas = new Map([['AWS::IAM::User', schemaWithWriteOnly(['LoginProfile.Password'])]]);
+    const out = augmentCcItemOps(sdkItem, schemas, new Map(), () => ({
+      LoginProfile: { Password: 'x' },
+    }));
+    expect(out).toBe(sdkItem); // returned unchanged (same reference)
+  });
+
+  it('a cc item with no schema / no write-only declared value is returned with its ops intact', () => {
+    const plan: RevertPlan = { items: [ccItem()], notRevertable: [] };
+    const augmented = augmentRevertPlan(plan, new Map(), new Map(), () => undefined);
+    expect(augmented.items[0]!.ops).toHaveLength(1);
+    expect(augmented.items[0]!.ops[0]!.path).toBe('/Path');
+  });
+});
+
+describe('attributeOpFailure (#760 — a batch failure names the culprit op path(s))', () => {
+  const item = (
+    kind: RevertPlan['items'][number]['kind'],
+    paths: string[]
+  ): RevertPlan['items'][number] => ({
+    logicalId: 'X',
+    displayId: 'Stack/X',
+    resourceType: 'AWS::Foo::Bar',
+    physicalId: 'x',
+    kind,
+    ops: paths.map((p) => ({ op: 'add' as const, path: p, human: `${p} -> v` })),
+  });
+
+  it('prefixes the error with the op path(s) of a failed cc/sdk item', () => {
+    expect(attributeOpFailure(item('cc', ['/A', '/B']), 'ValidationException: bad')).toBe(
+      '[/A, /B]: ValidationException: bad'
+    );
+  });
+
+  it('deduplicates repeated op paths (ELB attribute bag shares one path)', () => {
+    expect(attributeOpFailure(item('sdk', ['/Attrs', '/Attrs']), 'boom')).toBe('[/Attrs]: boom');
+  });
+
+  it('leaves a delete item error unchanged (no meaningful property path)', () => {
+    expect(attributeOpFailure(item('delete', ['/whole']), 'DependencyViolation')).toBe(
+      'DependencyViolation'
+    );
+  });
+
+  it('is idempotent — an already-attributed error is not double-prefixed', () => {
+    const once = attributeOpFailure(item('cc', ['/A']), 'e');
+    expect(attributeOpFailure(item('cc', ['/A']), once)).toBe('[/A]: e');
+  });
+});
+
 describe('revertSelectOptions / filterRevertPlan distinguish ELB attribute-bag ops', () => {
   // Every ELB attribute-bag op shares ONE op.path (/LoadBalancerAttributes) and is
   // distinguished only by its attributeKey. The multiselect row key must include the
@@ -461,6 +562,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
       desired: { accountId: '111122223333', resources: [], rawTemplate: '' },
       findings,
       schemas: NO_SCHEMAS,
+      liveByLogical: new Map(),
     } as unknown as GatherResult,
     baseline: undefined,
     config: over.config ?? { ignore: [] },
@@ -583,6 +685,7 @@ describe('revertStack --json plan-info carriage (#1096 — dry-run counts + refu
       },
       findings: [declared()],
       schemas: NO_SCHEMAS,
+      liveByLogical: new Map(),
     }) as unknown as GatherResult;
 
   const params = (over: Partial<{ dryRun: boolean; yes: boolean; interactive: boolean }> = {}) => ({
@@ -631,6 +734,86 @@ describe('revertStack --json plan-info carriage (#1096 — dry-run counts + refu
     expect(outcome.refusedReason).toContain('refusing to write to AWS non-interactively');
     // reason still surfaces on stderr for a human
     expect(errs.join('\n')).toContain('refusing to write to AWS non-interactively');
+  });
+});
+
+describe('revertStack --dry-run counts the AUGMENTED ops (#760 — preview == what is sent)', () => {
+  // A declared drift on an IAM User (a cc-kind revert) whose schema marks
+  // LoginProfile.Password write-only AND whose declared model carries it. The Cloud
+  // Control read-modify-write would DROP the password, so writeOnlyReincludeOps re-sends
+  // it — one EXTRA op appended to the patch actually sent to AWS. Before #760 the --dry-run
+  // count came from the pre-augmentation plan, so it reported 1 op while the real revert
+  // would send 2 (silently re-writing a credential the user never saw in the preview).
+  const userDeclaredDrift = (): Finding => ({
+    tier: 'declared',
+    logicalId: 'U',
+    resourceType: 'AWS::IAM::User',
+    path: 'Path',
+    physicalId: 'u-phys',
+    desired: '/team/',
+    actual: '/other/',
+  });
+  const schema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: ['LoginProfile.Password'],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const gathered = () =>
+    ({
+      desired: {
+        accountId: '111122223333',
+        resources: [
+          {
+            logicalId: 'U',
+            resourceType: 'AWS::IAM::User',
+            physicalId: 'u-phys',
+            declared: { Path: '/team/', LoginProfile: { Password: 'hunter2' } },
+          },
+        ],
+        rawTemplate: '',
+      },
+      findings: [userDeclaredDrift()],
+      schemas: new Map([['AWS::IAM::User', schema]]),
+      liveByLogical: new Map(),
+    }) as unknown as GatherResult;
+
+  const run = async () => {
+    const logs: string[] = [];
+    const origLog = console.log;
+    const origErr = console.error;
+    console.log = (s: unknown) => logs.push(String(s));
+    console.error = () => {};
+    try {
+      const outcome = await revertStack({
+        stackName: 's',
+        region: 'r',
+        gathered: gathered(),
+        baseline: undefined,
+        config: { ignore: [] } as unknown as CdkrdConfig,
+        dryRun: true,
+        yes: true,
+        removeUnrecorded: false,
+        verbose: false,
+        interactive: true,
+      });
+      return { outcome, logs };
+    } finally {
+      console.log = origLog;
+      console.error = origErr;
+    }
+  };
+
+  it('plannedOps includes the write-only-reinclude op (2, not 1)', async () => {
+    const { outcome, logs } = await run();
+    // 1 real revert op + 1 write-only-reinclude op = 2 ops, on 1 resource.
+    expect(outcome.plannedOps).toBe(2);
+    expect(outcome.plannedResources).toBe(1);
+    expect(logs.join('\n')).toContain('(dry-run) would apply 2 op(s) to 1 resource(s).');
   });
 });
 
