@@ -5,11 +5,7 @@ import {
   ListFunctionUrlConfigsCommand,
   ListVersionsByFunctionCommand,
 } from '@aws-sdk/client-lambda';
-import {
-  DescribeDBClustersCommand,
-  DescribeDBInstancesCommand,
-  RDSClient,
-} from '@aws-sdk/client-rds';
+import { DescribeDBInstancesCommand, RDSClient } from '@aws-sdk/client-rds';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -1937,7 +1933,8 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
         { id: 'cluster-writer', label: 'cluster-writer' },
         { id: 'cdkrd-integ-oob', label: 'cdkrd-integ-oob' },
       ],
-      clusterMemberIds: [],
+      clusterId: 'cluster',
+      isMultiAzCluster: false,
     });
     expect(added).toEqual([
       {
@@ -1953,7 +1950,8 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
     const added = diffRdsClusterChildren({
       declaredInstanceIds: [],
       liveInstances: [{ id: 'reader-1', label: 'reader-1' }],
-      clusterMemberIds: [],
+      clusterId: 'cluster',
+      isMultiAzCluster: false,
     });
     expect(added[0]!.identifier).toBe('reader-1');
   });
@@ -1966,24 +1964,29 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
           { id: 'writer', label: 'writer' },
           { id: 'reader', label: 'reader' },
         ],
-        clusterMemberIds: [],
+        clusterId: 'cluster',
+        isMultiAzCluster: false,
       })
     ).toEqual([]);
   });
 
-  // #896: a Multi-AZ DB cluster implicitly materializes its writer + 2 reader instances
-  // (undeclared) — folded because the parent cluster reports them in DBClusterMembers; a
-  // genuinely out-of-band instance (NOT a member) still surfaces.
-  it('folds implicit cluster members (in DBClusterMembers) but still flags a non-member instance', () => {
+  // #896: a Multi-AZ DB cluster implicitly materializes its writer + 2 reader instances named
+  // `<clusterId>-instance-N` (undeclared) — folded by that reserved name signature.
+  // #985: the fold must key on the name signature, NOT bare cluster membership — a
+  // `create-db-instance --db-cluster-identifier <cluster>` attaches a member (so it appears in
+  // both the `db-cluster-id` inventory AND DBClusterMembers), and a membership-keyed fold would
+  // silently drop it. With a name-signature fold, the rogue member still surfaces as `[Added]`.
+  it('folds Multi-AZ implicit members by name signature but flags a rogue member (#985)', () => {
     const added = diffRdsClusterChildren({
       declaredInstanceIds: [],
       liveInstances: [
         { id: 'c1-instance-1', label: 'c1-instance-1' },
         { id: 'c1-instance-2', label: 'c1-instance-2' },
         { id: 'c1-instance-3', label: 'c1-instance-3' },
-        { id: 'rogue-oob', label: 'rogue-oob' },
+        { id: 'rogue-oob', label: 'rogue-oob' }, // a real cluster member added out of band
       ],
-      clusterMemberIds: ['c1-instance-1', 'c1-instance-2', 'c1-instance-3'],
+      clusterId: 'c1',
+      isMultiAzCluster: true,
     });
     expect(added).toEqual([
       {
@@ -1994,35 +1997,42 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
       },
     ]);
   });
+
+  // #985: on an Aurora cluster (no DBClusterInstanceClass → isMultiAzCluster false) there are no
+  // AWS-managed implicit members; an instance that merely mimics the `<clusterId>-instance-N`
+  // shape is NOT folded, so an out-of-band member still surfaces.
+  it('does not fold the implicit-member name shape on a non-Multi-AZ (Aurora) cluster (#985)', () => {
+    const added = diffRdsClusterChildren({
+      declaredInstanceIds: ['writer'],
+      liveInstances: [
+        { id: 'writer', label: 'writer' },
+        { id: 'c1-instance-1', label: 'c1-instance-1' },
+      ],
+      clusterId: 'c1',
+      isMultiAzCluster: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual(['c1-instance-1']);
+  });
 });
 
-describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
-  it('folds the Multi-AZ cluster member instances the parent reports, flags a non-member', async () => {
+describe('enumerateRdsClusterChildren (Multi-AZ implicit-member fold, #896/#985)', () => {
+  // The realistic live shape: `DescribeDBInstances(db-cluster-id)` returns EXACTLY the cluster's
+  // members, so the AWS-managed implicit members (`c1-instance-N`) AND a rogue out-of-band member
+  // both appear in the same list. A name-signature fold drops only the implicit members; the
+  // rogue member (any other name) still surfaces — the #985 fix (membership alone folds all).
+  it('folds implicit `<clusterId>-instance-N` members but flags a rogue member on a Multi-AZ cluster', async () => {
     const rds = mockClient(RDSClient);
-    rds
-      .on(DescribeDBInstancesCommand)
-      .resolves({
-        DBInstances: [
-          { DBInstanceIdentifier: 'c1-instance-1' },
-          { DBInstanceIdentifier: 'c1-instance-2' },
-          { DBInstanceIdentifier: 'c1-instance-3' },
-          { DBInstanceIdentifier: 'rogue-oob' },
-        ],
-      })
-      .on(DescribeDBClustersCommand)
-      .resolves({
-        DBClusters: [
-          {
-            DBClusterMembers: [
-              { DBInstanceIdentifier: 'c1-instance-1' },
-              { DBInstanceIdentifier: 'c1-instance-2' },
-              { DBInstanceIdentifier: 'c1-instance-3' },
-            ],
-          },
-        ],
-      });
+    rds.on(DescribeDBInstancesCommand).resolves({
+      DBInstances: [
+        { DBInstanceIdentifier: 'c1-instance-1' },
+        { DBInstanceIdentifier: 'c1-instance-2' },
+        { DBInstanceIdentifier: 'c1-instance-3' },
+        { DBInstanceIdentifier: 'rogue-oob' },
+      ],
+    });
     const ctx = {
-      parent: { physicalId: 'c1' },
+      // A Multi-AZ DB cluster declares DBClusterInstanceClass (required for that mode).
+      parent: { physicalId: 'c1', declared: { DBClusterInstanceClass: 'db.r6g.large' } },
       desired: { resources: [] },
       region: 'us-east-1',
     } as unknown as EnumeratorContext;
@@ -2037,28 +2047,16 @@ describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
   // permanent first-run false positive; revert would offer to delete an autoscaler reader).
   it('excludes Application Auto Scaling readers (application-autoscaling-*) while keeping normal instances', async () => {
     const rds = mockClient(RDSClient);
-    rds
-      .on(DescribeDBInstancesCommand)
-      .resolves({
-        DBInstances: [
-          { DBInstanceIdentifier: 'cluster-writer' },
-          { DBInstanceIdentifier: 'cluster-reader' },
-          { DBInstanceIdentifier: 'application-autoscaling-4d1e2f3a-0b5c-6789-abcd-ef0123456789' },
-        ],
-      })
-      .on(DescribeDBClustersCommand)
-      .resolves({
-        DBClusters: [
-          {
-            DBClusterMembers: [
-              { DBInstanceIdentifier: 'cluster-writer' },
-              { DBInstanceIdentifier: 'cluster-reader' },
-            ],
-          },
-        ],
-      });
+    rds.on(DescribeDBInstancesCommand).resolves({
+      DBInstances: [
+        { DBInstanceIdentifier: 'cluster-writer' },
+        { DBInstanceIdentifier: 'cluster-reader' },
+        { DBInstanceIdentifier: 'application-autoscaling-4d1e2f3a-0b5c-6789-abcd-ef0123456789' },
+      ],
+    });
     const ctx = {
-      parent: { physicalId: 'c1' },
+      // Aurora cluster (no DBClusterInstanceClass) — instances are declared, AAS reader filtered.
+      parent: { physicalId: 'c1', declared: {} },
       // Both normal instances are declared in the template.
       desired: {
         resources: [
@@ -2086,15 +2084,11 @@ describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
   // prefix) is still flagged if out of band.
   it('does not fold an instance whose identifier only contains application-autoscaling- as a substring', async () => {
     const rds = mockClient(RDSClient);
-    rds
-      .on(DescribeDBInstancesCommand)
-      .resolves({
-        DBInstances: [{ DBInstanceIdentifier: 'my-application-autoscaling-reader' }],
-      })
-      .on(DescribeDBClustersCommand)
-      .resolves({ DBClusters: [{ DBClusterMembers: [] }] });
+    rds.on(DescribeDBInstancesCommand).resolves({
+      DBInstances: [{ DBInstanceIdentifier: 'my-application-autoscaling-reader' }],
+    });
     const ctx = {
-      parent: { physicalId: 'c1' },
+      parent: { physicalId: 'c1', declared: {} },
       desired: { resources: [] },
       region: 'us-east-1',
     } as unknown as EnumeratorContext;

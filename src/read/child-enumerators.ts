@@ -117,7 +117,6 @@ import {
 } from '@aws-sdk/client-lambda';
 import {
   type DBInstance as RdsDBInstance,
-  DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
@@ -3258,22 +3257,35 @@ async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<A
 export interface RdsClusterChildInput {
   declaredInstanceIds: string[]; // physical ids (DBInstanceIdentifiers) of AWS::RDS::DBInstance
   liveInstances: { id: string; label?: string | undefined }[];
-  // DBInstanceIdentifiers the PARENT cluster reports as its own members (DBClusterMembers).
-  // These are AWS-managed cluster membership, NOT out-of-band additions: a Multi-AZ DB cluster
-  // (non-Aurora, DBClusterInstanceClass set) implicitly materializes its writer + reader
-  // instances (`<cluster>-instance-1/2/3`) that the template never declares, so they must fold
-  // (else 3 false `[Added]` on every clean deploy — the #801-class ZERO-drift violation, #896).
-  // The cluster itself is the authoritative source of truth for membership, so this needs no
-  // name-marker guess and still surfaces a genuinely out-of-band instance (one NOT a member).
-  clusterMemberIds: string[];
+  clusterId: string; // the parent DBClusterIdentifier — anchors the implicit-member name pattern
+  // The parent declares `DBClusterInstanceClass` → it is a Multi-AZ DB cluster (non-Aurora),
+  // which IMPLICITLY materializes its writer + reader instances (`<clusterId>-instance-N`) that
+  // the template never declares. Those (and ONLY those) AWS-managed implicit members must fold
+  // (#896: else 3 false `[Added]` on every clean deploy — the #801-class ZERO-drift violation).
+  // Aurora clusters have no implicit members: every instance is either declared or an AAS reader.
+  isMultiAzCluster: boolean;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// A Multi-AZ DB cluster names its AWS-created implicit members `<clusterId>-instance-N` (N ≥ 1),
+// a reserved shape the user cannot pick for an out-of-band `create-db-instance`. Match that exact
+// shape — NOT bare cluster membership (every instance a `db-cluster-id` query returns IS a member,
+// so membership folds EVERYTHING and disables OOB detection, #985). A rogue instance with any
+// other name still surfaces as `[Added]`.
+function isMultiAzImplicitMember(instanceId: string, clusterId: string): boolean {
+  return new RegExp(`^${escapeRegExp(clusterId)}-instance-\\d+$`).test(instanceId);
 }
 
 export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[] {
   const declared = new Set(input.declaredInstanceIds);
-  const clusterMembers = new Set(input.clusterMemberIds);
   const added: AddedChild[] = [];
   for (const i of input.liveInstances) {
-    if (declared.has(i.id) || clusterMembers.has(i.id)) continue;
+    if (declared.has(i.id)) continue;
+    // Fold ONLY the Multi-AZ AWS-managed implicit members (by name signature), not membership.
+    if (input.isMultiAzCluster && isMultiAzImplicitMember(i.id, input.clusterId)) continue;
     added.push({
       resourceType: 'AWS::RDS::DBInstance',
       identifier: i.id, // DBInstanceIdentifier IS the CC primaryIdentifier
@@ -3310,21 +3322,16 @@ async function pageDbInstances(client: RDSClient, clusterId: string): Promise<Rd
   return out;
 }
 
-// The cluster's OWN live description authoritatively lists its members (each DBClusterMembers
-// entry carries a DBInstanceIdentifier). Instances it claims are AWS-managed membership, not
-// out-of-band additions — folded by diffRdsClusterChildren (see #896).
-async function describeClusterMemberIds(client: RDSClient, clusterId: string): Promise<string[]> {
-  const res = await client.send(new DescribeDBClustersCommand({ DBClusterIdentifier: clusterId }));
-  const cluster = res.DBClusters?.[0];
-  return (cluster?.DBClusterMembers ?? [])
-    .map((m) => m.DBInstanceIdentifier)
-    .filter((id): id is string => typeof id === 'string');
-}
-
 export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const clusterId = parent.physicalId; // a DBCluster's physical id IS its DBClusterIdentifier
   if (!clusterId) return [];
+
+  // A Multi-AZ DB cluster (non-Aurora) is the one that implicitly materializes undeclared
+  // member instances; the CFn `DBClusterInstanceClass` property is its required marker (Aurora
+  // clusters never declare it). Deriving the marker from the DECLARED parent needs no extra API
+  // call — and NOT gating fold on live membership is exactly the #985 fix (membership folds all).
+  const isMultiAzCluster = parent.declared.DBClusterInstanceClass != null;
 
   // Declared instances of THIS cluster (Ref/GetAtt DBClusterIdentifier already resolved to
   // the physical id by gather). A DBInstance's CFn physical id (Ref) IS its DBInstanceIdentifier.
@@ -3340,10 +3347,7 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
   }
 
   const client = new RDSClient({ region, ...READ_RETRY });
-  const [instances, clusterMemberIds] = await Promise.all([
-    pageDbInstances(client, clusterId),
-    describeClusterMemberIds(client, clusterId),
-  ]);
+  const instances = await pageDbInstances(client, clusterId);
   const liveInstances = instances
     .filter(
       (i): i is RdsDBInstance & { DBInstanceIdentifier: string } =>
@@ -3358,7 +3362,12 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
     )
     .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
 
-  return diffRdsClusterChildren({ declaredInstanceIds, liveInstances, clusterMemberIds });
+  return diffRdsClusterChildren({
+    declaredInstanceIds,
+    liveInstances,
+    clusterId,
+    isMultiAzCluster,
+  });
 }
 
 // ── Route53 ──────────────────────────────────────────────────────────────────
