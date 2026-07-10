@@ -223,6 +223,12 @@ function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
 const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'SecurityGroups',
   'AWS::EC2::NetworkInterface': 'GroupSet',
+  // #976: a Neptune DBCluster that declares no VpcSecurityGroupIds reads back the VPC's DEFAULT
+  // security group — a single SG, the same AWS first-run default the ALB/ENI cases fold. It is
+  // OOB-mutable (`ModifyDBCluster --vpc-security-group-ids`), so a value-independent fold would
+  // hide an out-of-band SG swap/append (the exact security FN #889 fixed). Gate it through the
+  // same derived VPC-default-SG check: fold a single default SG, surface an append or a swap.
+  'AWS::Neptune::DBCluster': 'VpcSecurityGroupIds',
 };
 /** #889 fold decision for an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet).
  *  Returns whether the value-independent fold should still apply for this live value:
@@ -351,6 +357,18 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
   'AWS::EC2::VPNConnection': {
     VpnTunnelOptionsSpecifications: { idField: 'TunnelInsideCidr', foldHuskExtras: true },
   },
+};
+// #844: identity-keyed live-only elements to fold VALUE-INDEPENDENT (atDefault) by identity —
+// keyed by resourceType -> property -> the SET of identity values that are AWS-assigned. Unlike
+// IDENTITY_KEYED_DEFAULT_ELEMENTS (which deep-equals a curated fixed shape), these carry a
+// per-resource AWS-generated value that has no fixed shape to match, so the fold is by identity
+// alone. Cognito UserPoolUser's `sub` is the server-generated immutable user id (a per-user UUID
+// assigned at creation, never declared) — it must fold, but ONLY `sub`: a console/OOB-added
+// attribute (e.g. `custom:role`, `email_verified`) is NOT in the set, so it still surfaces
+// undeclared (folding all UserAttributes would hide out-of-band attribute injection = a security
+// FN). Consulted from BOTH subset blocks (declared and undeclared UserAttributes).
+const VALUE_INDEPENDENT_KEYED_ELEMENTS: Record<string, Record<string, ReadonlySet<string>>> = {
+  'AWS::Cognito::UserPoolUser': { UserAttributes: new Set(['sub']) },
 };
 // Nested object-arrays whose element identity is a NON-standard field (not Key/Id/
 // AttributeName/IndexName/Name). collectNestedUndeclared aligns identity-keyed arrays so a
@@ -2959,8 +2977,14 @@ export function classifyResource(
             subsetSpec.foldHuskExtras === true &&
             isNestedObject(lEl) &&
             Object.entries(lEl).every(([ek, ev]) => ek === idField || isTrivialEmpty(ev));
+          // #844: an identity whose value AWS assigns (Cognito UserPoolUser `sub` — a per-user
+          // UUID) folds value-independent by identity; a non-listed identity still surfaces.
+          const isValueIndependentId =
+            VALUE_INDEPENDENT_KEYED_ELEMENTS[resourceType]?.[k]?.has(id) ?? false;
           const atDefault =
-            isHuskExtra || (defaultEls && id in defaultEls && deepEqual(lEl, defaultEls[id]));
+            isHuskExtra ||
+            isValueIndependentId ||
+            (defaultEls && id in defaultEls && deepEqual(lEl, defaultEls[id]));
           findings.push({
             tier: atDefault ? 'atDefault' : 'undeclared',
             logicalId,
@@ -3679,7 +3703,15 @@ export function classifyResource(
     // array sibling of the #555/#624 object descend.
     const subsetSpecU = IDENTITY_KEYED_SUBSET_ARRAYS[resourceType]?.[k];
     const defaultElsU = IDENTITY_KEYED_DEFAULT_ELEMENTS[resourceType]?.[k];
-    if (subsetSpecU !== undefined && defaultElsU !== undefined && Array.isArray(v)) {
+    // #844: a fully-undeclared UserAttributes array reaches here (nothing declared) — its
+    // AWS-assigned `sub` must fold value-independent by identity too, so enter this block when
+    // EITHER a curated default-shape table or a value-independent-identity table exists.
+    const viIdsU = VALUE_INDEPENDENT_KEYED_ELEMENTS[resourceType]?.[k];
+    if (
+      subsetSpecU !== undefined &&
+      (defaultElsU !== undefined || viIdsU !== undefined) &&
+      Array.isArray(v)
+    ) {
       const { idField, normalizeId } = subsetSpecU;
       for (const lEl of v) {
         if (!isNestedObject(lEl) || typeof lEl[idField] !== 'string') {
@@ -3688,7 +3720,9 @@ export function classifyResource(
         }
         const raw = lEl[idField] as string;
         const id = normalizeId ? normalizeId(raw) : raw;
-        const atDefault = id in defaultElsU && deepEqual(lEl, defaultElsU[id]);
+        const atDefault =
+          (viIdsU?.has(id) ?? false) ||
+          (defaultElsU !== undefined && id in defaultElsU && deepEqual(lEl, defaultElsU[id]));
         findings.push({
           tier: atDefault ? 'atDefault' : 'undeclared',
           logicalId,

@@ -51,6 +51,9 @@ function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string
 const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   'AWS::ElasticLoadBalancingV2::LoadBalancer',
   'AWS::EC2::NetworkInterface',
+  // #976: Neptune DBCluster's undeclared VpcSecurityGroupIds default is the VPC default SG —
+  // gated in classify against the prefetched default-SG ids so an OOB swap/append surfaces.
+  'AWS::Neptune::DBCluster',
 ]);
 
 // #889: fetch the account/region VPC-default security-group ids — one `DescribeSecurityGroups`
