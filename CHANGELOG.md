@@ -1,3 +1,10 @@
+## [0.9.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.7...v0.9.8) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** loudly surface --pre-deploy params with no resolvable value ([#1215](https://github.com/go-to-k/cdk-real-drift/issues/1215)) ([#1221](https://github.com/go-to-k/cdk-real-drift/issues/1221)) ([d794ffd](https://github.com/go-to-k/cdk-real-drift/commit/d794ffdde4e3feda587ca3b73ca5dd8dac322cf6))
+
 ## [0.9.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.6...v0.9.7) (2026-07-10)
 
 
