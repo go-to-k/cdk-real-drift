@@ -121,6 +121,18 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
 
+    it('#1077: finds the SANITIZED baseline of a Windows-reserved DOS device stack name', async () => {
+      // A stack literally named `nul` (a valid CFn name) has its baseline written by
+      // `baselinePath` as `nul_.<acct>.<region>.json` (sanitizeStackNameComponent avoids the
+      // Win32 device collision). The probe must match on that SAME sanitized component — a raw
+      // `nul.` prefix would miss the file and falsely downgrade a truly deleted `nul` stack to
+      // a benign never-deployed skip.
+      await writeBaseline('nul', ACCOUNT, REGION); // → nul_.<acct>.<region>.json on disk
+      expect(hasBaselineForStack('nul', REGION)).toBe(true);
+      expect(hasBaselineForStack('nul', REGION, ACCOUNT)).toBe(true); // account-pinned too
+      expect(hasBaselineForStack('Con', REGION)).toBe(false); // a different (absent) reserved name
+    });
+
     it('does not false-match a stack name that is a prefix of a different stack', async () => {
       // `MyStackExtra.<...>.json` must NOT satisfy hasBaselineForStack('MyStack') — the
       // `<stackName>.` separator guards against a bare-prefix collision.
