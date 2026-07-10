@@ -2312,41 +2312,61 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
 // Non-declarable routes are skipped by `isEnumerableRoute`: the auto-created VPC-CIDR
 // LOCAL route (`Origin CreateRouteTable` / `GatewayId local`) and VGW-PROPAGATED routes
 // (`Origin EnableVgwRoutePropagation` — BGP/propagated, not declarable `AWS::EC2::Route`
-// resources). Only IPv4 routes (those with a DestinationCidrBlock) are handled, since the
-// CC identifier keys on CidrBlock. The CC primaryIdentifier for AWS::EC2::Route is the
-// composite `["/properties/RouteTableId","/properties/CidrBlock"]`, so the `identifier`
-// is the composite `RouteTableId|CidrBlock` (RouteTableId first) — that is what CC
-// GetResource / DeleteResource consume.
+// resources). A route is declarable on ANY of its THREE destination axes — an IPv4
+// `DestinationCidrBlock`, an IPv6 `DestinationIpv6CidrBlock`, or a `DestinationPrefixListId`
+// (exactly one is set per route) — so all three are enumerated (#1081). An out-of-band IPv6
+// `::/0` route to a rogue IGW/ENI (a traffic-hijack / exfil path) or a prefix-list route
+// added out of band is thus caught by the `added` tier, not silently ignored. The CC
+// primaryIdentifier for AWS::EC2::Route keys on the destination: IPv4 on `CidrBlock`, IPv6 on
+// `Ipv6CidrBlock`, prefix-list on `DestinationPrefixListId` — so the `identifier` is the
+// composite `RouteTableId|<destination>` (RouteTableId first) and the `live` model carries
+// RouteTableId + the matching CC destination key. That is what CC GetResource / DeleteResource
+// consume.
 
-// Pure diff: declared cidrs + live inventory -> the added routes.
+// The destination axis of a route: the live route's destination VALUE, plus the CC identifier
+// property that keys it (`CidrBlock` for IPv4, `Ipv6CidrBlock` for IPv6,
+// `DestinationPrefixListId` for a prefix list). Exactly one axis is set per route.
+export interface LiveRouteDest {
+  value: string;
+  ccKey: 'CidrBlock' | 'Ipv6CidrBlock' | 'DestinationPrefixListId';
+}
+
+// Pure diff: declared destinations + live inventory -> the added routes.
 export interface RouteTableChildInput {
   routeTableId: string;
-  declaredCidrs: string[]; // DestinationCidrBlocks of AWS::EC2::Route declared on this table
-  liveRoutes: { cidr: string }[];
+  // Declared destination VALUES of AWS::EC2::Route on this table, across all three axes
+  // (DestinationCidrBlock / DestinationIpv6CidrBlock / DestinationPrefixListId). A route's
+  // identity within a table is its destination, so matching a live destination value against
+  // this set folds a DECLARED route regardless of axis.
+  declaredDests: string[];
+  liveRoutes: LiveRouteDest[];
   // Fail-safe (#1082): at least one declared route on this table has an UNRESOLVED
-  // DestinationCidrBlock (a `{{resolve:ssm:...}}` dynamic ref, a degraded Fn::ImportValue,
-  // or a no-default NoEcho Ref → the UNRESOLVED symbol). The route's identity is matched
-  // ONLY through its DestinationCidrBlock (the CFn physical id is a generated token), so an
-  // UNRESOLVED cidr cannot be matched to any live route. Reporting a live route as `added`
-  // then risks a destructive `revert --remove-unrecorded` DeleteResource against a route the
+  // destination (a `{{resolve:ssm:...}}` dynamic ref, a degraded Fn::ImportValue, or a
+  // no-default NoEcho Ref → the UNRESOLVED symbol). The route's identity is matched ONLY
+  // through its destination (the CFn physical id is a generated token), so an UNRESOLVED
+  // destination cannot be matched to any live route. Reporting a live route as `added` then
+  // risks a destructive `revert --remove-unrecorded` DeleteResource against a route the
   // template DECLARES. When true, suppress `added` for THIS table's routes entirely.
   hasUnresolvedDeclaredRoute?: boolean;
 }
 
 export function diffRouteTableChildren(input: RouteTableChildInput): AddedChild[] {
-  const { routeTableId, declaredCidrs, liveRoutes, hasUnresolvedDeclaredRoute } = input;
-  // A declared route with an UNRESOLVED DestinationCidrBlock could be ANY of the live
-  // routes — we can't tell which — so we cannot safely call any live route `added`.
+  const { routeTableId, declaredDests, liveRoutes, hasUnresolvedDeclaredRoute } = input;
+  // A declared route with an UNRESOLVED destination could be ANY of the live routes — we
+  // can't tell which — so we cannot safely call any live route `added`.
   if (hasUnresolvedDeclaredRoute) return [];
-  const declared = new Set(declaredCidrs);
+  const declared = new Set(declaredDests);
   const added: AddedChild[] = [];
   for (const route of liveRoutes) {
-    if (declared.has(route.cidr)) continue;
+    if (declared.has(route.value)) continue;
     added.push({
       resourceType: 'AWS::EC2::Route',
-      identifier: `${routeTableId}|${route.cidr}`, // CC composite RouteTableId|CidrBlock
-      label: route.cidr,
-      live: { RouteTableId: routeTableId, CidrBlock: route.cidr },
+      // CC composite RouteTableId|<destination> (RouteTableId first).
+      identifier: `${routeTableId}|${route.value}`,
+      label: route.value,
+      // The `live` model keys the destination on its CC identifier property (CidrBlock /
+      // Ipv6CidrBlock / DestinationPrefixListId) so a DeleteResource targets the right route.
+      live: { RouteTableId: routeTableId, [route.ccKey]: route.value },
     });
   }
   return added;
@@ -2357,34 +2377,55 @@ async function describeRouteTable(client: EC2Client, routeTableId: string): Prom
   return res.RouteTables?.[0]?.Routes ?? [];
 }
 
-// A live route is an enumerable out-of-band `AWS::EC2::Route` only if it is one a user
-// could have declared. EXCLUDED:
-//   - the auto-created VPC-CIDR LOCAL route (Origin CreateRouteTable / GatewayId local);
-//   - an IPv6-only route (no DestinationCidrBlock — the CC identifier keys on CidrBlock);
+// A live route is an enumerable out-of-band `AWS::EC2::Route` only if it is one a user could
+// have declared, i.e. it has a destination on one of the three declarable axes
+// (DestinationCidrBlock / DestinationIpv6CidrBlock / DestinationPrefixListId — exactly one is
+// set per route). EXCLUDED regardless of axis:
+//   - the auto-created VPC-CIDR LOCAL route (Origin CreateRouteTable / GatewayId local) — an
+//     IPv6 VPC also gets an auto LOCAL IPv6 route, so the exclusion is axis-independent;
 //   - a route inserted by VGW route PROPAGATION (Origin EnableVgwRoutePropagation): these
 //     are BGP/propagated, not declarable `AWS::EC2::Route` resources, and AWS re-creates
 //     them — flagging one as `added` is a false positive, and a `revert` DeleteResource
 //     would either churn (AWS re-propagates) or fail. Pure + exported for unit tests.
-export function isEnumerableRoute(
-  route: Ec2Route
-): route is Ec2Route & { DestinationCidrBlock: string } {
+export function isEnumerableRoute(route: Ec2Route): boolean {
+  const hasDeclarableDest =
+    typeof route.DestinationCidrBlock === 'string' ||
+    typeof route.DestinationIpv6CidrBlock === 'string' ||
+    typeof route.DestinationPrefixListId === 'string';
   return (
-    typeof route.DestinationCidrBlock === 'string' &&
+    hasDeclarableDest &&
     route.Origin !== 'CreateRouteTable' &&
     route.Origin !== 'EnableVgwRoutePropagation' &&
     route.GatewayId !== 'local'
   );
 }
 
-async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+// The destination axis of a live route: pick whichever of the three destination fields is set
+// (exactly one is per route) and pair it with its CC identifier key. Returns undefined for a
+// route with no declarable destination (should be pre-filtered by isEnumerableRoute).
+function liveRouteDest(route: Ec2Route): LiveRouteDest | undefined {
+  if (typeof route.DestinationCidrBlock === 'string') {
+    return { value: route.DestinationCidrBlock, ccKey: 'CidrBlock' };
+  }
+  if (typeof route.DestinationIpv6CidrBlock === 'string') {
+    return { value: route.DestinationIpv6CidrBlock, ccKey: 'Ipv6CidrBlock' };
+  }
+  if (typeof route.DestinationPrefixListId === 'string') {
+    return { value: route.DestinationPrefixListId, ccKey: 'DestinationPrefixListId' };
+  }
+  return undefined;
+}
+
+export async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const routeTableId = parent.physicalId; // a RouteTable's physical id IS its RouteTableId
   if (!routeTableId) return [];
 
   // Declared routes on THIS route table (Ref/GetAtt RouteTableId already resolved to the
-  // physical id by gather). A route's CFn physical id is a generated token, so MATCH
-  // declared routes by DestinationCidrBlock (the route's identity within the table).
-  const declaredCidrs: string[] = [];
+  // physical id by gather). A route's CFn physical id is a generated token, so MATCH declared
+  // routes by their destination — whichever of the three axes the route declares
+  // (DestinationCidrBlock / DestinationIpv6CidrBlock / DestinationPrefixListId).
+  const declaredDests: string[] = [];
   let hasUnresolvedDeclaredRoute = false;
   for (const r of desired.resources) {
     if (
@@ -2393,15 +2434,18 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
     ) {
       continue;
     }
-    const cidr = r.declared.DestinationCidrBlock;
-    if (typeof cidr === 'string') {
-      declaredCidrs.push(cidr);
-    } else if (cidr === UNRESOLVED || hasUnresolved(cidr)) {
-      // Fail-safe (#1082): an UNRESOLVED DestinationCidrBlock (dynamic ref / degraded
-      // ImportValue / no-default NoEcho Ref) is this route's ONLY identity handle, so its
-      // live counterpart cannot be matched. Suppress `added` for this table's routes rather
-      // than offer a destructive delete of a route the template declares. Mirrors the
-      // parentRefMatches / #962 fail-safe, applied to the child IDENTITY property.
+    const dest =
+      r.declared.DestinationCidrBlock ??
+      r.declared.DestinationIpv6CidrBlock ??
+      r.declared.DestinationPrefixListId;
+    if (typeof dest === 'string') {
+      declaredDests.push(dest);
+    } else if (dest === UNRESOLVED || hasUnresolved(dest)) {
+      // Fail-safe (#1082): an UNRESOLVED destination (dynamic ref / degraded ImportValue /
+      // no-default NoEcho Ref) is this route's ONLY identity handle, so its live counterpart
+      // cannot be matched. Suppress `added` for this table's routes rather than offer a
+      // destructive delete of a route the template declares. Mirrors the parentRefMatches /
+      // #962 fail-safe, applied to the child IDENTITY property.
       hasUnresolvedDeclaredRoute = true;
     }
   }
@@ -2410,11 +2454,12 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
   const routes = await describeRouteTable(client, routeTableId);
   const liveRoutes = routes
     .filter(isEnumerableRoute)
-    .map((route) => ({ cidr: route.DestinationCidrBlock }));
+    .map(liveRouteDest)
+    .filter((d): d is LiveRouteDest => d !== undefined);
 
   return diffRouteTableChildren({
     routeTableId,
-    declaredCidrs,
+    declaredDests,
     liveRoutes,
     hasUnresolvedDeclaredRoute,
   });

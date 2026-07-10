@@ -10,6 +10,7 @@ import {
   DescribeDBInstancesCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
+import { DescribeRouteTablesCommand, EC2Client, type Route as Ec2Route } from '@aws-sdk/client-ec2';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -20,6 +21,7 @@ import {
   enumerateLambdaFunctionChildren,
   enumerateRdsClusterChildren,
   enumerateRoute53HostedZoneChildren,
+  enumerateRouteTableChildren,
   enumerateSnsTopicChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
@@ -1640,8 +1642,11 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
   it('flags an out-of-band route added via the console (not in the template)', () => {
     const added = diffRouteTableChildren({
       routeTableId: RT,
-      declaredCidrs: ['0.0.0.0/0'],
-      liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '10.99.0.0/16' }],
+      declaredDests: ['0.0.0.0/0'],
+      liveRoutes: [
+        { value: '0.0.0.0/0', ccKey: 'CidrBlock' },
+        { value: '10.99.0.0/16', ccKey: 'CidrBlock' },
+      ],
     });
     expect(added).toEqual([
       {
@@ -1656,8 +1661,8 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
   it('identifier is the CC composite RouteTableId|CidrBlock', () => {
     const added = diffRouteTableChildren({
       routeTableId: RT,
-      declaredCidrs: [],
-      liveRoutes: [{ cidr: '10.98.0.0/16' }],
+      declaredDests: [],
+      liveRoutes: [{ value: '10.98.0.0/16', ccKey: 'CidrBlock' }],
     });
     expect(added[0]!.identifier).toBe(`${RT}|10.98.0.0/16`);
   });
@@ -1666,8 +1671,60 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
     expect(
       diffRouteTableChildren({
         routeTableId: RT,
-        declaredCidrs: ['0.0.0.0/0', '192.168.0.0/16'],
-        liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '192.168.0.0/16' }],
+        declaredDests: ['0.0.0.0/0', '192.168.0.0/16'],
+        liveRoutes: [
+          { value: '0.0.0.0/0', ccKey: 'CidrBlock' },
+          { value: '192.168.0.0/16', ccKey: 'CidrBlock' },
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  // #1081: an AWS::EC2::Route can be declared on ANY of three destination axes —
+  // DestinationCidrBlock (IPv4), DestinationIpv6CidrBlock (IPv6), or DestinationPrefixListId.
+  // An out-of-band IPv6 or prefix-list route (a rogue `::/0` to an IGW/ENI is a traffic-hijack
+  // / exfil path) must surface as `added`; a DECLARED IPv6/prefix-list route must fold.
+  it('flags an out-of-band IPv6 route (::/0) not in the template (#1081)', () => {
+    const added = diffRouteTableChildren({
+      routeTableId: RT,
+      declaredDests: [],
+      liveRoutes: [{ value: '::/0', ccKey: 'Ipv6CidrBlock' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|::/0`,
+        label: '::/0',
+        live: { RouteTableId: RT, Ipv6CidrBlock: '::/0' },
+      },
+    ]);
+  });
+
+  it('flags an out-of-band prefix-list route not in the template (#1081)', () => {
+    const added = diffRouteTableChildren({
+      routeTableId: RT,
+      declaredDests: [],
+      liveRoutes: [{ value: 'pl-0a1b2c3d', ccKey: 'DestinationPrefixListId' }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|pl-0a1b2c3d`,
+        label: 'pl-0a1b2c3d',
+        live: { RouteTableId: RT, DestinationPrefixListId: 'pl-0a1b2c3d' },
+      },
+    ]);
+  });
+
+  it('folds a DECLARED IPv6 / prefix-list route (no false-added, #1081)', () => {
+    expect(
+      diffRouteTableChildren({
+        routeTableId: RT,
+        declaredDests: ['::/0', 'pl-0a1b2c3d'],
+        liveRoutes: [
+          { value: '::/0', ccKey: 'Ipv6CidrBlock' },
+          { value: 'pl-0a1b2c3d', ccKey: 'DestinationPrefixListId' },
+        ],
       })
     ).toEqual([]);
   });
@@ -1684,10 +1741,10 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
     expect(
       diffRouteTableChildren({
         routeTableId: RT,
-        // The declared cidr was UNRESOLVED, so it never made it into declaredCidrs; the
+        // The declared destination was UNRESOLVED, so it never made it into declaredDests; the
         // enumerator instead raised the fail-safe flag.
-        declaredCidrs: [],
-        liveRoutes: [{ cidr: '10.99.0.0/16' }],
+        declaredDests: [],
+        liveRoutes: [{ value: '10.99.0.0/16', ccKey: 'CidrBlock' }],
         hasUnresolvedDeclaredRoute: true,
       })
     ).toEqual([]);
@@ -1696,8 +1753,11 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
   it('with no UNRESOLVED declared route, a genuinely out-of-band route is STILL added (no regression, #1082)', () => {
     const added = diffRouteTableChildren({
       routeTableId: RT,
-      declaredCidrs: ['0.0.0.0/0'],
-      liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '10.99.0.0/16' }],
+      declaredDests: ['0.0.0.0/0'],
+      liveRoutes: [
+        { value: '0.0.0.0/0', ccKey: 'CidrBlock' },
+        { value: '10.99.0.0/16', ccKey: 'CidrBlock' },
+      ],
       hasUnresolvedDeclaredRoute: false,
     });
     expect(added.map((a) => a.identifier)).toEqual([`${RT}|10.99.0.0/16`]);
@@ -1737,15 +1797,226 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
       ).toBe(false);
     });
 
-    it('excludes an IPv6-only route (no DestinationCidrBlock)', () => {
+    it('keeps a user-declarable IPv6 route (::/0 to a gateway) (#1081)', () => {
+      // The reported false-NEGATIVE: an out-of-band IPv6 route was invisible because the old
+      // filter required a DestinationCidrBlock. A rogue `::/0` to an IGW/ENI must be enumerable.
       expect(
         isEnumerableRoute({
           DestinationIpv6CidrBlock: '::/0',
           Origin: 'CreateRoute',
           GatewayId: 'igw-123',
         })
+      ).toBe(true);
+    });
+
+    it('keeps a user-declarable prefix-list route (#1081)', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationPrefixListId: 'pl-0a1b2c3d',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        })
+      ).toBe(true);
+    });
+
+    it('excludes the auto-created VPC-local IPv6 route (Origin CreateRouteTable / GatewayId local) (#1081)', () => {
+      // An IPv6-enabled VPC auto-creates a LOCAL IPv6 route just like the IPv4 one; the
+      // exclusion must apply to the IPv6 axis too.
+      expect(
+        isEnumerableRoute({
+          DestinationIpv6CidrBlock: '2600:1f18:abcd::/56',
+          Origin: 'CreateRouteTable',
+          GatewayId: 'local',
+        })
       ).toBe(false);
     });
+
+    it('excludes a VGW-propagated IPv6 route (Origin EnableVgwRoutePropagation) (#1081)', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationIpv6CidrBlock: '2600:1f18:cafe::/56',
+          Origin: 'EnableVgwRoutePropagation',
+          GatewayId: 'vgw-0abc123',
+        })
+      ).toBe(false);
+    });
+
+    it('excludes a route with no declarable destination (blackhole with no CIDR)', () => {
+      expect(
+        isEnumerableRoute({
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        })
+      ).toBe(false);
+    });
+  });
+});
+
+// #1081 (end-to-end): the enumerator must read live routes across all three destination axes
+// via DescribeRouteTablesCommand, match them against declared AWS::EC2::Route resources on the
+// same table (folding a DECLARED IPv6/prefix-list route), and flag only the out-of-band ones.
+describe('enumerateRouteTableChildren (EC2 routes, all destination axes, #1081)', () => {
+  const RT = 'rtb-0123456789abcdef0';
+  // The auto-created VPC-local routes (IPv4 + IPv6) that every route table carries — must be
+  // excluded on both axes.
+  const LOCAL_V4 = {
+    DestinationCidrBlock: '10.0.0.0/16',
+    Origin: 'CreateRouteTable' as const,
+    GatewayId: 'local',
+  };
+  const LOCAL_V6 = {
+    DestinationIpv6CidrBlock: '2600:1f18:abcd::/56',
+    Origin: 'CreateRouteTable' as const,
+    GatewayId: 'local',
+  };
+
+  const ctxWith = (routes: Ec2Route[], declared: unknown[]) => {
+    const ec2 = mockClient(EC2Client);
+    ec2
+      .on(DescribeRouteTablesCommand)
+      .resolves({ RouteTables: [{ RouteTableId: RT, Routes: routes }] });
+    const ctx = {
+      parent: { physicalId: RT, logicalId: 'Rt' },
+      desired: { resources: declared, ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    return { ec2, ctx };
+  };
+
+  it('flags an out-of-band IPv6 route (::/0 to a rogue IGW) — the reported false negative', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        LOCAL_V6,
+        {
+          DestinationIpv6CidrBlock: '::/0',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-rogue',
+        },
+      ],
+      [] // template declares no routes on this table
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|::/0`,
+        label: '::/0',
+        live: { RouteTableId: RT, Ipv6CidrBlock: '::/0' },
+      },
+    ]);
+    ec2.restore();
+  });
+
+  it('flags an out-of-band prefix-list route not in the template', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        {
+          DestinationPrefixListId: 'pl-0a1b2c3d',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-rogue',
+        },
+      ],
+      []
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|pl-0a1b2c3d`,
+        label: 'pl-0a1b2c3d',
+        live: { RouteTableId: RT, DestinationPrefixListId: 'pl-0a1b2c3d' },
+      },
+    ]);
+    ec2.restore();
+  });
+
+  it('does NOT flag a DECLARED IPv6 route (folds — no false-added)', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        LOCAL_V6,
+        {
+          DestinationIpv6CidrBlock: '::/0',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        },
+      ],
+      [
+        {
+          resourceType: 'AWS::EC2::Route',
+          declared: { RouteTableId: RT, DestinationIpv6CidrBlock: '::/0', GatewayId: 'igw-123' },
+        },
+      ]
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([]);
+    ec2.restore();
+  });
+
+  it('excludes the auto-created LOCAL (IPv4 + IPv6) and VGW-propagated routes (all axes)', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        LOCAL_V6,
+        {
+          DestinationIpv6CidrBlock: '2600:1f18:cafe::/56',
+          Origin: 'EnableVgwRoutePropagation',
+          GatewayId: 'vgw-0abc123',
+        },
+      ],
+      []
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([]);
+    ec2.restore();
+  });
+
+  it('still flags an out-of-band IPv4 route (no regression)', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        {
+          DestinationCidrBlock: '10.99.0.0/16',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-rogue',
+        },
+      ],
+      []
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::Route',
+        identifier: `${RT}|10.99.0.0/16`,
+        label: '10.99.0.0/16',
+        live: { RouteTableId: RT, CidrBlock: '10.99.0.0/16' },
+      },
+    ]);
+    ec2.restore();
+  });
+
+  it('fails safe: an UNRESOLVED declared IPv6 destination suppresses ALL added for this table (#1082)', async () => {
+    const { ec2, ctx } = ctxWith(
+      [
+        LOCAL_V4,
+        {
+          DestinationIpv6CidrBlock: '::/0',
+          Origin: 'CreateRoute',
+          GatewayId: 'igw-123',
+        },
+      ],
+      [
+        {
+          resourceType: 'AWS::EC2::Route',
+          declared: { RouteTableId: RT, DestinationIpv6CidrBlock: UNRESOLVED },
+        },
+      ]
+    );
+    const added = await enumerateRouteTableChildren(ctx);
+    expect(added).toEqual([]);
+    ec2.restore();
   });
 });
 
