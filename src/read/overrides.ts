@@ -151,6 +151,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { READ_RETRY } from './client-config.js';
+import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle } from './pem.js';
 
 export interface OverrideCtx {
@@ -2001,7 +2002,24 @@ const readAppSyncApiKey: OverrideReader = async ({ physicalId, declared, region 
 // stay writeOnly readGaps — they are not projected, so they can never false-positive.
 // (CognitoEvents is exempted from the writeOnly strip via OVERRIDE_READABLE_WRITEONLY so
 // the projected value is actually compared.)
-const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) => {
+//
+// GetCognitoEvents failure handling (#1085): the ORIGINAL unconditional `catch {}` swallowed
+// EVERY failure identically — an AccessDenied (missing `cognito-sync:GetCognitoEvents`) or a
+// throttle silently dropped CognitoEvents from the live model. Because CognitoEvents is exempt
+// from the writeOnly strip, a DECLARED value then compared against an ABSENT live value and
+// FALSE-flagged as declared-tier drift ("removed out of band"), which `revert` would try to
+// re-write — the exact #752/#964 failure mode, but on the OVERRIDE path (so the router's
+// restoreSupplementReadGaps degrade never fires for it). Distinguish the failure kinds:
+//   - genuine region-unavailability (cognito-sync is a deprecated service absent in most
+//     regions → the endpoint won't resolve): degrade QUIETLY. Nothing to warn about; the
+//     service simply cannot exist there.
+//   - AccessDenied / throttling / any other transient failure: degrade LOUDLY (warn on
+//     stderr) — this is a real coverage gap the user can fix (grant the permission / retry).
+// In BOTH cases, re-fold the DECLARED CognitoEvents to a readGap by mirroring the declared
+// value into the live model (declared == live → no drift surfaced, the readGap semantic), so
+// the value is NEVER silently dropped into a false declared-tier finding. This mirrors the
+// router's restoreSupplementReadGaps, done inline because this is an override (not a supplement).
+const readCognitoIdentityPool: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const cc = new CloudControlClient({ region, ...READ_RETRY });
@@ -2017,11 +2035,46 @@ const readCognitoIdentityPool: OverrideReader = async ({ physicalId, region }) =
     // Only project a NON-EMPTY event map: a pool with no Sync trigger reads back `{}`,
     // which must stay absent (declared) so a clean pool never reports false drift.
     if (ev.Events && Object.keys(ev.Events).length > 0) model.CognitoEvents = ev.Events;
-  } catch {
-    /* cognito-sync unavailable/disabled in the region -> leave CognitoEvents a readGap */
+  } catch (e) {
+    // Re-fold a DECLARED CognitoEvents to a readGap (mirror declared -> live) so it never
+    // false-flags as declared drift against the (now unread) live value. An UNDECLARED
+    // CognitoEvents has nothing to compare, so nothing is mirrored — a clean pool stays clean.
+    if ('CognitoEvents' in declared && !('CognitoEvents' in model))
+      model.CognitoEvents = declared.CognitoEvents;
+    // Only a genuine region-unavailability is silent; a permission/throttle/other transient
+    // failure is a fixable coverage gap and warns LOUDLY on stderr.
+    if (!isCognitoSyncRegionUnavailable(e)) {
+      const call = (e as Error)?.name || 'unknown error';
+      const gap =
+        'CognitoEvents' in declared
+          ? ' — treating CognitoEvents as an unverifiable read-gap (declared value assumed unchanged; grant cognito-sync:GetCognitoEvents to detect out-of-band drift on it)'
+          : '';
+      process.stderr.write(
+        `[cdkrd] warning: cognito-sync:GetCognitoEvents for ${id} failed (${call})${gap}\n`
+      );
+    }
   }
   return model;
 };
+
+// True only for a GENUINE region-unavailability of the (deprecated) cognito-sync service:
+// the SDK cannot resolve/reach an endpoint in this region, so the service literally cannot
+// exist here. Matches endpoint-resolution / DNS failures by error name or the underlying
+// ENOTFOUND system error code. Everything ELSE — an AccessDenied (isDefinitiveDenial), a
+// throttle, a 5xx, a timeout — is NOT region-unavailability: it is a fixable coverage gap
+// that must warn, so it is deliberately excluded here (isDefinitiveDenial-matched errors are
+// rejected explicitly, in case an endpoint field ever coincides).
+function isCognitoSyncRegionUnavailable(err: unknown): boolean {
+  if (isDefinitiveDenial(err)) return false;
+  const e = err as
+    | { name?: string; code?: string; cause?: { code?: string; errno?: string } }
+    | undefined;
+  if (!e) return false;
+  const regionUnavailable = /^(UnknownEndpoint|EndpointError|InvalidEndpoint)$/;
+  if (e.name && regionUnavailable.test(e.name)) return true;
+  if (e.code && (regionUnavailable.test(e.code) || e.code === 'ENOTFOUND')) return true;
+  return e.cause?.code === 'ENOTFOUND' || e.cause?.errno === 'ENOTFOUND';
+}
 
 // The SES inbound receipt-rule family (ReceiptRuleSet / ReceiptRule / ReceiptFilter)
 // has NO Cloud Control handlers (GetResource throws UnsupportedActionException), so each
