@@ -1535,11 +1535,27 @@ async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedC
 // `["/properties/UserPoolId","/properties/ClientId"]`, so the `identifier` is the
 // composite `UserPoolId|ClientId` — that is what CC GetResource / DeleteResource consume.
 
+// The OpenSearch/Elasticsearch service auto-creates an app client in a declared user
+// pool when OpenSearch Dashboards Cognito auth is enabled (`CognitoOptions` on the
+// domain / CDK `cognitoDashboardsAuth`) — documented behavior. The client is named with
+// a service prefix; the service was renamed, so BOTH the legacy Elasticsearch prefix and
+// the current OpenSearch Service prefix are matched. This is NOT an out-of-band add — it
+// is created by another AWS service on the user's behalf, and Dashboards auth DEPENDS on
+// it (offering to DELETE it would break auth). It belongs to no stack, so the
+// sibling-stack check cannot rescue it. Gating only on this documented prefix preserves
+// out-of-band detection: a rogue client with an ordinary name still surfaces (#897).
+const OPENSEARCH_SERVICE_CLIENT_PREFIXES = ['AWSElasticsearch-', 'AmazonOpenSearchService-'];
+
+function isOpenSearchServiceClient(name: string | undefined): boolean {
+  if (name === undefined) return false;
+  return OPENSEARCH_SERVICE_CLIENT_PREFIXES.some((p) => name.startsWith(p));
+}
+
 // Pure diff: declared client ids + live inventory -> the added clients.
 export interface UserPoolChildInput {
   userPoolId: string;
   declaredClientIds: string[]; // physical ids (ClientIds) of AWS::Cognito::UserPoolClient
-  liveClients: { id: string; label?: string | undefined }[];
+  liveClients: { id: string; name?: string | undefined; label?: string | undefined }[];
 }
 
 export function diffUserPoolChildren(input: UserPoolChildInput): AddedChild[] {
@@ -1548,6 +1564,8 @@ export function diffUserPoolChildren(input: UserPoolChildInput): AddedChild[] {
   const added: AddedChild[] = [];
   for (const c of liveClients) {
     if (declared.has(c.id)) continue;
+    // Skip the OpenSearch/Elasticsearch service-created Dashboards-auth client (#897).
+    if (isOpenSearchServiceClient(c.name ?? c.label)) continue;
     added.push({
       resourceType: 'AWS::Cognito::UserPoolClient',
       identifier: `${userPoolId}|${c.id}`, // CC composite UserPoolId|ClientId
@@ -1795,7 +1813,7 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     .filter(
       (c): c is UserPoolClientDescription & { ClientId: string } => typeof c.ClientId === 'string'
     )
-    .map((c) => ({ id: c.ClientId, label: c.ClientName ?? c.ClientId }));
+    .map((c) => ({ id: c.ClientId, name: c.ClientName, label: c.ClientName ?? c.ClientId }));
   const clientAdded = diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
 
   const groups = await pageUserPoolGroups(client, userPoolId);

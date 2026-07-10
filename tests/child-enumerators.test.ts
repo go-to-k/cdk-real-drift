@@ -1151,6 +1151,57 @@ describe('diffUserPoolChildren (Cognito user pool clients)', () => {
       })
     ).toEqual([]);
   });
+
+  it('skips the OpenSearch/Elasticsearch service-created Dashboards-auth clients (#897)', () => {
+    const added = diffUserPoolChildren({
+      userPoolId: POOL,
+      declaredClientIds: [],
+      liveClients: [
+        // legacy Elasticsearch service prefix
+        { id: 'client-es', name: 'AWSElasticsearch-abc123', label: 'AWSElasticsearch-abc123' },
+        // current OpenSearch Service prefix
+        {
+          id: 'client-os',
+          name: 'AmazonOpenSearchService-xyz',
+          label: 'AmazonOpenSearchService-xyz',
+        },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('still flags a genuinely rogue out-of-band client with an ordinary name (#897)', () => {
+    const added = diffUserPoolChildren({
+      userPoolId: POOL,
+      declaredClientIds: [],
+      liveClients: [
+        { id: 'client-es', name: 'AWSElasticsearch-abc123', label: 'AWSElasticsearch-abc123' },
+        { id: 'client-rogue', name: 'RogueClient', label: 'RogueClient' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolClient',
+        identifier: `${POOL}|client-rogue`,
+        label: 'RogueClient',
+        live: { ClientId: 'client-rogue' },
+      },
+    ]);
+  });
+
+  it('a service-prefixed client that IS explicitly declared is matched as declared (#897)', () => {
+    // Declared-set match happens first, so a declared client is never re-flagged
+    // regardless of its name.
+    expect(
+      diffUserPoolChildren({
+        userPoolId: POOL,
+        declaredClientIds: ['client-declared'],
+        liveClients: [
+          { id: 'client-declared', name: 'AWSElasticsearch-declared', label: 'Declared' },
+        ],
+      })
+    ).toEqual([]);
+  });
 });
 
 describe('diffUserPoolGroups (Cognito user pool groups)', () => {
