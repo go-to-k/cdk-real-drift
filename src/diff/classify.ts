@@ -28,6 +28,7 @@ import {
   BOOLEAN_PARAM_MAP_PATHS,
   isBooleanTokenEquivalent,
   isCfnTemplateNonAsciiMask,
+  deepEqualModuloNonAsciiMask,
   isEqualUnorderedScalarSet,
   isEquivalentRateExpression,
   isJsonStringStructEqual,
@@ -2581,6 +2582,28 @@ export function classifyResource(
         declaredParsed = undefined;
       }
       if (declaredParsed !== undefined && deepEqual(declaredParsed, liveParsed)) continue;
+      // GetTemplate masks every non-ASCII character in a stored string literal as `?`
+      // (see isCfnTemplateNonAsciiMask), so a definition carrying non-ASCII text (a
+      // Japanese `Cause` message) arrives corrupted on the DECLARED side while the live
+      // read is intact — the structural compare above can never match, and pushing the
+      // declared finding here would bypass the general mask→readGap demotion the plain
+      // string-diff path applies. When the two definitions differ ONLY at such masked
+      // leaves, the declared value is unknowable from GetTemplate (CloudFormation itself
+      // reports it IN_SYNC), so surface a readGap instead of a false drift; a genuine
+      // out-of-band edit still fails the mask-tolerant compare and is reported.
+      if (
+        (declaredParsed !== undefined && deepEqualModuloNonAsciiMask(declaredParsed, liveParsed)) ||
+        isCfnTemplateNonAsciiMask(v, live[k])
+      ) {
+        findings.push({
+          tier: 'readGap',
+          logicalId,
+          resourceType,
+          path: k,
+          note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+        });
+        continue;
+      }
       findings.push({
         tier: 'declared',
         logicalId,

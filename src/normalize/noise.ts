@@ -4457,6 +4457,44 @@ export function isCfnTemplateNonAsciiMask(declared: unknown, live: unknown): boo
   return sawNonAscii && masked === declared;
 }
 
+// Structural variant of the GetTemplate `?`-mask test, for JSON-DOCUMENT string properties
+// that are compared PARSED rather than byte-wise (a StepFunctions `DefinitionString` — the
+// service may re-serialize on read, so the string forms need not align even when the
+// documents agree). Deep-equal with ONE relaxation: a string leaf also matches when the
+// declared side is the GetTemplate non-ASCII mask of the live side. Everything else keeps
+// the strict deepEqual shape (same keysets, index-wise arrays, strict scalar equality), so
+// a genuine out-of-band edit — a changed ASCII char, an added state, a re-typed leaf —
+// still differs and is reported; only differences GetTemplate itself made invisible are
+// excused (and isCfnTemplateNonAsciiMask only fires when the declared leaf actually
+// carries a `?` standing in for a live non-ASCII char, so a pure-ASCII document never
+// takes the relaxed path).
+export function deepEqualModuloNonAsciiMask(declared: unknown, live: unknown): boolean {
+  if (declared === live) return true;
+  if (typeof declared === 'string' && typeof live === 'string')
+    return isCfnTemplateNonAsciiMask(declared, live);
+  if (
+    typeof declared !== 'object' ||
+    typeof live !== 'object' ||
+    declared === null ||
+    live === null
+  )
+    return false;
+  if (Array.isArray(declared) || Array.isArray(live)) {
+    if (!Array.isArray(declared) || !Array.isArray(live) || declared.length !== live.length)
+      return false;
+    return declared.every((v, i) => deepEqualModuloNonAsciiMask(v, live[i]));
+  }
+  const declaredObj = declared as Record<string, unknown>;
+  const liveObj = live as Record<string, unknown>;
+  const keys = Object.keys(declaredObj);
+  if (keys.length !== Object.keys(liveObj).length) return false;
+  for (const key of keys) {
+    if (!Object.hasOwn(liveObj, key)) return false;
+    if (!deepEqualModuloNonAsciiMask(declaredObj[key], liveObj[key])) return false;
+  }
+  return true;
+}
+
 // AWS resource-id / ARN lists (SubnetIds, SecurityGroupIds, VPCSecurityGroups, ...)
 // are UNORDERED sets too, but unlike tags their elements
 // are bare scalars, so the tag canonicalizer doesn't touch them and a positional
