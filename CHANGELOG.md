@@ -1,3 +1,10 @@
+## [0.9.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.0...v0.9.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** enumerate VPCEndpoint children of a declared VPC ([#1045](https://github.com/go-to-k/cdk-real-drift/issues/1045)) ([#1193](https://github.com/go-to-k/cdk-real-drift/issues/1193)) ([aab732a](https://github.com/go-to-k/cdk-real-drift/commit/aab732a454c118ba63e653b73b31b7f155574dfd))
+
 # [0.9.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.8.0...v0.9.0) (2026-07-10)
 
 
