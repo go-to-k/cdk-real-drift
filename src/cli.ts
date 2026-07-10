@@ -76,6 +76,12 @@ OPTIONS
   --remove-unrecorded         (revert, and check for its inline revert) REMOVE unrecorded
                               values + DELETE unrecorded added resources (never recorded;
                               default: refuse — record the ones that are right)
+  --force                     (revert) proceed even when the stack is mid-operation
+                              (*_IN_PROGRESS). By default revert re-reads the stack right
+                              before the write and REFUSES, to avoid fighting an in-flight
+                              deploy; --force overrides that for a knowingly-wedged stack
+                              (the mid-operation warning still prints; --force does NOT
+                              skip the confirm — that is --yes)
   --yes, -y                   skip the write confirm AND the op multiselect — apply the
                               FULL plan (revert) / skip the selection multiselect +
                               overwrite notice, record ALL (record) / ignore ALL shown

@@ -89,6 +89,9 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S']).preDeploy).toBe(false);
     expect(parseCommonArgs(['S', '--remove-unrecorded']).removeUnrecorded).toBe(true);
     expect(parseCommonArgs(['S']).removeUnrecorded).toBe(false);
+    // #1175: revert --force parses onto `force` (default false).
+    expect(parseCommonArgs(['S', '--force'], 'revert').force).toBe(true);
+    expect(parseCommonArgs(['S'], 'revert').force).toBe(false);
     expect(parseCommonArgs(['S', '--verbose']).verbose).toBe(true);
     expect(parseCommonArgs(['S', '-v']).verbose).toBe(true);
     expect(parseCommonArgs(['S']).verbose).toBe(false);
@@ -312,6 +315,12 @@ describe('parseCommonArgs per-verb flag applicability (#780)', () => {
     expect(() => parseCommonArgs(['--wait=5m'], 'check')).toThrow(/"--wait" is not valid/);
     expect(() => parseCommonArgs(['--remove-unrecorded'], 'record')).toThrow(/is not valid/);
     expect(() => parseCommonArgs(['--remove-unrecorded'], 'ignore')).toThrow(/is not valid/);
+  });
+
+  it('rejects `--force` outside revert (#1175)', () => {
+    for (const verb of ['check', 'record', 'ignore'] as const)
+      expect(() => parseCommonArgs(['--force'], verb)).toThrow(/"--force" is not valid/);
+    expect(() => parseCommonArgs(['--force'], 'revert')).not.toThrow();
   });
 
   it('rejects `--verbose` (`-v`) on ignore but allows it on check/record/revert', () => {

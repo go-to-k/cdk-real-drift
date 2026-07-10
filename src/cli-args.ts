@@ -18,6 +18,7 @@ const BOOLEAN_FLAGS = new Set([
   '--declared-only',
   '--dry-run',
   '--remove-unrecorded',
+  '--force',
   '--verbose',
   '-v',
   '--strict',
@@ -63,7 +64,14 @@ const ALLOWED_FLAGS_BY_VERB: Record<Verb, Set<string>> = {
   ]),
   record: new Set([...GLOBAL_FLAGS, '--verbose']),
   ignore: new Set(GLOBAL_FLAGS),
-  revert: new Set([...GLOBAL_FLAGS, '--verbose', '--remove-unrecorded', '--dry-run', '--wait']),
+  revert: new Set([
+    ...GLOBAL_FLAGS,
+    '--verbose',
+    '--remove-unrecorded',
+    '--dry-run',
+    '--wait',
+    '--force',
+  ]),
 };
 
 export interface CommonArgs {
@@ -101,6 +109,14 @@ export interface CommonArgs {
   // the --fail default (a transient throttle should not silently start failing CI).
   strict: boolean;
   removeUnrecorded: boolean; // (revert) opt in to REMOVING undeclared drift on a stack with no baseline
+  // (revert) `--force`: proceed with the AWS write even when the target stack's live
+  // `StackStatus` is mid-operation (`*_IN_PROGRESS`). By default (#786) revert fails CLOSED
+  // in that state — it re-reads DescribeStacks right before the write and REFUSES, to avoid
+  // fighting an in-flight `cdk deploy`. `--force` is the explicit opt-out for an operator who
+  // knowingly reverts against a stack CFn reports in-progress (e.g. a wedged UPDATE_IN_PROGRESS
+  // that will never settle). The mid-operation warning still prints — force only skips the
+  // refusal, not the confirm (--yes) or any other safety.
+  force: boolean;
   verbose: boolean; // (check) expand informational tiers / (revert) the NOT-revertable summary to full lists
   // (revert) `--wait[=DURATION]`: block on a TRANSIENT "resource is mid-update" failure
   // (RSLVR-00705 & friends), retrying until the resource settles instead of stopping at
@@ -258,6 +274,7 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
     undeclaredOnly: has('--undeclared-only'),
     declaredOnly: has('--declared-only'),
     removeUnrecorded: has('--remove-unrecorded'),
+    force: has('--force'),
     verbose: has('--verbose') || has('-v'),
     waitMs,
   };

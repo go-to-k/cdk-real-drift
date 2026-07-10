@@ -952,6 +952,13 @@ export interface RevertStackParams {
   dryRun: boolean;
   yes: boolean;
   removeUnrecorded: boolean;
+  // `revert --force` (#1175): proceed with the AWS write even when the pre-write DescribeStacks
+  // re-read (#786) reports the stack mid-operation (`*_IN_PROGRESS`). The default is fail-CLOSED
+  // — that refusal is the #786 safety property. `--force` is the explicit opt-out for an operator
+  // who knowingly reverts against an in-progress stack (e.g. a wedged UPDATE_IN_PROGRESS that will
+  // never settle). It ONLY skips the in-progress refusal; the loud mid-operation warning still
+  // prints, and the confirm (--yes) and every other safety are untouched. Defaults to false.
+  force?: boolean;
   verbose: boolean; // expand the NOT-revertable summary to the full list
   interactive: boolean; // whether the confirm prompt may be shown (TTY only)
   // check's "Decide per finding" path (R121): the user already chose WHICH findings to
@@ -1118,6 +1125,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     dryRun,
     yes,
     removeUnrecorded,
+    force,
     verbose,
     interactive,
     autoSelectAll,
@@ -1313,12 +1321,18 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // TOCTOU gate (#786): the stack was stable at gather time, but it may have entered a
   // `cdk deploy` while the confirm prompt sat open. Re-read StackStatus RIGHT before the
   // write and REFUSE when it is mid-operation — a revert now would fight the in-flight
-  // deploy, writing OLD values onto an updating stack. No override flag: this is the one
-  // AWS-mutating verb, so it fails CLOSED rather than risk a racing write.
+  // deploy, writing OLD values onto an updating stack. Fails CLOSED by default. `--force`
+  // (#1175) is the explicit opt-out for an operator who knowingly reverts against an
+  // in-progress stack (e.g. a wedged UPDATE_IN_PROGRESS that will never settle): it skips
+  // the refusal but STILL prints the mid-operation state loudly, so the operator sees it.
   const inProgress = await stackInProgressRefusal(stackName, region);
   if (inProgress) {
-    console.error('\n' + inProgress);
-    return { exit: 2, aborted: false, refusedReason: inProgress };
+    if (force) {
+      console.error('\nwarning: ' + inProgress + ' Proceeding anyway (--force).');
+    } else {
+      console.error('\n' + inProgress);
+      return { exit: 2, aborted: false, refusedReason: inProgress };
+    }
   }
 
   const cc = new CloudControlClient({ region, ...CLIENT_TIMEOUTS });

@@ -54,6 +54,7 @@ function args(overrides: Partial<CommonArgs>): CommonArgs {
     fail: false,
     strict: false,
     removeUnrecorded: false,
+    force: false,
     verbose: false,
     waitMs: undefined,
     ...overrides,

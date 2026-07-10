@@ -100,6 +100,7 @@ export async function runRevert(args: string[]): Promise<number> {
         dryRun,
         yes: a.yes,
         removeUnrecorded: a.removeUnrecorded,
+        force: a.force,
         verbose: a.verbose,
         // --json is a scripting/non-TTY contract: never show the op multiselect / confirm.
         // Without --yes this makes revert refuse the AWS write (exit 2 in the JSON). (#868)
