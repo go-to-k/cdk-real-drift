@@ -1,3 +1,10 @@
+## [0.12.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.10...v0.12.11) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** demote non-ASCII-masked JSON_STRING_PROPS values to readGap, not declared drift ([#1337](https://github.com/go-to-k/cdk-real-drift/issues/1337)) ([354b670](https://github.com/go-to-k/cdk-real-drift/commit/354b670ddc9cbd9a8ad2ac98e8f79fef3e14354c))
+
 ## [0.12.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.9...v0.12.10) (2026-07-10)
 
 
