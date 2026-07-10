@@ -272,11 +272,18 @@ async function fetch(client: CloudFormationClient, resourceType: string): Promis
 // (guarding a circular / unresolvable ref → undefined). A node with no `$ref` is
 // returned as-is. Used to reach a top-level property's annotated `default` when the
 // property is written as a bare `$ref` to a definition that carries it (#1068).
+// A property may also wrap its `default` in a TRANSPARENT variant branch —
+// `"allOf": [ { "$ref": … }, { "default": "MCP" } ]` (BedrockAgentCore Gateway
+// `ProtocolType`) — so if the resolved node carries no `default` of its own, descend
+// its `oneOf`/`anyOf`/`allOf` branches (each resolved through the same $ref chain) and
+// return the first branch that carries a `default`. Non-variant schemas keep their exact
+// prior behavior (no variant branches → the resolved node is returned unchanged) (#1328).
 function resolveRefNode(
   node: SchemaNode | undefined,
-  definitions: Record<string, SchemaNode>
+  definitions: Record<string, SchemaNode>,
+  depth = 0
 ): SchemaNode | undefined {
-  if (!node || typeof node !== 'object') return undefined;
+  if (!node || typeof node !== 'object' || depth > MAX_VARIANT_DEPTH) return undefined;
   let n: SchemaNode | undefined = node;
   const seen = new Set<string>();
   while (n?.$ref) {
@@ -284,6 +291,12 @@ function resolveRefNode(
     if (seen.has(name)) return undefined; // circular — unresolvable
     seen.add(name);
     n = definitions[name];
+  }
+  if (n && !('default' in n)) {
+    for (const branch of variantBranches(n)) {
+      const resolved = resolveRefNode(branch, definitions, depth + 1);
+      if (resolved && 'default' in resolved) return resolved;
+    }
   }
   return n;
 }

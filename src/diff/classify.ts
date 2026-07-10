@@ -3593,6 +3593,15 @@ export function classifyResource(
     // the default no longer matches here and falls through to the `undeclared` tier.
     if (
       (k in schema.defaults && matchesKnownDefault(v, schema.defaults[k])) ||
+      // The authoritative top-level default source: `collectDefaultPaths` records the
+      // annotated `default` for EVERY top-level property keyed by its bare name — direct,
+      // `$ref`'d, AND variant-wrapped (`allOf`/`oneOf`/`anyOf`) shapes uniformly. `schema.defaults`
+      // is populated only via `resolveRefNode`, which does not descend variant branches, so a
+      // variant-wrapped default (e.g. BedrockAgentCore Gateway `ProtocolType` written as
+      // `allOf: [ { $ref }, { default: "MCP" } ]`) is absent from `schema.defaults` yet present
+      // in `defaultPaths`. Consult it here too, still equality-gated (a value CHANGED away from
+      // the default falls through to `undeclared` — out-of-band detection preserved) (#1328).
+      (k in schema.defaultPaths && matchesKnownDefault(v, schema.defaultPaths[k])) ||
       (k in knownDef && matchesKnownDefault(v, knownDef[k])) ||
       // A live value equal to ONE OF several stable-constant AWS defaults for this key (e.g.
       // an ApiGatewayV2 Integration's protocol-specific TimeoutInMillis, 29000 for WebSocket
