@@ -128,7 +128,19 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
       }
       case 'Fn::FindInMap': {
         if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
-        const [mapName, topKey, secondKey] = v.slice(0, 3).map((x) => resolve(x, ctx));
+        // YAML 1.1 turns an unquoted numeric-looking map key argument
+        // (`!FindInMap [AcctMap, 123456789012, Bucket]` — account-id / port /
+        // numeric-version keyed maps) into a JS NUMBER, and `yes`/`no`/`on`/`off`
+        // into a boolean. But Mappings keys are ALWAYS strings (object keys
+        // stringify; CFn rejects non-string Mappings keys), so a resolved primitive
+        // scalar is safe to stringify for both the string-type check and the lookup —
+        // otherwise a knowable declared value is silently dropped to UNRESOLVED
+        // (missed drift + a permanent `check --strict` red). Only coerce primitive
+        // scalars; objects/arrays/UNRESOLVED args stay fail-closed.
+        const [mapName, topKey, secondKey] = v.slice(0, 3).map((x) => {
+          const r = resolve(x, ctx);
+          return typeof r === 'number' || typeof r === 'boolean' ? String(r) : r;
+        });
         // All 3 keys must resolve to strings and the path must exist; else fail-closed.
         if (
           typeof mapName !== 'string' ||
