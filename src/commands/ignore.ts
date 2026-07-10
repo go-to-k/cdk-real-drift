@@ -7,11 +7,14 @@
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
+  type ApplyBaselineOptions,
   checkBaselineAccount,
+  constructPathsByLogical,
   declaredKeysByLogical,
   loadBaseline,
   physicalIdsByLogical,
 } from '../baseline/baseline-file.js';
+import type { Desired } from '../desired/template-adapter.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -19,6 +22,23 @@ import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
 import { ignoreStack, warnStackStatus } from './stack-actions.js';
 import { emitJsonArray, type IgnoreJson, stackLabel } from './verb-json.js';
+
+// Build the applyBaseline options the `ignore` verb reconciles with. Extracted +
+// exported so a unit test can assert the opts include `constructPathByLogical`
+// (#1285): the ignore verb was the ONLY applyBaseline caller that omitted it, so a
+// synthetic "baseline value removed since record" finding carried no constructPath
+// and the constructPath-form ignore rule check.ts writes by preference never matched
+// it — `ignore --yes` then appended a duplicate, logicalId-form rule. Mirrors the
+// opts check.ts / stack-actions.ts / interactive-resolve.ts already build.
+export function ignoreApplyBaselineOpts(desired: Pick<Desired, 'resources'>): ApplyBaselineOptions {
+  return {
+    declaredByLogical: declaredKeysByLogical(desired.resources),
+    constructPathByLogical: constructPathsByLogical(desired.resources),
+    physicalIdByLogical: physicalIdsByLogical(desired.resources),
+    allLogicalIds: desired.resources.map((r) => r.logicalId),
+    warn: console.error,
+  };
+}
 
 export async function runIgnore(args: string[]): Promise<number> {
   const a = parseCommonArgs(args, 'ignore');
@@ -77,12 +97,7 @@ export async function runIgnore(args: string[]): Promise<number> {
       const baseline = await loadBaseline(stackName, desired.accountId, region);
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
       const reconciled = applyIgnores(
-        applyBaseline(findings, baseline, {
-          declaredByLogical: declaredKeysByLogical(desired.resources),
-          physicalIdByLogical: physicalIdsByLogical(desired.resources),
-          allLogicalIds: desired.resources.map((r) => r.logicalId),
-          warn: console.error,
-        }),
+        applyBaseline(findings, baseline, ignoreApplyBaselineOpts(desired)),
         { stackName, accountId: desired.accountId, region },
         config
       );
