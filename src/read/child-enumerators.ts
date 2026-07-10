@@ -35,9 +35,11 @@ import {
   ListEnvironmentsCommand,
 } from '@aws-sdk/client-appconfig';
 import {
+  type ApiKey as AppSyncApiKey,
   AppSyncClient,
   type DataSource as AppSyncDataSource,
   type FunctionConfiguration as AppSyncFunctionConfiguration,
+  ListApiKeysCommand,
   ListDataSourcesCommand,
   ListFunctionsCommand as ListAppSyncFunctionsCommand,
   ListResolversCommand,
@@ -1913,16 +1915,17 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
 
 // ── AppSync ──────────────────────────────────────────────────────────────────
 // An `AWS::AppSync::GraphQLApi` owns DataSources (the DynamoDB / Lambda / HTTP / NONE
-// resolver backings), Resolvers (per type/field attachments), AND Functions (the
-// pipeline functions composed into a pipeline resolver), each a separate
-// CloudFormation resource. A console / CLI `create-data-source` / `create-resolver` /
-// `create-function` (someone wires a new backing, resolver, or function onto an api
-// out of band) is invisible to cdk drift / CFn drift detection. The GraphQLApi model
-// does NOT reflect its datasources, resolvers, or functions inline, so there is no
-// double-report to suppress. The CC primaryIdentifier for AWS::AppSync::DataSource is
-// the bare DataSourceArn, for AWS::AppSync::Resolver the bare ResolverArn, and for
-// AWS::AppSync::FunctionConfiguration the bare FunctionArn, which CC GetResource /
-// DeleteResource consume.
+// resolver backings), Resolvers (per type/field attachments), Functions (the pipeline
+// functions composed into a pipeline resolver), AND ApiKeys (the API_KEY-auth
+// credentials), each a separate CloudFormation resource. A console / CLI
+// `create-data-source` / `create-resolver` / `create-function` / `create-api-key`
+// (someone wires a new backing, resolver, function, or — security-relevant — a durable
+// API_KEY auth credential onto an api out of band) is invisible to cdk drift / CFn drift
+// detection. The GraphQLApi model does NOT reflect its datasources, resolvers, functions,
+// or api keys inline, so there is no double-report to suppress. The CC primaryIdentifier
+// for AWS::AppSync::DataSource is the bare DataSourceArn, for AWS::AppSync::Resolver the
+// bare ResolverArn, for AWS::AppSync::FunctionConfiguration the bare FunctionArn, and for
+// AWS::AppSync::ApiKey the bare ApiKeyId, which CC GetResource / DeleteResource consume.
 
 // Pure diff: declared datasource names + live inventory -> the added datasources.
 export interface GraphQLApiChildInput {
@@ -2055,6 +2058,66 @@ async function pageAppSyncFunctions(
   return out;
 }
 
+// An `AWS::AppSync::ApiKey` is a durable API_KEY-auth credential — a console / CLI
+// `appsync create-api-key` mints one out of band that cdk drift / CFn drift detection
+// cannot see (#1367; #965 covered only the DELETE direction of an api key). AppSync does
+// NOT auto-materialize a default key for a bare API_KEY-auth GraphQLApi — a key exists
+// ONLY via CreateApiKey or a declared AWS::AppSync::ApiKey (the CDK `GraphqlApi`
+// construct's auto-key IS a declared CfnApiKey in the template) — so a live key not
+// matching a declared one is genuinely out of band and needs no built-in default filter
+// (unlike the RestApi `Empty`/`Error` models). The CC primaryIdentifier is the SINGLE
+// `/properties/ApiKeyId` (confirmed via describe-type) whose runtime form is the BARE key
+// id — identical to ListApiKeys' `id`. A declared ApiKey's CFn physical id (Ref) is the
+// ARN `arn:...:apis/<apiId>/apikey[s]/<keyId>`, so declared keys are matched by the bare
+// key id extracted from that ARN (fall back to a bare id if gather resolved it as such).
+
+// Extract the BARE ApiKeyId (the ListApiKeys / CC primaryIdentifier form) from a declared
+// AWS::AppSync::ApiKey physical id: its ARN's trailing `apikey[s]/<keyId>` segment. A bare
+// id (no `/`) passes through unchanged in case gather resolved the Ref to the bare form.
+function bareApiKeyId(physicalId: string): string {
+  return physicalId.includes('/') ? physicalId.slice(physicalId.lastIndexOf('/') + 1) : physicalId;
+}
+
+// Pure diff: declared api key ids + live inventory -> the added api keys. A declared
+// AWS::AppSync::ApiKey is matched by its bare ApiKeyId; an added key's identifier is its
+// live bare ApiKeyId (the CC primaryIdentifier).
+export interface GraphQLApiApiKeyInput {
+  declaredApiKeyIds: string[]; // bare ApiKeyIds of AWS::AppSync::ApiKey declared on this api
+  liveApiKeys: { id: string; label?: string | undefined }[];
+  // Fail-safe (#1089): a declared api key's identity (the bare ApiKeyId, parsed from its
+  // physical-id ARN) was UNRESOLVED, so it could not be matched against the live keys —
+  // suppress ALL added for this api (a `revert --remove-unrecorded` would otherwise
+  // DeleteResource a declared api key).
+  hasUnresolvedDeclaredApiKey?: boolean;
+}
+
+export function diffGraphQLApiApiKeys(input: GraphQLApiApiKeyInput): AddedChild[] {
+  if (input.hasUnresolvedDeclaredApiKey) return [];
+  const declared = new Set(input.declaredApiKeyIds);
+  const added: AddedChild[] = [];
+  for (const k of input.liveApiKeys) {
+    if (declared.has(k.id)) continue;
+    added.push({
+      resourceType: 'AWS::AppSync::ApiKey',
+      identifier: k.id, // bare ApiKeyId IS the CC primaryIdentifier
+      label: k.label ?? k.id,
+      live: { ApiKeyId: k.id },
+    });
+  }
+  return added;
+}
+
+async function pageApiKeys(client: AppSyncClient, apiId: string): Promise<AppSyncApiKey[]> {
+  const out: AppSyncApiKey[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(new ListApiKeysCommand({ apiId, nextToken: next }));
+    out.push(...(res.apiKeys ?? []));
+    next = res.nextToken;
+  } while (next);
+  return out;
+}
+
 // A GraphQLApi's CFn physical id is its ARN (`arn:...:apis/<apiId>`), but `ListDataSources`
 // and a DataSource's declared `ApiId` (`Fn::GetAtt ApiId`) both use the BARE api id. Take
 // the trailing `apis/<id>` segment when the physical id is an ARN; otherwise it already IS
@@ -2138,6 +2201,33 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     declaredFunctionArns.push(r.physicalId);
   }
 
+  // Declared api keys on THIS api. An AWS::AppSync::ApiKey's CFn physical id (Ref) is the
+  // ARN `arn:...:apis/<apiId>/apikey[s]/<keyId>`, so match DECLARED keys by the BARE
+  // ApiKeyId parsed from that ARN (= the ListApiKeys / CC primaryIdentifier form). A
+  // declared ApiKey's ApiId (Ref graphQlApiId, resolved by gather) is the bare api id;
+  // tolerate an ARN form too in case gather resolved it differently.
+  const declaredApiKeyIds: string[] = [];
+  // Fail-safe: a declared api key whose IDENTITY (physical id) is UNRESOLVED can't be matched
+  // against the live keys — suppress api-key added-reporting for this api rather than
+  // false-flag every live key as `added` with a DeleteResource offer (#1089).
+  let apiKeyIdUnresolved = false;
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::AppSync::ApiKey') continue;
+    // Fail-safe: an UNRESOLVED ApiId must not exclude a declared api key (#962).
+    const declaredApiId = r.declared.ApiId;
+    if (declaredApiId !== UNRESOLVED && !hasUnresolved(declaredApiId)) {
+      if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
+    }
+    // The identity of a declared ApiKey is its physical id (the CFn Ref ARN, from which the
+    // bare ApiKeyId is parsed). When gather could not resolve it (dynamic ref / no-default
+    // Param / degraded ImportValue), it is absent — fail safe: suppress ALL added for this api.
+    if (!r.physicalId) {
+      apiKeyIdUnresolved = true;
+      continue;
+    }
+    declaredApiKeyIds.push(bareApiKeyId(r.physicalId));
+  }
+
   const client = new AppSyncClient({ region, ...READ_RETRY });
   const dataSources = await pageDataSources(client, apiId);
   const liveDataSources = dataSources
@@ -2186,7 +2276,20 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
     .map((f) => ({ arn: f.functionArn, label: f.name ?? f.functionArn }));
   const functionAdded = diffGraphQLApiFunctions({ declaredFunctionArns, liveFunctions });
 
-  return [...datasourceAdded, ...resolverAdded, ...functionAdded];
+  // Api keys are listed per api. A live key not matching a declared AWS::AppSync::ApiKey is
+  // an out-of-band `appsync create-api-key` (#1367). Label with the key's description when it
+  // carries one (AWS returns none/"" for an undescribed key), else the bare id.
+  const apiKeys = await pageApiKeys(client, apiId);
+  const liveApiKeys = apiKeys
+    .filter((k): k is AppSyncApiKey & { id: string } => typeof k.id === 'string')
+    .map((k) => ({ id: k.id, label: k.description ? `${k.id} (${k.description})` : k.id }));
+  const apiKeyAdded = diffGraphQLApiApiKeys({
+    declaredApiKeyIds,
+    liveApiKeys,
+    hasUnresolvedDeclaredApiKey: apiKeyIdUnresolved,
+  });
+
+  return [...datasourceAdded, ...resolverAdded, ...functionAdded, ...apiKeyAdded];
 }
 
 // ── CloudWatch Logs ────────────────────────────────────────────────────────────
