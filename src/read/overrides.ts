@@ -1862,6 +1862,24 @@ const readMetricFilter: OverrideReader = async ({ physicalId, declared, region }
     ...(mf.applyOnTransformedLogs !== undefined && {
       ApplyOnTransformedLogs: mf.applyOnTransformedLogs,
     }),
+    // FieldSelectionCriteria (CFn AWS::Logs::MetricFilter prop) restricts the filter to
+    // log events matching system-field criteria; changing it out of band alters what the
+    // metric measures. It was omitted, so a declared value read back nothing (permanent
+    // readGap) and an out-of-band change was invisible. FP-safe: projected only when
+    // present; a live undefined is an absent top-level key, so a never-set filter stays
+    // CLEAN and only a set/changed value surfaces.
+    ...(mf.fieldSelectionCriteria !== undefined && {
+      FieldSelectionCriteria: mf.fieldSelectionCriteria,
+    }),
+    // EmitSystemFieldDimensions (CFn AWS::Logs::MetricFilter prop) lists system fields
+    // emitted as metric dimensions; changing it out of band silently changes the metric's
+    // dimensionality. It was omitted, so a declared list read back undefined (a `declared`
+    // FP with actual:undefined on every check) and an out-of-band change was invisible.
+    // FP-safe: projected only when present; a live undefined is an absent top-level key, so
+    // a never-set filter stays CLEAN and only a set/changed list surfaces.
+    ...(mf.emitSystemFieldDimensions !== undefined && {
+      EmitSystemFieldDimensions: mf.emitSystemFieldDimensions,
+    }),
   };
 };
 
