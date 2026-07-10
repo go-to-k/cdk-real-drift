@@ -1,3 +1,10 @@
+## [0.4.32](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.31...v0.4.32) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** match hasBaselineForStack on the sanitized stack-name component ([#1077](https://github.com/go-to-k/cdk-real-drift/issues/1077) follow-up) ([#1149](https://github.com/go-to-k/cdk-real-drift/issues/1149)) ([c547881](https://github.com/go-to-k/cdk-real-drift/commit/c547881551af18ad75c78679f9d014ae17df1683))
+
 ## [0.4.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.30...v0.4.31) (2026-07-10)
 
 
