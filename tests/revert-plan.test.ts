@@ -574,6 +574,117 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1080: undeclared Transfer::Server IpAddressType -> add op writing the IPV4 default, not a no-op remove', () => {
+    // AWS::Transfer::Server IpAddressType folds atDefault from KNOWN_DEFAULTS. UpdateServer is
+    // the same call proven (SecurityPolicyName) to IGNORE an omitted property, so a bare
+    // `remove` of an out-of-band change is a silent no-op — revert never converges. Revert
+    // must write the "IPV4" default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Transfer::Server',
+      path: 'IpAddressType',
+      actual: 'DUAL_STACK',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/IpAddressType',
+      value: 'IPV4',
+      prior: 'DUAL_STACK',
+    });
+    expect(plan.items[0]!.ops[0]).not.toMatchObject({ op: 'remove' });
+  });
+
+  it('#1080: undeclared Transfer::Server ProtocolDetails -> add op writing the whole KNOWN_DEFAULTS default object', () => {
+    // Same UpdateServer omit-ignored behavior; ProtocolDetails is a whole-object default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Transfer::Server',
+      path: 'ProtocolDetails',
+      actual: { PassiveIp: '1.2.3.4' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ProtocolDetails',
+      value: {
+        PassiveIp: 'AUTO',
+        SetStatOption: 'DEFAULT',
+        TlsSessionResumptionMode: 'ENFORCED',
+      },
+      prior: { PassiveIp: '1.2.3.4' },
+    });
+  });
+
+  it('#1080: undeclared Transfer::Server S3StorageOptions -> add op writing the DISABLED default object', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Transfer::Server',
+      path: 'S3StorageOptions',
+      actual: { DirectoryListingOptimization: 'ENABLED' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/S3StorageOptions',
+      value: { DirectoryListingOptimization: 'DISABLED' },
+      prior: { DirectoryListingOptimization: 'ENABLED' },
+    });
+  });
+
+  it('#1080: undeclared IAM::Role Description -> add op writing the empty-string default, not a no-op remove', () => {
+    // AWS::IAM::Role Description folds atDefault (empty string) from KNOWN_DEFAULTS. UpdateRole
+    // IGNORES an omitted Description the same way it ignores an omitted MaxSessionDuration, so a
+    // bare `remove` of an out-of-band description is a silent no-op. Revert must write "".
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::IAM::Role',
+      path: 'Description',
+      actual: 'set out of band',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Description',
+      value: '',
+      prior: 'set out of band',
+    });
+    expect(plan.items[0]!.ops[0]).not.toMatchObject({ op: 'remove' });
+  });
+
+  it('#1080: undeclared Location::Tracker PricingPlan -> add op writing the RequestBasedUsage default', () => {
+    // UpdateTracker ignores an omitted PricingPlan (deprecated field); revert must set-to-default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Location::Tracker',
+      path: 'PricingPlan',
+      actual: 'MobileAssetTracking',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/PricingPlan',
+      value: 'RequestBasedUsage',
+      prior: 'MobileAssetTracking',
+    });
+  });
+
+  it('#1080: undeclared Location::PlaceIndex PricingPlan -> add op writing the RequestBasedUsage default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Location::PlaceIndex',
+      path: 'PricingPlan',
+      actual: 'MobileAssetTracking',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/PricingPlan',
+      value: 'RequestBasedUsage',
+      prior: 'MobileAssetTracking',
+    });
+  });
+
   it('#912: undeclared DocDB DBInstance CACertificateIdentifier -> add op writing the default CA, not a no-op remove', () => {
     // AWS::DocDB::DBInstance CACertificateIdentifier is inside the ModifyDBInstance writer
     // allowlist: a `remove` empties the desired model, the writer sends nothing — a silent
