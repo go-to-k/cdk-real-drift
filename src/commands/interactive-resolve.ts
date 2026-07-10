@@ -528,24 +528,15 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
   if (groups.record.length + groups.ignore.length + groups.revert.length === 0)
     return { exit: p.code, awsMutated: false };
 
-  // record: the picker already chose which undeclared values — recordStack records
-  // exactly those (preselectedKeys) while still auto-keeping the existing baseline.
-  if (groups.record.length > 0) {
-    const preselectedKeys = new Set(buildRecorded(groups.record).map(recordedKey));
-    await recordStack({
-      stackName: p.stackName,
-      region: p.region,
-      desired: p.desired,
-      findings: applyIgnores(
-        p.findings,
-        { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
-        p.config
-      ),
-      yes: p.yes,
-      interactive: true,
-      preselectedKeys,
-    });
-  }
+  // ignore FIRST, then record (#761): record snapshots completeness against the
+  // ignore-filtered findings, so it must see the ignore rules THIS pass writes. If record
+  // ran first with the pre-pass `p.config`, a to-be-ignored finding would still read as an
+  // unrecorded `undeclared` value and BLOCK the resource from being marked snapshot-complete
+  // (computeCompleteResources) — a future value there would then read `unrecorded` (inventory)
+  // instead of "appeared since record" (drift), weakening detection until the next record.
+  // The bulk-chain path stays clean because it reloads config between actions; we mirror that
+  // by ordering the write before the read AND reloading the config for the record call below.
+  //
   // ignore: write rules for exactly the chosen findings (yes:true skips ignoreStack's
   // own multiselect — the picker IS the selection). addIgnoreRules unions, no data loss.
   if (groups.ignore.length > 0) {
@@ -558,10 +549,37 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       region: p.region,
     });
   }
+  // record: the picker already chose which undeclared values — recordStack records
+  // exactly those (preselectedKeys) while still auto-keeping the existing baseline.
+  if (groups.record.length > 0) {
+    const preselectedKeys = new Set(buildRecorded(groups.record).map(recordedKey));
+    // Reload the config so record sees the ignore rules just written above (#761) — mirrors
+    // how the top-level chain loop reloads config between non-AWS actions. Only ignore writes
+    // config here, so skip the reload when nothing was ignored (no change to observe).
+    const recordConfig = groups.ignore.length > 0 ? await loadConfig() : p.config;
+    await recordStack({
+      stackName: p.stackName,
+      region: p.region,
+      desired: p.desired,
+      findings: applyIgnores(
+        p.findings,
+        { stackName: p.stackName, accountId: p.desired.accountId, region: p.region },
+        recordConfig
+      ),
+      yes: p.yes,
+      interactive: true,
+      preselectedKeys,
+    });
+  }
   // revert (AWS, last): pass ONLY the chosen findings; autoSelectAll skips the op
   // multiselect (already chosen) but keeps the AWS-write confirm.
   let revertResolved = new Set<string>();
   let revertExit = 0;
+  // #761: track whether the revert actually wrote. A CANCELLED confirm (outcome.aborted)
+  // mutates nothing, so it must NOT make the pass terminal (awsMutated) nor be reported as
+  // "applied" in the closing note — else the user answers No at the AWS-write confirm yet
+  // the summary claims the revert happened and the menu never re-shows to re-address it.
+  let revertAborted = false;
   if (groups.revert.length > 0) {
     const revertKeys = new Set(groups.revert.map(keyOf));
     const outcome = await revertStack({
@@ -586,18 +604,26 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       interactive: true,
       autoSelectAll: true,
     });
+    revertAborted = outcome.aborted;
     if (!outcome.aborted) {
       revertResolved = revertKeys; // converged-or-attempted; outcome.exit folds in non-convergence
       revertExit = outcome.exit;
     }
   }
+  // Word the revert group by what actually happened (#761): "cancelled" when the AWS-write
+  // confirm was declined (nothing written), "applied" otherwise. record/ignore always apply.
+  const revertSummary = revertAborted
+    ? summarizeChoices(chosen.map((a) => (a === 'revert' ? 'skip' : a)))
+    : summarizeChoices(chosen);
+  const cancelledNote = revertAborted ? ` (${groups.revert.length} revert cancelled)` : '';
   console.error(
-    `note: ${p.stackName}: per-finding decisions applied (${summarizeChoices(chosen)}).`
+    `note: ${p.stackName}: per-finding decisions applied (${revertSummary})${cancelledNote}.`
   );
   return {
     exit: Math.max(await recomputeExit(p, revertResolved), revertExit),
-    // per-finding is terminal only if it actually wrote to AWS (a revert ran); a
-    // record/ignore-only per-finding pass is re-derivable, so the menu re-shows.
-    awsMutated: groups.revert.length > 0,
+    // per-finding is terminal only if it actually wrote to AWS (a revert that was NOT
+    // cancelled); a record/ignore-only pass, or a CANCELLED revert (#761), is re-derivable,
+    // so the menu re-shows to re-address the still-standing drift.
+    awsMutated: groups.revert.length > 0 && !revertAborted,
   };
 }
