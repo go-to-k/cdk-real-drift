@@ -1,3 +1,10 @@
+## [0.4.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.28...v0.4.29) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** surface JSON.parse position + conflict/recovery hint on a corrupt baseline ([#1138](https://github.com/go-to-k/cdk-real-drift/issues/1138)) ([84d3172](https://github.com/go-to-k/cdk-real-drift/commit/84d317298b81991e03fa9a18701177c5f6e08c60))
+
 ## [0.4.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.27...v0.4.28) (2026-07-10)
 
 
