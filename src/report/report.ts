@@ -320,6 +320,15 @@ export interface StackJsonReport {
   stack: string;
   drifted: number;
   findings: Finding[];
+  // Whether this stack has a committed `.cdkrd` baseline (undeclared state is being
+  // WATCHED). Present on every successfully-checked stack (#1095): without a baseline the
+  // classification semantics shift — appeared-since-record out-of-band values read as
+  // `unrecorded` and are excluded from `drifted`, so a QUIET no-baseline stack emits the
+  // byte-identical `drifted: 0` of a watched-clean stack. A --json consumer summing
+  // `drifted` cannot otherwise tell an UNWATCHED stack from a watched clean one — this
+  // field is that distinguisher (false = never recorded / unwatched). Omitted on the
+  // error / deleted-stack shapes below (they were never reconciled against a baseline).
+  baseline?: boolean;
   // Present ONLY on a stack that ERRORED before it could be checked — so a --json
   // consumer sees WHICH stacks ran and which failed, rather than a silent omission (the
   // pre-#755 behavior printed nothing for an errored stack). Never set on a
@@ -343,7 +352,12 @@ export function deletedStackReport(label: string): StackJsonReport {
 
 export function buildStackJson(
   rawFindings: Finding[],
-  header: string
+  header: string,
+  // Whether this stack has a committed `.cdkrd` baseline (#1095). Threaded through so the
+  // --json element carries a `baseline` presence flag — a consumer can then tell an
+  // UNWATCHED (never-recorded) stack from a watched-clean one, which otherwise emit the
+  // byte-identical `drifted: 0`.
+  hasBaseline?: boolean
 ): { json: StackJsonReport; code: number } {
   // Annotate origin hints (diff/hints.ts) so the --json payload carries them exactly as
   // the text path does — the single render chokepoint. A hint is display-only.
@@ -352,7 +366,10 @@ export function buildStackJson(
   // never counted toward the verdict/exit.
   const isDriftHere = (f: Finding): boolean => DRIFT_TIERS.includes(f.tier) && !f.unrecorded;
   const drifted = findings.filter(isDriftHere).length;
-  return { json: { stack: header, drifted, findings }, code: drifted === 0 ? 0 : 1 };
+  return {
+    json: { stack: header, drifted, findings, baseline: hasBaseline === true },
+    code: drifted === 0 ? 0 : 1,
+  };
 }
 
 export function report(rawFindings: Finding[], header: string, opts: ReportOptions = {}): number {

@@ -800,7 +800,16 @@ export async function runCheck(args: string[]): Promise<number> {
       // suppressed under --json, so this branch is the whole json output path.
       let code: number;
       if (a.json) {
-        const { json, code: jsonCode } = buildStackJson(reconciled, reportHeader);
+        // #1095: pass baseline presence so the --json element carries a `baseline` flag —
+        // a QUIET no-baseline stack (unwatched) is otherwise byte-identical to a
+        // watched-clean one (`drifted: 0`, `findings: []`), so a consumer summing
+        // `drifted` cannot tell them apart. `baseline` is already undefined under
+        // --show-all (loaded that way above), so this correctly reports false there.
+        const { json, code: jsonCode } = buildStackJson(
+          reconciled,
+          reportHeader,
+          baseline !== undefined
+        );
         jsonReports.push(json);
         code = jsonCode;
       } else {
@@ -846,10 +855,18 @@ export async function runCheck(args: string[]): Promise<number> {
           verbose: a.verbose,
           positionPrefix: posPrefix,
         });
-      } else if (!baseline && !hasUnrecorded && !a.json && !a.showAll && !a.preDeploy) {
-        // R142: no interactive establish prompt could fire (non-TTY, or --fail) and there is
-        // no baseline on an otherwise-quiet stack — the report gave no record cue (nothing is
-        // unrecorded), so point at how to create the day-1 baseline. stderr keeps stdout clean.
+      } else if (!baseline && !hasUnrecorded && !a.showAll && !a.preDeploy) {
+        // R142: no interactive establish prompt could fire (non-TTY, --fail, OR --json —
+        // shouldOfferInteractiveResolve is false in all of those) and there is no baseline on
+        // an otherwise-quiet stack — the report gave no record cue (nothing is unrecorded), so
+        // point at how to create the day-1 baseline. #1095: emit UNCONDITIONALLY to stderr
+        // (the old `!a.json` gate dropped it NOWHERE under --json), matching the schema-v1
+        // note above (#944): a no-baseline stack SHIFTS the classification semantics
+        // (appeared-since-record out-of-band values read as `unrecorded`, excluded from
+        // `drifted`), so the --json consumer is exactly who must see it. The sink is
+        // `console.error`, so JSON stdout stays pure. No double-print: this `else if` and the
+        // interactive `if` above are mutually exclusive, and the TTY-interactive no-baseline
+        // case takes the `if` branch (R141 establish prompt), never this note.
         console.error(
           `note: ${stackName}: no .cdkrd baseline yet — run \`cdkrd record\` to establish one (future out-of-band changes then report as drift).`
         );
