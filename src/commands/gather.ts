@@ -427,15 +427,35 @@ async function classifyRead(
   // resource of this type on the degraded EMPTY (no readOnly strip → first-run noise; no
   // writeOnly readGap → false declared drift; and it poisons revert: writeOnlyReincludeOps
   // drops declared write-only props, createOnly bars lost) even after the throttle clears
-  // (#1067). Leave the map unset on failure so the next resource of the type re-fetches; the
-  // EMPTY still classifies THIS resource (degraded, no strip — unchanged behavior).
-  let schema = schemas.get(r.resourceType);
-  if (!schema) {
+  // (#1067). Leave the map unset on failure so the next resource of the type re-fetches.
+  //
+  // Beyond not caching it, we must NOT diff THIS resource against the EMPTY schema either
+  // (#858): an un-schema'd compare is wrong in BOTH directions — readOnly live attrs (Arn,
+  // ids, timestamps) are not stripped → flood `[Potential Drift]` (first-run-noise invariant
+  // violated); declared writeOnly props are not routed to readGap → compared against an absent
+  // live value → red `[CFn-Declared Drift]` (`--fail` exits 1 on an untouched stack). Surfacing
+  // a known-wrong diff is worse than admitting the coverage gap, so DEGRADE to a single `skipped`
+  // finding (coverage-incomplete, `--strict`-visible) — mirroring the not-readable branch above.
+  // Only when the schema was FETCHED THIS CALL and FAILED: a cache HIT is a prior SUCCESS (a real
+  // schema), so classify normally. Key off `res.failed`, not `schema` being empty.
+  const cachedSchema = schemas.get(r.resourceType);
+  if (!cachedSchema) {
     const res = await getSchemaInfoResult(cfn, r.resourceType);
-    schema = res.info;
-    if (!res.failed) schemas.set(r.resourceType, schema);
+    if (res.failed) {
+      return [
+        {
+          tier: 'skipped',
+          logicalId: r.logicalId,
+          resourceType: r.resourceType,
+          path: '',
+          note: 'schema unavailable (DescribeType failed) — coverage incomplete',
+        },
+      ];
+    }
+    schemas.set(r.resourceType, res.info);
+    return classifyResource(r, read.live, res.info, classifyOpts);
   }
-  return classifyResource(r, read.live, schema, classifyOpts);
+  return classifyResource(r, read.live, cachedSchema, classifyOpts);
 }
 
 export async function gatherFindings(
