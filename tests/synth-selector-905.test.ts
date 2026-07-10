@@ -129,10 +129,14 @@ describe('resolveStacks — forwards target patterns to scope synth validation (
     expect(lastSynthOpts().stackPatterns).toBeUndefined();
   });
 
-  it('--all forwards NO scope even when positional names are present (target everything)', async () => {
-    // --all overrides positional names, so the user asked for everything → validate all.
-    await resolveStacks(args({ all: true, stackNames: ['GoodStack'] }));
-    expect(lastSynthOpts().stackPatterns).toBeUndefined();
+  it('--all combined with positional names is now a hard error (#1327), not a silent override', async () => {
+    // #1327: --all + named stacks used to SILENTLY discard the names and target everything —
+    // dangerous for `revert Prod --all --yes`. It now throws before any synth/discovery, so
+    // discoverStacks is never reached.
+    await expect(resolveStacks(args({ all: true, stackNames: ['GoodStack'] }))).rejects.toThrow(
+      /--all cannot be combined with named stacks/
+    );
+    expect(discoverStacksMock).not.toHaveBeenCalled();
   });
 
   it('still resolves only the named stack (discovery returns all; selector only narrows validation)', async () => {

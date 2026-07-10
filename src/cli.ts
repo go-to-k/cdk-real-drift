@@ -45,7 +45,7 @@ OPTIONS
                               auto-discovery + construct-path output
   -c, --context key=value     context for synth (repeatable; cdk.json is the base)
   --all                       target EVERY stack the app defines (the default when
-                              no <stack> is named; overrides any positional names)
+                              no <stack> is named; cannot be combined with named stacks)
   --json                      machine-readable output
   --fail                      (check) exit 1 on drift + never prompt — for
                               scripts/CI (same convention as \`cdk diff --fail\`);
