@@ -298,8 +298,14 @@ function pointerToDotted(p: string): string {
   // and drop a trailing `/properties`, so the dotted path matches the actual model key
   // (`EncryptionAtRestOptions`, `AdvancedSecurityOptions.Enabled`) instead of keeping a
   // literal `properties` segment that matches nothing.
+  //
+  // The leading slash is OPTIONAL (`/?`): some registry schemas ship a
+  // `propertyTransform` key with NO leading slash — `AWS::SimSpaceWeaver::Simulation`
+  // emits `"properties/MaximumDuration"`. Without tolerating that, the key would land
+  // under the dead `properties.MaximumDuration` and the transform would never be
+  // consulted — a permanent declared false positive (#1311).
   return p
-    .replace(/^\/properties\//, '')
+    .replace(/^\/?properties\//, '')
     .replace(/\/properties\//g, '/')
     .replace(/\/properties$/, '')
     .replace(/\//g, '.');

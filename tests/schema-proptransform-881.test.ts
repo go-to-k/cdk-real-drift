@@ -26,6 +26,27 @@ describe('#881 parseSchema honors propertyTransform', () => {
     });
   });
 
+  it('tolerates a NO-leading-slash `properties/` key (SimSpaceWeaver) while keeping the slashed form (#1311)', () => {
+    // `AWS::SimSpaceWeaver::Simulation` ships `"properties/MaximumDuration"` with NO
+    // leading `/`. Without the `/?` tolerance the key lands under the dead
+    // `properties.MaximumDuration` and the transform is never consulted → a permanent
+    // declared FP. The slashed nested/array form must still normalize as before.
+    const info = parseSchema(
+      JSON.stringify({
+        typeName: 'AWS::SimSpaceWeaver::Simulation',
+        properties: {},
+        propertyTransform: {
+          'properties/MaximumDuration': '$uppercase(MaximumDuration)',
+          '/properties/A/*/B': '$lowercase(B)',
+        },
+      })
+    );
+    expect(info.propertyTransforms).toEqual({
+      MaximumDuration: '$uppercase(MaximumDuration)',
+      'A.*.B': '$lowercase(B)',
+    });
+  });
+
   it('omits propertyTransforms entirely when the schema has no propertyTransform block', () => {
     const info = parseSchema(JSON.stringify({ typeName: 'AWS::Test::Type', properties: {} }));
     expect(info.propertyTransforms).toBeUndefined();
