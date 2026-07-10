@@ -51,6 +51,32 @@ export function isAlreadyGone(e: unknown): boolean {
   return m.includes('not found') || m.includes('does not exist') || m.includes('notfound');
 }
 
+// A delete failure whose blocker is ANOTHER resource still present — the resource can
+// only be deleted after its dependent sibling is gone (#765/#969). In a delete BATCH the
+// blocker is almost always INTERNAL to the plan (a sibling `added`-delete queued later),
+// so time alone never fixes it — only the next `applyRevertDeletes` pass, once the sibling
+// is deleted, does. Such an error MUST NOT burn the per-item transient retry budget: the
+// generic transient patterns (`ConflictException`, `resource is in use`, …) classify it
+// TRANSIENT, so an in-item `retryTransient` would spin its full backoff / `--wait` deadline
+// against a blocker the pass loop is designed to clear for free (the exact #969 blowup —
+// a wrong-ordered Route→Integration pair burning a guaranteed-futile 10-minute `--wait`).
+// Deferring it to the pass loop is a NO-COST fail-fast; a genuine throttle (below) still
+// gets its in-item retry. Matches the DependencyViolation code (EC2/ELB/etc.) plus the
+// cross-service "still referenced / still in use / cannot delete because …" phrasings and
+// ApiGatewayV2's ConflictException "referenced by" form for the #765 child-delete pairs.
+export function isDependencyViolation(error: string | undefined): boolean {
+  if (!error) return false;
+  return /DependencyViolation|dependent object|still (in use|referenced|being used|depends on|contains|has (a |an |dependent |associated ))|cannot (be )?delete[d]?[^.]*because[^.]*(referenced|in use|dependent|attached|associated|member|child)|is (still )?(referenced|attached|associated|in use)/i.test(
+    error
+  );
+}
+
+// Internal sentinel: a dependency-violation delete swaps its (transient-CLASSIFIED) error
+// for this string so retryTransient sees a TERMINAL failure and returns immediately without
+// retrying/sleeping. Deliberately worded to match NONE of transient.ts's TRANSIENT_PATTERNS.
+// Never surfaced to the user — the real error is restored before applyRevertDelete returns.
+const DEP_VIOLATION_TERMINAL = 'dependency-violation deferred to delete-batch pass loop';
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 // Poll a Cloud Control ProgressEvent (Update or Delete) to a terminal state. `sleep`/`now`
@@ -204,9 +230,9 @@ export async function applyRevertDelete(
   identifier: string = item.physicalId,
   retry: RetryOptions = {}
 ): Promise<ApplyResult> {
-  // Same transient-retry wrapper as the update path: a DeleteResource can also hit a
-  // "resource is currently updating / in use" window and settle on a retry.
-  return retryTransient(async () => {
+  // ONE DeleteResource send + poll. Self-contained (catches its own throws) so it can be
+  // re-invoked verbatim by the transient retry — same contract retryTransient requires.
+  const oneDelete = async (): Promise<ApplyResult> => {
     try {
       const res = await cc.send(
         new DeleteResourceCommand({ TypeName: item.resourceType, Identifier: identifier })
@@ -220,5 +246,36 @@ export async function applyRevertDelete(
       if (isAlreadyGone(err)) return { ok: true };
       return { ok: false, error: errorText(e) };
     }
-  }, retry);
+  };
+
+  // A DEPENDENCY-VIOLATION failure (#969) must NOT burn the in-item transient-retry budget.
+  // In a delete BATCH the blocker is a sibling delete queued later in the SAME pass, so time
+  // (and the `--wait` deadline) can never free it — only the next applyRevertDeletes pass,
+  // after that sibling is deleted, does. It must fail FAST back to the pass loop (the pass IS
+  // the retry) rather than spin its private backoff / `--wait` deadline on a guaranteed-futile
+  // wait (the #969 blowup: a wrong-ordered Route→Integration pair burning a full 10-minute
+  // `--wait` before the Route even runs). The generic transient patterns classify a
+  // dependency error TRANSIENT (`ConflictException`, `resource is in use`, …), so we can't let
+  // retryTransient see the raw text. Wrap the op: on a dependency violation, stash the real
+  // error and hand retryTransient a TERMINAL-classified sentinel so it returns immediately
+  // (no retry, no sleep); a genuine transient (throttle / mid-update) still flows through with
+  // the full backoff / `--wait` semantics unchanged. This keeps retryTransient the single
+  // driver of backoff/deadline/onRetry — no duplicated retry math, no double send.
+  let deferredDepError: string | undefined;
+  const guardedDelete = async (): Promise<ApplyResult> => {
+    const r = await oneDelete();
+    if (!r.ok && isDependencyViolation(r.error)) {
+      deferredDepError = r.error;
+      return { ok: false, error: DEP_VIOLATION_TERMINAL };
+    }
+    return r;
+  };
+  const r = await retryTransient(guardedDelete, retry);
+  // Restore the real dependency-violation text for the caller (the pass loop folds it back).
+  // deferredDepError is always set when the sentinel appears (guardedDelete sets it in the
+  // same call that returns the sentinel); fall back defensively to the sentinel otherwise.
+  if (!r.ok && r.error === DEP_VIOLATION_TERMINAL) {
+    return { ok: false, error: deferredDepError ?? DEP_VIOLATION_TERMINAL };
+  }
+  return r;
 }
