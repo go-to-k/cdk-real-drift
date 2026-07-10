@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.2...v0.7.0) (2026-07-10)
+
+
+### Features
+
+* **read:** add SDK read override for Glue::SecurityConfiguration ([#857](https://github.com/go-to-k/cdk-real-drift/issues/857), Glue half) ([#1183](https://github.com/go-to-k/cdk-real-drift/issues/1183)) ([e78c504](https://github.com/go-to-k/cdk-real-drift/commit/e78c5041cd8515465f46bb7bb6587d574d3ab918))
+
 ## [0.6.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.1...v0.6.2) (2026-07-10)
 
 
