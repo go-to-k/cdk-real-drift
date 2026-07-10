@@ -177,7 +177,11 @@ export function unpreviewableParamInfo(
     })
     .map(([k]) => k);
   if (noValue.length === 0) return null;
+  // #1296: a no-value param referenced ONLY through a Condition (e.g. `Fn::If`-fed property or a
+  // resource-level `Condition:` attribute) is still unpreviewable — union in the Conditions bodies
+  // so its Refs are counted, not just those under Resources.
   const referenced = collectReferencedNames(template.Resources ?? {});
+  collectReferencedNames(template.Conditions ?? {}, referenced);
   const unpreviewable = noValue.filter((k) => referenced.has(k)).sort();
   if (unpreviewable.length === 0) return null;
   const shown = unpreviewable.slice(0, 10);
