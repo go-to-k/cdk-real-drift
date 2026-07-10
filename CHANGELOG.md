@@ -1,3 +1,10 @@
+## [0.4.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.29...v0.4.30) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** pin the current account in the deleted-out-of-band baseline probe ([#1046](https://github.com/go-to-k/cdk-real-drift/issues/1046)) ([#1140](https://github.com/go-to-k/cdk-real-drift/issues/1140)) ([a79bacb](https://github.com/go-to-k/cdk-real-drift/commit/a79bacbd3b7113589e72979de0a91c342797eb28))
+
 ## [0.4.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.28...v0.4.29) (2026-07-10)
 
 
