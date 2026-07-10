@@ -1,3 +1,10 @@
+## [0.12.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.6...v0.12.7) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold LakeFormation PrincipalPermissions undeclared Catalog=<account> ([#930](https://github.com/go-to-k/cdk-real-drift/issues/930)) ([#1254](https://github.com/go-to-k/cdk-real-drift/issues/1254)) ([ad88c0c](https://github.com/go-to-k/cdk-real-drift/commit/ad88c0cc7365a659b2bee4567aaa832d068b9dc1))
+
 ## [0.12.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.5...v0.12.6) (2026-07-10)
 
 
