@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (mutation-matrix integ run, final state): a real versioned+encrypted bucket; raw classify (pre-baseline) surfaces exactly the 3 real undeclared values (AccelerateConfiguration left Suspended by M3, PublicAccessBlockConfiguration, OwnershipControls) while encryption struct extras (BucketKeyEnabled/BlockedEncryptionTypes), aws:* tags, generated names and readOnly fields stay quiet.",
+  "description": "RECORDED LIVE (mutation-matrix integ run, final state): a real versioned+encrypted bucket; raw classify (pre-baseline) folds the AWS-default values to atDefault (AccelerateConfiguration left Suspended by M3 — the off/default state, #1288; PublicAccessBlockConfiguration; OwnershipControls; AbacStatus) while encryption struct extras (BucketKeyEnabled/BlockedEncryptionTypes), aws:* tags, generated names and readOnly fields stay quiet.",
   "resource": {
     "logicalId": "Data666C94C7",
     "resourceType": "AWS::S3::Bucket",
@@ -135,7 +135,7 @@
       "constructPath": "CdkdriftIntegBasic/Data"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Data666C94C7",
       "resourceType": "AWS::S3::Bucket",
       "path": "AccelerateConfiguration",
