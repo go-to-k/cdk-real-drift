@@ -3923,8 +3923,48 @@ export function classifyResource(
       } catch {
         liveDefParsed = undefined;
       }
-      if (liveDefParsed !== undefined && deepEqual(liveDefParsed, sfnDefinitionObject)) {
+      // #712 (symptom B) for the OBJECT form: `DefinitionSubstitutions` apply to BOTH
+      // definition forms in CloudFormation, but the resolution above only rewrites the
+      // declared `DefinitionString` STRING. For the object form the declared object still
+      // carries the literal `${token}` placeholders while the live compiled `DefinitionString`
+      // is already SUBSTITUTED — so serialize the declared object, resolve the tokens through
+      // the SAME `applyDefinitionSubstitutions` helper #712 uses for the string form, and
+      // re-parse before comparing. A genuine out-of-band definition edit still fails the
+      // compares below.
+      let declaredDef: unknown = sfnDefinitionObject;
+      if (sfnDefinitionSubstitutions !== undefined) {
+        try {
+          declaredDef = JSON.parse(
+            applyDefinitionSubstitutions(
+              JSON.stringify(sfnDefinitionObject),
+              sfnDefinitionSubstitutions
+            )
+          );
+        } catch {
+          declaredDef = sfnDefinitionObject;
+        }
+      }
+      if (liveDefParsed !== undefined && deepEqual(liveDefParsed, declaredDef)) {
         findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+      // #1301 (residue of #1247): GetTemplate masks every non-ASCII character in a stored
+      // string literal as `?`, so a declared object `Definition` carrying non-ASCII text (a
+      // Japanese `Cause` message) arrives `?`-masked while the live compiled `DefinitionString`
+      // is intact — the strict compare above can never match, and letting the whole live
+      // definition surface as undeclared drift on a clean deploy is a false positive. This
+      // mirrors the declared `DefinitionString` branch (#1247): when the two definitions differ
+      // ONLY at such masked leaves, the declared value is unknowable from GetTemplate
+      // (CloudFormation itself reports it IN_SYNC), so emit the SAME readGap instead of a false
+      // undeclared. A genuine out-of-band edit still fails the mask-tolerant compare and surfaces.
+      if (liveDefParsed !== undefined && deepEqualModuloNonAsciiMask(declaredDef, liveDefParsed)) {
+        findings.push({
+          tier: 'readGap',
+          logicalId,
+          resourceType,
+          path: 'Definition',
+          note: GETTEMPLATE_MASK_NOTE,
+        });
         continue;
       }
     }

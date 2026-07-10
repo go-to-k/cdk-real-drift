@@ -206,3 +206,94 @@ describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not 
     expect(tier(f, 'declared')).toContain('DefinitionString');
   });
 });
+
+describe('#1301 — object Definition parity with the string form (non-ASCII mask + DefinitionSubstitutions)', () => {
+  // Both fixes live in the OBJECT-`Definition` fold of the undeclared loop, which #1247's
+  // declared-`DefinitionString` non-ASCII demotion and #712-B's substitution resolution never
+  // reached. The SAME machine declared with the STRING form already behaved correctly; these
+  // assert the object form now matches, so a clean un-mutated stack has ZERO potential drift.
+
+  it('Case A: object Definition with non-ASCII leaves demotes to readGap at Definition, not undeclared DefinitionString', () => {
+    // The declared object's string leaf arrives `?`-masked from GetTemplate while the live
+    // compiled DefinitionString is intact, so the strict structural fold can never match.
+    // Mirror the STRING form: emit a readGap (at Definition), never surface the whole
+    // definition as undeclared drift on a clean deploy.
+    const DEF_OBJECT_JP = {
+      StartAt: 'Bad',
+      States: {
+        Bad: { Type: 'Fail', Cause: '入力された値が正しくありません', Error: 'InvalidFormat' },
+      },
+    };
+    const mask = (v: unknown): unknown =>
+      JSON.parse(JSON.stringify(v).replace(/[^\x00-\x7f]/gu, '?'));
+    const res = mk({
+      Definition: mask(DEF_OBJECT_JP),
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    const live = {
+      DefinitionString: JSON.stringify(DEF_OBJECT_JP),
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    };
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'undeclared')).not.toContain('DefinitionString');
+    // The mask readGap (the #1301 fix) is emitted at `Definition` with the GetTemplate-mask
+    // note — distinct from the always-present writeOnly `Definition` readGap.
+    const maskGap = f.find(
+      (x) => x.tier === 'readGap' && x.path === 'Definition' && x.note?.includes('masks non-ASCII')
+    );
+    expect(maskGap).toBeDefined();
+  });
+
+  it('Case B: object Definition with a ${token} + DefinitionSubstitutions folds against the live substituted definition', () => {
+    // Substitutions apply to BOTH definition forms; the declared object still carries the
+    // literal `${greeting}` while the live compiled DefinitionString echoes the substituted
+    // value. Resolving the object leaves through applyDefinitionSubstitutions makes it fold.
+    const DEF_OBJECT_TOKEN = {
+      StartAt: 'P',
+      States: { P: { Type: 'Pass', Result: { v: '${greeting}' }, End: true } },
+    };
+    const res = mk({
+      Definition: DEF_OBJECT_TOKEN,
+      DefinitionSubstitutions: { greeting: 'hello-world' },
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    const live = {
+      DefinitionString:
+        '{"StartAt":"P","States":{"P":{"End":true,"Result":{"v":"hello-world"},"Type":"Pass"}}}',
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    };
+    const f = classifyResource(res, live, sfnSchema);
+    expect(tier(f, 'atDefault')).toContain('DefinitionString');
+    expect(tier(f, 'undeclared')).not.toContain('DefinitionString');
+  });
+
+  it('Control: a genuine ASCII-visible out-of-band edit to the object Definition still surfaces as undeclared', () => {
+    // Detection preserved: the live definition diverges by an ASCII leaf that neither the
+    // substitution nor the non-ASCII mask can explain, so it fails BOTH compares.
+    const DEF_OBJECT_TOKEN = {
+      StartAt: 'P',
+      States: { P: { Type: 'Pass', Result: { v: '${greeting}' }, End: true } },
+    };
+    const res = mk({
+      Definition: DEF_OBJECT_TOKEN,
+      DefinitionSubstitutions: { greeting: 'hello-world' },
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    });
+    // Substituted the token BUT also flipped Pass -> Wait: a genuine out-of-band edit.
+    const live = {
+      DefinitionString:
+        '{"StartAt":"P","States":{"P":{"End":true,"Result":{"v":"hello-world"},"Seconds":5,"Type":"Wait"}}}',
+      RoleArn: 'arn:aws:iam::111111111111:role/r',
+    };
+    const f = classifyResource(res, live, sfnSchema);
+    // The live compiled definition diverges by an ASCII leaf → surfaces as undeclared drift,
+    // NOT folded and NOT demoted to a mask readGap (the #1301 mask branch must not swallow it;
+    // the writeOnly `Definition` readGap that always accompanies the object form is unrelated).
+    expect(tier(f, 'undeclared')).toContain('DefinitionString');
+    expect(tier(f, 'atDefault')).not.toContain('DefinitionString');
+    const maskGap = f.find(
+      (x) => x.tier === 'readGap' && x.path === 'Definition' && x.note?.includes('masks non-ASCII')
+    );
+    expect(maskGap).toBeUndefined();
+  });
+});
