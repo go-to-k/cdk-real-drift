@@ -1,3 +1,10 @@
+## [0.12.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.19...v0.12.20) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** detect out-of-band Glue job ETL script swaps via a recorded ScriptSha256 signal ([#1346](https://github.com/go-to-k/cdk-real-drift/issues/1346)) ([#1357](https://github.com/go-to-k/cdk-real-drift/issues/1357)) ([925cbc2](https://github.com/go-to-k/cdk-real-drift/commit/925cbc2a04af414215a15bee19142ad8d631c7a9))
+
 ## [0.12.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.18...v0.12.19) (2026-07-10)
 
 
