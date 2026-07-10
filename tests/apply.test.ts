@@ -1,6 +1,7 @@
 import {
   CloudControlClient,
   DeleteResourceCommand,
+  GetResourceRequestStatusCommand,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -154,6 +155,72 @@ describe('applyRevertItem — transient retry then hint (issue #467)', () => {
     expect(r.ok).toBe(false);
     expect(r.error).toContain('Throttling');
     expect(r.transient).toBe(true);
+  });
+});
+
+describe('pollToCompletion — a status-poll failure must NOT re-send the mutation (issue #1064)', () => {
+  const THROTTLE = Object.assign(new Error('Rate exceeded'), { name: 'ThrottlingException' });
+
+  it('retries a throttled status-poll on the SAME request token, sends UpdateResource exactly ONCE', async () => {
+    // One UpdateResource send → IN_PROGRESS. The first status-poll is throttled (a poll
+    // read, NOT an op failure); the second poll returns SUCCESS. The mutation must be sent
+    // once, never re-sent, and the item converges.
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { RequestToken: 't1', OperationStatus: 'IN_PROGRESS' },
+    });
+    cc.on(GetResourceRequestStatusCommand)
+      .rejectsOnce(THROTTLE)
+      .resolves({ ProgressEvent: { RequestToken: 't1', OperationStatus: 'SUCCESS' } });
+
+    const r = await applyRevertItem(cc as unknown as CloudControlClient, updateItem(), undefined, {
+      now: () => 0, // freeze the clock so the poll loop never hits the 15-min deadline
+      sleep: () => Promise.resolve(),
+    });
+
+    expect(r.ok).toBe(true);
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(1); // NOT re-sent
+    expect(cc.commandCalls(GetResourceRequestStatusCommand).length).toBe(2); // throttled + success
+    // Every status poll used the original request token — polling the in-flight op, not a new one.
+    for (const call of cc.commandCalls(GetResourceRequestStatusCommand)) {
+      expect((call.args[0].input as { RequestToken?: string }).RequestToken).toBe('t1');
+    }
+  });
+
+  it('a persistent status-poll outage returns a terminal failure that does NOT re-send the mutation', async () => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { RequestToken: 't1', OperationStatus: 'IN_PROGRESS' },
+    });
+    cc.on(GetResourceRequestStatusCommand).rejects(THROTTLE);
+
+    const r = await applyRevertItem(cc as unknown as CloudControlClient, updateItem(), undefined, {
+      now: () => 0,
+      sleep: () => Promise.resolve(),
+    });
+
+    expect(r.ok).toBe(false);
+    expect(r.transient).toBeUndefined(); // terminal — retryTransient must not re-send
+    expect(r.error).toContain('NOT resent');
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(1); // sent ONCE, never duplicated
+  });
+
+  it('a terminal status-poll error (bad token) is returned without re-sending', async () => {
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { RequestToken: 't1', OperationStatus: 'IN_PROGRESS' },
+    });
+    cc.on(GetResourceRequestStatusCommand).rejects(
+      Object.assign(new Error('RequestToken t1 not found'), {
+        name: 'RequestTokenNotFoundException',
+      })
+    );
+
+    const r = await applyRevertItem(cc as unknown as CloudControlClient, updateItem(), undefined, {
+      now: () => 0,
+      sleep: () => Promise.resolve(),
+    });
+
+    expect(r.ok).toBe(false);
+    expect(cc.commandCalls(UpdateResourceCommand).length).toBe(1); // one poll failure, no re-send
+    expect(cc.commandCalls(GetResourceRequestStatusCommand).length).toBe(1);
   });
 });
 

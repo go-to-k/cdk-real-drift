@@ -9,7 +9,7 @@ import {
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { type RevertItem, toPatchDocument } from './plan.js';
-import { errorText, type RetryOptions, retryTransient } from './transient.js';
+import { classifyTransient, errorText, type RetryOptions, retryTransient } from './transient.js';
 
 export interface ApplyResult {
   ok: boolean;
@@ -26,6 +26,14 @@ const POLL_INTERVAL_MS = 2000;
 // as soon as the operation reaches a terminal state, so a high ceiling never slows the
 // common case — it only bounds how long we wait on an operation that never terminates.
 const TIMEOUT_MS = 15 * 60 * 1000;
+// A GetResourceRequestStatus poll-read can fail TRANSIENTLY (throttling / network / 5xx)
+// while the UpdateResource/DeleteResource it is observing is still running server-side.
+// That poll failure is NOT an operation failure — retry the POLL with the SAME request
+// token rather than letting it bubble to retryTransient, which would RE-SEND the whole
+// mutation while the first op is still in flight (#1064). Bound the consecutive poll
+// failures so a PERSISTENT poll outage still terminates (the mutating client already
+// retries each send internally, so each throw here follows several SDK attempts).
+const MAX_POLL_READ_FAILURES = 10;
 
 // A DELETE whose target is ALREADY absent is the goal state, not a failure. Two ways
 // this happens for an `added`-resource revert: (1) deleting an API Gateway Resource
@@ -45,16 +53,22 @@ export function isAlreadyGone(e: unknown): boolean {
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-// Poll a Cloud Control ProgressEvent (Update or Delete) to a terminal state.
+// Poll a Cloud Control ProgressEvent (Update or Delete) to a terminal state. `sleep`/`now`
+// are injectable so tests exercise the poll loop without real 2s waits.
 async function pollToCompletion(
   cc: CloudControlClient,
-  first: ProgressEvent | undefined
+  first: ProgressEvent | undefined,
+  poll: Pick<RetryOptions, 'sleep' | 'now'> = {}
 ): Promise<ApplyResult> {
+  const doSleep = poll.sleep ?? sleep;
+  const clock = poll.now ?? Date.now;
   let event = first;
   const token = event?.RequestToken;
   if (!token) return { ok: false, error: 'no request token returned' };
-  const deadline = Date.now() + TIMEOUT_MS;
-  while (Date.now() < deadline) {
+  const deadline = clock() + TIMEOUT_MS;
+  // Consecutive transient poll-read failures (reset on any successful read).
+  let pollFailures = 0;
+  while (clock() < deadline) {
     const status = event?.OperationStatus;
     if (status === 'SUCCESS') return { ok: true };
     if (status === 'FAILED' || status === 'CANCEL_COMPLETE') {
@@ -64,9 +78,32 @@ async function pollToCompletion(
       const code = event?.ErrorCode;
       return { ok: false, error: code && !msg.includes(code) ? `${code}: ${msg}` : msg };
     }
-    await sleep(POLL_INTERVAL_MS);
-    const polled = await cc.send(new GetResourceRequestStatusCommand({ RequestToken: token }));
-    event = polled.ProgressEvent;
+    await doSleep(POLL_INTERVAL_MS);
+    try {
+      const polled = await cc.send(new GetResourceRequestStatusCommand({ RequestToken: token }));
+      event = polled.ProgressEvent;
+      pollFailures = 0;
+    } catch (e) {
+      // A poll-read error, NOT an operation failure — the mutation is still in flight.
+      const text = errorText(e);
+      // A terminal poll error (e.g. an invalid/expired RequestToken) cannot be resolved
+      // by re-reading: return it as a NON-transient failure so retryTransient does not
+      // re-send the mutation. Keep polling the SAME token only for transient poll errors.
+      if (!classifyTransient(text).transient) return { ok: false, error: text };
+      if (++pollFailures >= MAX_POLL_READ_FAILURES) {
+        // Persistent poll outage: the operation likely converged (or is still running) —
+        // do NOT re-send it. Report a NON-transient failure — the message deliberately
+        // omits the raw poll error's transient keyword (e.g. "Throttling") so retryTransient
+        // classifies it terminal and does NOT re-send the mutation; the next `check`
+        // re-reads the true state. #1064: better a stale FAILED than a duplicate AWS
+        // mutation racing the in-flight op.
+        return {
+          ok: false,
+          error: `unable to confirm Cloud Control request status after ${MAX_POLL_READ_FAILURES} poll attempts (mutation NOT resent, to avoid a duplicate write)`,
+        };
+      }
+      // else: re-poll the same request token (event unchanged → still non-terminal).
+    }
   }
   return { ok: false, error: 'timed out waiting for Cloud Control request' };
 }
@@ -93,7 +130,7 @@ export async function applyRevertItem(
           PatchDocument: toPatchDocument(item),
         })
       );
-      return await pollToCompletion(cc, res.ProgressEvent);
+      return await pollToCompletion(cc, res.ProgressEvent, retry);
     } catch (e) {
       return { ok: false, error: errorText(e) };
     }
@@ -174,7 +211,7 @@ export async function applyRevertDelete(
       const res = await cc.send(
         new DeleteResourceCommand({ TypeName: item.resourceType, Identifier: identifier })
       );
-      const result = await pollToCompletion(cc, res.ProgressEvent);
+      const result = await pollToCompletion(cc, res.ProgressEvent, retry);
       // already-gone surfaced as a FAILED event (vs a thrown error, handled below)
       if (!result.ok && isAlreadyGone({ message: result.error })) return { ok: true };
       return result;
