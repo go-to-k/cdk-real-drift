@@ -4,12 +4,14 @@ import { applyBaseline, type BaselineFile } from '../src/baseline/baseline-file.
 // #749: the "baseline value removed since record" drift never fired for NESTED recorded
 // values. Every nested undeclared path is built as `<TopLevelKey>.<...>` and is only ever
 // collected where its parent key is DECLARED (collectNestedUndeclared descends only into
-// `k in declaredVal`). The old promotion check tested `topSegment(path)` — the top-level
-// key — against `declaredByLogical`, so for EVERY nested recorded value that top segment
-// was a declared key and the vanished value was misclassified `promotedStale` (folded into
-// the "now declared in the template — re-run record" nudge) instead of surfacing as a real
-// removal. The fix gates the promotion check on the FULL path AND requires the path to be
-// top-level, since `declaredByLogical` only carries top-level declared keys.
+// `k in declaredVal`). The old promotion check tested the top-level key against
+// declaredByLogical's key set, so for EVERY nested recorded value that top segment was a
+// declared key and the vanished value was misclassified `promotedStale` instead of
+// surfacing as a real removal. #1079 replaced that with a WALK of the whole declared MODEL
+// along the recorded path: a nested value is promoted only if the path RESOLVES in the
+// model, so an out-of-band nested REMOVAL — a path present under a declared parent but NOT
+// itself declared — still surfaces. These tests declare the PARENT (an object with other
+// keys) but NOT the recorded nested leaf, so the removal must still fire.
 
 function baseline(recorded: BaselineFile['recorded']): BaselineFile {
   return {
@@ -35,10 +37,11 @@ describe('#749 nested recorded value removed since record', () => {
       },
     ]);
     const warnings: string[] = [];
-    // `Environment` is declared (top-level key present), but the nested value FOO is NOT in
-    // the template — the recorded value disappeared out of band → a genuine removal.
+    // `Environment` is declared, but the nested value FOO is NOT in the template (the
+    // declared Environment.Variables holds a DIFFERENT key) — the recorded value disappeared
+    // out of band → a genuine removal, and the path must NOT resolve in the declared model.
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([['Fn', new Set(['Environment'])]]),
+      declaredByLogical: new Map([['Fn', { Environment: { Variables: { OTHER: 'y' } } }]]),
       warn: (m) => warnings.push(m),
     });
     expect(out).toHaveLength(1);
@@ -65,8 +68,9 @@ describe('#749 nested recorded value removed since record', () => {
       },
     ]);
     const warnings: string[] = [];
+    // `Tags` is declared with a different entry; the recorded `Owner` tag is not declared.
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([['Bkt', new Set(['Tags'])]]),
+      declaredByLogical: new Map([['Bkt', { Tags: [{ Key: 'Env', Value: 'prod' }] }]]),
       warn: (m) => warnings.push(m),
     });
     expect(out).toHaveLength(1);
@@ -87,8 +91,19 @@ describe('#749 nested recorded value removed since record', () => {
         value: { StringEquals: { 'aws:username': 'x' } },
       },
     ]);
+    // The declared statement[0] has NO Condition — the recorded one was added then removed
+    // out of band, so `PolicyDocument.Statement[0].Condition` must NOT resolve.
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([['Pol', new Set(['PolicyDocument'])]]),
+      declaredByLogical: new Map([
+        [
+          'Pol',
+          {
+            PolicyDocument: {
+              Statement: [{ Effect: 'Allow', Action: 's3:*', Resource: '*' }],
+            },
+          },
+        ],
+      ]),
     });
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
@@ -103,7 +118,7 @@ describe('#749 nested recorded value removed since record', () => {
     ]);
     const warnings: string[] = [];
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([['A', new Set(['ReservedConcurrentExecutions'])]]),
+      declaredByLogical: new Map([['A', { ReservedConcurrentExecutions: 5 }]]),
       warn: (m) => warnings.push(m),
     });
     expect(out).toHaveLength(0); // no false "removed" finding for a real promotion

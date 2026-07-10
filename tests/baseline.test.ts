@@ -874,7 +874,7 @@ describe('baseline', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
     const warnings: string[] = [];
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([['A', new Set(['P'])]]), // P is now declared
+      declaredByLogical: new Map([['A', { P: ['x'] }]]), // P is now declared
       warn: (m) => warnings.push(m),
     });
     expect(out).toHaveLength(0); // no false "removed" finding
@@ -890,9 +890,9 @@ describe('baseline', () => {
     ]);
     const warnings: string[] = [];
     const out = applyBaseline([], b, {
-      declaredByLogical: new Map([
-        ['A', new Set(['P1', 'P2'])],
-        ['B', new Set(['Q'])],
+      declaredByLogical: new Map<string, Record<string, unknown>>([
+        ['A', { P1: ['x'], P2: ['y'] }],
+        ['B', { Q: ['z'] }],
       ]),
       warn: (m) => warnings.push(m),
     });
@@ -919,7 +919,9 @@ describe('baseline', () => {
 
   it('still reports a removal when the recorded path is genuinely gone (not declared)', () => {
     const b = baseline([{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: ['x'] }]);
-    const out = applyBaseline([], b, { declaredByLogical: new Map([['A', new Set(['Other'])]]) });
+    const out = applyBaseline([], b, {
+      declaredByLogical: new Map([['A', { Other: true }]]),
+    });
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ note: 'baseline value removed since record' });
   });

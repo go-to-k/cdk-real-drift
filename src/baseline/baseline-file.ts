@@ -745,10 +745,19 @@ export function selectRecorded(findings: Finding[], selectedKeys: Set<string>): 
 }
 
 export interface ApplyBaselineOptions {
-  // logicalId -> set of currently-declared top-level keys. An recorded entry whose
-  // path is now DECLARED in the template is the recommended "promote undeclared
-  // drift into code" workflow, NOT a removal — suppress the false removal finding.
-  declaredByLogical?: Map<string, Set<string>>;
+  // logicalId -> the resource's CURRENT declared model (the template's `Properties`
+  // object). A recorded entry whose path is now DECLARED in the template is the
+  // recommended "promote undeclared drift into code" workflow, NOT a removal — folded
+  // into a nudge, not a false removal finding. #749 fixed the nested-REMOVAL FN by
+  // gating the fold on a TOP-LEVEL path only, which left #1079's twin FP: a NESTED
+  // recorded path that the user later declares still surfaced as a false "removed since
+  // record" (and revert offered to overwrite the freshly-declared value with the stale
+  // snapshot). Carrying the whole declared model — not just its top-level key SET — lets
+  // the fold RESOLVE a recorded path (top-level OR nested) against the declared tree:
+  // promoted iff the path resolves in the model (see `declaredPathIsPromoted`). An
+  // out-of-band nested removal still surfaces because its path does NOT resolve unless
+  // the user declared it — in which case the declared-dimension compare owns it.
+  declaredByLogical?: Map<string, Record<string, unknown>>;
   // logicalId -> CDK construct path. Used to restore constructPath onto the synthetic
   // "baseline value removed since record" finding so a constructPath-form ignore rule
   // matches it (a RecordedEntry carries no constructPath of its own).
@@ -770,17 +779,65 @@ export interface ApplyBaselineOptions {
   warn?: (s: string) => void; // stderr note channel for the promotion case
 }
 
-// A recorded path is TOP-LEVEL when it is a bare template key — no nested descent
-// separator (`.` object step or `[` array/identity step). `declaredByLogical` carries
-// only top-level declared KEYS (Object.keys(declared)), so the "promoted into the
-// template" test can only be answered for a top-level path: a nested path's top segment
-// is ALWAYS a declared key by construction (collectNestedUndeclared descends only where
-// the parent key is declared), so testing that segment would fold EVERY nested recorded
-// value into `promotedStale` and never surface a legitimate removal (#749). A nested
-// value is "promoted" only if its DECLARED parent now declares that exact nested value —
-// which `declaredByLogical` cannot express — so a nested recorded path can never qualify
-// here and must fall through to the "removed since record" drift.
-const isTopLevelPath = (p: string): boolean => !p.includes('.') && !p.includes('[');
+// Split a recorded path into its ordered segments in the SAME grammar
+// `collectNestedUndeclared` builds them: object steps joined by `.` and array/identity
+// steps as `[<id>]`. `Foo.Bar` -> ['Foo','Bar']; `Foo.Bar[id].Baz` -> ['Foo','Bar','id','Baz'].
+// The bracket id is used verbatim as a lookup key (matches classify keying elements by their
+// identity FIELD value, e.g. a policy statement's StatusCode) and, for a plain declared
+// array, tolerated as a fall-through (see `descendDeclared`).
+function pathSegments(path: string): string[] {
+  return path
+    .replace(/\[([^\]]*)\]/g, '.$1')
+    .split('.')
+    .filter((s) => s.length > 0);
+}
+
+// Descend one segment into a declared node. Object: index by key. Array: index by the
+// element's identity-field value (the `[<id>]` grammar) when an element carries a matching
+// identity field, else fall back to a numeric index. Returns undefined when the segment
+// does not resolve — the signal that the recorded path is NOT declared here.
+function descendDeclared(node: unknown, seg: string): unknown {
+  if (node === null || typeof node !== 'object') return undefined;
+  if (Array.isArray(node)) {
+    for (const el of node) {
+      if (el !== null && typeof el === 'object' && !Array.isArray(el)) {
+        for (const idf of DELTA_IDENTITY_FIELDS) {
+          if (String((el as Record<string, unknown>)[idf]) === seg) return el;
+        }
+      }
+    }
+    const idx = Number(seg);
+    return Number.isInteger(idx) && idx >= 0 && idx < node.length ? node[idx] : undefined;
+  }
+  return (node as Record<string, unknown>)[seg];
+}
+
+// #1079: is the recorded path (top-level OR nested) now DECLARED in the resource's current
+// template model — i.e. the "promote undeclared drift into code" workflow, not a removal?
+// Walk `declared` along the recorded path's segments: promoted iff the walk RESOLVES to a
+// defined node at the full path, OR reaches a declared LEAF (a non-container value) at an
+// intermediate segment — declaring `Foo: <leaf>` OR `Foo: { Bar: … }` moves the whole `Foo`
+// subtree to the declared dimension, so the recorded `Foo.Bar` is now redundant intent, not
+// a vanished undeclared value. An out-of-band nested REMOVAL (#749's FN) still surfaces: the
+// removed value's path does NOT resolve unless the user declared it, and if declared, the
+// live≠declared mismatch is the declared tier's job — so we never both swallow it here AND
+// miss it there.
+function declaredPathIsPromoted(
+  declared: Record<string, unknown> | undefined,
+  path: string
+): boolean {
+  if (declared === undefined) return false;
+  let node: unknown = declared;
+  for (const seg of pathSegments(path)) {
+    // A declared leaf reached before the path ends: the whole subtree below it is declared
+    // intent, so the deeper recorded path is promoted.
+    if (node === null || typeof node !== 'object') return true;
+    const next = descendDeclared(node, seg);
+    if (next === undefined) return false; // segment absent from the declared model
+    node = next;
+  }
+  return true; // the full path resolved in the declared model
+}
 
 /**
  * Reconcile undeclared findings against the recorded baseline (per ENTRY, R62):
@@ -1043,10 +1100,13 @@ export function applyBaseline(
       continue;
     }
     // promoted into the template since record → not a removal, just stale baseline.
-    // #749: gate on the FULL path (only meaningful for a top-level path), NOT its top
-    // segment — otherwise every nested recorded value, whose top segment is a declared
-    // key by construction, would be swallowed here and never surface as a removal.
-    if (isTopLevelPath(a.path) && opts.declaredByLogical?.get(a.logicalId)?.has(a.path)) {
+    // #749 originally gated this on a TOP-LEVEL path only (declaredByLogical carried just
+    // the top-level key set), which left #1079: a NESTED recorded path the user later
+    // DECLARES kept surfacing as a false "removed since record" (+ a stale-value revert
+    // offer). declaredByLogical now carries the whole declared MODEL, so RESOLVE the
+    // recorded path (top-level OR nested) against it — promoted iff it resolves. A genuine
+    // out-of-band nested REMOVAL still surfaces: its path does not resolve unless declared.
+    if (declaredPathIsPromoted(opts.declaredByLogical?.get(a.logicalId), a.path)) {
       promotedStale.push(`${a.logicalId}.${a.path}`);
       continue;
     }
@@ -1127,11 +1187,18 @@ export function formatTypeMismatchStaleNote(paths: string[]): string {
   return `note: ${subject} recorded against a resource whose logicalId now has a DIFFERENT type — re-run \`cdkrd record\`.`;
 }
 
-/** logicalId -> set of declared top-level keys, for applyBaseline's promotion check. */
+/**
+ * logicalId -> the resource's declared model, for applyBaseline's promotion check.
+ * #1079: carries the WHOLE declared object (not just its top-level key set) so a NESTED
+ * recorded path the user later declares is RESOLVED against the declared tree and folded
+ * as promoted-to-code, rather than surfacing a false "removed since record". The map
+ * feeds ApplyBaselineOptions.declaredByLogical; `applyBaseline` walks it per recorded path
+ * via `declaredPathIsPromoted`.
+ */
 export function declaredKeysByLogical(
   resources: { logicalId: string; declared: Record<string, unknown> }[]
-): Map<string, Set<string>> {
-  return new Map(resources.map((r) => [r.logicalId, new Set(Object.keys(r.declared))]));
+): Map<string, Record<string, unknown>> {
+  return new Map(resources.map((r) => [r.logicalId, r.declared]));
 }
 
 // logicalId -> construct path, for resources that carry one. Feeds
