@@ -710,7 +710,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   templates using `Fn::ImportValue`)
 - `cloudcontrol:GetResource`: Cloud Control invokes each type's own read handler,
   so it needs that type's read permissions (this is why `ReadOnlyAccess` is the
-  simple answer)
+  simple answer). `revert` additionally uses `cloudcontrol:UpdateResource` /
+  `cloudcontrol:DeleteResource` (the latter to delete an out-of-band `added`
+  resource) and `cloudcontrol:GetResourceRequestStatus` to poll the async request —
+  see the revert section below.
 - SDK readers for the Cloud-Control-gap types: `s3:GetBucketPolicy`,
   `sns:GetTopicAttributes`, `sqs:GetQueueAttributes`, `iam:GetRolePolicy`,
   `iam:GetUserPolicy`, `iam:GetGroupPolicy`, `iam:GetPolicy`, `iam:GetPolicyVersion`,
@@ -776,9 +779,30 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   full resolved option set; an out-of-band console edit to any environment option
   is otherwise invisible, and the service-filled default options fold to
   `atDefault`),
-  `servicediscovery:GetNamespace` (reads a Cloud Map
+  `servicediscovery:GetNamespace` + `servicediscovery:GetService` (read a Cloud Map
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
-  ECS Service Connect namespace `Fn::GetAtt` resolves against)
+  ECS Service Connect namespace `Fn::GetAtt` resolves against — and a Cloud Map
+  `Service`),
+  `docdb:DescribeDBClusters` + `docdb:DescribeDBInstances` (read an
+  `AWS::DocDB::DBCluster` / `AWS::DocDB::DBInstance` — the whole DocumentDB family is
+  a Cloud Control read gap),
+  `codebuild:BatchGetProjects` (reads an `AWS::CodeBuild::Project`) +
+  `codebuild:BatchGetReportGroups` (reads an `AWS::CodeBuild::ReportGroup`),
+  `dax:DescribeClusters` + `dax:DescribeParameterGroups` + `dax:DescribeParameters` +
+  `dax:DescribeSubnetGroups` (read an `AWS::DAX::Cluster` / `ParameterGroup` /
+  `SubnetGroup` — the DynamoDB Accelerator family),
+  `ec2:DescribeClientVpnEndpoints` + `ec2:DescribeClientVpnAuthorizationRules` +
+  `ec2:DescribeClientVpnTargetNetworks` (read an `AWS::EC2::ClientVpnEndpoint` /
+  `ClientVpnAuthorizationRule` / `ClientVpnTargetNetworkAssociation`),
+  `iam:ListAccessKeys` (reads an `AWS::IAM::AccessKey`'s `Status`) +
+  `iam:ListEntitiesForPolicy` (enumerates a managed policy's attachments),
+  `appsync:ListApiKeys` (reads an `AWS::AppSync::ApiKey` — a Cloud Control gap),
+  `cognito-sync:GetCognitoEvents` (enriches the Cloud Control read of an
+  `AWS::Cognito::IdentityPool` with its writeOnly `CognitoEvents` Sync trigger),
+  `glue:GetClassifier` + `glue:GetWorkflow` + `glue:GetConnection`
+  (`glue:GetConnection` is issued with `HidePassword` so NO credential enters the
+  baseline — read an `AWS::Glue::Classifier` / `Workflow` / `Connection`, the rest
+  of the Glue family that has no Cloud Control handler)
 - Optional: `elasticloadbalancing:GetTrustStoreCaCertificatesBundle` records a
   content hash of an `AWS::ElasticLoadBalancingV2::TrustStore`'s live mTLS CA
   bundle (`CaCertificatesBundleSha256`) so an out-of-band CA-bundle swap
@@ -839,8 +863,12 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 <summary>Additional write permissions (revert)</summary>
 
 `cloudcontrol:UpdateResource` (which resolves to each type's own update
-permissions), plus, for the SDK-written types: `s3:PutBucketPolicy` /
+permissions), `cloudcontrol:DeleteResource` (to delete an out-of-band `added`
+resource), and `cloudcontrol:GetResourceRequestStatus` (to poll the async Cloud
+Control request to completion). Plus, for the SDK-written types:
+`s3:PutBucketPolicy` /
 `s3:DeleteBucketPolicy`, `sns:SetTopicAttributes`, `sqs:SetQueueAttributes`,
+`events:PutPermission` (reverts an `AWS::Events::EventBusPolicy`),
 `iam:PutRolePolicy` / `DeleteRolePolicy` / `PutUserPolicy` / `PutGroupPolicy`,
 `iam:CreatePolicyVersion` / `DeletePolicyVersion` / `ListPolicyVersions`,
 `elasticloadbalancing:ModifyLoadBalancerAttributes` / `ModifyTargetGroupAttributes`,
@@ -868,12 +896,48 @@ place, since Cloud Control has no handler for the type),
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
 `VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
 Control cannot sub-path patch it),
-`apigateway:UpdateStage` (reverts an `AWS::ApiGatewayV2::Stage` — an `autoDeploy`
-stage rejects the `DeploymentId` the Cloud Control handler injects, so only the
-drifted stage properties are written directly, never `DeploymentId`),
-`apigateway:UpdateRestApi` (reverts an `AWS::ApiGateway::RestApi` `Policy` — the
-whole desired resource policy is re-serialized and replaced, since Cloud Control
-holds the policy as a JSON string it cannot sub-path patch).
+`elasticbeanstalk:UpdateApplication` / `elasticbeanstalk:UpdateEnvironment`
+(revert an `AWS::ElasticBeanstalk::Application` / `Environment`),
+`codebuild:UpdateReportGroup` (reverts an `AWS::CodeBuild::ReportGroup`),
+`dax:UpdateCluster` / `dax:UpdateParameterGroup` (revert an `AWS::DAX::Cluster` /
+`ParameterGroup`),
+`ec2:ModifyClientVpnEndpoint` (reverts an `AWS::EC2::ClientVpnEndpoint`),
+`opensearch:UpdateDomainConfig` (reverts an `AWS::OpenSearchService::Domain`),
+`cloudfront:GetDistributionConfig` / `cloudfront:UpdateDistribution` (revert an
+`AWS::CloudFront::Distribution`),
+`wafv2:GetWebACL` / `wafv2:UpdateWebACL` (revert an `AWS::WAFv2::WebACL`),
+`glue:UpdateJob` / `glue:UpdateClassifier` / `glue:UpdateWorkflow` (revert an
+`AWS::Glue::Job` / `Classifier` / `Workflow`),
+`servicediscovery:UpdateHttpNamespace` (reverts an
+`AWS::ServiceDiscovery::HttpNamespace` `Description`),
+`cognito-sync:SetCognitoEvents` (reverts an `AWS::Cognito::IdentityPool`'s
+writeOnly `CognitoEvents`),
+`kinesisvideo:UpdateDataRetention` / `kinesisvideo:UpdateSignalingChannel` /
+`kinesisvideo:UpdateStreamStorageConfiguration` (revert an `AWS::KinesisVideo::Stream`
+`DataRetentionInHours` / `StreamStorageConfiguration` and an
+`AWS::KinesisVideo::SignalingChannel` `MessageTtlSeconds`),
+`kafka:UpdateConfiguration` (reverts an `AWS::MSK::Configuration` `ServerProperties`
+— append-only, a new revision carrying the desired properties),
+`logs:PutBearerTokenAuthentication` (reverts an `AWS::Logs::LogGroup`
+`BearerTokenAuthenticationEnabled`),
+`iam:AttachRolePolicy` / `DetachRolePolicy` / `AttachUserPolicy` /
+`DetachUserPolicy` /
+`AttachGroupPolicy` / `DetachGroupPolicy` / `ListEntitiesForPolicy` (revert an
+`AWS::IAM::ManagedPolicy`'s attachments alongside the `CreatePolicyVersion` above),
+the `lexv2models:*` write family
+(`CreateIntent` / `UpdateIntent` / `DeleteIntent`, `CreateSlot` / `UpdateSlot` /
+`DeleteSlot`, `CreateSlotType` / `UpdateSlotType` / `DeleteSlotType`,
+`UpdateBotLocale` / `BuildBotLocale`, plus the `Describe*` / `List*` reads they
+build on) to revert an `AWS::Lex::Bot` `BotLocales` drift,
+`apigateway:PATCH` (the single IAM action API Gateway maps its update operations
+to — reverts an `AWS::ApiGatewayV2::Stage`, where an `autoDeploy` stage rejects the
+`DeploymentId` the Cloud Control handler injects so only the drifted stage
+properties are written directly, and an `AWS::ApiGateway::RestApi` `Policy`, where
+the whole desired resource policy is re-serialized and replaced since Cloud Control
+holds the policy as a JSON string it cannot sub-path patch, and an
+`AWS::ApiGateway::Method`'s
+nested integration/response knobs) plus `apigateway:DELETE` (clearing a stage's
+access-log / route settings back to unset).
 
 </details>
 
