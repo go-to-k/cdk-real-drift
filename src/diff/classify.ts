@@ -2560,7 +2560,20 @@ export function classifyResource(
         false) ||
       // #627: a GSI's undeclared WarmThroughput echoing that GSI's effective capacity
       // (on-demand constant or its own ProvisionedThroughput) — a per-GSI derived default.
-      dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live);
+      dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live) ||
+      // #1314: an AWS::Events::EventBusPolicy's live `Statement[n].Sid` (the resource's OWN
+      // read) is the service stamping the declared top-level `StatementId` into the stored
+      // statement — the registry `propertyTransform` `Statement: $merge([{"Sid":StatementId},
+      // Statement])`. That transform gate (#881) only runs in the DECLARED loop, so when the
+      // template omits `Sid` on `Statement`, this live-only value lands here as nested-
+      // undeclared inventory (Statement[0].Sid) and floods a first-run FP on EVERY policy.
+      // Tier-2 DERIVED fold: equality-gate the live Sid against the declared StatementId — a
+      // Sid that DIFFERS (a real out-of-band statement swap) still surfaces (detection preserved).
+      // This is the policy's own read; the sibling-EventBus reflection (#699) is a separate path.
+      (resourceType === 'AWS::Events::EventBusPolicy' &&
+        schemaPath === 'Statement.*.Sid' &&
+        typeof value === 'string' &&
+        value === declared['StatementId']);
     const tier = atDefault
       ? 'atDefault'
       : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
