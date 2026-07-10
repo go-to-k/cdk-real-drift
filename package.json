@@ -106,6 +106,7 @@
     "@aws-sdk/client-sns": "^3.1065.0",
     "@aws-sdk/client-sqs": "^3.1065.0",
     "@aws-sdk/client-ssm": "^3.1075.0",
+    "@aws-sdk/client-sts": "^3.1065.0",
     "@aws-sdk/client-wafv2": "^3.1073.0",
     "@clack/core": "^1.4.1",
     "@clack/prompts": "^1.5.1",
