@@ -1,3 +1,13 @@
+## [0.4.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.38...v0.4.39) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** make baselineValueMatches reflexive for identity-less object arrays ([#767](https://github.com/go-to-k/cdk-real-drift/issues/767)) ([#1169](https://github.com/go-to-k/cdk-real-drift/issues/1169)) ([7e5ecbe](https://github.com/go-to-k/cdk-real-drift/commit/7e5ecbe8caedc665803aea96703594b51709673f))
+* **config:** write ignore.yaml atomically (tmp+rename) + re-read-merge the addIgnoreRules race ([#759](https://github.com/go-to-k/cdk-real-drift/issues/759)) ([#1166](https://github.com/go-to-k/cdk-real-drift/issues/1166)) ([09e3d02](https://github.com/go-to-k/cdk-real-drift/commit/09e3d022f652dea345d75861ccb7489c72cf3979))
+* **gather:** don't re-cache a failed DescribeType's EMPTY schema in the per-run map ([#1067](https://github.com/go-to-k/cdk-real-drift/issues/1067)) ([#1167](https://github.com/go-to-k/cdk-real-drift/issues/1167)) ([ddb5ce1](https://github.com/go-to-k/cdk-real-drift/commit/ddb5ce15bfef17a19a8b65e798055f28b6ef3df1))
+* **normalize:** content-gate the AWSLogDelivery policy-statement subtraction ([#715](https://github.com/go-to-k/cdk-real-drift/issues/715)) ([#1168](https://github.com/go-to-k/cdk-real-drift/issues/1168)) ([8cfcf1b](https://github.com/go-to-k/cdk-real-drift/commit/8cfcf1b789303202ccfc7586fd7021c667ef5732))
+
 ## [0.4.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.37...v0.4.38) (2026-07-10)
 
 
