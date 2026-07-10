@@ -28,6 +28,7 @@ import {
 import { withinStackPath } from '../construct-path.js';
 import { style } from '../report/style.js';
 import { bulkMultiselect } from './bulk-multiselect.js';
+import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
 import { applyRevertDelete, applyRevertDeletes, applyRevertItem } from '../revert/apply.js';
 import {
@@ -904,7 +905,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     }
   }
 
-  const cc = new CloudControlClient({ region });
+  const cc = new CloudControlClient({ region, ...CLIENT_TIMEOUTS });
   const byLogical = new Map(gathered.desired.resources.map((res) => [res.logicalId, res]));
   // `added` delete items have a SYNTHESIZED logicalId (not a template resource), so the
   // scoped convergence re-read below cannot regenerate them — a SUCCESSFUL delete then
