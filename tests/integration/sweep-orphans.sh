@@ -179,6 +179,22 @@ resource_gone() {
       printf '%s' "$err" | grep -q 'ResourceNotFoundException' && return 0
       return 1
       ;;
+    ec2)
+      # arn:aws:ec2:<region>:<acct>:vpc-endpoint/vpce-<id> — the second type observed
+      # lingering in the RGT index after deletion (2026-07-10): DescribeVpcEndpoints
+      # returned InvalidVpcEndpointId.NotFound while the tag filter still listed it,
+      # keeping an unrelated agent's gate RED. Only the vpc-endpoint subtype gets a
+      # probe; every other ec2 resource stays fail-safe (return 1 → ORPHAN stays RED).
+      case "$arn" in
+        *:vpc-endpoint/vpce-*)
+          id="${arn##*/}"
+          err="$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
+          printf '%s' "$err" | grep -q 'InvalidVpcEndpointId.NotFound' && return 0
+          return 1
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
     *)
       return 1 ;;
   esac

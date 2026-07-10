@@ -1,0 +1,153 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LogsTable",
+    "resourceType": "AWS::Glue::Table",
+    "physicalId": "cdkrd_hunt_dotkey_access_logs",
+    "declared": {
+      "CatalogId": "111111111111",
+      "DatabaseName": "cdkrd_hunt_dotkey_logs_db",
+      "TableInput": {
+        "Name": "cdkrd_hunt_dotkey_access_logs",
+        "Parameters": {
+          "skip.header.line.count": 2,
+          "projection.enabled": true,
+          "projection.date.type": "date",
+          "projection.date.range": "2024/04/01/00, NOW",
+          "projection.date.format": "yyyy/MM/dd/HH",
+          "projection.date.interval": "1",
+          "projection.date.interval.unit": "HOURS",
+          "storage.location.template": "s3://cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups/${date}"
+        },
+        "PartitionKeys": [
+          {
+            "Name": "date",
+            "Type": "string"
+          }
+        ],
+        "StorageDescriptor": {
+          "Columns": [
+            {
+              "Name": "request_time",
+              "Type": "string"
+            },
+            {
+              "Name": "edge_location",
+              "Type": "string"
+            },
+            {
+              "Name": "status",
+              "Type": "int"
+            }
+          ],
+          "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+          "Location": "s3://cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups/",
+          "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+          "SerdeInfo": {
+            "Parameters": {
+              "field.delim": "\t",
+              "serialization.format": "\t"
+            },
+            "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
+          }
+        },
+        "TableType": "EXTERNAL_TABLE"
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "cdkrd_hunt_dotkey_logs_db",
+    "TableInput": {
+      "Name": "cdkrd_hunt_dotkey_access_logs",
+      "Retention": 0,
+      "TableType": "EXTERNAL_TABLE",
+      "Parameters": {
+        "skip.header.line.count": "2",
+        "projection.date.type": "date",
+        "projection.date.format": "yyyy/MM/dd/HH",
+        "projection.date.interval": "1",
+        "projection.date.interval.unit": "HOURS",
+        "projection.enabled": "true",
+        "projection.date.range": "2024/04/01/00, NOW",
+        "storage.location.template": "s3://cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups/${date}"
+      },
+      "PartitionKeys": [
+        {
+          "Name": "date",
+          "Type": "string"
+        }
+      ],
+      "StorageDescriptor": {
+        "Columns": [
+          {
+            "Name": "request_time",
+            "Type": "string"
+          },
+          {
+            "Name": "edge_location",
+            "Type": "string"
+          },
+          {
+            "Name": "status",
+            "Type": "int"
+          }
+        ],
+        "Location": "s3://cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups/",
+        "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+        "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+        "Compressed": false,
+        "NumberOfBuckets": 0,
+        "SerdeInfo": {
+          "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe",
+          "Parameters": {
+            "serialization.format": "\t",
+            "field.delim": "\t"
+          }
+        },
+        "SortColumns": [],
+        "StoredAsSubDirectories": false
+      }
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["CatalogId", "DatabaseName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CatalogId", "DatabaseName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "LogsTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Retention",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt_dotkey_access_logs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "LogsTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.StorageDescriptor.NumberOfBuckets",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt_dotkey_access_logs"
+    }
+  ],
+  "description": "Athena partition-projection access-log table: free-form TableInput.Parameters / StorageDescriptor.SerdeInfo.Parameters with DOT-containing keys, CDK-typed declared values (boolean projection.enabled, numeric skip.header.line.count) vs the all-string live echo, plus a Ref-resolved storage.location.template. Locks the twice-regressed FP to zero findings beyond the two constant atDefaults: #300 (declared-tier whole-map coercion) and #828/PR #1249 (undeclared-tier unconditional unsafe-key emit)."
+}
