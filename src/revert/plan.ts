@@ -84,6 +84,13 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
 //     `add /Description ""`) clears it. Both behaviours proven live.
 const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::IAM::Role\0MaxSessionDuration',
+  // IAM UpdateRole ignores an omitted Description the same way it ignores an omitted
+  // MaxSessionDuration (both are UpdateRole params) — a `remove` revert of an out-of-band
+  // description is a silent no-op, so write the empty-string default (from KNOWN_DEFAULTS)
+  // back explicitly. Precedent: AWS::Lambda::Alias Description below (UpdateAlias ignores an
+  // omitted description → an explicit "" write is needed). (Role Path is create-only → not
+  // reachable as undeclared drift, correctly barred and NOT listed here.)
+  'AWS::IAM::Role\0Description',
   'AWS::Lambda::Alias\0Description',
   // Cognito UpdateIdentityPool ignores an omitted AllowClassicFlow (live-observed: a
   // `remove` revert of an out-of-band `true` is a silent no-op), so write the `false`
@@ -94,6 +101,17 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // value persists), so write the default policy (TransferSecurityPolicy-2018-11) back
   // explicitly. The value comes from KNOWN_DEFAULTS.
   'AWS::Transfer::Server\0SecurityPolicyName',
+  // Same UpdateServer omit-ignored behavior for the other mutable server-config props that
+  // KNOWN_DEFAULTS folds — all set via the same UpdateServer call proven to keep an omitted
+  // property. Write their KNOWN_DEFAULTS defaults back explicitly so an out-of-band change
+  // reverts as a set-to-default rather than a silent `remove` no-op. IpAddressType ("IPV4")
+  // is a scalar; ProtocolDetails ({PassiveIp:'AUTO', SetStatOption:'DEFAULT',
+  // TlsSessionResumptionMode:'ENFORCED'}) and S3StorageOptions
+  // ({DirectoryListingOptimization:'DISABLED'}) are whole-object defaults. (Domain is
+  // create-only → barred and NOT listed here.)
+  'AWS::Transfer::Server\0IpAddressType',
+  'AWS::Transfer::Server\0ProtocolDetails',
+  'AWS::Transfer::Server\0S3StorageOptions',
   // App Runner UpdateService IGNORES an omitted top-level config object (live-observed:
   // a `remove` revert of an out-of-band HealthCheckConfiguration reports SUCCESS yet the
   // live value persists — mutated Interval 5->10 survived the revert). Write the whole
@@ -108,12 +126,21 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // SUCCESS yet the live value stayed AccuracyBased — "1 drift remain"). Write the
   // "TimeBased" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::Location::Tracker\0PositionFiltering',
+  // UpdateTracker likewise ignores an omitted PricingPlan (same omit-ignored provider
+  // behavior) — write the "RequestBasedUsage" default (from KNOWN_DEFAULTS) back explicitly.
+  // (Deprecated field, near-zero drift; listed for completeness so a `remove` no-op cannot
+  // leave a non-converging revert.)
+  'AWS::Location::Tracker\0PricingPlan',
   // Amazon Location UpdatePlaceIndex likewise IGNORES an omitted DataSourceConfiguration
   // (live-observed 2026-07-07: a `remove` revert of an out-of-band IntendedUse=Storage
   // reported SUCCESS yet the live value stayed Storage — "1 drift remain"). Write the whole
   // {IntendedUse:"SingleUse"} default object back explicitly (2nd object-valued entry after
   // AppRunner) so revert converges.
   'AWS::Location::PlaceIndex\0DataSourceConfiguration',
+  // UpdatePlaceIndex likewise ignores an omitted PricingPlan — write the "RequestBasedUsage"
+  // default (from KNOWN_DEFAULTS) back explicitly (deprecated field, twin of the Tracker
+  // PricingPlan entry above; listed for completeness).
+  'AWS::Location::PlaceIndex\0PricingPlan',
   // EventBridge UpdateApiDestination IGNORES an omitted InvocationRateLimitPerSecond
   // (live-observed on events-apidest-rich 2026-07-08: a `remove` revert of an out-of-band
   // 50 reported SUCCESS yet the live value stayed 50 — "1 drift remain"). Write the 300
