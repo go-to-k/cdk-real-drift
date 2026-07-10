@@ -23,8 +23,10 @@ import { select } from '@clack/prompts';
 import {
   buildScopeOptions,
   isFoldedFinding,
+  perFindingActionMessage,
   pickerLabel,
   resolveInteractively,
+  scopeMessage,
 } from '../src/commands/interactive-resolve.js';
 import { ignoreStack, recordStack, revertStack } from '../src/commands/stack-actions.js';
 import type { Finding } from '../src/types.js';
@@ -223,5 +225,34 @@ describe('pickerLabel — the per-finding "decide per finding" row (mirrors the 
     expect(pickerLabel(f, 'S')).toContain(
       'Edge.LoadBalancerAttributes[idle_timeout.timeout_seconds]'
     );
+  });
+});
+
+describe('per-finding DECISION prompt headers name the region (#1097 — #947 residue)', () => {
+  describe('scopeMessage — the scope-select header (chooseScope)', () => {
+    it('labels with Name (region), not a bare stackName', () => {
+      const msg = scopeMessage('Dup', 'us-east-1', 3);
+      expect(msg).toContain('Dup (us-east-1):');
+      expect(msg).toContain('folded 3 undeclared value(s)');
+    });
+
+    it('two same-named different-region invocations produce DISTINCT strings', () => {
+      expect(scopeMessage('Dup', 'us-east-1', 3)).not.toBe(scopeMessage('Dup', 'us-west-2', 3));
+    });
+  });
+
+  describe('perFindingActionMessage — the action-picker header (record/ignore/REVERT)', () => {
+    it('labels with Name (region), not a bare stackName', () => {
+      const msg = perFindingActionMessage('Dup', 'eu-west-1');
+      expect(msg).toBe('Dup (eu-west-1): assign an action to each finding');
+      // the bare form the report menu already moved away from must NOT reappear here
+      expect(msg).not.toBe('Dup: assign an action to each finding');
+    });
+
+    it('two same-named different-region invocations produce DISTINCT strings', () => {
+      expect(perFindingActionMessage('Dup', 'us-east-1')).not.toBe(
+        perFindingActionMessage('Dup', 'us-west-2')
+      );
+    });
   });
 });
