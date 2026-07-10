@@ -3098,7 +3098,26 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   OpenSearch `OffPeakWindowOptions` / AmazonMQ `MaintenanceWindowStartTime` object precedents.
   //     * EC2 NatGateway `VpcId` — AWS DERIVES the VPC id from the declared SubnetId and reads
   //       it back (create-only, embeds the per-resource `vpc-…` id, never declared by CDK).
-  'AWS::EC2::Instance': new Set(['PrivateIpAddress']),
+  //   AWS::EC2::Instance reads back a few undeclared, AWS-assigned values on every fresh un-mutated
+  //   launch (live-confirmed on ec2-instance-rich / -sets, #640). Only the genuinely CREATE-ONLY
+  //   items fold value-independent — a create-only value physically cannot drift out of band (it
+  //   requires replacement, itself a template change), so folding it can never hide a real change;
+  //   and it is never user intent when undeclared (a user who pins it DECLARES it, compared in the
+  //   declared loop):
+  //     * `CpuOptions` ({CoreCount, ThreadsPerCore}) — create-only; AWS derives it from the
+  //       declared InstanceType (t3.micro → {1, 2}). The core/thread pair is a function of the
+  //       instance type (hundreds of them, and AWS adds more over time), so it is neither a stable
+  //       constant nor cheaply derivable offline; but it is create-only, so a value-independent
+  //       fold can never hide a real change. A user who caps cores/threads DECLARES CpuOptions.
+  //     * `SubnetId` — when the subnet is declared inside `NetworkInterfaces[0]`, AWS echoes it to
+  //       the top-level `SubnetId` (create-only, derived from the declared NIC subnet).
+  //   DELIBERATELY NOT folded here: `SecurityGroups` / `SecurityGroupIds` are MUTABLE out of band
+  //   (`ec2 modify-instance-attribute --groups sg-…` swaps an instance's SGs with no replacement),
+  //   so a value-independent fold would HIDE an OOB SG swap — they stay undeclared, tracked by #889
+  //   as a sibling-reflection / derived fold. `NetworkInterfaces` / `Volumes` are deferred: a rogue
+  //   ENI / volume can be ATTACHED out of band to a running instance, so folding the whole array
+  //   value-independent would hide the attach — they need a nested/sibling mechanism.
+  'AWS::EC2::Instance': new Set(['PrivateIpAddress', 'CpuOptions', 'SubnetId']),
   //   AWS::EC2::NetworkInterface.PrivateIpAddresses — an ENI that declares no
   //   PrivateIpAddresses reads back the single auto-assigned primary
   //   ([{PrivateIpAddress:"10.0.0.x", Primary:true}]) — the plural-array twin of the singular
