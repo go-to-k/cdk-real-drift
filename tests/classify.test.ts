@@ -1268,15 +1268,31 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
   it('#554: ClientVPN + DAX first-run defaults fold; an out-of-band change surfaces', () => {
     const t = (rt: string, live: Record<string, unknown>) =>
       tiers(classifyResource(bare(rt), live, emptySchema));
-    // ClientVpnEndpoint VpnPort 443 / DisconnectOnSessionTimeout true → fold; a flipped
-    // port (1194) or disabled disconnect surfaces as real undeclared drift.
+    // ClientVpnEndpoint VpnPort 443 / DisconnectOnSessionTimeout true / TransportProtocol
+    // 'udp' / SessionTimeoutHours 24 → fold; a flipped value surfaces as real undeclared
+    // drift. TransportProtocol + SessionTimeoutHours added in #1102 (live-observed as
+    // first-run FPs while verifying the #912/#1019 VpnPort set-default).
     expect(
       t('AWS::EC2::ClientVpnEndpoint', {
         VpnPort: 443,
         DisconnectOnSessionTimeout: true,
+        TransportProtocol: 'udp',
+        SessionTimeoutHours: 24,
       }).atDefault.sort()
-    ).toEqual(['DisconnectOnSessionTimeout', 'VpnPort']);
+    ).toEqual([
+      'DisconnectOnSessionTimeout',
+      'SessionTimeoutHours',
+      'TransportProtocol',
+      'VpnPort',
+    ]);
     expect(t('AWS::EC2::ClientVpnEndpoint', { VpnPort: 1194 }).undeclared).toEqual(['VpnPort']);
+    // A flipped transport (tcp) or a non-default session timeout still surfaces.
+    expect(t('AWS::EC2::ClientVpnEndpoint', { TransportProtocol: 'tcp' }).undeclared).toEqual([
+      'TransportProtocol',
+    ]);
+    expect(t('AWS::EC2::ClientVpnEndpoint', { SessionTimeoutHours: 12 }).undeclared).toEqual([
+      'SessionTimeoutHours',
+    ]);
     // DAX ClusterEndpointEncryptionType NONE → fold; TLS (an explicit opt-in) surfaces.
     expect(t('AWS::DAX::Cluster', { ClusterEndpointEncryptionType: 'NONE' }).atDefault).toEqual([
       'ClusterEndpointEncryptionType',
