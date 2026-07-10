@@ -1681,6 +1681,42 @@ function resolveParentObject(root: unknown, dottedPath: string): unknown {
   return node;
 }
 
+export const GETTEMPLATE_MASK_NOTE =
+  'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"';
+
+// The SINGLE funnel every `declared`-drift emission must flow through. CloudFormation's
+// GetTemplate masks every non-ASCII character in a stored string literal as `?` (see
+// isCfnTemplateNonAsciiMask), so any compare of a GetTemplate-sourced desired against an
+// intact live value can false-flag; the plain string-diff path demotes such a mask-only
+// difference to a readGap, but a special-case branch that pushed its `declared` finding
+// DIRECTLY bypassed that demotion — exactly how #712's SFN DefinitionString branch
+// regressed into a guaranteed false drift (#1247), and JSON_STRING_PROPS repeated it
+// (#1337). Funnelling the push applies the demotion structurally, so a future branch
+// cannot reintroduce the bypass; a companion meta-test asserts no direct
+// `tier: 'declared'` push exists outside this function. Branches that compare PARSED
+// forms (SFN / JSON_STRING_PROPS) still run their own mask-tolerant structural checks
+// first — this funnel is the raw-value backstop, not a replacement.
+function pushDeclaredFinding(findings: Finding[], finding: Omit<Finding, 'tier'>): void {
+  // Demote ONLY when the mask is what makes the two sides differ (mask-tolerant equal,
+  // strictly unequal) — a site that pushes two genuinely equal values keeps its
+  // (buggy) declared finding visible instead of being silently relabelled a readGap.
+  if (
+    !deepEqual(finding.desired, finding.actual) &&
+    deepEqualModuloNonAsciiMask(finding.desired, finding.actual)
+  ) {
+    findings.push({
+      tier: 'readGap',
+      logicalId: finding.logicalId,
+      resourceType: finding.resourceType,
+      path: finding.path,
+      ...(finding.attributeKey !== undefined ? { attributeKey: finding.attributeKey } : {}),
+      note: GETTEMPLATE_MASK_NOTE,
+    });
+    return;
+  }
+  findings.push({ tier: 'declared', ...finding });
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -2654,8 +2690,7 @@ export function classifyResource(
         (isNonEmptyCollection && !READGAP_COLLECTION_PATHS[resourceType]?.has(k)) ||
         isClearedAllowlistedScalar
       ) {
-        findings.push({
-          tier: 'declared',
+        pushDeclaredFinding(findings, {
           logicalId,
           resourceType,
           path: k,
@@ -2715,12 +2750,11 @@ export function classifyResource(
           logicalId,
           resourceType,
           path: k,
-          note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+          note: GETTEMPLATE_MASK_NOTE,
         });
         continue;
       }
-      findings.push({
-        tier: 'declared',
+      pushDeclaredFinding(findings, {
         logicalId,
         resourceType,
         path: k,
@@ -2790,12 +2824,11 @@ export function classifyResource(
             logicalId,
             resourceType,
             path: k,
-            note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+            note: GETTEMPLATE_MASK_NOTE,
           });
           continue;
         }
-        findings.push({
-          tier: 'declared',
+        pushDeclaredFinding(findings, {
           logicalId,
           resourceType,
           path: k,
@@ -2824,8 +2857,7 @@ export function classifyResource(
         if (typeof member !== 'string' && typeof member !== 'number') continue;
         declaredSet.add(String(member));
         if (liveSet.has(String(member))) continue;
-        findings.push({
-          tier: 'declared',
+        pushDeclaredFinding(findings, {
           logicalId,
           resourceType,
           path: k,
@@ -2864,8 +2896,7 @@ export function classifyResource(
         const liveValue = lEl ? (lEl as { Value: unknown }).Value : undefined;
         if (deepEqual(dEl.Value, liveValue)) continue;
         if (isStringlyEqualScalar(dEl.Value, liveValue)) continue;
-        findings.push({
-          tier: 'declared',
+        pushDeclaredFinding(findings, {
           logicalId,
           resourceType,
           path: k,
@@ -3246,7 +3277,7 @@ export function classifyResource(
           logicalId,
           resourceType,
           path: d.path,
-          note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+          note: GETTEMPLATE_MASK_NOTE,
         });
         continue;
       }
@@ -3433,8 +3464,7 @@ export function classifyResource(
           : tagListWhole
             ? { wholeArrayRevert: { path: k, value: v } }
             : {};
-      findings.push({
-        tier: 'declared',
+      pushDeclaredFinding(findings, {
         logicalId,
         resourceType,
         path: d.path,
