@@ -1,3 +1,11 @@
+## [0.4.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.23...v0.4.24) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** derive Events::Rule CC-identifier ARN partition via partitionForRegion ([#1062](https://github.com/go-to-k/cdk-real-drift/issues/1062)) ([#1131](https://github.com/go-to-k/cdk-real-drift/issues/1131)) ([1f8e8d6](https://github.com/go-to-k/cdk-real-drift/commit/1f8e8d6733359371ca4d3b9bc958e0d11413996e))
+* **revert:** retry a Cloud Control status-poll failure without re-sending the mutation ([#1064](https://github.com/go-to-k/cdk-real-drift/issues/1064)) ([#1132](https://github.com/go-to-k/cdk-real-drift/issues/1132)) ([a3c62d8](https://github.com/go-to-k/cdk-real-drift/commit/a3c62d89c79f5c13f6eb40004f0a898f382005d5))
+
 ## [0.4.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.22...v0.4.23) (2026-07-10)
 
 
