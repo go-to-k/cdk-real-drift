@@ -23,6 +23,7 @@ import {
   buildSiblingUserGroups,
   type GatherResult,
   gatherFindings,
+  isDefinitiveNotManaged,
   isManagedBySiblingStack,
   regatherTouched,
   type SiblingCheck,
@@ -1084,6 +1085,10 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     label: identifier,
     live: {},
   });
+  // The check-run's own account+region — match the ARNs below so a ValidationError is a
+  // DEFINITIVE local not-managed (the #959 foreign-scope cases override these deliberately).
+  const LOCAL_ACCOUNT = '111122223333';
+  const LOCAL_REGION = 'us-east-1';
   const subArn = 'arn:aws:sns:us-east-1:111122223333:NotifTopic:0000-1111-2222';
 
   it('folds a subscription CDK placed in a SIBLING stack (DescribeStackResources resolves it)', async () => {
@@ -1103,7 +1108,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('managed');
   });
@@ -1116,7 +1123,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
   });
@@ -1141,7 +1150,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
   });
@@ -1151,7 +1162,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child('api123|res456|GET', 'AWS::ApiGateway::Method'),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(0);
@@ -1196,7 +1209,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       rule,
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('managed');
     // it looked up the CFn physical-id form, NOT the CC Arn
@@ -1220,7 +1235,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       rule,
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
     // the composite-looking `|` lookup id was NOT short-circuited by the pipe guard: it queried CFn
@@ -1242,8 +1259,20 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       ],
     });
     const cache = new Map<string, SiblingCheck>();
-    await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
-    await isManagedBySiblingStack(cfn as unknown as CloudFormationClient, child(subArn), cache);
+    await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
     expect(cache.get(subArn)).toBe('managed');
   });
@@ -1257,7 +1286,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const first = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      cache
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     // a failed check is 'unverified' (the caller reports coverage-incomplete, never a false added)
     expect(first).toBe('unverified');
@@ -1266,7 +1297,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const second = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      cache
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(second).toBe('unverified');
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(2);
@@ -1317,7 +1350,9 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('managed');
     // it queried the OWNING stack by name and paginated to page 2
@@ -1357,8 +1392,105 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
-      new Map()
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
+  });
+
+  // #959: the DescribeStackResources probe runs on the check's OWN account+region client, so a
+  // ValidationError only proves the child is not in a stack of THIS scope — a child managed by a
+  // stack in a DIFFERENT account/region yields the SAME error but is NOT out of band. It must be
+  // 'unverified' (coverage-incomplete, never a destructive DeleteResource), not 'notManaged'.
+  it('#959: a CROSS-ACCOUNT-managed subscription (ValidationError, foreign account ARN) is UNVERIFIED, not added', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // The subscription ARN's account (999988887777) differs from the check's account.
+    const foreignAccountArn = 'arn:aws:sns:us-east-1:999988887777:NotifTopic:aaaa-bbbb-cccc';
+    const notFound = new Error(`Stack for ${foreignAccountArn} does not exist`);
+    notFound.name = 'ValidationError';
+    cfn.on(DescribeStackResourcesCommand).rejects(notFound);
+    const cache = new Map<string, SiblingCheck>();
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(foreignAccountArn),
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    // fail safe: unverifiable, so NOT a destructive-deletable `added`
+    expect(managed).toBe('unverified');
+    // and NOT memoized as notManaged (uniform with the other unverifiable cases)
+    expect(cache.has(foreignAccountArn)).toBe(false);
+  });
+
+  it('#959: a CROSS-REGION-managed subscription (ValidationError, foreign region ARN) is UNVERIFIED, not added', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // Same account, but the topic/subscription live in eu-west-1 while the check runs in us-east-1.
+    const foreignRegionArn = 'arn:aws:sns:eu-west-1:111122223333:NotifTopic:dddd-eeee-ffff';
+    const notFound = new Error(`Stack for ${foreignRegionArn} does not exist`);
+    notFound.name = 'ValidationError';
+    cfn.on(DescribeStackResourcesCommand).rejects(notFound);
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(foreignRegionArn),
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('unverified');
+  });
+
+  it('#959: a genuinely out-of-band SAME-account+region subscription is STILL added (ValidationError, local ARN)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // subArn is arn:aws:sns:us-east-1:111122223333:... — exactly the check's account+region.
+    const notFound = new Error(`Stack for ${subArn} does not exist`);
+    notFound.name = 'ValidationError';
+    cfn.on(DescribeStackResourcesCommand).rejects(notFound);
+    const cache = new Map<string, SiblingCheck>();
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(subArn),
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    // a real local out-of-band addition is verifiable and MUST still surface (and be cached)
+    expect(managed).toBe('notManaged');
+    expect(cache.get(subArn)).toBe('notManaged');
+  });
+
+  describe('isDefinitiveNotManaged (#959 foreign-scope classifier)', () => {
+    it('a same-account+region ARN is definitive (safe to report added)', () => {
+      expect(isDefinitiveNotManaged(subArn, LOCAL_ACCOUNT, LOCAL_REGION)).toBe(true);
+    });
+    it('a foreign-account ARN is NOT definitive (unverifiable)', () => {
+      expect(
+        isDefinitiveNotManaged(
+          'arn:aws:sns:us-east-1:999988887777:T:x',
+          LOCAL_ACCOUNT,
+          LOCAL_REGION
+        )
+      ).toBe(false);
+    });
+    it('a foreign-region ARN is NOT definitive (unverifiable)', () => {
+      expect(
+        isDefinitiveNotManaged(
+          'arn:aws:sns:eu-west-1:111122223333:T:x',
+          LOCAL_ACCOUNT,
+          LOCAL_REGION
+        )
+      ).toBe(false);
+    });
+    it('a non-ARN physical id (bare name/UUID minted in this scope) is definitive', () => {
+      expect(isDefinitiveNotManaged('MyBus|MyRule', LOCAL_ACCOUNT, LOCAL_REGION)).toBe(true);
+      expect(isDefinitiveNotManaged('some-bare-name', LOCAL_ACCOUNT, LOCAL_REGION)).toBe(true);
+    });
+    it('an ARN with an empty region/account segment carries no foreign signal (definitive)', () => {
+      // e.g. a global/partition-scoped ARN like arn:aws:iam::111122223333:role/... (no region).
+      expect(
+        isDefinitiveNotManaged('arn:aws:iam::111122223333:role/R', LOCAL_ACCOUNT, LOCAL_REGION)
+      ).toBe(true);
+    });
   });
 });
