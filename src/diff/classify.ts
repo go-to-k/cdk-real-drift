@@ -101,6 +101,7 @@ import { MANAGED_KEY_ALIAS_PATHS, shouldFoldManagedServiceKey } from '../read/km
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import { canonicalizePolicy, rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
+import { declaredTagKeys, subtractPropagatedStackTags } from '../normalize/stack-tags.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 
@@ -1694,6 +1695,9 @@ export function classifyResource(
     // DERIVED equality gate rather than a value-independent one: a single default SG folds, a
     // 2+-element APPEND or a single non-default SG SWAP surfaces. Undefined/empty → fail open (fold).
     defaultSgIds?: ReadonlySet<string>;
+    // CFn STACK-level tags (`cdk deploy --tags`) — subtracted from each resource's live `Tags`
+    // (except keys the resource declares) to avoid a first-run / declared-tier tag FP (#683).
+    stackTags?: Record<string, string>;
     oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
     // Rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
@@ -1791,10 +1795,13 @@ export function classifyResource(
   const liveForCompare = structuredClone(liveRaw);
   const declaredForCompare = cloneDeepWithSymbols(declaredIn) as Record<string, unknown>;
   stripAsymmetricIdentityFields(declaredForCompare, liveForCompare);
-  const live = normalizeLiveModel(liveForCompare, schema, {
-    oaiCanonicalIds: oaiMap,
-    resourceType,
-  });
+  // #683 — subtract CFn stack-level tags (`cdk deploy --tags`) propagated onto this resource's
+  // live `Tags`, keeping any key the resource itself declares (compared normally).
+  const live = subtractPropagatedStackTags(
+    normalizeLiveModel(liveForCompare, schema, { oaiCanonicalIds: oaiMap, resourceType }),
+    opts.stackTags ?? {},
+    declaredTagKeys(declaredForCompare)
+  );
   const declared = canonicalizeForCompare(
     rewriteOaiPrincipalsDeep(declaredForCompare, oaiMap),
     resourceType
