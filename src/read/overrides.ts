@@ -1775,6 +1775,14 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
       ...(cache.location !== undefined && { Location: cache.location }),
       ...(cache.modes?.length && { Modes: cache.modes }),
     };
+  // Tags — BatchGetProjects returns the project's `tags` ([{key, value}]), but the
+  // projection omitted them, so a project that DECLARES Tags (a CDK app almost always
+  // stamps app/stack-level `Tags.of(app).add(...)` onto every Project) read back
+  // `Tags: undefined` → a false CFn-declared drift (desired=[...] actual=undefined) that
+  // SURVIVES record. Mirror the sibling `readCodeBuildReportGroup` mapping (#1056); guarded
+  // on non-empty so an untagged project emits no `Tags` and stays clean.
+  if (Array.isArray(p.tags) && p.tags.length > 0)
+    model.Tags = p.tags.map((t) => ({ Key: t.key, Value: t.value }));
   return model;
 };
 
