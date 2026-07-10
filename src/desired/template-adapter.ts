@@ -103,6 +103,81 @@ export function typeChangeReplaceInfo(
   return `info: ${stackName}: ${changed.length} resource(s) changed Type at the same logical id — the next deploy will REPLACE them (old resource deleted, new created): ${shown.join(', ')}${more}`;
 }
 
+// Collect the NAMES referenced by `{ Ref: X }` or an `Fn::Sub` `${X}` anywhere under the given
+// (Resources) subtree, so the unpreviewable-param note below can be scoped to params that
+// actually feed a declared property. `${!Literal}` is a Sub-escaped literal (not a ref) and is
+// skipped; a `${Res.Attr}` GetAtt-style key contributes only its base name.
+function collectReferencedNames(node: unknown, out: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(node)) {
+    for (const x of node) collectReferencedNames(x, out);
+    return out;
+  }
+  if (node && typeof node === 'object') {
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (k === 'Ref' && typeof v === 'string') {
+        out.add(v);
+      } else if (k === 'Fn::Sub') {
+        const tmpl = Array.isArray(v) ? v[0] : v;
+        if (typeof tmpl === 'string') {
+          for (const m of tmpl.matchAll(/\$\{([^}]+)\}/g)) {
+            const name = m[1]?.trim();
+            if (!name || name.startsWith('!')) continue; // ${!Literal} escape, not a reference
+            const base = name.split('.')[0]; // ${Res.Attr} -> base name
+            if (base) out.add(base);
+          }
+        }
+        collectReferencedNames(v, out); // still walk the vars map / nested intrinsics
+      } else {
+        collectReferencedNames(v, out);
+      }
+    }
+  }
+  return out;
+}
+
+// #728 case 1 / #1194: under --pre-deploy the declared source is the LOCAL synth template, so
+// its Parameters are seeded from local `Default`s and only FILLED by the deployed DescribeStacks
+// values (buildResolverContext). A parameter that is NEW/renamed in the local template — no
+// local `Default` AND absent from the deployed stack — has NO value anywhere, so every `{ Ref }`
+// to it resolves UNRESOLVED and the referencing declared property lands SILENTLY in the generic
+// `unresolved` "not compared" info line. The canonical trigger is a legacy-synth
+// `AssetParameters<newhash>S3Bucket / S3VersionKey` after an asset change (a new hash → a
+// brand-new param with no Default and no deployed value) — EXACTLY the change --pre-deploy
+// exists to preview. Surface such params LOUDLY (a distinct coverage warning naming the ROOT
+// CAUSE the generic footer cannot) so a reviewer sees the property was not compared. NoEcho and
+// SSM `::Parameter::Value<` params are EXCLUDED — they are intentionally left UNRESOLVED under
+// their own documented treatment (#744/#882), not the new/renamed-no-Default case here. Only
+// counts params actually REFERENCED by a declared resource property (an unused new param causes
+// no skipped comparison). The referencing properties are already `unresolved`-tier findings, so
+// `--strict` treats them as a coverage gap; this note only makes the cause visible. Returns the
+// note, or null when none. Pure + exported for unit tests; the caller gates on templateOverride.
+export function unpreviewableParamInfo(
+  template: Record<string, any>,
+  stackParams: Record<string, string>,
+  stackName: string
+): string | null {
+  const paramDefs = (template.Parameters ?? {}) as Record<
+    string,
+    { Default?: unknown; Type?: string; NoEcho?: unknown }
+  >;
+  const noValue = Object.entries(paramDefs)
+    .filter(([k, def]) => {
+      if (def?.NoEcho === true || def?.NoEcho === 'true') return false; // #744 masked treatment
+      if ((def?.Type ?? '').includes('::Parameter::Value<')) return false; // #882 SSM treatment
+      if (def && 'Default' in def) return false; // seeded from the local Default
+      return !(k in stackParams); // no deployed value to fill it
+    })
+    .map(([k]) => k);
+  if (noValue.length === 0) return null;
+  const referenced = collectReferencedNames(template.Resources ?? {});
+  const unpreviewable = noValue.filter((k) => referenced.has(k)).sort();
+  if (unpreviewable.length === 0) return null;
+  const shown = unpreviewable.slice(0, 10);
+  const more =
+    unpreviewable.length > shown.length ? `, …(+${unpreviewable.length - shown.length} more)` : '';
+  return `warning: ${stackName}: ${unpreviewable.length} local parameter(s) have NO value under --pre-deploy (new/renamed, no Default, absent from the deployed stack) — every declared property that Refs them resolves UNRESOLVED and was NOT compared (cannot preview): ${shown.join(', ')}${more}`;
+}
+
 // The AWS::Partition / AWS::URLSuffix pseudo-parameters are a deterministic function of the
 // region, NOT a commercial-partition constant. CDK env-agnostic stacks emit ${AWS::Partition}
 // inside nearly every Sub/Join-built ARN, so hard-coding `aws` / `amazonaws.com` mis-resolves
@@ -365,6 +440,11 @@ export async function loadDesired(
   if (templateOverride) {
     const deletedInfo = deletedResourceInfo(physIds, template, stackName);
     if (deletedInfo) console.error(deletedInfo);
+    // #728 case 1 / #1194: loud coverage note for new/renamed local params that resolve to no
+    // value (see unpreviewableParamInfo). stderr keeps --json stdout clean, matching the notes
+    // above/below. stackParams is the deployed DescribeStacks set built just above.
+    const noValueInfo = unpreviewableParamInfo(template, stackParams, stackName);
+    if (noValueInfo) console.error(noValueInfo);
   }
 
   // #882: detect logical ids whose Type changed between the deployed stack and the declared
