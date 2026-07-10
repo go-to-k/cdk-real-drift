@@ -1,3 +1,11 @@
+## [0.9.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.13...v0.9.14) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** gate EB SecurityGroups/InstanceType options instead of value-independent folding ([#893](https://github.com/go-to-k/cdk-real-drift/issues/893)) ([#1229](https://github.com/go-to-k/cdk-real-drift/issues/1229)) ([d4cbc36](https://github.com/go-to-k/cdk-real-drift/commit/d4cbc365fc0ede488adc3f825943f544e41d9c78))
+* **read:** probe each segment of a composite CC identifier in the sibling-stack check ([#800](https://github.com/go-to-k/cdk-real-drift/issues/800)) ([#1231](https://github.com/go-to-k/cdk-real-drift/issues/1231)) ([220bede](https://github.com/go-to-k/cdk-real-drift/commit/220bede7b0232212651da55a3a4b3768df166788))
+
 ## [0.9.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.12...v0.9.13) (2026-07-10)
 
 
