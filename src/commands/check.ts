@@ -20,6 +20,7 @@ import {
   declaredKeysByLogical,
   loadBaseline,
   physicalIdsByLogical,
+  sanitizeStackNameComponent,
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
@@ -270,7 +271,14 @@ export function hasBaselineForStack(
   // Stack names are alphanumeric/hyphen (no dots) and an accountId is digits, so
   // `${stackName}.${accountId}.` is an unambiguous prefix. Without a known account the
   // account segment stays wildcarded (region-only pin, today's behavior).
-  const prefix = (accountId ? `${stackName}.${accountId}.` : `${stackName}.`).toLowerCase();
+  // #1077: match on the SANITIZED stack-name component `baselinePath` actually writes — a
+  // Windows-reserved DOS device name (`nul`/`con`/…) is stored as `nul_.<acct>.<region>.json`,
+  // so probing the raw `nul.` prefix would MISS its file and falsely report the deleted stack
+  // as never-deployed. sanitizeStackNameComponent is identity for every normal name.
+  const stackComponent = sanitizeStackNameComponent(stackName);
+  const prefix = (
+    accountId ? `${stackComponent}.${accountId}.` : `${stackComponent}.`
+  ).toLowerCase();
   const suffix = `.${region}.json`.toLowerCase();
   return entries.some((f) => {
     const lower = f.toLowerCase();
