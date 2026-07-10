@@ -79,6 +79,47 @@ const FILE_HEADER =
   '# "<constructPath|logicalId>.<property>" glob, the scopes narrow WHERE it applies.\n' +
   '# Add a comment above a rule to record WHY it is ignored.\n';
 
+// Decode an ignore.yaml buffer via the same BOM/UTF-16 sniff resolveApp gained for cdk.json
+// (#1076) and the baseline reader got in #1137 — the config reader is the remaining sibling
+// (#1291). A UTF-16 LE file (FF FE — Windows PowerShell 5.1's DEFAULT for `Out-File` / `>`)
+// or UTF-16 BE (FE FF) decoded with Node's `readFile(…, 'utf8')` becomes NUL-interleaved
+// mojibake that the YAML parser reads as a SINGLE scalar, so a perfectly valid mapping is
+// mis-diagnosed as "must be a YAML mapping". A default TextDecoder consumes the BOM
+// (`ignoreBOM` defaults to false), so a UTF-8 BOM (EF BB BF) is also stripped here — the
+// yaml parser already tolerates a UTF-8 BOM, so this only makes the two paths agree; the
+// UTF-16 cases are the ones Node's 'utf8' decode genuinely mangles.
+//
+// Beyond the BOM sniff (resolveApp's cdk.json only ever sees BOM-prefixed UTF-16), we also
+// detect BOM-LESS UTF-16 from the NUL-interleaving the issue calls out: ignore.yaml is a
+// hand-edited file, and some editors write UTF-16 without a BOM. UTF-16-LE ASCII-range text
+// is `<byte> 00 <byte> 00 …` and UTF-16-BE is `00 <byte> 00 <byte> …`; a legitimate UTF-8
+// ignore.yaml contains no NUL bytes at all, so a NUL at every odd (LE) or even (BE) index in
+// the leading window is an unambiguous UTF-16 signal.
+function looksUtf16(buf: Buffer, nulAtOddIndex: boolean): boolean {
+  const n = Math.min(buf.length, 64);
+  if (n < 2) return false;
+  let pairs = 0;
+  for (let i = nulAtOddIndex ? 1 : 0; i < n; i += 2) {
+    if (buf[i] !== 0x00) return false;
+    pairs++;
+  }
+  return pairs > 0;
+}
+
+function decodeConfig(buf: Buffer): string {
+  const encoding =
+    buf[0] === 0xff && buf[1] === 0xfe
+      ? 'utf-16le'
+      : buf[0] === 0xfe && buf[1] === 0xff
+        ? 'utf-16be'
+        : looksUtf16(buf, /* nulAtOddIndex (LE) */ true)
+          ? 'utf-16le'
+          : looksUtf16(buf, /* nulAtEvenIndex (BE) */ false)
+            ? 'utf-16be'
+            : 'utf-8';
+  return new TextDecoder(encoding).decode(buf);
+}
+
 /**
  * Load `.cdkrd/ignore.yaml` (cwd-relative). Absent file -> empty config (no migration
  * needed). A comments-only / empty file parses to null -> empty config too. Invalid
@@ -91,7 +132,12 @@ const FILE_HEADER =
 export async function loadConfig(): Promise<CdkrdConfig> {
   let raw: string;
   try {
-    raw = await readFile(CONFIG_PATH, 'utf8');
+    // Read as a Buffer (no encoding) and decode via the BOM/UTF-16 sniff (#1291): a
+    // Windows-authored UTF-16 file decoded as 'utf8' becomes mojibake the YAML parser
+    // mis-reads as a single scalar, throwing the misleading "must be a YAML mapping" on a
+    // file that IS a valid mapping. `decodeConfig` strips a BOM / handles UTF-16 like the
+    // real `cdk` CLI does for cdk.json (resolveApp, #1076) and the baseline reader (#1137).
+    raw = decodeConfig(await readFile(CONFIG_PATH));
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { ignore: [] };
     throw e;
@@ -414,7 +460,10 @@ export async function addIgnoreRules(
   // the other process ALSO just added is not written twice.
   let existingRaw: string | undefined;
   try {
-    existingRaw = await readFile(CONFIG_PATH, 'utf8');
+    // Same BOM/UTF-16 decode as loadConfig (#1291): this raw text is re-parsed by
+    // appendRulesToYaml to preserve the user's comments/layout, so it must be decoded the
+    // same way — a UTF-16 file read as 'utf8' here would corrupt the append.
+    existingRaw = decodeConfig(await readFile(CONFIG_PATH));
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
   }
