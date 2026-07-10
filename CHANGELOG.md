@@ -1,3 +1,10 @@
+## [0.11.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.1...v0.11.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** derive GlobalAccelerator EndpointGroup HealthCheckPort from its listener ([#975](https://github.com/go-to-k/cdk-real-drift/issues/975)) ([#1242](https://github.com/go-to-k/cdk-real-drift/issues/1242)) ([d961916](https://github.com/go-to-k/cdk-real-drift/commit/d961916fad219861eca6facf0da82784f488a98a))
+
 ## [0.11.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.0...v0.11.1) (2026-07-10)
 
 
