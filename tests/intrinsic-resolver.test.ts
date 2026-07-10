@@ -428,6 +428,54 @@ describe('intrinsic resolver', () => {
     expect(resolve({ 'Fn::Join': ['-', ['a', { Ref: 'Env' }]] }, ctx())).toBe('a-prod');
   });
 
+  // #1073: a whole-string dynamic reference that arrives INDIRECTLY — produced by
+  // resolving a Ref-to-parameter / Fn::FindInMap / Fn::Select / Fn::ImportValue rather
+  // than as a direct string literal in the tree — must ALSO fold to UNRESOLVED. The
+  // literal-string guard only sees a token that appears directly in the template; the
+  // #722 fix guarded the direct case, this covers its indirect siblings. Leaking the
+  // raw `{{resolve:…}}` here is a declared FP that prints the secret and, on revert,
+  // writes the literal token back.
+  it('R130 #1073: a dynamic reference resolved via Ref/FindInMap/Select/ImportValue → UNRESOLVED', () => {
+    const secret =
+      '{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:111111111111:secret:Db-abc:SecretString:username::}}';
+    const ssm = '{{resolve:ssm-secure:/my/secure:5}}';
+
+    // (a) Ref to a parameter whose value IS the dynamic-ref string.
+    expect(resolve({ Ref: 'SecretRef' }, ctx({ params: { SecretRef: secret } }))).toBe(UNRESOLVED);
+
+    // (b) Fn::FindInMap looked-up value is a dynamic-ref string.
+    const mapCtx = ctx({ mappings: { M: { top: { key: ssm } } } });
+    expect(resolve({ 'Fn::FindInMap': ['M', 'top', 'key'] }, mapCtx)).toBe(UNRESOLVED);
+    // ...and via the FindInMap DefaultValue (map path absent) resolving to one.
+    expect(
+      resolve(
+        { 'Fn::FindInMap': ['M', 'nope', 'nope', { DefaultValue: { Ref: 'SecretRef' } }] },
+        ctx({ mappings: { M: {} }, params: { SecretRef: secret } })
+      )
+    ).toBe(UNRESOLVED);
+
+    // (c) Fn::Select of a list containing the dynamic-ref string.
+    expect(resolve({ 'Fn::Select': [1, ['a', secret, 'c']] }, ctx())).toBe(UNRESOLVED);
+
+    // (d) Fn::ImportValue resolving to a dynamic-ref export.
+    expect(
+      resolve({ 'Fn::ImportValue': 'SecretExport' }, ctx({ exports: { SecretExport: ssm } }))
+    ).toBe(UNRESOLVED);
+
+    // no-regression: an ordinary (non-dynamic-ref) resolved string still resolves normally.
+    expect(resolve({ Ref: 'Env' }, ctx())).toBe('prod');
+    expect(
+      resolve(
+        { 'Fn::FindInMap': ['M', 'top', 'key'] },
+        ctx({ mappings: { M: { top: { key: 'plain' } } } })
+      )
+    ).toBe('plain');
+    expect(resolve({ 'Fn::Select': [0, ['first', 'second']] }, ctx())).toBe('first');
+    expect(
+      resolve({ 'Fn::ImportValue': 'PlainExport' }, ctx({ exports: { PlainExport: 'plain-val' } }))
+    ).toBe('plain-val');
+  });
+
   // #851: a malformed Fn::Sub argument (non-string / non-`[string, map]` array) must
   // fail closed to UNRESOLVED, never throw a TypeError on `.replace` of a non-string
   // template. Every branch of the resolver is fail-closed; these shapes were the gap.
