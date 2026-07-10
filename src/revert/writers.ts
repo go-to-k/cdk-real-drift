@@ -206,6 +206,7 @@ import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
+import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import {
   DLM_DEFAULT_POLICY_SHORTHAND,
   type OverrideCtx,
@@ -255,7 +256,7 @@ const writeS3BucketPolicy: SdkWriter = async (ctx, ops) => {
   const bucket = str(ctx.declared['Bucket']);
   if (!bucket) throw new Error('cannot resolve bucket for revert');
   const desired = policyJson(await desiredModel('AWS::S3::BucketPolicy', ctx, ops));
-  const c = new S3Client({ region: ctx.region });
+  const c = new S3Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
   if (desired === undefined) await c.send(new DeleteBucketPolicyCommand({ Bucket: bucket }));
   else await c.send(new PutBucketPolicyCommand({ Bucket: bucket, Policy: desired }));
 };
@@ -264,7 +265,7 @@ const writeSnsTopicPolicy: SdkWriter = async (ctx, ops) => {
   const topics = strList(ctx.declared['Topics']);
   if (topics.length === 0) throw new Error('cannot resolve topic for revert');
   const desired = policyJson(await desiredModel('AWS::SNS::TopicPolicy', ctx, ops)) ?? '';
-  const c = new SNSClient({ region: ctx.region });
+  const c = new SNSClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   // A TopicPolicy can attach to several Topics — set the policy on every one.
   for (const topic of topics) {
     await c.send(
@@ -281,7 +282,7 @@ const writeSqsQueuePolicy: SdkWriter = async (ctx, ops) => {
   const queues = strList(ctx.declared['Queues']);
   if (queues.length === 0) throw new Error('cannot resolve queue for revert');
   const desired = policyJson(await desiredModel('AWS::SQS::QueuePolicy', ctx, ops)) ?? '';
-  const c = new SQSClient({ region: ctx.region });
+  const c = new SQSClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   // A QueuePolicy can attach to several Queues — set the policy on every one.
   for (const queue of queues) {
     await c.send(
@@ -303,7 +304,7 @@ const writeEventBusPolicy: SdkWriter = async (ctx) => {
   const eventBusName = str(ctx.declared['EventBusName']) ?? 'default';
   const statementId = str(ctx.declared['StatementId']);
   if (!statementId) throw new Error('cannot resolve StatementId for EventBusPolicy revert');
-  const c = new EventBridgeClient({ region: ctx.region });
+  const c = new EventBridgeClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
 
   // Desired statement = the declared (template) intent. Modern templates declare a full
   // `Statement` object; the legacy CfnEventBusPolicy form declares Action+Principal.
@@ -355,7 +356,7 @@ const writeIamPolicy: SdkWriter = async (ctx, ops) => {
   if (!name) throw new Error('cannot resolve policy name for revert');
   const desired = policyJson(await desiredModel('AWS::IAM::Policy', ctx, ops));
   if (desired === undefined) throw new Error('cannot revert an IAM inline policy to absent');
-  const c = new IAMClient({ region: ctx.region });
+  const c = new IAMClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   // An AWS::IAM::Policy can attach to ANY combination of Roles, Users and Groups, and
   // to several of each — the same inline policy is put on every one. Reverting only the
   // first target (the old behavior) left the drift in place on every other attachment
@@ -410,7 +411,7 @@ const writeIamManagedPolicy: SdkWriter = async (ctx, ops) => {
   // ManagedPolicyArn when the physical id isn't (yet) the arn shape.
   const arn = isArn(ctx.physicalId) ?? isArn(ctx.declared['ManagedPolicyArn']);
   if (!arn) throw new Error('cannot resolve managed policy arn for revert');
-  const c = new IAMClient({ region: ctx.region });
+  const c = new IAMClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
 
   // Attachment-list reverts (Roles/Users/Groups), per member — never by rewriting the
   // whole list (that would touch the union members another stack/role/console
@@ -489,7 +490,7 @@ const asInlinePolicies = (v: unknown): InlinePolicy[] =>
 const writeIamRoleInlinePolicies: SdkWriter = async (ctx, ops) => {
   const role = str(ctx.physicalId); // an AWS::IAM::Role physical id IS the role name
   if (!role) throw new Error('cannot resolve role name for revert');
-  const c = new IAMClient({ region: ctx.region });
+  const c = new IAMClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   for (const op of ops) {
     if (op.path !== '/Policies')
       throw new Error(`unsupported inline-policy revert path: ${op.path}`);
@@ -528,7 +529,7 @@ const writeElbLoadBalancerAttributes: SdkWriter = async (ctx, ops) => {
   if (!arn) throw new Error('cannot resolve load balancer arn for revert');
   const attrs = elbAttributeOps(ops);
   if (attrs.length === 0) return;
-  await new ElasticLoadBalancingV2Client({ region: ctx.region }).send(
+  await new ElasticLoadBalancingV2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new ModifyLoadBalancerAttributesCommand({ LoadBalancerArn: arn, Attributes: attrs })
   );
 };
@@ -538,7 +539,7 @@ const writeElbTargetGroupAttributes: SdkWriter = async (ctx, ops) => {
   if (!arn) throw new Error('cannot resolve target group arn for revert');
   const attrs = elbAttributeOps(ops);
   if (attrs.length === 0) return;
-  await new ElasticLoadBalancingV2Client({ region: ctx.region }).send(
+  await new ElasticLoadBalancingV2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new ModifyTargetGroupAttributesCommand({ TargetGroupArn: arn, Attributes: attrs })
   );
 };
@@ -555,7 +556,7 @@ const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
   const id = str(ctx.physicalId);
   if (!id) throw new Error('cannot resolve namespace id for revert');
   const m = await desiredModel('AWS::ServiceDiscovery::HttpNamespace', ctx, ops);
-  await new ServiceDiscoveryClient({ region: ctx.region }).send(
+  await new ServiceDiscoveryClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateHttpNamespaceCommand({
       Id: id,
       Namespace: { Description: (str(m.Description) ?? '') as string },
@@ -609,7 +610,9 @@ const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
     any = true;
   }
   if (!any) return;
-  await new DocDBClient({ region: ctx.region }).send(new ModifyDBClusterCommand(input));
+  await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new ModifyDBClusterCommand(input)
+  );
 };
 
 // AWS::DocDB::DBInstance — Cloud Control cannot read OR write the DocDB family, so it is
@@ -657,7 +660,9 @@ const writeDocDbInstance: SdkWriter = async (ctx, ops) => {
     any = true;
   }
   if (!any) return;
-  await new DocDBClient({ region: ctx.region }).send(new ModifyDBInstanceCommand(input));
+  await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new ModifyDBInstanceCommand(input)
+  );
 };
 
 // AWS::CloudFront::Distribution — Cloud Control CAN read this type, but its
@@ -675,7 +680,7 @@ const writeDocDbInstance: SdkWriter = async (ctx, ops) => {
 const writeCloudFrontDistribution: SdkWriter = async (ctx, ops) => {
   const id = str(ctx.physicalId);
   if (!id) throw new Error('cannot resolve distribution id for revert');
-  const c = new CloudFrontClient({ region: ctx.region });
+  const c = new CloudFrontClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const cur = await c.send(new GetDistributionConfigCommand({ Id: id }));
   if (!cur.DistributionConfig || !cur.ETag)
     throw new Error('could not read current distribution config for revert');
@@ -717,7 +722,7 @@ const WAF_UPDATABLE_PASSTHROUGH = [
 const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
   const [name, id, scope] = (str(ctx.physicalId) ?? '').split('|');
   if (!name || !id || !scope) throw new Error('cannot resolve WebACL Name|Id|Scope for revert');
-  const c = new WAFV2Client({ region: ctx.region });
+  const c = new WAFV2Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const cur = await c.send(new GetWebACLCommand({ Name: name, Id: id, Scope: scope as Scope }));
   if (!cur.WebACL || !cur.LockToken) throw new Error('could not read current WebACL for revert');
   // A revert op path indexes the model classify COMPARED, which is canonicalized: every
@@ -790,7 +795,7 @@ const GLUE_JOB_UPDATE_FIELDS = [
 const writeGlueJob: SdkWriter = async (ctx, ops) => {
   const name = str(ctx.physicalId) ?? str(ctx.declared['Name']);
   if (!name) throw new Error('cannot resolve Glue job name for revert');
-  const c = new GlueClient({ region: ctx.region });
+  const c = new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const got = await c.send(new GetJobCommand({ JobName: name }));
   if (!got.Job) throw new Error('could not read current Glue job for revert');
   const m = applyOps(got.Job as unknown as Record<string, unknown>, ops);
@@ -819,7 +824,7 @@ const writeGlueTable: SdkWriter = async (ctx, ops) => {
   if (!dbName || !tableInput || !str(tableInput.Name))
     throw new Error('cannot resolve Glue table target for revert');
   const catalogId = str(m.CatalogId) ?? str(ctx.declared['CatalogId']);
-  await new GlueClient({ region: ctx.region }).send(
+  await new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateTableCommand({
       DatabaseName: dbName,
       TableInput: tableInput as never,
@@ -848,7 +853,9 @@ const writeGlueClassifier: SdkWriter = async (ctx, ops) => {
   }
   if (Object.keys(input).length === 0)
     throw new Error('cannot resolve Glue classifier target for revert');
-  await new GlueClient({ region: ctx.region }).send(new UpdateClassifierCommand(input as never));
+  await new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateClassifierCommand(input as never)
+  );
 };
 
 // AWS::Glue::Workflow — read via the GetWorkflow override (CC UnsupportedActionException),
@@ -877,7 +884,9 @@ const writeGlueWorkflow: SdkWriter = async (ctx, ops) => {
     input.DefaultRunProperties = m.DefaultRunProperties as Record<string, string>;
   else if (removed('DefaultRunProperties')) input.DefaultRunProperties = {};
   if (m.MaxConcurrentRuns !== undefined) input.MaxConcurrentRuns = Number(m.MaxConcurrentRuns);
-  await new GlueClient({ region: ctx.region }).send(new UpdateWorkflowCommand(input));
+  await new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateWorkflowCommand(input)
+  );
 };
 
 // AWS::Glue::Connection — read via the GetConnection override (the whole Glue family is a
@@ -909,7 +918,7 @@ const writeGlueConnection: SdkWriter = async (ctx, ops) => {
   const name = str(ci?.Name) ?? str(ctx.physicalId) ?? str(declInput?.Name);
   if (!ci || !name) throw new Error('cannot resolve Glue connection target for revert');
   const catalogId = str(m.CatalogId) ?? str(ctx.declared['CatalogId']);
-  await new GlueClient({ region: ctx.region }).send(
+  await new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateConnectionCommand({
       Name: name,
       ...(catalogId && { CatalogId: catalogId }),
@@ -935,7 +944,7 @@ const writeSesReceiptRule: SdkWriter = async (ctx, ops) => {
   const rule = m.Rule as ReceiptRule | undefined;
   if (!ruleSetName || !rule || !str(rule.Name))
     throw new Error('cannot resolve SES receipt rule target for revert');
-  await new SESClient({ region: ctx.region }).send(
+  await new SESClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateReceiptRuleCommand({ RuleSetName: ruleSetName, Rule: rule })
   );
 };
@@ -981,7 +990,7 @@ const writeCloudWatchAnomalyDetector: SdkWriter = async (ctx, ops) => {
       })),
     }),
   };
-  await new CloudWatchClient({ region: ctx.region }).send(
+  await new CloudWatchClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new PutAnomalyDetectorCommand({
       ...(single && { SingleMetricAnomalyDetector: single as never }),
       ...(math && { MetricMathAnomalyDetector: math as never }),
@@ -1029,7 +1038,7 @@ const writeDlmLifecyclePolicy: SdkWriter = async (ctx, ops) => {
         `DLM LifecyclePolicy ${top} cannot be cleared via UpdateLifecyclePolicy (no safe clearing value; needs live confirmation); update it manually`
       );
   }
-  const c = new DLMClient({ region: ctx.region });
+  const c = new DLMClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const m = await desiredModel('AWS::DLM::LifecyclePolicy', ctx, ops);
   let details = m.PolicyDetails as Record<string, unknown> | undefined;
   if (details === undefined && DLM_DEFAULT_POLICY_SHORTHAND.some((k) => m[k] !== undefined)) {
@@ -1072,7 +1081,7 @@ const writeMetricFilter: SdkWriter = async (ctx, ops) => {
     ...(t.Unit !== undefined && { unit: t.Unit as string }),
     ...(t.Dimensions !== undefined && { dimensions: t.Dimensions as Record<string, string> }),
   }));
-  await new CloudWatchLogsClient({ region: ctx.region }).send(
+  await new CloudWatchLogsClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new PutMetricFilterCommand({
       logGroupName: logGroup,
       filterName,
@@ -1117,7 +1126,7 @@ const writeRoute53RecordSet: SdkWriter = async (ctx, ops) => {
     rrset.ResourceRecords = (m.ResourceRecords as string[]).map((v) => ({ Value: v }));
   if (m.AliasTarget !== undefined) rrset.AliasTarget = m.AliasTarget;
   for (const k of RR_ROUTING_FIELDS) if (m[k] !== undefined) rrset[k] = m[k];
-  await new Route53Client({ region: ctx.region }).send(
+  await new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new ChangeResourceRecordSetsCommand({
       HostedZoneId: zone,
       ChangeBatch: { Changes: [{ Action: 'UPSERT', ResourceRecordSet: rrset as never }] },
@@ -1172,7 +1181,7 @@ const writeConfigRuleInputParameters: SdkWriter = async (ctx, ops) => {
     throw new Error(
       'Config rule InputParameters cannot be cleared via revert: PutConfigRule re-PUTs the whole rule and the exact clearing payload (omit vs empty {}) needs live confirmation; clear it manually'
     );
-  const client = new ConfigServiceClient({ region: ctx.region });
+  const client = new ConfigServiceClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const got = await client.send(new DescribeConfigRulesCommand({ ConfigRuleNames: [name] }));
   const rule = got.ConfigRules?.[0];
   if (!rule) throw new Error(`Config rule not found for revert: ${name}`);
@@ -1234,7 +1243,7 @@ const writeOpenSearchDomain: SdkWriter = async (ctx, ops) => {
   const touched = new Set(
     ops.map((o) => o.path.replace(/^\//, '').split('/')[0]).filter((p): p is string => !!p)
   );
-  const c = new OpenSearchClient({ region: ctx.region });
+  const c = new OpenSearchClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const cfg = (await c.send(new DescribeDomainConfigCommand({ DomainName: name }))).DomainConfig as
     | Record<string, { Options?: unknown }>
     | undefined;
@@ -1273,7 +1282,7 @@ const writeOpenSearchDomain: SdkWriter = async (ctx, ops) => {
 const writeLogGroupBearerTokenAuth: SdkWriter = async (ctx, ops) => {
   const lg = str(ctx.physicalId) ?? str(ctx.declared['LogGroupName']);
   if (!lg) throw new Error('cannot resolve log group name for revert');
-  const c = new CloudWatchLogsClient({ region: ctx.region });
+  const c = new CloudWatchLogsClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   for (const op of ops) {
     // plan.ts groups this prop-scoped item to the single BearerTokenAuthenticationEnabled
     // path, so there is one op; a `remove` means "back to default (disabled)".
@@ -1299,7 +1308,7 @@ const writeLogGroupBearerTokenAuth: SdkWriter = async (ctx, ops) => {
 const writeCognitoIdentityPoolEvents: SdkWriter = async (ctx, ops) => {
   const id = str(ctx.physicalId) ?? str(ctx.declared['Id']);
   if (!id) throw new Error('cannot resolve identity pool id for CognitoEvents revert');
-  const c = new CognitoSyncClient({ region: ctx.region });
+  const c = new CognitoSyncClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const cur = (await c.send(new GetCognitoEventsCommand({ IdentityPoolId: id }))).Events ?? {};
   const desired =
     (applyOps({ CognitoEvents: { ...cur } }, ops) as { CognitoEvents?: Record<string, string> })
@@ -1417,7 +1426,7 @@ const writeApiGatewayMethod: SdkWriter = async (ctx, ops) => {
         pushByKey(integrationRespPatches, p.statusCode, p.patch);
       else pushByKey(methodRespPatches, p.statusCode, p.patch);
     }
-  const c = new APIGatewayClient({ region: ctx.region });
+  const c = new APIGatewayClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   if (integrationPatches.length > 0)
     await c.send(
       new UpdateIntegrationCommand({
@@ -1494,7 +1503,7 @@ const writeEcsServiceWriteOnlyProps: SdkWriter = async (ctx, ops) => {
       ? (camelKeysDeep(declared) as ServiceVolumeConfiguration[])
       : [];
   }
-  const c = new ECSClient({ region: ctx.region });
+  const c = new ECSClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   await c.send(new UpdateServiceCommand(input));
 };
 
@@ -1509,7 +1518,7 @@ const writeMskConfiguration: SdkWriter = async (ctx, ops) => {
   const op = ops.find((o) => o.path === '/ServerProperties');
   if (op === undefined || op.op === 'remove' || typeof op.value !== 'string')
     throw new Error('MSK Configuration ServerProperties revert: unexpected op');
-  const client = new KafkaClient({ region: ctx.region });
+  const client = new KafkaClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   await client.send(
     new UpdateConfigurationCommand({
       Arn: arn,
@@ -1556,7 +1565,9 @@ const writeCodeBuildReportGroup: SdkWriter = async (ctx, ops) => {
   input.tags = Array.isArray(tags)
     ? tags.map((t) => ({ key: str(t.Key), value: str(t.Value) }))
     : [];
-  await new CodeBuildClient({ region: ctx.region }).send(new UpdateReportGroupCommand(input));
+  await new CodeBuildClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateReportGroupCommand(input)
+  );
 };
 
 // AWS::DAX::Cluster — NON_PROVISIONABLE (read via DescribeClusters; #534). dax:UpdateCluster is a
@@ -1599,7 +1610,9 @@ const writeDaxCluster: SdkWriter = async (ctx, ops) => {
     any = true;
   }
   if (!any) return;
-  await new DAXClient({ region: ctx.region }).send(new UpdateClusterCommand(input));
+  await new DAXClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateClusterCommand(input)
+  );
 };
 
 // AWS::DAX::ParameterGroup — NON_PROVISIONABLE (read via DescribeParameters; #534).
@@ -1624,7 +1637,7 @@ const writeDaxParameterGroup: SdkWriter = async (ctx, ops) => {
     .filter((k) => typeof desiredValues[k] === 'string')
     .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
   if (values.length === 0) return;
-  await new DAXClient({ region: ctx.region }).send(
+  await new DAXClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateDaxParameterGroupCommand({ ParameterGroupName: name, ParameterNameValues: values })
   );
 };
@@ -1657,7 +1670,7 @@ const writeElastiCacheParameterGroup: SdkWriter = async (ctx, ops) => {
       for (const k of Object.keys(desiredValues)) modifyKeys.add(k);
     }
   }
-  const c = new ElastiCacheClient({ region: ctx.region });
+  const c = new ElastiCacheClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const modify = [...modifyKeys]
     .filter((k) => typeof desiredValues[k] === 'string')
     .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
@@ -1708,7 +1721,7 @@ const writeMemoryDbParameterGroup: SdkWriter = async (ctx, ops) => {
       for (const k of Object.keys(desiredValues)) modifyKeys.add(k);
     }
   }
-  const c = new MemoryDBClient({ region: ctx.region });
+  const c = new MemoryDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const modify = [...modifyKeys]
     .filter((k) => typeof desiredValues[k] === 'string')
     .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
@@ -1806,7 +1819,9 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
     }
   }
   if (!any) return;
-  await new EC2Client({ region: ctx.region }).send(new ModifyClientVpnEndpointCommand(input));
+  await new EC2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new ModifyClientVpnEndpointCommand(input)
+  );
 };
 
 // AWS::Lex::Bot `BotLocales` is the ENTIRE conversational model (locales → intents → slots +
@@ -1886,7 +1901,7 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
   if (!Array.isArray(declaredLocales))
     throw new Error('Lex BotLocales revert: declared BotLocales is not an array');
   void ops; // reconcile the WHOLE declared model (declared IS the desired target); ops only route.
-  const c = new LexModelsV2Client({ region: ctx.region });
+  const c = new LexModelsV2Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const botVersion = 'DRAFT';
 
   for (const rawLocale of declaredLocales) {
@@ -2264,7 +2279,7 @@ const writeElasticBeanstalkApplication: SdkWriter = async (ctx, ops) => {
     }
   }
   if (!any) return;
-  await new ElasticBeanstalkClient({ region: ctx.region }).send(
+  await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateApplicationCommand(input)
   );
 };
@@ -2283,7 +2298,7 @@ const writeElasticBeanstalkEnvironment: SdkWriter = async (ctx, ops) => {
     }
   }
   if (!any) return;
-  await new ElasticBeanstalkClient({ region: ctx.region }).send(
+  await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateEnvironmentCommand(input)
   );
 };
@@ -2312,7 +2327,7 @@ const writeKinesisVideoStreamRetention: SdkWriter = async (ctx, ops) => {
   if (!op) return;
   const target =
     op.op === 'add' && typeof op.value === 'number' ? op.value : KVS_STREAM_RETENTION_DEFAULT;
-  const kv = new KinesisVideoClient({ region: ctx.region });
+  const kv = new KinesisVideoClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const desc = await kv.send(new DescribeStreamCommand(kvsStreamRef(id)));
   const current = desc.StreamInfo?.DataRetentionInHours ?? 0;
   const version = desc.StreamInfo?.Version;
@@ -2337,7 +2352,7 @@ const writeKinesisVideoSignalingChannel: SdkWriter = async (ctx, ops) => {
   if (!op) return;
   const target =
     op.op === 'add' && typeof op.value === 'number' ? op.value : KVS_CHANNEL_MESSAGE_TTL_DEFAULT;
-  const kv = new KinesisVideoClient({ region: ctx.region });
+  const kv = new KinesisVideoClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const desc = await kv.send(new DescribeSignalingChannelCommand(kvsChannelDescribeRef(id)));
   const arn = desc.ChannelInfo?.ChannelARN;
   const version = desc.ChannelInfo?.Version;
@@ -2369,7 +2384,7 @@ const writeKinesisVideoStreamStorage: SdkWriter = async (ctx, ops) => {
   const target = (
     op.op === 'add' && typeof op.value === 'string' ? op.value : KVS_STREAM_STORAGE_TIER_DEFAULT
   ) as DefaultStorageTier;
-  const kv = new KinesisVideoClient({ region: ctx.region });
+  const kv = new KinesisVideoClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const desc = await kv.send(new DescribeStreamCommand(kvsStreamRef(id)));
   const version = desc.StreamInfo?.Version;
   if (version === undefined) throw new Error(`cannot resolve stream version for ${id}`);
@@ -2466,7 +2481,7 @@ const writeApiGatewayV2Stage: SdkWriter = async (ctx, ops) => {
     return [...keys];
   };
 
-  const client = new ApiGatewayV2Client({ region: ctx.region });
+  const client = new ApiGatewayV2Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
 
   // AccessLogSettings clear -> DeleteAccessLogSettings (empty object is a no-op).
   if (touched.has('AccessLogSettings') && isCleared('AccessLogSettings')) {
@@ -2537,7 +2552,7 @@ const writeApiGatewayRestApiPolicy: SdkWriter = async (ctx) => {
       : typeof declaredPolicy === 'string'
         ? declaredPolicy
         : JSON.stringify(declaredPolicy);
-  await new APIGatewayClient({ region: ctx.region }).send(
+  await new APIGatewayClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateRestApiCommand({
       restApiId,
       patchOperations: [{ op: 'replace', path: '/policy', value } satisfies PatchOperation],
@@ -2662,7 +2677,7 @@ const writeCloudControlIndexNested: SdkWriter = async (ctx, ops) => {
   // StageName`), not the bare CFn physical id, or CC ValidationExceptions. Falls back to the
   // physical id when no adapter applies (single-segment types: Backup plan, Route53 group).
   const identifier = ctx.identifier ?? ctx.physicalId;
-  const cc = new CloudControlClient({ region: ctx.region });
+  const cc = new CloudControlClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const got = await cc.send(new GetResourceCommand({ TypeName: type, Identifier: identifier }));
   const live = JSON.parse(got.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
   const patch = ops.map((op) => {
