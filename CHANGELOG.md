@@ -1,3 +1,10 @@
+## [0.12.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.26...v0.12.27) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** gateway VPC endpoint prefix-list routes no longer false-added ([#1276](https://github.com/go-to-k/cdk-real-drift/issues/1276)) ([#1359](https://github.com/go-to-k/cdk-real-drift/issues/1359)) ([cf5423d](https://github.com/go-to-k/cdk-real-drift/commit/cf5423dabd34bae56683b08fa176e17ec934ba0a))
+
 ## [0.12.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.25...v0.12.26) (2026-07-10)
 
 
