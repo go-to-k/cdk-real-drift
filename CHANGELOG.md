@@ -1,3 +1,11 @@
+## [0.4.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.36...v0.4.37) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** fold a promoted-to-code NESTED recorded path, not just top-level ([#1079](https://github.com/go-to-k/cdk-real-drift/issues/1079)) ([#1158](https://github.com/go-to-k/cdk-real-drift/issues/1158)) ([184c23e](https://github.com/go-to-k/cdk-real-drift/commit/184c23e1fdae162cd8e1131a83590c0e799d0e9f))
+* **revert:** carry dry-run plan counts + refused reason in the --json element ([#1096](https://github.com/go-to-k/cdk-real-drift/issues/1096)) ([#1159](https://github.com/go-to-k/cdk-real-drift/issues/1159)) ([d9ee497](https://github.com/go-to-k/cdk-real-drift/commit/d9ee49753d90045fc151e541f54171c59ecb9e7e))
+
 ## [0.4.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.35...v0.4.36) (2026-07-10)
 
 
