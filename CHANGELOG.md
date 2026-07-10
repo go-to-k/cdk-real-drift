@@ -1,3 +1,15 @@
+## [0.12.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.12...v0.12.13) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** funnel every declared-drift push through a central GetTemplate-mask guard ([#1341](https://github.com/go-to-k/cdk-real-drift/issues/1341)) ([3d31136](https://github.com/go-to-k/cdk-real-drift/commit/3d311365f11f3f1bc24eaf8a4a1fa21f18534d24))
+
+
+### Reverts
+
+* back out [#683](https://github.com/go-to-k/cdk-real-drift/issues/683) stack-tag subtraction (trips tsgolint budget → red main CI) ([#1339](https://github.com/go-to-k/cdk-real-drift/issues/1339)) ([ecdc872](https://github.com/go-to-k/cdk-real-drift/commit/ecdc872e87a75f0d19c20da5b1e3745b22884d11))
+
 ## [0.12.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.11...v0.12.12) (2026-07-10)
 
 
