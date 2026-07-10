@@ -1,3 +1,10 @@
+## [0.4.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.18...v0.4.19) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** enumerate REST API Stages so an out-of-band create-stage is not invisible ([#1044](https://github.com/go-to-k/cdk-real-drift/issues/1044)) ([#1111](https://github.com/go-to-k/cdk-real-drift/issues/1111)) ([e45c8c4](https://github.com/go-to-k/cdk-real-drift/commit/e45c8c4c22231e5b441c131fde81b997975ad20d))
+
 ## [0.4.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.17...v0.4.18) (2026-07-10)
 
 
