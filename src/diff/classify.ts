@@ -1644,6 +1644,12 @@ export function classifyResource(
     // could not verify them. Each is surfaced as a `readGap` (not a false declared removal, not
     // a silent hole) regardless of declared-ness or value shape.
     supplementReadGapPaths?: string[] | undefined;
+    // #975: first `PortRanges` FromPort of each AWS::GlobalAccelerator::Listener, keyed by the
+    // listener's physical id (== its ARN, which an EndpointGroup references via ListenerArn). An
+    // EndpointGroup that omits HealthCheckPort reads back this port (AWS resolves the schema's -1
+    // sentinel default to the listener's port), so classify derives + equality-gates the undeclared
+    // HealthCheckPort from it. Built from the desired set in gather.ts (buildSiblingListenerPorts).
+    siblingListenerPorts?: Record<string, number>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -2117,6 +2123,21 @@ export function classifyResource(
     const rtb = declared['TransitGatewayRouteTableId'];
     if (typeof attach === 'string' && typeof rtb === 'string') {
       knownDef = { ...knownDef, Id: `${attach}_${rtb}` };
+    }
+  }
+  // #975: an AWS::GlobalAccelerator::EndpointGroup that omits HealthCheckPort reads back the port
+  // of its LISTENER — AWS resolves the schema's -1 sentinel default ("use the listener port") to
+  // the listener's first PortRanges FromPort. The listener is the sibling referenced by the
+  // declared ListenerArn; its first port is threaded via opts.siblingListenerPorts (keyed by that
+  // ARN, built in gather.ts). Derive + equality-gate it (fold tier 2): a group that pins an
+  // explicit HealthCheckPort declares it and is compared, and an out-of-band port change still
+  // surfaces. Fail-open: an unresolved ListenerArn / missing sibling leaves the value unfolded.
+  if (resourceType === 'AWS::GlobalAccelerator::EndpointGroup') {
+    const listenerArn = declared['ListenerArn'];
+    const port =
+      typeof listenerArn === 'string' ? opts.siblingListenerPorts?.[listenerArn] : undefined;
+    if (typeof port === 'number') {
+      knownDef = { ...knownDef, HealthCheckPort: port };
     }
   }
   // #701: an EventSourceMapping's default BatchSize depends on the source service — 10 for

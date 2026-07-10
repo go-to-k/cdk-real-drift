@@ -51,7 +51,10 @@
     "accountId": "111111111111",
     "region": "us-east-1",
     "kmsAliasTargets": {},
-    "oaiCanonicalIds": {}
+    "oaiCanonicalIds": {},
+    "siblingListenerPorts": {
+      "arn:aws:globalaccelerator::111111111111:accelerator/f47e18d9-8714-4e86-8c53-1794ea362229/listener/98a22ab1": 80
+    }
   },
   "expected": [
     {
@@ -91,7 +94,7 @@
       "constructPath": "CdkRealDriftIntegGlobalAcceleratorRich/Accel/Listener/Group"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "AccelListenerGroupBA727A76",
       "resourceType": "AWS::GlobalAccelerator::EndpointGroup",
       "path": "HealthCheckPort",
