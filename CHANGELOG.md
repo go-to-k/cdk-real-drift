@@ -1,3 +1,10 @@
+## [0.12.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.28...v0.12.29) (2026-07-10)
+
+
+### Bug Fixes
+
+* **record:** ignored declared/added findings no longer demote snapshot completeness — gate the [#1078](https://github.com/go-to-k/cdk-real-drift/issues/1078) guard on ignoredFrom ([#1277](https://github.com/go-to-k/cdk-real-drift/issues/1277)) ([#1375](https://github.com/go-to-k/cdk-real-drift/issues/1375)) ([387c265](https://github.com/go-to-k/cdk-real-drift/commit/387c2652e2d9c8afe955d02d4ef6d6bbf4e8ce3c))
+
 ## [0.12.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.27...v0.12.28) (2026-07-10)
 
 
