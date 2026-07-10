@@ -230,6 +230,34 @@ const str = (v: unknown): string | undefined =>
 const strList = (v: unknown): string[] =>
   (Array.isArray(v) ? v : [v]).map(str).filter((s): s is string => s !== undefined);
 
+// Top-level JSON-pointer segment of an op path (`/EBSOptions/VolumeSize` -> `EBSOptions`,
+// `/Description` -> `Description`). Empty string for a `/` or malformed path.
+const opTopSeg = (path: string): string => path.replace(/^\//, '').split('/')[0] ?? '';
+
+// #804 — a whole-type SDK writer that only honors an INTERNAL allowlist of top-level props
+// must NOT silently drop an op outside that allowlist while reporting `reverted:`. The caller
+// (stack-actions.ts) records `ok:false` when a writer THROWS, surfacing the finding as still
+// unreverted; a silent `if (!any) return` instead prints a false success while AWS is
+// unchanged and the drift persists forever. Compare the incoming ops' top-level path segments
+// against the set the writer actually handles and, for any unhandled one, throw an honest
+// failure naming the dropped prop(s). `handled` may be a Set of top segments or a predicate.
+// Call this at the END of an allowlist writer (after it has done every write it can), so the
+// convergeable ops still land and only the genuinely-dropped ones are reported not-reverted.
+const assertOpsConsumed = (
+  resourceType: string,
+  ops: PatchOp[],
+  handled: Set<string> | ((topSeg: string) => boolean)
+): void => {
+  const isHandled = typeof handled === 'function' ? handled : (s: string) => handled.has(s);
+  const dropped = [...new Set(ops.map((o) => opTopSeg(o.path)).filter((s) => !isHandled(s)))];
+  if (dropped.length > 0)
+    throw new Error(
+      `${resourceType} revert cannot apply ${dropped.join(', ')}: this SDK writer supports only ` +
+        `a subset of properties and does not handle ${dropped.length > 1 ? 'these' : 'this one'}; ` +
+        `update ${dropped.length > 1 ? 'them' : 'it'} manually`
+    );
+};
+
 // reconstruct the desired full model = current (read back) with revert ops applied
 async function desiredModel(
   type: string,
@@ -612,10 +640,13 @@ const writeDocDbCluster: SdkWriter = async (ctx, ops) => {
     }
     any = true;
   }
-  if (!any) return;
-  await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new ModifyDBClusterCommand(input)
-  );
+  // Send the convergeable (allowlist) ops FIRST, then report any op outside the allowlist as
+  // NOT reverted (#804) — a silent no-op here would print a false `reverted:`.
+  if (any)
+    await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new ModifyDBClusterCommand(input)
+    );
+  assertOpsConsumed('DocDB DBCluster', ops, DOCDB_CLUSTER_MODIFY_PARAMS);
 };
 
 // AWS::DocDB::DBInstance — Cloud Control cannot read OR write the DocDB family, so it is
@@ -662,10 +693,11 @@ const writeDocDbInstance: SdkWriter = async (ctx, ops) => {
     }
     any = true;
   }
-  if (!any) return;
-  await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new ModifyDBInstanceCommand(input)
-  );
+  if (any)
+    await new DocDBClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new ModifyDBInstanceCommand(input)
+    );
+  assertOpsConsumed('DocDB DBInstance', ops, DOCDB_INSTANCE_MODIFY_PARAMS);
 };
 
 // AWS::CloudFront::Distribution — Cloud Control CAN read this type, but its
@@ -811,6 +843,18 @@ const writeGlueJob: SdkWriter = async (ctx, ops) => {
     if (m.AllocatedCapacity !== undefined) update.AllocatedCapacity = m.AllocatedCapacity;
   }
   await c.send(new UpdateJobCommand({ JobName: name, JobUpdate: update as never }));
+  // #804 — an op on a prop outside the JobUpdate field set (e.g. read-only CreatedOn, or a
+  // prop this writer does not model) is applied to `m` then dropped by the explicit field
+  // copy; report it not-reverted rather than a false `reverted:`. MaxCapacity/AllocatedCapacity
+  // ARE handled (for a non-WorkerType job) so they are in the handled set.
+  assertOpsConsumed(
+    'Glue Job',
+    ops,
+    (top) =>
+      (GLUE_JOB_UPDATE_FIELDS as readonly string[]).includes(top) ||
+      top === 'MaxCapacity' ||
+      top === 'AllocatedCapacity'
+  );
 };
 
 // AWS::Glue::Table — Cloud Control GetResource throws UnsupportedActionException for the
@@ -1270,6 +1314,9 @@ const writeOpenSearchDomain: SdkWriter = async (ctx, ops) => {
     }
   }
   await c.send(new UpdateDomainConfigCommand(input as never));
+  // #804 — EngineVersion / Tags (and any other prop outside OS_UPDATABLE_OPTIONS) are dropped
+  // by UpdateDomainConfig here; report them not-reverted rather than a false `reverted:`.
+  assertOpsConsumed('OpenSearch Domain', ops, OS_UPDATABLE_OPTIONS);
 };
 
 // AWS::Logs::LogGroup.BearerTokenAuthenticationEnabled — Cloud Control CAN read this
@@ -1488,7 +1535,10 @@ function camelKeysDeep(v: unknown): unknown {
 const writeEcsServiceWriteOnlyProps: SdkWriter = async (ctx, ops) => {
   const cluster = str(ctx.declared['Cluster']);
   const service = str(ctx.physicalId);
-  if (!cluster || !service) return;
+  // #804 — a silent `return` here (the only writer that did) prints a false `reverted:` when the
+  // target cannot be resolved (a raw-CFn service on the DEFAULT cluster declares no Cluster).
+  // Fail honestly like every sibling writer so the finding stays surfaced as not-reverted.
+  if (!cluster || !service) throw new Error('cannot resolve ECS cluster/service for revert');
   const input: { cluster: string; service: string } & Record<string, unknown> = {
     cluster,
     service,
@@ -1869,6 +1919,17 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
         `(unset state is not expressible in a selective modify)${any ? '; the other revert op(s) were applied' : ''}; ` +
         `update ${unExpressible.length > 1 ? 'them' : 'it'} manually`
     );
+  // #804 — a prop the writer does not model at all (SelfServicePortal / ClientConnectOptions /
+  // ClientLoginBannerOptions) is silently ignored above; report it not-reverted.
+  assertOpsConsumed(
+    'EC2 ClientVpnEndpoint',
+    ops,
+    (top) =>
+      CLIENT_VPN_SCALAR_PARAMS.has(top) ||
+      top === 'ConnectionLogOptions' ||
+      top === 'DnsServers' ||
+      top === 'SecurityGroupIds'
+  );
 };
 
 // AWS::Lex::Bot `BotLocales` is the ENTIRE conversational model (locales → intents → slots +
@@ -2325,10 +2386,14 @@ const writeElasticBeanstalkApplication: SdkWriter = async (ctx, ops) => {
       any = true;
     }
   }
-  if (!any) return;
-  await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new UpdateApplicationCommand(input)
-  );
+  if (any)
+    await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new UpdateApplicationCommand(input)
+    );
+  // #804 — ResourceLifecycleConfig (needs a separate UpdateApplicationResourceLifecycle call)
+  // and any other prop outside EB_APPLICATION_MODIFY_PARAMS are NOT applied here; report them
+  // not-reverted instead of silently succeeding.
+  assertOpsConsumed('ElasticBeanstalk Application', ops, EB_APPLICATION_MODIFY_PARAMS);
 };
 
 const EB_ENVIRONMENT_MODIFY_PARAMS = new Set(['Description']);
@@ -2344,10 +2409,14 @@ const writeElasticBeanstalkEnvironment: SdkWriter = async (ctx, ops) => {
       any = true;
     }
   }
-  if (!any) return;
-  await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new UpdateEnvironmentCommand(input)
-  );
+  if (any)
+    await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new UpdateEnvironmentCommand(input)
+    );
+  // #804 — VersionLabel / PlatformArn / SolutionStackName (the common OOB console-deploy /
+  // platform drift) are NOT in the allowlist and are not applied here; report them
+  // not-reverted rather than print a false `reverted:`.
+  assertOpsConsumed('ElasticBeanstalk Environment', ops, EB_ENVIRONMENT_MODIFY_PARAMS);
 };
 
 // Kinesis Video Stream / SignalingChannel: Cloud Control UpdateResource REJECTS ANY patch
@@ -2575,6 +2644,9 @@ const writeApiGatewayV2Stage: SdkWriter = async (ctx, ops) => {
       )
     );
   }
+  // #804 — Tags (and any prop outside APIGWV2_STAGE_UPDATE_FIELDS) are not applied by
+  // UpdateStage/DeleteRouteSettings/DeleteAccessLogSettings here; report them not-reverted.
+  assertOpsConsumed('ApiGatewayV2 Stage', ops, APIGWV2_STAGE_UPDATE_FIELDS);
 };
 
 // AWS::ApiGateway::RestApi `Policy` — the RestApi resource policy is held in the Cloud
