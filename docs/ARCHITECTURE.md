@@ -100,6 +100,13 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    and the CHILD-first `[<child>, RestApiId]` (`${physicalId}|${RestApiId}`) cases
    ApiGateway::Deployment (R129) and ApiGateway::DocumentationPart — all verified
    live (skipped 7→0; DocumentationPart found by the cognito/apigw-rest-subres hunt);
+   plus the custom-domain MAPPINGS (#855): ApiGateway::BasePathMapping, whose
+   parent-first `[DomainName, BasePath]` composite is built from TWO declared props
+   (the CFn physical id is only the DomainName; an absent BasePath, the "(none)"
+   root mapping, yields an empty second segment — exact CC shape unverified-live),
+   and ApiGatewayV2::ApiMapping, whose CHILD-first `[ApiMappingId, DomainName]`
+   composite is `${physicalId}|${DomainName}` (the bare ApiMappingId otherwise
+   ValidationException-skips);
    note
    ApiGateway::Method needs NO adapter, its CFn physical id is already the full
    `RestApiId|ResourceId|HttpMethod`; plus

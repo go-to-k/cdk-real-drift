@@ -1013,6 +1013,82 @@ describe('readLive (CC identifier adapters, R74)', () => {
     );
     expect(sent()).toBe('arn:x');
   });
+
+  // #855: ApiGateway custom-domain mappings — composite CC primaryIdentifier.
+  it('ApiGateway BasePathMapping: builds the composite DomainName|BasePath identifier (#855)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::BasePathMapping',
+        physicalId: 'api.example.com',
+        declared: { DomainName: 'api.example.com', BasePath: 'v1' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('api.example.com|v1');
+  });
+
+  it('ApiGateway BasePathMapping: an absent BasePath ("(none)" mapping) uses an empty second segment (#855)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::BasePathMapping',
+        physicalId: 'api.example.com',
+        declared: { DomainName: 'api.example.com' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('api.example.com|');
+  });
+
+  it('ApiGateway BasePathMapping: an unresolved DomainName falls back to the raw physical id (#855)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGateway::BasePathMapping',
+        physicalId: 'api.example.com',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('api.example.com');
+  });
+
+  it('ApiGatewayV2 ApiMapping: builds the composite ApiMappingId|DomainName identifier — child FIRST (#855)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::ApiMapping',
+        physicalId: 'mapping123',
+        declared: { DomainName: 'api.example.com' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('mapping123|api.example.com');
+  });
+
+  it('ApiGatewayV2 ApiMapping: an unresolved DomainName falls back to the raw physical id (#855)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::ApiGatewayV2::ApiMapping',
+        physicalId: 'mapping123',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('mapping123');
+  });
 });
 
 describe('readLive (custom resources short-circuit, R26)', () => {
