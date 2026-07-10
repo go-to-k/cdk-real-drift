@@ -11,10 +11,12 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
 import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   awsManagedTags,
+  isCfnTemplateNonAsciiMask,
   JSON_STRING_PROPS,
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
@@ -448,6 +450,82 @@ export interface NotRevertable {
   reason: string;
 }
 
+// Keys (`logicalId\0path`) of the GetTemplate-masked readGap findings classify demoted
+// (#1341) — the positive record of WHERE the declared template carries `?`-masked
+// non-ASCII text. Used to refuse a whole-array revert whose declared array contains such
+// a masked element: the finding's own desired/actual pair can't reveal it (desired is
+// the whole array, actual just the edited leaf), but a sibling masked readGap UNDER the
+// same array path proves the write would stamp `?`s over intact live text. Exported so
+// stack-actions can compute the keys over the FULL reconciled findings and pass them via
+// RevertOptions.maskReadGapKeys — the interactive per-finding flow narrows the plan
+// input to the picked findings only, which never include (unpickable) readGaps.
+export function maskReadGapKeysOf(findings: readonly Finding[]): Set<string> {
+  const keys = new Set<string>();
+  for (const f of findings) {
+    if (f.tier === 'readGap' && f.note === GETTEMPLATE_MASK_NOTE) {
+      keys.add(`${f.logicalId}\0${f.path}`);
+    }
+  }
+  return keys;
+}
+
+// Does the DECLARED (desired) value carry a GetTemplate non-ASCII `?`-mask anywhere,
+// judged against the intact live value? A declared drift whose desired came from
+// GetTemplate with non-ASCII text masked to `?` (and no local-synth recovery — see
+// desired/recover-nonascii.ts) can still surface when a GENUINE edit exists alongside
+// the masks (a mask-ONLY difference is demoted to readGap in classify and never reaches
+// the plan). Writing that desired back would fix the edited leaf but CORRUPT every
+// masked leaf — stamping literal `?` runs over the live non-ASCII text — so the plan
+// must refuse it. Walk desired and live in parallel and report true when ANY aligned
+// string-leaf pair is a mask (isCfnTemplateNonAsciiMask: exact ASCII skeleton + length,
+// >=1 non-ASCII — a legit literal `?` never matches an ASCII live value); when both
+// leaves are JSON documents (an SFN DefinitionString, a JSON-string prop), parse and
+// walk INSIDE them, since the masked leaf hides within the encoded text. Structurally
+// divergent branches (the genuine edit) simply don't align — fail-open by design: a
+// masked leaf whose OWN text was also edited is undetectable in principle (the intact
+// declared text is unrecoverable), and blocking must only fire on positive evidence.
+// Unlike the #1225 write-time guard this compares f.desired vs f.actual — BOTH from
+// classify's one normalized domain, never a fresh live read — so there is no
+// writer-shape mismatch to false-abort on (the trap that sank #1225 → revert #1243).
+export function hasGetTemplateMaskedLeaf(desired: unknown, live: unknown): boolean {
+  if (typeof desired === 'string' && typeof live === 'string') {
+    if (isCfnTemplateNonAsciiMask(desired, live)) return true;
+    // Not mask-aligned as raw strings — if both encode JSON documents, the mask may sit
+    // on a leaf inside them (alongside a genuine edit that broke whole-string alignment).
+    try {
+      return hasGetTemplateMaskedLeaf(JSON.parse(desired), JSON.parse(live));
+    } catch {
+      return false;
+    }
+  }
+  if (Array.isArray(desired) && Array.isArray(live)) {
+    const n = Math.min(desired.length, live.length);
+    for (let i = 0; i < n; i++) if (hasGetTemplateMaskedLeaf(desired[i], live[i])) return true;
+    return false;
+  }
+  if (
+    typeof desired === 'object' &&
+    desired !== null &&
+    typeof live === 'object' &&
+    live !== null &&
+    !Array.isArray(desired) &&
+    !Array.isArray(live)
+  ) {
+    for (const key of Object.keys(desired as Record<string, unknown>)) {
+      if (!Object.hasOwn(live, key)) continue;
+      if (
+        hasGetTemplateMaskedLeaf(
+          (desired as Record<string, unknown>)[key],
+          (live as Record<string, unknown>)[key]
+        )
+      )
+        return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 export interface RevertPlan {
   items: RevertItem[];
   notRevertable: NotRevertable[];
@@ -572,6 +650,11 @@ export interface RevertOptions {
   // resourceType -> schema, so create-only property drift is reported as
   // notRevertable up front (an in-place patch would fail at apply time).
   schemas?: Map<string, SchemaInfo>;
+  // `logicalId\0path` keys of GetTemplate-masked readGaps (maskReadGapKeysOf) computed
+  // over the FULL reconciled findings. buildRevertPlan also collects them from its own
+  // input, but the interactive per-finding flow narrows that input to the picked
+  // findings (readGaps are unpickable), so the caller passes the full-set keys here.
+  maskReadGapKeys?: ReadonlySet<string>;
   // The stack name — used to strip the stack/Stage prefix off each finding's construct path
   // for display (`withinStackPath`), matching what `cdkrd check` shows. Absent (unit calls) =
   // no strip, the full construct path.
@@ -642,6 +725,11 @@ export function buildRevertPlan(
   const itemsByLogical = new Map<string, RevertItem>();
   const notRevertable: NotRevertable[] = [];
   const recorded = baseline?.recorded ?? [];
+  // Where the declared template carries GetTemplate-masked non-ASCII text: the demoted
+  // readGaps in this plan's own input plus the caller-supplied full-set keys (the
+  // interactive flow narrows the input to picked findings, which exclude readGaps).
+  const maskGapKeys = maskReadGapKeysOf(findings);
+  for (const k of opts.maskReadGapKeys ?? []) maskGapKeys.add(k);
   // Collapse the per-element findings of an UNORDERED_OBJECT_ARRAY into ONE whole-array
   // replacement (see Finding.wholeArrayRevert): classify sorted both sides before the diff,
   // so each finding's array index is a SORTED position that does NOT map to the live raw
@@ -768,6 +856,43 @@ export function buildRevertPlan(
       continue;
     }
     if (!DRIFT_TIERS.has(f.tier)) continue; // only declared/undeclared are drift to revert
+    // A declared desired that carries GetTemplate `?`-masked non-ASCII text (judged
+    // against the intact live value) must NOT be written back: the write would stamp
+    // literal `?` runs over the live text wherever the template's non-ASCII literals
+    // were masked. Only the declared tier is at risk — undeclared reverts write baseline
+    // values recorded from the intact LIVE read. Two detections (see
+    // hasGetTemplateMaskedLeaf / maskReadGapKeysOf):
+    //   1. the finding's own desired/actual pair walks to a masked leaf, or
+    //   2. WHOLE-ARRAY reverts only: a sibling GetTemplate-masked readGap sits under the
+    //      same array path — the whole declared array being written contains that masked
+    //      element even though this finding's own pair (whole array vs one edited leaf)
+    //      cannot align to reveal it. Gated on wholeArrayRevert so a per-key writer that
+    //      sends ONLY the edited attribute (ELB bags) is never false-blocked by a masked
+    //      SIBLING it does not write.
+    const maskedSiblingUnderPath = (): boolean => {
+      if (maskGapKeys.size === 0) return false;
+      for (const key of maskGapKeys) {
+        const sep = key.indexOf('\0');
+        if (key.slice(0, sep) !== f.logicalId) continue;
+        const p = key.slice(sep + 1);
+        if (p === f.path || p.startsWith(`${f.path}.`)) return true;
+      }
+      return false;
+    };
+    if (
+      f.tier === 'declared' &&
+      (hasGetTemplateMaskedLeaf(f.desired, f.actual) ||
+        (f.wholeArrayRevert !== undefined && maskedSiblingUnderPath()))
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'declared value is non-ASCII-masked by GetTemplate ("?") — writing it back would corrupt the live text; redeploy from your CDK app instead',
+      });
+      continue;
+    }
     // A SYNTHETIC integrity signal an SDK_SUPPLEMENTS reader computes (ELBv2 TrustStore
     // `CaCertificatesBundleSha256`, a digest of the live CA bundle content — #505) is not a
     // real AWS property, so it has no write target: a `remove` would fail. It exists only to
