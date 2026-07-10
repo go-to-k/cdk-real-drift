@@ -699,6 +699,14 @@ mode: a `record` / `ignore` that would need the selection prompt refuses without
 
 After publication this shape is a backward-compatible API.
 
+`revert` also **refuses to write (exit 2) when the target stack is mid-operation**
+(`*_IN_PROGRESS`): it re-reads the stack status immediately before applying, so a
+revert can never fight an in-flight `cdk deploy` / update by writing stale values
+onto an updating stack — wait for the stack to settle, then re-run. And
+`record` / `ignore` / `revert` now surface the same stack-status warning `check`
+prints when a stack is mid-operation or in a failed state (a `record` mid-update
+would otherwise snapshot transient values into the committed baseline).
+
 ## IAM permissions
 
 `check` / `record` are **read-only**: the AWS managed `ReadOnlyAccess` policy
