@@ -126,6 +126,7 @@ import {
 import {
   CloudControlClient,
   GetResourceCommand,
+  GetResourceRequestStatusCommand,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
@@ -184,7 +185,12 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { OverrideCtx } from '../src/read/overrides.js';
 import type { PatchOp } from '../src/revert/plan.js';
-import { resolveSdkWriter, SDK_NESTED_WRITERS, SDK_WRITERS } from '../src/revert/writers.js';
+import {
+  pollNestedToCompletion,
+  resolveSdkWriter,
+  SDK_NESTED_WRITERS,
+  SDK_WRITERS,
+} from '../src/revert/writers.js';
 
 const iam = mockClient(IAMClient);
 const elb = mockClient(ElasticLoadBalancingV2Client);
@@ -2871,7 +2877,9 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         }),
       },
     });
-    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
     const ops: PatchOp[] = [
       {
         op: 'add',
@@ -2905,7 +2913,9 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         }),
       },
     });
-    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
     const ops: PatchOp[] = [
       {
         op: 'add',
@@ -2938,7 +2948,9 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         }),
       },
     });
-    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
     const ops: PatchOp[] = [
       {
         op: 'add',
@@ -2970,7 +2982,9 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         }),
       },
     });
-    cloudcontrol.on(UpdateResourceCommand).resolves({});
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
     const ops: PatchOp[] = [
       { op: 'add', path: '/MethodSettings[*]/CacheTtlInSeconds', value: 300, human: 'x' },
     ];
@@ -3009,6 +3023,152 @@ describe('Cloud Control index-revert writer (array-element nested values)', () =
         ops
       )
     ).rejects.toThrow(/cannot locate/);
+  });
+
+  // #1065 — the writer must POLL the returned ProgressEvent to a terminal state before
+  // returning success; an async handler FAILURE after CC accepts the request must surface
+  // (carrying its StatusMessage) instead of a false `reverted:`.
+  const okOps: PatchOp[] = [
+    {
+      op: 'add',
+      path: '/BackupPlan/BackupPlanRule[Daily]/CompletionWindowMinutes',
+      value: 10080,
+      human: 'x',
+    },
+  ];
+  const mockGetResource = (): void => {
+    cloudcontrol.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: JSON.stringify({
+          BackupPlan: { BackupPlanRule: [{ RuleName: 'Daily', CompletionWindowMinutes: 5000 }] },
+        }),
+      },
+    });
+  };
+
+  it('surfaces an async FAILED ProgressEvent (with its StatusMessage) instead of a false success', async () => {
+    mockGetResource();
+    // CC accepts the UpdateResource, but the async handler FAILS — the reason lives only on
+    // the FAILED event's StatusMessage. The writer must throw it, not resolve.
+    cloudcontrol.on(UpdateResourceCommand).resolves({
+      ProgressEvent: {
+        RequestToken: 'tok-1',
+        OperationStatus: 'FAILED',
+        ErrorCode: 'GeneralServiceException',
+        StatusMessage: 'Backup plan version limit exceeded',
+      },
+    });
+    await expect(
+      resolveSdkWriter('AWS::Backup::BackupPlan', okOps)!(
+        ctx('AWS::Backup::BackupPlan', 'plan|abc'),
+        okOps
+      )
+    ).rejects.toThrow(/Backup plan version limit exceeded/);
+    // No poll needed — the accept event was already terminal.
+    expect(cloudcontrol.commandCalls(GetResourceRequestStatusCommand)).toHaveLength(0);
+  });
+
+  it('resolves normally when the ProgressEvent reaches SUCCESS', async () => {
+    mockGetResource();
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok-2', OperationStatus: 'SUCCESS' } });
+    await expect(
+      resolveSdkWriter('AWS::Backup::BackupPlan', okOps)!(
+        ctx('AWS::Backup::BackupPlan', 'plan|abc'),
+        okOps
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('throws "no request token" when CC accepts without a RequestToken (cannot confirm)', async () => {
+    mockGetResource();
+    // A malformed accept with no token — the operation cannot be polled, so success is
+    // unconfirmable: throw rather than claim a false `reverted:`.
+    cloudcontrol
+      .on(UpdateResourceCommand)
+      .resolves({ ProgressEvent: { OperationStatus: 'IN_PROGRESS' } });
+    await expect(
+      resolveSdkWriter('AWS::Backup::BackupPlan', okOps)!(
+        ctx('AWS::Backup::BackupPlan', 'plan|abc'),
+        okOps
+      )
+    ).rejects.toThrow(/no request token/);
+  });
+});
+
+// #1065 — the poll loop itself: an IN_PROGRESS accept is followed by GetResourceRequestStatus
+// reads until a terminal state. Exercised directly with an injected sleep/clock so the 2s
+// poll interval never waits real time.
+describe('pollNestedToCompletion (Cloud Control ProgressEvent poll, #1065)', () => {
+  const noSleep = async (): Promise<void> => {};
+
+  it('polls IN_PROGRESS -> FAILED and throws with the StatusMessage', async () => {
+    cloudcontrol.on(GetResourceRequestStatusCommand).resolvesOnce({
+      ProgressEvent: {
+        RequestToken: 'tok',
+        OperationStatus: 'FAILED',
+        StatusMessage: 'AccessDenied invoking backup:UpdateBackupPlan',
+      },
+    });
+    await expect(
+      pollNestedToCompletion(
+        cloudcontrol as unknown as CloudControlClient,
+        { RequestToken: 'tok', OperationStatus: 'IN_PROGRESS' },
+        { sleep: noSleep }
+      )
+    ).rejects.toThrow(/AccessDenied invoking backup:UpdateBackupPlan/);
+    expect(cloudcontrol.commandCalls(GetResourceRequestStatusCommand)).toHaveLength(1);
+  });
+
+  it('polls IN_PROGRESS -> SUCCESS and resolves', async () => {
+    cloudcontrol
+      .on(GetResourceRequestStatusCommand)
+      .resolvesOnce({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
+    await expect(
+      pollNestedToCompletion(
+        cloudcontrol as unknown as CloudControlClient,
+        { RequestToken: 'tok', OperationStatus: 'IN_PROGRESS' },
+        { sleep: noSleep }
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('re-polls the SAME token on a TRANSIENT poll-read failure (does NOT re-send the mutation)', async () => {
+    cloudcontrol
+      .on(GetResourceRequestStatusCommand)
+      .rejectsOnce(Object.assign(new Error('Rate exceeded'), { name: 'ThrottlingException' }))
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'SUCCESS' } });
+    await expect(
+      pollNestedToCompletion(
+        cloudcontrol as unknown as CloudControlClient,
+        { RequestToken: 'tok', OperationStatus: 'IN_PROGRESS' },
+        { sleep: noSleep }
+      )
+    ).resolves.toBeUndefined();
+    // Two reads: the throttled one, then the SUCCESS. UpdateResource is NEVER re-sent here.
+    expect(cloudcontrol.commandCalls(GetResourceRequestStatusCommand)).toHaveLength(2);
+    expect(cloudcontrol.commandCalls(UpdateResourceCommand)).toHaveLength(0);
+  });
+
+  it('times out (throws) if the operation never reaches a terminal state', async () => {
+    cloudcontrol
+      .on(GetResourceRequestStatusCommand)
+      .resolves({ ProgressEvent: { RequestToken: 'tok', OperationStatus: 'IN_PROGRESS' } });
+    // Injected clock jumps past the 15-min deadline after the first poll wait.
+    let t = 0;
+    const now = (): number => {
+      const v = t;
+      t += 16 * 60 * 1000;
+      return v;
+    };
+    await expect(
+      pollNestedToCompletion(
+        cloudcontrol as unknown as CloudControlClient,
+        { RequestToken: 'tok', OperationStatus: 'IN_PROGRESS' },
+        { sleep: noSleep, now }
+      )
+    ).rejects.toThrow(/timed out/);
   });
 });
 
