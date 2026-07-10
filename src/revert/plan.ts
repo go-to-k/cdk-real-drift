@@ -352,7 +352,24 @@ export interface PatchOp {
   // attribute-bag findings; the SDK writer sends `{Key, Value: value}` via
   // ModifyLoadBalancerAttributes. Never serialized to Cloud Control.
   attributeKey?: string;
+  // #967: a CONTRACT op — plumbing that exists ONLY to keep the Cloud Control patch
+  // valid (e.g. a null-array-husk strip, #641), NOT a revert the user chose. It
+  // corresponds to no finding, so it is NEVER offered as a standalone selectable row
+  // in the interactive multiselect and is NOT counted as user intent — it rides along
+  // an item only while that item still carries ≥1 real (non-contract) op. The KEY
+  // invariants: a real revert op can never be sent without its coupled contract op, and
+  // a contract op can never be sent alone as a user-chosen write.
+  contract?: boolean;
   human: string; // one-line description for the plan display
+}
+
+// #967: a CONTRACT op is plumbing that keeps the CC patch valid (a null-husk strip),
+// NOT a revert the user chose. The interactive multiselect must neither offer it as a
+// standalone selectable row nor count it as user intent — it rides an item only while
+// that item still carries a real (non-contract) op. Threaded as a predicate (not a
+// fragile path-string match) so any future contract-classed op is covered by tagging it.
+export function isContractOp(op: PatchOp): boolean {
+  return op.contract === true;
 }
 
 export interface RevertItem {
@@ -411,7 +428,14 @@ function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
     if (Array.isArray(value)) {
       if (value.length > 0 && value.every((v) => v === null || v === undefined)) {
         if (pointer !== '')
-          ops.push({ op: 'remove', path: pointer, human: `strip null array husk at ${pointer}` });
+          ops.push({
+            op: 'remove',
+            path: pointer,
+            // #967: contract plumbing, not a user-chosen revert — never independently
+            // selectable in the interactive multiselect, never counted as user intent.
+            contract: true,
+            human: `strip null array husk at ${pointer}`,
+          });
         return; // a pure-null array has no non-null children to recurse into
       }
       value.forEach((v, i) => walk(v, `${pointer}/${i}`));

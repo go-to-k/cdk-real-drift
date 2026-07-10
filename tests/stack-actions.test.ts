@@ -32,6 +32,7 @@ import {
   formatSurvivingDrift,
   ignoreSelectOptions,
   includeUnrecordedRemovals,
+  realOpCount,
   resolveInteractiveRevertExit,
   revertConfirmMessage,
   revertSelectMessage,
@@ -1721,6 +1722,81 @@ describe('revertSelectOptions / filterRevertPlan (R57 — pick what to revert)',
       notRevertable: [{ displayId: 'X', resourceType: 'T', path: 'P', reason: 'r' }],
     };
     expect(filterRevertPlan(p, new Set()).notRevertable).toHaveLength(1);
+  });
+});
+
+describe('#967 — a CONTRACT (null-husk strip) op is coupled plumbing, never a standalone selectable/user-chosen write', () => {
+  // A bucket whose live model carries the #641 null-array husk: buildRevertPlan PREPENDS a
+  // contract (husk-strip) op ahead of the real revert op, so both live in item.ops.
+  const huskPlan = (): RevertPlan => ({
+    items: [
+      {
+        logicalId: 'B',
+        displayId: 'Stack/Bucket',
+        resourceType: 'AWS::S3::Bucket',
+        physicalId: 'b-phys',
+        kind: 'cc',
+        ops: [
+          // contract op is prepended (descending doc order) just like nullHuskRemovalOps
+          {
+            op: 'remove',
+            path: '/IntelligentTieringConfigurations/0/TagFilters',
+            contract: true,
+            human: 'strip null array husk at /IntelligentTieringConfigurations/0/TagFilters',
+          },
+          {
+            op: 'add',
+            path: '/VersioningConfiguration/Status',
+            value: 'Enabled',
+            human: 'VersioningConfiguration.Status -> deployed-template value',
+          },
+        ],
+      },
+    ],
+    notRevertable: [],
+  });
+
+  it('a contract op is NOT offered as a standalone selectable row', () => {
+    const options = revertSelectOptions(huskPlan());
+    // only the ONE real op is offered — the husk strip is not selectable
+    expect(options).toHaveLength(1);
+    expect(options[0]!.label).toBe(
+      'Stack/Bucket: VersioningConfiguration.Status -> deployed-template value'
+    );
+    expect(options.some((o) => o.label.includes('null array husk'))).toBe(false);
+  });
+
+  it('de-selecting everything for a husk-bearing item DROPS the whole item (no contract-only patch written)', () => {
+    // picking NOTHING — the #641 poisoned-patch resurrection would be a contract-only write
+    const filtered = filterRevertPlan(huskPlan(), new Set());
+    expect(filtered.items).toHaveLength(0);
+  });
+
+  it('selecting the real op carries its coupled husk strip through (guard cannot be defeated)', () => {
+    const options = revertSelectOptions(huskPlan());
+    expect(options).toHaveLength(1);
+    const filtered = filterRevertPlan(huskPlan(), new Set([options[0]!.value]));
+    expect(filtered.items).toHaveLength(1);
+    const ops = filtered.items[0]!.ops;
+    // BOTH the contract husk strip AND the real op are present …
+    expect(ops).toHaveLength(2);
+    // … with the contract op FIRST (prepended, so the strip precedes the write it protects)
+    expect(ops[0]!.contract).toBe(true);
+    expect(ops[0]!.path).toBe('/IntelligentTieringConfigurations/0/TagFilters');
+    expect(ops[1]!.contract).toBeUndefined();
+    expect(ops[1]!.path).toBe('/VersioningConfiguration/Status');
+  });
+
+  it('realOpCount excludes contract ops (they never inflate the confirm / --dry-run count)', () => {
+    // the plan has 2 ops but only 1 is a real user-chosen write
+    expect(realOpCount(huskPlan())).toBe(1);
+  });
+
+  it('formatPlan omits the contract op from the itemized preview', () => {
+    const lines = formatPlan('S', 'us-east-1', huskPlan());
+    const body = lines.join('\n');
+    expect(body).toContain('VersioningConfiguration.Status -> deployed-template value');
+    expect(body).not.toContain('null array husk');
   });
 });
 

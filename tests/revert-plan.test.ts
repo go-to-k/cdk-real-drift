@@ -8,6 +8,7 @@ import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
 import {
   buildRevertPlan,
+  isContractOp,
   type PatchOp,
   rejectedEmptyStripOps,
   tagPreservingOps,
@@ -3093,6 +3094,16 @@ describe('#641 symptom 2 — CC revert strips bare-null array husks from the mod
       { op: 'remove', path: '/MetricsConfigurations/1/TagFilters' },
       { op: 'remove', path: '/IntelligentTieringConfigurations/0/TagFilters' },
       { op: 'remove', path: '/VersioningConfiguration' },
+    ]);
+    // #967: the two husk-strip ops are tagged CONTRACT (coupled plumbing, not a
+    // user-chosen revert), while the real property revert is NOT — so the interactive
+    // multiselect can exclude the husk strips from its selectable rows / op count.
+    expect(ops.filter((o) => isContractOp(o)).map((o) => o.path)).toEqual([
+      '/MetricsConfigurations/1/TagFilters',
+      '/IntelligentTieringConfigurations/0/TagFilters',
+    ]);
+    expect(ops.filter((o) => !isContractOp(o)).map((o) => o.path)).toEqual([
+      '/VersioningConfiguration',
     ]);
   });
 
