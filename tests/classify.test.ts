@@ -1234,6 +1234,49 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     }
   });
 
+  it('#839: an UNRESOLVED RestApi Policy is NOT run through the execute-api expansion (no [null] corruption)', () => {
+    // A declared resource Policy provided via an intrinsic cdkrd cannot resolve at compare time
+    // (unresolved Fn::If / Fn::Sub / {{resolve:ssm:...}} dynamic reference) arrives as the
+    // UNRESOLVED symbol. Before the fix the expansion still ran (physicalId + accountId + truthy
+    // Policy), and canonicalizePolicy(`{...symbol}`) silently spread the marker away into
+    // `{ Statement: [null] }` → a false `declared` Policy.Statement drift with desired:[null]
+    // plus a false `undeclared` Policy.Version — and a revert would then write `[null]` live.
+    const apiId = 'abc123';
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    const res: DesiredResource = {
+      logicalId: 'PrivApi',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      physicalId: apiId,
+      declared: { Policy: UNRESOLVED },
+    };
+    const live = {
+      Policy: JSON.stringify({
+        Version: '2012-10-17',
+        Statement: [
+          { Effect: 'Allow', Principal: '*', Action: 'execute-api:Invoke', Resource: ['*'] },
+        ],
+      }),
+    };
+    const t = tiers(classifyResource(res, live, emptySchema, opts));
+    // The whole finding set is the single benign `unresolved`-tier Policy — matching the CONTROL
+    // (no physicalId → expansion skipped) in the issue.
+    expect(t.unresolved).toEqual(['Policy']);
+    expect(t.declared).toEqual([]);
+    expect(t.undeclared).toEqual([]);
+
+    // CONTROL: with no physicalId (expansion path unreachable) the output is identical — proving
+    // the guard makes the WITH-physicalId path behave like the always-safe no-physicalId path.
+    const noPhys: DesiredResource = { ...res, physicalId: undefined };
+    const tControl = tiers(classifyResource(noPhys, live, emptySchema, opts));
+    expect(tControl.unresolved).toEqual(['Policy']);
+    expect(tControl.declared).toEqual([]);
+    expect(tControl.undeclared).toEqual([]);
+
+    // The full findings never carry a `[null]` desired for Policy.Statement.
+    const all = classifyResource(res, live, emptySchema, opts);
+    expect(all.some((f) => f.path.startsWith('Policy.') && f.tier === 'declared')).toBe(false);
+  });
+
   it('#705: Classic ELB Policies folds ONLY the default SSL policy; a downgrade / added policy surfaces', () => {
     const t = (policies: unknown[]) =>
       tiers(
