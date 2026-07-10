@@ -29,10 +29,12 @@ describe('yaml-cfn parse', () => {
     expect(p.Cond).toEqual({ 'Fn::If': ['C', 'a', 'b'] });
   });
 
-  it('resolves implicit scalars with the YAML 1.1 schema, matching CloudFormation (#785)', () => {
+  it('resolves multi-letter YAML 1.1 booleans, matching CloudFormation (#785)', () => {
     // CloudFormation's service-side parser resolves YAML 1.1, not yaml@2's default
-    // 1.2 core schema. Under 1.2 these would FAIL: `yes`/`off` stay strings, `0755`
-    // is decimal 755, `1:30` stays a string. cdkrd must match what CFn deployed.
+    // 1.2 core schema. Under 1.2 `yes`/`no`/`on`/`off` stay strings; CFn folds the
+    // multi-letter forms to boolean, and cdkrd must match what CFn deployed. (The
+    // YAML-1.1-only NUMBER spellings `0755`/`1:30` are NOT numbers to CFn — it keeps
+    // them as strings; see the octal/hex/float-special/sexagesimal test below, #1053.)
     const t = parseCfnTemplate(`Resources:
   R:
     Type: AWS::Fake::Type
@@ -40,23 +42,20 @@ describe('yaml-cfn parse', () => {
       YesVal: yes
       NoVal: no
       OnVal: on
-      OffVal: off
-      Mode: 0755
-      Sexagesimal: 1:30`);
+      OffVal: off`);
     const p = (t as any).Resources.R.Properties;
     expect(p.YesVal).toBe(true); // 1.2 -> "yes"
     expect(p.NoVal).toBe(false); // 1.2 -> "no"
     expect(p.OnVal).toBe(true); // 1.2 -> "on"
     expect(p.OffVal).toBe(false); // 1.2 -> "off"
-    expect(p.Mode).toBe(493); // octal 0755; 1.2 -> 755
-    expect(p.Sexagesimal).toBe(90); // 60*1 + 30; 1.2 -> "1:30"
   });
 
   it('keeps a quoted leading-zero account id a string (no revert corruption, #785)', () => {
     // The common shape for an account id in a template is a quoted string, which stays
-    // a string under both schemas. A BARE `012345678901` is octal-invalid (digits 8/9)
-    // so YAML 1.1 falls back to decimal — same as CFn — but the quoted form is what
-    // must never silently lose its leading zero on parse -> revert round-trip.
+    // a string under both schemas. The BARE form is covered by the #1053 test below
+    // (the restricted `int` tag no longer coerces a leading-zero scalar to a number);
+    // the quoted form is what must never silently lose its leading zero on parse ->
+    // revert round-trip regardless.
     const t = parseCfnTemplate(`Resources:
   R:
     Type: AWS::Fake::Type
@@ -130,10 +129,11 @@ describe('yaml-cfn parse', () => {
     expect(p.AttrLowerY).toBe('y');
   });
 
-  it('still resolves yes/no/on/off and octal/sexagesimal under the restricted 1.1 schema (#785 preserved)', () => {
-    // The #850 restriction (drop implicit timestamps, exclude single-letter bools) must
-    // NOT regress the #785 fix: multi-letter YAML 1.1 booleans and octal/sexagesimal
-    // integers must still resolve exactly as CloudFormation's 1.1 parser produces them.
+  it('still resolves multi-letter booleans and plain numbers under the restricted 1.1 schema (#785 preserved)', () => {
+    // The #850/#909/#1053 restrictions (drop implicit/explicit timestamps, exclude
+    // single-letter bools, restrict int/float to plain JSON numbers) must NOT regress
+    // the #785 fix: multi-letter YAML 1.1 booleans and plain decimal / float / scientific
+    // numbers must still resolve exactly as CloudFormation produces them.
     const t = parseCfnTemplate(`Resources:
   R:
     Type: AWS::Fake::Type
@@ -144,8 +144,10 @@ describe('yaml-cfn parse', () => {
       OffVal: off
       TrueVal: true
       FalseVal: false
-      Mode: 0755
-      Sexagesimal: 1:30`);
+      Int: 12345
+      NegInt: -7
+      Float: -3.5
+      Sci: 5e3`);
     const p = (t as any).Resources.R.Properties;
     expect(p.YesVal).toBe(true);
     expect(p.NoVal).toBe(false);
@@ -153,8 +155,53 @@ describe('yaml-cfn parse', () => {
     expect(p.OffVal).toBe(false);
     expect(p.TrueVal).toBe(true);
     expect(p.FalseVal).toBe(false);
-    expect(p.Mode).toBe(493); // octal 0755
-    expect(p.Sexagesimal).toBe(90); // 60*1 + 30
+    expect(p.Int).toBe(12345);
+    expect(p.NegInt).toBe(-7);
+    expect(p.Float).toBe(-3.5);
+    expect(p.Sci).toBe(5000);
+  });
+
+  it('keeps octal/hex/binary/sexagesimal/float-special/leading-zero scalars strings, not coerced numbers (#1053)', () => {
+    // yaml@2's YAML-1.1 `int`/`float` tags resolve these plain scalars to numbers (or
+    // Infinity), but CloudFormation keeps them as STRINGS. Coercing them is a declared
+    // false positive that survives `record`, and `revert` then writes the corrupted
+    // number back — a garbage account id from octal `012345670123` -> 1402433619, or
+    // `null` from `.inf` -> Infinity. Each must stay the exact source string.
+    const t = parseCfnTemplate(`Resources:
+  R:
+    Type: AWS::Fake::Type
+    Properties:
+      OctalAccount: 012345670123
+      Mode: 0777
+      Hex: 0x1A2B
+      Binary: 0b1010
+      Sexagesimal: 1:30
+      Inf: .inf
+      NegInf: -.inf
+      NaN: .nan
+      Underscored: 1_000
+      LeadingZero: 000123456789`);
+    const p = (t as any).Resources.R.Properties;
+    expect(p.OctalAccount).toBe('012345670123'); // NOT 1402433619
+    expect(typeof p.OctalAccount).toBe('string');
+    expect(p.Mode).toBe('0777'); // NOT 511
+    expect(p.Hex).toBe('0x1A2B'); // NOT 6699
+    expect(p.Binary).toBe('0b1010'); // NOT 10
+    expect(p.Sexagesimal).toBe('1:30'); // NOT 90
+    expect(p.Inf).toBe('.inf'); // NOT Infinity (JSON.stringify -> null)
+    expect(Number.isFinite(p.Inf)).toBe(false);
+    expect(typeof p.Inf).toBe('string');
+    expect(p.NegInf).toBe('-.inf'); // NOT -Infinity
+    expect(typeof p.NegInf).toBe('string');
+    expect(p.NaN).toBe('.nan'); // NOT NaN
+    expect(typeof p.NaN).toBe('string');
+    expect(p.Underscored).toBe('1_000'); // NOT 1000
+    expect(typeof p.Underscored).toBe('string');
+    expect(p.LeadingZero).toBe('000123456789'); // NOT 123456789
+    expect(typeof p.LeadingZero).toBe('string');
+    // JSON-serializable: a coerced Infinity/NaN would become null, corrupting revert.
+    expect(() => JSON.parse(JSON.stringify(p))).not.toThrow();
+    expect(JSON.parse(JSON.stringify(p)).Inf).toBe('.inf');
   });
 
   it('rejects a non-object root', () => {
