@@ -35,6 +35,7 @@ import {
   stackSeparator,
 } from '../report/report.js';
 import { style } from '../report/style.js';
+import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
@@ -316,6 +317,15 @@ export function safeStringifyJson(value: unknown): string {
   const seen = new WeakSet<object>();
   const replacer = (_key: string, v: unknown): unknown => {
     if (typeof v === 'bigint') return v.toString();
+    // #1059 (--json residue; the render-side twin of #839, complementing #1142 which
+    // defended the TEXT render): a nested UNRESOLVED symbol reaching a finding value
+    // would otherwise be SILENTLY dropped by JSON.stringify (an object property whose
+    // VALUE is a symbol vanishes; a symbol array element becomes `null`), emitting a
+    // value-stripped object that misrepresents the diff / machine contract. Substitute
+    // a visible marker so `--json` shows the unresolved position instead of dropping the
+    // key — `⟨unresolved⟩` matches the marker report.ts's text render uses for UNRESOLVED.
+    if (typeof v === 'symbol')
+      return v === UNRESOLVED ? '⟨unresolved⟩' : `⟨${v.description ?? 'symbol'}⟩`;
     if (typeof v === 'object' && v !== null) {
       if (seen.has(v)) return '[Circular]';
       seen.add(v);
