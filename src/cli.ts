@@ -124,8 +124,13 @@ async function main(argv: string[]): Promise<number> {
     case 'revert':
       return runRevert(rest);
     default:
+      // An unknown/mistyped command (and a flag-first `cdkrd --json` with no verb, which
+      // lands here as cmd === '--json') exits 2 before any verb could parse --json. Mirror
+      // the central .catch guard so --json still leaves stdout a single JSON.parse-able
+      // value (`[]`), never empty bytes. (#1063)
       console.error(`unknown command: ${cmd}\n`);
       console.error(HELP);
+      if (argv.includes('--json')) console.log('[]');
       return 2;
   }
 }
