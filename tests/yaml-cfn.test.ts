@@ -208,6 +208,35 @@ describe('yaml-cfn parse', () => {
     expect(() => parseCfnTemplate('[1,2]')).toThrow();
   });
 
+  // #1074: CloudFormation ACCEPTS a duplicate map key and deploys last-wins; yaml@2's
+  // default uniqueKeys:true would throw YAMLParseError and make the whole stack uncheckable.
+  it('a duplicated Properties key parses last-wins (does not throw)', () => {
+    const t = parseCfnTemplate(`Resources:
+  B:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: firstwins
+      BucketName: lastwins`);
+    expect((t as any).Resources.B.Properties.BucketName).toBe('lastwins');
+  });
+
+  it('a duplicated logicalId parses last-wins (does not throw)', () => {
+    const t = parseCfnTemplate(`Resources:
+  B:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: first
+  B:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: second`);
+    // Last occurrence wins for the duplicated key, matching CFn deploy semantics.
+    expect((t as any).Resources.B).toEqual({
+      Type: 'AWS::SNS::Topic',
+      Properties: { TopicName: 'second' },
+    });
+  });
+
   it('degrades a dot-less !GetAtt to a 1-element array instead of crashing the whole parse', () => {
     // A custom-tag resolve() that throws aborts the ENTIRE yaml parse — one malformed
     // !GetAtt would crash the whole stack check. It must degrade to UNRESOLVED-able

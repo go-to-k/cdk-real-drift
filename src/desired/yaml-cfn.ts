@@ -223,6 +223,14 @@ function restrictYaml11Tags(baseTags: Tags): Tags {
 const CFN_YAML_PARSE_OPTIONS: ParseOptions & SchemaOptions = {
   schema: 'yaml-1.1',
   customTags: restrictYaml11Tags,
+  // CloudFormation ACCEPTS a duplicate map key and deploys LAST-wins (proven via
+  // validate-template + get-template-summary: a duplicated Parameter Default resolves to
+  // the last occurrence, for YAML and JSON alike). yaml@2 defaults to `uniqueKeys: true`,
+  // which makes a duplicate key a hard parse ERROR — so a hand-written template CFn happily
+  // deployed (a copy-pasted property, two `Tags:` blocks, a duplicated logicalId) made the
+  // ENTIRE stack uncheckable (YAMLParseError → exit 2). Mirror CFn's last-wins semantics
+  // instead of throwing (#1074). JSON is already last-wins via JSON.parse — no gap there.
+  uniqueKeys: false,
 };
 
 export function detectTemplateFormat(text: string): TemplateFormat {
