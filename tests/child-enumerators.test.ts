@@ -2288,6 +2288,42 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
       ).toBe(true);
     });
 
+    // #1276: a Gateway VPC endpoint (S3/DynamoDB, CDK `vpc.addGatewayEndpoint`) materializes a
+    // `DestinationPrefixListId: pl-…` + `GatewayId: vpce-…` route into every table in its
+    // RouteTableIds without declaring any `AWS::EC2::Route`. It must NOT be enumerable: flagging
+    // it `added` is a false positive on every clean check, and a revert DeleteResource would
+    // sever S3/DynamoDB connectivity. The endpoint itself is surfaced by the VPC enumerator.
+    it('excludes a gateway-VPC-endpoint-managed prefix-list route (vpce- GatewayId) — #1276', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationPrefixListId: 'pl-63a5400a',
+          GatewayId: 'vpce-0abc1234567890def',
+          Origin: 'CreateRoute',
+        })
+      ).toBe(false);
+    });
+
+    // Detection preserved: a prefix-list route whose target is NOT a gateway endpoint (a normal
+    // gateway/instance/NAT target) is still a declarable AWS::EC2::Route and must be enumerable.
+    it('still includes a prefix-list route with a non-vpce target — #1276', () => {
+      expect(
+        isEnumerableRoute({
+          DestinationPrefixListId: 'pl-63a5400a',
+          GatewayId: 'igw-123',
+          Origin: 'CreateRoute',
+        })
+      ).toBe(true);
+      // A GWLB endpoint route uses a CIDR destination (no prefix list) → stays enumerable even
+      // with a vpce- GatewayId, since the managed-gateway shape requires a prefix-list dest.
+      expect(
+        isEnumerableRoute({
+          DestinationCidrBlock: '10.0.0.0/16',
+          GatewayId: 'vpce-0abc1234567890def',
+          Origin: 'CreateRoute',
+        })
+      ).toBe(true);
+    });
+
     it('still excludes a route with no user-declarable destination', () => {
       expect(isEnumerableRoute({ Origin: 'CreateRoute', GatewayId: 'igw-123' })).toBe(false);
     });

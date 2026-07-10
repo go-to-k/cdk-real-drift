@@ -2811,15 +2811,32 @@ export function routeDestination(route: Ec2Route): string | undefined {
 //     are BGP/propagated, not declarable `AWS::EC2::Route` resources, and AWS re-creates
 //     them — flagging one as `added` is a false positive, and a `revert` DeleteResource
 //     would either churn (AWS re-propagates) or fail.
+//   - a route MATERIALIZED by a declared Gateway VPC endpoint (`AWS::EC2::VPCEndpoint`,
+//     VpcEndpointType Gateway — the S3/DynamoDB endpoint, CDK `vpc.addGatewayEndpoint`):
+//     the endpoint writes a `DestinationPrefixListId: pl-…` + `GatewayId: vpce-…` route into
+//     every table in its RouteTableIds. That route is NOT a declarable standalone
+//     `AWS::EC2::Route` (the endpoint owns it), so flagging it `added` is a false positive on
+//     every clean check, and a `revert` DeleteResource would SEVER S3/DynamoDB connectivity
+//     for the private subnets (the endpoint then re-adds it → churn). A genuinely rogue
+//     gateway endpoint is itself surfaced by the VPC enumerator (#1045), so nothing is lost.
+//     Detected by the exact managed shape: a prefix-list destination AND a `vpce-` GatewayId.
+//     GWLB (Gateway Load Balancer) endpoint routes use a CIDR destination (not a prefix
+//     list), so they remain enumerable.
 // IPv6 (`DestinationIpv6CidrBlock`, e.g. a rogue `::/0` on a dual-stack VPC) and managed
-// prefix-list (`DestinationPrefixListId`) routes are INCLUDED — they are user-declarable
-// `AWS::EC2::Route` shapes and a real traffic-redirection vector (#1081). Pure + exported.
+// prefix-list (`DestinationPrefixListId`) routes are otherwise INCLUDED — they are
+// user-declarable `AWS::EC2::Route` shapes and a real traffic-redirection vector (#1081).
+// Pure + exported.
 export function isEnumerableRoute(route: Ec2Route): boolean {
+  const isGatewayEndpointManaged =
+    typeof route.DestinationPrefixListId === 'string' &&
+    typeof route.GatewayId === 'string' &&
+    route.GatewayId.startsWith('vpce-');
   return (
     routeDestination(route) !== undefined &&
     route.Origin !== 'CreateRouteTable' &&
     route.Origin !== 'EnableVgwRoutePropagation' &&
-    route.GatewayId !== 'local'
+    route.GatewayId !== 'local' &&
+    !isGatewayEndpointManaged
   );
 }
 
