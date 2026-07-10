@@ -14,6 +14,7 @@ import { READ_RETRY } from '../read/client-config.js';
 import {
   fetchManagedAliasTargets,
   kmsWarnDecision,
+  typeNeedsManagedKeyResolution,
   usesManagedKmsAlias,
 } from '../read/kms-aliases.js';
 import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
@@ -600,8 +601,17 @@ export async function gatherFindings(
   // a customer-managed key swapped in out of band. Missing kms:ListAliases -> empty +
   // denied (the classifier falls back to the conservative shape-based match) — and we
   // WARN once per region, because that fallback is BLIND to a customer-key swap (R115).
+  // The type check also fires for resource types whose UNDECLARED managed-key path
+  // (e.g. DynamoDB SSESpecification.KMSMasterKeyId, OpenSearch EncryptionAtRestOptions.KmsKeyId)
+  // must be gated against the AWS-managed key ARN even when the template declares no
+  // `alias/aws/*` — otherwise classify's managed-key gate always fails open and an
+  // out-of-band CMK swap stays invisible (#704).
   let kmsAliasTargets: Record<string, string> = {};
-  if (desired.resources.some((r) => usesManagedKmsAlias(r.declared))) {
+  if (
+    desired.resources.some(
+      (r) => usesManagedKmsAlias(r.declared) || typeNeedsManagedKeyResolution(r.resourceType)
+    )
+  ) {
     const resolved = await fetchManagedAliasTargets(region);
     kmsAliasTargets = resolved.targets;
     // A denied read is either a genuine IAM denial (permanent — grant kms:ListAliases) or
@@ -697,7 +707,9 @@ export async function regatherTouched(
   }
   // Re-check path (revert convergence): reuse the cached targets; the denial warning,
   // if any, already fired in the primary gather, so just take the resolved map.
-  const kmsAliasTargets = targets.some((r) => usesManagedKmsAlias(r.declared))
+  const kmsAliasTargets = targets.some(
+    (r) => usesManagedKmsAlias(r.declared) || typeNeedsManagedKeyResolution(r.resourceType)
+  )
     ? (await fetchManagedAliasTargets(region)).targets
     : {};
   // Built from desired.ctx.liveAttrs (populated by the original gather), so the OAI

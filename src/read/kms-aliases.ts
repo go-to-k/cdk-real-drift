@@ -130,6 +130,71 @@ export function kmsWarnDecision(
   };
 }
 
+// #704: some resource types read back an UNDECLARED encryption-key property whose default
+// is the account/region AWS-managed service key (`alias/aws/<service>`), stored by AWS as a
+// full key ARN. These are folded value-independent (GENERATED_NESTED_PATHS) — which HID an
+// out-of-band swap to a customer-managed key (a security-relevant, MUTABLE change: DynamoDB
+// SSE is changeable via `UpdateTable --sse-specification`, unlike RDS's create-only KmsKeyId).
+// This table maps each such (resourceType, nested schema path) to the AWS-managed alias whose
+// resolved key ARN is the fold-eligible default. The classifier gates the value-independent
+// fold against the resolved managed key: it folds ONLY when the live key IS that managed key,
+// and SURFACES any other value (a CMK). Fail OPEN (keep folding) when the alias can't be
+// resolved (no ListAliases / denied / transient) — biased to noise, never a new false positive.
+export const MANAGED_KEY_ALIAS_PATHS: Record<string, Record<string, string>> = {
+  // A DynamoDB table with `SSESpecification.SSEEnabled: true` and no explicit KMS key reads
+  // back `SSESpecification.KMSMasterKeyId` = the account's AWS-managed `alias/aws/dynamodb`
+  // key ARN. Only that managed key is the default to fold; a CMK swapped in surfaces.
+  'AWS::DynamoDB::Table': { 'SSESpecification.KMSMasterKeyId': 'alias/aws/dynamodb' },
+  // GlobalTable's per-replica twin (same managed key, nested under Replicas.*).
+  'AWS::DynamoDB::GlobalTable': {
+    'Replicas.*.SSESpecification.KMSMasterKeyId': 'alias/aws/dynamodb',
+  },
+  // An OpenSearch domain with encryption-at-rest enabled and no explicit KMS key reads back
+  // `EncryptionAtRestOptions.KmsKeyId` = the account's AWS-managed `alias/aws/es` key.
+  'AWS::OpenSearchService::Domain': { 'EncryptionAtRestOptions.KmsKeyId': 'alias/aws/es' },
+};
+
+// Match live key values to a managed-key ARN: the live value is a full key ARN
+// (`arn:aws:kms:...:key/<id>`); the alias TargetKeyId from ListAliases is a bare key id.
+// Compare on the trailing key-id segment so both forms line up.
+const keyIdOf = (s: string): string => s.slice(s.lastIndexOf('/') + 1);
+
+/** #704 fold decision for an UNDECLARED managed-service-key nested path (DynamoDB SSE,
+ *  OpenSearch EncryptionAtRest). Returns whether the value-independent fold should still
+ *  apply for this live value:
+ *   - `true`  → FOLD (atDefault): the live key IS the account/region AWS-managed key, OR the
+ *               alias could not be resolved (fail OPEN — no ListAliases / denied / transient).
+ *   - `false` → SURFACE (undeclared): the live key is some OTHER key (a customer-managed key
+ *               swapped in out of band — a real, security-relevant drift).
+ *  Pure; `aliasTargets` is the resolved alias-name -> target-key-id map (empty when unresolved).*/
+export function shouldFoldManagedServiceKey(
+  resourceType: string,
+  schemaPath: string,
+  liveValue: unknown,
+  aliasTargets?: Record<string, string>
+): boolean {
+  const alias = MANAGED_KEY_ALIAS_PATHS[resourceType]?.[schemaPath];
+  if (!alias) return false; // not a managed-key path — caller shouldn't gate it here
+  const target = aliasTargets?.[alias];
+  // Fail OPEN: alias unresolved (no ListAliases / denied / transient / not in this account) →
+  // keep folding, preserving today's value-independent behavior (no new false positive).
+  if (!target) return true;
+  // A non-string live value can't be compared to a key ARN → fold (unchanged behavior).
+  if (typeof liveValue !== 'string') return true;
+  // Strict: fold ONLY when the live key resolves to the SAME managed key; any other key surfaces.
+  return keyIdOf(liveValue) === keyIdOf(target);
+}
+
+/** #704: True when a resource TYPE has an UNDECLARED managed-service-key nested path
+ *  (DynamoDB SSE, OpenSearch EncryptionAtRest) whose value-independent fold must be gated
+ *  against the resolved AWS-managed key — so a ListAliases prefetch is worth doing even when
+ *  NO `alias/aws/*` is DECLARED. gather.ts's prefetch trigger should OR this in alongside the
+ *  declared-alias check (`usesManagedKmsAlias`) so the LIVE-only managed-key path is resolvable.
+ */
+export function typeNeedsManagedKeyResolution(resourceType: string): boolean {
+  return resourceType in MANAGED_KEY_ALIAS_PATHS;
+}
+
 /** True when any resolved declared value in the stack references an AWS-managed KMS
  *  alias, i.e. a ListAliases prefetch is worth doing. */
 export function usesManagedKmsAlias(v: unknown): boolean {
