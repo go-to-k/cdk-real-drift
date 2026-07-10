@@ -1,3 +1,12 @@
+## [0.12.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.37...v0.12.38) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** crossRegion SSM prefetch client gets READ_RETRY timeouts + retry, credentials precedence preserved ([#1286](https://github.com/go-to-k/cdk-real-drift/issues/1286)) ([#1395](https://github.com/go-to-k/cdk-real-drift/issues/1395)) ([def8630](https://github.com/go-to-k/cdk-real-drift/commit/def863064a1932652b0ea5fcffdd2c6381088a43))
+* **diff:** SFN object-Definition fold applies DefinitionSubstitutions + non-ASCII-mask readGap tolerance ([#1301](https://github.com/go-to-k/cdk-real-drift/issues/1301)) ([#1394](https://github.com/go-to-k/cdk-real-drift/issues/1394)) ([da598ef](https://github.com/go-to-k/cdk-real-drift/commit/da598efe3035496b88c4cc3258f138d33d2200f0))
+* **read:** Cognito auto-federated-group skip gates on bare RoleArn — a RoleArn-bearing OOB group surfaces ([#1262](https://github.com/go-to-k/cdk-real-drift/issues/1262)) ([#1393](https://github.com/go-to-k/cdk-real-drift/issues/1393)) ([bd41336](https://github.com/go-to-k/cdk-real-drift/commit/bd413364571fad6b77d831088854611a28c55779))
+
 ## [0.12.37](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.36...v0.12.37) (2026-07-10)
 
 
