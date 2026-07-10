@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
+import { sortUnorderedObjectArray } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { ArrayDelta, Finding } from '../types.js';
 
@@ -628,15 +629,51 @@ export function carryForwardUnreadable(
  * cleanly with #767's identity-sort case). Idempotency of the pipeline means an
  * already-canonical live value is unchanged, so this never weakens real change
  * detection: two values that differ after canonicalization still compare unequal.
+ *
+ * #767: `canonicalizeForCompare` only IDENTITY-sorts object arrays (by
+ * Key/Id/Name/…), but the live model reaches a DIFFERENT total order — classify's
+ * `sortUnorderedSetProps` runs `sortUnorderedObjectArray` (a full CANONICAL-JSON
+ * sort) over unordered object-array props, and for an IDENTITY-LESS array the
+ * identity-sort is a no-op, so the live `f.actual` lands in canonical-JSON order
+ * while the recorded raw baseline stays in template order. `deepEqual` is
+ * positional, so those two never converge — a permanent "changed since record" that
+ * re-recording can't clear. Re-applying the SAME canonical-JSON sort (deeply) to
+ * BOTH sides here drives them to one total order, restoring reflexivity
+ * (`baselineValueMatches(v, v)` is true for identity-less arrays too). It is
+ * SYMMETRIC and only REORDERS (never merges/drops elements), so two genuinely
+ * different values still differ — change detection is preserved. Baseline compare is
+ * type-agnostic over UNDECLARED snapshot fragments, which never carry an
+ * order-significant declared array, so an order-insensitive sort is safe here.
  */
 export function baselineValueMatches(
   baselineValue: unknown,
   currentCanonicalValue: unknown
 ): boolean {
   return deepEqual(
-    canonicalizeForCompare(baselineValue),
-    canonicalizeForCompare(currentCanonicalValue)
+    sortObjectArraysDeep(canonicalizeForCompare(baselineValue)),
+    sortObjectArraysDeep(canonicalizeForCompare(currentCanonicalValue))
   );
+}
+
+// Deeply apply the SAME canonical-JSON total order the live side reaches (classify's
+// `sortUnorderedObjectArray`) to every plain-object array, so both compare sides of
+// `baselineValueMatches` converge on one order (#767). `sortUnorderedObjectArray`
+// only reorders a single array level and leaves non-arrays untouched, so this walk
+// recurses into every element / object value and sorts each object array it finds.
+// Applied to BOTH sides symmetrically, so it can never make two different values
+// compare equal — it only removes an ordering-only difference.
+function sortObjectArraysDeep(v: unknown): unknown {
+  if (Array.isArray(v)) {
+    const mapped = v.map(sortObjectArraysDeep);
+    return sortUnorderedObjectArray(mapped);
+  }
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>))
+      out[k] = sortObjectArraysDeep(val);
+    return out;
+  }
+  return v;
 }
 
 // Identity fields for the ELEMENT-LEVEL DELTA display only (R128) — deliberately
