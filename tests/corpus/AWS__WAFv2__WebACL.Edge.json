@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::WAFv2::WebACL with deep declared config classifies as recorded (undeclared:Name, undeclared:OnSourceDDoSProtectionConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
+  "description": "RECORDED LIVE (harvest2 fixture, R73 — richly-declared wave): AWS::WAFv2::WebACL with deep declared config classifies as recorded (generated:Name, atDefault:OnSourceDDoSProtectionConfig). Fresh-deploy declared drift was ZERO across the whole stack; a change in this expected means the semantics for this type changed.",
   "resource": {
     "logicalId": "Edge",
     "resourceType": "AWS::WAFv2::WebACL",
@@ -138,7 +138,7 @@
       "constructPath": "CdkrdIntegHarvest2/Edge"
     },
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "Edge",
       "resourceType": "AWS::WAFv2::WebACL",
       "path": "Name",

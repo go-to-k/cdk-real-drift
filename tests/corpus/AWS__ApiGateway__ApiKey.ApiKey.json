@@ -50,7 +50,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "ApiKey",
       "resourceType": "AWS::ApiGateway::ApiKey",
       "path": "Value",

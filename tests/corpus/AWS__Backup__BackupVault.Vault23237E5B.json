@@ -36,7 +36,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Vault23237E5B",
       "resourceType": "AWS::Backup::BackupVault",
       "path": "EncryptionKeyArn",

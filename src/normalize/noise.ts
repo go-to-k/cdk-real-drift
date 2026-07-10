@@ -1024,6 +1024,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::EC2::FlowLog': {
     MaxAggregationInterval: 600,
+    // A flow log that declares no LogFormat reads back AWS's documented default 14-field
+    // format string. It is a STABLE, documented constant, so an equality-gated KNOWN_DEFAULTS
+    // fold preserves detection: a user who sets a CUSTOM format out of band no longer matches
+    // and surfaces. Corpus baked FP (#844).
+    LogFormat:
+      '${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}',
   },
   // EC2 echoes SpreadLevel "rack" even on partition-strategy groups (where the
   // property is inapplicable); "rack" is also the documented default for spread.
@@ -2547,6 +2553,15 @@ export const GENERATED_LOGICALID_PREFIX_PATHS: Record<string, ReadonlySet<string
   // #525/#537 over-fold concern does not apply). A user-SET name has no logical-id prefix
   // and still surfaces. Live, hunt 2026-07-08 #639.
   'AWS::EC2::LaunchTemplate': new Set(['LaunchTemplateName']),
+  // A WAFv2 WebACL / RegexPatternSet that declares no `Name` reads back CFn's
+  // `<logicalId>-<random>` minted name (e.g. "Edge-iCCoPGcllLnA", "RegexSet-CTQHtT5iegpr")
+  // — the same generated-name class as the Cognito/Batch/LaunchTemplate names above (hash
+  // suffix present, so the #525/#537 over-fold concern does not apply). A user-SET name has
+  // no logical-id prefix and still surfaces. (`Name` is also segment-1 of the composite
+  // physicalId `Name|id|Scope`, but the logical-id-prefix fold is the tighter gate.) Corpus
+  // baked FP (#844).
+  'AWS::WAFv2::WebACL': new Set(['Name']),
+  'AWS::WAFv2::RegexPatternSet': new Set(['Name']),
 };
 
 // True when `value` is the `<logicalId><sep><random>` CFn auto-generated-name form: the logical
@@ -2801,6 +2816,20 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   so whatever SG AWS attached is its default, never user intent — a user who wants a
   //   specific SG DECLARES it, and it is then compared in the declared loop.
   'AWS::ElasticLoadBalancingV2::LoadBalancer': new Set(['SecurityGroups']),
+  //   AWS::ApiGateway::ApiKey.Value — an API key that declares no Value reads back AWS-generated
+  //   40-char key material (createOnly — it can never drift out of band). It is a service-minted
+  //   secret, not user intent — a user who pins a specific key DECLARES Value, compared in the
+  //   declared loop. Folding value-independent ALSO keeps an AWS-generated secret out of the report
+  //   and the git-committed baseline (overlaps the redaction concern in #798). Corpus baked FP (#844).
+  'AWS::ApiGateway::ApiKey': new Set(['Value']),
+  //   AWS::Backup::BackupVault.EncryptionKeyArn — a vault that declares no EncryptionKeyArn reads
+  //   back the account's AWS-managed `aws/backup` key ARN. The ARN carries the account-specific KMS
+  //   key-ID (a per-account GUID, not a stable `alias/…`), so a CONTEXT_ARN_DEFAULTS template cannot
+  //   pin it. createOnly (immutable — it can never drift out of band), and undeclared, so whatever
+  //   default key AWS assigned is not user intent (a user who pins a CMK DECLARES it, compared in the
+  //   declared loop). Fold value-independent (same class as the RDS KmsKeyId fold below). Corpus
+  //   baked FP (#844).
+  'AWS::Backup::BackupVault': new Set(['EncryptionKeyArn']),
   //   AWS::Batch::JobQueue.JobQueueType — a queue that declares no JobQueueType reads back
   //   the type AWS DERIVES from its attached compute environment (ECS_FARGATE for a Fargate
   //   CE, ECS for EC2, EKS for EKS). The value lives on a DIFFERENT resource (the CE), not in
@@ -3038,7 +3067,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-
   //   run noise (a DECLARED window is compared in the declared loop).
-  'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime']),
+  //   AWS::AmazonMQ::Broker.SecurityGroups / .SubnetIds — a broker that declares neither reads back
+  //   a single-element default-VPC placement (an AWS-assigned sg-… / subnet-… id, not in the
+  //   broker's declared inputs and not derivable without a VPC lookup). Verbatim twin of the ELBv2
+  //   LoadBalancer.SecurityGroups fold above: undeclared, so whatever placement AWS chose is its
+  //   default, never user intent — a user who wants specific SGs/subnets DECLARES them, compared in
+  //   the declared loop. Corpus baked FP (#844).
+  'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime', 'SecurityGroups', 'SubnetIds']),
   //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
   //   read back on every first run. Each is a per-resource value AWS picks at creation from the
   //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
