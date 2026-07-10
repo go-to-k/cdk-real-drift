@@ -63,6 +63,11 @@ export function buildStackSelector(patterns: string[] | undefined): StackSelecto
 export interface SynthStack {
   stackName: string;
   region: string | undefined; // the stack's own env.region (concrete) — for per-stack drift reads
+  // #740: the stack's own env.account (concrete 12-digit id), or undefined for an
+  // env-agnostic stack — used by check to skip a stack pinned to an account the active
+  // credentials are NOT for (instead of misreporting it "not deployed yet") and to guard
+  // against a same-named stack in the reachable account being wrong-account compared.
+  account: string | undefined;
   template: Record<string, unknown>;
 }
 
@@ -71,6 +76,20 @@ export interface SynthStack {
 // three-segment commercial form — otherwise those pins test false and env.region is silently
 // discarded, so the stack is read against the wrong region (#742).
 export const CONCRETE_REGION = /^[a-z]{2}(-[a-z]+)+-\d+$/;
+
+// A concrete AWS account pin: exactly 12 digits (#740). toolkit-lib yields the literal
+// `"unknown-account"` or a `${Token[...]}` placeholder for an env-agnostic stack's account,
+// neither of which matches — so an unpinned account maps to undefined (see concreteAccount),
+// mirroring how CONCRETE_REGION distinguishes a real region pin from a token/placeholder.
+export const CONCRETE_ACCOUNT = /^\d{12}$/;
+
+// Map a raw `s.environment.account` to a concrete 12-digit account id, or undefined when it
+// is not pinned (toolkit-lib's `"unknown-account"` / a `${Token...}` for an env-agnostic
+// stack). Pure + exported so the synth extraction is unit-testable without a real assembly
+// (#740). Used in both the stacksRecursively map and discoverStacks.
+export function concreteAccount(raw: string | undefined): string | undefined {
+  return raw && CONCRETE_ACCOUNT.test(raw) ? raw : undefined;
+}
 
 /**
  * Build the stderr message body (no `warning:` prefix — the caller adds it) for the case where
@@ -226,6 +245,9 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
     return cached.cloudAssembly.stacksRecursively.map((s) => ({
       stackName: s.stackName,
       region: CONCRETE_REGION.test(s.environment.region) ? s.environment.region : undefined,
+      // #740: carry the stack's own env.account (concrete 12-digit id, else undefined) so
+      // check can tell a stack pinned to ANOTHER account from a genuinely-undeployed one.
+      account: concreteAccount(s.environment.account),
       template: s.template as Record<string, unknown>,
     }));
   } finally {
@@ -236,12 +258,18 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 export interface DiscoveredStack {
   stackName: string;
   region: string | undefined; // the stack's own env.region, when concrete
+  // #740: the stack's own env.account, when concrete (12-digit) — see SynthStack.account.
+  account: string | undefined;
   // the synthesized template — carried through so the check path can recover GetTemplate's
   // `?`-masked non-ASCII literals from it without re-synthesizing (synthApp already built it).
   template: Record<string, unknown>;
 }
 
-/** Synth and return each stack's name + its own (concrete) region + template, for discovery. */
+/**
+ * Synth and return each stack's name + its own (concrete) region + account + template, for
+ * discovery. The account (#740) lets check distinguish a stack pinned to another account from
+ * a never-deployed one.
+ */
 export async function discoverStacks(
   app: string,
   opts: SynthOptions = {}
@@ -249,6 +277,7 @@ export async function discoverStacks(
   return (await synthApp(app, opts)).map((s) => ({
     stackName: s.stackName,
     region: s.region,
+    account: s.account,
     template: s.template,
   }));
 }
