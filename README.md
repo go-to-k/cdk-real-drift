@@ -634,9 +634,19 @@ valid JSON value nor JSONL; multi-stack `--json` was unparseable — issue #755.
 **Secret redaction.** Values on known secret-bearing properties — Lambda
 `Environment.Variables`, CodeBuild `Environment.EnvironmentVariables[].Value`,
 Elastic Beanstalk env-namespace `OptionSettings`, EC2 LaunchTemplate `UserData` —
-are masked as `<redacted:NN chars>` in both text and `--json` output, so a rotated
-secret surfacing as drift does not leak its plaintext into CI logs. The finding
-still surfaces (detection is preserved) and the property/key name stays visible —
+are masked as `<redacted:NN chars:HHHHHHHH>` in both text and `--json` output, so a rotated
+secret surfacing as drift does not leak its plaintext into CI logs. The `NN` is the
+value's char length and `HHHHHHHH` is the first 8 hex of its sha256 — a **deterministic,
+stable distinguisher** (#1308): the same secret masks to the same placeholder across runs,
+so a consumer diffing two consecutive `--json` runs compares them correctly, while a
+**rotated same-length** secret now masks to a **different** placeholder instead of a
+byte-identical one (the length-only mask erased that change). The hash is non-reversible for
+a high-entropy value; a low-entropy value's short hash is brute-forceable, so it is a
+change-distinguisher, not a confidentiality guarantee — but the plaintext itself is never
+printed. In `--json` a masked finding additionally carries a `"redacted": true` sibling, an
+**out-of-band marker** so a consumer can tell a masked value from a literal live string that
+happens to look like the placeholder (a non-secret finding has no `redacted` field). The
+finding still surfaces (detection is preserved) and the property/key name stays visible —
 only the value is hidden. The same protection covers persistence: `record` writes a
 **hash** of these values into the git-committed baseline instead of the plaintext, so
 the secret never lands in a committed file while a later change still re-surfaces as

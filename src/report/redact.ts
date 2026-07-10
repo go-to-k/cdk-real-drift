@@ -22,10 +22,22 @@ import { createHash } from 'node:crypto';
 // paths and nothing else. Classification and folding are unchanged.
 
 // The masked placeholder. Keeps the char length as a signal (a rotated 40-char token vs a
-// blanked env var reads differently) without revealing any plaintext. A non-string value
-// (an object/array/number that slipped a matcher) masks to the length-less form.
+// blanked env var reads differently) AND appends a short sha256 prefix of the plaintext as a
+// DISTINGUISHER (#1308): without it, a rotated same-length secret renders as a byte-identical
+// `<redacted:N chars>` on both the desired/actual sides and across consecutive `--json` runs,
+// so a human diff shows zero signal and a bot diffing two runs treats two DIFFERENT secrets as
+// EQUAL (change-suppression on the machine channel). The hash is DETERMINISTIC and stable
+// across runs (same plaintext → same placeholder), so consecutive `--json` runs compare
+// correctly, and non-reversible for a high-entropy value. CAVEAT: for a LOW-entropy value (a
+// short/guessable env var) the truncated hash is brute-forceable — it is a change-DISTINGUISHER,
+// not a confidentiality guarantee; the plaintext (not the hash) is what must never be printed,
+// which it never is. A non-string value (an object/array/number that slipped a matcher) masks
+// to the length-less form (no stable byte string to hash).
 export function maskPlaceholder(value: unknown): string {
-  if (typeof value === 'string') return `<redacted:${value.length} chars>`;
+  if (typeof value === 'string') {
+    const sig = createHash('sha256').update(value).digest('hex').slice(0, 8);
+    return `<redacted:${value.length} chars:${sig}>`;
+  }
   return '<redacted>';
 }
 
@@ -136,6 +148,14 @@ export function isRedactedPath(resourceType: string, path: string): boolean {
 // where the leaf path extends the finding path (a whole free-form map, an identity-keyed
 // array), the mask is applied at the finding-path level (maskMapValues / maskEntryValueField
 // handle the sub-key masking), which covers the shapes the report renders.
+//
+// #1308: a masked copy additionally carries an out-of-band `redacted: true` marker so a
+// `--json` consumer can tell a MASKED value from a literal live string — the mask is an
+// in-band string (`<redacted:…>`) that a live property could in principle hold verbatim, so
+// without the sibling flag a bot cannot distinguish "this value was withheld" from "the live
+// value literally is that string". Non-secret findings are returned unchanged (no marker). The
+// return type is widened (not the shared `Finding` type) so the flag is optional and only
+// present on masked findings.
 export function redactFinding<
   T extends {
     resourceType: string;
@@ -144,9 +164,9 @@ export function redactFinding<
     actual?: unknown;
     arrayDelta?: unknown;
   },
->(f: T): T {
+>(f: T): T & { redacted?: true } {
   if (!isRedactedPath(f.resourceType, f.path)) return f;
-  const out: T = { ...f };
+  const out: T & { redacted?: true } = { ...f, redacted: true };
   if ('desired' in f && f.desired !== undefined)
     out.desired = redactValue(f.resourceType, f.path, f.desired);
   if ('actual' in f && f.actual !== undefined)

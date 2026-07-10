@@ -145,18 +145,20 @@ describe('#798 report redaction — --json output masks secret VALUES', () => {
 });
 
 describe('#798 redact module unit behavior', () => {
-  it('maskPlaceholder keeps the char length for a string, length-less for non-string', () => {
-    expect(maskPlaceholder('abcd')).toBe('<redacted:4 chars>');
+  it('maskPlaceholder keeps the char length + a sha256 distinguisher for a string, length-less for non-string', () => {
+    // #1308: `<redacted:<len> chars:<sha8>>` — the 8-hex sha256 prefix distinguishes two
+    // same-length secrets. length-less form for a non-string (no stable byte string to hash).
+    expect(maskPlaceholder('abcd')).toMatch(/^<redacted:4 chars:[0-9a-f]{8}>$/);
     expect(maskPlaceholder({ x: 1 })).toBe('<redacted>');
   });
 
   it('redactValue masks the secret paths and passes non-secret paths through unchanged', () => {
-    expect(redactValue('AWS::Lambda::Function', 'Environment.Variables.T', SECRET)).toBe(
-      `<redacted:${SECRET.length} chars>`
+    expect(redactValue('AWS::Lambda::Function', 'Environment.Variables.T', SECRET)).toMatch(
+      new RegExp(`^<redacted:${SECRET.length} chars:[0-9a-f]{8}>$`)
     );
     expect(
       redactValue('AWS::EC2::LaunchTemplate', 'LaunchTemplateData.UserData', '#!/bin/bash secret')
-    ).toBe('<redacted:18 chars>');
+    ).toMatch(/^<redacted:18 chars:[0-9a-f]{8}>$/);
     // non-secret path / type -> unchanged
     expect(redactValue('AWS::Lambda::Function', 'Timeout', 900)).toBe(900);
     expect(redactValue('AWS::S3::Bucket', 'Environment.Variables.X', 'x')).toBe('x');
@@ -173,7 +175,7 @@ describe('#798 redact module unit behavior', () => {
       'OptionSettings[aws:elasticbeanstalk:application:environment|DB_PASSWORD]',
       entry
     ) as Record<string, unknown>;
-    expect(masked.Value).toBe(`<redacted:${SECRET.length} chars>`);
+    expect(masked.Value).toMatch(new RegExp(`^<redacted:${SECRET.length} chars:[0-9a-f]{8}>$`));
     expect(masked.Namespace).toBe('aws:elasticbeanstalk:application:environment');
     expect(masked.OptionName).toBe('DB_PASSWORD');
     // a NON-env-namespace option value is not a secret path -> unchanged
