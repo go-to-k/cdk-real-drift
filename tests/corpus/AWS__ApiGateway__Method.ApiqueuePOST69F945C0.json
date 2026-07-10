@@ -1,0 +1,194 @@
+{
+  "corpusVersion": 1,
+  "description": "AWS-type SQS integration method: declared Integration.RequestParameters is a dotted-key map (integration.request.header.Content-Type). Regression net for the #828-class FP (fixed in #1249): the declared map echoed by the live read must fold to zero undeclared findings. Also carries a real declared drift (IntegrationResponses pruned out of band) so the whole-array declared compare is replayed too.",
+  "resource": {
+    "logicalId": "ApiqueuePOST69F945C0",
+    "resourceType": "AWS::ApiGateway::Method",
+    "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+    "constructPath": "CorpusDemo/Api/Default/queue/POST",
+    "declared": {
+      "AuthorizationType": "AWS_IAM",
+      "HttpMethod": "POST",
+      "Integration": {
+        "Credentials": "arn:aws:iam::111111111111:role/CorpusDemo-ApiIntegrationRole-Zy9xWvUt87Kj",
+        "IntegrationHttpMethod": "POST",
+        "IntegrationResponses": [
+          {
+            "StatusCode": "200"
+          },
+          {
+            "StatusCode": "400"
+          },
+          {
+            "StatusCode": "500"
+          }
+        ],
+        "RequestParameters": {
+          "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+        },
+        "RequestTemplates": {
+          "application/json": "Action=SendMessage&MessageBody=$util.urlEncode($input.body)"
+        },
+        "Type": "AWS",
+        "Uri": "arn:aws:apigateway:ap-northeast-1:sqs:path//CorpusDemo-QueueB6722424-Ab3dEfGh12Xy"
+      },
+      "MethodResponses": [
+        {
+          "StatusCode": "200"
+        },
+        {
+          "StatusCode": "400"
+        },
+        {
+          "StatusCode": "500"
+        }
+      ],
+      "ResourceId": "qu3ue7",
+      "RestApiId": "a1b2c3d4e5"
+    }
+  },
+  "liveRaw": {
+    "MethodResponses": [
+      {
+        "StatusCode": "200"
+      },
+      {
+        "StatusCode": "400"
+      },
+      {
+        "StatusCode": "500"
+      }
+    ],
+    "Integration": {
+      "CacheNamespace": "qu3ue7",
+      "Type": "AWS",
+      "IntegrationResponses": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "RequestTemplates": {
+        "application/json": "Action=SendMessage&MessageBody=$util.urlEncode($input.body)"
+      },
+      "IntegrationHttpMethod": "POST",
+      "ResponseTransferMode": "BUFFERED",
+      "TimeoutInMillis": 29000,
+      "Uri": "arn:aws:apigateway:ap-northeast-1:sqs:path//CorpusDemo-QueueB6722424-Ab3dEfGh12Xy",
+      "Credentials": "arn:aws:iam::111111111111:role/CorpusDemo-ApiIntegrationRole-Zy9xWvUt87Kj",
+      "PassthroughBehavior": "WHEN_NO_MATCH",
+      "RequestParameters": {
+        "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+      }
+    },
+    "ResourceId": "qu3ue7",
+    "RestApiId": "a1b2c3d4e5",
+    "ApiKeyRequired": false,
+    "AuthorizationType": "AWS_IAM",
+    "HttpMethod": "POST"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["HttpMethod", "ResourceId", "RestApiId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HttpMethod", "ResourceId", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {
+      "Integration.ResponseTransferMode": "BUFFERED"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "Integration.IntegrationResponses.*.ResponseParameters",
+      "Integration.IntegrationResponses.*.ResponseTemplates",
+      "Integration.RequestParameters",
+      "Integration.RequestTemplates",
+      "MethodResponses.*.ResponseModels",
+      "MethodResponses.*.ResponseParameters",
+      "RequestModels",
+      "RequestParameters"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.IntegrationResponses",
+      "desired": [
+        {
+          "StatusCode": "200"
+        },
+        {
+          "StatusCode": "400"
+        },
+        {
+          "StatusCode": "500"
+        }
+      ],
+      "actual": [
+        {
+          "StatusCode": "200"
+        }
+      ],
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.CacheNamespace",
+      "actual": "qu3ue7",
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.ResponseTransferMode",
+      "actual": "BUFFERED",
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.TimeoutInMillis",
+      "actual": 29000,
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiqueuePOST69F945C0",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.PassthroughBehavior",
+      "actual": "WHEN_NO_MATCH",
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|qu3ue7|POST",
+      "constructPath": "CorpusDemo/Api/Default/queue/POST"
+    }
+  ]
+}

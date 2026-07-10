@@ -1,0 +1,163 @@
+{
+  "corpusVersion": 1,
+  "description": "CORS preflight mock method (the standard CDK defaultCorsPreflightOptions shape): declared Integration.IntegrationResponses[200].ResponseParameters and MethodResponses[200].ResponseParameters are dotted-key maps (method.response.header.*) inside StatusCode-keyed arrays. Regression net for the #828-class FP (fixed in #1249): collectNestedUndeclared's path-unsafe-key guard must NOT emit a DECLARED dotted-key map as undeclared \u2014 a clean first check on this method folds to zero drift.",
+  "resource": {
+    "logicalId": "ApiitemsOPTIONS0467E25A",
+    "resourceType": "AWS::ApiGateway::Method",
+    "physicalId": "a1b2c3d4e5|it3ms9|OPTIONS",
+    "constructPath": "CorpusDemo/Api/Default/items/OPTIONS",
+    "declared": {
+      "AuthorizationType": "NONE",
+      "HttpMethod": "OPTIONS",
+      "Integration": {
+        "IntegrationResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+              "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'",
+              "method.response.header.Access-Control-Allow-Origin": "'*'"
+            },
+            "ResponseTemplates": {
+              "application/json": "\n#set($origin = $input.params().header.get('origin'))\n#set($context.responseOverride.header.Access-Control-Allow-Origin = $origin)\n"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "PassthroughBehavior": "WHEN_NO_MATCH",
+        "RequestTemplates": {
+          "application/json": "{\"statusCode\": 200}"
+        },
+        "Type": "MOCK"
+      },
+      "MethodResponses": [
+        {
+          "ResponseModels": {
+            "application/json": "Empty"
+          },
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Headers": true,
+            "method.response.header.Access-Control-Allow-Methods": true,
+            "method.response.header.Access-Control-Allow-Origin": true
+          },
+          "StatusCode": "200"
+        }
+      ],
+      "ResourceId": "it3ms9",
+      "RestApiId": "a1b2c3d4e5"
+    }
+  },
+  "liveRaw": {
+    "MethodResponses": [
+      {
+        "ResponseParameters": {
+          "method.response.header.Access-Control-Allow-Methods": true,
+          "method.response.header.Access-Control-Allow-Headers": true,
+          "method.response.header.Access-Control-Allow-Origin": true
+        },
+        "StatusCode": "200",
+        "ResponseModels": {
+          "application/json": "Empty"
+        }
+      }
+    ],
+    "Integration": {
+      "CacheNamespace": "it3ms9",
+      "Type": "MOCK",
+      "IntegrationResponses": [
+        {
+          "ResponseTemplates": {
+            "application/json": "\n#set($origin = $input.params().header.get('origin'))\n#set($context.responseOverride.header.Access-Control-Allow-Origin = $origin)\n"
+          },
+          "ResponseParameters": {
+            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'",
+            "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+            "method.response.header.Access-Control-Allow-Origin": "'*'"
+          },
+          "StatusCode": "200"
+        }
+      ],
+      "RequestTemplates": {
+        "application/json": "{\"statusCode\": 200}"
+      },
+      "ResponseTransferMode": "BUFFERED",
+      "TimeoutInMillis": 29000,
+      "PassthroughBehavior": "WHEN_NO_MATCH"
+    },
+    "ResourceId": "it3ms9",
+    "RestApiId": "a1b2c3d4e5",
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["HttpMethod", "ResourceId", "RestApiId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HttpMethod", "ResourceId", "RestApiId"],
+    "defaults": {},
+    "defaultPaths": {
+      "Integration.ResponseTransferMode": "BUFFERED"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "Integration.IntegrationResponses.*.ResponseParameters",
+      "Integration.IntegrationResponses.*.ResponseTemplates",
+      "Integration.RequestParameters",
+      "Integration.RequestTemplates",
+      "MethodResponses.*.ResponseModels",
+      "MethodResponses.*.ResponseParameters",
+      "RequestModels",
+      "RequestParameters"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsOPTIONS0467E25A",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "a1b2c3d4e5|it3ms9|OPTIONS",
+      "constructPath": "CorpusDemo/Api/Default/items/OPTIONS"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "ApiitemsOPTIONS0467E25A",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.CacheNamespace",
+      "actual": "it3ms9",
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|it3ms9|OPTIONS",
+      "constructPath": "CorpusDemo/Api/Default/items/OPTIONS"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsOPTIONS0467E25A",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.ResponseTransferMode",
+      "actual": "BUFFERED",
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|it3ms9|OPTIONS",
+      "constructPath": "CorpusDemo/Api/Default/items/OPTIONS"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ApiitemsOPTIONS0467E25A",
+      "resourceType": "AWS::ApiGateway::Method",
+      "path": "Integration.TimeoutInMillis",
+      "actual": 29000,
+      "nested": true,
+      "physicalId": "a1b2c3d4e5|it3ms9|OPTIONS",
+      "constructPath": "CorpusDemo/Api/Default/items/OPTIONS"
+    }
+  ]
+}
