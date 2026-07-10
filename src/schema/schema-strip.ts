@@ -246,6 +246,26 @@ async function fetch(client: CloudFormationClient, resourceType: string): Promis
   }
 }
 
+// Follow a chain of local `#/definitions/...` `$ref`s to the concrete schema node
+// (guarding a circular / unresolvable ref → undefined). A node with no `$ref` is
+// returned as-is. Used to reach a top-level property's annotated `default` when the
+// property is written as a bare `$ref` to a definition that carries it (#1068).
+function resolveRefNode(
+  node: SchemaNode | undefined,
+  definitions: Record<string, SchemaNode>
+): SchemaNode | undefined {
+  if (!node || typeof node !== 'object') return undefined;
+  let n: SchemaNode | undefined = node;
+  const seen = new Set<string>();
+  while (n?.$ref) {
+    const name: string = n.$ref.replace('#/definitions/', '');
+    if (seen.has(name)) return undefined; // circular — unresolvable
+    seen.add(name);
+    n = definitions[name];
+  }
+  return n;
+}
+
 // JSON pointer "/properties/A/B/*/C" -> dotted "A.B.*.C"
 function pointerToDotted(p: string): string {
   // A JSON-pointer property path is `/properties/Foo/Bar`. Some CFn registry schemas
@@ -270,9 +290,9 @@ function pointerToDotted(p: string): string {
 // path — array `items` contribute a `*` segment, matching the readOnlyPaths
 // convention and the `[id]`->`*`-normalized live finding paths. The per-branch
 // `seen` ref-set breaks recursive definitions (a $ref cannot expand inside its
-// own descent). Best-effort: only `properties` + `items` are descended (not
-// oneOf/anyOf/allOf), so a missed default just stays `undeclared` — never a false
-// positive.
+// own descent). `properties`, `items`, AND `oneOf`/`anyOf`/`allOf` variant branches
+// are descended (a default under a variant branch applies at the SAME path — #1069);
+// a still-missed default just stays `undeclared` — never a false positive.
 type SchemaNode = {
   $ref?: string;
   default?: unknown;
@@ -283,27 +303,53 @@ type SchemaNode = {
   items?: SchemaNode;
   patternProperties?: Record<string, SchemaNode>;
   additionalProperties?: boolean | SchemaNode;
+  // A property can be expressed as a set of variant branches (`oneOf`/`anyOf`/`allOf`).
+  // Each branch is a schema node at the SAME property path (the variant wrapper is
+  // TRANSPARENT — it adds no path segment); the collectors descend every branch (#1069).
+  oneOf?: SchemaNode[];
+  anyOf?: SchemaNode[];
+  allOf?: SchemaNode[];
 };
+
+// The variant-branch arrays a schema node may carry. A branch applies at the SAME
+// property path as the node holding it (the wrapper is transparent), so a collector
+// descends each branch WITHOUT adding a path segment (#1069).
+function variantBranches(node: SchemaNode): SchemaNode[] {
+  return [...(node.oneOf ?? []), ...(node.anyOf ?? []), ...(node.allOf ?? [])];
+}
+// A depth bound for descending nested variant wrappers (an `allOf` can nest an
+// `allOf`). Unlike a $ref (guarded by a named `seen` set), a variant branch is an
+// INLINE node with no name to dedupe on, so a plain depth cap breaks any pathological
+// nesting cheaply — real schemas nest only a handful deep.
+const MAX_VARIANT_DEPTH = 30;
 function collectDefaultPaths(
   definitions: Record<string, SchemaNode>,
   properties: Record<string, SchemaNode>
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
-    if (!node || typeof node !== 'object') return;
+  const walk = (
+    node: SchemaNode | undefined,
+    path: string,
+    seen: ReadonlySet<string>,
+    depth: number
+  ): void => {
+    if (!node || typeof node !== 'object' || depth > MAX_VARIANT_DEPTH) return;
     if (node.$ref) {
       const name = node.$ref.replace('#/definitions/', '');
       if (seen.has(name)) return; // recursive definition — stop
-      walk(definitions[name], path, new Set(seen).add(name));
+      walk(definitions[name], path, new Set(seen).add(name), depth);
       return;
     }
     if ('default' in node && path) out[path] = node.default;
     if (node.properties)
       for (const [k, child] of Object.entries(node.properties))
-        walk(child, path ? `${path}.${k}` : k, seen);
-    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+        walk(child, path ? `${path}.${k}` : k, seen, depth);
+    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen, depth);
+    // A oneOf/anyOf/allOf branch applies at the SAME path (transparent wrapper) — do
+    // NOT add a segment; the depth guard bounds nested allOf recursion (#1069).
+    for (const branch of variantBranches(node)) walk(branch, path, seen, depth + 1);
   };
-  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set(), 0);
   return out;
 }
 
@@ -360,7 +406,13 @@ function collectUnorderedArrayPaths(
     if (propKeys.length === 0) return false; // scalar or free-form — not a structured object set
     return !propKeys.some((k) => ITEM_IDENTITY_FIELDS.includes(k));
   };
-  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
+  const walk = (
+    node: SchemaNode | undefined,
+    path: string,
+    seen: ReadonlySet<string>,
+    depth: number
+  ): void => {
+    if (depth > MAX_VARIANT_DEPTH) return;
     const n = resolve(node, seen);
     if (!n) return;
     const nextSeen = node?.$ref ? new Set(seen).add(node.$ref.replace('#/definitions/', '')) : seen;
@@ -370,13 +422,16 @@ function collectUnorderedArrayPaths(
         if (isScalarItems(it)) scalar.push(path);
         else if (isNonIdentityObjectItems(it)) object.push(path);
       }
-      if (n.items) walk(n.items, path ? `${path}.*` : '*', nextSeen); // descend (only finds '*' paths, skipped above)
+      if (n.items) walk(n.items, path ? `${path}.*` : '*', nextSeen, depth); // descend (only finds '*' paths, skipped above)
     }
     if (n.properties)
       for (const [k, child] of Object.entries(n.properties))
-        walk(child, path ? `${path}.${k}` : k, nextSeen);
+        walk(child, path ? `${path}.${k}` : k, nextSeen, depth);
+    // Descend variant branches at the SAME path (transparent wrapper) — an unordered
+    // array declared inside a oneOf/anyOf/allOf branch is otherwise missed (#1069).
+    for (const branch of variantBranches(n)) walk(branch, path, nextSeen, depth + 1);
   };
-  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set(), 0);
   return { scalar: [...new Set(scalar)].sort(), object: [...new Set(object)].sort() };
 }
 
@@ -404,12 +459,17 @@ function collectFreeFormMapPaths(
   const out: string[] = [];
   const isObjectSchema = (v: boolean | SchemaNode | undefined): v is SchemaNode =>
     typeof v === 'object' && v !== null;
-  const walk = (node: SchemaNode | undefined, path: string, seen: ReadonlySet<string>): void => {
-    if (!node || typeof node !== 'object') return;
+  const walk = (
+    node: SchemaNode | undefined,
+    path: string,
+    seen: ReadonlySet<string>,
+    depth: number
+  ): void => {
+    if (!node || typeof node !== 'object' || depth > MAX_VARIANT_DEPTH) return;
     if (node.$ref) {
       const name = node.$ref.replace('#/definitions/', '');
       if (seen.has(name)) return; // recursive — stop
-      walk(definitions[name], path, new Set(seen).add(name));
+      walk(definitions[name], path, new Set(seen).add(name), depth);
       return;
     }
     const hasFixedProps = node.properties && Object.keys(node.properties).length > 0;
@@ -430,10 +490,13 @@ function collectFreeFormMapPaths(
     if (isMap && path && lastSeg !== 'Tags') out.push(path);
     if (node.properties)
       for (const [k, child] of Object.entries(node.properties))
-        walk(child, path ? `${path}.${k}` : k, seen);
-    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+        walk(child, path ? `${path}.${k}` : k, seen, depth);
+    if (node.items) walk(node.items, path ? `${path}.*` : '*', seen, depth);
+    // Descend variant branches at the SAME path (transparent wrapper) — a free-form map
+    // declared inside a oneOf/anyOf/allOf branch is otherwise missed (#1069).
+    for (const branch of variantBranches(node)) walk(branch, path, seen, depth + 1);
   };
-  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
+  for (const [k, child] of Object.entries(properties)) walk(child, k, new Set(), 0);
   return [...new Set(out)].sort();
 }
 
@@ -464,19 +527,20 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   // rejects it cleanly (it never silently replaces) — an honest failure beats a silent
   // bar. (Live-confirmed on AWS::RDS::DBInstance BackupRetentionPeriod.)
   const createOnlyPaths = dotted(schema.createOnlyProperties);
+  // Build the TOP-LEVEL defaults map. A top-level property may carry its `default`
+  // DIRECTLY, or be written as `{ "$ref": "#/definitions/X" }` where definition X holds
+  // the `default` (IoTFleetWise Status=DRAFT, HealthLake SseConfiguration, Deadline Queue
+  // DefaultBudgetAction, BedrockAgentCore Policy EnforcementMode) — resolve the ref within
+  // the same schema's definitions and read `default` from the resolved node (#1068).
+  const definitions = schema.definitions ?? {};
   const defaults: Record<string, unknown> = {};
   for (const [k, def] of Object.entries(schema.properties ?? {})) {
-    if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
+    const resolved = resolveRefNode(def, definitions);
+    if (resolved && 'default' in resolved) defaults[k] = resolved.default;
   }
-  const defaultPaths = collectDefaultPaths(schema.definitions ?? {}, schema.properties ?? {});
-  const unorderedArrayPaths = collectUnorderedArrayPaths(
-    schema.definitions ?? {},
-    schema.properties ?? {}
-  );
-  const freeFormMapPaths = collectFreeFormMapPaths(
-    schema.definitions ?? {},
-    schema.properties ?? {}
-  );
+  const defaultPaths = collectDefaultPaths(definitions, schema.properties ?? {});
+  const unorderedArrayPaths = collectUnorderedArrayPaths(definitions, schema.properties ?? {});
+  const freeFormMapPaths = collectFreeFormMapPaths(definitions, schema.properties ?? {});
   // A type is `updatable` when its schema's `handlers` block declares an `update` handler.
   // ONLY decide when handlers are PRESENT: an absent handlers block is unknown updatability
   // (leave `updatable` undefined), so revert never bars on a schema-unavailable degradation.
