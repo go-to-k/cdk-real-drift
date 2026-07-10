@@ -406,6 +406,31 @@ describe('diffApiGatewayGatewayResponses (REST API gateway responses)', () => {
     });
     expect(added).toEqual([]);
   });
+
+  // #1089: a declared GatewayResponse is matched ONLY by ResponseType. When that identity is
+  // UNRESOLVED (dynamic ref / no-default Param / degraded ImportValue), the enumerator raises
+  // hasUnresolvedDeclaredResponseType — the diff must FAIL SAFE (no live DEFAULT_4XX/5XX flagged
+  // added, since a `revert --remove-unrecorded` would DeleteResource a declared response).
+  it('fails safe: an UNRESOLVED declared ResponseType suppresses ALL added for this api (#1089)', () => {
+    expect(
+      diffApiGatewayGatewayResponses({
+        apiId: API,
+        declaredResponseTypes: [], // the UNRESOLVED ResponseType never reached the list
+        liveResponseTypes: [{ type: 'DEFAULT_4XX' }],
+        hasUnresolvedDeclaredResponseType: true,
+      })
+    ).toEqual([]);
+  });
+
+  it('with no UNRESOLVED declared ResponseType, a genuine out-of-band response is STILL added (#1089)', () => {
+    const added = diffApiGatewayGatewayResponses({
+      apiId: API,
+      declaredResponseTypes: ['DEFAULT_4XX'],
+      liveResponseTypes: [{ type: 'DEFAULT_4XX' }, { type: 'DEFAULT_5XX' }],
+      hasUnresolvedDeclaredResponseType: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${API}:DEFAULT_5XX`]);
+  });
 });
 
 describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
@@ -1169,6 +1194,31 @@ describe('diffGraphQLApiChildren (AppSync data sources)', () => {
       })
     ).toEqual([]);
   });
+
+  // #1089: a declared DataSource is matched ONLY by Name. When that identity is UNRESOLVED,
+  // the enumerator raises hasUnresolvedDeclaredDataSource — the diff must FAIL SAFE (no live
+  // datasource flagged added, since a `revert --remove-unrecorded` would DeleteResource it).
+  it('fails safe: an UNRESOLVED declared Name suppresses ALL added for this api (#1089)', () => {
+    expect(
+      diffGraphQLApiChildren({
+        declaredDataSourceNames: [], // the UNRESOLVED Name never reached the list
+        liveDataSources: [{ name: 'console', arn: DS('console') }],
+        hasUnresolvedDeclaredDataSource: true,
+      })
+    ).toEqual([]);
+  });
+
+  it('with no UNRESOLVED declared Name, a genuine out-of-band data source is STILL added (#1089)', () => {
+    const added = diffGraphQLApiChildren({
+      declaredDataSourceNames: ['declared'],
+      liveDataSources: [
+        { name: 'declared', arn: DS('declared') },
+        { name: 'console', arn: DS('console') },
+      ],
+      hasUnresolvedDeclaredDataSource: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual([DS('console')]);
+  });
 });
 
 describe('diffGraphQLApiResolvers (AppSync resolvers)', () => {
@@ -1211,6 +1261,31 @@ describe('diffGraphQLApiResolvers (AppSync resolvers)', () => {
         ],
       })
     ).toEqual([]);
+  });
+
+  // #1089: a declared Resolver is matched ONLY by its `${TypeName}|${FieldName}` key. When
+  // either identity is UNRESOLVED the enumerator raises hasUnresolvedDeclaredResolver — the
+  // diff must FAIL SAFE (no live resolver flagged added → no destructive DeleteResource offer).
+  it('fails safe: an UNRESOLVED declared TypeName/FieldName suppresses ALL added for this api (#1089)', () => {
+    expect(
+      diffGraphQLApiResolvers({
+        declaredResolverKeys: [], // the UNRESOLVED key never reached the list
+        liveResolvers: [{ key: 'Query|ping', arn: RES('Query', 'ping') }],
+        hasUnresolvedDeclaredResolver: true,
+      })
+    ).toEqual([]);
+  });
+
+  it('with no UNRESOLVED declared resolver, a genuine out-of-band resolver is STILL added (#1089)', () => {
+    const added = diffGraphQLApiResolvers({
+      declaredResolverKeys: ['Query|ping'],
+      liveResolvers: [
+        { key: 'Query|ping', arn: RES('Query', 'ping') },
+        { key: 'Query|pong', arn: RES('Query', 'pong') },
+      ],
+      hasUnresolvedDeclaredResolver: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual([RES('Query', 'pong')]);
   });
 });
 
