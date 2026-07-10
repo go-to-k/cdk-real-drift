@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import { formatFinding, jPair, report, safeSlice, stackSeparator } from '../src/report/report.js';
 import type { Finding } from '../src/types.js';
 
@@ -266,6 +267,58 @@ describe('report', () => {
     expect(text).toContain('actual  =');
     expect(text).toContain('NONE');
     expect(text).toContain('AWS_IAM');
+  });
+
+  it('#1057: an UNRECORDED added resource (no baseline desired) renders its LIVE model, not a bare id+type line', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc|root|ANY',
+      physicalId: 'abc|root|ANY',
+      constructPath: 'Stack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      unrecorded: true,
+      actual: { AuthorizationType: 'AWS_IAM', HttpMethod: 'ANY' },
+      note: 'created out of band — not in your CloudFormation template',
+    };
+    const out = formatFinding(f);
+    // the live model is visible in the text report (previously only under --json)
+    expect(out).toContain('actual =');
+    expect(out).toContain('AWS_IAM');
+    expect(out).toContain('AuthorizationType');
+    // it is NOT rendered as just its id+type line
+    expect(out.split('\n').length).toBeGreaterThan(1);
+  });
+
+  it('#1057: a degraded added read (no actual model) still renders as a bare id+type line, no stray actual=undefined', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/x',
+      constructPath: 'Stack/Api ▸ /x',
+      resourceType: 'AWS::ApiGateway::Resource',
+      path: '',
+      modelReadFailed: true,
+      note: 'created out of band — live model unreadable this run',
+    };
+    const out = formatFinding(f);
+    expect(out).not.toContain('actual =undefined');
+    expect(out).not.toContain('actual =');
+  });
+
+  it('#1057: a RECORDED added (has desired) still shows its baseline-vs-actual delta (no regression)', () => {
+    const f: Finding = {
+      tier: 'added',
+      logicalId: 'Api/abc',
+      constructPath: 'Stack/Api ▸ ANY /',
+      resourceType: 'AWS::ApiGateway::Method',
+      path: '',
+      desired: { AuthorizationType: 'NONE' },
+      actual: { AuthorizationType: 'AWS_IAM' },
+      note: 'changed since record',
+    };
+    const out = formatFinding(f);
+    expect(out).toContain('NONE');
+    expect(out).toContain('AWS_IAM');
   });
 
   it('the Added section sorts AFTER declared/undeclared (sections + result line)', () => {
@@ -754,6 +807,50 @@ describe('jPair (pair-aware truncation keeps the divergence visible)', () => {
   it('a long value vs a short one still shows where they diverge', () => {
     const { a, b } = jPair('z'.repeat(250), 'z'.repeat(10));
     expect(a).not.toBe(b);
+  });
+});
+
+describe('#1059: nested UNRESOLVED symbol is rendered VISIBLY, never silently dropped', () => {
+  it('a symbol OBJECT-PROPERTY value renders the ⟨unresolved⟩ marker (JSON.stringify would drop the key)', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'L',
+      resourceType: 'AWS::X::Y',
+      path: 'P',
+      desired: { Foo: UNRESOLVED, Bar: 'ok' },
+      actual: { Foo: 'live', Bar: 'ok' },
+    };
+    const out = formatFinding(f);
+    // the key is NOT dropped — the unresolved marker is visible
+    expect(out).toContain('⟨unresolved⟩');
+    // and it is NOT a phantom "Foo missing on the desired side"
+    expect(out).toContain('Foo');
+  });
+
+  it('a symbol ARRAY ELEMENT renders the marker, not a phantom null', () => {
+    const f: Finding = {
+      tier: 'declared',
+      logicalId: 'L',
+      resourceType: 'AWS::X::Y',
+      path: 'P',
+      desired: { Items: ['a', UNRESOLVED, 'c'] },
+      actual: { Items: ['a', 'b', 'c'] },
+    };
+    const out = formatFinding(f);
+    expect(out).toContain('⟨unresolved⟩');
+    // JSON.stringify turns a symbol array element into `null` — that phantom must be gone
+    expect(out).not.toContain('null');
+  });
+
+  it('jPair defends a top-level UNRESOLVED symbol (would stringify to undefined otherwise)', () => {
+    const { a, b } = jPair(UNRESOLVED, 'live');
+    expect(a).toContain('⟨unresolved⟩');
+    expect(b).toBe('"live"');
+  });
+
+  it('an unknown symbol falls back to its description marker (symbols generally)', () => {
+    const { a } = jPair(Symbol('mystery'), 'x');
+    expect(a).toContain('⟨mystery⟩');
   });
 });
 
