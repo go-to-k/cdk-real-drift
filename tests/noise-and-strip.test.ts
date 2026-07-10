@@ -1032,6 +1032,45 @@ describe('noise suppressors', () => {
     ).toEqual({ UserPoolTags: { CreatedBy: 'team-x', env: 'prod' } });
   });
 
+  it('#915: strips managed-timestamp NAME VARIANTS the exact ALWAYS_STRIPPED set misses', () => {
+    const out = stripCcApiAwsManagedFields({
+      Name: 'keep',
+      CreateTime: 't',
+      UpdateTime: 't',
+      ModifiedAt: 't',
+      ModificationTime: 't',
+      LastUpdatedAt: 't',
+      CreationTimestamp: 't',
+      LastModifiedTimeStamp: 't',
+      ModificationTimestamp: 't',
+    });
+    expect(out).toEqual({ Name: 'keep' });
+    // nested (structured, non-free-form) variants strip too
+    expect(stripCcApiAwsManagedFields({ Config: { CreatedAt: 't', Threshold: 5 } })).toEqual({
+      Config: { Threshold: 5 },
+    });
+  });
+
+  it('#915: the anchored match NEVER over-strips a user field that merely contains a time word', () => {
+    // declarable / user-meaningful time props must survive (a false strip would HIDE real drift)
+    const props = {
+      StartTime: '2020',
+      EndTime: '2021',
+      ActiveDate: '2020',
+      InactiveDate: '2021',
+      ExpireTime: '2022',
+      ValidFrom: '2020',
+      ValidUntil: '2021',
+      UpdateTimeout: 30,
+      CreationPolicy: 'x',
+    };
+    expect(stripCcApiAwsManagedFields({ ...props })).toEqual(props);
+    // and a user key colliding with a variant, inside a free-form map, is preserved
+    expect(stripCcApiAwsManagedFields({ Variables: { CreateTime: 'user-value' } })).toEqual({
+      Variables: { CreateTime: 'user-value' },
+    });
+  });
+
   it('isPemEqual: trailing-newline / CRLF differences on a PEM block are not drift (R125)', () => {
     const key = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqAQAB\n-----END PUBLIC KEY-----';
     // CloudFront PublicKey EncodedKey: AWS appends a trailing newline on read

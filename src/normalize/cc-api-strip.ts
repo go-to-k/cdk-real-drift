@@ -88,6 +88,21 @@ export function stripCcApiAwsManagedFields(
 // protection and a user key colliding with an ALWAYS_STRIPPED name (e.g. `CreatedBy`)
 // would be stripped one level down. No real type nests objects under these parents today,
 // so this is a defensive hardening to keep the two free-form guards consistent.
+// #915: ALWAYS_STRIPPED is EXACT-match, so managed-timestamp NAME VARIANTS AWS uses on some
+// types (CreateTime, UpdateTime, ModifiedAt, ModificationTime, LastUpdatedAt, CreationTimestamp,
+// LastModifiedTimeStamp, …) leak through — and on a MODELED (non-readOnly) time prop that is a
+// hidden #847-class moving value, that becomes a first-run FP which re-drifts on every read.
+// Catch them with an ANCHORED, separator/case-normalized match: a curated managed-audit PREFIX
+// immediately followed by a time SUFFIX. Anchored (`^…$`) so a user field that merely CONTAINS a
+// time word is NEVER stripped — `StartTime`/`EndTime` (declarable), `ActiveDate`/`InactiveDate`,
+// `ExpireTime`, `ValidFrom`, `UpdateTimeout` all fail the match. Errs toward UNDER-stripping (a
+// managed variant not in the prefix set stays a harmless FP) rather than over-stripping (hiding
+// real drift). Complements — does not replace — the exact ALWAYS_STRIPPED set + free-form guard.
+const MANAGED_TIMESTAMP_NAME =
+  /^(creation|created|create|lastmodified|lastupdated|lastupdate|modification|modified|updated|update)(date|time|timestamp|at)$/;
+function isManagedTimestampName(key: string): boolean {
+  return MANAGED_TIMESTAMP_NAME.test(key.toLowerCase().replace(/[^a-z0-9]/g, ''));
+}
 function stripWalk(value: unknown, freeForm: boolean): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) {
@@ -107,7 +122,7 @@ function stripWalk(value: unknown, freeForm: boolean): unknown {
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, child] of Object.entries(value as Record<string, unknown>)) {
-      if (!freeForm && ALWAYS_STRIPPED.has(k)) continue;
+      if (!freeForm && (ALWAYS_STRIPPED.has(k) || isManagedTimestampName(k))) continue;
       out[k] = stripWalk(child, freeForm || FREE_FORM_MAP_PARENTS.has(k));
     }
     return out;
