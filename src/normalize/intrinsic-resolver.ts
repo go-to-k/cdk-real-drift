@@ -374,6 +374,26 @@ export function resolveGetAtt(v: unknown, ctx: ResolverContext): unknown {
   // not cascade into phantom drift on consumers. Fall through to live when the declared
   // property is absent or itself does not statically resolve to a scalar.
   const type = ctx.typeOf?.[logicalId];
+  // CDK `crossRegionReferences: true` pattern: a `Custom::CrossRegionExportReader`
+  // materializes each imported value as an SSM parameter `/cdk/exports/<name>` in the
+  // consumer region, and the consumer property is `{ Fn::GetAtt: [<Reader>, "/cdk/exports/<name>"] }`.
+  // The reader has no live model (router.ts short-circuits Custom::* to skipped), so this
+  // GetAtt would otherwise be permanently UNRESOLVED — leaving an out-of-band cert swap
+  // invisible. Resolve it from the prefetched SSM map (template-adapter.ts). Gate on the
+  // reader Type when known; else on the unambiguous `/cdk/exports/` attribute shape (only
+  // this pattern produces a GetAtt attribute starting with a slash). Missing from the map
+  // (unread/unresolvable) falls through to UNRESOLVED as before — so ordinary GetAtts and a
+  // fail-closed prefetch are unaffected.
+  if (
+    attr.startsWith('/cdk/exports/') &&
+    (type === undefined || type === 'Custom::CrossRegionExportReader')
+  ) {
+    const val = ctx.crossRegionExports?.[attr];
+    if (typeof val === 'string') return val;
+    // Reader GetAtt but no prefetched value → fail closed. Do not fall through to the
+    // live-model path below (a reader has no live model, so it would also be UNRESOLVED).
+    return UNRESOLVED;
+  }
   const declaredKey = type ? GETATT_DECLARED_PROPERTY[type]?.[attr] : undefined;
   if (declaredKey !== undefined) {
     const rawProps = ctx.declaredRawProps?.[logicalId];

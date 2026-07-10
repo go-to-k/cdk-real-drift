@@ -404,6 +404,21 @@ a principal without `cloudformation:ListExports`) DEGRADES to empty exports — 
 consuming properties resolve `UNRESOLVED`, with a one-line warning — rather than
 hard-failing the whole stack check.
 
+**`crossRegionReferences: true` (CDK cross-region GetAtt).** CDK cannot use
+`Fn::ImportValue` across regions, so it synthesizes a `Custom::CrossRegionExportReader`
+in the CONSUMER stack that materializes each imported value as an SSM parameter
+`/cdk/exports/<name>` in the consumer region; the consumer property becomes
+`{ Fn::GetAtt: [<Reader>, "/cdk/exports/<name>"] }`. The reader is a `Custom::*`
+resource with no live model, so that GetAtt would resolve `UNRESOLVED` forever —
+leaving an out-of-band console swap (e.g. a CloudFront distribution's ACM certificate)
+invisible on exactly the value the pattern exists to pin. Mirroring the `ListExports`
+prefetch, `loadDesired` scans the template for such reader GetAtts and — ONLY when one
+exists — batch-fetches the referenced parameters via `ssm:GetParameters`
+(account+region-scoped, cached in a module-level Map keyed by `${accountId}:${region}`).
+`resolveGetAtt` then resolves the reader GetAtt against that map, so a live cert
+mismatch surfaces as declared drift. A read failure / missing parameter DEGRADES to
+`UNRESOLVED` (with a one-line warning), never a fabricated value (#741).
+
 > Trade-off to review: cdkd has a fuller `IntrinsicFunctionResolver`. We
 > deliberately wrote a focused, fail-closed one. The remaining `unresolved`
 > residual is exotic intrinsics — reported honestly, never false drift.

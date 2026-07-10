@@ -188,6 +188,15 @@ export interface ResolverContext {
   // template.Mappings (MapName -> TopKey -> SecondKey -> value), for Fn::FindInMap
   mappings: Record<string, Record<string, Record<string, unknown>>>;
   exports: Record<string, string>; // CFn export Name -> Value, for Fn::ImportValue (prefetched)
+  // SSM parameter name -> value, for the CDK `crossRegionReferences: true` pattern. A
+  // `Custom::CrossRegionExportReader` materializes each imported value as an SSM parameter
+  // named `/cdk/exports/<exportName>` in the CONSUMER region, and the consumer property
+  // becomes `{ Fn::GetAtt: [<Reader>, "/cdk/exports/<name>"] }`. Prefetched (one
+  // ssm:GetParameters batch) so resolveGetAtt can resolve that GetAtt instead of leaving it
+  // UNRESOLVED (which would make an out-of-band cert swap invisible). Optional: absent unless
+  // the template actually references such a reader; a name missing here fails closed to
+  // UNRESOLVED. Keyed by the FULL SSM parameter name (the GetAtt attribute).
+  crossRegionExports?: Record<string, string>;
   condCache: Map<string, unknown>; // true | false | UNRESOLVED (fail-closed)
 }
 

@@ -9,6 +9,7 @@ import {
   ListExportsCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
+import { GetParametersCommand, SSMClient, type SSMClientConfig } from '@aws-sdk/client-ssm';
 import { classifyStackStatus, StackNotCheckableError } from '../aws-errors.js';
 import { evalCondition, resolveProperties } from '../normalize/intrinsic-resolver.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
@@ -340,6 +341,97 @@ export async function listExports(
   return exports;
 }
 
+// Per-account+region cache of resolved `/cdk/exports/*` SSM parameters (name -> value), for
+// the CDK `crossRegionReferences: true` pattern. Like exportsCache, these parameters are scoped
+// to an account AND a region (they are written into the CONSUMER region by the reader), so the
+// cache key MUST carry BOTH axes. A single prefetch serves every reader GetAtt in the stack.
+const crossRegionExportsCache = new Map<string, Record<string, string>>();
+
+// The CDK cross-region-reference reader custom-resource type.
+const CROSS_REGION_EXPORT_READER_TYPE = 'Custom::CrossRegionExportReader';
+
+/**
+ * Scan the parsed template for `Fn::GetAtt` references whose logicalId is a
+ * `Custom::CrossRegionExportReader` resource and whose attribute is an SSM parameter name
+ * (`/cdk/exports/<name>`). Returns the DISTINCT parameter names to prefetch. Pure + exported
+ * for unit tests. Both GetAtt forms are handled: the array form `[LogicalId, AttrName]` and
+ * the long-form string `"LogicalId./cdk/exports/name"` (split on the FIRST dot — the attribute
+ * itself may contain dots).
+ */
+export function collectCrossRegionExportNames(template: Record<string, any>): string[] {
+  const resources = (template.Resources ?? {}) as Record<string, { Type?: string }>;
+  const readerIds = new Set(
+    Object.entries(resources)
+      .filter(([, r]) => r?.Type === CROSS_REGION_EXPORT_READER_TYPE)
+      .map(([lid]) => lid)
+  );
+  if (readerIds.size === 0) return [];
+  const names = new Set<string>();
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const x of node) walk(x);
+      return;
+    }
+    if (node && typeof node === 'object') {
+      const obj = node as Record<string, unknown>;
+      const g = obj['Fn::GetAtt'];
+      if (g !== undefined) {
+        let logicalId: string | undefined;
+        let attr: string | undefined;
+        if (typeof g === 'string') {
+          const dot = g.indexOf('.');
+          if (dot >= 0) {
+            logicalId = g.slice(0, dot);
+            attr = g.slice(dot + 1);
+          }
+        } else if (Array.isArray(g) && g.length >= 2) {
+          logicalId = String(g[0]);
+          attr = String(g[1]);
+        }
+        if (
+          logicalId !== undefined &&
+          readerIds.has(logicalId) &&
+          attr !== undefined &&
+          attr.startsWith('/cdk/exports/')
+        ) {
+          names.add(attr);
+        }
+      }
+      for (const v of Object.values(obj)) walk(v);
+    }
+  };
+  walk(template.Resources ?? {});
+  return [...names].sort();
+}
+
+// Resolve the given `/cdk/exports/*` SSM parameter names in the stack's region via
+// ssm:GetParameters (batched 10 at a time). Returns name -> value; a name that is missing /
+// unreadable is simply LEFT OUT (fail closed — resolveGetAtt then yields UNRESOLVED). Cached
+// per account:region so repeated gather runs in the same process don't re-fetch. Mirrors the
+// listExports prefetch/cache idiom.
+export async function getCrossRegionExports(
+  ssm: SSMClient,
+  accountId: string,
+  region: string,
+  names: string[]
+): Promise<Record<string, string>> {
+  const cacheKey = `${accountId}:${region}`;
+  const cached = crossRegionExportsCache.get(cacheKey);
+  if (cached) return cached;
+  const out: Record<string, string> = {};
+  for (let i = 0; i < names.length; i += 10) {
+    const batch = names.slice(i, i + 10);
+    const res = await ssm.send(new GetParametersCommand({ Names: batch }));
+    for (const p of res.Parameters ?? []) {
+      if (p.Name && typeof p.Value === 'string') out[p.Name] = p.Value;
+    }
+    // InvalidParameters (names that don't exist) are returned separately and intentionally
+    // dropped — the reader GetAtt for a missing name stays UNRESOLVED (fail closed).
+  }
+  crossRegionExportsCache.set(cacheKey, out);
+  return out;
+}
+
 // Page ListStackResources (DescribeStackResources caps at 100; CDK stacks reach ~500).
 async function listStackResources(
   client: CloudFormationClient,
@@ -511,6 +603,41 @@ export async function loadDesired(
         `warning: ${stackName}: cloudformation:ListExports failed — Fn::ImportValue references ` +
           `will resolve UNRESOLVED (their declared properties are skipped, not compared). ` +
           `Grant cloudformation:ListExports for full coverage. (${msg})`
+      );
+    }
+  }
+
+  // CDK `crossRegionReferences: true` pattern: a `Custom::CrossRegionExportReader` custom
+  // resource materializes each cross-region import as an SSM parameter `/cdk/exports/<name>`
+  // in THIS (consumer) region, and the consumer property is a GetAtt to that parameter name.
+  // The reader has no live model, so those GetAtts would resolve UNRESOLVED forever — leaving
+  // an out-of-band cert swap invisible. Prefetch the referenced parameters (one ssm:GetParameters
+  // batch) so resolveGetAtt can resolve them. Only fetch when the template actually has such a
+  // reader + reference, so normal stacks pay nothing. Fail closed: on any read failure the map
+  // stays empty and those GetAtts remain UNRESOLVED (the pre-fix behavior).
+  const crossRegionExportNames = collectCrossRegionExportNames(template);
+  if (crossRegionExportNames.length > 0) {
+    try {
+      // Build the SSM client for the SAME region as the stack (the reader writes its SSM
+      // parameters into the consumer region). Reuse the CFn client's resolved credentials so a
+      // `--profile` run hits the same account; fall back to the default chain when the client
+      // exposes none (e.g. a bare mock in tests). `config`/`credentials` are typed as always
+      // defined, but a bare mock leaves them undefined at runtime — read defensively.
+      const credentials = (client as { config?: { credentials?: SSMClientConfig['credentials'] } })
+        .config?.credentials;
+      const ssm = new SSMClient(credentials ? { region, credentials } : { region });
+      ctx.crossRegionExports = await getCrossRegionExports(
+        ssm,
+        accountId,
+        region,
+        crossRegionExportNames
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `warning: ${stackName}: ssm:GetParameters failed — crossRegionReferences reader GetAtt ` +
+          `references (/cdk/exports/*) will resolve UNRESOLVED (their declared properties are ` +
+          `skipped, not compared). Grant ssm:GetParameters for full coverage. (${msg})`
       );
     }
   }
