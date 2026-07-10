@@ -337,9 +337,29 @@ const readLambdaPermission: OverrideReader = async ({ declared, physicalId, regi
   // differing ONLY in SourceArn. The Action+Principal fallback below returns the FIRST
   // match for BOTH, so the deployment-stage permission read back the `test-invoke-stage`
   // SourceArn — a false `declared` drift on every clean deploy.
-  const byId = physicalId ? stmts.find((s) => s.Sid === physicalId) : undefined;
-  // best-effort fallback match by Action + Principal against the declared permission
-  // (a permission whose physical id is not the live Sid, or a renamed statement).
+  // The physical id IS the authoritative statement Sid whenever it resolved to a
+  // concrete value (a deployed permission always has one; only a pre-deploy /
+  // unresolved-ref read leaves it empty). str() maps that empty/absent case to
+  // undefined, so `sid` is set ONLY for a usable StatementId.
+  const sid = str(physicalId);
+  const byId = sid ? stmts.find((s) => s.Sid === sid) : undefined;
+  // The exact Sid lookup missed but the id WAS a concrete StatementId AND the live
+  // policy actually keys statements by Sid (at least one sibling carries one) — the
+  // exact key is authoritative and is gone: the statement was deleted out of band
+  // while siblings remain (a wholly-deleted policy already threw
+  // ResourceNotFoundException above → `deleted`). Falling back to Action+Principal
+  // here would match a SIBLING and read back the WRONG statement (a false `declared`
+  // / clean read hiding the deletion). Throw ResourceGoneError so the router maps it
+  // to `deleted`, mirroring the IAM AccessKey / AppSync ApiKey exact-key-absent case
+  // (#1084, #1001). Gate on "some statement HAS a Sid" so a policy that carries no
+  // Sids at all (nothing to key on) still falls through to the best-effort match.
+  const policyKeysBySid = stmts.some((s) => str(s.Sid) !== undefined);
+  if (sid && !byId && policyKeysBySid)
+    throw new ResourceGoneError(`Lambda Permission Sid ${sid} absent from function ${fn}'s policy`);
+  // best-effort fallback match by Action + Principal — used when the physical id was
+  // not a usable StatementId (an unresolved ref) OR the live policy carries no Sids
+  // to key on. The exact key is unavailable, so this cannot authoritatively assert
+  // THIS statement is gone.
   const want = { action: str(declared.Action), principal: str(declared.Principal) };
   const m =
     byId ??
@@ -348,11 +368,11 @@ const readLambdaPermission: OverrideReader = async ({ declared, physicalId, regi
         (!want.action || s.Action === want.action) &&
         (!want.principal || JSON.stringify(s.Principal).includes(String(want.principal)))
     );
-  // No match while the policy itself exists = the specific statement was removed out
-  // of band (but other statements remain). Return undefined → router maps it to
-  // `skipped` (target not resolvable), NOT `deleted`: safely asserting THIS statement
-  // is gone needs its StatementId, which the best-effort Action+Principal match lacks.
-  // A wholly-deleted resource policy throws ResourceNotFoundException above → `deleted`.
+  // No match while the policy itself exists AND no usable StatementId to key on =
+  // the specific statement may have been removed out of band, but safely asserting
+  // THIS statement is gone needs its StatementId, which the best-effort match lacks.
+  // Return undefined → router maps it to `skipped` (target not resolvable), NOT
+  // `deleted`.
   if (!m) return undefined;
   // Return the MATCHED statement's REAL fields — never echo the declared template
   // (an echoed Principal makes a Principal drift structurally undetectable).
