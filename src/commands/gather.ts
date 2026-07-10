@@ -249,6 +249,7 @@ interface ClassifyOpts {
   kmsAliasTargets: Record<string, string>;
   oaiCanonicalIds: Record<string, string>;
   siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+  siblingEventBusPolicies: Record<string, unknown[]>;
   bucketNotificationManaged: Set<string>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
 }
@@ -292,6 +293,48 @@ export function buildSiblingSgRules(
       rule.SourceSecurityGroupOwnerId = desired.accountId;
     }
     (map[groupId] ??= { ingress: [], egress: [] })[side].push(rule);
+  }
+  return map;
+}
+
+// Statements declared by sibling AWS::Events::EventBusPolicy resources, keyed by their
+// TARGET bus identifier (the resolved `EventBusName` == the bus's physical id; an absent /
+// "default" name targets the default bus, keyed "default"). The live AWS::Events::EventBus
+// REFLECTS these statements in an aggregated undeclared `Policy` = `{Version, Statement[]}`,
+// so classify subtracts them (see subtractSiblingEventBusStatements in diff/classify.ts) to
+// avoid a first-run FP + double-reporting — the sibling EventBusPolicy is tracked + compared
+// as its own resource. Each sibling contributes ONE statement (its resolved `Statement`, a
+// single statement object; CFn EventBusPolicy declares exactly one), stamped with its
+// `StatementId` as the reflected `Sid` when the statement omits one. Fail-open: a policy whose
+// target bus did not resolve to a concrete string is skipped (the bus keeps the reflected
+// statement -> a one-time visible FP, never a hidden change). Any live statement that matches
+// NO sibling (a purely out-of-band injection) is left to surface.
+const EVENT_BUS_POLICY_TYPE = 'AWS::Events::EventBusPolicy';
+const DEFAULT_EVENT_BUS = 'default';
+export function buildSiblingEventBusPolicies(desired: Desired): Record<string, unknown[]> {
+  const map: Record<string, unknown[]> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== EVENT_BUS_POLICY_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    // An absent EventBusName (or the literal "default") targets the default event bus. A
+    // custom bus is targeted by its resolved Name (== the bus's physical id). Skip an
+    // unresolved intrinsic (fail-open — the bus keeps the reflected statement).
+    const busName = d.EventBusName;
+    let busKey: string;
+    if (busName === undefined) busKey = DEFAULT_EVENT_BUS;
+    else if (typeof busName === 'string' && busName) busKey = busName;
+    else continue;
+    // The single statement this policy declares (`Statement`), stamped with its `StatementId`
+    // as the `Sid` AWS reflects when the statement itself omits one.
+    const stmt = d.Statement;
+    if (!stmt || typeof stmt !== 'object') continue;
+    const statement = { ...(stmt as Record<string, unknown>) };
+    if (statement.Sid === undefined && typeof d.StatementId === 'string' && d.StatementId) {
+      statement.Sid = d.StatementId;
+    }
+    (map[busKey] ??= []).push(statement);
   }
   return map;
 }
@@ -640,6 +683,7 @@ export async function gatherFindings(
     kmsAliasTargets,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
+    siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
   };
@@ -727,6 +771,7 @@ export async function regatherTouched(
     kmsAliasTargets,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
+    siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
   };
