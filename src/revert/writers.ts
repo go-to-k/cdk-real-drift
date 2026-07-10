@@ -1764,6 +1764,13 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
   const desired = await desiredModel('AWS::EC2::ClientVpnEndpoint', ctx, ops);
   const input: { ClientVpnEndpointId: string; [k: string]: unknown } = { ClientVpnEndpointId: id };
   let any = false;
+  // Un-expressible clears (a `remove` whose unset state ModifyClientVpnEndpoint cannot express)
+  // are COLLECTED here rather than thrown inline: a single un-expressible op must NOT abort the
+  // whole batch and drop the CONVERGEABLE sibling ops (#1102 — a `SessionTimeoutHours` remove was
+  // aborting the #912 VpnPort set-default that WOULD converge). We apply every expressible op
+  // first, then throw ONCE naming what could not be reverted (its live value stays, surfaced by
+  // the post-revert convergence re-read).
+  const unExpressible: string[] = [];
   const tops = new Set(ops.map((op) => op.path.replace(/^\//, '').split('/')[0] ?? ''));
   // A `remove` op (revert of an OOB-added value back to unset) must send an EXPLICIT clearing value
   // — ModifyClientVpnEndpoint is a selective modify, so an omitted field keeps the live value and
@@ -1778,24 +1785,23 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
       } else if (removed(top)) {
         // ModifyClientVpnEndpoint expresses a clear for Description ('') and the booleans
         // (SplitTunnel=false, DisconnectOnSessionTimeout=false); VpnPort / SessionTimeoutHours are
-        // numbers with NO expressible unset, so bar them honestly.
-        if (top === 'Description') input.Description = '';
-        else if (top === 'SplitTunnel') input.SplitTunnel = false;
-        else if (top === 'DisconnectOnSessionTimeout') input.DisconnectOnSessionTimeout = false;
-        else
-          throw new Error(
-            `EC2 ClientVpnEndpoint ${top} cannot be cleared via ModifyClientVpnEndpoint (its unset state is not expressible in a selective modify); update it manually`
-          );
-        any = true;
+        // numbers with NO expressible unset, so bar them honestly (isolated, not batch-aborting).
+        if (top === 'Description') {
+          input.Description = '';
+          any = true;
+        } else if (top === 'SplitTunnel') {
+          input.SplitTunnel = false;
+          any = true;
+        } else if (top === 'DisconnectOnSessionTimeout') {
+          input.DisconnectOnSessionTimeout = false;
+          any = true;
+        } else unExpressible.push(top);
       }
     } else if (top === 'ConnectionLogOptions') {
       if (desired.ConnectionLogOptions !== undefined) {
         input.ConnectionLogOptions = desired.ConnectionLogOptions;
         any = true;
-      } else if (removed('ConnectionLogOptions'))
-        throw new Error(
-          'EC2 ClientVpnEndpoint ConnectionLogOptions cannot be cleared via ModifyClientVpnEndpoint (its unset state is not expressible in a selective modify); update it manually'
-        );
+      } else if (removed('ConnectionLogOptions')) unExpressible.push('ConnectionLogOptions');
     } else if (top === 'DnsServers') {
       const list = desired.DnsServers as string[] | undefined;
       // An empty/absent desired list is itself an expressible clear ({Enabled:false}), so a
@@ -1812,16 +1818,21 @@ const writeEc2ClientVpnEndpoint: SdkWriter = async (ctx, ops) => {
         input.SecurityGroupIds = list;
         input.VpcId = vpcId;
         any = true;
-      } else if (removed('SecurityGroupIds'))
-        throw new Error(
-          'EC2 ClientVpnEndpoint SecurityGroupIds cannot be cleared via ModifyClientVpnEndpoint (an endpoint cannot revert to no security group in a selective modify); update it manually'
-        );
+      } else if (removed('SecurityGroupIds')) unExpressible.push('SecurityGroupIds');
     }
   }
-  if (!any) return;
-  await new EC2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new ModifyClientVpnEndpointCommand(input)
-  );
+  // Apply the expressible ops FIRST so a convergeable op (e.g. the #912 VpnPort set-default) still
+  // lands even alongside an un-expressible sibling; only then report what could not be reverted.
+  if (any)
+    await new EC2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new ModifyClientVpnEndpointCommand(input)
+    );
+  if (unExpressible.length > 0)
+    throw new Error(
+      `EC2 ClientVpnEndpoint ${unExpressible.join(', ')} cannot be cleared via ModifyClientVpnEndpoint ` +
+        `(unset state is not expressible in a selective modify)${any ? '; the other revert op(s) were applied' : ''}; ` +
+        `update ${unExpressible.length > 1 ? 'them' : 'it'} manually`
+    );
 };
 
 // AWS::Lex::Bot `BotLocales` is the ENTIRE conversational model (locales → intents → slots +
