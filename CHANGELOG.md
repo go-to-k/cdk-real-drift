@@ -1,3 +1,12 @@
+## [0.12.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.22...v0.12.23) (2026-07-10)
+
+
+### Bug Fixes
+
+* **commands:** add the account axis to named/glob stack dedup + pre-deploy synth key ([#1320](https://github.com/go-to-k/cdk-real-drift/issues/1320)) ([#1372](https://github.com/go-to-k/cdk-real-drift/issues/1372)) ([a85c7b4](https://github.com/go-to-k/cdk-real-drift/commit/a85c7b4142a73c2cceb772593c2ca0a708bd6478))
+* **read:** DMS/SageMaker-EndpointConfig/DocDB readers project Tags ([#1287](https://github.com/go-to-k/cdk-real-drift/issues/1287)) ([#1371](https://github.com/go-to-k/cdk-real-drift/issues/1371)) ([80a26a6](https://github.com/go-to-k/cdk-real-drift/commit/80a26a618923006ff976522cb2db3d11596bb3b9))
+* **report:** escape bidi/zero-width Unicode in live drift VALUES, not just keys ([#1307](https://github.com/go-to-k/cdk-real-drift/issues/1307)) ([#1370](https://github.com/go-to-k/cdk-real-drift/issues/1370)) ([ba6a6e1](https://github.com/go-to-k/cdk-real-drift/commit/ba6a6e1a712f95757bd0f17c6bae0d30322fcac1))
+
 ## [0.12.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.21...v0.12.22) (2026-07-10)
 
 
