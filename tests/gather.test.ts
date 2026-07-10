@@ -18,7 +18,9 @@ import {
   buildBucketNotificationManaged,
   buildClusterEchoModels,
   buildSiblingEventBusPolicies,
+  buildSiblingManagedPolicyAttachments,
   buildSiblingSgRules,
+  buildSiblingUserGroups,
   type GatherResult,
   gatherFindings,
   isManagedBySiblingStack,
@@ -794,6 +796,152 @@ describe('buildSiblingEventBusPolicies', () => {
     );
     expect(map.CustomBus).toHaveLength(2);
     expect(map.CustomBus!.map((s) => (s as { Sid: string }).Sid)).toEqual(['A', 'B']);
+  });
+});
+
+describe('buildSiblingManagedPolicyAttachments', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111111111111',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  const SIB_ARN = 'arn:aws:iam::111111111111:policy/Stack-SiblingManaged-abc';
+
+  it('keys the sibling ARN by the principal name in Roles/Users/Groups', () => {
+    const map = buildSiblingManagedPolicyAttachments(
+      desiredWith([
+        {
+          logicalId: 'SiblingManaged',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          physicalId: SIB_ARN,
+          declared: { Roles: ['role-phys'], Users: ['user-phys'], Groups: ['group-phys'] },
+        },
+      ])
+    );
+    expect(map['role-phys']).toEqual([SIB_ARN]);
+    expect(map['user-phys']).toEqual([SIB_ARN]);
+    expect(map['group-phys']).toEqual([SIB_ARN]);
+  });
+
+  it('resolves a {Ref: logicalId} principal via the logical-id -> physical-id map', () => {
+    const map = buildSiblingManagedPolicyAttachments(
+      desiredWith([
+        {
+          logicalId: 'ProbeRole',
+          resourceType: 'AWS::IAM::Role',
+          physicalId: 'role-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'SiblingManaged',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          physicalId: SIB_ARN,
+          declared: { Roles: [{ Ref: 'ProbeRole' }] },
+        },
+      ])
+    );
+    expect(map['role-phys']).toEqual([SIB_ARN]);
+  });
+
+  it('falls back to ManagedPolicyName when the policy has no resolved physical id', () => {
+    const map = buildSiblingManagedPolicyAttachments(
+      desiredWith([
+        {
+          logicalId: 'SiblingManaged',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          declared: { ManagedPolicyName: 'MyPolicy', Roles: ['role-phys'] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['role-phys']).toEqual(['MyPolicy']);
+  });
+
+  it('skips a policy with neither an ARN nor a name, and an unresolved principal (fail-open)', () => {
+    const map = buildSiblingManagedPolicyAttachments(
+      desiredWith([
+        {
+          logicalId: 'NoId',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          declared: { Roles: ['role-phys'] },
+        } as DesiredResource,
+        {
+          logicalId: 'UnresolvedPrincipal',
+          resourceType: 'AWS::IAM::ManagedPolicy',
+          physicalId: SIB_ARN,
+          declared: { Roles: [{ 'Fn::GetAtt': ['X', 'Arn'] }] },
+        },
+      ])
+    );
+    expect(Object.keys(map)).toHaveLength(0);
+  });
+});
+
+describe('buildSiblingUserGroups', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111111111111',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('keys the resolved group name by each user in Users', () => {
+    const map = buildSiblingUserGroups(
+      desiredWith([
+        {
+          logicalId: 'Membership',
+          resourceType: 'AWS::IAM::UserToGroupAddition',
+          declared: { GroupName: 'group-phys', Users: ['user-a', 'user-b'] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['user-a']).toEqual(['group-phys']);
+    expect(map['user-b']).toEqual(['group-phys']);
+  });
+
+  it('resolves {Ref} for both the group and the user', () => {
+    const map = buildSiblingUserGroups(
+      desiredWith([
+        {
+          logicalId: 'ProbeGroup',
+          resourceType: 'AWS::IAM::Group',
+          physicalId: 'group-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'ProbeUser',
+          resourceType: 'AWS::IAM::User',
+          physicalId: 'user-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'Membership',
+          resourceType: 'AWS::IAM::UserToGroupAddition',
+          declared: { GroupName: { Ref: 'ProbeGroup' }, Users: [{ Ref: 'ProbeUser' }] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['user-phys']).toEqual(['group-phys']);
+  });
+
+  it('skips an unresolved group name (fail-open)', () => {
+    const map = buildSiblingUserGroups(
+      desiredWith([
+        {
+          logicalId: 'Membership',
+          resourceType: 'AWS::IAM::UserToGroupAddition',
+          declared: { GroupName: { 'Fn::GetAtt': ['G', 'GroupName'] }, Users: ['user-a'] },
+        } as DesiredResource,
+      ])
+    );
+    expect(Object.keys(map)).toHaveLength(0);
   });
 });
 
