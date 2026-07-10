@@ -1,3 +1,10 @@
+## [0.4.33](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.32...v0.4.33) (2026-07-10)
+
+
+### Bug Fixes
+
+* **config:** ignore rule for a '/'-bearing CC identifier no longer swallows a '/'-extended sibling ([#1061](https://github.com/go-to-k/cdk-real-drift/issues/1061)) ([#1151](https://github.com/go-to-k/cdk-real-drift/issues/1151)) ([e899188](https://github.com/go-to-k/cdk-real-drift/commit/e899188ad1d01840d42bda8b3db6caa5d73f4a2f))
+
 ## [0.4.32](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.31...v0.4.32) (2026-07-10)
 
 
