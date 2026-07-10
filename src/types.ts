@@ -134,6 +134,17 @@ export interface SchemaInfo {
   // is surfaced in the report rather than folded into the `undeclared-subkey` count (R96).
   // Optional like the above; classify reads it with `?.`.
   freeFormMapPaths?: string[];
+  // Dotted paths (with '*' array-item wildcard) → the schema's `propertyTransform` JSONata
+  // expression for that property. CloudFormation's OWN drift detection uses `propertyTransform`
+  // to suppress false drift: the SERVICE transforms a declared value before storing it (Lambda
+  // EventSourceMapping StartingPositionTimestamp ×1000 s→ms, Cassandra ColumnType $lowercase,
+  // AmazonMQ DayOfWeek $uppercase, EKS Addon ConfigurationValues trailing-newline strip), so the
+  // live read differs from the template value even though nothing drifted. classify evaluates
+  // transform(declared) and, when it deep-equals live, folds the finding (equality-gated + FAIL-
+  // OPEN — it can ONLY suppress a declared FP where the transform reproduces live exactly, never
+  // hide real drift). The value may carry ` $OR `-separated alternatives (classify tries each).
+  // Optional like the paths above; classify reads it with `?.`. (#881)
+  propertyTransforms?: Record<string, string>;
   // True when the CFn resource schema's `handlers` block declares an `update` handler;
   // false when handlers ARE present but `update` is absent — the type is create/read/delete
   // only (e.g. AWS::CloudFront::MonitoringSubscription), so a Cloud Control UpdateResource

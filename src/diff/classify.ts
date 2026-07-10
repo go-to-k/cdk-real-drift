@@ -7,6 +7,7 @@
 //
 // Pure: no AWS calls. liveRaw is the CC API GetResource model (un-stripped).
 
+import jsonata from 'jsonata';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import {
   isArnNameMatch,
@@ -1223,6 +1224,82 @@ function expandExecuteApiResources(policy: unknown, arnPrefix: string): unknown 
     return stmt;
   });
   return { ...p, Statement: newStmts };
+}
+
+// Compiled-JSONata cache: the same `propertyTransform` sub-expression string recurs across every
+// resource of a type (and across the whole `--all` run), so compile once and reuse. Keyed on the
+// raw expression string. A value of `null` memoizes a compile FAILURE so a malformed expression is
+// not re-parsed (and never throws) on the hot path. (#881)
+const transformCache = new Map<string, jsonata.Expression | null>();
+function compileTransform(expr: string): jsonata.Expression | null {
+  if (transformCache.has(expr)) return transformCache.get(expr) ?? null;
+  let compiled: jsonata.Expression | null = null;
+  try {
+    compiled = jsonata(expr);
+  } catch {
+    compiled = null; // unsupported / malformed — fail-open, memoize the failure
+  }
+  transformCache.set(expr, compiled);
+  return compiled;
+}
+
+// #881: honor a registry-schema `propertyTransform`. `transformExpr` is the JSONata string for a
+// declared property path (possibly ` $OR `-joined alternatives, AWS's convention). Evaluate each
+// alternative against BOTH the resource ROOT and the property's PARENT object (resource authors
+// reference the property from either scope — e.g. AmazonMQ `MaintenanceWindowStartTime.DayOfWeek`
+// from root vs Cassandra `ColumnType` / CodeDeploy `Description` from the parent element/object),
+// and report whether ANY produces a value DEEP-EQUAL to the live value. This is the exact model
+// CloudFormation's own drift detection uses: apply transform(declared) and compare to the read
+// value; if they match, the property is IN_SYNC. STRICTLY equality-gated + FAIL-OPEN — on any
+// parse/eval error, or when no alternative matches live, it returns false (the finding surfaces
+// unchanged), so it can ONLY fold a declared FP where the service transform reproduces live
+// EXACTLY, and can NEVER hide real drift.
+function matchesPropertyTransform(
+  transformExpr: string,
+  declaredValue: unknown,
+  parentObject: unknown,
+  rootObject: unknown,
+  liveValue: unknown,
+  leafName: string
+): boolean {
+  // Candidate JSONata input scopes, tried in turn (equality-gated, so trying several is safe):
+  //  - parentObject / rootObject: the two scopes real schemas reference the property from.
+  //  - a SYNTHETIC `{ [leafName]: declaredValue }`: guarantees the leaf field is bound by name even
+  //    when array reindexing (unordered-array sort) makes the raw-tree index unreliable — e.g.
+  //    Cassandra `$lowercase(ColumnType)` needs `{ ColumnType: <value> }` regardless of position.
+  //  - declaredValue itself: for a `$`-self-referencing expression.
+  const scopes = [parentObject, rootObject, { [leafName]: declaredValue }, declaredValue];
+  for (const alt of transformExpr.split(' $OR ')) {
+    const expr = alt.trim();
+    if (!expr) continue;
+    const compiled = compileTransform(expr);
+    if (!compiled) continue;
+    for (const scope of scopes) {
+      try {
+        const out = compiled.evaluate(scope as unknown);
+        if (out !== undefined && deepEqual(out, liveValue)) return true;
+      } catch {
+        // eval error on this scope — try the next scope / alternative (fail-open)
+      }
+    }
+  }
+  return false;
+}
+
+// Resolve the PARENT object of a dotted drift path within a value tree. `PartitionKeyColumns.0.
+// ColumnType` → the element object at index 0; `MaintenanceWindowStartTime.DayOfWeek` → the
+// MaintenanceWindowStartTime object; `StartingPositionTimestamp` (top-level) → the root itself.
+// Best-effort: returns undefined if any segment is missing (the transform then just cannot match
+// against it — fail-open). Numeric segments index arrays. (#881)
+function resolveParentObject(root: unknown, dottedPath: string): unknown {
+  const segs = dottedPath.split('.');
+  if (segs.length <= 1) return root;
+  let node: unknown = root;
+  for (const seg of segs.slice(0, -1)) {
+    if (node == null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return node;
 }
 
 export function classifyResource(
@@ -2507,6 +2584,29 @@ export function classifyResource(
       // TEMPLATE position so the path matches what the user wrote, and carry the WHOLE (raw,
       // template-order) declared array so the revert plan collapses these into one whole-array
       // replacement (revert reads wholeArrayRevert, never the index).
+      // #881: registry `propertyTransform` (the LAST fold gate, after every other equality
+      // check). The service transforms the declared value before storing it, so live differs
+      // without any real drift (StartingPositionTimestamp ×1000, ColumnType $lowercase, ...).
+      // The schema keys transforms by dotted path with a `*` array-item wildcard; the drift
+      // path carries concrete numeric indices, so normalize them to `*` for the lookup. Then
+      // apply transform(declared)==live (equality-gated + fail-open) exactly as CloudFormation's
+      // own drift detection does. A genuinely different live value never equals the transform, so
+      // this can only fold a declared FP, never hide drift.
+      const transformExpr =
+        schema.propertyTransforms?.[d.path] ??
+        schema.propertyTransforms?.[d.path.replace(/\.\d+(?=\.|$)/g, '.*')];
+      if (
+        transformExpr !== undefined &&
+        matchesPropertyTransform(
+          transformExpr,
+          d.stateValue,
+          resolveParentObject(declared, d.path),
+          declared,
+          d.awsValue,
+          d.path.split('.').at(-1) ?? d.path
+        )
+      )
+        continue;
       const unorderedExtra =
         unorderedObjArray && Array.isArray(declaredVal) && declaredRemapSource
           ? {
