@@ -1,6 +1,10 @@
-import { DescribeEndpointConfigCommand, SageMakerClient } from '@aws-sdk/client-sagemaker';
+import {
+  DescribeEndpointConfigCommand,
+  ListTagsCommand as SageMakerListTagsCommand,
+  SageMakerClient,
+} from '@aws-sdk/client-sagemaker';
 import { mockClient } from 'aws-sdk-client-mock';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ResourceGoneError } from '../src/aws-errors.js';
 import { SDK_OVERRIDES } from '../src/read/overrides.js';
 
@@ -25,6 +29,9 @@ const read = SDK_OVERRIDES['AWS::SageMaker::EndpointConfig'];
 
 beforeEach(() => {
   sagemaker.reset();
+  // #1287 — the reader now fetches tags via sagemaker:ListTags. Default it to empty so these
+  // Tags-agnostic cases exercise the (Tags-absent) success path, not the degrade warn.
+  sagemaker.on(SageMakerListTagsCommand).resolves({ Tags: [] });
 });
 
 describe('SageMaker EndpointConfig (#857)', () => {
@@ -157,5 +164,85 @@ describe('SageMaker EndpointConfig (#857)', () => {
 
   it('undefined when identity cannot be resolved (physical id + declared name both absent) -> skipped', async () => {
     expect(await read(ctx({}))).toBeUndefined();
+  });
+
+  // #1287 — DescribeEndpointConfig carries NO Tags; the reader must fetch them via a separate
+  // sagemaker:ListTags call keyed on the EndpointConfigArn, or a declared non-empty Tags array
+  // false-flags a `declared`-tier drift (actual=undefined) on every tagged endpoint config.
+  describe('Tags via ListTags (#1287)', () => {
+    const ARN = 'arn:aws:sagemaker:us-east-1:123456789012:endpoint-config/ec';
+
+    it('projects live Tags from ListTags addressed by EndpointConfigArn', async () => {
+      sagemaker.on(DescribeEndpointConfigCommand).resolves({
+        EndpointConfigName: 'ec',
+        EndpointConfigArn: ARN,
+        ProductionVariants: [{ VariantName: 'v1' }],
+      });
+      sagemaker.on(SageMakerListTagsCommand).resolves({
+        Tags: [
+          { Key: 'Env', Value: 'prod' },
+          { Key: 'Team', Value: 'ml' },
+        ],
+      });
+      const out = (await read(
+        ctx({ EndpointConfigName: 'ec', Tags: [{ Key: 'Env', Value: 'prod' }] }, 'ec')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([
+        { Key: 'Env', Value: 'prod' },
+        { Key: 'Team', Value: 'ml' },
+      ]);
+      const tagCall = sagemaker.commandCalls(SageMakerListTagsCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({ ResourceArn: ARN });
+    });
+
+    it('no live tags -> Tags omitted (absent stays absent, FP-safe)', async () => {
+      sagemaker.on(DescribeEndpointConfigCommand).resolves({
+        EndpointConfigName: 'ec',
+        EndpointConfigArn: ARN,
+        ProductionVariants: [{ VariantName: 'v1' }],
+      });
+      sagemaker.on(SageMakerListTagsCommand).resolves({ Tags: [] });
+      const out = await read(ctx({ EndpointConfigName: 'ec' }, 'ec'));
+      expect(out).not.toHaveProperty('Tags');
+    });
+
+    it('synthesizes the EndpointConfigArn when the response omits it', async () => {
+      sagemaker.on(DescribeEndpointConfigCommand).resolves({
+        EndpointConfigName: 'ec',
+        ProductionVariants: [{ VariantName: 'v1' }],
+      });
+      sagemaker.on(SageMakerListTagsCommand).resolves({ Tags: [] });
+      await read(ctx({ EndpointConfigName: 'ec' }, 'ec'));
+      const tagCall = sagemaker.commandCalls(SageMakerListTagsCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({ ResourceArn: ARN });
+    });
+
+    it('ListTags fails -> mirrors declared Tags + warns (#1086 degrade shape)', async () => {
+      const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+      sagemaker.on(DescribeEndpointConfigCommand).resolves({
+        EndpointConfigName: 'ec',
+        EndpointConfigArn: ARN,
+        ProductionVariants: [{ VariantName: 'v1' }],
+      });
+      sagemaker.on(SageMakerListTagsCommand).rejects(new Error('AccessDenied'));
+      const out = (await read(
+        ctx(
+          {
+            EndpointConfigName: 'ec',
+            Tags: [
+              { Key: 'Env', Value: 'prod' },
+              { Key: 'Team', Value: 'ml' },
+            ],
+          },
+          'ec'
+        )
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([
+        { Key: 'Env', Value: 'prod' },
+        { Key: 'Team', Value: 'ml' },
+      ]);
+      expect(warn.mock.calls[0]?.[0]).toContain('SageMaker ListTags');
+      warn.mockRestore();
+    });
   });
 });
