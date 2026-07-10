@@ -121,10 +121,21 @@ describe('gather does not cache a DescribeType failure in the per-run schemas ma
     // Before the fix the poisoned EMPTY short-circuited Q2 and this was 1.
     expect(describeType).toHaveBeenCalledTimes(2);
 
-    // Q1 saw the EMPTY (failed fetch) → its readOnly attr is NOT stripped → surfaces undeclared.
+    // Q1 saw the EMPTY (failed fetch). #858 degrades it to a `skipped` coverage finding
+    // instead of diffing against the unstripped model, so the readOnly attr does NOT
+    // false-surface as undeclared (before #858 it surfaced `undeclared` — the known-wrong
+    // un-schema'd diff this degrade replaces).
     expect(
       findings.some(
         (f) => f.logicalId === 'Q1' && f.tier === 'undeclared' && f.path === 'ReadOnlyAttr'
+      )
+    ).toBe(false);
+    expect(
+      findings.some(
+        (f) =>
+          f.logicalId === 'Q1' &&
+          f.tier === 'skipped' &&
+          f.note === 'schema unavailable (DescribeType failed) — coverage incomplete'
       )
     ).toBe(true);
     // Q2 re-fetched the REAL schema → its readOnly attr IS stripped → no undeclared finding.
