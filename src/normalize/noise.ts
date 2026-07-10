@@ -118,6 +118,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // {Status:"Suspended"} re-reports forever and revert can never converge (R46).
   'AWS::S3::Bucket': {
     VersioningConfiguration: { Status: 'Suspended' },
+    // Transfer acceleration has identical semantics to versioning (R46): the API
+    // (PutBucketAccelerateConfiguration) accepts only Enabled|Suspended, there is no
+    // delete, and once ever touched GetBucketAccelerateConfiguration returns Suspended
+    // forever — Suspended IS the off/default state, not user intent, and a revert
+    // "remove" of an OOB Enabled lands on Suspended. Without this entry an undeclared
+    // {AccelerationStatus:"Suspended"} re-reports forever and revert can never converge
+    // (#1288). Equality-gated: an OOB Enabled — the cost/security-meaningful direction,
+    // a new world-reachable accelerate endpoint — no longer matches the folded constant
+    // and still surfaces as real undeclared drift.
+    AccelerateConfiguration: { AccelerationStatus: 'Suspended' },
     AbacStatus: 'Disabled', // R66
     // R86 (account-wide S3 defaults AWS has applied to every new bucket since 2023):
     // Block Public Access fully on (Apr 2023), ACLs disabled / BucketOwnerEnforced
