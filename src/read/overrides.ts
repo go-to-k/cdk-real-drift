@@ -144,6 +144,11 @@ import {
 } from '@aws-sdk/client-ses';
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
+  DescribeEndpointConfigCommand,
+  type ProductionVariant,
+  SageMakerClient,
+} from '@aws-sdk/client-sagemaker';
+import {
   GetNamespaceCommand,
   GetServiceCommand,
   ServiceDiscoveryClient,
@@ -1575,6 +1580,90 @@ const readGlueSecurityConfiguration: OverrideReader = async ({ physicalId, decla
   return model;
 };
 
+// AWS::SageMaker::EndpointConfig — CC API describe-type reports `handlers: []` (NO read
+// handler), so every endpoint config was silently `skipped`: an out-of-band change to a
+// production variant's instance sizing, a DataCaptureConfig / KMS-key swap, or the network /
+// VPC posture was invisible (#857). Read via SageMaker DescribeEndpointConfig — the CFn physical
+// id IS the EndpointConfigName (Ref returns the ARN, but `Id`/the resolved name round-trips as
+// the config name; declared EndpointConfigName is the fallback). Project the CFn-declarable
+// property surface, dropping the AWS-managed readOnly response fields (EndpointConfigArn /
+// CreationTime) that the registry schema does NOT model — projecting them would be a permanent
+// undeclared false inventory.
+//
+// ProductionVariants / ShadowProductionVariants: the SDK ProductionVariant shape is mostly 1:1
+// PascalCase with the CFn ProductionVariant definition, but the SDK returns THREE fields the
+// registry schema does NOT model — `AcceleratorType` (deprecated Elastic Inference; AWS still
+// echoes it), `CoreDumpConfig`, and (for InstancePools-style variants) a nested `MetricsConfig`
+// — so each variant is projected field-by-field against the SCHEMA property set (never a
+// verbatim passthrough) to keep those AWS-only echoes out of the undeclared inventory. Every
+// field is emitted ONLY when AWS returns it, so a minimal variant (VariantName + a couple of
+// knobs) stays thin (FP-safe on a first check). The nested config blobs (ServerlessConfig /
+// ManagedInstanceScaling / RoutingConfig / InstancePools / CapacityReservationConfig) match the
+// CFn definitions 1:1 and pass through verbatim when present.
+//
+// Tags are NOT projected: DescribeEndpointConfig does not return them (there is no `Tags` field
+// on the response — tags come from a separate ListTags call), so there is nothing to map; a
+// declared Tags stays a readGap rather than a false `desired=[…] actual=undefined` drift.
+// Read-ONLY: the endpoint config is immutable (every mutable property is createOnly in the
+// schema — you replace, not update — and there is no UpdateEndpointConfig API), so there is no
+// in-place revert to offer. A deleted config surfaces as ResourceNotFound / ValidationException
+// → the router maps it to `deleted`.
+const projectSageMakerVariant = (v: ProductionVariant): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  if (str(v.VariantName)) out.VariantName = v.VariantName;
+  if (str(v.ModelName)) out.ModelName = v.ModelName;
+  if (typeof v.InitialInstanceCount === 'number') out.InitialInstanceCount = v.InitialInstanceCount;
+  if (str(v.InstanceType)) out.InstanceType = v.InstanceType;
+  if (typeof v.InitialVariantWeight === 'number') out.InitialVariantWeight = v.InitialVariantWeight;
+  if (v.ServerlessConfig !== undefined) out.ServerlessConfig = v.ServerlessConfig;
+  if (typeof v.VolumeSizeInGB === 'number') out.VolumeSizeInGB = v.VolumeSizeInGB;
+  if (typeof v.ModelDataDownloadTimeoutInSeconds === 'number')
+    out.ModelDataDownloadTimeoutInSeconds = v.ModelDataDownloadTimeoutInSeconds;
+  if (typeof v.ContainerStartupHealthCheckTimeoutInSeconds === 'number')
+    out.ContainerStartupHealthCheckTimeoutInSeconds = v.ContainerStartupHealthCheckTimeoutInSeconds;
+  if (typeof v.EnableSSMAccess === 'boolean') out.EnableSSMAccess = v.EnableSSMAccess;
+  if (v.ManagedInstanceScaling !== undefined) out.ManagedInstanceScaling = v.ManagedInstanceScaling;
+  if (v.RoutingConfig !== undefined) out.RoutingConfig = v.RoutingConfig;
+  if (typeof v.VariantInstanceProvisionTimeoutInSeconds === 'number')
+    out.VariantInstanceProvisionTimeoutInSeconds = v.VariantInstanceProvisionTimeoutInSeconds;
+  if (Array.isArray(v.InstancePools) && v.InstancePools.length > 0)
+    out.InstancePools = v.InstancePools;
+  if (v.CapacityReservationConfig !== undefined)
+    out.CapacityReservationConfig = v.CapacityReservationConfig;
+  if (str(v.InferenceAmiVersion)) out.InferenceAmiVersion = v.InferenceAmiVersion;
+  // AcceleratorType / CoreDumpConfig / MetricsConfig are deliberately NOT projected — the
+  // registry schema for the CFn ProductionVariant definition does not model them (AcceleratorType
+  // is the deprecated Elastic Inference knob AWS still echoes), so projecting them would be a
+  // permanent undeclared false inventory.
+  return out;
+};
+const readSageMakerEndpointConfig: OverrideReader = async ({ physicalId, declared, region }) => {
+  const name = str(physicalId) ?? str(declared.EndpointConfigName);
+  if (!name) return undefined;
+  const c = new SageMakerClient({ region, ...READ_RETRY });
+  // A deleted config throws ValidationException ("Could not find endpoint configuration") →
+  // the router maps it to `deleted`; it is not swallowed as an empty model.
+  const r = await c.send(new DescribeEndpointConfigCommand({ EndpointConfigName: name }));
+  if (!r.EndpointConfigName) throw new ResourceGoneError(`SageMaker EndpointConfig ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(r.EndpointConfigName)) model.EndpointConfigName = r.EndpointConfigName;
+  if (Array.isArray(r.ProductionVariants) && r.ProductionVariants.length > 0)
+    model.ProductionVariants = r.ProductionVariants.map(projectSageMakerVariant);
+  if (Array.isArray(r.ShadowProductionVariants) && r.ShadowProductionVariants.length > 0)
+    model.ShadowProductionVariants = r.ShadowProductionVariants.map(projectSageMakerVariant);
+  if (r.DataCaptureConfig !== undefined) model.DataCaptureConfig = r.DataCaptureConfig;
+  if (r.AsyncInferenceConfig !== undefined) model.AsyncInferenceConfig = r.AsyncInferenceConfig;
+  if (str(r.KmsKeyId)) model.KmsKeyId = r.KmsKeyId;
+  if (r.ExplainerConfig !== undefined) model.ExplainerConfig = r.ExplainerConfig;
+  if (typeof r.EnableNetworkIsolation === 'boolean')
+    model.EnableNetworkIsolation = r.EnableNetworkIsolation;
+  if (str(r.ExecutionRoleArn)) model.ExecutionRoleArn = r.ExecutionRoleArn;
+  if (r.VpcConfig !== undefined) model.VpcConfig = r.VpcConfig;
+  // EndpointConfigArn / CreationTime are AWS-managed readOnly response fields NOT in the CFn
+  // schema — dropped (projecting them would be a permanent undeclared false inventory).
+  return model;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -2368,6 +2457,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Workflow': readGlueWorkflow,
   'AWS::Glue::Connection': readGlueConnection,
   'AWS::Glue::SecurityConfiguration': readGlueSecurityConfiguration,
+  'AWS::SageMaker::EndpointConfig': readSageMakerEndpointConfig,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };
