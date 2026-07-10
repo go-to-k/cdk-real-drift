@@ -20,6 +20,20 @@ export function isDynamicReference(v: string): boolean {
   return DYNAMIC_REFERENCE_RE.test(v);
 }
 
+// Re-check a resolved value that an intrinsic PRODUCED (a Ref-to-parameter value,
+// an Fn::FindInMap lookup, an Fn::Select element, an Fn::ImportValue export) for a
+// whole-string dynamic reference. The literal-string guard at the top of `resolve`
+// only sees a `{{resolve:…}}` token that appears DIRECTLY in the template tree; when
+// the same token arrives INDIRECTLY as the result of resolving one of these
+// intrinsics, that guard never runs, so the raw token would leak out as a declared
+// value (a false positive that also prints the secret plaintext and, on revert,
+// writes the literal `{{resolve:…}}` back). Fold it to UNRESOLVED here — the same
+// post-resolution re-check Fn::Join and Fn::Sub already do on their assembled result.
+// See #1073 (the indirect siblings of the direct-literal guard #722).
+function checkResolvedDynamicRef(r: unknown): unknown {
+  return typeof r === 'string' && isDynamicReference(r) ? UNRESOLVED : r;
+}
+
 // A value safe to interpolate into a joined / substituted STRING: a primitive
 // (string / number / boolean). A symbol (UNRESOLVED / NOVALUE) or an object / array
 // means resolution was incomplete (a deep GetAtt) or the template is malformed —
@@ -60,7 +74,7 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
     const v = obj[k];
     switch (k) {
       case 'Ref':
-        return resolveRef(String(v), ctx);
+        return checkResolvedDynamicRef(resolveRef(String(v), ctx));
       case 'Fn::Sub':
         return resolveSub(v, ctx);
       case 'Fn::Base64': {
@@ -124,7 +138,7 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         // element itself being UNRESOLVED also propagates.
         if (!Number.isInteger(i) || i < 0 || i >= arr.length) return UNRESOLVED;
         const sel = arr[i];
-        return sel === UNRESOLVED ? UNRESOLVED : sel;
+        return sel === UNRESOLVED ? UNRESOLVED : checkResolvedDynamicRef(sel);
       }
       case 'Fn::FindInMap': {
         if (!Array.isArray(v) || v.length < 3) return UNRESOLVED;
@@ -149,7 +163,7 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         )
           return UNRESOLVED;
         const val = ctx.mappings?.[mapName]?.[topKey]?.[secondKey];
-        if (val !== undefined) return val;
+        if (val !== undefined) return checkResolvedDynamicRef(val);
         // CFn supports an optional 4th argument — { DefaultValue: ... } — returned when
         // the map path is absent. Honor it so a declared default is still compared (else
         // a knowable declared value is silently dropped to UNRESOLVED = missed drift).
@@ -161,7 +175,7 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
           'DefaultValue' in fourth
         ) {
           const def = resolve((fourth as Record<string, unknown>).DefaultValue, ctx);
-          return def === UNRESOLVED ? UNRESOLVED : def;
+          return def === UNRESOLVED ? UNRESOLVED : checkResolvedDynamicRef(def);
         }
         return UNRESOLVED;
       }
@@ -194,7 +208,7 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         const name = resolve(v, ctx);
         if (typeof name !== 'string') return UNRESOLVED;
         // Prefetched exports (see loadDesired); absent name -> fail-closed.
-        return name in ctx.exports ? ctx.exports[name] : UNRESOLVED;
+        return name in ctx.exports ? checkResolvedDynamicRef(ctx.exports[name]) : UNRESOLVED;
       }
       case 'Fn::GetAtt':
         return resolveGetAtt(v, ctx);
